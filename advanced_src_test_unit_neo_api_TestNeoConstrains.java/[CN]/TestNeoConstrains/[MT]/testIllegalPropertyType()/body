@@ -1,0 +1,59 @@
+{
+  Logger log=Logger.getLogger(NodeManager.class.getName());
+  Level level=log.getLevel();
+  log.setLevel(Level.OFF);
+  try {
+    NodeManager nm=NodeManager.getManager();
+    Node node1=nm.createNode();
+    try {
+      node1.setProperty(key,new Object());
+    }
+ catch (    IllegalValueException e) {
+    }
+    try {
+      TransactionFactory.getUserTransaction().commit();
+      fail("Shouldn't validate");
+    }
+ catch (    Exception e) {
+    }
+    TransactionFactory.getUserTransaction().begin();
+    try {
+      nm.getNodeById((int)node1.getId());
+      fail("Node should not exist, previous tx didn't rollback");
+    }
+ catch (    NotFoundException e) {
+    }
+    node1=nm.createNode();
+    Node node2=nm.createNode();
+    Relationship rel=nm.createRelationship(node1,node2,MyRelTypes.TEST);
+    try {
+      rel.setProperty(key,new Object());
+    }
+ catch (    IllegalValueException e) {
+    }
+    try {
+      TransactionFactory.getUserTransaction().commit();
+      fail("Shouldn't validate");
+    }
+ catch (    Exception e) {
+    }
+    try {
+      nm.getNodeById((int)node1.getId());
+      fail("Node should not exist, previous tx didn't rollback");
+    }
+ catch (    NotFoundException e) {
+    }
+    try {
+      nm.getNodeById((int)node2.getId());
+      fail("Node should not exist, previous tx didn't rollback");
+    }
+ catch (    NotFoundException e) {
+    }
+  }
+ catch (  Exception e) {
+    fail("" + e);
+  }
+ finally {
+    log.setLevel(level);
+  }
+}

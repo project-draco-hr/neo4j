@@ -1,0 +1,31 @@
+{
+  Thread currentThread=Thread.currentThread();
+  ThreadLockElement tle=null;
+  if (threadLockElementMap.containsKey(currentThread)) {
+    tle=threadLockElementMap.get(currentThread);
+  }
+ else {
+    tle=new ThreadLockElement(currentThread);
+  }
+  try {
+    while (writeCount > tle.writeCount || readCount > tle.readCount) {
+      ragManager.checkWaitOn(this);
+      waitingThreadList.addFirst(new WaitElement(tle,LockType.WRITE));
+      try {
+        wait();
+      }
+ catch (      InterruptedException e) {
+      }
+      ragManager.stopWaitOn(this);
+    }
+    if (tle.readCount == 0 && tle.writeCount == 0) {
+      ragManager.lockAcquired(this);
+    }
+    writeCount++;
+    tle.writeCount++;
+    threadLockElementMap.put(currentThread,tle);
+  }
+  finally {
+    marked--;
+  }
+}

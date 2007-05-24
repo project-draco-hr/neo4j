@@ -1,0 +1,33 @@
+{
+  if (!isRecovered() && !prepared) {
+    throw new XAException("Cannot commit non prepared transaction[" + getIdentifier() + "]");
+  }
+  TxInfoManager.getManager().registerMode(isRecovered());
+  try {
+    committed=true;
+    CommandSorter sorter=new CommandSorter();
+    java.util.Collections.sort(relTypeCommands,sorter);
+    for (    Command.RelationshipTypeCommand command : relTypeCommands) {
+      command.execute();
+    }
+    java.util.Collections.sort(nodeCommands,sorter);
+    for (    Command.NodeCommand command : nodeCommands) {
+      command.execute();
+    }
+    java.util.Collections.sort(relCommands,sorter);
+    for (    Command.RelationshipCommand command : relCommands) {
+      command.execute();
+    }
+    java.util.Collections.sort(propCommands,sorter);
+    for (    Command.PropertyCommand command : propCommands) {
+      command.execute();
+    }
+  }
+ catch (  Throwable t) {
+    logger.log(Level.SEVERE,"Unable to commit tx[" + getIdentifier() + "]",t);
+    throw new XAException("Unable to commit" + t);
+  }
+ finally {
+    TxInfoManager.getManager().unregisterMode();
+  }
+}

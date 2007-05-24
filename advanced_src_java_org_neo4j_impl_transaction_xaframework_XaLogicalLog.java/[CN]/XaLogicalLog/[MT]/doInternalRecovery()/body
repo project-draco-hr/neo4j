@@ -1,0 +1,25 @@
+{
+  log.info("Logical log is dirty, recovering...");
+  buffer.clear();
+  buffer.limit(8);
+  if (fileChannel.read(buffer) != 8) {
+    log.info("Unable to read timestamp information, " + "asuming no records in logical log.");
+    fileChannel.close();
+    new File(fileName).renameTo(new File(fileName + "_unkown_timestamp_" + System.currentTimeMillis()+ ".log"));
+    fileChannel=new RandomAccessFile(fileName,"rw").getChannel();
+    return;
+  }
+  buffer.flip();
+  logCreated=buffer.getLong();
+  log.info("Logical log created " + new java.util.Date(logCreated));
+  long logEntriesFound=0;
+  while (readEntry()) {
+    logEntriesFound++;
+  }
+  scanIsComplete=true;
+  log.info("Internal recovery completed, scanned " + logEntriesFound + " log entries.");
+  log.info(xidIdentMap.size() + " uncompleted transactions found ");
+  xaRm.checkXids();
+  log.info("Prepared 2PC transactions: " + xidIdentMap.size());
+  recoveredTxMap.clear();
+}

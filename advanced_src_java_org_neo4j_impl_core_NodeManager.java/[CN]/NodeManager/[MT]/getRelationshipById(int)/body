@@ -1,0 +1,36 @@
+{
+  Integer relId=new Integer(id);
+  Relationship relationship=getTransactionCache().getRelationship(relId);
+  if (relationship != null) {
+    return new RelationshipProxy(id);
+  }
+  relationship=(Relationship)relCache.get(relId);
+  if (relationship != null) {
+    return new RelationshipProxy(id);
+  }
+  Relationship dummyRel=new RelationshipImpl(id);
+  acquireLock(dummyRel,LockType.READ);
+  try {
+    if (relCache.get(relId) != null) {
+      relationship=(Relationship)relCache.get(relId);
+      return new RelationshipProxy(id);
+    }
+    RawRelationshipData data=PersistenceManager.getManager().loadLightRelationship(id);
+    if (data == null) {
+      throw new NotFoundException("Relationship[" + id + "] for node");
+    }
+    RelationshipType type=getRelationshipTypeById(data.getType());
+    if (type == null) {
+      throw new NotFoundException("Relationship[" + data.getId() + "] exist but relationship type["+ data.getType()+ "] not registered.");
+    }
+    relationship=new RelationshipImpl(id,data.getFirstNode(),data.getSecondNode(),type,false);
+    relCache.add(relId,relationship);
+    return new RelationshipProxy(id);
+  }
+ catch (  PersistenceException e) {
+    throw new NotFoundException("Could not get relationship[" + id + "].",e);
+  }
+ finally {
+    forceReleaseReadLock(dummyRel);
+  }
+}

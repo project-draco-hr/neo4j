@@ -1,0 +1,48 @@
+{
+  if (!prepared) {
+    try {
+      Iterator<MemCommand> itr=createdRelTypesMap.values().iterator();
+      while (itr.hasNext()) {
+        MemCommand.RelationshipTypeAdd command=(MemCommand.RelationshipTypeAdd)itr.next();
+        getRelationshipTypeStore().freeId(command.getId());
+      }
+      itr=createdNodesMap.values().iterator();
+      while (itr.hasNext()) {
+        MemCommand.NodeCreate command=(MemCommand.NodeCreate)itr.next();
+        if (!deletedNodesMap.containsKey(command.getId())) {
+          getNodeStore().freeId(command.getId());
+        }
+      }
+      itr=createdRelsMap.values().iterator();
+      while (itr.hasNext()) {
+        MemCommand.RelationshipCreate command=(MemCommand.RelationshipCreate)itr.next();
+        if (!deletedRelsMap.containsKey(command.getId())) {
+          getRelationshipStore().freeId(command.getId());
+        }
+      }
+      itr=addedPropsMap.values().iterator();
+      while (itr.hasNext()) {
+        MemCommand cmd=itr.next();
+        if (cmd instanceof MemCommand.NodeAddProperty) {
+          MemCommand.NodeAddProperty command=(MemCommand.NodeAddProperty)cmd;
+          if (!deletedNodesMap.containsKey(command.getNodeId())) {
+            getPropertyStore().freeId(command.getPropertyId());
+          }
+        }
+ else {
+          MemCommand.RelationshipAddProperty command=(MemCommand.RelationshipAddProperty)cmd;
+          if (!deletedRelsMap.containsKey(command.getRelId())) {
+            getPropertyStore().freeId(command.getPropertyId());
+          }
+        }
+      }
+    }
+ catch (    IOException e) {
+      logger.log(Level.SEVERE,"Unable to rollback",e);
+      throw new XAException("Unable to rollback transaction[" + getIdentifier() + "], "+ e);
+    }
+  }
+ else   if (committed) {
+    throw new XAException("Cannot rollback partialy commited " + "transaction[" + getIdentifier() + "]. Recover and "+ "commit");
+  }
+}

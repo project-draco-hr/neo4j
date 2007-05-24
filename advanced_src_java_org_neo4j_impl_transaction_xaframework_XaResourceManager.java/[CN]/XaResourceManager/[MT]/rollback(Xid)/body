@@ -1,0 +1,20 @@
+{
+  if (!xidMap.containsKey(xid)) {
+    throw new XAException("Unkown xid[" + xid + "]");
+  }
+  XidStatus status=xidMap.get(xid);
+  TransactionStatus txStatus=status.getTransactionStatus();
+  XaTransaction xaTransaction=txStatus.getTransaction();
+  if (txStatus.commitStarted()) {
+    throw new XAException("Transaction already started commit");
+  }
+  txStatus.markAsRollback();
+  xaTransaction.rollback();
+  log.done(xaTransaction.getIdentifier());
+  xidMap.remove(xid);
+  if (xaTransaction.isRecovered()) {
+    recoveredTxCount--;
+    checkIfRecoveryComplete();
+  }
+  return txStatus.getTransaction();
+}

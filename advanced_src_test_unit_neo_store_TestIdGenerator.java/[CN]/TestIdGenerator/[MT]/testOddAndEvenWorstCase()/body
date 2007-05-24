@@ -1,0 +1,62 @@
+{
+  int capacity=1024 * 8 + 1;
+  try {
+    IdGenerator.createGenerator("testIdGenerator.id");
+    IdGenerator idGenerator=new IdGenerator("testIdGenerator.id",128);
+    for (int i=0; i < capacity; i++) {
+      idGenerator.nextId();
+    }
+    java.util.Map<Integer,Object> freedIds=new java.util.HashMap<Integer,Object>();
+    for (int i=1; i < capacity; i+=2) {
+      idGenerator.freeId(i);
+      freedIds.put(new Integer(i),this);
+    }
+    idGenerator.close();
+    idGenerator=new IdGenerator("testIdGenerator.id",2000);
+    int oldId=-1;
+    for (int i=0; i < capacity - 1; i+=2) {
+      int id=idGenerator.nextId();
+      if (freedIds.remove(new Integer(id)) == null) {
+        throw new RuntimeException("Id=" + id + " prevId="+ oldId+ " list.size()="+ freedIds.size());
+      }
+      oldId=id;
+    }
+    assertTrue(freedIds.values().size() == 0);
+  }
+ catch (  IOException e) {
+    fail("" + e);
+  }
+ finally {
+    File file=new File("testIdGenerator.id");
+    if (file.exists()) {
+      file.delete();
+    }
+  }
+  try {
+    IdGenerator.createGenerator("testIdGenerator.id");
+    IdGenerator idGenerator=new IdGenerator("testIdGenerator.id",128);
+    for (int i=0; i < capacity; i++) {
+      idGenerator.nextId();
+    }
+    java.util.Map<Integer,Object> freedIds=new java.util.HashMap<Integer,Object>();
+    for (int i=0; i < capacity; i+=2) {
+      idGenerator.freeId(i);
+      freedIds.put(new Integer(i),this);
+    }
+    idGenerator.close();
+    idGenerator=new IdGenerator("testIdGenerator.id",2000);
+    for (int i=0; i < capacity; i+=2) {
+      assertEquals(this,freedIds.remove(new Integer(idGenerator.nextId())));
+    }
+    assertEquals(0,freedIds.values().size());
+  }
+ catch (  IOException e) {
+    fail("" + e);
+  }
+ finally {
+    File file=new File("testIdGenerator.id");
+    if (file.exists()) {
+      file.delete();
+    }
+  }
+}

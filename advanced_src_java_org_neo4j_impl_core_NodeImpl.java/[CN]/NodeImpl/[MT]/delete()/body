@@ -1,0 +1,26 @@
+{
+  acquireLock(this,LockType.WRITE);
+  NodeCommands nodeCommand=null;
+  try {
+    ensureFullRelationships();
+    nodeCommand=new NodeCommands();
+    nodeCommand.setNode(this);
+    nodeCommand.initDelete();
+    EventManager em=EventManager.getManager();
+    EventData eventData=new EventData(nodeCommand);
+    if (!em.generateProActiveEvent(Event.NODE_DELETE,eventData)) {
+      setRollbackOnly();
+      throw new DeleteException("Generate pro-active event failed, " + "unable to delete " + this);
+    }
+    nodeCommand.execute();
+    em.generateReActiveEvent(Event.NODE_DELETE,eventData);
+  }
+ catch (  ExecuteFailedException e) {
+    setRollbackOnly();
+    nodeCommand.undo();
+    throw new DeleteException("Failed executing command deleting " + this,e);
+  }
+ finally {
+    releaseLock(this,LockType.WRITE);
+  }
+}

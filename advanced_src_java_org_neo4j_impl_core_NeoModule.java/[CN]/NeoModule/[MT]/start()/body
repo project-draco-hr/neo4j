@@ -1,0 +1,27 @@
+{
+  if (!startIsOk) {
+    return;
+  }
+  RawRelationshipTypeData relTypes[]=null;
+  try {
+    NeoConstraintsListener.getListener().registerEventListeners();
+    TransactionFactory.getUserTransaction().begin();
+    relTypes=PersistenceManager.getManager().loadAllRelationshipTypes();
+    TransactionFactory.getUserTransaction().commit();
+  }
+ catch (  Exception e) {
+    try {
+      TransactionFactory.getUserTransaction().rollback();
+    }
+ catch (    Exception ee) {
+      ee.printStackTrace();
+      log.severe("Unable to rollback tx");
+    }
+    throw new RuntimeException("Unable to load all relationships",e);
+  }
+  RelationshipTypeHolder rth=RelationshipTypeHolder.getHolder();
+  rth.addRawRelationshipTypes(relTypes);
+  rth.addValidRelationshipTypes(relTypeClass);
+  AdaptiveCacheManager.getManager().start();
+  startIsOk=false;
+}

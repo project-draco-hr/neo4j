@@ -1,0 +1,30 @@
+{
+  if (key == null) {
+    throw new NotFoundException("Null parameter.");
+  }
+  acquireLock(this,LockType.WRITE);
+  RelationshipCommands relationshipCommand=null;
+  try {
+    ensureFullRelationship();
+    relationshipCommand=new RelationshipCommands();
+    relationshipCommand.setRelationship(this);
+    relationshipCommand.initRemoveProperty(doGetProperty(key).getId(),key);
+    relationshipCommand.execute();
+    EventManager em=EventManager.getManager();
+    EventData eventData=new EventData(relationshipCommand);
+    if (!em.generateProActiveEvent(Event.RELATIONSHIP_REMOVE_PROPERTY,eventData)) {
+      setRollbackOnly();
+      relationshipCommand.undo();
+      throw new NotFoundException("Generate pro-active event failed.");
+    }
+    em.generateReActiveEvent(Event.RELATIONSHIP_REMOVE_PROPERTY,eventData);
+    return relationshipCommand.getOldProperty();
+  }
+ catch (  ExecuteFailedException e) {
+    relationshipCommand.undo();
+    throw new NotFoundException("Failed executing command.",e);
+  }
+ finally {
+    releaseLock(this,LockType.WRITE);
+  }
+}

@@ -1,0 +1,34 @@
+{
+  Integer nodeId=new Integer(id);
+  Node node=getTransactionCache().getNode(nodeId);
+  if (node != null) {
+    if (((NodeImpl)node).isDeleted()) {
+      throw new NotFoundException("Node[" + id + "] has been deleted (in this tx)");
+    }
+    return new NodeProxy(id);
+  }
+  node=(Node)nodeCache.get(nodeId);
+  if (node != null) {
+    return new NodeProxy(id);
+  }
+  node=new NodeImpl(id);
+  acquireLock(node,LockType.READ);
+  try {
+    if (nodeCache.get(nodeId) != null) {
+      node=(Node)nodeCache.get(nodeId);
+      return new NodeProxy(id);
+    }
+    if (PersistenceManager.getManager().loadLightNode(id) == null) {
+      throw new NotFoundException("Node[" + id + "]");
+    }
+    nodeCache.add(nodeId,node);
+    return new NodeProxy(id);
+  }
+ catch (  PersistenceException pe) {
+    log.severe("Persistence error while trying to get node #" + id + " by id. "+ pe);
+    throw new NotFoundException(pe);
+  }
+ finally {
+    forceReleaseReadLock(node);
+  }
+}

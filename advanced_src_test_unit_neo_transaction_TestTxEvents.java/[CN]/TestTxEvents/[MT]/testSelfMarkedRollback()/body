@@ -1,0 +1,39 @@
+{
+  EventConsumer eventHook=new EventConsumer(Event.TX_ROLLBACK);
+  UserTransactionImpl tx=(UserTransactionImpl)TransactionFactory.getUserTransaction();
+  try {
+    EventManager.getManager().registerReActiveEventListener(eventHook,Event.TX_ROLLBACK);
+    tx.begin();
+    Integer eventIdentifier=tx.getEventIdentifier();
+    Node node=NodeManager.getManager().createNode();
+    tx.setRollbackOnly();
+    try {
+      tx.commit();
+      fail("Marked rollback tx should throw exception on commit");
+    }
+ catch (    javax.transaction.RollbackException e) {
+    }
+    Thread.sleep(500);
+    assertTrue(Event.TX_ROLLBACK + " event not generated",eventHook.received());
+    assertEquals("Event generated, but with wrong event identifier",eventHook.getEventIdentifier(),eventIdentifier);
+    tx.begin();
+    try {
+      NodeManager.getManager().getNodeById((int)node.getId());
+      fail("Node exist but tx should have rolled back");
+    }
+ catch (    org.neo4j.impl.core.NotFoundException e) {
+    }
+  }
+ catch (  Exception e) {
+    e.printStackTrace();
+    fail("Exception raised during testing of TX_BEGIN event: " + e);
+  }
+ finally {
+    try {
+      EventManager.getManager().unregisterReActiveEventListener(eventHook,Event.TX_ROLLBACK);
+      tx.rollback();
+    }
+ catch (    Exception e) {
+    }
+  }
+}

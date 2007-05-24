@@ -1,0 +1,25 @@
+{
+  Transaction tx=null;
+  try {
+    tx=TransactionFactory.getTransactionManager().getTransaction();
+    if (tx == null) {
+      throw new NotInTransactionException();
+    }
+  }
+ catch (  javax.transaction.SystemException e) {
+    throw new NotInTransactionException(e);
+  }
+  Thread currentThread=Thread.currentThread();
+  if (commandStack.containsKey(currentThread)) {
+    throw new InvalidTransactionException("Transaction already in use.");
+  }
+ else {
+    try {
+      tx.registerSynchronization(txCommitHook);
+    }
+ catch (    Exception e) {
+      throw new NotInTransactionException(e);
+    }
+    commandStack.put(currentThread,new CommandStackElement(level,new Stack<Command>()));
+  }
+}

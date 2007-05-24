@@ -1,0 +1,35 @@
+{
+  try {
+    if (event == Event.RELATIONSHIP_ADD_PROPERTY) {
+      int propertyId=propStore.nextId();
+      relConsumer.addProperty(data.getRelationshipId(),propertyId,data.getPropertyKey(),data.getProperty());
+      data.setNewPropertyId(propertyId);
+    }
+ else     if (event == Event.RELATIONSHIP_CHANGE_PROPERTY) {
+      relConsumer.changeProperty(data.getRelationshipId(),data.getPropertyId(),data.getProperty());
+    }
+ else     if (event == Event.RELATIONSHIP_REMOVE_PROPERTY) {
+      relConsumer.removeProperty(data.getRelationshipId(),data.getPropertyId());
+    }
+ else     if (event == Event.RELATIONSHIP_DELETE) {
+      int relId=data.getRelationshipId();
+      PropertyData[] propData=relConsumer.getProperties(relId);
+      relConsumer.deleteRelationship(relId);
+      for (int i=propData.length - 1; i >= 0; i--) {
+        relConsumer.removeProperty(relId,propData[i].getId());
+      }
+    }
+ else     if (event == Event.RELATIONSHIP_CREATE) {
+      Integer nodeIds[]=data.getNodeIds();
+      int firstNodeId=nodeIds[0].intValue();
+      int secondNodeId=nodeIds[1].intValue();
+      relConsumer.createRelationship(data.getRelationshipId(),firstNodeId,secondNodeId,data.getTypeId());
+    }
+ else {
+      throw new PersistenceUpdateFailedException("Unkown event: " + event);
+    }
+  }
+ catch (  Exception t) {
+    throw new PersistenceUpdateFailedException("Event[" + event + "]",t);
+  }
+}

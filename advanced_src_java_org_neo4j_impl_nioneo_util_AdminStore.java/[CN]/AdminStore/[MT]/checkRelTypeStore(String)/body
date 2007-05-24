@@ -1,0 +1,46 @@
+{
+  File relTypeStore=new File(storeName);
+  if (!relTypeStore.exists()) {
+    throw new IOException("Couldn't find relationship type store " + storeName);
+  }
+  File idGenerator=new File(storeName + ".id");
+  if (idGenerator.exists()) {
+    idGenerator.delete();
+  }
+  Set startBlocks=checkDynamicStore(storeName + ".names");
+  System.out.print(storeName);
+  ByteBuffer buffer=ByteBuffer.allocate(5);
+  FileChannel fileChannel=new RandomAccessFile(storeName,"rw").getChannel();
+  long fileSize=fileChannel.size();
+  fileChannel.position(0);
+  long dot=fileSize / 5 / 20;
+  int i=0;
+  Set<Integer> relTypeSet=new java.util.HashSet<Integer>();
+  while (fileChannel.read(buffer) == 5) {
+    buffer.flip();
+    byte inUse=buffer.get();
+    if (inUse == RECORD_IN_USE) {
+      int block=buffer.getInt();
+      if (block != RESERVED && !startBlocks.remove(new Integer(block))) {
+        throw new IOException("start block[" + block + "] not found for record "+ i);
+      }
+      relTypeSet.add(new Integer(i));
+    }
+ else     if (inUse != RECORD_NOT_IN_USE) {
+      fileChannel.truncate(fileChannel.position());
+      break;
+    }
+    i++;
+    if (dot != 0 && i % dot == 0) {
+      System.out.print(".");
+    }
+    buffer.clear();
+  }
+  if (!startBlocks.isEmpty()) {
+    System.out.println("Stray type name blocks found " + startBlocks.size());
+  }
+  fileChannel.truncate(i * 5);
+  fileChannel.close();
+  System.out.println(".ok");
+  return relTypeSet;
+}
