@@ -1,0 +1,32 @@
+{
+  buffer.clear();
+  buffer.limit(17);
+  if (fileChannel.read(buffer) != buffer.limit()) {
+    return null;
+  }
+  buffer.flip();
+  int id=buffer.getInt();
+  byte inUseFlag=buffer.get();
+  boolean inUse=false;
+  if (inUseFlag == Record.IN_USE.byteValue()) {
+    inUse=true;
+  }
+ else   if (inUseFlag != Record.NOT_IN_USE.byteValue()) {
+    throw new IOException("Illegal in use flag: " + inUseFlag);
+  }
+  DynamicRecord record=new DynamicRecord(id);
+  record.setInUse(inUse);
+  record.setPrevBlock(buffer.getInt());
+  int nrOfBytes=buffer.getInt();
+  record.setNextBlock(buffer.getInt());
+  buffer.clear();
+  buffer.limit(nrOfBytes);
+  if (fileChannel.read(buffer) != buffer.limit()) {
+    return null;
+  }
+  buffer.flip();
+  byte data[]=new byte[nrOfBytes];
+  buffer.get(data);
+  record.setData(data);
+  return record;
+}

@@ -1,0 +1,56 @@
+{
+  int xaErrorCode=-1;
+  if (tx.getResourceCount() == 0) {
+    tx.setStatus(Status.STATUS_COMMITTED);
+  }
+ else {
+    try {
+      tx.doCommit();
+    }
+ catch (    XAException e) {
+      xaErrorCode=e.errorCode;
+      e.printStackTrace();
+      log.severe("Commit failed, status=" + getTxStatusAsString(tx.getStatus()) + ", errorCode="+ xaErrorCode);
+      if (tx.getStatus() == Status.STATUS_COMMITTED) {
+        tmOk=false;
+        throw new RuntimeException("commit threw exception but status is committed?",e);
+      }
+    }
+  }
+  if (tx.getStatus() != Status.STATUS_COMMITTED) {
+    try {
+      tx.doRollback();
+    }
+ catch (    XAException e) {
+      e.printStackTrace();
+      log.severe("Unable to rollback transaction. " + "Some resources may be commited others not. " + "Kernel should be SHUTDOWN or FREEZED for "+ "resource maintance and transaction recovery ---->");
+      tmOk=false;
+      throw new HeuristicMixedException("Unable to rollback ---> error code in commit: " + xaErrorCode + " ---> error code for rollback: "+ e.errorCode);
+    }
+    tx.doAfterCompletion();
+    txThreadMap.remove(thread);
+    try {
+      getTxLog().txDone(tx.getGlobalId());
+    }
+ catch (    IOException e) {
+      e.printStackTrace();
+      log.severe("Error writing transaction log");
+      tmOk=false;
+      throw new SystemException("TM encountered a problem, " + " error writing transaction log," + e);
+    }
+    tx.setStatus(Status.STATUS_NO_TRANSACTION);
+    throw new HeuristicRollbackException("Failed to commit, transaction rolledback ---> " + "error code was: " + xaErrorCode);
+  }
+  tx.doAfterCompletion();
+  txThreadMap.remove(thread);
+  try {
+    getTxLog().txDone(tx.getGlobalId());
+  }
+ catch (  IOException e) {
+    e.printStackTrace();
+    log.severe("Error writing transaction log");
+    tmOk=false;
+    throw new SystemException("TM encountered a problem, " + " error writing transaction log," + e);
+  }
+  tx.setStatus(Status.STATUS_NO_TRANSACTION);
+}

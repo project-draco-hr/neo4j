@@ -1,0 +1,23 @@
+{
+  fileChannel=new RandomAccessFile(fileName,"rw").getChannel();
+  ByteBuffer buffer=ByteBuffer.allocate(HEADER_SIZE);
+  totalBytesRead=fileChannel.read(buffer);
+  if (totalBytesRead != HEADER_SIZE) {
+    fileChannel.close();
+    throw new IOException("Unable to read header, bytes read: " + totalBytesRead);
+  }
+  buffer.flip();
+  byte storageStatus=buffer.get();
+  if (storageStatus != CLEAN_GENERATOR) {
+    fileChannel.close();
+    throw new IOException("Sticky generator[ " + fileName + "]"+ "delete this id generator and build a new one");
+  }
+  this.nextFreeId=buffer.getInt();
+  buffer.flip();
+  buffer.put(STICKY_GENERATOR).limit(1).flip();
+  fileChannel.position(0);
+  fileChannel.write(buffer);
+  fileChannel.position(HEADER_SIZE);
+  readBlocksTo=fileChannel.size();
+  readIdBatch();
+}

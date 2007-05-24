@@ -1,0 +1,28 @@
+{
+  Thread currentThread=Thread.currentThread();
+  if (!threadLockElementMap.containsKey(currentThread)) {
+    throw new LockNotFoundException("No thread lock element found for " + currentThread);
+  }
+  ThreadLockElement tle=threadLockElementMap.get(currentThread);
+  if (tle.writeCount == 0) {
+    throw new LockNotFoundException("" + currentThread + " don't have writeLock");
+  }
+  writeCount--;
+  tle.writeCount--;
+  if (tle.readCount == 0 && tle.writeCount == 0) {
+    if (!this.isMarked()) {
+      threadLockElementMap.remove(currentThread);
+    }
+    ragManager.lockReleased(this);
+  }
+  if (writeCount == 0 && waitingThreadList.size() > 0) {
+    do {
+      WaitElement we=(WaitElement)waitingThreadList.removeLast();
+      we.element.thread.interrupt();
+      if (we.lockType == LockType.WRITE) {
+        break;
+      }
+    }
+ while (waitingThreadList.size() > 0);
+  }
+}

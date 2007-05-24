@@ -1,0 +1,29 @@
+{
+  long fileSize=getFileChannel().size();
+  String expectedVersion=getTypeAndVersionDescriptor();
+  byte version[]=new byte[expectedVersion.length()];
+  ByteBuffer buffer=ByteBuffer.wrap(version);
+  if (fileSize >= expectedVersion.length()) {
+    getFileChannel().position(fileSize - expectedVersion.length());
+  }
+ else {
+    setStoreNotOk();
+  }
+  getFileChannel().read(buffer);
+  if (!expectedVersion.equals(new String(version))) {
+    setStoreNotOk();
+  }
+  if (getRecordSize() != 0 && (fileSize - expectedVersion.length()) % getRecordSize() != 0) {
+    setStoreNotOk();
+  }
+  if (getStoreOk()) {
+    getFileChannel().truncate(fileSize - expectedVersion.length());
+  }
+  try {
+    openIdGenerator();
+  }
+ catch (  IOException e) {
+    setStoreNotOk();
+  }
+  setWindowPool(new PersistenceWindowPool(getStorageFileName(),getRecordSize(),getFileChannel(),getMappedMem()));
+}

@@ -1,0 +1,51 @@
+{
+  DummyXaDataSource xaDs1=null;
+  DummyXaConnection xaC1=null;
+  try {
+    xaDsMgr.registerDataSource("dummy_datasource1",new DummyXaDataSource(new java.util.HashMap()),"DDDDDD".getBytes());
+    xaDs1=(DummyXaDataSource)xaDsMgr.getXaDataSource("dummy_datasource1");
+    xaC1=(DummyXaConnection)xaDs1.getXaConnection();
+    tm.begin();
+    xaC1.enlistWithTx();
+    int currentTxId=xaC1.getTransactionId();
+    xaC1.doStuff1();
+    xaC1.delistFromTx();
+    tm.commit();
+    NodeManager nm=NodeManager.getManager();
+    tm.begin();
+    Node node=nm.createNode();
+    xaC1.enlistWithTx();
+    assertEquals(++currentTxId,xaC1.getTransactionId());
+    xaC1.doStuff1();
+    xaC1.delistFromTx();
+    tm.commit();
+    tm.begin();
+    node=nm.getNodeById((int)node.getId());
+    xaC1.enlistWithTx();
+    assertEquals(++currentTxId,xaC1.getTransactionId());
+    xaC1.doStuff2();
+    xaC1.delistFromTx();
+    node.delete();
+    tm.commit();
+  }
+ catch (  Exception e) {
+    e.printStackTrace();
+    fail("" + e);
+  }
+ finally {
+    xaDsMgr.unregisterDataSource("dummy_datasource1");
+    if (xaC1 != null) {
+      xaC1.destroy();
+    }
+  }
+  File dir=new File(".");
+  File files[]=dir.listFiles(new FilenameFilter(){
+    public boolean accept(    File dir,    String fileName){
+      return fileName.startsWith("dummy_resource");
+    }
+  }
+);
+  for (int i=0; i < files.length; i++) {
+    files[i].delete();
+  }
+}

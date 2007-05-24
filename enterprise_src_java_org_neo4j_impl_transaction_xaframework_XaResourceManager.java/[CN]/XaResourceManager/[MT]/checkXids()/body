@@ -1,0 +1,35 @@
+{
+  Iterator<Xid> keyIterator=xidMap.keySet().iterator();
+  LinkedList<Xid> xids=new LinkedList<Xid>();
+  while (keyIterator.hasNext()) {
+    xids.add(keyIterator.next());
+  }
+  while (!xids.isEmpty()) {
+    Xid xid=xids.removeFirst();
+    XidStatus status=xidMap.get(xid);
+    TransactionStatus txStatus=status.getTransactionStatus();
+    XaTransaction xaTransaction=txStatus.getTransaction();
+    int identifier=xaTransaction.getIdentifier();
+    if (xaTransaction.isRecovered()) {
+      if (txStatus.commitStarted()) {
+        System.out.println("Committing 1PC tx " + identifier);
+        try {
+          xaTransaction.commit();
+        }
+ catch (        XAException e) {
+          e.printStackTrace();
+          throw new IOException("Unable to commit one-phase transaction " + identifier + ", "+ e);
+        }
+        log.doneInternal(identifier);
+        xidMap.remove(xid);
+        recoveredTxCount--;
+      }
+ else       if (!txStatus.commit()) {
+        log.doneInternal(xaTransaction.getIdentifier());
+        xidMap.remove(xid);
+        recoveredTxCount--;
+      }
+    }
+  }
+  checkIfRecoveryComplete();
+}

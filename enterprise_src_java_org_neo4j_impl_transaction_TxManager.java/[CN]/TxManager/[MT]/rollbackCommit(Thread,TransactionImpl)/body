@@ -1,0 +1,24 @@
+{
+  try {
+    tx.doRollback();
+  }
+ catch (  XAException e) {
+    e.printStackTrace();
+    log.severe("Unable to rollback marked transaction. " + "Some resources may be commited others not. " + "Kernel should be SHUTDOWN or FREEZED for "+ "resource maintance and transaction recovery ---->");
+    tmOk=false;
+    throw new HeuristicMixedException("Unable to rollback " + " ---> error code for rollback: " + e.errorCode);
+  }
+  tx.doAfterCompletion();
+  txThreadMap.remove(thread);
+  try {
+    getTxLog().txDone(tx.getGlobalId());
+  }
+ catch (  IOException e) {
+    e.printStackTrace();
+    log.severe("Error writing transaction log");
+    tmOk=false;
+    throw new SystemException("TM encountered a problem, " + " error writing transaction log," + e);
+  }
+  tx.setStatus(Status.STATUS_NO_TRANSACTION);
+  throw new RollbackException("Failed to commit, transaction rolledback");
+}

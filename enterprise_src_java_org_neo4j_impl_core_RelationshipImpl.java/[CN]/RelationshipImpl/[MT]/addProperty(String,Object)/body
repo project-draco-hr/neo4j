@@ -1,0 +1,29 @@
+{
+  if (key == null || value == null) {
+    throw new IllegalValueException("Null parameter, " + "key=" + key + ", "+ "value="+ value);
+  }
+  acquireLock(this,LockType.WRITE);
+  RelationshipCommands relationshipCommand=null;
+  try {
+    ensureFullRelationship();
+    relationshipCommand=new RelationshipCommands();
+    relationshipCommand.setRelationship(this);
+    relationshipCommand.initAddProperty(key,new Property(-1,value));
+    relationshipCommand.execute();
+    EventManager em=EventManager.getManager();
+    EventData eventData=new EventData(relationshipCommand);
+    if (!em.generateProActiveEvent(Event.RELATIONSHIP_ADD_PROPERTY,eventData)) {
+      setRollbackOnly();
+      relationshipCommand.undo();
+      throw new IllegalValueException("Generate pro-active event failed.");
+    }
+    em.generateReActiveEvent(Event.RELATIONSHIP_ADD_PROPERTY,eventData);
+  }
+ catch (  ExecuteFailedException e) {
+    relationshipCommand.undo();
+    throw new IllegalValueException("Failed executing command.",e);
+  }
+ finally {
+    releaseLock(this,LockType.WRITE);
+  }
+}

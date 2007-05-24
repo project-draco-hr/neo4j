@@ -1,0 +1,62 @@
+{
+  long fileSize=fileChannel.size();
+  int recordSize=33;
+  if (next != NO_NEXT_BLOCK) {
+    if ((next + 1) * recordSize > fileSize || next < 0) {
+      throw new IOException("Bad next record[" + next + "] at record "+ i);
+    }
+    buffer.clear();
+    fileChannel.position(next * recordSize);
+    fileChannel.read(buffer);
+    buffer.flip();
+    byte inUse=buffer.get();
+    if (inUse != RECORD_IN_USE + NOT_DIRECTED && inUse != RECORD_IN_USE + DIRECTED) {
+      throw new IOException("Bad next record[" + next + ",(not in use)] at record "+ i);
+    }
+    int firstNode=buffer.getInt();
+    int secondNode=buffer.getInt();
+    buffer.getInt();
+    int firstPrev=buffer.getInt();
+    buffer.getInt();
+    int secondPrev=buffer.getInt();
+    buffer.getInt();
+    if (firstNode != node && secondNode != node) {
+      throw new IOException("Bad next record[" + next + "],(nodes don't match)] at record "+ i);
+    }
+    if (firstNode == node && firstPrev != i) {
+      throw new IOException("Bad next record[" + next + ",(previous don't match)] at record "+ i);
+    }
+    if (secondNode == node && secondPrev != i) {
+      throw new IOException("Bad next record[" + next + ",(previous don't match)] at record "+ i);
+    }
+  }
+  if (prev != NO_PREV_BLOCK) {
+    if ((prev + 1) * recordSize > fileSize || prev < 0) {
+      throw new IOException("Bad previous record[" + prev + "] at record "+ i);
+    }
+    buffer.clear();
+    fileChannel.position(prev * recordSize);
+    fileChannel.read(buffer);
+    buffer.flip();
+    byte inUse=buffer.get();
+    if (inUse != RECORD_IN_USE + NOT_DIRECTED && inUse != RECORD_IN_USE + DIRECTED) {
+      throw new IOException("Bad previous record[" + prev + ",(not in use)] at record "+ i);
+    }
+    int firstNode=buffer.getInt();
+    int secondNode=buffer.getInt();
+    buffer.getInt();
+    buffer.getInt();
+    int firstNext=buffer.getInt();
+    buffer.getInt();
+    int secondNext=buffer.getInt();
+    if (firstNode != node && secondNode != node) {
+      throw new IOException("Bad next record[" + next + "],(nodes don't match)] at record "+ i);
+    }
+    if (firstNode == node && firstNext != i) {
+      throw new IOException("Bad previous record[" + prev + ",(next don't match)] at record "+ i);
+    }
+    if (secondNode == node && secondNext != i) {
+      throw new IOException("Bad previous record[" + prev + ",(next don't match)] at record "+ i);
+    }
+  }
+}

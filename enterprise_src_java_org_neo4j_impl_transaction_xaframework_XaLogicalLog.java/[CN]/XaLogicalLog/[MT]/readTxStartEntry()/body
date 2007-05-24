@@ -1,0 +1,48 @@
+{
+  buffer.clear();
+  buffer.limit(1);
+  if (fileChannel.read(buffer) != buffer.limit()) {
+    return false;
+  }
+  buffer.flip();
+  byte globalIdLength=buffer.get();
+  buffer.clear();
+  buffer.limit(1);
+  if (fileChannel.read(buffer) != buffer.limit()) {
+    return false;
+  }
+  buffer.flip();
+  byte branchIdLength=buffer.get();
+  byte globalId[]=new byte[globalIdLength];
+  ByteBuffer tmpBuffer=ByteBuffer.wrap(globalId);
+  if (fileChannel.read(tmpBuffer) != globalId.length) {
+    return false;
+  }
+  byte branchId[]=new byte[branchIdLength];
+  tmpBuffer=ByteBuffer.wrap(branchId);
+  if (fileChannel.read(tmpBuffer) != branchId.length) {
+    return false;
+  }
+  buffer.clear();
+  buffer.limit(4);
+  if (fileChannel.read(buffer) != buffer.limit()) {
+    return false;
+  }
+  buffer.flip();
+  int identifier=buffer.getInt();
+  buffer.clear();
+  buffer.limit(4);
+  if (fileChannel.read(buffer) != buffer.limit()) {
+    return false;
+  }
+  buffer.flip();
+  int formatId=buffer.getInt();
+  Xid xid=new XidImpl(globalId,branchId,formatId);
+  Integer key=new Integer(identifier);
+  xidIdentMap.put(key,xid);
+  XaTransaction xaTx=xaTf.create(identifier);
+  xaTx.setRecovered();
+  recoveredTxMap.put(key,xaTx);
+  xaRm.injectStart(xid,xaTx);
+  return true;
+}

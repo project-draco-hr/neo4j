@@ -1,0 +1,31 @@
+{
+  if (!xidMap.containsKey(xid)) {
+    throw new XAException("Unkown xid[" + xid + "]");
+  }
+  XidStatus status=xidMap.get(xid);
+  TransactionStatus txStatus=status.getTransactionStatus();
+  XaTransaction xaTransaction=txStatus.getTransaction();
+  if (onePhase) {
+    if (!xaTransaction.isReadOnly()) {
+      if (!xaTransaction.isRecovered()) {
+        xaTransaction.prepare();
+      }
+      log.commitOnePhase(xaTransaction.getIdentifier());
+    }
+    txStatus.markAsCommit();
+  }
+  if (!txStatus.commit() && txStatus.rollback()) {
+    throw new XAException("Transaction not prepared or " + "(marked as) rolledbacked");
+  }
+  if (!xaTransaction.isReadOnly()) {
+    txStatus.markCommitStarted();
+    xaTransaction.commit();
+  }
+  log.done(xaTransaction.getIdentifier());
+  xidMap.remove(xid);
+  if (xaTransaction.isRecovered()) {
+    recoveredTxCount--;
+    checkIfRecoveryComplete();
+  }
+  return xaTransaction;
+}
