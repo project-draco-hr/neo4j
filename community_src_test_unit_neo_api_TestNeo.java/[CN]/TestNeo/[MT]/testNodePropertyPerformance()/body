@@ -1,0 +1,50 @@
+{
+  try {
+    TransactionFactory.getTransactionManager().setTransactionTimeout(120);
+  }
+ catch (  javax.transaction.SystemException e) {
+    fail("Unable to set transaction timout.");
+  }
+  int amountOfNodes=10000;
+  String key="key1";
+  Object value=new Integer(1);
+  Node[] nodeSpace=new Node[amountOfNodes];
+  for (int i=0; i < amountOfNodes; i++) {
+    nodeSpace[i]=NodeManager.getManager().createNode();
+  }
+  Timer writeTime=new Timer();
+  writeTime.start();
+  for (int i=0; i < amountOfNodes; i++) {
+    if (Math.random() < 0.80d) {
+      try {
+        nodeSpace[i].setProperty(key,value);
+      }
+ catch (      IllegalValueException e) {
+        fail("" + e);
+      }
+    }
+ else {
+      for (int j=1; j <= 13; j++) {
+        try {
+          nodeSpace[i].setProperty("key" + j,value);
+        }
+ catch (        IllegalValueException e) {
+          fail("" + e);
+        }
+      }
+    }
+  }
+  writeTime.stop();
+  Timer readTime=new Timer();
+  readTime.start();
+  for (int i=0; i < amountOfNodes; i++) {
+    try {
+      Object val=nodeSpace[i].getProperty(key);
+      assertEquals(value,val);
+    }
+ catch (    NotFoundException e) {
+      fail("" + e);
+    }
+  }
+  readTime.stop();
+}

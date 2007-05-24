@@ -1,0 +1,59 @@
+{
+  RelationshipCommands relationshipCommand=null;
+  Node startNode=null;
+  Node endNode=null;
+  boolean startNodeLocked=false;
+  boolean endNodeLocked=false;
+  acquireLock(this,LockType.WRITE);
+  try {
+    startNode=nodeManager.getNodeForProxy(startNodeId);
+    acquireLock(startNode,LockType.WRITE);
+    startNodeLocked=true;
+    endNode=nodeManager.getNodeForProxy(endNodeId);
+    acquireLock(endNode,LockType.WRITE);
+    endNodeLocked=true;
+    relationshipCommand=new RelationshipCommands();
+    relationshipCommand.setRelationship(this);
+    relationshipCommand.initDelete();
+    EventManager em=EventManager.getManager();
+    EventData eventData=new EventData(relationshipCommand);
+    if (!em.generateProActiveEvent(Event.RELATIONSHIP_DELETE,eventData)) {
+      setRollbackOnly();
+      throw new DeleteException("Generate pro-active event failed.");
+    }
+    relationshipCommand.execute();
+    em.generateReActiveEvent(Event.RELATIONSHIP_DELETE,eventData);
+  }
+ catch (  ExecuteFailedException e) {
+    setRollbackOnly();
+    relationshipCommand.undo();
+    throw new DeleteException("Failed executing command.",e);
+  }
+ finally {
+    boolean releaseFailed=false;
+    try {
+      if (startNodeLocked) {
+        releaseLock(startNode,LockType.WRITE);
+      }
+    }
+ catch (    Exception e) {
+      releaseFailed=true;
+      e.printStackTrace();
+      log.severe("Failed to release lock");
+    }
+    try {
+      if (endNodeLocked) {
+        releaseLock(endNode,LockType.WRITE);
+      }
+    }
+ catch (    Exception e) {
+      releaseFailed=true;
+      e.printStackTrace();
+      log.severe("Failed to release lock");
+    }
+    releaseLock(this,LockType.WRITE);
+    if (releaseFailed) {
+      throw new RuntimeException("Unable to release locks [" + startNode + ","+ endNode+ "] in relationship delete->"+ this);
+    }
+  }
+}

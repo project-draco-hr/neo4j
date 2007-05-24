@@ -1,0 +1,29 @@
+{
+  if (key == null || value == null) {
+    throw new IllegalValueException("Null parameter, " + "key=" + key + ", "+ "value="+ value);
+  }
+  acquireLock(this,LockType.WRITE);
+  NodeCommands nodeCommand=null;
+  try {
+    ensureFullProperties();
+    nodeCommand=new NodeCommands();
+    nodeCommand.setNode(this);
+    nodeCommand.initAddProperty(key,new Property(-1,value));
+    nodeCommand.execute();
+    EventManager em=EventManager.getManager();
+    EventData eventData=new EventData(nodeCommand);
+    if (!em.generateProActiveEvent(Event.NODE_ADD_PROPERTY,eventData)) {
+      setRollbackOnly();
+      nodeCommand.undo();
+      throw new IllegalValueException("Generate pro-active event failed, " + " unable to add property[" + key + ","+ value+ "] on "+ this);
+    }
+    em.generateReActiveEvent(Event.NODE_ADD_PROPERTY,eventData);
+  }
+ catch (  ExecuteFailedException e) {
+    nodeCommand.undo();
+    throw new IllegalValueException("Failed executing command when " + " adding property[" + key + ","+ value+ "] on "+ this,e);
+  }
+ finally {
+    releaseLock(this,LockType.WRITE);
+  }
+}

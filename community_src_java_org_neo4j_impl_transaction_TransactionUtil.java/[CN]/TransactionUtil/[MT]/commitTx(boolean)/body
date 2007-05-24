@@ -1,0 +1,28 @@
+{
+  if (!txStarted) {
+    return;
+  }
+  UserTransaction ut=null;
+  boolean committed=false;
+  Object txId=null;
+  try {
+    ut=TransactionFactory.getUserTransaction();
+    txId=getTransactionId(ut);
+    ut.commit();
+    committed=true;
+  }
+ catch (  Exception e) {
+    try {
+      if (ut != null && ut.getStatus() != Status.STATUS_NO_TRANSACTION) {
+        ut.rollback();
+      }
+    }
+ catch (    Exception ee) {
+      throw new RuntimeException("Unable to rollback commit operation " + ee,ee);
+    }
+    throw new RuntimeException("Unable to commit operation",e);
+  }
+ finally {
+    txEnded(committed,txId);
+  }
+}

@@ -1,0 +1,20 @@
+{
+  if (!tmOk) {
+    throw new SystemException("TM has encountered some problem, " + "please perform neccesary action (tx recovery/kernel restart)");
+  }
+  Thread thread=Thread.currentThread();
+  if (txThreadMap.containsKey(thread)) {
+    throw new NotSupportedException("Nested transactions not supported");
+  }
+  TransactionImpl tx=new TransactionImpl();
+  txThreadMap.put(thread,tx);
+  try {
+    getTxLog().txStart(tx.getGlobalId());
+  }
+ catch (  IOException e) {
+    e.printStackTrace();
+    log.severe("Error writing transaction log");
+    tmOk=false;
+    throw new SystemException("TM encountered a problem, " + " error writing transaction log," + e);
+  }
+}

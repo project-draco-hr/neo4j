@@ -1,0 +1,28 @@
+{
+  Transaction tx=null;
+  try {
+    tx=TransactionFactory.getTransactionManager().getTransaction();
+    if (tx == null) {
+      throw new NotInTransactionException();
+    }
+  }
+ catch (  javax.transaction.SystemException e) {
+    throw new NotInTransactionException(e);
+  }
+  Thread currentThread=Thread.currentThread();
+  if (commandStack.containsKey(currentThread)) {
+    CommandStackElement cse=commandStack.get(currentThread);
+    cse.commands.push(command);
+  }
+ else {
+    try {
+      tx.registerSynchronization(txCommitHook);
+    }
+ catch (    Exception e) {
+      throw new NotInTransactionException(e);
+    }
+    CommandStackElement cse=new CommandStackElement(DEFAULT_ISOLATION_LEVEL,new Stack<Command>());
+    cse.commands.push(command);
+    commandStack.put(currentThread,cse);
+  }
+}

@@ -1,0 +1,52 @@
+{
+  try {
+    IdGenerator.createGenerator(null);
+    fail("Null filename should throw exception");
+  }
+ catch (  IOException e) {
+  }
+  try {
+    IdGenerator.createGenerator("testIdGenerator.id");
+    new IdGenerator("testIdGenerator.id",0).close();
+    fail("Zero grab size should throw exception");
+  }
+ catch (  IOException e) {
+  }
+  try {
+    new IdGenerator("testIdGenerator.id",-1).close();
+    fail("Negative grab size should throw exception");
+  }
+ catch (  IOException e) {
+  }
+  try {
+    IdGenerator idGenerator=new IdGenerator("testIdGenerator.id",1008);
+    try {
+      IdGenerator.createGenerator("testIdGenerator.id");
+      fail("Creating a id generator with existing file name " + "should throw exception");
+    }
+ catch (    IOException e) {
+    }
+    idGenerator.close();
+    FileChannel fileChannel=new FileInputStream("testIdGenerator.id").getChannel();
+    ByteBuffer buffer=ByteBuffer.allocate(5);
+    assertEquals(5,fileChannel.read(buffer));
+    buffer.flip();
+    assertEquals((byte)0,buffer.get());
+    assertEquals(0,buffer.getInt());
+    buffer.flip();
+    int readCount=fileChannel.read(buffer);
+    if (readCount != -1 && readCount != 0) {
+      fail("Id generator header not ok read 5 + " + readCount + " bytes from file");
+    }
+    fileChannel.close();
+  }
+ catch (  IOException e) {
+    fail("" + e);
+  }
+ finally {
+    File file=new File("testIdGenerator.id");
+    if (file.exists()) {
+      file.delete();
+    }
+  }
+}

@@ -1,0 +1,20 @@
+{
+  if (!xidMap.containsKey(xid)) {
+    throw new IOException("Unkown xid[" + xid + "]");
+  }
+  XidStatus status=xidMap.get(xid);
+  TransactionStatus txStatus=status.getTransactionStatus();
+  XaTransaction xaTransaction=txStatus.getTransaction();
+  if (xaTransaction.isReadOnly()) {
+    xidMap.remove(xid);
+    if (xaTransaction.isRecovered()) {
+      recoveredTxCount--;
+      checkIfRecoveryComplete();
+    }
+    return true;
+  }
+ else {
+    txStatus.markAsCommit();
+    return false;
+  }
+}

@@ -1,0 +1,48 @@
+{
+  Thread currentThread=Thread.currentThread();
+  if (!threadLockElementMap.containsKey(currentThread)) {
+    throw new LockNotFoundException("No thread lock element found for " + currentThread);
+  }
+  ThreadLockElement tle=threadLockElementMap.get(currentThread);
+  if (tle.readCount == 0) {
+    throw new LockNotFoundException("" + currentThread + " don't have readLock");
+  }
+  readCount--;
+  tle.readCount--;
+  if (tle.readCount == 0 && tle.writeCount == 0) {
+    if (!this.isMarked()) {
+      threadLockElementMap.remove(currentThread);
+    }
+    ragManager.lockReleased(this);
+  }
+  if (waitingThreadList.size() > 0) {
+    WaitElement we=waitingThreadList.getLast();
+    if (we.lockType == LockType.WRITE) {
+      if (readCount == we.element.readCount) {
+        waitingThreadList.removeLast();
+        we.element.thread.interrupt();
+      }
+ else {
+        java.util.ListIterator<WaitElement> listItr=waitingThreadList.listIterator(waitingThreadList.lastIndexOf(we));
+        while (listItr.hasPrevious()) {
+          we=listItr.previous();
+          if (we.lockType == LockType.WRITE && readCount == we.element.readCount) {
+            listItr.remove();
+            we.element.thread.interrupt();
+            break;
+          }
+ else           if (we.lockType == LockType.READ) {
+            listItr.remove();
+            we.element.thread.interrupt();
+          }
+        }
+      }
+    }
+ else {
+      if (writeCount == 0) {
+        waitingThreadList.removeLast();
+        we.element.thread.interrupt();
+      }
+    }
+  }
+}

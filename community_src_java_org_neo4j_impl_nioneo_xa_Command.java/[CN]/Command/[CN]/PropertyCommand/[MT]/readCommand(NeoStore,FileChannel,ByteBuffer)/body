@@ -1,0 +1,41 @@
+{
+  buffer.clear();
+  buffer.limit(37);
+  if (fileChannel.read(buffer) != buffer.limit()) {
+    return null;
+  }
+  buffer.flip();
+  int id=buffer.getInt();
+  byte inUseFlag=buffer.get();
+  boolean inUse=false;
+  if ((inUseFlag & Record.IN_USE.byteValue()) == Record.IN_USE.byteValue()) {
+    inUse=true;
+  }
+ else   if (inUseFlag != Record.NOT_IN_USE.byteValue()) {
+    throw new IOException("Illegal in use flag: " + inUseFlag);
+  }
+  PropertyType type=getType(buffer.getInt());
+  PropertyRecord record=new PropertyRecord(id,type);
+  record.setInUse(inUse);
+  record.setKeyBlock(buffer.getInt());
+  record.setPropBlock(buffer.getLong());
+  record.setPrevProp(buffer.getInt());
+  record.setNextProp(buffer.getInt());
+  int nrKeyRecords=buffer.getInt();
+  int nrValueRecords=buffer.getInt();
+  for (int i=0; i < nrKeyRecords; i++) {
+    DynamicRecord dr=readDynamicRecord(fileChannel,buffer);
+    if (dr == null) {
+      return null;
+    }
+    record.addKeyRecord(dr);
+  }
+  for (int i=0; i < nrValueRecords; i++) {
+    DynamicRecord dr=readDynamicRecord(fileChannel,buffer);
+    if (dr == null) {
+      return null;
+    }
+    record.addValueRecord(dr);
+  }
+  return new PropertyCommand(neoStore.getPropertyStore(),record);
+}

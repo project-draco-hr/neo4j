@@ -1,0 +1,37 @@
+{
+  super(params);
+  String configFileName=(String)params.get("config");
+  Properties config=new Properties();
+  if (configFileName != null) {
+    config.load(new java.io.FileInputStream(configFileName));
+  }
+  Iterator itr=params.entrySet().iterator();
+  while (itr.hasNext()) {
+    Map.Entry entry=(Map.Entry)itr.next();
+    if (entry.getKey() instanceof String && entry.getValue() instanceof String) {
+      config.setProperty((String)entry.getKey(),(String)entry.getValue());
+    }
+  }
+  String store=(String)config.get("neo_store");
+  File file=new File(store);
+  String create=config.getProperty("create");
+  if (!file.exists() && "true".equals(create)) {
+    autoCreatePath(store);
+    NeoStore.createStore(store);
+  }
+  neoStore=new NeoStore(config);
+  xaContainer=XaContainer.create((String)config.get("logical_log"),new CommandFactory(neoStore),new TransactionFactory(neoStore));
+  TxInfoManager.getManager().setRealLog(xaContainer.getLogicalLog());
+  xaContainer.openLogicalLog();
+  if (!xaContainer.getResourceManager().hasRecoveredTransactions()) {
+    neoStore.makeStoreOk();
+  }
+ else {
+    logger.info("Waiting for TM to take care of recovered transactions.");
+  }
+  idGenerators=new HashMap<Class,Store>();
+  this.idGenerators.put(Node.class,neoStore.getNodeStore());
+  this.idGenerators.put(Relationship.class,neoStore.getRelationshipStore());
+  this.idGenerators.put(RelationshipType.class,neoStore.getRelationshipTypeStore());
+  this.idGenerators.put(PropertyStore.class,neoStore.getPropertyStore());
+}

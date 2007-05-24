@@ -1,0 +1,56 @@
+{
+  LockableWindow window=null;
+synchronized (activeRowWindows) {
+    int txIdentifier=TxInfoManager.getManager().getCurrentTxIdentifier();
+    Set<LockableWindow> windowSet=null;
+    if (txIdentifier != -1 && operationType == OperationType.WRITE) {
+      windowSet=txIdentifiers.get(txIdentifier);
+      if (windowSet == null) {
+        windowSet=new HashSet<LockableWindow>();
+        txIdentifiers.put(txIdentifier,windowSet);
+      }
+    }
+    if (brickMiss >= REFRESH_BRICK_COUNT) {
+      brickMiss=0;
+      refreshBricks();
+    }
+    if (brickSize > 0) {
+      int brickIndex=position * blockSize / brickSize;
+      if (brickIndex < brickArray.length) {
+        window=brickArray[brickIndex].getWindow();
+        if (window != null && !window.encapsulates(position)) {
+          log.severe("NIONEO: FOR pos=" + position + " brickIndex="+ brickIndex+ " blockSize="+ blockSize+ " brickSize="+ brickSize+ " window="+ window);
+          throw new RuntimeException("assssert");
+        }
+        brickArray[brickIndex].setHit();
+        if (window != null && windowSet != null) {
+          windowSet.add(window);
+        }
+      }
+ else {
+        expandBricks();
+      }
+    }
+    if (window == null) {
+      miss++;
+      brickMiss++;
+      window=activeRowWindows.get(position);
+      if (window == null) {
+        window=(LockableWindow)rowWindowPool.get(position);
+        if (window == null) {
+          PersistenceRow dpw=new PersistenceRow(blockSize,fileChannel);
+          dpw.position(position);
+          window=dpw;
+        }
+        activeRowWindows.put(position,window);
+      }
+    }
+ else {
+      hit++;
+    }
+    window.mark();
+  }
+  window.lock();
+  window.setOperationType(operationType);
+  return window;
+}

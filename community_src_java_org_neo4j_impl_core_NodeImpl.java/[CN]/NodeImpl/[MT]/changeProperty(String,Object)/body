@@ -1,0 +1,31 @@
+{
+  if (key == null || newValue == null) {
+    throw new IllegalValueException("Null parameter, " + "key=" + key + ", "+ "value="+ newValue);
+  }
+  acquireLock(this,LockType.WRITE);
+  NodeCommands nodeCommand=null;
+  try {
+    ensureFullProperties();
+    nodeCommand=new NodeCommands();
+    nodeCommand.setNode(this);
+    int propertyId=doGetProperty(key).getId();
+    nodeCommand.initChangeProperty(propertyId,key,new Property(propertyId,newValue));
+    nodeCommand.execute();
+    EventManager em=EventManager.getManager();
+    EventData eventData=new EventData(nodeCommand);
+    if (!em.generateProActiveEvent(Event.NODE_CHANGE_PROPERTY,eventData)) {
+      setRollbackOnly();
+      nodeCommand.undo();
+      throw new IllegalValueException("Generate pro-active event failed, " + " unable to change property[" + key + ","+ newValue+ "] on "+ this);
+    }
+    em.generateReActiveEvent(Event.NODE_CHANGE_PROPERTY,eventData);
+    return nodeCommand.getOldProperty();
+  }
+ catch (  ExecuteFailedException e) {
+    nodeCommand.undo();
+    throw new IllegalValueException("Failed executing command when " + " changing property[" + key + ","+ newValue+ "] on "+ this,e);
+  }
+ finally {
+    releaseLock(this,LockType.WRITE);
+  }
+}

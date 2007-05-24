@@ -1,0 +1,140 @@
+{
+  if (committed) {
+    throw new XAException("Cannot prepare committed transaction[" + getIdentifier() + "]");
+  }
+  if (prepared) {
+    throw new XAException("Cannot prepare prepared transaction[" + getIdentifier() + "]");
+  }
+  prepared=true;
+  try {
+    Iterator<MemCommand> itr=createdRelTypesMap.values().iterator();
+    while (itr.hasNext()) {
+      MemCommand.RelationshipTypeAdd command=(MemCommand.RelationshipTypeAdd)itr.next();
+      relationshipTypeAdd(command.getId(),command.getName());
+    }
+    itr=createdNodesMap.values().iterator();
+    while (itr.hasNext()) {
+      MemCommand.NodeCreate command=(MemCommand.NodeCreate)itr.next();
+      if (!deletedNodesMap.containsKey(command.getId())) {
+        nodeCreate(command.getId());
+      }
+ else {
+        getNodeStore().freeId(command.getId());
+      }
+    }
+    itr=createdRelsMap.values().iterator();
+    while (itr.hasNext()) {
+      MemCommand.RelationshipCreate command=(MemCommand.RelationshipCreate)itr.next();
+      if (!deletedRelsMap.containsKey(command.getId())) {
+        relationshipCreate(command.getId(),command.getFirstNode(),command.getSecondNode(),command.getType());
+      }
+ else {
+        getRelationshipStore().freeId(command.getId());
+      }
+    }
+    itr=addedPropsMap.values().iterator();
+    while (itr.hasNext()) {
+      MemCommand cmd=itr.next();
+      if (cmd instanceof MemCommand.NodeAddProperty) {
+        MemCommand.NodeAddProperty command=(MemCommand.NodeAddProperty)cmd;
+        if (!deletedNodesMap.containsKey(command.getNodeId())) {
+          nodeAddProperty(command.getNodeId(),command.getPropertyId(),command.getKey(),command.getValue());
+        }
+      }
+ else {
+        MemCommand.RelationshipAddProperty command=(MemCommand.RelationshipAddProperty)cmd;
+        if (!deletedRelsMap.containsKey(command.getRelId())) {
+          relAddProperty(command.getRelId(),command.getPropertyId(),command.getKey(),command.getValue());
+        }
+      }
+    }
+    itr=changedPropsMap.values().iterator();
+    while (itr.hasNext()) {
+      MemCommand cmd=itr.next();
+      if (cmd instanceof MemCommand.NodeChangeProperty) {
+        MemCommand.NodeChangeProperty command=(MemCommand.NodeChangeProperty)cmd;
+        if (!deletedNodesMap.containsKey(command.getNodeId())) {
+          nodeChangeProperty(command.getNodeId(),command.getPropertyId(),command.getValue());
+        }
+      }
+ else {
+        MemCommand.RelationshipChangeProperty command=(MemCommand.RelationshipChangeProperty)cmd;
+        if (!deletedRelsMap.containsKey(command.getRelId())) {
+          relChangeProperty(command.getRelId(),command.getPropertyId(),command.getValue());
+        }
+      }
+    }
+    itr=removedPropsMap.values().iterator();
+    while (itr.hasNext()) {
+      MemCommand cmd=itr.next();
+      if (cmd instanceof MemCommand.NodeRemoveProperty) {
+        MemCommand.NodeRemoveProperty command=(MemCommand.NodeRemoveProperty)cmd;
+        if (!deletedNodesMap.containsKey(command.getNodeId())) {
+          nodeRemoveProperty(command.getNodeId(),command.getPropertyId());
+        }
+      }
+ else {
+        MemCommand.RelationshipRemoveProperty command=(MemCommand.RelationshipRemoveProperty)cmd;
+        Integer key=new Integer(command.getRelId());
+        if (!deletedRelsMap.containsKey(key)) {
+          relRemoveProperty(command.getRelId(),command.getPropertyId());
+        }
+      }
+    }
+    itr=strayPropMap.values().iterator();
+    while (itr.hasNext()) {
+      MemCommand cmd=itr.next();
+      if (cmd instanceof MemCommand.NodeRemoveProperty) {
+        MemCommand.NodeRemoveProperty command=(MemCommand.NodeRemoveProperty)cmd;
+        if (!deletedNodesMap.containsKey(command.getNodeId())) {
+          nodeRemoveProperty(command.getNodeId(),command.getPropertyId());
+        }
+      }
+ else {
+        MemCommand.RelationshipRemoveProperty command=(MemCommand.RelationshipRemoveProperty)cmd;
+        Integer key=new Integer(command.getRelId());
+        if (!deletedRelsMap.containsKey(key)) {
+          relRemoveProperty(command.getRelId(),command.getPropertyId());
+        }
+      }
+    }
+    itr=deletedRelsMap.values().iterator();
+    while (itr.hasNext()) {
+      MemCommand.RelationshipDelete command=(MemCommand.RelationshipDelete)itr.next();
+      if (!createdRelsMap.containsKey(command.getId())) {
+        relDelete(command.getId());
+      }
+    }
+    itr=deletedNodesMap.values().iterator();
+    while (itr.hasNext()) {
+      MemCommand.NodeDelete command=(MemCommand.NodeDelete)itr.next();
+      if (!createdNodesMap.containsKey(command.getId())) {
+        nodeDelete(command.getId());
+      }
+    }
+    for (    RelationshipTypeRecord record : relTypeRecords.values()) {
+      Command.RelationshipTypeCommand command=new Command.RelationshipTypeCommand(neoStore.getRelationshipTypeStore(),record);
+      relTypeCommands.add(command);
+      addCommand(command);
+    }
+    for (    NodeRecord record : nodeRecords.values()) {
+      Command.NodeCommand command=new Command.NodeCommand(neoStore.getNodeStore(),record);
+      nodeCommands.add(command);
+      addCommand(command);
+    }
+    for (    RelationshipRecord record : relRecords.values()) {
+      Command.RelationshipCommand command=new Command.RelationshipCommand(neoStore.getRelationshipStore(),record);
+      relCommands.add(command);
+      addCommand(command);
+    }
+    for (    PropertyRecord record : propertyRecords.values()) {
+      Command.PropertyCommand command=new Command.PropertyCommand(neoStore.getPropertyStore(),record);
+      propCommands.add(command);
+      addCommand(command);
+    }
+  }
+ catch (  IOException e) {
+    logger.log(Level.SEVERE,"Unable to prepare[" + getIdentifier() + "]",e);
+    throw new XAException("" + e);
+  }
+}

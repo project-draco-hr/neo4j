@@ -1,0 +1,31 @@
+{
+  boolean txStarted=TransactionUtil.beginTx();
+  boolean success=false;
+  int id=IdGenerator.getGenerator().nextId(RelationshipType.class);
+  CreateRelationshipTypeCommand command=null;
+  try {
+    command=new CreateRelationshipTypeCommand();
+    command.setId(id);
+    command.setName(name);
+    command.addToTransaction();
+    command.execute();
+    EventManager em=EventManager.getManager();
+    EventData eventData=new EventData(command);
+    if (!em.generateProActiveEvent(Event.RELATIONSHIPTYPE_CREATE,eventData)) {
+      setRollbackOnly();
+      command.undo();
+      throw new RuntimeException("Generate pro-active event failed.");
+    }
+    log.fine("Created relationship type: " + name + "("+ id+ ")");
+    em.generateReActiveEvent(Event.RELATIONSHIPTYPE_CREATE,eventData);
+    success=true;
+    return id;
+  }
+ catch (  ExecuteFailedException e) {
+    command.undo();
+    throw new RuntimeException("Failed executing command.",e);
+  }
+ finally {
+    TransactionUtil.finishTx(success,txStarted);
+  }
+}
