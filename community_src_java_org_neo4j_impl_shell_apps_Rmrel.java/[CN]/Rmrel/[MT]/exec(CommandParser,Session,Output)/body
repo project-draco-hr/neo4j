@@ -1,0 +1,28 @@
+{
+  if (parser.options().get("r") == null) {
+    throw new ShellException("Must supply relationship id (-r <id>) to delete");
+  }
+  Node currentNode=this.getCurrentNode(session);
+  Relationship rel=findRel(currentNode,Long.parseLong(parser.options().get("r")));
+  rel.delete();
+  if (!currentNode.getRelationships().iterator().hasNext()) {
+    throw new ShellException("It would result in the current node " + currentNode + " to be decoupled (no relationships left)");
+  }
+  Node otherNode=rel.getOtherNode(currentNode);
+  if (!otherNode.getRelationships().iterator().hasNext()) {
+    boolean deleteOtherNodeWhenEmpty=parser.options().containsKey("d");
+    if (!deleteOtherNodeWhenEmpty) {
+      throw new ShellException("Since the node " + otherNode + " would be decoupled after this, you must supply the"+ " -d (for delete-when-decoupled) so that it may be "+ "removed");
+    }
+    otherNode.delete();
+  }
+ else {
+    if (!this.hasPathToRefNode(otherNode)) {
+      throw new ShellException("It would result in " + otherNode + " to be recursively decoupled with the reference node");
+    }
+    if (!this.hasPathToRefNode(currentNode)) {
+      throw new ShellException("It would result in " + currentNode + " to be recursively decoupled with the reference node");
+    }
+  }
+  return null;
+}
