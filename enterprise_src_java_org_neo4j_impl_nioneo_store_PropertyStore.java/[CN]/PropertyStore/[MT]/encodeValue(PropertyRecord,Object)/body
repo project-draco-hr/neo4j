@@ -1,35 +1,44 @@
 {
-  List<Integer> ids=new LinkedList<Integer>();
   PropertyType type=record.getType();
-  if (type == PropertyType.STRING) {
-    int valueBlockId=nextValueBlockId();
-    record.setPropBlock(valueBlockId);
-    Collection<DynamicRecord> valueRecords=allocateValueRecords(valueBlockId,((String)value).getBytes());
-    for (    DynamicRecord valueRecord : valueRecords) {
-      record.addValueRecord(valueRecord);
-      ids.add(valueRecord.getId());
-    }
-  }
- else   if (type == PropertyType.INT) {
-    record.setPropBlock(((Integer)value).intValue());
-  }
- else   if (type == PropertyType.BOOL) {
-    record.setPropBlock((((Boolean)value).booleanValue() ? 1 : 0));
-  }
- else   if (type == PropertyType.DOUBLE) {
-    record.setPropBlock(Double.doubleToRawLongBits(((Double)value).doubleValue()));
-  }
- else   if (type == PropertyType.FLOAT) {
-    record.setPropBlock(Float.floatToRawIntBits(((Float)value).floatValue()));
-  }
- else   if (type == PropertyType.LONG) {
-    record.setPropBlock(((Long)value).longValue());
-  }
- else   if (type == PropertyType.BYTE) {
-    record.setPropBlock(((Byte)value).byteValue());
-  }
- else {
-    throw new RuntimeException("Unkown property type: " + type);
-  }
-  return ids;
+switch (type) {
+case STRING:
+    int stringBlockId=nextStringBlockId();
+  record.setPropBlock(stringBlockId);
+Collection<DynamicRecord> valueRecords=allocateStringRecords(stringBlockId,((String)value).getBytes());
+for (DynamicRecord valueRecord : valueRecords) {
+record.addValueRecord(valueRecord);
+}
+break;
+case INT:
+record.setPropBlock(((Integer)value).intValue());
+break;
+case BOOL:
+record.setPropBlock((((Boolean)value).booleanValue() ? 1 : 0));
+break;
+case DOUBLE:
+record.setPropBlock(Double.doubleToRawLongBits(((Double)value).doubleValue()));
+break;
+case FLOAT:
+record.setPropBlock(Float.floatToRawIntBits(((Float)value).floatValue()));
+break;
+case LONG:
+record.setPropBlock(((Long)value).longValue());
+break;
+case BYTE:
+record.setPropBlock(((Byte)value).byteValue());
+break;
+case CHAR:
+record.setPropBlock(((Character)value).charValue());
+break;
+case ARRAY:
+int arrayBlockId=nextArrayBlockId();
+record.setPropBlock(arrayBlockId);
+Collection<DynamicRecord> arrayRecords=allocateArrayRecords(arrayBlockId,value);
+for (DynamicRecord valueRecord : arrayRecords) {
+record.addValueRecord(valueRecord);
+}
+break;
+default :
+throw new RuntimeException("Unkown property type: " + type);
+}
 }
