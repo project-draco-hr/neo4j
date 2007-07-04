@@ -1,29 +1,28 @@
 {
-  Integer relId=new Integer(id);
   Relationship relationship=getTransactionCache().getRelationship(relId);
   if (relationship != null) {
     return relationship;
   }
-  relationship=(Relationship)relCache.get(relId);
+  relationship=relCache.get(relId);
   if (relationship != null) {
     return relationship;
   }
-  Relationship dummyRel=new RelationshipImpl(id);
+  Relationship dummyRel=new RelationshipImpl(relId);
   acquireLock(dummyRel,LockType.READ);
   try {
     if (relCache.get(relId) != null) {
-      relationship=(Relationship)relCache.get(relId);
+      relationship=relCache.get(relId);
       return relationship;
     }
-    RawRelationshipData data=PersistenceManager.getManager().loadLightRelationship(id);
+    RawRelationshipData data=PersistenceManager.getManager().loadLightRelationship(relId);
     if (data == null) {
-      throw new RuntimeException("Relationship[" + id + "] deleted?");
+      throw new RuntimeException("Relationship[" + relId + "] deleted?");
     }
     RelationshipType type=getRelationshipTypeById(data.getType());
     if (type == null) {
       throw new NotFoundException("Relationship[" + data.getId() + "] exist but relationship type["+ data.getType()+ "] not registered.");
     }
-    relationship=new RelationshipImpl(id,data.getFirstNode(),data.getSecondNode(),type,false);
+    relationship=new RelationshipImpl(relId,data.getFirstNode(),data.getSecondNode(),type,false);
     relCache.add(relId,relationship);
     return relationship;
   }
