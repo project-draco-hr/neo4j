@@ -1,11 +1,24 @@
 {
   getListener().removeThisEvaluator();
+  if (getTransactionStatus() == Status.STATUS_MARKED_ROLLBACK) {
+    return;
+  }
   if (deletedNodes != null) {
     Iterator<NodeImpl> itr=deletedNodes.values().iterator();
     while (itr.hasNext()) {
       NodeImpl node=itr.next();
       if (node.hasRelationships()) {
         log.severe("Deleted Node[" + node + "] still has relationship.");
+        StringBuffer buf=new StringBuffer("Found relationships: ");
+        int count=0;
+        for (        Relationship rel : node.getRelationships()) {
+          if (count == 10) {
+            buf.append(" and more...");
+            break;
+          }
+          buf.append(rel.getType()).append(" ");
+        }
+        log.severe(buf.toString());
         setRollbackOnly();
       }
     }

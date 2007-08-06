@@ -1,0 +1,46 @@
+{
+  txThreadMap=java.util.Collections.synchronizedMap(new HashMap<Thread,Transaction>());
+  String txLogDir=System.getProperty("neo.tx_log_directory");
+  if (txLogDir == null) {
+    throw new RuntimeException("No neo.tx_log_directory system property set or " + "TxModule registered");
+  }
+  logSwitcherFileName=txLogDir + "/active_tx_log";
+  txLog1FileName=txLogDir + "/tm_tx_log.1";
+  txLog2FileName=txLogDir + "/tm_tx_log.2";
+  try {
+    if (new File(logSwitcherFileName).exists()) {
+      FileChannel fc=new RandomAccessFile(logSwitcherFileName,"rw").getChannel();
+      byte fileName[]=new byte[256];
+      ByteBuffer buf=ByteBuffer.wrap(fileName);
+      fc.read(buf);
+      String currentTxLog=new String(fileName).trim();
+      if (!new File(currentTxLog).exists()) {
+        throw new RuntimeException("Unable to start TM, " + "active tx log file[" + currentTxLog + "] not found.");
+      }
+      txLog=new TxLog(currentTxLog);
+    }
+ else {
+      if (new File(txLog1FileName).exists() || new File(txLog2FileName).exists()) {
+        throw new RuntimeException("Unable to start TM, " + "no active tx log file found but foung either " + txLog1FileName + " or "+ txLog2FileName+ " file, please set one of them as active or "+ "remove them.");
+      }
+      ByteBuffer buf=ByteBuffer.wrap(txLog1FileName.getBytes("UTF-8"));
+      FileChannel fc=new RandomAccessFile(logSwitcherFileName,"rw").getChannel();
+      fc.write(buf);
+      txLog=new TxLog(txLog1FileName);
+      fc.force(true);
+      fc.close();
+    }
+    Iterator<List<TxLog.Record>> danglingRecordList=txLog.getDanglingRecords();
+    if (danglingRecordList.hasNext()) {
+      log.warning("Non completed transactions found in transaction " + "log. Transaction recovery started");
+      recover(danglingRecordList);
+    }
+    getTxLog().truncate();
+    tmOk=true;
+  }
+ catch (  IOException e) {
+    e.printStackTrace();
+    log.severe("Unable to start TM");
+    throw new RuntimeException(e);
+  }
+}
