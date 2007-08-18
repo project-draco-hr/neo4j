@@ -1,0 +1,26 @@
+{
+  int id=IdGenerator.getGenerator().nextId(PropertyIndex.class);
+  PropertyIndex index=new PropertyIndex(key,id);
+  PropertyIndexCommands propertyIndexCommand=null;
+  try {
+    propertyIndexCommand=new PropertyIndexCommands();
+    propertyIndexCommand.setPropertyIndex(index);
+    propertyIndexCommand.initCreate();
+    EventManager em=EventManager.getManager();
+    EventData eventData=new EventData(propertyIndexCommand);
+    if (!em.generateProActiveEvent(Event.PROPERTY_INDEX_CREATE,eventData)) {
+      setRollbackOnly();
+      throw new CreateException("Unable to create property index, " + "pro-active event failed.");
+    }
+    propertyIndexCommand.execute();
+    em.generateReActiveEvent(Event.PROPERTY_INDEX_CREATE,eventData);
+    return index;
+  }
+ catch (  ExecuteFailedException e) {
+    setRollbackOnly();
+    if (propertyIndexCommand != null) {
+      propertyIndexCommand.undo();
+    }
+    throw new CreateException("Failed executing command",e);
+  }
+}

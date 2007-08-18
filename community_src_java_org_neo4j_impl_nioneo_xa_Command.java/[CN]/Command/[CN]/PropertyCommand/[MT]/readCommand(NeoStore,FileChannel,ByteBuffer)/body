@@ -1,6 +1,6 @@
 {
   buffer.clear();
-  buffer.limit(37);
+  buffer.limit(33);
   if (fileChannel.read(buffer) != buffer.limit()) {
     return null;
   }
@@ -14,22 +14,17 @@
  else   if (inUseFlag != Record.NOT_IN_USE.byteValue()) {
     throw new IOException("Illegal in use flag: " + inUseFlag);
   }
-  PropertyType type=getType(buffer.getInt());
-  PropertyRecord record=new PropertyRecord(id,type);
-  record.setInUse(inUse);
-  record.setKeyBlock(buffer.getInt());
-  record.setPropBlock(buffer.getLong());
-  record.setPrevProp(buffer.getInt());
-  record.setNextProp(buffer.getInt());
-  int nrKeyRecords=buffer.getInt();
-  int nrValueRecords=buffer.getInt();
-  for (int i=0; i < nrKeyRecords; i++) {
-    DynamicRecord dr=readDynamicRecord(fileChannel,buffer);
-    if (dr == null) {
-      return null;
-    }
-    record.addKeyRecord(dr);
+  PropertyRecord record=new PropertyRecord(id);
+  if (inUse) {
+    PropertyType type=getType(buffer.getInt());
+    record.setType(type);
+    record.setInUse(inUse);
+    record.setKeyIndexId(buffer.getInt());
+    record.setPropBlock(buffer.getLong());
+    record.setPrevProp(buffer.getInt());
+    record.setNextProp(buffer.getInt());
   }
+  int nrValueRecords=buffer.getInt();
   for (int i=0; i < nrValueRecords; i++) {
     DynamicRecord dr=readDynamicRecord(fileChannel,buffer);
     if (dr == null) {

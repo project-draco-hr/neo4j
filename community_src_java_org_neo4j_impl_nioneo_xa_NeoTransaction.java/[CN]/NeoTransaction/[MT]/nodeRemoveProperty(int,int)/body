@@ -1,17 +1,17 @@
 {
   NodeRecord nodeRecord=getNodeRecord(nodeId);
   if (nodeRecord == null) {
-    nodeRecord=getNodeStore().getRecord(nodeId);
+    nodeRecord=getNodeStore().getRecord(nodeId,readFromBuffer);
   }
   PropertyRecord propRecord=getPropertyRecord(propertyId);
   if (propRecord == null) {
-    propRecord=getPropertyStore().getRecord(propertyId);
+    propRecord=getPropertyStore().getRecord(propertyId,readFromBuffer);
     addPropertyRecord(propRecord);
   }
-  propRecord.setInUse(false);
-  for (  DynamicRecord keyRecord : propRecord.getKeyRecords()) {
-    keyRecord.setInUse(false);
+  if (propRecord.isLight()) {
+    getPropertyStore().makeHeavy(propRecord,readFromBuffer);
   }
+  propRecord.setInUse(false);
   for (  DynamicRecord valueRecord : propRecord.getValueRecords()) {
     valueRecord.setInUse(false);
   }
@@ -24,7 +24,7 @@
   if (prevProp != Record.NO_PREVIOUS_PROPERTY.intValue()) {
     PropertyRecord prevPropRecord=getPropertyRecord(prevProp);
     if (prevPropRecord == null) {
-      prevPropRecord=getPropertyStore().getRecord(prevProp);
+      prevPropRecord=getPropertyStore().getLightRecord(prevProp,readFromBuffer);
     }
     prevPropRecord.setNextProp(nextProp);
     addPropertyRecord(prevPropRecord);
@@ -32,7 +32,7 @@
   if (nextProp != Record.NO_PREVIOUS_PROPERTY.intValue()) {
     PropertyRecord nextPropRecord=getPropertyRecord(nextProp);
     if (nextPropRecord == null) {
-      nextPropRecord=getPropertyStore().getRecord(nextProp);
+      nextPropRecord=getPropertyStore().getLightRecord(nextProp,readFromBuffer);
     }
     nextPropRecord.setPrevProp(prevProp);
     addPropertyRecord(nextPropRecord);

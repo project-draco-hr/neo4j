@@ -1,3 +1,14 @@
 {
-  return instance;
+  Thread currentThread=Thread.currentThread();
+  TransactionCache cache=threadToTxMap.get(currentThread);
+  if (cache != null) {
+    return cache;
+  }
+  CommandManager cMgr=CommandManager.getManager();
+  if (!cMgr.txCommitHookRegistered()) {
+    cMgr.registerTxCommitHook(currentThread);
+  }
+  cache=new TransactionCache();
+  threadToTxMap.put(currentThread,cache);
+  return cache;
 }
