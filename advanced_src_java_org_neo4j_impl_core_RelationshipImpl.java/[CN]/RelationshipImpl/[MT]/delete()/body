@@ -1,9 +1,10 @@
 {
   RelationshipCommands relationshipCommand=null;
-  Node startNode=null;
-  Node endNode=null;
+  NodeImpl startNode=null;
+  NodeImpl endNode=null;
   boolean startNodeLocked=false;
   boolean endNodeLocked=false;
+  TransactionIsolationLevel level=TransactionFactory.getTransactionIsolationLevel();
   acquireLock(this,LockType.WRITE);
   try {
     startNode=nodeManager.getNodeForProxy(startNodeId);
@@ -14,6 +15,8 @@
     endNodeLocked=true;
     relationshipCommand=new RelationshipCommands();
     relationshipCommand.setRelationship(this);
+    relationshipCommand.setStartNode(startNode);
+    relationshipCommand.setEndNode(endNode);
     relationshipCommand.initDelete();
     EventManager em=EventManager.getManager();
     EventData eventData=new EventData(relationshipCommand);
@@ -35,7 +38,7 @@
     boolean releaseFailed=false;
     try {
       if (startNodeLocked) {
-        releaseLock(startNode,LockType.WRITE);
+        releaseLock(startNode,LockType.WRITE,level);
       }
     }
  catch (    Exception e) {
@@ -45,7 +48,7 @@
     }
     try {
       if (endNodeLocked) {
-        releaseLock(endNode,LockType.WRITE);
+        releaseLock(endNode,LockType.WRITE,level);
       }
     }
  catch (    Exception e) {
@@ -53,7 +56,7 @@
       e.printStackTrace();
       log.severe("Failed to release lock");
     }
-    releaseLock(this,LockType.WRITE);
+    releaseLock(this,LockType.WRITE,level);
     if (releaseFailed) {
       throw new RuntimeException("Unable to release locks [" + startNode + ","+ endNode+ "] in relationship delete->"+ this);
     }

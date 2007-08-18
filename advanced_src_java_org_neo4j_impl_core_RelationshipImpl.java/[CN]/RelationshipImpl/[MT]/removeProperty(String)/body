@@ -2,16 +2,41 @@
   if (key == null) {
     throw new IllegalArgumentException("Null parameter.");
   }
+  TransactionIsolationLevel level=TransactionFactory.getTransactionIsolationLevel();
   acquireLock(this,LockType.WRITE);
   RelationshipCommands relationshipCommand=null;
   try {
-    ensureFullRelationship();
-    if (!propertyMap.containsKey(key)) {
-      return null;
+    PropertyIndex index=null;
+    for (    PropertyIndex cachedIndex : PropertyIndex.index(key)) {
+      Property property=propertyMap.get(cachedIndex.getKeyId());
+      if (property == null) {
+        if (ensureFullRelationship()) {
+          property=propertyMap.get(cachedIndex.getKeyId());
+          if (property != null) {
+            index=cachedIndex;
+            break;
+          }
+        }
+      }
+    }
+    if (index == null) {
+      ensureFullRelationship();
+      Property property=null;
+      for (      int keyId : propertyMap.keySet()) {
+        PropertyIndex indexToCheck=PropertyIndex.getIndexFor(keyId);
+        if (indexToCheck.getKey().equals(key)) {
+          property=propertyMap.get(indexToCheck.getKeyId());
+          index=indexToCheck;
+          break;
+        }
+      }
+      if (property == null) {
+        return null;
+      }
     }
     relationshipCommand=new RelationshipCommands();
     relationshipCommand.setRelationship(this);
-    relationshipCommand.initRemoveProperty(doGetProperty(key).getId(),key);
+    relationshipCommand.initRemoveProperty(doGetProperty(index).getId(),index);
     relationshipCommand.execute();
     EventManager em=EventManager.getManager();
     EventData eventData=new EventData(relationshipCommand);
@@ -30,6 +55,6 @@
     throw new NotFoundException("Failed executing command.",e);
   }
  finally {
-    releaseLock(this,LockType.WRITE);
+    releaseLock(this,LockType.WRITE,level);
   }
 }

@@ -1,6 +1,31 @@
 {
-  if (hasProperty(key)) {
-    return getProperty(key);
+  if (key == null) {
+    throw new IllegalArgumentException("null key");
+  }
+  acquireLock(this,LockType.READ);
+  try {
+    for (    PropertyIndex index : PropertyIndex.index(key)) {
+      Property property=propertyMap.get(index.getKeyId());
+      if (property != null) {
+        return property.getValue();
+      }
+      if (ensureFullProperties()) {
+        property=propertyMap.get(index.getKeyId());
+        if (property != null) {
+          return property.getValue();
+        }
+      }
+    }
+    ensureFullProperties();
+    for (    int keyId : propertyMap.keySet()) {
+      PropertyIndex indexToCheck=PropertyIndex.getIndexFor(keyId);
+      if (indexToCheck.getKey().equals(key)) {
+        return propertyMap.get(indexToCheck.getKeyId());
+      }
+    }
+  }
+  finally {
+    releaseLock(this,LockType.READ);
   }
   return defaultValue;
 }

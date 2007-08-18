@@ -1,6 +1,29 @@
 {
-  if (hasProperty(key)) {
-    return getProperty(key);
+  TransactionIsolationLevel level=TransactionFactory.getTransactionIsolationLevel();
+  acquireLock(this,LockType.READ);
+  try {
+    for (    PropertyIndex index : PropertyIndex.index(key)) {
+      Property property=propertyMap.get(index.getKeyId());
+      if (property != null) {
+        return property.getValue();
+      }
+      if (ensureFullRelationship()) {
+        property=propertyMap.get(index.getKeyId());
+        if (property != null) {
+          return property.getValue();
+        }
+      }
+    }
+    ensureFullRelationship();
+    for (    int keyId : propertyMap.keySet()) {
+      PropertyIndex indexToCheck=PropertyIndex.getIndexFor(keyId);
+      if (indexToCheck.getKey().equals(key)) {
+        return propertyMap.get(indexToCheck.getKeyId());
+      }
+    }
+  }
+  finally {
+    releaseLock(this,LockType.READ,level);
   }
   return defaultValue;
 }

@@ -1,16 +1,32 @@
 {
+  if (key == null) {
+    throw new IllegalArgumentException("null key");
+  }
+  TransactionIsolationLevel level=TransactionFactory.getTransactionIsolationLevel();
   acquireLock(this,LockType.READ);
   try {
-    if (propertyMap.containsKey(key)) {
-      return propertyMap.get(key).getValue();
+    for (    PropertyIndex index : PropertyIndex.index(key)) {
+      Property property=propertyMap.get(index.getKeyId());
+      if (property != null) {
+        return property.getValue();
+      }
+      if (ensureFullRelationship()) {
+        property=propertyMap.get(index.getKeyId());
+        if (property != null) {
+          return property.getValue();
+        }
+      }
     }
     ensureFullRelationship();
-    if (propertyMap.containsKey(key)) {
-      return propertyMap.get(key).getValue();
+    for (    int keyId : propertyMap.keySet()) {
+      PropertyIndex indexToCheck=PropertyIndex.getIndexFor(keyId);
+      if (indexToCheck.getKey().equals(key)) {
+        return propertyMap.get(indexToCheck.getKeyId());
+      }
     }
   }
   finally {
-    releaseLock(this,LockType.READ);
+    releaseLock(this,LockType.READ,level);
   }
   throw new NotFoundException("" + key + " property not found.");
 }

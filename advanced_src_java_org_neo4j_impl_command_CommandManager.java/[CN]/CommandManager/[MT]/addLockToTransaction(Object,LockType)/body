@@ -1,34 +1,8 @@
 {
-  Transaction tx=null;
-  try {
-    tx=TransactionFactory.getTransactionManager().getTransaction();
-    if (tx == null) {
-      throw new NotInTransactionException();
-    }
-  }
- catch (  javax.transaction.SystemException e) {
-    throw new NotInTransactionException(e);
-  }
   Thread currentThread=Thread.currentThread();
-  if (commandStack.containsKey(currentThread)) {
-    CommandStackElement cse=commandStack.get(currentThread);
-    if (cse.locks == null) {
-      cse.locks=new Stack<LockElement>();
-    }
-    cse.locks.push(new LockElement(resource,type));
+  CommandStackElement cse=commandStack.get(currentThread);
+  if (cse.locks == null) {
+    cse.locks=new Stack<LockElement>();
   }
- else {
-    try {
-      tx.registerSynchronization(txCommitHook);
-    }
- catch (    Exception e) {
-      throw new NotInTransactionException(e);
-    }
-    CommandStackElement cse=new CommandStackElement(DEFAULT_ISOLATION_LEVEL,new Stack<Command>());
-    commandStack.put(currentThread,cse);
-    if (cse.locks == null) {
-      cse.locks=new Stack<LockElement>();
-    }
-    cse.locks.push(new LockElement(resource,type));
-  }
+  cse.locks.push(new LockElement(resource,type));
 }

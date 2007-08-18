@@ -1,12 +1,27 @@
 {
+  if (key == null) {
+    throw new IllegalArgumentException("null key");
+  }
   acquireLock(this,LockType.READ);
   try {
-    if (propertyMap.containsKey(key)) {
-      return propertyMap.get(key).getValue();
+    for (    PropertyIndex index : PropertyIndex.index(key)) {
+      Property property=propertyMap.get(index.getKeyId());
+      if (property != null) {
+        return property.getValue();
+      }
+      if (ensureFullProperties()) {
+        property=propertyMap.get(index.getKeyId());
+        if (property != null) {
+          return property.getValue();
+        }
+      }
     }
     ensureFullProperties();
-    if (propertyMap.containsKey(key)) {
-      return propertyMap.get(key).getValue();
+    for (    int keyId : propertyMap.keySet()) {
+      PropertyIndex indexToCheck=PropertyIndex.getIndexFor(keyId);
+      if (indexToCheck.getKey().equals(key)) {
+        return propertyMap.get(indexToCheck.getKeyId());
+      }
     }
   }
   finally {

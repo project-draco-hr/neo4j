@@ -5,13 +5,37 @@
   acquireLock(this,LockType.WRITE);
   NodeCommands nodeCommand=null;
   try {
-    ensureFullProperties();
-    if (!propertyMap.containsKey(key)) {
-      return null;
+    PropertyIndex index=null;
+    for (    PropertyIndex cachedIndex : PropertyIndex.index(key)) {
+      Property property=propertyMap.get(cachedIndex.getKeyId());
+      if (property == null) {
+        if (ensureFullProperties()) {
+          property=propertyMap.get(cachedIndex.getKeyId());
+          if (property != null) {
+            index=cachedIndex;
+            break;
+          }
+        }
+      }
+    }
+    if (index == null) {
+      ensureFullProperties();
+      Property property=null;
+      for (      int keyId : propertyMap.keySet()) {
+        PropertyIndex indexToCheck=PropertyIndex.getIndexFor(keyId);
+        if (indexToCheck.getKey().equals(key)) {
+          property=propertyMap.get(indexToCheck.getKeyId());
+          index=indexToCheck;
+          break;
+        }
+      }
+      if (property == null) {
+        return null;
+      }
     }
     nodeCommand=new NodeCommands();
     nodeCommand.setNode(this);
-    nodeCommand.initRemoveProperty(doGetProperty(key).getId(),key);
+    nodeCommand.initRemoveProperty(doGetProperty(index).getId(),index);
     nodeCommand.execute();
     EventManager em=EventManager.getManager();
     EventData eventData=new EventData(nodeCommand);

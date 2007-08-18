@@ -2,12 +2,13 @@
   if (startNode == null || endNode == null || type == null) {
     throw new IllegalArgumentException("Null parameter, startNode=" + startNode + ", endNode="+ endNode+ ", type="+ type);
   }
+  TransactionIsolationLevel level=TransactionFactory.getTransactionIsolationLevel();
   if (!RelationshipTypeHolder.getHolder().isValidRelationshipType(type)) {
     setRollbackOnly();
     throw new IllegalArgumentException("Relationship type: " + type + " not valid");
   }
-  NodeImpl firstNode=(NodeImpl)getNodeForProxy((int)startNode.getId());
-  NodeImpl secondNode=(NodeImpl)getNodeForProxy((int)endNode.getId());
+  NodeImpl firstNode=getNodeForProxy((int)startNode.getId());
+  NodeImpl secondNode=getNodeForProxy((int)endNode.getId());
   int id=IdGenerator.getGenerator().nextId(Relationship.class);
   RelationshipImpl rel=new RelationshipImpl(id,(int)startNode.getId(),(int)endNode.getId(),type,true);
   RelationshipCommands relationshipCommand=null;
@@ -29,6 +30,8 @@
     }
     relationshipCommand=new RelationshipCommands();
     relationshipCommand.setRelationship(rel);
+    relationshipCommand.setStartNode(firstNode);
+    relationshipCommand.setEndNode(secondNode);
     relationshipCommand.initCreate();
     EventManager em=EventManager.getManager();
     EventData eventData=new EventData(relationshipCommand);
@@ -51,7 +54,7 @@
     boolean releaseFailed=false;
     if (firstNodeTaken) {
       try {
-        releaseLock(firstNode,LockType.WRITE);
+        releaseLock(firstNode,LockType.WRITE,level);
       }
  catch (      Exception e) {
         releaseFailed=true;
@@ -61,7 +64,7 @@
     }
     if (secondNodeTaken) {
       try {
-        releaseLock(secondNode,LockType.WRITE);
+        releaseLock(secondNode,LockType.WRITE,level);
       }
  catch (      Exception e) {
         releaseFailed=true;
@@ -69,7 +72,7 @@
         log.severe("Failed to release lock");
       }
     }
-    releaseLock(rel,LockType.WRITE);
+    releaseLock(rel,LockType.WRITE,level);
     if (releaseFailed) {
       throw new RuntimeException("Unable to release locks [" + startNode + ","+ endNode+ "] in relationship create->"+ rel);
     }
