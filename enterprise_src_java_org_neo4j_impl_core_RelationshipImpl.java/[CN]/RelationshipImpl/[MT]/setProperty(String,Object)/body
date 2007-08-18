@@ -1,8 +1,62 @@
 {
-  if (!hasProperty(key)) {
-    addProperty(key,value);
+  TransactionIsolationLevel level=TransactionFactory.getTransactionIsolationLevel();
+  if (key == null || value == null) {
+    throw new IllegalValueException("Null parameter, " + "key=" + key + ", "+ "value="+ value);
   }
+  acquireLock(this,LockType.WRITE);
+  RelationshipCommands relationshipCommand=null;
+  try {
+    ensureFullRelationship();
+    relationshipCommand=new RelationshipCommands();
+    relationshipCommand.setRelationship(this);
+    PropertyIndex index=null;
+    Property property=null;
+    for (    PropertyIndex cachedIndex : PropertyIndex.index(key)) {
+      property=propertyMap.get(cachedIndex.getKeyId());
+      index=cachedIndex;
+      if (property != null) {
+        break;
+      }
+    }
+    if (property == null) {
+      for (      int keyId : propertyMap.keySet()) {
+        PropertyIndex indexToCheck=PropertyIndex.getIndexFor(keyId);
+        if (indexToCheck.getKey().equals(key)) {
+          index=indexToCheck;
+          property=propertyMap.get(indexToCheck.getKeyId());
+          break;
+        }
+      }
+      if (index == null) {
+        index=PropertyIndex.createPropertyIndex(key);
+      }
+    }
+    Event event=Event.RELATIONSHIP_ADD_PROPERTY;
+    if (property != null) {
+      int propertyId=property.getId();
+      relationshipCommand.initChangeProperty(propertyId,index,new Property(propertyId,value));
+      event=Event.RELATIONSHIP_CHANGE_PROPERTY;
+    }
  else {
-    changeProperty(key,value);
+      relationshipCommand.initAddProperty(index,new Property(-1,value));
+    }
+    relationshipCommand.execute();
+    EventManager em=EventManager.getManager();
+    EventData eventData=new EventData(relationshipCommand);
+    if (!em.generateProActiveEvent(event,eventData)) {
+      setRollbackOnly();
+      relationshipCommand.undo();
+      throw new IllegalValueException("Generate pro-active event failed.");
+    }
+    em.generateReActiveEvent(event,eventData);
+  }
+ catch (  ExecuteFailedException e) {
+    if (relationshipCommand != null) {
+      relationshipCommand.undo();
+    }
+    throw new IllegalValueException("Failed executing command.",e);
+  }
+ finally {
+    releaseLock(this,LockType.WRITE,level);
   }
 }

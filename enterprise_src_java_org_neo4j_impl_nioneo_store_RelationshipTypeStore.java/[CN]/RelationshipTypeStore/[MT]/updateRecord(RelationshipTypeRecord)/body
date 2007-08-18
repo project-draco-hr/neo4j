@@ -1,12 +1,17 @@
 {
-  PersistenceWindow window=acquireWindow(record.getId(),OperationType.WRITE);
-  try {
-    updateRecord(record,window.getBuffer());
-    for (    DynamicRecord typeRecord : record.getTypeRecords()) {
-      typeNameStore.updateRecord(typeRecord);
+  if (record.isTransferable() && !hasWindow(record.getId())) {
+    transferRecord(record);
+  }
+ else {
+    PersistenceWindow window=acquireWindow(record.getId(),OperationType.WRITE);
+    try {
+      updateRecord(record,window.getBuffer());
+    }
+  finally {
+      releaseWindow(window);
     }
   }
-  finally {
-    releaseWindow(window);
+  for (  DynamicRecord typeRecord : record.getTypeRecords()) {
+    typeNameStore.updateRecord(typeRecord);
   }
 }

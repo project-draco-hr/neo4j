@@ -1,0 +1,27 @@
+{
+  NodeRecord nodeRecord=getNodeRecord(nodeId);
+  if (nodeRecord == null) {
+    nodeRecord=getNodeStore().getRecord(nodeId,readFromBuffer);
+  }
+  int nextRel=nodeRecord.getNextRel();
+  List<RelationshipData> rels=new ArrayList<RelationshipData>();
+  while (nextRel != Record.NO_NEXT_RELATIONSHIP.intValue()) {
+    RelationshipRecord relRecord=getRelationshipRecord(nextRel);
+    if (relRecord == null) {
+      relRecord=getRelationshipStore().getRecord(nextRel,readFromBuffer);
+    }
+    int firstNode=relRecord.getFirstNode();
+    int secondNode=relRecord.getSecondNode();
+    rels.add(new RelationshipData(nextRel,firstNode,secondNode,relRecord.getType()));
+    if (firstNode == nodeId) {
+      nextRel=relRecord.getFirstNextRel();
+    }
+ else     if (secondNode == nodeId) {
+      nextRel=relRecord.getSecondNextRel();
+    }
+ else {
+      throw new RuntimeException("GAH");
+    }
+  }
+  return rels.toArray(new RelationshipData[rels.size()]);
+}

@@ -1,10 +1,17 @@
 {
-  PersistenceWindow window=acquireWindow(record.getId(),OperationType.WRITE);
-  try {
-    updateRecord(record,window.getBuffer());
-    for (    DynamicRecord keyRecord : record.getKeyRecords()) {
-      keyPropertyStore.updateRecord(keyRecord);
+  if (record.isTransferable() && !hasWindow(record.getId())) {
+    transferRecord(record);
+  }
+ else {
+    PersistenceWindow window=acquireWindow(record.getId(),OperationType.WRITE);
+    try {
+      updateRecord(record,window.getBuffer());
     }
+  finally {
+      releaseWindow(window);
+    }
+  }
+  if (!record.isLight()) {
     if (record.getType() == PropertyType.STRING) {
       for (      DynamicRecord valueRecord : record.getValueRecords()) {
         stringPropertyStore.updateRecord(valueRecord);
@@ -15,8 +22,5 @@
         arrayPropertyStore.updateRecord(valueRecord);
       }
     }
-  }
-  finally {
-    releaseWindow(window);
   }
 }
