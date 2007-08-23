@@ -2,16 +2,24 @@
   if (startNode == null || endNode == null || type == null) {
     throw new IllegalArgumentException("Null parameter, startNode=" + startNode + ", endNode="+ endNode+ ", type="+ type);
   }
-  TransactionIsolationLevel level=TransactionFactory.getTransactionIsolationLevel();
   if (!RelationshipTypeHolder.getHolder().isValidRelationshipType(type)) {
     setRollbackOnly();
     throw new IllegalArgumentException("Relationship type: " + type + " not valid");
   }
-  NodeImpl firstNode=getNodeForProxy((int)startNode.getId());
-  NodeImpl secondNode=getNodeForProxy((int)endNode.getId());
+  NodeImpl firstNode=getLightNode((int)startNode.getId());
+  if (firstNode == null) {
+    setRollbackOnly();
+    throw new RuntimeException("Node[" + startNode.getId() + "] deleted?");
+  }
+  NodeImpl secondNode=getLightNode((int)endNode.getId());
+  if (secondNode == null) {
+    setRollbackOnly();
+    throw new RuntimeException("Node[" + endNode.getId() + "] deleted?");
+  }
   int id=IdGenerator.getGenerator().nextId(Relationship.class);
-  RelationshipImpl rel=new RelationshipImpl(id,(int)startNode.getId(),(int)endNode.getId(),type,true);
-  RelationshipCommands relationshipCommand=null;
+  int startNodeId=(int)startNode.getId();
+  int endNodeId=(int)endNode.getId();
+  RelationshipImpl rel=new RelationshipImpl(id,startNodeId,endNodeId,type,true);
   boolean firstNodeTaken=false;
   boolean secondNodeTaken=false;
   acquireLock(rel,LockType.WRITE);
@@ -28,33 +36,24 @@
       setRollbackOnly();
       throw new CreateException("" + endNode + " has been deleted in other transaction");
     }
-    relationshipCommand=new RelationshipCommands();
-    relationshipCommand.setRelationship(rel);
-    relationshipCommand.setStartNode(firstNode);
-    relationshipCommand.setEndNode(secondNode);
-    relationshipCommand.initCreate();
+    int typeId=RelationshipTypeHolder.getHolder().getIdFor(type);
     EventManager em=EventManager.getManager();
-    EventData eventData=new EventData(relationshipCommand);
+    EventData eventData=new EventData(new RelationshipOpData(rel,id,typeId,startNodeId,endNodeId));
     if (!em.generateProActiveEvent(Event.RELATIONSHIP_CREATE,eventData)) {
       setRollbackOnly();
       throw new CreateException("Unable to create relationship, " + "pro-active event failed.");
     }
-    relationshipCommand.execute();
+    firstNode.addRelationship(type,id);
+    secondNode.addRelationship(type,id);
+    addRelationshipToCache(rel);
     em.generateReActiveEvent(Event.RELATIONSHIP_CREATE,eventData);
     return new RelationshipProxy(id);
   }
- catch (  ExecuteFailedException e) {
-    setRollbackOnly();
-    if (relationshipCommand != null) {
-      relationshipCommand.undo();
-    }
-    throw new CreateException("Failed executing command",e);
-  }
- finally {
+  finally {
     boolean releaseFailed=false;
     if (firstNodeTaken) {
       try {
-        releaseLock(firstNode,LockType.WRITE,level);
+        releaseLock(firstNode,LockType.WRITE);
       }
  catch (      Exception e) {
         releaseFailed=true;
@@ -64,7 +63,7 @@
     }
     if (secondNodeTaken) {
       try {
-        releaseLock(secondNode,LockType.WRITE,level);
+        releaseLock(secondNode,LockType.WRITE);
       }
  catch (      Exception e) {
         releaseFailed=true;
@@ -72,7 +71,7 @@
         log.severe("Failed to release lock");
       }
     }
-    releaseLock(rel,LockType.WRITE,level);
+    releaseLock(rel,LockType.WRITE);
     if (releaseFailed) {
       throw new RuntimeException("Unable to release locks [" + startNode + ","+ endNode+ "] in relationship create->"+ rel);
     }
