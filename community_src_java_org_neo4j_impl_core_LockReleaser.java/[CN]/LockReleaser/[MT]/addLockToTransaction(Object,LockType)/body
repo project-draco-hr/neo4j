@@ -1,0 +1,32 @@
+{
+  Thread currentThread=Thread.currentThread();
+  List<LockElement> lockElements=lockMap.get(currentThread);
+  if (lockElements != null) {
+    lockElements.add(new LockElement(resource,type));
+  }
+ else {
+    Transaction tx=null;
+    try {
+      tx=TransactionFactory.getTransactionManager().getTransaction();
+      if (tx == null) {
+        if (type == LockType.WRITE) {
+          lockManager.releaseWriteLock(resource);
+        }
+ else         if (type == LockType.READ) {
+          lockManager.releaseReadLock(resource);
+        }
+        throw new NotInTransactionException();
+      }
+      tx.registerSynchronization(txCommitHook);
+    }
+ catch (    javax.transaction.SystemException e) {
+      throw new NotInTransactionException(e);
+    }
+catch (    Exception e) {
+      throw new NotInTransactionException(e);
+    }
+    lockElements=new ArrayList<LockElement>();
+    lockMap.put(currentThread,lockElements);
+    lockElements.add(new LockElement(resource,type));
+  }
+}
