@@ -3,57 +3,48 @@
     throw new IllegalArgumentException("Null parameter.");
   }
   acquireLock(this,LockType.WRITE);
-  NodeCommands nodeCommand=null;
   try {
-    PropertyIndex index=null;
+    Property property=null;
     for (    PropertyIndex cachedIndex : PropertyIndex.index(key)) {
-      Property property=propertyMap.get(cachedIndex.getKeyId());
+      property=propertyMap.remove(cachedIndex.getKeyId());
       if (property == null) {
         if (ensureFullProperties()) {
-          property=propertyMap.get(cachedIndex.getKeyId());
+          property=propertyMap.remove(cachedIndex.getKeyId());
           if (property != null) {
-            index=cachedIndex;
+            break;
+          }
+        }
+      }
+ else {
+        break;
+      }
+    }
+    if (property == null && !PropertyIndex.hasAll()) {
+      ensureFullProperties();
+      for (      int keyId : propertyMap.keySet()) {
+        if (!PropertyIndex.hasIndexFor(keyId)) {
+          PropertyIndex indexToCheck=PropertyIndex.getIndexFor(keyId);
+          if (indexToCheck.getKey().equals(key)) {
+            property=propertyMap.remove(indexToCheck.getKeyId());
             break;
           }
         }
       }
     }
-    if (index == null) {
-      ensureFullProperties();
-      Property property=null;
-      for (      int keyId : propertyMap.keySet()) {
-        PropertyIndex indexToCheck=PropertyIndex.getIndexFor(keyId);
-        if (indexToCheck.getKey().equals(key)) {
-          property=propertyMap.get(indexToCheck.getKeyId());
-          index=indexToCheck;
-          break;
-        }
-      }
-      if (property == null) {
-        return null;
-      }
+    if (property == null) {
+      return null;
     }
-    nodeCommand=new NodeCommands();
-    nodeCommand.setNode(this);
-    nodeCommand.initRemoveProperty(doGetProperty(index).getId(),index);
-    nodeCommand.execute();
+    NodeOpData data=new NodeOpData(this,id,property.getId());
     EventManager em=EventManager.getManager();
-    EventData eventData=new EventData(nodeCommand);
+    EventData eventData=new EventData(data);
     if (!em.generateProActiveEvent(Event.NODE_REMOVE_PROPERTY,eventData)) {
       setRollbackOnly();
-      nodeCommand.undo();
       throw new NotFoundException("Generate pro-active event failed, " + "unable to remove property[" + key + "] from "+ this);
     }
     em.generateReActiveEvent(Event.NODE_REMOVE_PROPERTY,eventData);
-    return nodeCommand.getOldProperty();
+    return property.getValue();
   }
- catch (  ExecuteFailedException e) {
-    if (nodeCommand != null) {
-      nodeCommand.undo();
-    }
-    throw new NotFoundException("Failed executing command " + "while removing property[" + key + "] on "+ this,e);
-  }
- finally {
+  finally {
     releaseLock(this,LockType.WRITE);
   }
 }

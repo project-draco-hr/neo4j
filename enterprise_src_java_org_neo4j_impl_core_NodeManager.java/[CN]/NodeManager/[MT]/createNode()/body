@@ -1,31 +1,19 @@
 {
-  TransactionIsolationLevel level=TransactionFactory.getTransactionIsolationLevel();
   int id=IdGenerator.getGenerator().nextId(Node.class);
   NodeImpl node=new NodeImpl(id,true);
-  NodeCommands nodeCommand=null;
   acquireLock(node,LockType.WRITE);
   try {
-    nodeCommand=new NodeCommands();
-    nodeCommand.setNode(node);
-    nodeCommand.initCreate();
     EventManager em=EventManager.getManager();
-    EventData eventData=new EventData(nodeCommand);
+    EventData eventData=new EventData(new NodeOpData(node,id));
     if (!em.generateProActiveEvent(Event.NODE_CREATE,eventData)) {
       setRollbackOnly();
       throw new CreateException("Unable to create node, " + "pro-active event failed.");
     }
-    nodeCommand.execute();
+    addNodeToCache(node);
     em.generateReActiveEvent(Event.NODE_CREATE,eventData);
     return new NodeProxy(id);
   }
- catch (  ExecuteFailedException e) {
-    setRollbackOnly();
-    if (nodeCommand != null) {
-      nodeCommand.undo();
-    }
-    throw new CreateException("Failed executing command",e);
-  }
- finally {
-    releaseLock(node,LockType.WRITE,level);
+  finally {
+    releaseLock(node,LockType.WRITE);
   }
 }
