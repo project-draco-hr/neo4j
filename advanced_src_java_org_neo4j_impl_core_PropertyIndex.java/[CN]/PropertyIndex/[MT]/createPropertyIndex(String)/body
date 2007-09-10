@@ -7,7 +7,20 @@
     setRollbackOnly();
     throw new CreateException("Unable to create property index, " + "pro-active event failed.");
   }
-  addPropertyIndex(index);
+  Transaction tx=null;
+  try {
+    tx=transactionManager.getTransaction();
+    if (tx == null) {
+      throw new NotInTransactionException("Unable to create property index for " + index.getKey());
+    }
+    tx.registerSynchronization(new TxCommitHook(index));
+  }
+ catch (  javax.transaction.SystemException e) {
+    throw new NotInTransactionException(e);
+  }
+catch (  Exception e) {
+    throw new NotInTransactionException(e);
+  }
   em.generateReActiveEvent(Event.PROPERTY_INDEX_CREATE,eventData);
   return index;
 }

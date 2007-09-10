@@ -21,7 +21,19 @@
     txStatus.markCommitStarted();
     xaTransaction.commit();
   }
-  log.done(xaTransaction.getIdentifier());
+  if (lazyDone) {
+    lazyDoneRecords.add(xaTransaction.getIdentifier());
+    if (lazyDoneRecords.size() >= 100) {
+      tf.lazyDoneWrite(lazyDoneRecords);
+      for (      int identifier : lazyDoneRecords) {
+        log.done(identifier);
+      }
+      lazyDoneRecords=new ArrayList<Integer>();
+    }
+  }
+ else {
+    log.done(xaTransaction.getIdentifier());
+  }
   xidMap.remove(xid);
   if (xaTransaction.isRecovered()) {
     recoveredTxCount--;
