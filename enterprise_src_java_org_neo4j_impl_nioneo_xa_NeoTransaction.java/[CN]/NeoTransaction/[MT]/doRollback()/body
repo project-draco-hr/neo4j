@@ -36,11 +36,23 @@
           }
         }
       }
-      nm.removePropertyIndexFromCache(record.getId());
     }
     for (    PropertyRecord record : propertyRecords.values()) {
       if (record.isCreated()) {
         getPropertyStore().freeId(record.getId());
+        for (        DynamicRecord dynamicRecord : record.getValueRecords()) {
+          if (dynamicRecord.isCreated()) {
+            if (dynamicRecord.getType() == PropertyType.STRING.intValue()) {
+              getPropertyStore().freeStringBlockId(dynamicRecord.getId());
+            }
+ else             if (dynamicRecord.getType() == PropertyType.ARRAY.intValue()) {
+              getPropertyStore().freeArrayBlockId(dynamicRecord.getId());
+            }
+ else {
+              throw new RuntimeException("Unkown type");
+            }
+          }
+        }
       }
     }
   }
@@ -48,4 +60,14 @@
     logger.log(Level.SEVERE,"Unable to rollback",e);
     throw new XAException("Unable to rollback transaction[" + getIdentifier() + "], "+ e);
   }
+  nodeRecords=null;
+  propertyRecords=null;
+  relRecords=null;
+  relTypeRecords=null;
+  propIndexRecords=null;
+  nodeCommands=null;
+  propCommands=null;
+  propIndexCommands=null;
+  relCommands=null;
+  relTypeCommands=null;
 }
