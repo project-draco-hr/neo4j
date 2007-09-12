@@ -1,0 +1,38 @@
+{
+  DynamicStringStore oldKeyStore=new DynamicStringStore(getStorageFileName() + ".keys");
+  System.out.println("Converting property keys to property indexes...");
+  PropertyIndexStore.createStore(getStorageFileName() + ".index");
+  propertyIndexStore=new PropertyIndexStore(getStorageFileName() + ".index",getConfig());
+  int maxId=getHighestPossibleIdInUse();
+  Map<String,Integer> keyToIndex=new HashMap<String,Integer>();
+  ByteBuffer buf=ByteBuffer.allocate(9);
+  for (int i=0; i <= maxId; i++) {
+    int position=i * RECORD_SIZE;
+    getFileChannel().position(position);
+    buf.clear();
+    if (getFileChannel().read(buf) != 9) {
+      break;
+    }
+    buf.flip();
+    if (buf.get() == Record.IN_USE.byteValue()) {
+      buf.getInt();
+      int oldKeyId=buf.getInt();
+      String oldKey=getOldKeyStringFor(oldKeyId,oldKeyStore);
+      int newIndexKeyId=-1;
+      if (!keyToIndex.containsKey(oldKey)) {
+        newIndexKeyId=createNewPropertyIndex(oldKey);
+        keyToIndex.put(oldKey,newIndexKeyId);
+      }
+ else {
+        newIndexKeyId=keyToIndex.get(oldKey);
+      }
+      buf.clear();
+      buf.putInt(newIndexKeyId);
+      buf.flip();
+      getFileChannel().position(position + 5);
+      if (getFileChannel().write(buf) != 4) {
+        throw new IOException("did not write 4 bytes...");
+      }
+    }
+  }
+}
