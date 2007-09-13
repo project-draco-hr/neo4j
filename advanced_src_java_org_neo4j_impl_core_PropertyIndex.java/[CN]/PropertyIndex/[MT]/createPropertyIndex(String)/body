@@ -1,25 +1,34 @@
 {
+  TxCommitHook hook=txCommitHooks.get(Thread.currentThread());
+  if (hook == null) {
+    hook=new TxCommitHook();
+    txCommitHooks.put(Thread.currentThread(),hook);
+    try {
+      Transaction tx=transactionManager.getTransaction();
+      if (tx == null) {
+        throw new NotInTransactionException("Unable to create property index for " + key);
+      }
+      tx.registerSynchronization(hook);
+    }
+ catch (    javax.transaction.SystemException e) {
+      throw new NotInTransactionException(e);
+    }
+catch (    Exception e) {
+      throw new NotInTransactionException(e);
+    }
+  }
+  PropertyIndex index=hook.getIndex(key);
+  if (index != null) {
+    return index;
+  }
   int id=IdGenerator.getGenerator().nextId(PropertyIndex.class);
-  PropertyIndex index=new PropertyIndex(key,id);
+  index=new PropertyIndex(key,id);
+  hook.addIndex(index);
   EventManager em=EventManager.getManager();
   EventData eventData=new EventData(new PropIndexOpData(index));
   if (!em.generateProActiveEvent(Event.PROPERTY_INDEX_CREATE,eventData)) {
     setRollbackOnly();
     throw new CreateException("Unable to create property index, " + "pro-active event failed.");
-  }
-  Transaction tx=null;
-  try {
-    tx=transactionManager.getTransaction();
-    if (tx == null) {
-      throw new NotInTransactionException("Unable to create property index for " + index.getKey());
-    }
-    tx.registerSynchronization(new TxCommitHook(index));
-  }
- catch (  javax.transaction.SystemException e) {
-    throw new NotInTransactionException(e);
-  }
-catch (  Exception e) {
-    throw new NotInTransactionException(e);
   }
   em.generateReActiveEvent(Event.PROPERTY_INDEX_CREATE,eventData);
   return index;
