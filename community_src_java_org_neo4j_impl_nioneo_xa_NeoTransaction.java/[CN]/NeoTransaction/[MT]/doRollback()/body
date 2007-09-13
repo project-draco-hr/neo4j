@@ -1,48 +1,73 @@
 {
-  if (!prepared) {
-    try {
-      Iterator<MemCommand> itr=createdRelTypesMap.values().iterator();
-      while (itr.hasNext()) {
-        MemCommand.RelationshipTypeAdd command=(MemCommand.RelationshipTypeAdd)itr.next();
-        getRelationshipTypeStore().freeId(command.getId());
-      }
-      itr=createdNodesMap.values().iterator();
-      while (itr.hasNext()) {
-        MemCommand.NodeCreate command=(MemCommand.NodeCreate)itr.next();
-        if (!deletedNodesMap.containsKey(command.getId())) {
-          getNodeStore().freeId(command.getId());
-        }
-      }
-      itr=createdRelsMap.values().iterator();
-      while (itr.hasNext()) {
-        MemCommand.RelationshipCreate command=(MemCommand.RelationshipCreate)itr.next();
-        if (!deletedRelsMap.containsKey(command.getId())) {
-          getRelationshipStore().freeId(command.getId());
-        }
-      }
-      itr=addedPropsMap.values().iterator();
-      while (itr.hasNext()) {
-        MemCommand cmd=itr.next();
-        if (cmd instanceof MemCommand.NodeAddProperty) {
-          MemCommand.NodeAddProperty command=(MemCommand.NodeAddProperty)cmd;
-          if (!deletedNodesMap.containsKey(command.getNodeId())) {
-            getPropertyStore().freeId(command.getPropertyId());
-          }
-        }
- else {
-          MemCommand.RelationshipAddProperty command=(MemCommand.RelationshipAddProperty)cmd;
-          if (!deletedRelsMap.containsKey(command.getRelId())) {
-            getPropertyStore().freeId(command.getPropertyId());
-          }
-        }
-      }
-    }
- catch (    IOException e) {
-      logger.log(Level.SEVERE,"Unable to rollback",e);
-      throw new XAException("Unable to rollback transaction[" + getIdentifier() + "], "+ e);
-    }
-  }
- else   if (committed) {
+  if (committed) {
     throw new XAException("Cannot rollback partialy commited " + "transaction[" + getIdentifier() + "]. Recover and "+ "commit");
   }
+  try {
+    NodeManager nm=NodeManager.getManager();
+    for (    RelationshipTypeRecord record : relTypeRecords.values()) {
+      if (record.isCreated()) {
+        getRelationshipTypeStore().freeId(record.getId());
+        for (        DynamicRecord dynamicRecord : record.getTypeRecords()) {
+          if (dynamicRecord.isCreated()) {
+            getRelationshipTypeStore().freeBlockId(dynamicRecord.getId());
+          }
+        }
+      }
+      nm.removeRelationshipTypeFromCache(record.getId());
+    }
+    for (    NodeRecord record : nodeRecords.values()) {
+      if (record.isCreated()) {
+        getNodeStore().freeId(record.getId());
+      }
+      nm.removeNodeFromCache(record.getId());
+    }
+    for (    RelationshipRecord record : relRecords.values()) {
+      if (record.isCreated()) {
+        getRelationshipStore().freeId(record.getId());
+      }
+      nm.removeRelationshipFromCache(record.getId());
+    }
+    for (    PropertyIndexRecord record : propIndexRecords.values()) {
+      if (record.isCreated()) {
+        getPropertyStore().getIndexStore().freeId(record.getId());
+        for (        DynamicRecord dynamicRecord : record.getKeyRecords()) {
+          if (dynamicRecord.isCreated()) {
+            getPropertyStore().getIndexStore().freeBlockId(dynamicRecord.getId());
+          }
+        }
+      }
+    }
+    for (    PropertyRecord record : propertyRecords.values()) {
+      if (record.isCreated()) {
+        getPropertyStore().freeId(record.getId());
+        for (        DynamicRecord dynamicRecord : record.getValueRecords()) {
+          if (dynamicRecord.isCreated()) {
+            if (dynamicRecord.getType() == PropertyType.STRING.intValue()) {
+              getPropertyStore().freeStringBlockId(dynamicRecord.getId());
+            }
+ else             if (dynamicRecord.getType() == PropertyType.ARRAY.intValue()) {
+              getPropertyStore().freeArrayBlockId(dynamicRecord.getId());
+            }
+ else {
+              throw new RuntimeException("Unkown type");
+            }
+          }
+        }
+      }
+    }
+  }
+ catch (  IOException e) {
+    logger.log(Level.SEVERE,"Unable to rollback",e);
+    throw new XAException("Unable to rollback transaction[" + getIdentifier() + "], "+ e);
+  }
+  nodeRecords=null;
+  propertyRecords=null;
+  relRecords=null;
+  relTypeRecords=null;
+  propIndexRecords=null;
+  nodeCommands=null;
+  propCommands=null;
+  propIndexCommands=null;
+  relCommands=null;
+  relTypeCommands=null;
 }

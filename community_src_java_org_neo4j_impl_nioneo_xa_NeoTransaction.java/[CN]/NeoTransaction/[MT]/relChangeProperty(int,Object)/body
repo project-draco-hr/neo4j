@@ -1,11 +1,25 @@
 {
   PropertyRecord propertyRecord=getPropertyRecord(propertyId);
   if (propertyRecord == null) {
-    propertyRecord=getPropertyStore().getRecord(propertyId);
+    propertyRecord=getPropertyStore().getRecord(propertyId,readFromBuffer);
     addPropertyRecord(propertyRecord);
   }
+  if (propertyRecord.isLight()) {
+    getPropertyStore().makeHeavy(propertyRecord,readFromBuffer);
+  }
   if (propertyRecord.getType() == PropertyType.STRING) {
-    propertyRecord.clearValueRecords();
+    for (    DynamicRecord record : propertyRecord.getValueRecords()) {
+      if (record.inUse()) {
+        record.setInUse(false,PropertyType.STRING.intValue());
+      }
+    }
+  }
+ else   if (propertyRecord.getType() == PropertyType.ARRAY) {
+    for (    DynamicRecord record : propertyRecord.getValueRecords()) {
+      if (record.inUse()) {
+        record.setInUse(false,PropertyType.ARRAY.intValue());
+      }
+    }
   }
   getPropertyStore().encodeValue(propertyRecord,value);
   addPropertyRecord(propertyRecord);

@@ -1,24 +1,20 @@
 {
-  Node node=getTransactionCache().getNode(nodeId);
+  Node node=nodeCache.get(nodeId);
   if (node != null) {
-    return node;
-  }
-  node=nodeCache.get(nodeId);
-  if (node != null) {
-    return node;
+    return (NodeImpl)node;
   }
   node=new NodeImpl(nodeId);
   acquireLock(node,LockType.READ);
   try {
     if (nodeCache.get(nodeId) != null) {
       node=nodeCache.get(nodeId);
-      return node;
+      return (NodeImpl)node;
     }
     if (PersistenceManager.getManager().loadLightNode(nodeId) == null) {
-      throw new RuntimeException("Node[" + nodeId + "] deleted?");
+      throw new NotFoundException("Node[" + nodeId + "] not found");
     }
     nodeCache.add(nodeId,node);
-    return node;
+    return (NodeImpl)node;
   }
  catch (  PersistenceException pe) {
     log.severe("Persistence error while trying to get node #" + nodeId + " by id. "+ pe);

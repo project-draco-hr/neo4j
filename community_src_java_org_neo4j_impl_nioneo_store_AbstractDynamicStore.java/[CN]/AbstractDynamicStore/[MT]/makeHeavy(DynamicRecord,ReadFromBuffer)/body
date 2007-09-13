@@ -1,0 +1,26 @@
+{
+  int blockId=record.getId();
+  if (buffer != null && !hasWindow(blockId)) {
+    int nrOfBytes=record.getLength();
+    buffer.makeReadyForTransfer();
+    getFileChannel().transferTo(blockId * getBlockSize() + BLOCK_HEADER_SIZE,nrOfBytes,buffer.getFileChannel());
+    ByteBuffer buf=buffer.getByteBuffer();
+    byte bytes[]=new byte[nrOfBytes];
+    buf.get(bytes);
+    record.setData(bytes);
+  }
+ else {
+    PersistenceWindow window=acquireWindow(blockId,OperationType.READ);
+    try {
+      Buffer buf=window.getBuffer();
+      int offset=(blockId - buf.position()) * getBlockSize() + BLOCK_HEADER_SIZE;
+      buf.setOffset(offset);
+      byte bytes[]=new byte[record.getLength()];
+      buf.get(bytes);
+      record.setData(bytes);
+    }
+  finally {
+      releaseWindow(window);
+    }
+  }
+}
