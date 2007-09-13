@@ -1,22 +1,27 @@
 {
-  PersistenceWindow window=acquireWindow(record.getId(),OperationType.WRITE);
-  try {
-    updateRecord(record,window.getBuffer());
-    for (    DynamicRecord keyRecord : record.getKeyRecords()) {
-      keyPropertyStore.updateRecord(keyRecord);
+  if (record.isTransferable() && !hasWindow(record.getId())) {
+    transferRecord(record);
+  }
+ else {
+    PersistenceWindow window=acquireWindow(record.getId(),OperationType.WRITE);
+    try {
+      updateRecord(record,window.getBuffer());
     }
-    if (record.getType() == PropertyType.STRING) {
-      for (      DynamicRecord valueRecord : record.getValueRecords()) {
-        stringPropertyStore.updateRecord(valueRecord);
-      }
-    }
- else     if (record.getType() == PropertyType.ARRAY) {
-      for (      DynamicRecord valueRecord : record.getValueRecords()) {
-        arrayPropertyStore.updateRecord(valueRecord);
-      }
+  finally {
+      releaseWindow(window);
     }
   }
-  finally {
-    releaseWindow(window);
+  if (!record.isLight()) {
+    for (    DynamicRecord valueRecord : record.getValueRecords()) {
+      if (valueRecord.getType() == PropertyType.STRING.intValue()) {
+        stringPropertyStore.updateRecord(valueRecord);
+      }
+ else       if (valueRecord.getType() == PropertyType.ARRAY.intValue()) {
+        arrayPropertyStore.updateRecord(valueRecord);
+      }
+ else {
+        throw new RuntimeException("Unkown dynamic record");
+      }
+    }
   }
 }

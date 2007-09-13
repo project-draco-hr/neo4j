@@ -1,19 +1,21 @@
 {
   RelationshipRecord relRecord=getRelationshipRecord(relId);
   if (relRecord == null) {
-    relRecord=getRelationshipStore().getRecord(relId);
+    relRecord=getRelationshipStore().getRecord(relId,readFromBuffer);
   }
   PropertyRecord propRecord=getPropertyRecord(propertyId);
   if (propRecord == null) {
-    propRecord=getPropertyStore().getRecord(propertyId);
+    propRecord=getPropertyStore().getRecord(propertyId,readFromBuffer);
     addPropertyRecord(propRecord);
   }
-  propRecord.setInUse(false);
-  for (  DynamicRecord keyRecord : propRecord.getKeyRecords()) {
-    keyRecord.setInUse(false);
+  if (propRecord.isLight()) {
+    getPropertyStore().makeHeavy(propRecord,readFromBuffer);
   }
+  propRecord.setInUse(false);
   for (  DynamicRecord valueRecord : propRecord.getValueRecords()) {
-    valueRecord.setInUse(false);
+    if (valueRecord.inUse()) {
+      valueRecord.setInUse(false,propRecord.getType().intValue());
+    }
   }
   int prevProp=propRecord.getPrevProp();
   int nextProp=propRecord.getNextProp();
@@ -24,17 +26,17 @@
   if (prevProp != Record.NO_PREVIOUS_PROPERTY.intValue()) {
     PropertyRecord prevPropRecord=getPropertyRecord(prevProp);
     if (prevPropRecord == null) {
-      prevPropRecord=getPropertyStore().getRecord(prevProp);
+      prevPropRecord=getPropertyStore().getLightRecord(prevProp,readFromBuffer);
+      addPropertyRecord(prevPropRecord);
     }
     prevPropRecord.setNextProp(nextProp);
-    addPropertyRecord(prevPropRecord);
   }
   if (nextProp != Record.NO_NEXT_PROPERTY.intValue()) {
     PropertyRecord nextPropRecord=getPropertyRecord(nextProp);
     if (nextPropRecord == null) {
-      nextPropRecord=getPropertyStore().getRecord(nextProp);
+      nextPropRecord=getPropertyStore().getLightRecord(nextProp,readFromBuffer);
+      addPropertyRecord(nextPropRecord);
     }
     nextPropRecord.setPrevProp(prevProp);
-    addPropertyRecord(nextPropRecord);
   }
 }

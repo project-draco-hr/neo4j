@@ -6,11 +6,20 @@
     setRollbackOnly();
     throw new IllegalArgumentException("Relationship type: " + type + " not valid");
   }
-  NodeImpl firstNode=(NodeImpl)getNodeForProxy((int)startNode.getId());
-  NodeImpl secondNode=(NodeImpl)getNodeForProxy((int)endNode.getId());
+  NodeImpl firstNode=getLightNode((int)startNode.getId());
+  if (firstNode == null) {
+    setRollbackOnly();
+    throw new RuntimeException("First node[" + startNode.getId() + "] deleted");
+  }
+  NodeImpl secondNode=getLightNode((int)endNode.getId());
+  if (secondNode == null) {
+    setRollbackOnly();
+    throw new RuntimeException("Second node[" + endNode.getId() + "] deleted");
+  }
   int id=IdGenerator.getGenerator().nextId(Relationship.class);
-  RelationshipImpl rel=new RelationshipImpl(id,(int)startNode.getId(),(int)endNode.getId(),type,true);
-  RelationshipCommands relationshipCommand=null;
+  int startNodeId=(int)startNode.getId();
+  int endNodeId=(int)endNode.getId();
+  RelationshipImpl rel=new RelationshipImpl(id,startNodeId,endNodeId,type,true);
   boolean firstNodeTaken=false;
   boolean secondNodeTaken=false;
   acquireLock(rel,LockType.WRITE);
@@ -27,27 +36,20 @@
       setRollbackOnly();
       throw new CreateException("" + endNode + " has been deleted in other transaction");
     }
-    relationshipCommand=new RelationshipCommands();
-    relationshipCommand.setRelationship(rel);
-    relationshipCommand.initCreate();
+    int typeId=RelationshipTypeHolder.getHolder().getIdFor(type);
     EventManager em=EventManager.getManager();
-    EventData eventData=new EventData(relationshipCommand);
+    EventData eventData=new EventData(new RelationshipOpData(rel,id,typeId,startNodeId,endNodeId));
     if (!em.generateProActiveEvent(Event.RELATIONSHIP_CREATE,eventData)) {
       setRollbackOnly();
       throw new CreateException("Unable to create relationship, " + "pro-active event failed.");
     }
-    relationshipCommand.execute();
+    firstNode.addRelationship(type,id);
+    secondNode.addRelationship(type,id);
+    addRelationshipToCache(rel);
     em.generateReActiveEvent(Event.RELATIONSHIP_CREATE,eventData);
     return new RelationshipProxy(id);
   }
- catch (  ExecuteFailedException e) {
-    setRollbackOnly();
-    if (relationshipCommand != null) {
-      relationshipCommand.undo();
-    }
-    throw new CreateException("Failed executing command",e);
-  }
- finally {
+  finally {
     boolean releaseFailed=false;
     if (firstNodeTaken) {
       try {

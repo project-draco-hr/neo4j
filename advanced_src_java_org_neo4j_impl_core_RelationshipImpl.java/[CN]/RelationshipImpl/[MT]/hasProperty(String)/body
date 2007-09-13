@@ -1,11 +1,25 @@
 {
   acquireLock(this,LockType.READ);
   try {
-    if (propertyMap.containsKey(key)) {
-      return true;
+    for (    PropertyIndex index : PropertyIndex.index(key)) {
+      Property property=propertyMap.get(index.getKeyId());
+      if (property != null) {
+        return true;
+      }
+      if (ensureFullRelationship()) {
+        if (propertyMap.get(index.getKeyId()) != null) {
+          return true;
+        }
+      }
     }
     ensureFullRelationship();
-    return propertyMap.containsKey(key);
+    for (    int keyId : propertyMap.keySet()) {
+      PropertyIndex indexToCheck=PropertyIndex.getIndexFor(keyId);
+      if (indexToCheck.getKey().equals(key)) {
+        return true;
+      }
+    }
+    return false;
   }
   finally {
     releaseLock(this,LockType.READ);
