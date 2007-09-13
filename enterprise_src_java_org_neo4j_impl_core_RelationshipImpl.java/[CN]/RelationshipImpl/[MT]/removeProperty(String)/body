@@ -3,33 +3,48 @@
     throw new IllegalArgumentException("Null parameter.");
   }
   acquireLock(this,LockType.WRITE);
-  RelationshipCommands relationshipCommand=null;
   try {
-    ensureFullRelationship();
-    if (!propertyMap.containsKey(key)) {
+    Property property=null;
+    for (    PropertyIndex cachedIndex : PropertyIndex.index(key)) {
+      property=propertyMap.remove(cachedIndex.getKeyId());
+      if (property == null) {
+        if (ensureFullRelationship()) {
+          property=propertyMap.remove(cachedIndex.getKeyId());
+          if (property != null) {
+            break;
+          }
+        }
+      }
+ else {
+        break;
+      }
+    }
+    if (property == null && !PropertyIndex.hasAll()) {
+      ensureFullRelationship();
+      for (      int keyId : propertyMap.keySet()) {
+        if (!PropertyIndex.hasIndexFor(keyId)) {
+          PropertyIndex indexToCheck=PropertyIndex.getIndexFor(keyId);
+          if (indexToCheck.getKey().equals(key)) {
+            property=propertyMap.remove(indexToCheck.getKeyId());
+            break;
+          }
+        }
+      }
+    }
+    if (property == null) {
       return null;
     }
-    relationshipCommand=new RelationshipCommands();
-    relationshipCommand.setRelationship(this);
-    relationshipCommand.initRemoveProperty(doGetProperty(key).getId(),key);
-    relationshipCommand.execute();
+    RelationshipOpData data=new RelationshipOpData(this,id,property.getId());
     EventManager em=EventManager.getManager();
-    EventData eventData=new EventData(relationshipCommand);
+    EventData eventData=new EventData(data);
     if (!em.generateProActiveEvent(Event.RELATIONSHIP_REMOVE_PROPERTY,eventData)) {
       setRollbackOnly();
-      relationshipCommand.undo();
       throw new NotFoundException("Generate pro-active event failed.");
     }
     em.generateReActiveEvent(Event.RELATIONSHIP_REMOVE_PROPERTY,eventData);
-    return relationshipCommand.getOldProperty();
+    return property.getValue();
   }
- catch (  ExecuteFailedException e) {
-    if (relationshipCommand != null) {
-      relationshipCommand.undo();
-    }
-    throw new NotFoundException("Failed executing command.",e);
-  }
- finally {
+  finally {
     releaseLock(this,LockType.WRITE);
   }
 }

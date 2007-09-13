@@ -1,8 +1,59 @@
 {
-  if (!hasProperty(key)) {
-    addProperty(key,value);
+  if (key == null || value == null) {
+    throw new IllegalValueException("Null parameter, " + "key=" + key + ", "+ "value="+ value);
   }
+  acquireLock(this,LockType.WRITE);
+  try {
+    ensureFullProperties();
+    PropertyIndex index=null;
+    Property property=null;
+    for (    PropertyIndex cachedIndex : PropertyIndex.index(key)) {
+      property=propertyMap.get(cachedIndex.getKeyId());
+      index=cachedIndex;
+      if (property != null) {
+        break;
+      }
+    }
+    if (property == null && !PropertyIndex.hasAll()) {
+      for (      int keyId : propertyMap.keySet()) {
+        if (!PropertyIndex.hasIndexFor(keyId)) {
+          PropertyIndex indexToCheck=PropertyIndex.getIndexFor(keyId);
+          if (indexToCheck.getKey().equals(key)) {
+            index=indexToCheck;
+            property=propertyMap.get(indexToCheck.getKeyId());
+            break;
+          }
+        }
+      }
+    }
+    if (index == null) {
+      index=PropertyIndex.createPropertyIndex(key);
+    }
+    Event event=Event.NODE_ADD_PROPERTY;
+    NodeOpData data;
+    if (property != null) {
+      int propertyId=property.getId();
+      data=new NodeOpData(this,id,propertyId,index,value);
+      event=Event.NODE_CHANGE_PROPERTY;
+    }
  else {
-    changeProperty(key,value);
+      data=new NodeOpData(this,id,-1,index,value);
+    }
+    EventManager em=EventManager.getManager();
+    EventData eventData=new EventData(data);
+    if (!em.generateProActiveEvent(event,eventData)) {
+      setRollbackOnly();
+      throw new IllegalValueException("Generate pro-active event failed, " + " unable to add property[" + key + ","+ value+ "] on "+ this);
+    }
+    if (event == Event.NODE_ADD_PROPERTY) {
+      doAddProperty(index,new Property(data.getPropertyId(),value));
+    }
+ else {
+      doChangeProperty(index,new Property(data.getPropertyId(),value));
+    }
+    em.generateReActiveEvent(event,eventData);
+  }
+  finally {
+    releaseLock(this,LockType.WRITE);
   }
 }

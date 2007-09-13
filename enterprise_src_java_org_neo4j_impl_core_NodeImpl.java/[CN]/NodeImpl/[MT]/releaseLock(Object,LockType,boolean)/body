@@ -1,27 +1,18 @@
 {
   try {
-    TransactionIsolationLevel level=TransactionFactory.getTransactionIsolationLevel();
-    if (level == TransactionIsolationLevel.READ_COMMITTED) {
-      if (lockType == LockType.READ) {
-        LockManager.getManager().releaseReadLock(resource);
-      }
- else       if (lockType == LockType.WRITE) {
-        if (forceRelease) {
-          LockManager.getManager().releaseWriteLock(resource);
-        }
- else {
-          CommandManager.getManager().addLockToTransaction(resource,lockType);
-        }
+    if (lockType == LockType.READ) {
+      lockManager.releaseReadLock(resource);
+    }
+ else     if (lockType == LockType.WRITE) {
+      if (forceRelease) {
+        lockManager.releaseWriteLock(resource);
       }
  else {
-        throw new RuntimeException("Unkown lock type: " + lockType);
+        lockReleaser.addLockToTransaction(resource,lockType);
       }
     }
- else     if (level == TransactionIsolationLevel.BAD) {
-      CommandManager.getManager().addLockToTransaction(resource,lockType);
-    }
  else {
-      throw new RuntimeException("Unkown transaction isolation level, " + level);
+      throw new RuntimeException("Unkown lock type: " + lockType);
     }
   }
  catch (  NotInTransactionException e) {

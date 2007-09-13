@@ -7,11 +7,19 @@
     windowPool.close();
     windowPool=null;
   }
+  int highId=idGenerator.getHighId();
+  int recordSize=-1;
+  if (this instanceof AbstractDynamicStore) {
+    recordSize=((AbstractDynamicStore)this).getBlockSize();
+  }
+ else   if (this instanceof AbstractStore) {
+    recordSize=((AbstractStore)this).getRecordSize();
+  }
   closeIdGenerator();
-  fileChannel.position(fileChannel.size());
-  ByteBuffer buffer=ByteBuffer.allocate(getTypeAndVersionDescriptor().length());
-  buffer.put(getTypeAndVersionDescriptor().getBytes()).flip();
-  fileChannel.write(buffer);
+  fileChannel.position(highId * recordSize);
+  ByteBuffer buffer=ByteBuffer.wrap(getTypeAndVersionDescriptor().getBytes());
+  int bytes=fileChannel.write(buffer);
+  fileChannel.truncate(fileChannel.position());
   fileChannel.force(false);
   fileLock.release();
   fileChannel.close();

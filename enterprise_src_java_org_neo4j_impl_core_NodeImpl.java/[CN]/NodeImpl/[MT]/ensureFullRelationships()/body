@@ -1,2 +1,36 @@
 {
+  if (nodeRelPhase != NodePhase.FULL_REL) {
+    List<Relationship> fullRelationshipList=nodeManager.loadRelationships(this);
+    ArrayIntSet addedRels=new ArrayIntSet();
+    ArrayMap<String,ArrayIntSet> newRelationshipMap=new ArrayMap<String,ArrayIntSet>();
+    for (    Relationship rel : fullRelationshipList) {
+      int relId=(int)rel.getId();
+      addedRels.add(relId);
+      RelationshipType type=rel.getType();
+      ArrayIntSet relationshipSet=newRelationshipMap.get(type.name());
+      if (relationshipSet == null) {
+        relationshipSet=new ArrayIntSet();
+        newRelationshipMap.put(type.name(),relationshipSet);
+      }
+      relationshipSet.add(relId);
+    }
+    for (    String typeName : this.relationshipMap.keySet()) {
+      ArrayIntSet relationshipSet=this.relationshipMap.get(typeName);
+      for (      Integer relId : relationshipSet.values()) {
+        if (!addedRels.contains(relId)) {
+          ArrayIntSet newRelationshipSet=newRelationshipMap.get(typeName);
+          if (newRelationshipSet == null) {
+            newRelationshipSet=new ArrayIntSet();
+            newRelationshipMap.put(typeName,newRelationshipSet);
+          }
+          newRelationshipSet.add(relId);
+          addedRels.add(relId);
+        }
+      }
+    }
+    this.relationshipMap=newRelationshipMap;
+    nodeRelPhase=NodePhase.FULL_REL;
+    return true;
+  }
+  return false;
 }

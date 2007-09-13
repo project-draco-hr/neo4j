@@ -1,0 +1,28 @@
+{
+  NodeRecord record;
+  if (buffer != null && !hasWindow(id)) {
+    buffer.makeReadyForTransfer();
+    getFileChannel().transferTo(id * RECORD_SIZE,RECORD_SIZE,buffer.getFileChannel());
+    ByteBuffer buf=buffer.getByteBuffer();
+    record=new NodeRecord(id);
+    byte inUse=buf.get();
+    if (inUse != Record.IN_USE.byteValue()) {
+      return false;
+    }
+    record.setInUse(true);
+    record.setNextRel(buf.getInt());
+    record.setNextProp(buf.getInt());
+    return true;
+  }
+  PersistenceWindow window=acquireWindow(id,OperationType.READ);
+  try {
+    record=getRecord(id,window.getBuffer(),true);
+    if (!record.inUse()) {
+      return false;
+    }
+    return true;
+  }
+  finally {
+    releaseWindow(window);
+  }
+}
