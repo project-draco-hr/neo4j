@@ -11,11 +11,11 @@
   FileChannel fileChannel=getFileChannel();
   long fileSize=fileChannel.size();
   int recordSize=getRecordSize();
-  long defragedCount=0;
+  long defraggedCount=0;
   ByteBuffer byteBuffer=ByteBuffer.wrap(new byte[1]);
   LinkedList<Integer> freeIdList=new LinkedList<Integer>();
   int highId=-1;
-  for (int i=0; i * recordSize < fileSize; i++) {
+  for (long i=0; i * recordSize < fileSize; i++) {
     fileChannel.position(i * recordSize);
     fileChannel.read(byteBuffer);
     byteBuffer.flip();
@@ -23,18 +23,18 @@
     byteBuffer.flip();
     nextId();
     if (inUse == RECORD_NOT_IN_USE) {
-      freeIdList.add(i);
+      freeIdList.add((int)i);
     }
  else {
-      highId=i;
+      highId=(int)i;
       while (!freeIdList.isEmpty()) {
         freeId(freeIdList.removeFirst());
-        defragedCount++;
+        defraggedCount++;
       }
     }
   }
   setHighId(highId + 1);
-  logger.info("[" + getStorageFileName() + "] high id="+ getHighId()+ " (defraged="+ defragedCount+ ")");
+  logger.info("[" + getStorageFileName() + "] high id="+ getHighId()+ " (defragged="+ defraggedCount+ ")");
   closeIdGenerator();
   openIdGenerator();
 }
