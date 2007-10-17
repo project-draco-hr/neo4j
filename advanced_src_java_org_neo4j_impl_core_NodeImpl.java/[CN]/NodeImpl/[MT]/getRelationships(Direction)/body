@@ -8,21 +8,22 @@
     if (relationshipMap == null) {
       return Collections.emptyList();
     }
-    List<Relationship> allRelationships=new LinkedList<Relationship>();
     Iterator<ArrayIntSet> values=relationshipMap.values().iterator();
+    int size=0;
+    while (values.hasNext()) {
+      ArrayIntSet relTypeSet=values.next();
+      size+=relTypeSet.size();
+    }
+    values=relationshipMap.values().iterator();
+    int[] ids=new int[size];
+    int position=0;
     while (values.hasNext()) {
       ArrayIntSet relTypeSet=values.next();
       for (      int relId : relTypeSet.values()) {
-        Relationship rel=nodeManager.getRelationshipById(relId);
-        if (dir == Direction.OUTGOING && rel.getStartNode().equals(this)) {
-          allRelationships.add(rel);
-        }
- else         if (dir == Direction.INCOMING && rel.getEndNode().equals(this)) {
-          allRelationships.add(rel);
-        }
+        ids[position++]=relId;
       }
     }
-    return allRelationships;
+    return new RelationshipIterator(ids,this,dir);
   }
   finally {
     releaseLock(this,LockType.READ);
