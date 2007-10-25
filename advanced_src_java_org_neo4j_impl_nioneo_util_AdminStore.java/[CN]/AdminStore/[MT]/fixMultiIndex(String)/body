@@ -1,0 +1,54 @@
+{
+  String storeName=fileName + ".propertystore.db";
+  PropertyStore propStore=new PropertyStore(storeName);
+  propStore.makeStoreOk();
+  for (int i=0; i < propStore.getHighestPossibleIdInUse(); i++) {
+    PropertyRecord record;
+    try {
+      record=propStore.getLightRecord(i,null);
+      if (!record.inUse() || record.getPrevProp() != Record.NO_PREVIOUS_PROPERTY.intValue()) {
+        continue;
+      }
+    }
+ catch (    Exception e) {
+      continue;
+    }
+    Set<Integer> indexesFound=new HashSet<Integer>();
+    do {
+      int index=record.getKeyIndexId();
+      if (indexesFound.contains(index)) {
+        System.out.println("Found multi index: " + index);
+        if (record.getType() == PropertyType.STRING) {
+          propStore.makeHeavy(record,null);
+        }
+        if (record.getPrevProp() == Record.NO_PREVIOUS_PROPERTY.intValue()) {
+          throw new RuntimeException();
+        }
+        if (record.getPrevProp() != Record.NO_PREVIOUS_PROPERTY.intValue()) {
+          PropertyRecord prev=propStore.getLightRecord(record.getPrevProp(),null);
+          prev.setNextProp(record.getNextProp());
+          propStore.updateRecord(prev);
+        }
+        if (record.getNextProp() != Record.NO_NEXT_PROPERTY.intValue()) {
+          PropertyRecord next=propStore.getLightRecord(record.getNextProp(),null);
+          next.setPrevProp(record.getPrevProp());
+          propStore.updateRecord(next);
+        }
+        record.setInUse(false);
+        propStore.updateRecord(record);
+      }
+ else {
+        indexesFound.add(index);
+      }
+      int nextProp=record.getNextProp();
+      if (nextProp != Record.NO_NEXT_PROPERTY.intValue()) {
+        record=propStore.getLightRecord(nextProp,null);
+      }
+ else {
+        record=null;
+      }
+    }
+ while (record != null);
+  }
+  propStore.close();
+}
