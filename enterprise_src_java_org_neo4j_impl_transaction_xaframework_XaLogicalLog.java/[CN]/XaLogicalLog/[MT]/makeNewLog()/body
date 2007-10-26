@@ -1,0 +1,36 @@
+{
+  if (xidIdentMap.size() > 0) {
+    throw new RuntimeException("Active transactions found: " + xidIdentMap.size() + ", can't make new log file");
+  }
+  writeBuffer=null;
+  try {
+    fileChannel.close();
+  }
+ catch (  IOException e) {
+    throw new RuntimeException("Unable to close log[" + fileName + "]",e);
+  }
+  File file=new File(fileName);
+  if (!file.exists()) {
+    throw new RuntimeException("Logical log[" + fileName + "] not found");
+  }
+  try {
+    String saveName=fileName + ".recovered-" + System.currentTimeMillis();
+    file.renameTo(new File(saveName));
+  }
+ catch (  Exception e) {
+    try {
+      Thread.sleep(500);
+      String saveName=fileName + ".recovered-" + System.currentTimeMillis();
+      file.renameTo(new File(saveName));
+    }
+ catch (    Throwable t) {
+      throw new RuntimeException("Unable to rename recovered " + "log file[" + fileName + "]",t);
+    }
+  }
+  try {
+    this.open();
+  }
+ catch (  IOException e) {
+    throw new RuntimeException("Unable to open new log[" + fileName + "]",e);
+  }
+}
