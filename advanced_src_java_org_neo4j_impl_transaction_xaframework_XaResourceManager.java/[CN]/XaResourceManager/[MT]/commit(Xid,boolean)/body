@@ -12,16 +12,16 @@
       }
       log.commitOnePhase(xaTransaction.getIdentifier());
     }
-    txStatus.markAsCommit();
+    txStatus.markAsPrepared();
   }
-  if (!txStatus.commit() && txStatus.rollback()) {
+  if (!txStatus.prepared() || txStatus.rollback()) {
     throw new XAException("Transaction not prepared or " + "(marked as) rolledbacked");
   }
   if (!xaTransaction.isReadOnly()) {
     txStatus.markCommitStarted();
     xaTransaction.commit();
   }
-  if (lazyDone && !xaTransaction.isReadOnly()) {
+  if (lazyDone && !xaTransaction.isRecovered()) {
     lazyDoneRecords.add(xaTransaction.getIdentifier());
     if (lazyDoneRecords.size() >= 100) {
       tf.lazyDoneWrite(lazyDoneRecords);
