@@ -2,28 +2,38 @@
   if (xidIdentMap.size() > 0) {
     log.info("Active transactions: " + xidIdentMap.size());
     log.info("Closing dirty log: " + fileName);
-    writeBuffer.force();
+    if (writeBuffer != null) {
+      writeBuffer.force();
+    }
+    writeBuffer=null;
     fileChannel.close();
     return;
   }
-  writeBuffer.force();
+  if (writeBuffer != null) {
+    writeBuffer.force();
+  }
   writeBuffer=null;
   fileChannel.close();
   File file=new File(fileName);
   if (!file.exists()) {
     throw new IOException("Logical log[" + fileName + "] not found");
   }
+  boolean deleted=false;
   try {
-    file.delete();
+    deleted=file.delete();
   }
  catch (  Exception e) {
+  }
+  if (!deleted) {
     try {
-      Thread.sleep(500);
-      file.delete();
+      System.gc();
+      deleted=file.delete();
     }
- catch (    Throwable t) {
-      log.warning("Unable to delete clean logical log[" + fileName + "]"+ e);
-      log.info("Since you're not using a real operating system " + "you will be punished for it at next startup");
+ catch (    Exception ee) {
     }
+  }
+  if (!deleted) {
+    log.warning("Unable to delete clean logical log[" + fileName + "]");
+    log.info("Since you're not using a real operating system " + "you will be punished for it at next startup");
   }
 }
