@@ -1,5 +1,5 @@
 {
-  log.info("Logical log is dirty, recovering...");
+  log.info("Logical log is dirty, this means Neo hasn't been " + "shutdown properly. Recovering...");
   buffer.clear();
   buffer.limit(8);
   if (fileChannel.read(buffer) != 8) {
@@ -11,15 +11,17 @@
   }
   buffer.flip();
   logCreated=buffer.getLong();
-  log.info("Logical log created " + new java.util.Date(logCreated));
+  log.fine("Logical log created " + new java.util.Date(logCreated));
   long logEntriesFound=0;
   while (readEntry()) {
     logEntriesFound++;
   }
   scanIsComplete=true;
-  log.info("Internal recovery completed, scanned " + logEntriesFound + " log entries.");
-  log.info(xidIdentMap.size() + " uncompleted transactions found ");
+  log.fine("Internal recovery completed, scanned " + logEntriesFound + " log entries.");
+  log.fine(xidIdentMap.size() + " uncompleted transactions found ");
   xaRm.checkXids();
-  log.info("Prepared 2PC transactions: " + xidIdentMap.size());
+  if (xidIdentMap.size() > 0) {
+    log.info("Found " + xidIdentMap.size() + " prepared 2PC transactions.");
+  }
   recoveredTxMap.clear();
 }
