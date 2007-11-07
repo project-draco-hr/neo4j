@@ -2,8 +2,15 @@
   if (xidIdentMap.size() > 0) {
     throw new RuntimeException("Active transactions found: " + xidIdentMap.size() + ", can't make new log file");
   }
-  WeakReference<MappedByteBuffer> bufferWeakRef=new WeakReference<MappedByteBuffer>(writeBuffer.getMappedBuffer());
-  writeBuffer=null;
+  WeakReference<MappedByteBuffer> bufferWeakRef=null;
+  if (writeBuffer != null) {
+    MappedByteBuffer mappedBuffer=writeBuffer.getMappedBuffer();
+    if (mappedBuffer != null) {
+      bufferWeakRef=new WeakReference<MappedByteBuffer>(mappedBuffer);
+      mappedBuffer=null;
+    }
+    writeBuffer=null;
+  }
   try {
     fileChannel.close();
   }
@@ -39,7 +46,7 @@
  catch (      Exception ee) {
       }
     }
-    if (!renamed) {
+    if (!renamed && bufferWeakRef != null) {
       try {
         clean(bufferWeakRef.get());
         renamed=file.delete();
