@@ -9,11 +9,16 @@
     fileChannel.close();
     return;
   }
+  WeakReference<MappedByteBuffer> bufferWeakRef=null;
   if (writeBuffer != null) {
     writeBuffer.force();
+    MappedByteBuffer mappedBuffer=writeBuffer.getMappedBuffer();
+    if (mappedBuffer != null) {
+      bufferWeakRef=new WeakReference<MappedByteBuffer>(mappedBuffer);
+      mappedBuffer=null;
+    }
+    writeBuffer=null;
   }
-  WeakReference<MappedByteBuffer> bufferWeakRef=new WeakReference<MappedByteBuffer>(writeBuffer.getMappedBuffer());
-  writeBuffer=null;
   fileChannel.close();
   File file=new File(fileName);
   if (!file.exists()) {
@@ -38,7 +43,7 @@
  catch (    Exception e) {
     }
   }
-  if (!deleted) {
+  if (!deleted && bufferWeakRef != null) {
     try {
       clean(bufferWeakRef.get());
       deleted=file.delete();
