@@ -12,6 +12,7 @@
   if (writeBuffer != null) {
     writeBuffer.force();
   }
+  WeakReference<MappedByteBuffer> bufferWeakRef=new WeakReference<MappedByteBuffer>(writeBuffer.getMappedBuffer());
   writeBuffer=null;
   fileChannel.close();
   File file=new File(fileName);
@@ -24,9 +25,9 @@
   }
  catch (  Exception e) {
   }
-  if (!deleted) {
+  for (int i=0; i < 3 && !deleted; i++) {
     try {
-      Thread.sleep(700);
+      Thread.sleep(500);
     }
  catch (    InterruptedException e) {
     }
@@ -34,7 +35,15 @@
       System.gc();
       deleted=file.delete();
     }
- catch (    Exception ee) {
+ catch (    Exception e) {
+    }
+  }
+  if (!deleted) {
+    try {
+      clean(bufferWeakRef.get());
+      deleted=file.delete();
+    }
+ catch (    Exception e) {
     }
   }
   if (!deleted) {
