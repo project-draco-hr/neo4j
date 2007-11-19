@@ -1,21 +1,22 @@
 {
-  boolean txStarted=TransactionUtil.beginTx();
-  boolean success=false;
-  int id=IdGenerator.getGenerator().nextId(RelationshipType.class);
-  try {
-    addRelType(name,id);
-    EventManager em=EventManager.getManager();
-    EventData eventData=new EventData(new RelTypeOpData(id,name));
-    if (!em.generateProActiveEvent(Event.RELATIONSHIPTYPE_CREATE,eventData)) {
-      setRollbackOnly();
-      throw new RuntimeException("Generate pro-active event failed.");
-    }
-    log.fine("Created relationship type: " + name + "("+ id+ ")");
-    em.generateReActiveEvent(Event.RELATIONSHIPTYPE_CREATE,eventData);
-    success=true;
+  Integer id=relTypes.get(name);
+  if (id != null) {
     return id;
   }
-  finally {
-    TransactionUtil.finishTx(success,txStarted);
+  RelTypeCreater createrThread=new RelTypeCreater(name);
+synchronized (createrThread) {
+    createrThread.start();
+    while (createrThread.isAlive()) {
+      try {
+        createrThread.wait(50);
+      }
+ catch (      InterruptedException e) {
+      }
+    }
   }
+  if (createrThread.succeded()) {
+    addRelType(name,createrThread.getRelTypeId());
+    return createrThread.getRelTypeId();
+  }
+  throw new RuntimeException("Unable to create relationship type " + name);
 }

@@ -1,0 +1,27 @@
+{
+  Transaction tx=Transaction.begin();
+  try {
+    id=IdGenerator.getGenerator().nextId(RelationshipType.class);
+    EventManager em=EventManager.getManager();
+    EventData eventData=new EventData(new RelTypeOpData(id,name));
+    if (!em.generateProActiveEvent(Event.RELATIONSHIPTYPE_CREATE,eventData)) {
+      throw new RuntimeException("Generate pro-active event failed.");
+    }
+    em.generateReActiveEvent(Event.RELATIONSHIPTYPE_CREATE,eventData);
+    tx.success();
+    tx.finish();
+    success=true;
+    System.out.println("Created relationship type " + name);
+  }
+  finally {
+    if (!success) {
+      try {
+        tx.failure();
+        tx.finish();
+      }
+ catch (      Throwable t) {
+      }
+    }
+    this.notify();
+  }
+}
