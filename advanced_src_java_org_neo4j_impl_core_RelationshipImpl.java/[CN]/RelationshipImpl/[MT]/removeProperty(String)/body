@@ -2,10 +2,10 @@
   if (key == null) {
     throw new IllegalArgumentException("Null parameter.");
   }
-  acquireLock(this,LockType.WRITE);
+  nodeManager.acquireLock(this,LockType.WRITE);
   try {
     Property property=null;
-    for (    PropertyIndex cachedIndex : PropertyIndex.index(key)) {
+    for (    PropertyIndex cachedIndex : nodeManager.index(key)) {
       property=null;
       if (propertyMap != null) {
         property=propertyMap.remove(cachedIndex.getKeyId());
@@ -22,11 +22,11 @@
         break;
       }
     }
-    if (property == null && !PropertyIndex.hasAll()) {
+    if (property == null && !nodeManager.hasAllPropertyIndexes()) {
       ensureFullRelationship();
       for (      int keyId : propertyMap.keySet()) {
-        if (!PropertyIndex.hasIndexFor(keyId)) {
-          PropertyIndex indexToCheck=PropertyIndex.getIndexFor(keyId);
+        if (!nodeManager.hasIndexFor(keyId)) {
+          PropertyIndex indexToCheck=nodeManager.getIndexFor(keyId);
           if (indexToCheck.getKey().equals(key)) {
             property=propertyMap.remove(indexToCheck.getKeyId());
             break;
@@ -38,16 +38,15 @@
       return null;
     }
     RelationshipOpData data=new RelationshipOpData(this,id,property.getId());
-    EventManager em=EventManager.getManager();
     EventData eventData=new EventData(data);
-    if (!em.generateProActiveEvent(Event.RELATIONSHIP_REMOVE_PROPERTY,eventData)) {
-      setRollbackOnly();
+    if (!nodeManager.generateProActiveEvent(Event.RELATIONSHIP_REMOVE_PROPERTY,eventData)) {
+      nodeManager.setRollbackOnly();
       throw new NotFoundException("Generate pro-active event failed.");
     }
-    em.generateReActiveEvent(Event.RELATIONSHIP_REMOVE_PROPERTY,eventData);
-    return property.getValue();
+    nodeManager.generateReActiveEvent(Event.RELATIONSHIP_REMOVE_PROPERTY,eventData);
+    return getPropertyValue(property);
   }
   finally {
-    releaseLock(this,LockType.WRITE);
+    nodeManager.releaseLock(this,LockType.WRITE);
   }
 }

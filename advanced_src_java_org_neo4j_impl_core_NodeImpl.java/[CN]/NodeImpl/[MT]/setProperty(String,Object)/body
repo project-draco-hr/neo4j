@@ -2,22 +2,22 @@
   if (key == null || value == null) {
     throw new IllegalValueException("Null parameter, " + "key=" + key + ", "+ "value="+ value);
   }
-  acquireLock(this,LockType.WRITE);
+  nodeManager.acquireLock(this,LockType.WRITE);
   try {
     ensureFullProperties();
     PropertyIndex index=null;
     Property property=null;
-    for (    PropertyIndex cachedIndex : PropertyIndex.index(key)) {
+    for (    PropertyIndex cachedIndex : nodeManager.index(key)) {
       property=propertyMap.get(cachedIndex.getKeyId());
       index=cachedIndex;
       if (property != null) {
         break;
       }
     }
-    if (property == null && !PropertyIndex.hasAll()) {
+    if (property == null && !nodeManager.hasAllPropertyIndexes()) {
       for (      int keyId : propertyMap.keySet()) {
-        if (!PropertyIndex.hasIndexFor(keyId)) {
-          PropertyIndex indexToCheck=PropertyIndex.getIndexFor(keyId);
+        if (!nodeManager.hasIndexFor(keyId)) {
+          PropertyIndex indexToCheck=nodeManager.getIndexFor(keyId);
           if (indexToCheck.getKey().equals(key)) {
             index=indexToCheck;
             property=propertyMap.get(indexToCheck.getKeyId());
@@ -27,7 +27,7 @@
       }
     }
     if (index == null) {
-      index=PropertyIndex.createPropertyIndex(key);
+      index=nodeManager.createPropertyIndex(key);
     }
     Event event=Event.NODE_ADD_PROPERTY;
     NodeOpData data;
@@ -39,10 +39,9 @@
  else {
       data=new NodeOpData(this,id,-1,index,value);
     }
-    EventManager em=EventManager.getManager();
     EventData eventData=new EventData(data);
-    if (!em.generateProActiveEvent(event,eventData)) {
-      setRollbackOnly();
+    if (!nodeManager.generateProActiveEvent(event,eventData)) {
+      nodeManager.setRollbackOnly();
       throw new IllegalValueException("Generate pro-active event failed, " + " unable to add property[" + key + ","+ value+ "] on "+ this);
     }
     if (event == Event.NODE_ADD_PROPERTY) {
@@ -51,9 +50,9 @@
  else {
       doChangeProperty(index,new Property(data.getPropertyId(),value));
     }
-    em.generateReActiveEvent(event,eventData);
+    nodeManager.generateReActiveEvent(event,eventData);
   }
   finally {
-    releaseLock(this,LockType.WRITE);
+    nodeManager.releaseLock(this,LockType.WRITE);
   }
 }

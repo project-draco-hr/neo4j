@@ -1,0 +1,31 @@
+{
+  try {
+    Xid xid=new XidImpl(new byte[4],new byte[4]);
+    XAResource xaRes=xaCon.getXaResource();
+    xaRes.start(xid,XAResource.TMNOFLAGS);
+    int node1=ds.nextId(Node.class);
+    xaCon.getNodeConsumer().createNode(node1);
+    int node2=ds.nextId(Node.class);
+    xaCon.getNodeConsumer().createNode(node2);
+    int n1prop1=ds.nextId(PropertyStore.class);
+    xaCon.getNodeConsumer().addProperty(node1,n1prop1,index("prop1"),"string1");
+    copyLogicalLog();
+    xaCon.clearAllTransactions();
+    ds.close();
+    deleteLogicalLogIfExist();
+    renameCopiedLogicalLog();
+    java.nio.channels.FileChannel fileChannel=new java.io.RandomAccessFile("nioneo_logical.log","rw").getChannel();
+    fileChannel.truncate(fileChannel.size() - 3);
+    fileChannel.force(false);
+    fileChannel.close();
+    ds=new NeoStoreXaDataSource("neo","nioneo_logical.log",lockManager,lockReleaser,eventManager);
+    xaCon=(NeoStoreXaConnection)ds.getXaConnection();
+    xaRes=xaCon.getXaResource();
+    assertEquals(0,xaRes.recover(XAResource.TMNOFLAGS).length);
+    xaCon.clearAllTransactions();
+  }
+ catch (  Exception e) {
+    e.printStackTrace();
+    fail("" + e);
+  }
+}
