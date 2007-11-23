@@ -3,23 +3,22 @@
   NodeImpl endNode=null;
   boolean startNodeLocked=false;
   boolean endNodeLocked=false;
-  acquireLock(this,LockType.WRITE);
+  nodeManager.acquireLock(this,LockType.WRITE);
   try {
     startNode=nodeManager.getLightNode(startNodeId);
     if (startNode != null) {
-      acquireLock(startNode,LockType.WRITE);
+      nodeManager.acquireLock(startNode,LockType.WRITE);
       startNodeLocked=true;
     }
     endNode=nodeManager.getLightNode(endNodeId);
     if (endNode != null) {
-      acquireLock(endNode,LockType.WRITE);
+      nodeManager.acquireLock(endNode,LockType.WRITE);
       endNodeLocked=true;
     }
-    EventManager em=EventManager.getManager();
-    int typeId=RelationshipTypeHolder.getHolder().getIdFor(type);
+    int typeId=nodeManager.getRelationshipTypeIdFor(type);
     EventData eventData=new EventData(new RelationshipOpData(this,id,typeId,startNodeId,endNodeId));
-    if (!em.generateProActiveEvent(Event.RELATIONSHIP_DELETE,eventData)) {
-      setRollbackOnly();
+    if (!nodeManager.generateProActiveEvent(Event.RELATIONSHIP_DELETE,eventData)) {
+      nodeManager.setRollbackOnly();
       throw new DeleteException("Generate pro-active event failed.");
     }
     if (startNode != null) {
@@ -29,31 +28,29 @@
       endNode.removeRelationship(type,id);
     }
     nodeManager.removeRelationshipFromCache(id);
-    em.generateReActiveEvent(Event.RELATIONSHIP_DELETE,eventData);
+    nodeManager.generateReActiveEvent(Event.RELATIONSHIP_DELETE,eventData);
   }
   finally {
     boolean releaseFailed=false;
     try {
       if (startNodeLocked) {
-        releaseLock(startNode,LockType.WRITE);
+        nodeManager.releaseLock(startNode,LockType.WRITE);
       }
     }
  catch (    Exception e) {
       releaseFailed=true;
       e.printStackTrace();
-      log.severe("Failed to release lock");
     }
     try {
       if (endNodeLocked) {
-        releaseLock(endNode,LockType.WRITE);
+        nodeManager.releaseLock(endNode,LockType.WRITE);
       }
     }
  catch (    Exception e) {
       releaseFailed=true;
       e.printStackTrace();
-      log.severe("Failed to release lock");
     }
-    releaseLock(this,LockType.WRITE);
+    nodeManager.releaseLock(this,LockType.WRITE);
     if (releaseFailed) {
       throw new RuntimeException("Unable to release locks [" + startNode + ","+ endNode+ "] in relationship delete->"+ this);
     }

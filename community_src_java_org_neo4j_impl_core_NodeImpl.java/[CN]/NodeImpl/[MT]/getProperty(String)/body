@@ -2,37 +2,38 @@
   if (key == null) {
     throw new IllegalArgumentException("null key");
   }
-  acquireLock(this,LockType.READ);
+  nodeManager.acquireLock(this,LockType.READ);
   try {
-    for (    PropertyIndex index : PropertyIndex.index(key)) {
+    for (    PropertyIndex index : nodeManager.index(key)) {
       Property property=null;
       if (propertyMap != null) {
         property=propertyMap.get(index.getKeyId());
       }
       if (property != null) {
-        return property.getValue();
+        return getPropertyValue(property);
       }
       if (ensureFullProperties()) {
         property=propertyMap.get(index.getKeyId());
         if (property != null) {
-          return property.getValue();
+          return getPropertyValue(property);
         }
       }
     }
-    if (!PropertyIndex.hasAll()) {
+    if (!nodeManager.hasAllPropertyIndexes()) {
       ensureFullProperties();
       for (      int keyId : propertyMap.keySet()) {
-        if (!PropertyIndex.hasIndexFor(keyId)) {
-          PropertyIndex indexToCheck=PropertyIndex.getIndexFor(keyId);
+        if (!nodeManager.hasIndexFor(keyId)) {
+          PropertyIndex indexToCheck=nodeManager.getIndexFor(keyId);
           if (indexToCheck.getKey().equals(key)) {
-            return propertyMap.get(indexToCheck.getKeyId()).getValue();
+            Property property=propertyMap.get(indexToCheck.getKeyId());
+            return getPropertyValue(property);
           }
         }
       }
     }
   }
   finally {
-    releaseLock(this,LockType.READ);
+    nodeManager.releaseLock(this,LockType.READ);
   }
   throw new NotFoundException("" + key + " property not found.");
 }

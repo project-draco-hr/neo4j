@@ -1,0 +1,28 @@
+{
+  super(null);
+  this.lockManager=lockManager;
+  this.lockReleaser=lockReleaser;
+  this.eventManager=eventManager;
+  neoStore=new NeoStore(neoStoreFileName);
+  xaContainer=XaContainer.create(logicalLogPath,new CommandFactory(neoStore),new TransactionFactory(neoStore));
+  try {
+    xaContainer.setLazyDoneRecords();
+  }
+ catch (  XAException e) {
+    throw new IOException("Unable to set lazy done records, " + e);
+  }
+  TxInfoManager.getManager().setRealLog(xaContainer.getLogicalLog());
+  xaContainer.openLogicalLog();
+  if (!xaContainer.getResourceManager().hasRecoveredTransactions()) {
+    neoStore.makeStoreOk();
+  }
+ else {
+    logger.info("Waiting for TM to take care of recovered transactions.");
+  }
+  idGenerators=new ArrayMap<Class<?>,Store>(5,false,false);
+  this.idGenerators.put(Node.class,neoStore.getNodeStore());
+  this.idGenerators.put(Relationship.class,neoStore.getRelationshipStore());
+  this.idGenerators.put(RelationshipType.class,neoStore.getRelationshipTypeStore());
+  this.idGenerators.put(PropertyStore.class,neoStore.getPropertyStore());
+  this.idGenerators.put(PropertyIndex.class,neoStore.getPropertyStore().getIndexStore());
+}

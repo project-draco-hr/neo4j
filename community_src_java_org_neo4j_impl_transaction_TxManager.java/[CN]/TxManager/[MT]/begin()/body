@@ -7,7 +7,7 @@
   if (tx != null) {
     throw new NotSupportedException("Nested transactions not supported");
   }
-  tx=new TransactionImpl();
+  tx=new TransactionImpl(this);
   txThreadMap.put(thread,tx);
   try {
     getTxLog().txStart(tx.getGlobalId());
@@ -18,4 +18,12 @@
     tmOk=false;
     throw new SystemException("TM encountered a problem, " + " error writing transaction log," + e);
   }
+  eventManager.generateReActiveEvent(Event.TX_BEGIN,new EventData(tx.getEventIdentifier()));
+  try {
+    tx.registerSynchronization(new TxEventGenerator(eventManager,tx));
+  }
+ catch (  Exception e) {
+    throw new SystemException("" + e);
+  }
+  eventManager.generateProActiveEvent(Event.TX_IMMEDIATE_BEGIN,new EventData(tx.getEventIdentifier()));
 }
