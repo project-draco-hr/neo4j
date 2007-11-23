@@ -1,0 +1,36 @@
+{
+  if (started) {
+    throw new RuntimeException("A Neo instance already started");
+  }
+  config=new Config();
+  config.getTxModule().setTxLogDirectory(storeDir);
+  storeDir=convertFileSeparators(storeDir);
+  String separator=System.getProperty("file.separator");
+  String store=storeDir + separator + "neostore";
+  params.put("neo_store",store);
+  params.put("create",String.valueOf(create));
+  String logicalLog=storeDir + separator + "nioneo_logical.log";
+  params.put("logical_log",logicalLog);
+  byte resourceId[]="414141".getBytes();
+  params.put(EventManager.class,config.getEventModule().getEventManager());
+  params.put(LockManager.class,config.getLockManager());
+  params.put(LockReleaser.class,config.getLockReleaser());
+  config.getTxModule().registerDataSource(DEFAULT_DATA_SOURCE_NAME,NIO_NEO_DB_CLASS,resourceId,params);
+  System.setProperty("neo.tx_log_directory",storeDir);
+  persistenceSource=new NioNeoDbPersistenceSource();
+  config.setNeoPersistenceSource(DEFAULT_DATA_SOURCE_NAME,create);
+  config.getIdGeneratorModule().setPersistenceSourceInstance(persistenceSource);
+  config.getEventModule().init();
+  config.getTxModule().init();
+  config.getPersistenceModule().init();
+  persistenceSource.init();
+  config.getIdGeneratorModule().init();
+  config.getNeoModule().init();
+  config.getEventModule().start();
+  config.getTxModule().start();
+  config.getPersistenceModule().start(persistenceSource);
+  persistenceSource.start(config.getTxModule().getXaDataSourceManager());
+  config.getIdGeneratorModule().start();
+  config.getNeoModule().start();
+  started=true;
+}

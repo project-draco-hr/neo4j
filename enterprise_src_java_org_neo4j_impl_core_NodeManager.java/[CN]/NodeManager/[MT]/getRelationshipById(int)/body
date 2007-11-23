@@ -1,16 +1,16 @@
 {
   Relationship relationship=relCache.get(relId);
   if (relationship != null) {
-    return new RelationshipProxy(relId);
+    return new RelationshipProxy(relId,this);
   }
-  relationship=new RelationshipImpl(relId);
+  relationship=new RelationshipImpl(relId,this);
   acquireLock(relationship,LockType.READ);
   try {
     if (relCache.get(relId) != null) {
       relationship=relCache.get(relId);
-      return new RelationshipProxy(relId);
+      return new RelationshipProxy(relId,this);
     }
-    RawRelationshipData data=PersistenceManager.getManager().loadLightRelationship(relId);
+    RawRelationshipData data=persistenceManager.loadLightRelationship(relId);
     if (data == null) {
       throw new NotFoundException("Relationship[" + relId + "] not found");
     }
@@ -18,9 +18,9 @@
     if (type == null) {
       throw new NotFoundException("Relationship[" + data.getId() + "] exist but relationship type["+ data.getType()+ "] not registered.");
     }
-    relationship=new RelationshipImpl(relId,data.getFirstNode(),data.getSecondNode(),type,false);
+    relationship=new RelationshipImpl(relId,data.getFirstNode(),data.getSecondNode(),type,false,this);
     relCache.add(relId,relationship);
-    return new RelationshipProxy(relId);
+    return new RelationshipProxy(relId,this);
   }
  catch (  PersistenceException e) {
     throw new NotFoundException("Could not get relationship[" + relId + "].",e);
