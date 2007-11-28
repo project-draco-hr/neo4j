@@ -2,16 +2,17 @@
   ResourceConnection con=null;
   PersistenceSource source=null;
   source=dispatcher.getPersistenceSource();
-  Transaction tx=this.getCurrentTransaction();
-  con=txConnectionMap.get(tx);
+  Thread currentThread=Thread.currentThread();
+  con=txConnectionMap.get(currentThread);
   if (con == null) {
     try {
+      Transaction tx=this.getCurrentTransaction();
       con=source.createResourceConnection();
       if (!tx.enlistResource(con.getXAResource())) {
         throw new ResourceAcquisitionFailedException("Unable to enlist '" + con.getXAResource() + "' in "+ "transaction");
       }
       tx.registerSynchronization(txCommitHook);
-      txConnectionMap.put(tx,con);
+      txConnectionMap.put(currentThread,con);
     }
  catch (    ConnectionCreationFailedException ccfe) {
       String msg="Failed to create connection using " + source;
