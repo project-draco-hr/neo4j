@@ -1,11 +1,21 @@
 {
   if (!new File(storageFileName).exists()) {
-    throw new IOException("No such store[" + storageFileName + "]");
+    throw new IllegalStateException("No such store[" + storageFileName + "]");
   }
-  this.fileChannel=new RandomAccessFile(storageFileName,"rw").getChannel();
-  this.fileLock=this.fileChannel.tryLock();
-  if (fileLock == null) {
-    fileChannel.close();
-    throw new IOException("Unable to lock store [" + storageFileName + "], other program running?");
+  try {
+    this.fileChannel=new RandomAccessFile(storageFileName,"rw").getChannel();
+  }
+ catch (  IOException e) {
+    throw new StoreFailureException("Unable to open file " + storageFileName,e);
+  }
+  try {
+    this.fileLock=this.fileChannel.tryLock();
+    if (fileLock == null) {
+      fileChannel.close();
+      throw new IllegalStateException("Unable to lock store [" + storageFileName + "], this is usually a result of some "+ "other Neo running using the same store.");
+    }
+  }
+ catch (  IOException e) {
+    throw new StoreFailureException("Unable to lock store[" + storageFileName + "]");
   }
 }

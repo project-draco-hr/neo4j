@@ -9,28 +9,33 @@
   openIdGenerator();
   nextBlockId();
   FileChannel fileChannel=getFileChannel();
-  long fileSize=fileChannel.size();
-  long defraggedCount=0;
-  ByteBuffer byteBuffer=ByteBuffer.wrap(new byte[1]);
-  LinkedList<Integer> freeIdList=new LinkedList<Integer>();
   int highId=0;
-  for (long i=1; i * getBlockSize() < fileSize; i++) {
-    fileChannel.position(i * getBlockSize());
-    fileChannel.read(byteBuffer);
-    byteBuffer.flip();
-    byte inUse=byteBuffer.get();
-    byteBuffer.flip();
-    nextBlockId();
-    if (inUse == Record.NOT_IN_USE.byteValue()) {
-      freeIdList.add((int)i);
-    }
+  long defraggedCount=0;
+  try {
+    long fileSize=fileChannel.size();
+    ByteBuffer byteBuffer=ByteBuffer.wrap(new byte[1]);
+    LinkedList<Integer> freeIdList=new LinkedList<Integer>();
+    for (long i=1; i * getBlockSize() < fileSize; i++) {
+      fileChannel.position(i * getBlockSize());
+      fileChannel.read(byteBuffer);
+      byteBuffer.flip();
+      byte inUse=byteBuffer.get();
+      byteBuffer.flip();
+      nextBlockId();
+      if (inUse == Record.NOT_IN_USE.byteValue()) {
+        freeIdList.add((int)i);
+      }
  else {
-      highId=(int)i;
-      while (!freeIdList.isEmpty()) {
-        freeBlockId(freeIdList.removeFirst());
-        defraggedCount++;
+        highId=(int)i;
+        while (!freeIdList.isEmpty()) {
+          freeBlockId(freeIdList.removeFirst());
+          defraggedCount++;
+        }
       }
     }
+  }
+ catch (  IOException e) {
+    throw new StoreFailureException("Unable to rebuild id generator " + getStorageFileName(),e);
   }
   setHighId(highId + 1);
   logger.fine("[" + getStorageFileName() + "] high id="+ getHighId()+ " (defragged="+ defraggedCount+ ")");

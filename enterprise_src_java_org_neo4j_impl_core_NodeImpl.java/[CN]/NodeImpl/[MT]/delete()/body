@@ -1,19 +1,14 @@
 {
   nodeManager.acquireLock(this,LockType.WRITE);
+  boolean success=false;
   try {
-    EventData eventData=new EventData(new NodeOpData(this,id));
-    if (!nodeManager.generateProActiveEvent(Event.NODE_DELETE,eventData)) {
-      nodeManager.setRollbackOnly();
-      throw new DeleteException("Generate pro-active event failed, " + "unable to delete " + this);
-    }
-    nodeRelPhase=NodePhase.EMPTY_REL;
-    nodePropPhase=NodePhase.EMPTY_PROPERTY;
-    relationshipMap=new ArrayMap<String,ArrayIntSet>();
-    propertyMap=new ArrayMap<Integer,Property>(9,false,true);
-    nodeManager.removeNodeFromCache(id);
-    nodeManager.generateReActiveEvent(Event.NODE_DELETE,eventData);
+    nodeManager.deleteNode(this);
+    success=true;
   }
   finally {
     nodeManager.releaseLock(this,LockType.WRITE);
+    if (!success) {
+      setRollbackOnly();
+    }
   }
 }
