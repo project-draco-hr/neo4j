@@ -9,29 +9,34 @@
   IdGenerator.createGenerator(getStorageFileName() + ".id");
   openIdGenerator();
   FileChannel fileChannel=getFileChannel();
-  long fileSize=fileChannel.size();
-  int recordSize=getRecordSize();
+  int highId=1;
   long defraggedCount=0;
-  ByteBuffer byteBuffer=ByteBuffer.wrap(new byte[1]);
-  LinkedList<Integer> freeIdList=new LinkedList<Integer>();
-  int highId=-1;
-  for (long i=0; i * recordSize < fileSize && recordSize > 0; i++) {
-    fileChannel.position(i * recordSize);
-    fileChannel.read(byteBuffer);
-    byteBuffer.flip();
-    byte inUse=byteBuffer.get();
-    byteBuffer.flip();
-    nextId();
-    if (inUse == RECORD_NOT_IN_USE) {
-      freeIdList.add((int)i);
-    }
+  try {
+    long fileSize=fileChannel.size();
+    int recordSize=getRecordSize();
+    ByteBuffer byteBuffer=ByteBuffer.wrap(new byte[1]);
+    LinkedList<Integer> freeIdList=new LinkedList<Integer>();
+    for (long i=0; i * recordSize < fileSize && recordSize > 0; i++) {
+      fileChannel.position(i * recordSize);
+      fileChannel.read(byteBuffer);
+      byteBuffer.flip();
+      byte inUse=byteBuffer.get();
+      byteBuffer.flip();
+      nextId();
+      if (inUse == RECORD_NOT_IN_USE) {
+        freeIdList.add((int)i);
+      }
  else {
-      highId=(int)i;
-      while (!freeIdList.isEmpty()) {
-        freeId(freeIdList.removeFirst());
-        defraggedCount++;
+        highId=(int)i;
+        while (!freeIdList.isEmpty()) {
+          freeId(freeIdList.removeFirst());
+          defraggedCount++;
+        }
       }
     }
+  }
+ catch (  IOException e) {
+    throw new StoreFailureException("Unable to rebuild id generator " + getStorageFileName(),e);
   }
   setHighId(highId + 1);
   logger.fine("[" + getStorageFileName() + "] high id="+ getHighId()+ " (defragged="+ defraggedCount+ ")");

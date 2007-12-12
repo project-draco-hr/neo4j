@@ -7,11 +7,11 @@
     buffer.setOffset(offset);
     byte inUse=buffer.get();
     if (inUse != Record.IN_USE.byteValue()) {
-      throw new IOException("Not in use [" + inUse + "] blockId["+ blockId+ "]");
+      throw new StoreFailureException("Not in use [" + inUse + "] blockId["+ blockId+ "]");
     }
     int prevBlock=buffer.getInt();
     if (prevBlock != Record.NO_PREV_BLOCK.intValue()) {
-      throw new IOException("Start block has previous block set");
+      throw new StoreFailureException("Start block has previous block set");
     }
     int nextBlock=blockId;
     int dataSize=getBlockSize() - BLOCK_HEADER_SIZE;
@@ -20,7 +20,7 @@
       prevBlock=nextBlock;
       nextBlock=buffer.getInt();
       if (nextBlock != Record.NO_NEXT_BLOCK.intValue() && nrOfBytes < dataSize || nrOfBytes > dataSize) {
-        throw new IOException("Next block set[" + nextBlock + "] current block illegal size["+ nrOfBytes+ "/"+ dataSize+ "]");
+        throw new StoreFailureException("Next block set[" + nextBlock + "] current block illegal size["+ nrOfBytes+ "/"+ dataSize+ "]");
       }
       byte byteArrayElement[]=new byte[nrOfBytes];
       buffer.get(byteArrayElement);
@@ -33,10 +33,10 @@
         buffer.setOffset(offset);
         inUse=buffer.get();
         if (inUse != Record.IN_USE.byteValue()) {
-          throw new IOException("Next block[" + nextBlock + "] not in use ["+ inUse+ "]");
+          throw new StoreFailureException("Next block[" + nextBlock + "] not in use ["+ inUse+ "]");
         }
         if (buffer.getInt() != prevBlock) {
-          throw new IOException("Previous block don't match");
+          throw new StoreFailureException("Previous block don't match");
         }
       }
     }

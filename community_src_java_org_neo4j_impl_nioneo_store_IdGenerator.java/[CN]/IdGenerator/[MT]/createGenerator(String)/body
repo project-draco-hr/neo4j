@@ -1,15 +1,20 @@
 {
   if (fileName == null) {
-    throw new IOException("Null filename");
+    throw new IllegalArgumentException("Null filename");
   }
   File file=new File(fileName);
   if (file.exists()) {
-    throw new IOException("Can't create IdGeneratorFile[" + fileName + "], file already exists");
+    throw new IllegalStateException("Can't create IdGeneratorFile[" + fileName + "], file already exists");
   }
-  FileChannel channel=new FileOutputStream(fileName).getChannel();
-  ByteBuffer buffer=ByteBuffer.allocate(HEADER_SIZE);
-  buffer.put(CLEAN_GENERATOR).putInt(0).flip();
-  channel.write(buffer);
-  channel.force(false);
-  channel.close();
+  try {
+    FileChannel channel=new FileOutputStream(fileName).getChannel();
+    ByteBuffer buffer=ByteBuffer.allocate(HEADER_SIZE);
+    buffer.put(CLEAN_GENERATOR).putInt(0).flip();
+    channel.write(buffer);
+    channel.force(false);
+    channel.close();
+  }
+ catch (  IOException e) {
+    throw new StoreFailureException("Unable to create id generator" + fileName,e);
+  }
 }

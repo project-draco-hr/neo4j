@@ -1,0 +1,27 @@
+{
+  Transaction tx=null;
+  try {
+    int status=transactionManager.getStatus();
+    if (status == Status.STATUS_NO_TRANSACTION) {
+      throw new NotInTransactionException("Neo API calls must be done in a transaction.");
+    }
+    Thread currentThread=Thread.currentThread();
+    NeoConstraintsEvaluator evaluator=evaluators.get(currentThread);
+    if (evaluator == null) {
+      tx=transactionManager.getTransaction();
+      evaluator=new NeoConstraintsEvaluator();
+      tx.registerSynchronization(evaluator);
+      evaluators.put(currentThread,evaluator);
+    }
+    return evaluator;
+  }
+ catch (  SystemException e) {
+    throw new RuntimeException(e);
+  }
+catch (  IllegalStateException e) {
+    throw new RuntimeException(e);
+  }
+catch (  RollbackException e) {
+    throw new RuntimeException(e);
+  }
+}
