@@ -1,29 +1,34 @@
 {
-  long fileSize=getFileChannel().size();
-  String expectedVersion=getTypeAndVersionDescriptor();
-  byte version[]=new byte[expectedVersion.getBytes().length];
-  ByteBuffer buffer=ByteBuffer.wrap(version);
-  if (fileSize >= version.length) {
-    getFileChannel().position(fileSize - version.length);
-  }
+  try {
+    long fileSize=getFileChannel().size();
+    String expectedVersion=getTypeAndVersionDescriptor();
+    byte version[]=new byte[expectedVersion.getBytes().length];
+    ByteBuffer buffer=ByteBuffer.wrap(version);
+    if (fileSize >= version.length) {
+      getFileChannel().position(fileSize - version.length);
+    }
  else {
-    setStoreNotOk();
+      setStoreNotOk();
+    }
+    getFileChannel().read(buffer);
+    if (!expectedVersion.equals(new String(version))) {
+      versionFound(new String(version));
+      setStoreNotOk();
+    }
+    if (getRecordSize() != 0 && (fileSize - version.length) % getRecordSize() != 0) {
+      setStoreNotOk();
+    }
+    if (getStoreOk()) {
+      getFileChannel().truncate(fileSize - version.length);
+    }
   }
-  getFileChannel().read(buffer);
-  if (!expectedVersion.equals(new String(version))) {
-    versionFound(new String(version));
-    setStoreNotOk();
-  }
-  if (getRecordSize() != 0 && (fileSize - version.length) % getRecordSize() != 0) {
-    setStoreNotOk();
-  }
-  if (getStoreOk()) {
-    getFileChannel().truncate(fileSize - version.length);
+ catch (  IOException e) {
+    throw new StoreFailureException("Unable to load store " + getStorageFileName(),e);
   }
   try {
     openIdGenerator();
   }
- catch (  IOException e) {
+ catch (  StoreFailureException e) {
     setStoreNotOk();
   }
   setWindowPool(new PersistenceWindowPool(getStorageFileName(),getRecordSize(),getFileChannel(),getMappedMem()));

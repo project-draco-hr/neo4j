@@ -16,12 +16,17 @@
     recordSize=((AbstractStore)this).getRecordSize();
   }
   closeIdGenerator();
-  fileChannel.position(((long)highId) * recordSize);
-  ByteBuffer buffer=ByteBuffer.wrap(getTypeAndVersionDescriptor().getBytes());
-  fileChannel.write(buffer);
-  fileChannel.truncate(fileChannel.position());
-  fileChannel.force(false);
-  fileLock.release();
-  fileChannel.close();
-  fileChannel=null;
+  try {
+    fileChannel.position(((long)highId) * recordSize);
+    ByteBuffer buffer=ByteBuffer.wrap(getTypeAndVersionDescriptor().getBytes());
+    fileChannel.write(buffer);
+    fileChannel.truncate(fileChannel.position());
+    fileChannel.force(false);
+    fileLock.release();
+    fileChannel.close();
+    fileChannel=null;
+  }
+ catch (  IOException e) {
+    throw new StoreFailureException("Unable to close store " + getStorageFileName(),e);
+  }
 }

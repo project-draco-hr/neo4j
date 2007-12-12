@@ -1,0 +1,51 @@
+{
+  if (key == null) {
+    throw new IllegalArgumentException("Null parameter.");
+  }
+  nodeManager.acquireLock(this,LockType.WRITE);
+  boolean success=false;
+  try {
+    Property property=null;
+    for (    PropertyIndex cachedIndex : nodeManager.index(key)) {
+      if (propertyMap != null) {
+        property=propertyMap.remove(cachedIndex.getKeyId());
+      }
+      if (property == null) {
+        if (ensureFullProperties()) {
+          property=propertyMap.remove(cachedIndex.getKeyId());
+          if (property != null) {
+            break;
+          }
+        }
+      }
+ else {
+        break;
+      }
+    }
+    if (property == null && !nodeManager.hasAllPropertyIndexes()) {
+      ensureFullProperties();
+      for (      int keyId : propertyMap.keySet()) {
+        if (!nodeManager.hasIndexFor(keyId)) {
+          PropertyIndex indexToCheck=nodeManager.getIndexFor(keyId);
+          if (indexToCheck.getKey().equals(key)) {
+            property=propertyMap.remove(indexToCheck.getKeyId());
+            break;
+          }
+        }
+      }
+    }
+    if (property == null) {
+      success=true;
+      return null;
+    }
+    removeProperty(property.getId());
+    success=true;
+    return getPropertyValue(property);
+  }
+  finally {
+    nodeManager.releaseLock(this,LockType.WRITE);
+    if (!success) {
+      setRollbackOnly();
+    }
+  }
+}

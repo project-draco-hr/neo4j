@@ -8,30 +8,35 @@
   IdGenerator.createGenerator(getStorageFileName() + ".id");
   openIdGenerator();
   FileChannel fileChannel=getFileChannel();
-  long fileSize=fileChannel.size();
-  int recordSize=getRecordSize();
-  ByteBuffer byteBuffer=ByteBuffer.wrap(new byte[recordSize]);
   int highId=-1;
-  for (int i=0; i * recordSize < fileSize; i++) {
-    fileChannel.read(byteBuffer,i * recordSize);
-    byteBuffer.flip();
-    byte inUse=byteBuffer.get();
-    byteBuffer.flip();
-    if (inUse != Record.IN_USE.byteValue()) {
-      byteBuffer.clear();
-      byteBuffer.put(Record.IN_USE.byteValue()).putInt(Record.RESERVED.intValue());
+  int recordSize=getRecordSize();
+  try {
+    long fileSize=fileChannel.size();
+    ByteBuffer byteBuffer=ByteBuffer.wrap(new byte[recordSize]);
+    for (int i=0; i * recordSize < fileSize; i++) {
+      fileChannel.read(byteBuffer,i * recordSize);
       byteBuffer.flip();
-      fileChannel.write(byteBuffer,i * recordSize);
-      byteBuffer.clear();
-    }
+      byte inUse=byteBuffer.get();
+      byteBuffer.flip();
+      if (inUse != Record.IN_USE.byteValue()) {
+        byteBuffer.clear();
+        byteBuffer.put(Record.IN_USE.byteValue()).putInt(Record.RESERVED.intValue());
+        byteBuffer.flip();
+        fileChannel.write(byteBuffer,i * recordSize);
+        byteBuffer.clear();
+      }
  else {
-      highId=i;
+        highId=i;
+      }
+      nextId();
     }
-    nextId();
+    highId++;
+    fileChannel.truncate(highId * recordSize);
   }
-  highId++;
+ catch (  IOException e) {
+    throw new StoreFailureException("Unable to rebuild id generator " + getStorageFileName(),e);
+  }
   setHighId(highId);
-  fileChannel.truncate(highId * recordSize);
   logger.fine("[" + getStorageFileName() + "] high id="+ getHighId());
   closeIdGenerator();
   openIdGenerator();

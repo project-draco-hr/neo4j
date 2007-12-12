@@ -4,6 +4,7 @@
   boolean startNodeLocked=false;
   boolean endNodeLocked=false;
   nodeManager.acquireLock(this,LockType.WRITE);
+  boolean success=false;
   try {
     startNode=nodeManager.getLightNode(startNodeId);
     if (startNode != null) {
@@ -15,20 +16,14 @@
       nodeManager.acquireLock(endNode,LockType.WRITE);
       endNodeLocked=true;
     }
-    int typeId=nodeManager.getRelationshipTypeIdFor(type);
-    EventData eventData=new EventData(new RelationshipOpData(this,id,typeId,startNodeId,endNodeId));
-    if (!nodeManager.generateProActiveEvent(Event.RELATIONSHIP_DELETE,eventData)) {
-      nodeManager.setRollbackOnly();
-      throw new DeleteException("Generate pro-active event failed.");
-    }
+    nodeManager.deleteRelationship(this);
     if (startNode != null) {
       startNode.removeRelationship(type,id);
     }
     if (endNode != null) {
       endNode.removeRelationship(type,id);
     }
-    nodeManager.removeRelationshipFromCache(id);
-    nodeManager.generateReActiveEvent(Event.RELATIONSHIP_DELETE,eventData);
+    success=true;
   }
   finally {
     boolean releaseFailed=false;
@@ -51,6 +46,9 @@
       e.printStackTrace();
     }
     nodeManager.releaseLock(this,LockType.WRITE);
+    if (!success) {
+      setRollbackOnly();
+    }
     if (releaseFailed) {
       throw new RuntimeException("Unable to release locks [" + startNode + ","+ endNode+ "] in relationship delete->"+ this);
     }
