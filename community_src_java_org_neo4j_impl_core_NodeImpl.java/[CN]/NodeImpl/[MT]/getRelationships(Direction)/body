@@ -2,30 +2,28 @@
   if (dir == Direction.BOTH) {
     return getRelationships();
   }
-  nodeManager.acquireLock(this,LockType.READ);
-  try {
+  ArrayMap<String,ArrayIntSet> mapToCheck=null;
+  if (cowRelationshipMap != null && cowTxId == nodeManager.getTransactionId()) {
+    mapToCheck=cowRelationshipMap;
+  }
+ else {
     ensureFullRelationships();
-    if (relationshipMap == null) {
-      return Collections.emptyList();
-    }
-    Iterator<ArrayIntSet> values=relationshipMap.values().iterator();
-    int size=0;
-    while (values.hasNext()) {
-      ArrayIntSet relTypeSet=values.next();
-      size+=relTypeSet.size();
-    }
-    values=relationshipMap.values().iterator();
-    int[] ids=new int[size];
-    int position=0;
-    while (values.hasNext()) {
-      ArrayIntSet relTypeSet=values.next();
-      for (      int relId : relTypeSet.values()) {
-        ids[position++]=relId;
-      }
-    }
-    return new RelationshipIterator(ids,this,dir,nodeManager);
+    mapToCheck=relationshipMap;
   }
-  finally {
-    nodeManager.releaseLock(this,LockType.READ);
+  Iterator<ArrayIntSet> values=mapToCheck.values().iterator();
+  int size=0;
+  while (values.hasNext()) {
+    ArrayIntSet relTypeSet=values.next();
+    size+=relTypeSet.size();
   }
+  values=mapToCheck.values().iterator();
+  int[] ids=new int[size];
+  int position=0;
+  while (values.hasNext()) {
+    ArrayIntSet relTypeSet=values.next();
+    for (    int relId : relTypeSet.values()) {
+      ids[position++]=relId;
+    }
+  }
+  return new RelationshipIterator(ids,this,dir,nodeManager);
 }

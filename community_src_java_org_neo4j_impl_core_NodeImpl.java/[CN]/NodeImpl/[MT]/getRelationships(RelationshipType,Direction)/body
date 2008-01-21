@@ -2,24 +2,22 @@
   if (dir == Direction.BOTH) {
     return getRelationships(type);
   }
-  nodeManager.acquireLock(this,LockType.READ);
-  try {
+  ArrayMap<String,ArrayIntSet> mapToCheck=null;
+  if (cowRelationshipMap != null && cowTxId == nodeManager.getTransactionId()) {
+    mapToCheck=cowRelationshipMap;
+  }
+ else {
     ensureFullRelationships();
-    if (relationshipMap == null) {
-      return Collections.emptyList();
-    }
-    ArrayIntSet relationshipSet=relationshipMap.get(type.name());
-    if (relationshipSet == null) {
-      return Collections.emptyList();
-    }
-    int[] ids=new int[relationshipSet.size()];
-    int position=0;
-    for (    int relId : relationshipSet.values()) {
-      ids[position++]=relId;
-    }
-    return new RelationshipIterator(ids,this,dir,nodeManager);
+    mapToCheck=relationshipMap;
   }
-  finally {
-    nodeManager.releaseLock(this,LockType.READ);
+  ArrayIntSet relationshipSet=mapToCheck.get(type.name());
+  if (relationshipSet == null) {
+    return Collections.emptyList();
   }
+  int[] ids=new int[relationshipSet.size()];
+  int position=0;
+  for (  int relId : relationshipSet.values()) {
+    ids[position++]=relId;
+  }
+  return new RelationshipIterator(ids,this,dir,nodeManager);
 }
