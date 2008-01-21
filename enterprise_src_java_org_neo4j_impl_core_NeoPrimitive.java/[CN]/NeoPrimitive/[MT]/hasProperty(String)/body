@@ -1,30 +1,23 @@
 {
-  nodeManager.acquireLock(this,LockType.READ);
-  try {
-    for (    PropertyIndex index : nodeManager.index(key)) {
-      Property property=null;
-      if (propertyMap != null) {
-        property=propertyMap.get(index.getKeyId());
-      }
-      if (property != null) {
-        return true;
-      }
-      if (ensureFullProperties()) {
-        if (propertyMap.get(index.getKeyId()) != null) {
-          return true;
-        }
-      }
-    }
+  ArrayMap<Integer,Property> mapToCheck=null;
+  if (cowPropertyMap != null && cowTxId == nodeManager.getTransactionId()) {
+    mapToCheck=cowPropertyMap;
+  }
+ else {
     ensureFullProperties();
-    for (    int keyId : propertyMap.keySet()) {
-      PropertyIndex indexToCheck=nodeManager.getIndexFor(keyId);
-      if (indexToCheck.getKey().equals(key)) {
-        return true;
-      }
+    mapToCheck=propertyMap;
+  }
+  for (  PropertyIndex index : nodeManager.index(key)) {
+    Property property=mapToCheck.get(index.getKeyId());
+    if (property != null) {
+      return true;
     }
-    return false;
   }
-  finally {
-    nodeManager.releaseLock(this,LockType.READ);
+  for (  int keyId : mapToCheck.keySet()) {
+    PropertyIndex indexToCheck=nodeManager.getIndexFor(keyId);
+    if (indexToCheck.getKey().equals(key)) {
+      return true;
+    }
   }
+  return false;
 }
