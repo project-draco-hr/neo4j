@@ -1,27 +1,28 @@
 {
-  nodeManager.acquireLock(this,LockType.READ);
-  try {
+  ArrayMap<String,ArrayIntSet> mapToCheck=null;
+  if (cowRelationshipMap != null && cowTxId == nodeManager.getTransactionId()) {
+    mapToCheck=cowRelationshipMap;
+  }
+ else {
     ensureFullRelationships();
-    int size=0;
-    for (    RelationshipType type : types) {
-      ArrayIntSet relTypeSet=relationshipMap.get(type.name());
-      if (relTypeSet != null) {
-        size+=relTypeSet.size();
+    mapToCheck=relationshipMap;
+  }
+  int size=0;
+  for (  RelationshipType type : types) {
+    ArrayIntSet relTypeSet=mapToCheck.get(type.name());
+    if (relTypeSet != null) {
+      size+=relTypeSet.size();
+    }
+  }
+  int[] ids=new int[size];
+  int position=0;
+  for (  RelationshipType type : types) {
+    ArrayIntSet relTypeSet=mapToCheck.get(type.name());
+    if (relTypeSet != null) {
+      for (      int relId : relTypeSet.values()) {
+        ids[position++]=relId;
       }
     }
-    int[] ids=new int[size];
-    int position=0;
-    for (    RelationshipType type : types) {
-      ArrayIntSet relTypeSet=relationshipMap.get(type.name());
-      if (relTypeSet != null) {
-        for (        int relId : relTypeSet.values()) {
-          ids[position++]=relId;
-        }
-      }
-    }
-    return new RelationshipIterator(ids,this,Direction.BOTH,nodeManager);
   }
-  finally {
-    nodeManager.releaseLock(this,LockType.READ);
-  }
+  return new RelationshipIterator(ids,this,Direction.BOTH,nodeManager);
 }
