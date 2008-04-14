@@ -36,6 +36,7 @@
 {
           add("name");
           add("age");
+          add("junk");
         }
       }
 ));
@@ -43,6 +44,8 @@
       will(returnValue("Emil Eifrem"));
       one(emil).getProperty("age");
       will(returnValue(29));
+      one(emil).getProperty("junk");
+      will(returnValue("Should not end up in the picture"));
       one(tobias).getPropertyKeys();
       will(returnValue(new LinkedList<String>(){
 {
@@ -118,11 +121,14 @@
       will(returnValue(new LinkedList<String>(){
 {
           add("since");
+          add("junk");
         }
       }
 ));
       one(emilKNOWStobias).getProperty("since");
       will(returnValue("2003-08-17"));
+      one(emilKNOWStobias).getProperty("junk");
+      will(returnValue("should not end up in the picture"));
       one(johanKNOWSemil).getPropertyKeys();
       will(returnValue(new LinkedList<String>()));
       one(tobiasKNOWSjohan).getPropertyKeys();
@@ -133,7 +139,13 @@
   }
 );
   OutputStream out=new ByteArrayOutputStream();
-  new GraphvizWriter(out).consume(traverser);
+  EmissionPolicy policy=new EmissionPolicy(){
+    public boolean acceptProperty(    SourceType source,    String key){
+      return !key.equals("junk");
+    }
+  }
+;
+  new GraphvizWriter(out,policy).consume(traverser);
   String start="digraph Neo {\n" + "  fontname = \"Bitstream Vera Sans\"\n" + "  fontsize = 8\n"+ "  node [\n"+ "    fontname = \"Bitstream Vera Sans\"\n"+ "    fontsize = 8\n"+ "    shape = \"Mrecord\"\n"+ "  ]\n"+ "  edge [\n"+ "    fontname = \"Bitstream Vera Sans\"\n"+ "    fontsize = 8\n"+ "  ]\n";
   String n1="  N1 [\n" + "    label = \"{Node[1]|name = 'Emil Eifrem' : String\\lage = 29 : int}\"\n" + "  ]\n";
   String n2="  N2 [\n" + "    label = \"{Node[2]|name = 'Tobias \\\"snuttis\\\" Ivarsson' : String\\lage = 23 : int}\"\n" + "  ]\n";
@@ -144,6 +156,8 @@
   String n2n3="  N2 -> N3 [\n" + "    label = \"KNOWS\"\n" + "  ]\n";
   String end="}\n";
   String was=out.toString();
+  System.out.println("GraphvizWriter test, output was:");
+  System.out.print(was);
   Assert.assertEquals("erronious output length",666,was.length());
   Assert.assertTrue("erronious output start",was.startsWith(start));
   Assert.assertTrue("erronious output end",was.endsWith(end));
@@ -151,6 +165,4 @@
   for (  String part : new String[]{n1,n2,n3,n1n2,n2n1,n2n3,n3n1}) {
     Assert.assertTrue("erronious part (" + (i++) + ") of message",was.contains(part));
   }
-  System.out.println("GraphvizWriter test, testSimpleGraph ok, output was:");
-  System.out.print(was);
 }
