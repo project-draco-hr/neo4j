@@ -1,13 +1,11 @@
 {
-  Thread currentThread=Thread.currentThread();
-  List<LockElement> lockElements=lockMap.get(currentThread);
-  if (lockElements != null) {
-    lockElements.add(new LockElement(resource,type));
-  }
+  try {
+    Transaction tx=transactionManager.getTransaction();
+    List<LockElement> lockElements=lockMap.get(tx);
+    if (lockElements != null) {
+      lockElements.add(new LockElement(resource,type));
+    }
  else {
-    Transaction tx=null;
-    try {
-      tx=transactionManager.getTransaction();
       if (tx == null) {
         if (type == LockType.WRITE) {
           lockManager.releaseWriteLock(resource);
@@ -17,16 +15,16 @@
         }
         throw new NotInTransactionException();
       }
-      tx.registerSynchronization(new TxCommitHook(this));
+      tx.registerSynchronization(new TxCommitHook(this,tx));
+      lockElements=new ArrayList<LockElement>();
+      lockMap.put(tx,lockElements);
+      lockElements.add(new LockElement(resource,type));
     }
- catch (    javax.transaction.SystemException e) {
-      throw new NotInTransactionException(e);
-    }
-catch (    Exception e) {
-      throw new NotInTransactionException(e);
-    }
-    lockElements=new ArrayList<LockElement>();
-    lockMap.put(currentThread,lockElements);
-    lockElements.add(new LockElement(resource,type));
+  }
+ catch (  javax.transaction.SystemException e) {
+    throw new NotInTransactionException(e);
+  }
+catch (  Exception e) {
+    throw new NotInTransactionException(e);
   }
 }

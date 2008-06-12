@@ -1,24 +1,27 @@
 {
-  Thread currentThread=Thread.currentThread();
-  ThreadLockElement tle=threadLockElementMap.get(currentThread);
+  Transaction tx=ragManager.getCurrentTransaction();
+  if (tx == null) {
+    tx=new PlaceboTransaction();
+  }
+  TxLockElement tle=txLockElementMap.get(tx);
   if (tle == null) {
-    throw new LockNotFoundException("No thread lock element found for " + currentThread);
+    throw new LockNotFoundException("No transaction lock element found for " + tx);
   }
   if (tle.writeCount == 0) {
-    throw new LockNotFoundException("" + currentThread + " don't have writeLock");
+    throw new LockNotFoundException("" + tx + " don't have writeLock");
   }
   writeCount--;
   tle.writeCount--;
   if (tle.readCount == 0 && tle.writeCount == 0) {
     if (!this.isMarked()) {
-      threadLockElementMap.remove(currentThread);
+      txLockElementMap.remove(tx);
     }
-    ragManager.lockReleased(this);
+    ragManager.lockReleased(this,tx);
   }
   if (writeCount == 0 && waitingThreadList.size() > 0) {
     do {
       WaitElement we=waitingThreadList.removeLast();
-      we.element.thread.interrupt();
+      we.waitingThread.interrupt();
       if (we.lockType == LockType.WRITE) {
         break;
       }
