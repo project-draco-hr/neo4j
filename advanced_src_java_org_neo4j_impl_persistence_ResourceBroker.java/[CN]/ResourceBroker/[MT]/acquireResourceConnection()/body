@@ -2,17 +2,16 @@
   ResourceConnection con=null;
   PersistenceSource source=null;
   source=dispatcher.getPersistenceSource();
-  Thread currentThread=Thread.currentThread();
-  con=txConnectionMap.get(currentThread);
+  Transaction tx=this.getCurrentTransaction();
+  con=txConnectionMap.get(tx);
   if (con == null) {
     try {
-      Transaction tx=this.getCurrentTransaction();
       con=source.createResourceConnection();
       if (!tx.enlistResource(con.getXAResource())) {
         throw new ResourceAcquisitionFailedException("Unable to enlist '" + con.getXAResource() + "' in "+ "transaction");
       }
-      tx.registerSynchronization(txCommitHook);
-      txConnectionMap.put(currentThread,con);
+      tx.registerSynchronization(new TxCommitHook(tx));
+      txConnectionMap.put(tx,con);
     }
  catch (    javax.transaction.RollbackException re) {
       String msg="The transaction is marked for rollback only.";
