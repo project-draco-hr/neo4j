@@ -1,35 +1,41 @@
 {
-  boolean checkCow=false;
-  if (cowTxId == nodeManager.getTransaction()) {
-    checkCow=true;
-  }
-  ensureFullRelationships();
-  ArrayIntSet relIds=new ArrayIntSet();
-  for (  RelationshipType type : types) {
-    ArrayIntSet source=relationshipMap.get(type.name());
-    if (source == null) {
-      continue;
+  lock.readLock().lock();
+  try {
+    boolean checkCow=false;
+    if (cowTxId == nodeManager.getTransaction()) {
+      checkCow=true;
     }
-    for (    int relId : source.values()) {
-      if (checkCow && cowRelationshipRemoveMap != null) {
-        ArrayIntSet skip=cowRelationshipRemoveMap.get(type.name());
-        if (skip != null && skip.contains(relId)) {
-          continue;
-        }
-      }
-      relIds.add(relId);
-    }
-  }
-  if (checkCow && cowRelationshipAddMap != null) {
+    ensureFullRelationships();
+    ArrayIntSet relIds=new ArrayIntSet();
     for (    RelationshipType type : types) {
-      ArrayIntSet source=cowRelationshipAddMap.get(type.name());
+      ArrayIntSet source=relationshipMap.get(type.name());
       if (source == null) {
         continue;
       }
       for (      int relId : source.values()) {
+        if (checkCow && cowRelationshipRemoveMap != null) {
+          ArrayIntSet skip=cowRelationshipRemoveMap.get(type.name());
+          if (skip != null && skip.contains(relId)) {
+            continue;
+          }
+        }
         relIds.add(relId);
       }
     }
+    if (checkCow && cowRelationshipAddMap != null) {
+      for (      RelationshipType type : types) {
+        ArrayIntSet source=cowRelationshipAddMap.get(type.name());
+        if (source == null) {
+          continue;
+        }
+        for (        int relId : source.values()) {
+          relIds.add(relId);
+        }
+      }
+    }
+    return new RelationshipArrayIntSetIterator(relIds,this,Direction.BOTH,nodeManager);
   }
-  return new RelationshipArrayIntSetIterator(relIds,this,Direction.BOTH,nodeManager);
+  finally {
+    lock.readLock().unlock();
+  }
 }
