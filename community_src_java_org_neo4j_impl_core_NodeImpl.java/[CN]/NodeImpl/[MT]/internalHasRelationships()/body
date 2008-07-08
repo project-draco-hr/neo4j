@@ -1,29 +1,35 @@
 {
-  boolean checkCow=false;
-  if (cowTxId == nodeManager.getTransaction()) {
-    checkCow=true;
-  }
-  ensureFullRelationships();
-  ArrayIntSet relIds=new ArrayIntSet();
-  for (  String type : relationshipMap.keySet()) {
-    ArrayIntSet source=relationshipMap.get(type);
-    for (    int relId : source.values()) {
-      if (checkCow && cowRelationshipRemoveMap != null) {
-        ArrayIntSet skip=cowRelationshipRemoveMap.get(type);
-        if (skip != null && skip.contains(relId)) {
-          continue;
-        }
-      }
-      return true;
+  lock.readLock().lock();
+  try {
+    boolean checkCow=false;
+    if (cowTxId == nodeManager.getTransaction()) {
+      checkCow=true;
     }
-  }
-  if (checkCow && cowRelationshipAddMap != null) {
-    for (    String type : cowRelationshipAddMap.keySet()) {
-      ArrayIntSet source=cowRelationshipAddMap.get(type);
-      if (source.size() > 0) {
+    ensureFullRelationships();
+    ArrayIntSet relIds=new ArrayIntSet();
+    for (    String type : relationshipMap.keySet()) {
+      ArrayIntSet source=relationshipMap.get(type);
+      for (      int relId : source.values()) {
+        if (checkCow && cowRelationshipRemoveMap != null) {
+          ArrayIntSet skip=cowRelationshipRemoveMap.get(type);
+          if (skip != null && skip.contains(relId)) {
+            continue;
+          }
+        }
         return true;
       }
     }
+    if (checkCow && cowRelationshipAddMap != null) {
+      for (      String type : cowRelationshipAddMap.keySet()) {
+        ArrayIntSet source=cowRelationshipAddMap.get(type);
+        if (source.size() > 0) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
-  return false;
+  finally {
+    lock.readLock().unlock();
+  }
 }
