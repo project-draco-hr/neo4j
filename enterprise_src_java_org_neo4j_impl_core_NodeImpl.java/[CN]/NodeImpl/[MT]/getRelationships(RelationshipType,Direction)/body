@@ -1,23 +1,29 @@
 {
-  if (dir == Direction.BOTH) {
-    return getRelationships(type);
+  boolean checkCow=false;
+  if (cowTxId == nodeManager.getTransaction()) {
+    checkCow=true;
   }
-  ArrayMap<String,ArrayIntSet> mapToCheck=null;
-  if (cowRelationshipMap != null && cowTxId == nodeManager.getTransaction()) {
-    mapToCheck=cowRelationshipMap;
+  ensureFullRelationships();
+  ArrayIntSet relIds=new ArrayIntSet();
+  ArrayIntSet source=relationshipMap.get(type.name());
+  if (source != null) {
+    for (    int relId : source.values()) {
+      if (checkCow && cowRelationshipRemoveMap != null) {
+        ArrayIntSet skip=cowRelationshipRemoveMap.get(type.name());
+        if (skip != null && skip.contains(relId)) {
+          continue;
+        }
+      }
+      relIds.add(relId);
+    }
   }
- else {
-    ensureFullRelationships();
-    mapToCheck=relationshipMap;
+  if (checkCow && cowRelationshipAddMap != null) {
+    source=cowRelationshipAddMap.get(type.name());
+    if (source != null) {
+      for (      int relId : source.values()) {
+        relIds.add(relId);
+      }
+    }
   }
-  ArrayIntSet relationshipSet=mapToCheck.get(type.name());
-  if (relationshipSet == null) {
-    return Collections.emptyList();
-  }
-  int[] ids=new int[relationshipSet.size()];
-  int position=0;
-  for (  int relId : relationshipSet.values()) {
-    ids[position++]=relId;
-  }
-  return new RelationshipIterator(ids,this,dir,nodeManager);
+  return new RelationshipArrayIntSetIterator(relIds,this,dir,nodeManager);
 }
