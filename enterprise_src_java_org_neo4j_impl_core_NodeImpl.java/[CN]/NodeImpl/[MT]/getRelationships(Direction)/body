@@ -1,32 +1,38 @@
 {
-  if (dir == Direction.BOTH) {
-    return getRelationships();
-  }
-  boolean checkCow=false;
-  if (cowTxId == nodeManager.getTransaction()) {
-    checkCow=true;
-  }
-  ensureFullRelationships();
-  ArrayIntSet relIds=new ArrayIntSet();
-  for (  String type : relationshipMap.keySet()) {
-    ArrayIntSet source=relationshipMap.get(type);
-    for (    int relId : source.values()) {
-      if (checkCow && cowRelationshipRemoveMap != null) {
-        ArrayIntSet skip=cowRelationshipRemoveMap.get(type);
-        if (skip != null && skip.contains(relId)) {
-          continue;
-        }
-      }
-      relIds.add(relId);
+  lock.readLock().lock();
+  try {
+    if (dir == Direction.BOTH) {
+      return getRelationships();
     }
-  }
-  if (checkCow && cowRelationshipAddMap != null) {
-    for (    String type : cowRelationshipAddMap.keySet()) {
-      ArrayIntSet source=cowRelationshipAddMap.get(type);
+    boolean checkCow=false;
+    if (cowTxId == nodeManager.getTransaction()) {
+      checkCow=true;
+    }
+    ensureFullRelationships();
+    ArrayIntSet relIds=new ArrayIntSet();
+    for (    String type : relationshipMap.keySet()) {
+      ArrayIntSet source=relationshipMap.get(type);
       for (      int relId : source.values()) {
+        if (checkCow && cowRelationshipRemoveMap != null) {
+          ArrayIntSet skip=cowRelationshipRemoveMap.get(type);
+          if (skip != null && skip.contains(relId)) {
+            continue;
+          }
+        }
         relIds.add(relId);
       }
     }
+    if (checkCow && cowRelationshipAddMap != null) {
+      for (      String type : cowRelationshipAddMap.keySet()) {
+        ArrayIntSet source=cowRelationshipAddMap.get(type);
+        for (        int relId : source.values()) {
+          relIds.add(relId);
+        }
+      }
+    }
+    return new RelationshipArrayIntSetIterator(relIds,this,dir,nodeManager);
   }
-  return new RelationshipArrayIntSetIterator(relIds,this,dir,nodeManager);
+  finally {
+    lock.readLock().unlock();
+  }
 }
