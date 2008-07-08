@@ -1,28 +1,35 @@
 {
-  ArrayMap<String,ArrayIntSet> mapToCheck=null;
-  if (cowRelationshipMap != null && cowTxId == nodeManager.getTransaction()) {
-    mapToCheck=cowRelationshipMap;
+  boolean checkCow=false;
+  if (cowTxId == nodeManager.getTransaction()) {
+    checkCow=true;
   }
- else {
-    ensureFullRelationships();
-    mapToCheck=relationshipMap;
-  }
-  int size=0;
+  ensureFullRelationships();
+  ArrayIntSet relIds=new ArrayIntSet();
   for (  RelationshipType type : types) {
-    ArrayIntSet relTypeSet=mapToCheck.get(type.name());
-    if (relTypeSet != null) {
-      size+=relTypeSet.size();
+    ArrayIntSet source=relationshipMap.get(type.name());
+    if (source == null) {
+      continue;
+    }
+    for (    int relId : source.values()) {
+      if (checkCow && cowRelationshipRemoveMap != null) {
+        ArrayIntSet skip=cowRelationshipRemoveMap.get(type.name());
+        if (skip != null && skip.contains(relId)) {
+          continue;
+        }
+      }
+      relIds.add(relId);
     }
   }
-  int[] ids=new int[size];
-  int position=0;
-  for (  RelationshipType type : types) {
-    ArrayIntSet relTypeSet=mapToCheck.get(type.name());
-    if (relTypeSet != null) {
-      for (      int relId : relTypeSet.values()) {
-        ids[position++]=relId;
+  if (checkCow && cowRelationshipAddMap != null) {
+    for (    RelationshipType type : types) {
+      ArrayIntSet source=cowRelationshipAddMap.get(type.name());
+      if (source == null) {
+        continue;
+      }
+      for (      int relId : source.values()) {
+        relIds.add(relId);
       }
     }
   }
-  return new RelationshipIterator(ids,this,Direction.BOTH,nodeManager);
+  return new RelationshipArrayIntSetIterator(relIds,this,Direction.BOTH,nodeManager);
 }

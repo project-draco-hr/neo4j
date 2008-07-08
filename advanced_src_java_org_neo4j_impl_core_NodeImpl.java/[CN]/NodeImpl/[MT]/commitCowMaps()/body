@@ -1,7 +1,38 @@
 {
   super.commitCowMaps();
-  if (cowRelationshipMap != null) {
-    relationshipMap=cowRelationshipMap;
-    cowRelationshipMap=null;
+  ArrayMap<String,ArrayIntSet> newMap=new ArrayMap<String,ArrayIntSet>();
+  if (relationshipMap != null) {
+    for (    String type : relationshipMap.keySet()) {
+      ArrayIntSet source=relationshipMap.get(type);
+      ArrayIntSet dest=new ArrayIntSet();
+      ArrayIntSet skip=null;
+      if (cowRelationshipRemoveMap != null) {
+        skip=cowRelationshipRemoveMap.get(type);
+      }
+      for (      int relId : source.values()) {
+        if (skip == null || !skip.contains(relId)) {
+          dest.add(relId);
+        }
+      }
+      if (dest.size() > 0) {
+        newMap.put(type,dest);
+      }
+    }
   }
+  if (cowRelationshipAddMap != null) {
+    for (    String type : cowRelationshipAddMap.keySet()) {
+      ArrayIntSet source=cowRelationshipAddMap.get(type);
+      ArrayIntSet dest=newMap.get(type);
+      if (dest == null) {
+        dest=new ArrayIntSet();
+        newMap.put(type,dest);
+      }
+      for (      int relId : source.values()) {
+        dest.add(relId);
+      }
+    }
+  }
+  cowRelationshipAddMap=null;
+  cowRelationshipRemoveMap=null;
+  relationshipMap=newMap;
 }
