@@ -1,14 +1,29 @@
 {
-  ArrayMap<String,ArrayIntSet> mapToCheck=null;
-  if (cowRelationshipMap != null && cowTxId == nodeManager.getTransaction()) {
-    mapToCheck=cowRelationshipMap;
+  boolean checkCow=false;
+  if (cowTxId == nodeManager.getTransaction()) {
+    checkCow=true;
   }
- else {
-    ensureFullRelationships();
-    mapToCheck=relationshipMap;
+  ensureFullRelationships();
+  ArrayIntSet relIds=new ArrayIntSet();
+  for (  String type : relationshipMap.keySet()) {
+    ArrayIntSet source=relationshipMap.get(type);
+    for (    int relId : source.values()) {
+      if (checkCow && cowRelationshipRemoveMap != null) {
+        ArrayIntSet skip=cowRelationshipRemoveMap.get(type);
+        if (skip != null && skip.contains(relId)) {
+          continue;
+        }
+      }
+      return true;
+    }
   }
-  if (mapToCheck != null) {
-    return (mapToCheck.size() > 0);
+  if (checkCow && cowRelationshipAddMap != null) {
+    for (    String type : cowRelationshipAddMap.keySet()) {
+      ArrayIntSet source=cowRelationshipAddMap.get(type);
+      if (source.size() > 0) {
+        return true;
+      }
+    }
   }
   return false;
 }
