@@ -1,35 +1,33 @@
 {
-  lock.readLock().lock();
-  try {
-    boolean checkCow=false;
-    if (cowTxId == nodeManager.getTransaction()) {
-      checkCow=true;
-    }
-    ensureFullRelationships();
-    ArrayIntSet relIds=new ArrayIntSet();
-    for (    String type : relationshipMap.keySet()) {
-      ArrayIntSet source=relationshipMap.get(type);
-      for (      int relId : source.values()) {
-        if (checkCow && cowRelationshipRemoveMap != null) {
-          ArrayIntSet skip=cowRelationshipRemoveMap.get(type);
-          if (skip != null && skip.contains(relId)) {
-            continue;
-          }
+  boolean checkCow=false;
+  if (cowTxId == nodeManager.getTransaction()) {
+    checkCow=true;
+  }
+  ensureFullRelationships();
+  ArrayIntSet relIds=new ArrayIntSet();
+  for (  String type : relationshipMap.keySet()) {
+    ArrayIntSet source=relationshipMap.get(type);
+    for (    int relId : source.values()) {
+      if (checkCow) {
+        ArrayIntSet skip=nodeManager.getCowRelationshipRemoveMap(this,type);
+        if (skip != null && skip.contains(relId)) {
+          continue;
         }
+      }
+      relIds.add(relId);
+    }
+  }
+  ArrayMap<String,ArrayIntSet> cowRelationshipAddMap=null;
+  if (checkCow) {
+    cowRelationshipAddMap=nodeManager.getCowRelationshipAddMap(this);
+  }
+  if (checkCow && cowRelationshipAddMap != null) {
+    for (    String type : cowRelationshipAddMap.keySet()) {
+      ArrayIntSet source=cowRelationshipAddMap.get(type);
+      for (      int relId : source.values()) {
         relIds.add(relId);
       }
     }
-    if (checkCow && cowRelationshipAddMap != null) {
-      for (      String type : cowRelationshipAddMap.keySet()) {
-        ArrayIntSet source=cowRelationshipAddMap.get(type);
-        for (        int relId : source.values()) {
-          relIds.add(relId);
-        }
-      }
-    }
-    return new RelationshipArrayIntSetIterator(relIds,this,Direction.BOTH,nodeManager);
   }
-  finally {
-    lock.readLock().unlock();
-  }
+  return new RelationshipArrayIntSetIterator(relIds,this,Direction.BOTH,nodeManager);
 }

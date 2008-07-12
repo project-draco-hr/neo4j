@@ -2,30 +2,31 @@
   if (key == null) {
     throw new IllegalArgumentException("null key");
   }
-  ArrayMap<Integer,Property> mapToCheck=null;
-  if (cowPropertyMap != null && cowTxId == nodeManager.getTransaction()) {
-    mapToCheck=cowPropertyMap;
+  ArrayMap<Integer,Property> skipMap=null;
+  ArrayMap<Integer,Property> addMap=null;
+  if (cowTxId == nodeManager.getTransaction()) {
+    skipMap=nodeManager.getCowPropertyRemoveMap(this);
+    addMap=nodeManager.getCowPropertyAddMap(this);
   }
- else {
-    ensureFullProperties();
-    mapToCheck=propertyMap;
-  }
+  ensureFullProperties();
   for (  PropertyIndex index : nodeManager.index(key)) {
-    Property property=mapToCheck.get(index.getKeyId());
+    if (skipMap != null && skipMap.get(index.getKeyId()) != null) {
+      return defaultValue;
+    }
+    if (addMap != null) {
+      Property property=addMap.get(index.getKeyId());
+      if (property != null) {
+        return getPropertyValue(property);
+      }
+    }
+    Property property=propertyMap.get(index.getKeyId());
     if (property != null) {
       return getPropertyValue(property);
     }
   }
-  if (!nodeManager.hasAllPropertyIndexes()) {
-    for (    int keyId : mapToCheck.keySet()) {
-      if (!nodeManager.hasIndexFor(keyId)) {
-        PropertyIndex indexToCheck=nodeManager.getIndexFor(keyId);
-        if (indexToCheck.getKey().equals(key)) {
-          Property property=mapToCheck.get(indexToCheck.getKeyId());
-          return getPropertyValue(property);
-        }
-      }
-    }
+  Property property=getSlowProperty(addMap,skipMap,key);
+  if (property != null) {
+    return getPropertyValue(property);
   }
   return defaultValue;
 }

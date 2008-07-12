@@ -1,16 +1,37 @@
 {
-  List<NeoPrimitive> cowElements=cowMap.remove(cowTxId);
-  if (cowElements != null) {
-    for (    NeoPrimitive neoPrimitive : cowElements) {
+  NeoPrimitiveElement element=cowMap.get(cowTxId);
+  if (element == null) {
+    return;
+  }
+  ArrayMap<Integer,CowNodeElement> cowNodeElements=element.nodes;
+  for (  int nodeId : cowNodeElements.keySet()) {
+    NodeImpl node=nodeManager.getNodeIfCached(nodeId);
+    if (node != null && node.cowTxId != null) {
       if (param == Status.STATUS_COMMITTED) {
-        neoPrimitive.commitCowMaps();
+        node.commitCowMaps();
       }
  else       if (param == Status.STATUS_ROLLEDBACK) {
-        neoPrimitive.rollbackCowMaps();
+        node.rollbackCowMaps();
       }
  else {
         throw new RuntimeException("Unkown status: " + param);
       }
     }
   }
+  ArrayMap<Integer,CowRelElement> cowRelElements=element.relationships;
+  for (  int relId : cowRelElements.keySet()) {
+    RelationshipImpl rel=nodeManager.getRelIfCached(relId);
+    if (rel != null && rel.cowTxId != null) {
+      if (param == Status.STATUS_COMMITTED) {
+        rel.commitCowMaps();
+      }
+ else       if (param == Status.STATUS_ROLLEDBACK) {
+        rel.rollbackCowMaps();
+      }
+ else {
+        throw new RuntimeException("Unkown status: " + param);
+      }
+    }
+  }
+  cowMap.remove(cowTxId);
 }

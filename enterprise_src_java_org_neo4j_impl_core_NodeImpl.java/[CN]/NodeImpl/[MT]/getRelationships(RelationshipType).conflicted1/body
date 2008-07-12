@@ -1,41 +1,35 @@
 {
-  lock.readLock().lock();
-  try {
-    boolean checkCow=false;
-    if (cowTxId == nodeManager.getTransaction()) {
-      checkCow=true;
+  boolean checkCow=false;
+  if (cowTxId == nodeManager.getTransaction()) {
+    checkCow=true;
+  }
+  ensureFullRelationships();
+  ArrayIntSet relIds=new ArrayIntSet();
+  for (  RelationshipType type : types) {
+    ArrayIntSet source=relationshipMap.get(type.name());
+    if (source == null) {
+      continue;
     }
-    ensureFullRelationships();
-    ArrayIntSet relIds=new ArrayIntSet();
+    for (    int relId : source.values()) {
+      if (checkCow) {
+        ArrayIntSet skip=nodeManager.getCowRelationshipRemoveMap(this,type.name());
+        if (skip != null && skip.contains(relId)) {
+          continue;
+        }
+      }
+      relIds.add(relId);
+    }
+  }
+  if (checkCow) {
     for (    RelationshipType type : types) {
-      ArrayIntSet source=relationshipMap.get(type.name());
+      ArrayIntSet source=nodeManager.getCowRelationshipAddMap(this,type.name());
       if (source == null) {
         continue;
       }
       for (      int relId : source.values()) {
-        if (checkCow && cowRelationshipRemoveMap != null) {
-          ArrayIntSet skip=cowRelationshipRemoveMap.get(type.name());
-          if (skip != null && skip.contains(relId)) {
-            continue;
-          }
-        }
         relIds.add(relId);
       }
     }
-    if (checkCow && cowRelationshipAddMap != null) {
-      for (      RelationshipType type : types) {
-        ArrayIntSet source=cowRelationshipAddMap.get(type.name());
-        if (source == null) {
-          continue;
-        }
-        for (        int relId : source.values()) {
-          relIds.add(relId);
-        }
-      }
-    }
-    return new RelationshipArrayIntSetIterator(relIds,this,Direction.BOTH,nodeManager);
   }
-  finally {
-    lock.readLock().unlock();
-  }
+  return new RelationshipArrayIntSetIterator(relIds,this,Direction.BOTH,nodeManager);
 }

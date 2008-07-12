@@ -1,2 +1,83 @@
 {
+  if (key == null || value == null) {
+    throw new IllegalArgumentException("Null parameter, " + "key=" + key + ", "+ "value="+ value);
+  }
+  nodeManager.acquireLock(this,LockType.WRITE);
+  boolean success=false;
+  try {
+    setupCowTx();
+    ensureFullProperties();
+    ArrayMap<Integer,Property> addMap=nodeManager.getCowPropertyAddMap(this,true);
+    ArrayMap<Integer,Property> skipMap=nodeManager.getCowPropertyRemoveMap(this);
+    PropertyIndex index=null;
+    Property property=null;
+    for (    PropertyIndex cachedIndex : nodeManager.index(key)) {
+      if (skipMap != null) {
+        skipMap.remove(cachedIndex.getKeyId());
+      }
+      index=cachedIndex;
+      property=addMap.get(cachedIndex.getKeyId());
+      if (property != null) {
+        break;
+      }
+      property=propertyMap.get(cachedIndex.getKeyId());
+      if (property != null) {
+        break;
+      }
+    }
+    if (property == null && !nodeManager.hasAllPropertyIndexes()) {
+      for (      int keyId : addMap.keySet()) {
+        if (!nodeManager.hasIndexFor(keyId)) {
+          PropertyIndex indexToCheck=nodeManager.getIndexFor(keyId);
+          if (indexToCheck.getKey().equals(key)) {
+            if (skipMap != null) {
+              skipMap.remove(indexToCheck.getKeyId());
+            }
+            index=indexToCheck;
+            property=addMap.get(indexToCheck.getKeyId());
+            if (property != null) {
+              break;
+            }
+          }
+        }
+      }
+      if (property == null) {
+        for (        int keyId : propertyMap.keySet()) {
+          if (!nodeManager.hasIndexFor(keyId)) {
+            PropertyIndex indexToCheck=nodeManager.getIndexFor(keyId);
+            if (indexToCheck.getKey().equals(key)) {
+              if (skipMap != null) {
+                skipMap.remove(indexToCheck.getKeyId());
+              }
+              index=indexToCheck;
+              property=propertyMap.get(indexToCheck.getKeyId());
+              if (property != null) {
+                break;
+              }
+            }
+          }
+        }
+      }
+    }
+    if (index == null) {
+      index=nodeManager.createPropertyIndex(key);
+    }
+    if (property != null) {
+      int propertyId=property.getId();
+      changeProperty(propertyId,value);
+      property.setNewValue(value);
+    }
+ else {
+      int propertyId=addProperty(index,value);
+      property=new Property(propertyId,value);
+    }
+    addMap.put(index.getKeyId(),property);
+    success=true;
+  }
+  finally {
+    nodeManager.releaseLock(this,LockType.WRITE);
+    if (!success) {
+      setRollbackOnly();
+    }
+  }
 }

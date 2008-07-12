@@ -1,28 +1,28 @@
 {
-  lock.readLock().lock();
-  try {
-    if (dir == Direction.BOTH) {
-      return getRelationships();
-    }
-    boolean checkCow=false;
-    if (cowTxId == nodeManager.getTransaction()) {
-      checkCow=true;
-    }
-    ensureFullRelationships();
-    ArrayIntSet relIds=new ArrayIntSet();
-    for (    String type : relationshipMap.keySet()) {
-      ArrayIntSet source=relationshipMap.get(type);
-      for (      int relId : source.values()) {
-        if (checkCow && cowRelationshipRemoveMap != null) {
-          ArrayIntSet skip=cowRelationshipRemoveMap.get(type);
-          if (skip != null && skip.contains(relId)) {
-            continue;
-          }
+  if (dir == Direction.BOTH) {
+    return getRelationships();
+  }
+  boolean checkCow=false;
+  if (cowTxId == nodeManager.getTransaction()) {
+    checkCow=true;
+  }
+  ensureFullRelationships();
+  ArrayIntSet relIds=new ArrayIntSet();
+  for (  String type : relationshipMap.keySet()) {
+    ArrayIntSet source=relationshipMap.get(type);
+    for (    int relId : source.values()) {
+      if (checkCow) {
+        ArrayIntSet skip=nodeManager.getCowRelationshipRemoveMap(this,type);
+        if (skip != null && skip.contains(relId)) {
+          continue;
         }
-        relIds.add(relId);
       }
+      relIds.add(relId);
     }
-    if (checkCow && cowRelationshipAddMap != null) {
+  }
+  if (checkCow) {
+    ArrayMap<String,ArrayIntSet> cowRelationshipAddMap=nodeManager.getCowRelationshipAddMap(this);
+    if (cowRelationshipAddMap != null) {
       for (      String type : cowRelationshipAddMap.keySet()) {
         ArrayIntSet source=cowRelationshipAddMap.get(type);
         for (        int relId : source.values()) {
@@ -30,9 +30,6 @@
         }
       }
     }
-    return new RelationshipArrayIntSetIterator(relIds,this,dir,nodeManager);
   }
-  finally {
-    lock.readLock().unlock();
-  }
+  return new RelationshipArrayIntSetIterator(relIds,this,dir,nodeManager);
 }
