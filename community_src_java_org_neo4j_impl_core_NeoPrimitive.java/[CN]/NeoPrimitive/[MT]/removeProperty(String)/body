@@ -1,2 +1,71 @@
 {
+  if (key == null) {
+    throw new IllegalArgumentException("Null parameter.");
+  }
+  nodeManager.acquireLock(this,LockType.WRITE);
+  boolean success=false;
+  try {
+    setupCowTx();
+    ensureFullProperties();
+    Property property=null;
+    ArrayMap<Integer,Property> addMap=nodeManager.getCowPropertyAddMap(this);
+    ArrayMap<Integer,Property> removeMap=nodeManager.getCowPropertyRemoveMap(this,true);
+    for (    PropertyIndex cachedIndex : nodeManager.index(key)) {
+      if (addMap != null) {
+        property=addMap.remove(cachedIndex.getKeyId());
+        if (property != null) {
+          removeMap.put(cachedIndex.getKeyId(),property);
+          break;
+        }
+      }
+      property=propertyMap.get(cachedIndex.getKeyId());
+      if (property != null) {
+        removeMap.put(cachedIndex.getKeyId(),property);
+        break;
+      }
+    }
+    if (property == null && !nodeManager.hasAllPropertyIndexes()) {
+      if (addMap != null) {
+        for (        int keyId : addMap.keySet()) {
+          if (!nodeManager.hasIndexFor(keyId)) {
+            PropertyIndex indexToCheck=nodeManager.getIndexFor(keyId);
+            if (indexToCheck.getKey().equals(key)) {
+              property=addMap.remove(indexToCheck.getKeyId());
+              if (property != null) {
+                removeMap.put(indexToCheck.getKeyId(),property);
+                break;
+              }
+            }
+          }
+        }
+        if (property == null) {
+          for (          int keyId : propertyMap.keySet()) {
+            if (!nodeManager.hasIndexFor(keyId)) {
+              PropertyIndex indexToCheck=nodeManager.getIndexFor(keyId);
+              if (indexToCheck.getKey().equals(key)) {
+                property=propertyMap.get(indexToCheck.getKeyId());
+                if (property != null) {
+                  removeMap.put(indexToCheck.getKeyId(),property);
+                  break;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    if (property == null) {
+      success=true;
+      return null;
+    }
+    removeProperty(property.getId());
+    success=true;
+    return getPropertyValue(property);
+  }
+  finally {
+    nodeManager.releaseLock(this,LockType.WRITE);
+    if (!success) {
+      setRollbackOnly();
+    }
+  }
 }

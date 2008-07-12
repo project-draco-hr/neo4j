@@ -1,15 +1,25 @@
 {
-  ArrayMap<Integer,Property> mapToCheck=null;
-  if (cowPropertyMap != null && cowTxId == nodeManager.getTransaction()) {
-    mapToCheck=cowPropertyMap;
+  ArrayMap<Integer,Property> skipMap=null;
+  ArrayMap<Integer,Property> addMap=null;
+  if (cowTxId == nodeManager.getTransaction()) {
+    skipMap=nodeManager.getCowPropertyRemoveMap(this);
+    addMap=nodeManager.getCowPropertyAddMap(this);
   }
- else {
-    ensureFullProperties();
-    mapToCheck=propertyMap;
+  ensureFullProperties();
+  List<String> keys=new ArrayList<String>();
+  for (  Integer index : propertyMap.keySet()) {
+    if (skipMap != null && skipMap.get(index) != null) {
+      continue;
+    }
+    if (addMap != null && addMap.get(index) != null) {
+      continue;
+    }
+    keys.add(nodeManager.getIndexFor(index).getKey());
   }
-  List<String> propertyKeys=new ArrayList<String>();
-  for (  int keyId : mapToCheck.keySet()) {
-    propertyKeys.add(nodeManager.getIndexFor(keyId).getKey());
+  if (addMap != null) {
+    for (    Integer index : addMap.keySet()) {
+      keys.add(nodeManager.getIndexFor(index).getKey());
+    }
   }
-  return propertyKeys;
+  return keys;
 }
