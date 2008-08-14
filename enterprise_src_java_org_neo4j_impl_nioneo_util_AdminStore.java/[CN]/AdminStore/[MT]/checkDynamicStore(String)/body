@@ -5,7 +5,8 @@
   }
   File idGenerator=new File(storeName + ".blockid");
   if (idGenerator.exists()) {
-    idGenerator.delete();
+    boolean success=idGenerator.delete();
+    assert success;
   }
   System.out.print(storeName);
   FileChannel fileChannel=new RandomAccessFile(storeName,"r").getChannel();
@@ -26,7 +27,7 @@
   int inUseCount=0;
   for (i=1; (i + 1) * blockSize <= fileSize; i++) {
     inUseBuffer.clear();
-    fileChannel.position(i * blockSize);
+    fileChannel.position((long)i * blockSize);
     fileChannel.read(inUseBuffer);
     inUseBuffer.flip();
     byte inUse=inUseBuffer.get();
@@ -46,7 +47,7 @@
           throw new IOException("Bad next block[" + next + "] at block "+ i);
         }
         buffer.clear();
-        fileChannel.position(next * blockSize);
+        fileChannel.position((long)next * blockSize);
         fileChannel.read(buffer);
         buffer.flip();
         if (buffer.get() != BLOCK_IN_USE) {
@@ -65,7 +66,7 @@
           throw new IOException("Bad previous block[" + previous + "] at block "+ i);
         }
         buffer.clear();
-        fileChannel.position(previous * blockSize);
+        fileChannel.position((long)previous * blockSize);
         fileChannel.read(buffer);
         buffer.flip();
         if (buffer.get() != BLOCK_IN_USE) {
