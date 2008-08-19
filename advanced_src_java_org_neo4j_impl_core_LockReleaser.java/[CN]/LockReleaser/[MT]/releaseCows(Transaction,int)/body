@@ -1,34 +1,33 @@
 {
-  NeoPrimitiveElement element=cowMap.get(cowTxId);
+  NeoPrimitiveElement element=cowMap.remove(cowTxId);
   if (element == null) {
     return;
   }
   ArrayMap<Integer,CowNodeElement> cowNodeElements=element.nodes;
-  for (  int nodeId : cowNodeElements.keySet()) {
-    NodeImpl node=nodeManager.getNodeIfCached(nodeId);
+  Set<Entry<Integer,CowNodeElement>> nodeEntrySet=cowNodeElements.entrySet();
+  for (  Entry<Integer,CowNodeElement> entry : nodeEntrySet) {
+    NodeImpl node=nodeManager.getNodeIfCached(entry.getKey());
     if (node != null) {
+      CowNodeElement nodeElement=entry.getValue();
       if (param == Status.STATUS_COMMITTED) {
-        node.commitCowMaps();
+        node.commitRelationshipMaps(nodeElement.relationshipAddMap,nodeElement.relationshipRemoveMap);
+        node.commitPropertyMaps(nodeElement.propertyAddMap,nodeElement.propertyRemoveMap);
       }
- else       if (param == Status.STATUS_ROLLEDBACK) {
-        node.rollbackCowMaps();
-      }
- else {
+ else       if (param != Status.STATUS_ROLLEDBACK) {
         throw new RuntimeException("Unkown status: " + param);
       }
     }
   }
   ArrayMap<Integer,CowRelElement> cowRelElements=element.relationships;
-  for (  int relId : cowRelElements.keySet()) {
-    RelationshipImpl rel=nodeManager.getRelIfCached(relId);
+  Set<Entry<Integer,CowRelElement>> relEntrySet=cowRelElements.entrySet();
+  for (  Entry<Integer,CowRelElement> entry : relEntrySet) {
+    RelationshipImpl rel=nodeManager.getRelIfCached(entry.getKey());
     if (rel != null) {
+      CowRelElement relElement=entry.getValue();
       if (param == Status.STATUS_COMMITTED) {
-        rel.commitCowMaps();
+        rel.commitPropertyMaps(relElement.propertyAddMap,relElement.propertyRemoveMap);
       }
- else       if (param == Status.STATUS_ROLLEDBACK) {
-        rel.rollbackCowMaps();
-      }
- else {
+ else       if (param != Status.STATUS_ROLLEDBACK) {
         throw new RuntimeException("Unkown status: " + param);
       }
     }
