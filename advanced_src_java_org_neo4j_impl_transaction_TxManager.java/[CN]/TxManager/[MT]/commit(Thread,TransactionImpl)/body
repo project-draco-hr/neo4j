@@ -1,4 +1,5 @@
 {
+  StoreFailureException sfe=null;
   int xaErrorCode=-1;
   if (tx.getResourceCount() == 0) {
     tx.setStatus(Status.STATUS_COMMITTED);
@@ -15,6 +16,9 @@
         tmOk=false;
         throw new RuntimeException("commit threw exception but status is committed?",e);
       }
+    }
+catch (    StoreFailureException e) {
+      sfe=e;
     }
   }
   if (tx.getStatus() != Status.STATUS_COMMITTED) {
@@ -39,7 +43,12 @@
       throw new SystemException("TM encountered a problem, " + " error writing transaction log," + e);
     }
     tx.setStatus(Status.STATUS_NO_TRANSACTION);
-    throw new HeuristicRollbackException("Failed to commit, transaction rolledback ---> " + "error code was: " + xaErrorCode);
+    if (sfe == null) {
+      throw new HeuristicRollbackException("Failed to commit, transaction rolledback ---> " + "error code was: " + xaErrorCode);
+    }
+ else {
+      throw new HeuristicRollbackException("Failed to commit, transaction rolledback ---> " + sfe);
+    }
   }
   tx.doAfterCompletion();
   txThreadMap.remove(thread);
