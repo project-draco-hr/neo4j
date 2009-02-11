@@ -1,0 +1,19 @@
+{
+  buffer.clear();
+  buffer.limit(1 + 4);
+  buffer.put(DONE);
+  if (fileChannel.read(buffer) != 4) {
+    throw new IllegalStateException("Unable to read done entry");
+  }
+  buffer.flip();
+  buffer.position(1);
+  int identifier=buffer.getInt();
+  FileChannel writeToLog=null;
+  if (xidIdentMap.get(identifier) != null) {
+    throw new IllegalStateException(identifier + " done entry found but still active");
+  }
+  buffer.position(0);
+  if (writeToLog != null && writeToLog.write(buffer) != 5) {
+    throw new RuntimeException("Unable to write done entry");
+  }
+}

@@ -1,11 +1,15 @@
 {
+  if (backupSlave) {
+    throw new XAException("Resource is configured as backup slave, " + "no new transactions can be started for " + fileName + "."+ currentLog);
+  }
   int xidIdent=getNextIdentifier();
   try {
     byte globalId[]=xid.getGlobalTransactionId();
     byte branchId[]=xid.getBranchQualifier();
     int formatId=xid.getFormatId();
+    long position=writeBuffer.getFileChannelPosition();
     writeBuffer.put(TX_START).put((byte)globalId.length).put((byte)branchId.length).put(globalId).put(branchId).putInt(xidIdent).putInt(formatId);
-    xidIdentMap.put(xidIdent,xid);
+    xidIdentMap.put(xidIdent,new StartEntry(xid,position));
   }
  catch (  IOException e) {
     throw new XAException("Logical log couldn't start transaction: " + e);

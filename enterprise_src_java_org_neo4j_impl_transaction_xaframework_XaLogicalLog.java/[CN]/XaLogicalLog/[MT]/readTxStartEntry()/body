@@ -1,4 +1,5 @@
 {
+  long position=fileChannel.position();
   buffer.clear();
   buffer.limit(1);
   if (fileChannel.read(buffer) != buffer.limit()) {
@@ -30,6 +31,9 @@
   }
   buffer.flip();
   int identifier=buffer.getInt();
+  if (identifier >= nextIdentifier) {
+    nextIdentifier=(identifier + 1);
+  }
   buffer.clear();
   buffer.limit(4);
   if (fileChannel.read(buffer) != buffer.limit()) {
@@ -38,7 +42,7 @@
   buffer.flip();
   int formatId=buffer.getInt();
   Xid xid=new XidImpl(globalId,branchId,formatId);
-  xidIdentMap.put(identifier,xid);
+  xidIdentMap.put(identifier,new StartEntry(xid,position));
   XaTransaction xaTx=xaTf.create(identifier);
   xaTx.setRecovered();
   recoveredTxMap.put(identifier,xaTx);

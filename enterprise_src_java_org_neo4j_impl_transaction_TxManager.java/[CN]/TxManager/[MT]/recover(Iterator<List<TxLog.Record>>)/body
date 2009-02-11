@@ -1,6 +1,6 @@
 {
   try {
-    System.out.println("Found uncompleted global transactions");
+    log.info("Found uncompleted global transactions");
     List<NonCompletedTransaction> commitList=new ArrayList<NonCompletedTransaction>();
     List<Xid> rollbackList=new LinkedList<Xid>();
     Map<Resource,XAResource> resourceMap=new HashMap<Resource,XAResource>();
@@ -13,17 +13,16 @@
       for (int i=0; i < xids.length; i++) {
         if (XidImpl.isThisTm(xids[i].getGlobalTransactionId())) {
           if (rollbackList.contains(xids[i])) {
-            System.out.print("Found pre commit " + xids[i] + " rolling back ... ");
+            log.info("Found pre commit " + xids[i] + " rolling back ... ");
             rollbackList.remove(xids[i]);
             xaRes.rollback(xids[i]);
-            System.out.println("done");
           }
  else {
             recoveredXidsList.add(xids[i]);
           }
         }
  else {
-          System.out.println("Unkown xid: " + xids[i]);
+          log.warning("Unkown xid: " + xids[i]);
         }
       }
     }
@@ -35,11 +34,13 @@
 );
     Iterator<NonCompletedTransaction> commitItr=commitList.iterator();
     while (commitItr.hasNext()) {
-      Xid xids[]=commitItr.next().getXids();
+      NonCompletedTransaction nct=commitItr.next();
+      int seq=nct.getSequenceNumber();
+      Xid xids[]=nct.getXids();
+      log.info("Marked as commit tx-seq[" + seq + "] branch length: "+ xids.length);
       for (int i=0; i < xids.length; i++) {
         if (!recoveredXidsList.contains(xids[i])) {
-          System.out.println("WARNING, " + xids[i] + " not found in recovered xid list, "+ "assuming already committed");
-          recoveredXidsList.remove(xids[i]);
+          log.info("Tx-seq[" + seq + "]["+ xids[i]+ "] not found in recovered xid list, "+ "assuming already committed");
           continue;
         }
         recoveredXidsList.remove(xids[i]);
@@ -47,9 +48,8 @@
         if (!resourceMap.containsKey(resource)) {
           throw new RuntimeException("Couldn't find XAResource for " + xids[i]);
         }
-        System.out.print("Commiting " + xids[i] + " ... ");
+        log.info("Commiting tx seq[" + seq + "]["+ xids[i]+ "] ... ");
         resourceMap.get(resource).commit(xids[i],false);
-        System.out.println("done");
       }
     }
     Iterator<Xid> rollbackItr=recoveredXidsList.iterator();
@@ -59,12 +59,11 @@
       if (!resourceMap.containsKey(resource)) {
         throw new RuntimeException("Couldn't find XAResource for " + xid);
       }
-      System.out.print("Rollback " + xid + " ... ");
+      log.info("Rollback " + xid + " ... ");
       resourceMap.get(resource).rollback(xid);
-      System.out.println("done");
     }
     if (rollbackList.size() > 0) {
-      System.out.println("WARNING: TxLog contained unresolved " + "xids that needed rollback. They couldn't be matched to " + "any of the XAResources recover list. "+ "Assuming " + rollbackList.size() + " transactions already rolled back.");
+      log.warning("TxLog contained unresolved " + "xids that needed rollback. They couldn't be matched to " + "any of the XAResources recover list. "+ "Assuming " + rollbackList.size() + " transactions already rolled back.");
     }
   }
  catch (  XAException e) {

@@ -1,17 +1,64 @@
 {
-  fileChannel=new RandomAccessFile(fileName,"rw").getChannel();
-  buffer=ByteBuffer.allocateDirect(9 + Xid.MAXGTRIDSIZE + Xid.MAXBQUALSIZE * 10);
-  if (fileChannel.size() != 0) {
-    doInternalRecovery();
+  String activeFileName=fileName + ".active";
+  if (!new File(activeFileName).exists()) {
+    if (new File(fileName).exists()) {
+      open(fileName);
+    }
+ else {
+      setActiveLog(LOG1);
+      open(fileName + ".1");
+    }
   }
  else {
-    scanIsComplete=true;
-    logCreated=System.currentTimeMillis();
-    buffer.clear();
-    buffer.putLong(logCreated);
-    buffer.flip();
-    fileChannel.write(buffer);
+    FileChannel fc=new RandomAccessFile(activeFileName,"rw").getChannel();
+    byte bytes[]=new byte[256];
+    ByteBuffer buf=ByteBuffer.wrap(bytes);
+    int read=fc.read(buf);
+    fc.close();
+    if (read != 4) {
+      throw new IllegalStateException("Read " + read + " bytes from "+ activeFileName+ " but expected 4");
+    }
+    buf.flip();
+    char c=buf.asCharBuffer().get();
+    File copy=new File(fileName + ".copy");
+    if (copy.exists()) {
+      copy.delete();
+    }
+    if (c == CLEAN) {
+      String newLog=fileName + ".1";
+      if (new File(newLog).exists()) {
+        throw new IllegalStateException("Active marked as clean but log " + newLog + " exist");
+      }
+      setActiveLog(LOG1);
+      open(newLog);
+    }
+ else     if (c == LOG1) {
+      String newLog=fileName + ".1";
+      if (!new File(newLog).exists()) {
+        throw new IllegalStateException("Active marked as 1 but no " + newLog + " exist");
+      }
+      currentLog=LOG1;
+      File otherLog=new File(fileName + ".2");
+      if (otherLog.exists()) {
+        otherLog.delete();
+      }
+      open(newLog);
+    }
+ else     if (c == LOG2) {
+      String newLog=fileName + ".2";
+      if (!new File(newLog).exists()) {
+        throw new IllegalStateException("Active marked as 2 but no " + newLog + " exist");
+      }
+      File otherLog=new File(fileName + ".1");
+      if (otherLog.exists()) {
+        otherLog.delete();
+      }
+      currentLog=LOG2;
+      open(newLog);
+    }
+ else {
+      throw new IllegalStateException("Unkown active log: " + c);
+    }
   }
-  buffer=null;
-  writeBuffer=new LogBuffer(fileChannel);
+  writeBuffer=new MemoryMappedLogBuffer(fileChannel);
 }

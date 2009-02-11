@@ -1,7 +1,8 @@
 {
+  long endPosition=writeBuffer.getFileChannelPosition();
   if (xidIdentMap.size() > 0) {
     log.info("Active transactions: " + xidIdentMap.size());
-    log.info("Closing dirty log: " + fileName);
+    log.info("Closing dirty log: " + fileName + "."+ currentLog);
     if (writeBuffer != null) {
       writeBuffer.force();
     }
@@ -9,50 +10,11 @@
     fileChannel.close();
     return;
   }
-  WeakReference<MappedByteBuffer> bufferWeakRef=null;
-  if (writeBuffer != null) {
-    writeBuffer.force();
-    MappedByteBuffer mappedBuffer=writeBuffer.getMappedBuffer();
-    if (mappedBuffer != null) {
-      bufferWeakRef=new WeakReference<MappedByteBuffer>(mappedBuffer);
-      mappedBuffer=null;
-    }
-    writeBuffer=null;
+  if (!keepLogs || backupSlave) {
+    deleteCurrentLogFile(fileName + "." + currentLog);
   }
-  fileChannel.close();
-  fileChannel=null;
-  File file=new File(fileName);
-  if (!file.exists()) {
-    throw new IOException("Logical log[" + fileName + "] not found");
+ else {
+    renameCurrentLogFileAndIncrementVersion(fileName + "." + currentLog,endPosition);
   }
-  boolean deleted=false;
-  try {
-    deleted=file.delete();
-  }
- catch (  Exception e) {
-  }
-  for (int i=0; i < 3 && !deleted; i++) {
-    try {
-      Thread.sleep(500);
-    }
- catch (    InterruptedException e) {
-    }
-    try {
-      System.gc();
-      deleted=file.delete();
-    }
- catch (    Exception e) {
-    }
-  }
-  if (!deleted && bufferWeakRef != null) {
-    try {
-      clean(bufferWeakRef.get());
-      deleted=file.delete();
-    }
- catch (    Exception e) {
-    }
-  }
-  if (!deleted) {
-    log.warning("Unable to delete clean logical log[" + fileName + "]");
-  }
+  setActiveLog(CLEAN);
 }
