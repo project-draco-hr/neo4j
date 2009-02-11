@@ -1,0 +1,28 @@
+{
+  if (!backupSlave) {
+    throw new IllegalStateException("This is not a backup slave");
+  }
+  if (xidIdentMap.size() > 0) {
+    throw new IllegalStateException("There are active transactions");
+  }
+  buffer.clear();
+  buffer.limit(8);
+  if (byteChannel.read(buffer) != 8) {
+    throw new IOException("Unable to read log version");
+  }
+  buffer.flip();
+  logVersion=buffer.getLong();
+  if (logVersion != xaTf.getCurrentVersion()) {
+    throw new IllegalStateException("Tried to apply version " + logVersion + " but expected version "+ xaTf.getCurrentVersion());
+  }
+  log.fine("Logical log version: " + logVersion);
+  long logEntriesFound=0;
+  LogApplier logApplier=new LogApplier(byteChannel,buffer,xaTf,xaRm,cf,xidIdentMap,recoveredTxMap);
+  while (logApplier.readAndApplyEntry()) {
+    logEntriesFound++;
+  }
+  byteChannel.close();
+  xaTf.getAndSetNewVersion();
+  xaRm.reset();
+  log.info("Log version " + logVersion + " applied successfully.");
+}
