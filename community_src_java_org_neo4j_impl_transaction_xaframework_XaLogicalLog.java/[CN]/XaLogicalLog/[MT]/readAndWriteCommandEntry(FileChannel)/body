@@ -1,0 +1,25 @@
+{
+  buffer.clear();
+  buffer.put(COMMAND);
+  buffer.limit(1 + 4);
+  if (fileChannel.read(buffer) != 4) {
+    throw new IllegalStateException("Unable to read command header");
+  }
+  buffer.flip();
+  buffer.position(1);
+  int identifier=buffer.getInt();
+  FileChannel writeToLog=null;
+  if (xidIdentMap.get(identifier) != null) {
+    writeToLog=newLog;
+  }
+  if (writeToLog != null) {
+    buffer.position(0);
+    if (writeToLog.write(buffer) != 5) {
+      throw new RuntimeException("Unable to write command header");
+    }
+  }
+  XaCommand command=cf.readCommand(fileChannel,buffer);
+  if (writeToLog != null) {
+    command.writeToFile(new DirectLogBuffer(writeToLog,buffer));
+  }
+}

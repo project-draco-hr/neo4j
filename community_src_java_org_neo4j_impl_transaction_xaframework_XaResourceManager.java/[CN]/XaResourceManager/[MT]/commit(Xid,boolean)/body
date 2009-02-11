@@ -9,8 +9,8 @@
     if (!xaTransaction.isReadOnly()) {
       if (!xaTransaction.isRecovered()) {
         xaTransaction.prepare();
+        log.commitOnePhase(xaTransaction.getIdentifier());
       }
-      log.commitOnePhase(xaTransaction.getIdentifier());
     }
     txStatus.markAsPrepared();
   }
@@ -18,22 +18,15 @@
     throw new XAException("Transaction not prepared or " + "(marked as) rolledbacked");
   }
   if (!xaTransaction.isReadOnly()) {
+    if (!xaTransaction.isRecovered()) {
+      if (!onePhase) {
+        log.commitTwoPhase(xaTransaction.getIdentifier());
+      }
+    }
     txStatus.markCommitStarted();
     xaTransaction.commit();
   }
-  if (lazyDone && !xaTransaction.isRecovered()) {
-    lazyDoneRecords.add(xaTransaction.getIdentifier());
-    if (lazyDoneRecords.size() >= 100) {
-      tf.lazyDoneWrite(lazyDoneRecords);
-      for (      int identifier : lazyDoneRecords) {
-        log.done(identifier);
-      }
-      lazyDoneRecords=new ArrayList<Integer>();
-    }
-  }
- else {
-    log.done(xaTransaction.getIdentifier());
-  }
+  log.done(xaTransaction.getIdentifier());
   xidMap.remove(xid);
   if (xaTransaction.isRecovered()) {
     recoveredTxCount--;

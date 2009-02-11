@@ -1,0 +1,31 @@
+{
+  log.info("Logical log is dirty[" + logFileName + "], this means data source hasn't been shutdown properly. "+ "Recovering...");
+  buffer.clear();
+  buffer.limit(8);
+  if (fileChannel.read(buffer) != 8) {
+    log.info("Unable to read timestamp information, " + "no records in logical log.");
+    fileChannel.close();
+    boolean success=new File(logFileName).renameTo(new File(logFileName + "_unkown_timestamp_" + System.currentTimeMillis()+ ".log"));
+    assert success;
+    fileChannel=new RandomAccessFile(logFileName,"rw").getChannel();
+    return;
+  }
+  buffer.flip();
+  logVersion=buffer.getLong();
+  log.fine("Logical log version: " + logVersion);
+  long logEntriesFound=0;
+  while (readEntry()) {
+    logEntriesFound++;
+  }
+  scanIsComplete=true;
+  log.fine("Internal recovery completed, scanned " + logEntriesFound + " log entries.");
+  log.info("[" + logFileName + "] "+ xidIdentMap.size()+ " uncompleted transactions found ");
+  xaRm.checkXids();
+  if (xidIdentMap.size() > 0) {
+    log.info("[" + logFileName + "] Found "+ xidIdentMap.size()+ " prepared 2PC transactions.");
+    for (    StartEntry entry : xidIdentMap.values()) {
+      log.info("[" + logFileName + "] 2PC xid["+ entry.getXid()+ "]");
+    }
+  }
+  recoveredTxMap.clear();
+}

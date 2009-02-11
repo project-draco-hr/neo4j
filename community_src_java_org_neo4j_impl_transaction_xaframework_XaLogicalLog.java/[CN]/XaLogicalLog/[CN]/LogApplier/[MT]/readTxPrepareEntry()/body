@@ -1,0 +1,18 @@
+{
+  buffer.clear();
+  buffer.limit(4);
+  if (byteChannel.read(buffer) != buffer.limit()) {
+    throw new IOException("Unable to read tx prepare entry");
+  }
+  buffer.flip();
+  int identifier=buffer.getInt();
+  StartEntry entry=xidIdentMap.get(identifier);
+  if (entry == null) {
+    throw new IOException("Unable to read tx prepeare entry");
+  }
+  Xid xid=entry.getXid();
+  if (xaRm.injectPrepare(xid)) {
+    xidIdentMap.remove(identifier);
+    recoveredTxMap.remove(identifier);
+  }
+}

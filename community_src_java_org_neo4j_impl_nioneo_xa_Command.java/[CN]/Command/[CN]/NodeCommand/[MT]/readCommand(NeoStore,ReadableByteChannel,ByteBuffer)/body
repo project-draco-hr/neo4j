@@ -1,0 +1,30 @@
+{
+  buffer.clear();
+  buffer.limit(5);
+  if (byteChannel.read(buffer) != buffer.limit()) {
+    return null;
+  }
+  buffer.flip();
+  int id=buffer.getInt();
+  byte inUseFlag=buffer.get();
+  boolean inUse=false;
+  if (inUseFlag == Record.IN_USE.byteValue()) {
+    inUse=true;
+  }
+ else   if (inUseFlag != Record.NOT_IN_USE.byteValue()) {
+    throw new IOException("Illegal in use flag: " + inUseFlag);
+  }
+  NodeRecord record=new NodeRecord(id);
+  record.setInUse(inUse);
+  if (inUse) {
+    buffer.clear();
+    buffer.limit(8);
+    if (byteChannel.read(buffer) != buffer.limit()) {
+      return null;
+    }
+    buffer.flip();
+    record.setNextRel(buffer.getInt());
+    record.setNextProp(buffer.getInt());
+  }
+  return new NodeCommand(neoStore.getNodeStore(),record);
+}
