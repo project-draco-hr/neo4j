@@ -1,0 +1,38 @@
+{
+  EmbeddedNeo neo=Util.startNeoInstance(STORE_LOCATION_DIR);
+  ((NeoStoreXaDataSource)neo.getConfig().getPersistenceModule().getPersistenceSource().getXaDataSource()).keepLogicalLogs(true);
+  System.out.println("backing up original db without any changes");
+  tryBackup(neo,BACKUP_LOCATION_DIR,1);
+  Transaction tx=neo.beginTx();
+  try {
+    addNode(neo);
+    tx.success();
+  }
+  finally {
+    tx.finish();
+  }
+  System.out.println("one node added");
+  tryBackup(neo,BACKUP_LOCATION_DIR,2);
+  tx=neo.beginTx();
+  try {
+    addNode(neo);
+    tx.success();
+  }
+  finally {
+    tx.finish();
+  }
+  System.out.println("one node added");
+  tx=neo.beginTx();
+  try {
+    addNode(neo);
+    System.out.println("one node added, not commited");
+    tryBackup(neo,BACKUP_LOCATION_DIR,3);
+    tx.success();
+  }
+  finally {
+    tx.finish();
+  }
+  System.out.println("previous add commited");
+  tryBackup(neo,BACKUP_LOCATION_DIR,4);
+  Util.stopNeo(neo);
+}
