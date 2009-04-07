@@ -1,0 +1,66 @@
+{
+  Iterable<RemoteSiteFactory> result;
+  try {
+    Class<?> serviceLoaderClass=Class.forName("java.util.ServiceLoader");
+    Method loadMethod=serviceLoaderClass.getMethod("load",Class.class);
+    @SuppressWarnings("unchecked") Iterable<RemoteSiteFactory> iter=((Iterable<RemoteSiteFactory>)loadMethod.invoke(null,RemoteSiteFactory.class));
+    result=iter;
+  }
+ catch (  Exception ex) {
+    Iterable<RemoteSiteFactory> empty=Arrays.asList(new RemoteSiteFactory[0]);
+    try {
+      Class<?> serviceClass=Class.forName("sun.misc.Service");
+      final Method providersMethod=serviceClass.getMethod("providers",Class.class);
+      result=new Iterable<RemoteSiteFactory>(){
+        public Iterator<RemoteSiteFactory> iterator(){
+          try {
+            final Iterator<?> iterator=(Iterator<?>)providersMethod.invoke(null,RemoteSiteFactory.class);
+            return new Iterator<RemoteSiteFactory>(){
+              RemoteSiteFactory cached=null;
+              public boolean hasNext(){
+                if (cached != null) {
+                  return true;
+                }
+ else                 while (iterator.hasNext()) {
+                  try {
+                    cached=(RemoteSiteFactory)iterator.next();
+                    return true;
+                  }
+ catch (                  Exception ex) {
+                    cached=null;
+                  }
+                }
+                return false;
+              }
+              public RemoteSiteFactory next(){
+                if (hasNext()) {
+                  try {
+                    return cached;
+                  }
+  finally {
+                    cached=null;
+                  }
+                }
+ else {
+                  throw new IllegalStateException();
+                }
+              }
+              public void remove(){
+                throw new UnsupportedOperationException();
+              }
+            }
+;
+          }
+ catch (          Exception ex) {
+            return Arrays.asList(new RemoteSiteFactory[0]).iterator();
+          }
+        }
+      }
+;
+    }
+ catch (    Exception e) {
+      result=empty;
+    }
+  }
+  factories=result;
+}
