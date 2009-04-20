@@ -1,0 +1,23 @@
+{
+  final NeoService neo=new EmbeddedNeo(NEO_DB_PATH);
+  registerShutdownHookForNeo(neo);
+  Transaction tx=neo.beginTx();
+  try {
+    Node firstNode=neo.createNode();
+    firstNode.setProperty("name","Hello");
+    Node secondNode=neo.createNode();
+    secondNode.setProperty("name","World");
+    firstNode.createRelationshipTo(secondNode,ExampleRelationshipTypes.EXAMPLE);
+    String greeting=firstNode.getProperty("name") + " " + secondNode.getProperty("name");
+    System.out.println(greeting);
+    firstNode.getSingleRelationship(ExampleRelationshipTypes.EXAMPLE,Direction.OUTGOING).delete();
+    firstNode.delete();
+    secondNode.delete();
+    tx.success();
+  }
+  finally {
+    tx.finish();
+  }
+  System.out.println("Shutting down...");
+  neo.shutdown();
+}
