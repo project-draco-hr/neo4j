@@ -1,5 +1,5 @@
 {
-  log.info("Logical log is dirty[" + logFileName + "], this means data source hasn't been shutdown properly. "+ "Recovering...");
+  log.info("Non clean shutdown detected on log [" + logFileName + "]. Recovery started ...");
   buffer.clear();
   buffer.limit(8);
   if (fileChannel.read(buffer) != 8) {
@@ -19,12 +19,14 @@
   }
   scanIsComplete=true;
   log.fine("Internal recovery completed, scanned " + logEntriesFound + " log entries.");
-  log.info("[" + logFileName + "] "+ xidIdentMap.size()+ " uncompleted transactions found ");
   xaRm.checkXids();
-  if (xidIdentMap.size() > 0) {
-    log.info("[" + logFileName + "] Found "+ xidIdentMap.size()+ " prepared 2PC transactions.");
+  if (xidIdentMap.size() == 0) {
+    log.fine("Recovery completed.");
+  }
+ else {
+    log.fine("[" + logFileName + "] Found "+ xidIdentMap.size()+ " prepared 2PC transactions.");
     for (    StartEntry entry : xidIdentMap.values()) {
-      log.info("[" + logFileName + "] 2PC xid["+ entry.getXid()+ "]");
+      log.fine("[" + logFileName + "] 2PC xid["+ entry.getXid()+ "]");
     }
   }
   recoveredTxMap.clear();
