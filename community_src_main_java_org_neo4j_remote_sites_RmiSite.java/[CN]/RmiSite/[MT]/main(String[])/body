@@ -1,15 +1,66 @@
 {
   String usage="Usage: " + RmiSite.class.getName() + " <Neo dir> <rmi resource uri>";
-  if (args.length != 2) {
+  if (args.length < 2) {
     throw new IllegalArgumentException(usage);
   }
+  final URI uri;
+  final InetAddress addr;
+  final InetAddress localhost;
   try {
-    register(new LocalSite(args[0]),args[1]);
+    uri=new URI(args[1]);
+    addr=InetAddress.getByName(uri.getHost());
+    localhost=InetAddress.getLocalHost();
+  }
+ catch (  Exception ex) {
+    throw new IllegalArgumentException(usage,ex);
+  }
+  if (addr.equals(localhost)) {
+    int port=uri.getPort();
+    if (port == -1)     port=Registry.REGISTRY_PORT;
+    try {
+      LocateRegistry.createRegistry(port);
+    }
+ catch (    Exception ex) {
+    }
+  }
+  final LocalSite server;
+  try {
+    server=new LocalSite(args[0]);
+    register(server,args[1]);
   }
  catch (  RuntimeException ex) {
     throw new IllegalArgumentException(usage,ex);
   }
 catch (  MalformedURLException ex) {
     throw new IllegalArgumentException(usage,ex);
+  }
+  Class<?> indexService;
+  Method registerIndexMethod;
+  try {
+    indexService=Class.forName("org.neo4j.util.index.IndexService");
+    registerIndexMethod=BasicNeoServer.class.getDeclaredMethod("registerIndexService",String.class,indexService);
+  }
+ catch (  Exception ex) {
+    indexService=null;
+    registerIndexMethod=null;
+  }
+  for (int i=2; i < args.length; i++) {
+    if (indexService == null) {
+      System.err.println("Could not instantiate index \"" + args[i] + "\"\n    The neo-index component is not loaded.");
+      continue;
+    }
+    String argument[]=args[i].split(":",2);
+    String className=argument[0];
+    String indexName=argument.length == 2 ? argument[1] : argument[0];
+    try {
+      Class<?> cls=Class.forName(className);
+      Constructor<?> ctor=cls.getConstructor(NeoService.class);
+      Object index=ctor.newInstance(server.neo);
+      registerIndexMethod.invoke(server,indexName,index);
+    }
+ catch (    Exception ex) {
+      System.err.println("Could not instantiate index \"" + args[i]);
+      ex.printStackTrace(System.err);
+    }
   }
 }
