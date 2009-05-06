@@ -24,13 +24,18 @@
       return;
     }
     try {
-      nonMappedBrick.setWindow(new MappedPersistenceWindow(((long)nonMappedBrick.index()) * brickSize / blockSize,blockSize,brickSize,fileChannel));
+      nonMappedBrick.setWindow(allocateNewWindow(nonMappedBrick.index()));
       memUsed+=brickSize;
     }
  catch (    MappedMemException e) {
       e.printStackTrace();
       ooe++;
       logWarn("Unable to memory map");
+    }
+catch (    OutOfMemoryError e) {
+      e.printStackTrace();
+      ooe++;
+      logWarn("Unable to allocate direct buffer");
     }
   }
   while (nonMappedIndex >= 0 && mappedIndex < mappedBricks.size()) {
@@ -44,16 +49,23 @@
       if (window instanceof MappedPersistenceWindow) {
         ((MappedPersistenceWindow)window).unmap();
       }
+ else       if (window instanceof DirectPersistenceWindow) {
+        ((DirectPersistenceWindow)window).writeOut();
+      }
       mappedBrick.setWindow(null);
       memUsed-=brickSize;
       try {
-        nonMappedBrick.setWindow(new MappedPersistenceWindow(((long)nonMappedBrick.index()) * brickSize / blockSize,blockSize,brickSize,fileChannel));
+        nonMappedBrick.setWindow(allocateNewWindow(nonMappedBrick.index()));
         memUsed+=brickSize;
         switches++;
       }
  catch (      MappedMemException e) {
         ooe++;
         logWarn("Unable to memory map");
+      }
+catch (      OutOfMemoryError e) {
+        ooe++;
+        logWarn("Unable to allocate direct buffer");
       }
     }
   }
