@@ -2,9 +2,7 @@
   LinkedList<byte[]> byteArrayList=new LinkedList<byte[]>();
   PersistenceWindow window=acquireWindow(blockId,OperationType.READ);
   try {
-    Buffer buffer=window.getBuffer();
-    int offset=(int)(blockId - buffer.position()) * getBlockSize();
-    buffer.setOffset(offset);
+    Buffer buffer=window.getOffsettedBuffer(blockId);
     byte inUse=buffer.get();
     if (inUse != Record.IN_USE.byteValue()) {
       throw new StoreFailureException("Not in use [" + inUse + "] blockId["+ blockId+ "]");
@@ -28,9 +26,7 @@
       if (nextBlock != Record.NO_NEXT_BLOCK.intValue()) {
         releaseWindow(window);
         window=acquireWindow(nextBlock,OperationType.READ);
-        buffer=window.getBuffer();
-        offset=(int)(nextBlock - buffer.position()) * getBlockSize();
-        buffer.setOffset(offset);
+        buffer=window.getOffsettedBuffer(nextBlock);
         inUse=buffer.get();
         if (inUse != Record.IN_USE.byteValue()) {
           throw new StoreFailureException("Next block[" + nextBlock + "] not in use ["+ inUse+ "]");
