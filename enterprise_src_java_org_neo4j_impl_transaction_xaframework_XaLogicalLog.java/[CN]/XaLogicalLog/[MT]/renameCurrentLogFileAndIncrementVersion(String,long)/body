@@ -1,48 +1,19 @@
 {
-  WeakReference<MappedByteBuffer> bufferWeakRef=releaseCurrentLogFile();
+  releaseCurrentLogFile();
   File file=new File(logFileName);
   if (!file.exists()) {
     throw new IOException("Logical log[" + logFileName + "] not found");
   }
   String newName=fileName + ".v" + xaTf.getAndSetNewVersion();
   File newFile=new File(newName);
-  if (newFile.exists()) {
-    throw new IllegalStateException(newName + " already exist");
-  }
-  boolean renamed=false;
-  try {
-    renamed=file.renameTo(newFile);
-  }
- catch (  Exception e) {
-  }
-  for (int i=0; i < 3 && !renamed; i++) {
-    try {
-      Thread.sleep(500);
-    }
- catch (    InterruptedException e) {
-    }
-    try {
-      System.gc();
-      renamed=file.renameTo(newFile);
-    }
- catch (    Exception e) {
-    }
-  }
-  if (!renamed && bufferWeakRef != null) {
-    try {
-      clean(bufferWeakRef.get());
-      renamed=file.renameTo(newFile);
-    }
- catch (    Exception e) {
-    }
-  }
+  boolean renamed=FileUtils.renameFile(file,newFile);
   if (!renamed) {
     throw new IOException("Failed to rename log to: " + newName);
   }
  else {
     try {
       FileChannel channel=new RandomAccessFile(newName,"rw").getChannel();
-      channel.truncate(endPosition);
+      FileUtils.truncateFile(channel,endPosition);
     }
  catch (    Exception e) {
       log.log(Level.WARNING,"Failed to truncate log at correct size",e);
