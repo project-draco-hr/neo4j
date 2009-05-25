@@ -6,14 +6,19 @@
     ByteBuffer buffer=ByteBuffer.wrap(version);
     getFileChannel().position(fileSize - version.length);
     getFileChannel().read(buffer);
-    if (!expectedVersion.equals(new String(version))) {
-      setStoreNotOk();
-    }
     buffer=ByteBuffer.allocate(4);
     getFileChannel().position(0);
     getFileChannel().read(buffer);
     buffer.flip();
     blockSize=buffer.getInt();
+    if (blockSize <= 0) {
+      throw new StoreFailureException("Illegal block size: " + blockSize);
+    }
+    if (!expectedVersion.equals(new String(version))) {
+      if (!versionFound(new String(version))) {
+        setStoreNotOk();
+      }
+    }
     if ((fileSize - version.length) % blockSize != 0) {
       setStoreNotOk();
     }
@@ -30,5 +35,5 @@
  catch (  StoreFailureException e) {
     setStoreNotOk();
   }
-  setWindowPool(new PersistenceWindowPool(getStorageFileName(),getBlockSize(),getFileChannel(),getMappedMem()));
+  setWindowPool(new PersistenceWindowPool(getStorageFileName(),getBlockSize(),getFileChannel(),getMappedMem(),getIfMemoryMapped()));
 }

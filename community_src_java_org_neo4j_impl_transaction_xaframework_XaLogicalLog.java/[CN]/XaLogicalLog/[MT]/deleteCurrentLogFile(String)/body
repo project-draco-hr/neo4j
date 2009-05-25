@@ -1,36 +1,10 @@
 {
-  WeakReference<MappedByteBuffer> bufferWeakRef=releaseCurrentLogFile();
+  releaseCurrentLogFile();
   File file=new File(logFileName);
   if (!file.exists()) {
     throw new IOException("Logical log[" + logFileName + "] not found");
   }
-  boolean deleted=false;
-  try {
-    deleted=file.delete();
-  }
- catch (  Exception e) {
-  }
-  for (int i=0; i < 3 && !deleted; i++) {
-    try {
-      Thread.sleep(500);
-    }
- catch (    InterruptedException e) {
-    }
-    try {
-      System.gc();
-      deleted=file.delete();
-    }
- catch (    Exception e) {
-    }
-  }
-  if (!deleted && bufferWeakRef != null) {
-    try {
-      clean(bufferWeakRef.get());
-      deleted=file.delete();
-    }
- catch (    Exception e) {
-    }
-  }
+  boolean deleted=FileUtils.deleteFile(file);
   if (!deleted) {
     log.warning("Unable to delete clean logical log[" + logFileName + "]");
   }
