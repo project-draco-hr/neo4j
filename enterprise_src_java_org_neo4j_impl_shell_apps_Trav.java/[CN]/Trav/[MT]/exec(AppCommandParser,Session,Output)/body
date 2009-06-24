@@ -1,6 +1,6 @@
 {
   Node node=this.getCurrentNode(session);
-  Object[] relationshipTypes=parseRelationshipTypes(parser);
+  Object[] relationshipTypes=parseRelationshipTypes(parser,out);
   if (relationshipTypes.length == 0) {
     out.println("No matching relationship types");
     return null;
@@ -8,27 +8,36 @@
   StopEvaluator stopEvaluator=parseStopEvaluator(parser);
   ReturnableEvaluator returnableEvaluator=parseReturnableEvaluator(parser);
   Order order=parseOrder(parser);
-  String nodeKeyFilter=parser.options().get("f");
-  String nodeValueFilter=parser.options().get("g");
-  boolean caseSensitiveFilters=parser.options().containsKey("s");
-  boolean exactFilterMatch=parser.options().containsKey("x");
-  Pattern nodeKeyPattern=newPattern(nodeKeyFilter,caseSensitiveFilters);
-  Pattern nodeValuePattern=newPattern(nodeValueFilter,caseSensitiveFilters);
+  String filterString=parser.options().get("f");
+  Map<String,Object> filterMap=filterString != null ? parseFilter(filterString,out) : null;
+  boolean caseInsensitiveFilters=parser.options().containsKey("i");
+  boolean looseFilters=parser.options().containsKey("l");
   String commandToRun=parser.options().get("c");
   String[] commandsToRun=commandToRun != null ? commandToRun.split(Pattern.quote("&&")) : new String[0];
   for (  Node traversedNode : node.traverse(order,stopEvaluator,returnableEvaluator,relationshipTypes)) {
     boolean hit=false;
-    if (nodeKeyFilter == null && nodeValueFilter == null) {
+    if (filterMap == null) {
       hit=true;
     }
  else {
+      Map<String,Boolean> matchPerFilterKey=new HashMap<String,Boolean>();
       for (      String key : traversedNode.getPropertyKeys()) {
-        hit=matches(nodeKeyPattern,key,caseSensitiveFilters,exactFilterMatch);
-        Object value=traversedNode.getProperty(key);
-        hit=hit && matches(nodeValuePattern,value.toString(),caseSensitiveFilters,exactFilterMatch);
-        if (hit) {
-          break;
+        for (        Map.Entry<String,Object> filterEntry : filterMap.entrySet()) {
+          String filterKey=filterEntry.getKey();
+          if (matchPerFilterKey.containsKey(filterKey)) {
+            continue;
+          }
+          if (matches(newPattern(filterKey,caseInsensitiveFilters),key,caseInsensitiveFilters,looseFilters)) {
+            Object value=traversedNode.getProperty(key);
+            String filterPattern=filterEntry.getValue() != null ? filterEntry.getValue().toString() : null;
+            if (matches(newPattern(filterPattern,caseInsensitiveFilters),value.toString(),caseInsensitiveFilters,looseFilters)) {
+              matchPerFilterKey.put(filterKey,true);
+            }
+          }
         }
+      }
+      if (matchPerFilterKey.size() == filterMap.size()) {
+        hit=true;
       }
     }
     if (hit) {
@@ -38,8 +47,8 @@
       for (      String command : commandsToRun) {
         String line=templateString(command,"\\$",data);
         getServer().interpretLine(line,session,out);
-        out.println();
       }
+      out.println();
     }
   }
   return null;
