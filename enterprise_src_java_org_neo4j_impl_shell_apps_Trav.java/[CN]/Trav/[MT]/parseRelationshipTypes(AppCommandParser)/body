@@ -1,0 +1,31 @@
+{
+  String option=parser.options().get("r");
+  List<Object> result=new ArrayList<Object>();
+  if (option == null) {
+    for (    RelationshipType type : getNeoServer().getNeo().getRelationshipTypes()) {
+      result.add(type);
+      result.add(Direction.BOTH);
+    }
+  }
+ else {
+    StringTokenizer typeTokenizer=new StringTokenizer(option,",");
+    List<RelationshipType> allRelationshipTypes=new ArrayList<RelationshipType>();
+    for (    RelationshipType type : getNeoServer().getNeo().getRelationshipTypes()) {
+      allRelationshipTypes.add(type);
+    }
+    while (typeTokenizer.hasMoreTokens()) {
+      String typeToken=typeTokenizer.nextToken();
+      StringTokenizer directionTokenizer=new StringTokenizer(typeToken,":");
+      String type=directionTokenizer.nextToken();
+      Direction direction=getDirection(directionTokenizer.hasMoreTokens() ? directionTokenizer.nextToken() : null,Direction.BOTH);
+      Pattern typePattern=Pattern.compile(type);
+      for (      RelationshipType relationshipType : allRelationshipTypes) {
+        if (relationshipType.name().equals(type) || matches(typePattern,relationshipType.name(),false,true)) {
+          result.add(relationshipType);
+          result.add(direction);
+        }
+      }
+    }
+  }
+  return result.toArray();
+}
