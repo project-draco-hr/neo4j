@@ -1,14 +1,14 @@
 {
-  List<Long> paths=readPaths(session);
-  Node currentNode=getCurrentNode(session);
-  Node newNode=null;
+  List<TypedId> paths=readPaths(session);
+  NodeOrRelationship current=getCurrent(session);
+  NodeOrRelationship newThing=null;
   if (parser.arguments().isEmpty()) {
-    newNode=getNeoServer().getNeo().getReferenceNode();
+    newThing=NodeOrRelationship.wrap(getNeoServer().getNeo().getReferenceNode());
     paths.clear();
   }
  else {
     String arg=parser.arguments().get(0);
-    long newId=currentNode.getId();
+    TypedId newId=current.getTypedId();
     if (arg.equals("..")) {
       if (paths.size() > 0) {
         newId=paths.remove(paths.size() - 1);
@@ -16,20 +16,30 @@
     }
  else     if (arg.equals(".")) {
     }
+ else     if (arg.equals("start") || arg.equals("end")) {
+      newId=getStartOrEnd(current,arg);
+      paths.add(current.getTypedId());
+    }
  else {
-      newId=Long.parseLong(arg);
-      if (newId == currentNode.getId()) {
-        throw new ShellException("Can't cd to the current node");
+      long suppliedId=Long.parseLong(arg);
+      if (parser.options().containsKey("r")) {
+        newId=new TypedId(NodeOrRelationship.TYPE_RELATIONSHIP,suppliedId);
+      }
+ else {
+        newId=new TypedId(NodeOrRelationship.TYPE_NODE,suppliedId);
+      }
+      if (newId.equals(current.getTypedId())) {
+        throw new ShellException("Can't cd to where you stand");
       }
       boolean absolute=parser.options().containsKey("a");
-      if (!absolute && !this.nodeIsConnected(currentNode,newId)) {
-        throw new ShellException("Node " + newId + " isn't connected to the current node, use -a to "+ "force it to go to that node anyway");
+      if (!absolute && !this.isConnected(current,newId)) {
+        throw new ShellException(getDisplayName(newId) + " isn't connected to the current primitive," + " use -a to force it to go there anyway");
       }
-      paths.add(currentNode.getId());
+      paths.add(current.getTypedId());
     }
-    newNode=this.getNodeById(newId);
+    newThing=this.getThingById(newId);
   }
-  setCurrentNode(session,newNode);
+  setCurrent(session,newThing);
   session.set(WORKING_DIR_KEY,this.makePath(paths));
   return null;
 }
