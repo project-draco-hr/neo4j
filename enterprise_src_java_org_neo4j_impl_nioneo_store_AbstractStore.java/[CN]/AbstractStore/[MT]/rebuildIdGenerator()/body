@@ -15,23 +15,33 @@
   try {
     long fileSize=fileChannel.size();
     int recordSize=getRecordSize();
+    boolean fullRebuild=true;
+    if (getConfig() != null) {
+      String mode=(String)getConfig().get("rebuild_idgenerators_fast");
+      if (mode != null && mode.toLowerCase().equals("true")) {
+        fullRebuild=false;
+        highId=findHighIdBackwards();
+      }
+    }
     ByteBuffer byteBuffer=ByteBuffer.wrap(new byte[1]);
     LinkedList<Integer> freeIdList=new LinkedList<Integer>();
-    for (long i=0; i * recordSize < fileSize && recordSize > 0; i++) {
-      fileChannel.position(i * recordSize);
-      fileChannel.read(byteBuffer);
-      byteBuffer.flip();
-      byte inUse=byteBuffer.get();
-      byteBuffer.flip();
-      nextId();
-      if (inUse == RECORD_NOT_IN_USE) {
-        freeIdList.add((int)i);
-      }
+    if (fullRebuild) {
+      for (long i=0; i * recordSize < fileSize && recordSize > 0; i++) {
+        fileChannel.position(i * recordSize);
+        fileChannel.read(byteBuffer);
+        byteBuffer.flip();
+        byte inUse=byteBuffer.get();
+        byteBuffer.flip();
+        nextId();
+        if (inUse == RECORD_NOT_IN_USE) {
+          freeIdList.add((int)i);
+        }
  else {
-        highId=i;
-        while (!freeIdList.isEmpty()) {
-          freeId(freeIdList.removeFirst());
-          defraggedCount++;
+          highId=i;
+          while (!freeIdList.isEmpty()) {
+            freeId(freeIdList.removeFirst());
+            defraggedCount++;
+          }
         }
       }
     }
