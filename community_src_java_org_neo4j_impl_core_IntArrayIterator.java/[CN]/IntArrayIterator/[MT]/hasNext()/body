@@ -24,8 +24,36 @@
         log.log(Level.FINE,"Unable to get relationship " + nextId,e);
       }
     }
-    while (!currentTypeIterator.hasNext() && typeIterator.hasNext()) {
-      currentTypeIterator=typeIterator.next();
+    while (!currentTypeIterator.hasNext()) {
+      if (typeIterator.hasNext()) {
+        currentTypeIterator=typeIterator.next();
+        visitedTypes.add(currentTypeIterator.getType());
+      }
+ else {
+        boolean gotMore=fromNode.getMoreRelationships();
+        List<RelTypeElementIterator> list=Collections.EMPTY_LIST;
+        if (types.length == 0) {
+          list=fromNode.getAllRelationships();
+        }
+ else {
+          list=fromNode.getAllRelationshipsOfType(types);
+        }
+        Iterator<RelTypeElementIterator> itr=list.iterator();
+        while (itr.hasNext()) {
+          RelTypeElementIterator element=itr.next();
+          if (visitedTypes.contains(element.getType())) {
+            itr.remove();
+          }
+        }
+        typeIterator=list.iterator();
+        if (typeIterator.hasNext()) {
+          currentTypeIterator=typeIterator.next();
+          visitedTypes.add(currentTypeIterator.getType());
+        }
+        if (!gotMore) {
+          break;
+        }
+      }
     }
   }
  while (currentTypeIterator.hasNext());
