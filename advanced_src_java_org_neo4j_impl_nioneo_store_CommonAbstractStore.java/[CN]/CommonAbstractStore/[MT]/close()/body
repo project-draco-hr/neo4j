@@ -7,6 +7,15 @@
     windowPool.close();
     windowPool=null;
   }
+  if (isReadOnly()) {
+    try {
+      fileChannel.close();
+    }
+ catch (    IOException e) {
+      throw new StoreFailureException(e);
+    }
+    return;
+  }
   long highId=idGenerator.getHighId();
   int recordSize=-1;
   if (this instanceof AbstractDynamicStore) {
@@ -18,22 +27,32 @@
   closeIdGenerator();
   boolean success=false;
   IOException storedIoe=null;
-  for (int i=0; i < 10; i++) {
+  if (!readOnly) {
+    for (int i=0; i < 10; i++) {
+      try {
+        fileChannel.position(highId * recordSize);
+        ByteBuffer buffer=ByteBuffer.wrap(getTypeAndVersionDescriptor().getBytes());
+        fileChannel.write(buffer);
+        fileChannel.truncate(fileChannel.position());
+        fileChannel.force(false);
+        fileLock.release();
+        fileChannel.close();
+        fileChannel=null;
+        success=true;
+        break;
+      }
+ catch (      IOException e) {
+        storedIoe=e;
+        System.gc();
+      }
+    }
+  }
+ else {
     try {
-      fileChannel.position(highId * recordSize);
-      ByteBuffer buffer=ByteBuffer.wrap(getTypeAndVersionDescriptor().getBytes());
-      fileChannel.write(buffer);
-      fileChannel.truncate(fileChannel.position());
-      fileChannel.force(false);
-      fileLock.release();
       fileChannel.close();
-      fileChannel=null;
-      success=true;
-      break;
     }
  catch (    IOException e) {
-      storedIoe=e;
-      System.gc();
+      e.printStackTrace();
     }
   }
   if (!success) {
