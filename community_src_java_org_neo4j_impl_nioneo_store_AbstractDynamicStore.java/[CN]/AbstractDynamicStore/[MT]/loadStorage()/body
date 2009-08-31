@@ -15,14 +15,14 @@
       throw new StoreFailureException("Illegal block size: " + blockSize);
     }
     if (!expectedVersion.equals(new String(version))) {
-      if (!versionFound(new String(version))) {
+      if (!versionFound(new String(version)) && !isReadOnly()) {
         setStoreNotOk();
       }
     }
-    if ((fileSize - version.length) % blockSize != 0) {
+    if ((fileSize - version.length) % blockSize != 0 && !isReadOnly()) {
       setStoreNotOk();
     }
-    if (getStoreOk()) {
+    if (getStoreOk() && !isReadOnly()) {
       getFileChannel().truncate(fileSize - version.length);
     }
   }
@@ -30,10 +30,15 @@
     throw new StoreFailureException("Unable to load storage " + getStorageFileName(),e);
   }
   try {
-    openIdGenerator();
+    if (!isReadOnly()) {
+      openIdGenerator();
+    }
+ else {
+      openReadOnlyIdGenerator(getBlockSize());
+    }
   }
  catch (  StoreFailureException e) {
     setStoreNotOk();
   }
-  setWindowPool(new PersistenceWindowPool(getStorageFileName(),getBlockSize(),getFileChannel(),getMappedMem(),getIfMemoryMapped()));
+  setWindowPool(new PersistenceWindowPool(getStorageFileName(),getBlockSize(),getFileChannel(),getMappedMem(),getIfMemoryMapped(),isReadOnly()));
 }

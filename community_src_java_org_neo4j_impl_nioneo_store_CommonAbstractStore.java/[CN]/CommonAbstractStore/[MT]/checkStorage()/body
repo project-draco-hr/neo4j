@@ -1,18 +1,31 @@
 {
+  if (config != null) {
+    Boolean isReadOnly=(Boolean)config.get("read_only");
+    if (isReadOnly != null) {
+      readOnly=isReadOnly;
+    }
+  }
   if (!new File(storageFileName).exists()) {
     throw new IllegalStateException("No such store[" + storageFileName + "]");
   }
   try {
-    this.fileChannel=new RandomAccessFile(storageFileName,"rw").getChannel();
+    if (!readOnly) {
+      this.fileChannel=new RandomAccessFile(storageFileName,"rw").getChannel();
+    }
+ else {
+      this.fileChannel=new RandomAccessFile(storageFileName,"r").getChannel();
+    }
   }
  catch (  IOException e) {
     throw new StoreFailureException("Unable to open file " + storageFileName,e);
   }
   try {
-    this.fileLock=this.fileChannel.tryLock();
-    if (fileLock == null) {
-      fileChannel.close();
-      throw new IllegalStateException("Unable to lock store [" + storageFileName + "], this is usually a result of some "+ "other Neo running using the same store.");
+    if (!readOnly) {
+      this.fileLock=this.fileChannel.tryLock();
+      if (fileLock == null) {
+        fileChannel.close();
+        throw new IllegalStateException("Unable to lock store [" + storageFileName + "], this is usually a result of some "+ "other Neo running using the same store.");
+      }
     }
   }
  catch (  IOException e) {
