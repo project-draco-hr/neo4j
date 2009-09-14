@@ -6,12 +6,26 @@
     return;
   }
   try {
-    boolean readOnly=stringAsBoolean(argMap.get(ARG_READONLY),true);
+    boolean readOnly=argMap.containsKey(ARG_READONLY) && stringAsBoolean(argMap.get(ARG_READONLY),true);
     tryStartLocalServerAndClient(neoDbPath,readOnly,args);
   }
  catch (  Exception e) {
-    System.err.println("Can't start client with local neo service: " + e);
-    e.printStackTrace(System.err);
-    System.exit(1);
+    if (storeWasLocked(e)) {
+      if (wantToConnectReadOnlyInstead()) {
+        try {
+          tryStartLocalServerAndClient(neoDbPath,true,args);
+        }
+ catch (        Exception innerException) {
+          handleException(innerException);
+        }
+      }
+ else {
+        handleException(e);
+      }
+    }
+ else {
+      handleException(e);
+    }
   }
+  System.exit(0);
 }
