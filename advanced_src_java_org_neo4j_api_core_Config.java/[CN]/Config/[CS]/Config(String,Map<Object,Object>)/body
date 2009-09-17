@@ -1,0 +1,25 @@
+{
+  this.storeDir=storeDir;
+  this.params=params;
+  String readOnlyStr=(String)params.get("read_only");
+  if (readOnlyStr != null && readOnlyStr.toLowerCase().equals("true")) {
+    readOnly=true;
+  }
+ else {
+    readOnly=false;
+  }
+  params.put("read_only",readOnly);
+  eventModule=new EventModule();
+  cacheManager=new AdaptiveCacheManager();
+  if (!readOnly) {
+    txModule=new TxModule(this.storeDir);
+  }
+ else {
+    txModule=new TxModule(true);
+  }
+  lockManager=new LockManager(txModule.getTxManager());
+  lockReleaser=new LockReleaser(lockManager,txModule.getTxManager());
+  persistenceModule=new PersistenceModule();
+  idGeneratorModule=new IdGeneratorModule();
+  neoModule=new NeoModule(cacheManager,lockManager,txModule.getTxManager(),idGeneratorModule.getIdGenerator(),readOnly);
+}
