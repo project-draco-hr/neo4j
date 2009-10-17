@@ -1,0 +1,19 @@
+{
+  this.neo=new EmbeddedReadOnlyNeo(path,params);
+  this.xaDs=(NeoStoreXaDataSource)neo.getConfig().getTxModule().getXaDataSourceManager().getXaDataSource("nioneodb");
+  this.xaDs.makeBackupSlave();
+  recover();
+  jobEater=new JobEater();
+  logApplier=new LogApplier(xaDs);
+  jobEater.start();
+  logApplier.start();
+  this.masterIp=masterIp;
+  this.masterPort=masterPort;
+  masterConnection=new Connection(masterIp,masterPort);
+  if (!masterConnection.connected()) {
+    if (masterConnection.connectionRefused()) {
+      throw new SocketException("Connection to master[" + masterIp + ":"+ masterPort+ "] refused");
+    }
+  }
+  jobEater.addJob(new ConnectToMasterJob(masterConnection,this));
+}
