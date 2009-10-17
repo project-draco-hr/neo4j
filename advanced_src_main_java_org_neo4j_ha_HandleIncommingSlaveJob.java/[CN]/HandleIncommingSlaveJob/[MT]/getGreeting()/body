@@ -1,0 +1,46 @@
+{
+  if (retries > 20) {
+    close();
+  }
+  if (!acquireReadBuffer()) {
+    return false;
+  }
+  try {
+    buffer.limit(25);
+    int read=connection.read();
+    if (read == 25) {
+      buffer.flip();
+      byte slaveGreeting=buffer.get();
+      if (slaveGreeting != HeaderConstants.SLAVE_GREETING) {
+        setStatus(Status.SEND_BYE);
+        return true;
+      }
+      long id=buffer.getLong();
+      long timestamp=buffer.getLong();
+      long version=buffer.getLong();
+      long masterId=master.getIdentifier();
+      long masterTimestamp=master.getCreationTime();
+      long masterVersion=master.getVersion();
+      if (id != master.getIdentifier() || timestamp != master.getCreationTime() || version > master.getVersion()) {
+        log("Got wrong id/time/version [" + id + "/"+ timestamp+ "/"+ version+ "]"+ "["+ masterId+ "/"+ masterTimestamp+ "/"+ masterVersion+ "]");
+        setStatus(Status.SEND_BYE);
+        return true;
+      }
+      log("Got slave version[" + version + "]. I am version["+ master.getVersion()+ "]");
+      slaveVersion=version;
+      setStatus(Status.SETUP_GREETING);
+      retries=0;
+      return true;
+    }
+ else {
+      retries++;
+      if (read > 0) {
+        connection.pushBackAllReadData();
+      }
+      return false;
+    }
+  }
+  finally {
+    releaseReadBuffer();
+  }
+}

@@ -1,0 +1,51 @@
+{
+  if (!acquireReadBuffer()) {
+    return false;
+  }
+  try {
+    buffer.limit(17);
+    int read=connection.read();
+    if (read == 17) {
+      buffer.flip();
+      byte request=buffer.get();
+      if (request != HeaderConstants.OFFER_LOG) {
+        log("Unkown request: " + request);
+        close();
+        return true;
+      }
+      long version=buffer.getLong();
+      if (version < slave.getVersion()) {
+        log("Got wrong version [" + version + "]");
+        setStatus(Status.SETUP_NOT_OK);
+        return true;
+      }
+      logLength=buffer.getLong();
+      log("Got offer: " + version + ","+ logLength);
+      if (!slave.hasLog(version)) {
+        try {
+          logToWrite=slave.setupLogForWrite(version);
+        }
+ catch (        IOException e) {
+          close();
+          throw new SocketException("Unable to setup logical log[" + version + "] for writing",e);
+        }
+        setStatus(Status.SETUP_OK);
+      }
+ else {
+        log("We already have log version[" + version + "]");
+        setStatus(Status.SETUP_NOT_OK);
+      }
+      retries=0;
+      return true;
+    }
+ else {
+      if (read > 0) {
+        connection.pushBackAllReadData();
+      }
+      return false;
+    }
+  }
+  finally {
+    releaseReadBuffer();
+  }
+}
