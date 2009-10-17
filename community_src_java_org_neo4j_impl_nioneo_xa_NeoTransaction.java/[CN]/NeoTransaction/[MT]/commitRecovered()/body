@@ -1,29 +1,26 @@
 {
-  if (!isRecovered() && !prepared) {
-    throw new XAException("Cannot commit non prepared transaction[" + getIdentifier() + "]");
-  }
-  if (isRecovered()) {
-    commitRecovered();
-    return;
-  }
   try {
     committed=true;
     CommandSorter sorter=new CommandSorter();
     java.util.Collections.sort(relTypeCommands,sorter);
     for (    Command.RelationshipTypeCommand command : relTypeCommands) {
       command.execute();
+      addRelationshipType(command.getKey());
     }
     java.util.Collections.sort(nodeCommands,sorter);
     for (    Command.NodeCommand command : nodeCommands) {
       command.execute();
+      removeNodeFromCache(command.getKey());
     }
     java.util.Collections.sort(relCommands,sorter);
     for (    Command.RelationshipCommand command : relCommands) {
       command.execute();
+      removeRelationshipFromCache(command.getKey());
     }
     java.util.Collections.sort(propIndexCommands,sorter);
     for (    Command.PropertyIndexCommand command : propIndexCommands) {
       command.execute();
+      addPropertyIndexCommand(command.getKey());
     }
     java.util.Collections.sort(propCommands,sorter);
     for (    Command.PropertyCommand command : propCommands) {
