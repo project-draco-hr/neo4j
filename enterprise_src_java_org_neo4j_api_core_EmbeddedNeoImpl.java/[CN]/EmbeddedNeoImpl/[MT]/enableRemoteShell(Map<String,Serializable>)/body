@@ -1,22 +1,21 @@
 {
+  if (shellService != null) {
+    throw new IllegalStateException("Shell already enabled");
+  }
   Map<String,Serializable> properties=initialProperties;
   if (properties == null) {
     properties=Collections.emptyMap();
   }
   try {
-    if (shellDependencyAvailable()) {
-      this.shellServer=new NeoShellServer(neoService);
-      Object port=properties.get("port");
-      Object name=properties.get("name");
-      this.shellServer.makeRemotelyAvailable(port != null ? (Integer)port : DEFAULT_SHELL_PORT,name != null ? (String)name : DEFAULT_SHELL_NAME);
-      return true;
-    }
- else {
-      log.info("Shell library not available. Neo shell not " + "started. Please add the Neo4j shell jar to the " + "classpath.");
-      return false;
-    }
+    shellService=new ShellService(this.neoService,properties);
+    return true;
   }
  catch (  RemoteException e) {
-    throw new IllegalStateException("Can't start remote neo shell: " + e);
+    throw new IllegalStateException("Can't start remote neo shell",e);
+  }
+catch (  ShellNotAvailableException e) {
+    log.info("Shell library not available. Neo shell not " + "started. Please add the Neo4j shell jar to the classpath.");
+    e.printStackTrace();
+    return false;
   }
 }
