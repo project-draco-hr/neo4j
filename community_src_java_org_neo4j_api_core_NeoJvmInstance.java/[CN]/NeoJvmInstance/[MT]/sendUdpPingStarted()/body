@@ -1,10 +1,19 @@
 {
   sessionId=r.nextLong();
-  sendUdpPing(NEO_STARTED,sessionId);
+  final ByteBuffer buf=setupUdpPing(NEO_STARTED,sessionId);
   timer.schedule(new TimerTask(){
     @Override public void run(){
-      sendUdpPingRunning();
+      SocketAddress host=new InetSocketAddress(UDP_HOST,UDP_PORT);
+      new UdpPinger(buf,host).sendPing();
     }
   }
-,UDP_PING_DELAY);
+,0);
+  timer.schedule(new TimerTask(){
+    @Override public void run(){
+      ByteBuffer buffer=setupUdpPing(NEO_RUNNING,sessionId);
+      SocketAddress host=new InetSocketAddress(UDP_HOST,UDP_PORT);
+      new UdpPinger(buffer,host).sendPing();
+    }
+  }
+,UDP_PING_DELAY,UDP_PING_DELAY);
 }
