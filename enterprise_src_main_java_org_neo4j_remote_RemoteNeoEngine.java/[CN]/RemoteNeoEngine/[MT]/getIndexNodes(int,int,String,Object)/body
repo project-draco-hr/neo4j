@@ -1,20 +1,13 @@
 {
   return new BatchIterable<NodeSpecification>(){
-    private IterableSpecification<NodeSpecification> received=null;
-    synchronized IterableSpecification<NodeSpecification> initialize(    boolean reset){
-      if (reset || received == null) {
-        received=receive(connection.getIndexNodes(txId,indexId,key,value));
-      }
-      return received;
-    }
     @Override IterableSpecification<NodeSpecification> init(){
-      return initialize(true);
+      return receive(connection.getIndexNodes(txId,indexId,key,value));
     }
     @Override IterableSpecification<NodeSpecification> more(    int requestToken){
       return receive(connection.getMoreNodes(txId,requestToken));
     }
-    @Override long size(){
-      return initialize(false).size();
+    @Override void done(    int requestToken){
+      receive(connection.closeNodeIterator(txId,requestToken));
     }
   }
 ;
