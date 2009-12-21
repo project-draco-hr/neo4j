@@ -1,15 +1,16 @@
 {
   final IterableSpecification<T> spec=init();
-  return new Iterator<T>(){
+  return new CloseableIteratorWithSize<T>(){
     int index=0;
     T[] content=spec.content;
     int token=spec.token;
     boolean hasMore=spec.hasMore;
+    long size=spec.size;
     public boolean hasNext(){
-      return index < content.length || hasMore;
+      return content != null && (index < content.length || hasMore);
     }
     public T next(){
-      if (index < content.length) {
+      if (content != null && index < content.length) {
         return content[index++];
       }
  else       if (hasMore) {
@@ -24,8 +25,24 @@
         throw new NoSuchElementException();
       }
     }
+    public long size(){
+      if (size < 0) {
+        throw new UnsupportedOperationException("This iterator has no size.");
+      }
+      return size;
+    }
+    public void close(){
+      if (content != null) {
+        done(token);
+        hasMore=false;
+        content=null;
+      }
+    }
     public void remove(){
       throw new UnsupportedOperationException();
+    }
+    @Override protected void finalize(){
+      close();
     }
   }
 ;
