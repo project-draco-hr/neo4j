@@ -1,0 +1,88 @@
+{
+  if (doneCalculation) {
+    return true;
+  }
+  if (startNode.equals(endNode)) {
+    matchNode=startNode;
+    doneCalculation=true;
+    return true;
+  }
+  List<Node> firstList=new ArrayList<Node>();
+  firstList.add(startNode);
+  List<Node> secondList=new ArrayList<Node>();
+  secondList.add(endNode);
+  int firstDepth=maxDepth / 2;
+  int secondDepth=firstDepth + (maxDepth % 2);
+  List<Node> nextFirstList=new ArrayList<Node>();
+  List<Node> nextSecondList=new ArrayList<Node>();
+  Iterator<Node> firstItr=firstList.iterator();
+  Iterator<Node> secondItr=secondList.iterator();
+  int currentFirstDepth=0;
+  int currentSecondDepth=0;
+  firstSet.put(startNode,null);
+  secondSet.put(endNode,null);
+  while (firstItr.hasNext() || secondItr.hasNext()) {
+    if (firstItr.hasNext()) {
+      Node node=firstItr.next();
+      if (secondSet.containsKey(node)) {
+        matchNode=node;
+        doneCalculation=true;
+        return true;
+      }
+      if (currentFirstDepth + 1 <= firstDepth) {
+        for (int i=0; i < relTypesAndDirections.length / 2; i++) {
+          RelationshipType type=(RelationshipType)relTypesAndDirections[i * 2];
+          Direction dir=(Direction)relTypesAndDirections[i * 2 + 1];
+          for (          Relationship rel : node.getRelationships(type,dir)) {
+            Node otherNode=rel.getOtherNode(node);
+            Relationship oldRel=firstSet.put(otherNode,rel);
+            if (oldRel == null) {
+              nextFirstList.add(otherNode);
+            }
+ else {
+              firstSet.put(otherNode,oldRel);
+            }
+          }
+        }
+      }
+    }
+    if (secondItr.hasNext()) {
+      Node node=secondItr.next();
+      if (firstSet.containsKey(node)) {
+        matchNode=node;
+        doneCalculation=true;
+        return true;
+      }
+      if (currentSecondDepth + 1 <= secondDepth) {
+        for (int i=0; i < relTypesAndDirections.length / 2; i++) {
+          RelationshipType type=(RelationshipType)relTypesAndDirections[i * 2];
+          Direction dir=(Direction)relTypesAndDirections[i * 2 + 1];
+          for (          Relationship rel : node.getRelationships(type,dir)) {
+            Node otherNode=rel.getOtherNode(node);
+            Relationship oldRel=secondSet.put(otherNode,rel);
+            if (oldRel == null) {
+              nextSecondList.add(otherNode);
+            }
+ else {
+              secondSet.put(otherNode,oldRel);
+            }
+          }
+        }
+      }
+    }
+    if (!firstItr.hasNext() && currentFirstDepth + 1 <= firstDepth) {
+      currentFirstDepth++;
+      firstList=nextFirstList;
+      nextFirstList=new ArrayList<Node>();
+      firstItr=firstList.iterator();
+    }
+    if (!secondItr.hasNext() && currentSecondDepth + 1 <= secondDepth) {
+      currentSecondDepth++;
+      secondList=nextSecondList;
+      nextSecondList=new ArrayList<Node>();
+      secondItr=secondList.iterator();
+    }
+  }
+  doneCalculation=true;
+  return false;
+}
