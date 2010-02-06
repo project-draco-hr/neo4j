@@ -1,0 +1,40 @@
+{
+  if (firstRun) {
+    if (safeGet(session,KEY_INDEX_CLASS_NAME) == null) {
+      safeSet(session,KEY_INDEX_CLASS_NAME,"org.neo4j.index.lucene.LuceneIndexService");
+    }
+  }
+  try {
+    Object indexService=instantiateOrGetIndexServiceObject(session,out);
+    if (indexService == null) {
+      throw new ShellException("No IndexService given, use the " + KEY_INDEX_CLASS_NAME + " environment variable");
+    }
+    boolean get=parser.options().containsKey("g");
+    boolean index=parser.options().containsKey("i");
+    boolean remove=parser.options().containsKey("r");
+    int count=boolCount(get,index,remove);
+    if (count != 1) {
+      throw new ShellException("Supply one of: -g, -i, -r");
+    }
+    if (get) {
+      get(indexService,parser,session,out);
+    }
+ else     if (index) {
+      index(indexService,parser,session,out);
+    }
+ else     if (remove) {
+      remove(indexService,parser,session,out);
+    }
+    return null;
+  }
+ catch (  ShellException e) {
+    throw e;
+  }
+catch (  Exception e) {
+    e.printStackTrace();
+    throw new ShellException(e);
+  }
+ finally {
+    firstRun=false;
+  }
+}
