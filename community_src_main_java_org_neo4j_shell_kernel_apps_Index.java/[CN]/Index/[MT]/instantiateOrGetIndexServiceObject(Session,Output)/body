@@ -9,29 +9,13 @@
   if (className == null) {
     return null;
   }
-  IndexServiceContext context=null;
-synchronized (this.contexts) {
-    context=this.contexts.get(className);
-    if (context == null) {
-      if (session instanceof SameJvmSession) {
-        context=new IndexServiceContext(Class.forName(className).getConstructor(GraphDatabaseService.class).newInstance(this.getServer().getDb()),true);
-      }
- else {
-        XaDataSourceManager xaManager=((EmbeddedGraphDatabase)getServer().getDb()).getConfig().getTxModule().getXaDataSourceManager();
-        String xaName=DATA_SOURCE_NAMES.get(className);
-        if (xaName == null) {
-          throw new ShellException("Unrecognized index service " + className);
-        }
-        if (!xaManager.hasDataSource(xaName)) {
-          throw new ShellException("Data source " + className + " not registered");
-        }
-        XaDataSource dataSource=xaManager.getXaDataSource(xaName);
-        Method getterMethod=dataSource.getClass().getMethod("getIndexService");
-        getterMethod.setAccessible(true);
-        context=new IndexServiceContext(getterMethod.invoke(dataSource),false);
-      }
-      this.contexts.put(className,context);
+  Object indexService=null;
+synchronized (this.indexServices) {
+    indexService=this.indexServices.get(className);
+    if (indexService == null) {
+      indexService=Class.forName(className).getConstructor(GraphDatabaseService.class).newInstance(this.getServer().getDb());
+      this.indexServices.put(className,indexService);
     }
   }
-  return context.indexService;
+  return indexService;
 }
