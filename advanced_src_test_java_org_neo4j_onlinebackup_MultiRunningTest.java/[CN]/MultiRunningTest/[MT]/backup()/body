@@ -1,43 +1,43 @@
 {
   System.out.println("starting tests");
-  EmbeddedGraphDatabase neo=Util.startNeoInstance(STORE_LOCATION_DIR);
-  ((NeoStoreXaDataSource)neo.getConfig().getPersistenceModule().getPersistenceManager().getPersistenceSource().getXaDataSource()).keepLogicalLogs(true);
-  IndexService indexService=new LuceneIndexService(neo);
-  XaDataSourceManager xaDsm=neo.getConfig().getTxModule().getXaDataSourceManager();
+  EmbeddedGraphDatabase graphDb=Util.startGraphDbInstance(STORE_LOCATION_DIR);
+  ((NeoStoreXaDataSource)graphDb.getConfig().getPersistenceModule().getPersistenceManager().getPersistenceSource().getXaDataSource()).keepLogicalLogs(true);
+  IndexService indexService=new LuceneIndexService(graphDb);
+  XaDataSourceManager xaDsm=graphDb.getConfig().getTxModule().getXaDataSourceManager();
   XaDataSource ds=xaDsm.getXaDataSource("lucene");
   ((LuceneDataSource)ds).keepLogicalLogs(true);
   System.out.println("backing up original db without any changes");
-  tryBackup(neo,BACKUP_LOCATION_DIR,1);
-  Transaction tx=neo.beginTx();
+  tryBackup(graphDb,BACKUP_LOCATION_DIR,1);
+  Transaction tx=graphDb.beginTx();
   try {
-    indexService.index(addNode(neo),"number",2);
+    indexService.index(addNode(graphDb),"number",2);
     tx.success();
   }
   finally {
     tx.finish();
   }
   System.out.println("one node added");
-  tryBackup(neo,BACKUP_LOCATION_DIR,2);
-  tx=neo.beginTx();
+  tryBackup(graphDb,BACKUP_LOCATION_DIR,2);
+  tx=graphDb.beginTx();
   try {
-    indexService.index(addNode(neo),"number",3);
+    indexService.index(addNode(graphDb),"number",3);
     tx.success();
   }
   finally {
     tx.finish();
   }
   System.out.println("one node added");
-  tx=neo.beginTx();
+  tx=graphDb.beginTx();
   try {
-    indexService.index(addNode(neo),"number",4);
+    indexService.index(addNode(graphDb),"number",4);
     System.out.println("one node added, not commited");
-    tryBackup(neo,BACKUP_LOCATION_DIR,3);
+    tryBackup(graphDb,BACKUP_LOCATION_DIR,3);
     tx.success();
   }
   finally {
     tx.finish();
   }
   System.out.println("previous add commited");
-  tryBackup(neo,BACKUP_LOCATION_DIR,4);
-  Util.stopNeo(neo,indexService);
+  tryBackup(graphDb,BACKUP_LOCATION_DIR,4);
+  Util.stopGraphDb(graphDb,indexService);
 }
