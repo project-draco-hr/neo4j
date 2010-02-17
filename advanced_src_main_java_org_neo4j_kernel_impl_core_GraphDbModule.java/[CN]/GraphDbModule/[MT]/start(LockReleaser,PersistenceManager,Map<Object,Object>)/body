@@ -1,0 +1,28 @@
+{
+  if (!startIsOk) {
+    return;
+  }
+  boolean useNewCache=true;
+  if (params.containsKey("use_old_cache") && params.get("use_old_cache").equals("true")) {
+    useNewCache=false;
+  }
+  if (!readOnly) {
+    nodeManager=new NodeManager(cacheManager,lockManager,lockReleaser,transactionManager,persistenceManager,idGenerator,useNewCache);
+  }
+ else {
+    nodeManager=new ReadOnlyNodeManager(cacheManager,lockManager,lockReleaser,transactionManager,persistenceManager,idGenerator,useNewCache);
+  }
+  RelationshipTypeData relTypes[]=null;
+  PropertyIndexData propertyIndexes[]=null;
+  beginTx();
+  relTypes=persistenceManager.loadAllRelationshipTypes();
+  propertyIndexes=persistenceManager.loadPropertyIndexes(INDEX_COUNT);
+  commitTx();
+  nodeManager.addRawRelationshipTypes(relTypes);
+  nodeManager.addPropertyIndexes(propertyIndexes);
+  if (propertyIndexes.length < INDEX_COUNT) {
+    nodeManager.setHasAllpropertyIndexes(true);
+  }
+  nodeManager.start(params);
+  startIsOk=false;
+}

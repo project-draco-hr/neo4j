@@ -1,0 +1,28 @@
+{
+  if (key == null) {
+    throw new IllegalArgumentException("null key");
+  }
+  ArrayMap<Integer,PropertyData> skipMap=nodeManager.getCowPropertyRemoveMap(this);
+  ArrayMap<Integer,PropertyData> addMap=nodeManager.getCowPropertyAddMap(this);
+  ensureFullProperties();
+  for (  PropertyIndex index : nodeManager.index(key)) {
+    if (skipMap != null && skipMap.get(index.getKeyId()) != null) {
+      throw newPropertyNotFoundException(key);
+    }
+    if (addMap != null) {
+      PropertyData property=addMap.get(index.getKeyId());
+      if (property != null) {
+        return getPropertyValue(property);
+      }
+    }
+    PropertyData property=propertyMap.get(index.getKeyId());
+    if (property != null) {
+      return getPropertyValue(property);
+    }
+  }
+  PropertyData property=getSlowProperty(addMap,skipMap,key);
+  if (property != null) {
+    return getPropertyValue(property);
+  }
+  throw newPropertyNotFoundException(key);
+}
