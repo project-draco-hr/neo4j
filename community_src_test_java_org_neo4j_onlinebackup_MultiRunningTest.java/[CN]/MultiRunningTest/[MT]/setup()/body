@@ -1,21 +1,21 @@
 {
   Util.deleteDir(new File(VAR));
   System.out.println("setting up database and backup-copy including Lucene");
-  EmbeddedGraphDatabase neo=Util.startNeoInstance(STORE_LOCATION_DIR);
-  XaDataSource neoStoreXaDataSource=neo.getConfig().getPersistenceModule().getPersistenceManager().getPersistenceSource().getXaDataSource();
+  EmbeddedGraphDatabase graphDb=Util.startGraphDbInstance(STORE_LOCATION_DIR);
+  XaDataSource neoStoreXaDataSource=graphDb.getConfig().getPersistenceModule().getPersistenceManager().getPersistenceSource().getXaDataSource();
   neoStoreXaDataSource.keepLogicalLogs(true);
-  IndexService indexService=new LuceneIndexService(neo);
-  XaDataSourceManager xaDsm=neo.getConfig().getTxModule().getXaDataSourceManager();
+  IndexService indexService=new LuceneIndexService(graphDb);
+  XaDataSourceManager xaDsm=graphDb.getConfig().getTxModule().getXaDataSourceManager();
   XaDataSource ds=xaDsm.getXaDataSource("lucene");
   ((LuceneDataSource)ds).keepLogicalLogs(true);
-  Transaction tx=neo.beginTx();
+  Transaction tx=graphDb.beginTx();
   try {
-    indexService.index(addNode(neo),"number",1);
+    indexService.index(addNode(graphDb),"number",1);
     tx.success();
   }
   finally {
     tx.finish();
   }
-  Util.stopNeo(neo,indexService);
+  Util.stopGraphDb(graphDb,indexService);
   Util.copyDir(STORE_LOCATION_DIR,BACKUP_LOCATION_DIR);
 }
