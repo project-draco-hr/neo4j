@@ -1,0 +1,27 @@
+{
+  NodeRecord nodeRecord=getNodeRecord(nodeId);
+  if (nodeRecord == null) {
+    nodeRecord=getNodeStore().getRecord(nodeId);
+    addNodeRecord(nodeRecord);
+  }
+  if (!nodeRecord.inUse()) {
+    throw new IllegalStateException("Unable to delete Node[" + nodeId + "] since it has already been deleted.");
+  }
+  nodeRecord.setInUse(false);
+  int nextProp=nodeRecord.getNextProp();
+  while (nextProp != Record.NO_NEXT_PROPERTY.intValue()) {
+    PropertyRecord propRecord=getPropertyRecord(nextProp);
+    if (propRecord == null) {
+      propRecord=getPropertyStore().getRecord(nextProp);
+      addPropertyRecord(propRecord);
+    }
+    if (propRecord.isLight()) {
+      getPropertyStore().makeHeavy(propRecord);
+    }
+    nextProp=propRecord.getNextProp();
+    propRecord.setInUse(false);
+    for (    DynamicRecord valueRecord : propRecord.getValueRecords()) {
+      valueRecord.setInUse(false);
+    }
+  }
+}
