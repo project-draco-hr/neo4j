@@ -20,33 +20,43 @@
   params.put(LockReleaser.class,config.getLockReleaser());
   config.getTxModule().registerDataSource(DEFAULT_DATA_SOURCE_NAME,NIO_NEO_DB_CLASS,resourceId,params);
   XaDataSource lucene=null;
+  XaDataSource luceneFulltext=null;
   if (!config.isReadOnly()) {
     try {
       Class clazz=Class.forName(LUCENE_DS_CLASS);
       cleanWriteLocksInLuceneDirectory(storeDir + "/lucene");
-      lucene=registerLuceneDataSource(clazz.getName(),config.getTxModule(),storeDir + "/lucene",config.getLockManager());
+      byte luceneId[]="162373".getBytes();
+      lucene=registerLuceneDataSource("lucene",clazz.getName(),config.getTxModule(),storeDir + "/lucene",config.getLockManager(),luceneId);
+      clazz=Class.forName(LUCENE_FULLTEXT_DS_CLASS);
+      cleanWriteLocksInLuceneDirectory(storeDir + "/lucene-fulltext");
+      luceneId="262374".getBytes();
+      luceneFulltext=registerLuceneDataSource("lucene-fulltext",clazz.getName(),config.getTxModule(),storeDir + "/lucene-fulltext",config.getLockManager(),luceneId);
     }
  catch (    ClassNotFoundException e) {
     }
   }
   persistenceSource=new NioNeoDbPersistenceSource();
-  config.setNeoPersistenceSource(DEFAULT_DATA_SOURCE_NAME,create);
+  config.setPersistenceSource(DEFAULT_DATA_SOURCE_NAME,create);
   config.getIdGeneratorModule().setPersistenceSourceInstance(persistenceSource);
   config.getEventModule().init();
   config.getTxModule().init();
   config.getPersistenceModule().init();
   persistenceSource.init();
   config.getIdGeneratorModule().init();
-  config.getNeoModule().init();
+  config.getGraphDbModule().init();
   config.getEventModule().start();
   config.getTxModule().start();
   config.getPersistenceModule().start(config.getTxModule().getTxManager(),persistenceSource);
   persistenceSource.start(config.getTxModule().getXaDataSourceManager());
   config.getIdGeneratorModule().start();
-  config.getNeoModule().start(config.getLockReleaser(),config.getPersistenceModule().getPersistenceManager(),params);
+  config.getGraphDbModule().start(config.getLockReleaser(),config.getPersistenceModule().getPersistenceManager(),params);
   if (lucene != null) {
     config.getTxModule().getXaDataSourceManager().unregisterDataSource("lucene");
     lucene=null;
+  }
+  if (luceneFulltext != null) {
+    config.getTxModule().getXaDataSourceManager().unregisterDataSource("lucene-fulltext");
+    luceneFulltext=null;
   }
   started=true;
 }

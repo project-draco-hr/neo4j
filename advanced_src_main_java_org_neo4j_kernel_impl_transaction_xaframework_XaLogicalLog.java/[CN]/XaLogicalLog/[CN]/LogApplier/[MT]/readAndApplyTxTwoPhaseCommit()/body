@@ -1,17 +1,20 @@
 {
   buffer.clear();
-  buffer.limit(4);
+  buffer.limit(12);
   if (byteChannel.read(buffer) != buffer.limit()) {
     throw new IOException("Unable to read tx 2PC entry");
   }
   buffer.flip();
   int identifier=buffer.getInt();
+  long txId=buffer.getLong();
   StartEntry entry=xidIdentMap.get(identifier);
   if (entry == null) {
     throw new IOException("Unable to read tx prepeare entry");
   }
   Xid xid=entry.getXid();
   try {
+    XaTransaction xaTx=xaRm.getXaTransaction(xid);
+    xaTx.setCommitTxId(txId);
     xaRm.commit(xid,true);
   }
  catch (  XAException e) {
