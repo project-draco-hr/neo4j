@@ -6,16 +6,17 @@
     throw new IllegalStateException("There are active transactions");
   }
   buffer.clear();
-  buffer.limit(8);
-  if (byteChannel.read(buffer) != 8) {
+  buffer.limit(16);
+  if (byteChannel.read(buffer) != 16) {
     throw new IOException("Unable to read log version");
   }
   buffer.flip();
   logVersion=buffer.getLong();
+  long previousCommittedTx=buffer.getLong();
   if (logVersion != xaTf.getCurrentVersion()) {
     throw new IllegalStateException("Tried to apply version " + logVersion + " but expected version "+ xaTf.getCurrentVersion());
   }
-  log.fine("Logical log version: " + logVersion);
+  log.fine("Logical log version: " + logVersion + "(previous committed tx="+ previousCommittedTx+ ")");
   long logEntriesFound=0;
   LogApplier logApplier=new LogApplier(byteChannel,buffer,xaTf,xaRm,cf,xidIdentMap,recoveredTxMap);
   while (logApplier.readAndApplyEntry()) {

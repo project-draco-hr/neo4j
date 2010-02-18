@@ -1,8 +1,8 @@
 {
   log.info("Non clean shutdown detected on log [" + logFileName + "]. Recovery started ...");
   buffer.clear();
-  buffer.limit(8);
-  if (fileChannel.read(buffer) != 8) {
+  buffer.limit(16);
+  if (fileChannel.read(buffer) != 16) {
     log.info("Unable to read timestamp information, " + "no records in logical log.");
     fileChannel.close();
     boolean success=FileUtils.renameFile(new File(logFileName),new File(logFileName + "_unknown_timestamp_" + System.currentTimeMillis()+ ".log"));
@@ -12,11 +12,15 @@
   }
   buffer.flip();
   logVersion=buffer.getLong();
-  log.fine("Logical log version: " + logVersion);
+  long lastCommittedTx=buffer.getLong();
+  log.fine("Logical log version: " + logVersion + " with committed tx["+ lastCommittedTx+ "]");
   long logEntriesFound=0;
+  long lastEntryPos=fileChannel.position();
   while (readEntry()) {
     logEntriesFound++;
+    lastEntryPos=fileChannel.position();
   }
+  fileChannel.position(lastEntryPos);
   scanIsComplete=true;
   log.fine("Internal recovery completed, scanned " + logEntriesFound + " log entries.");
   xaRm.checkXids();
