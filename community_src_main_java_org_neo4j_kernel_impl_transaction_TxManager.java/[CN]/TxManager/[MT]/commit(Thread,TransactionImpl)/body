@@ -1,15 +1,12 @@
 {
   StoreFailureException sfe=null;
   int xaErrorCode=-1;
-  int result=Status.STATUS_UNKNOWN;
   if (tx.getResourceCount() == 0) {
     tx.setStatus(Status.STATUS_COMMITTED);
-    result=Status.STATUS_COMMITTED;
   }
  else {
     try {
       tx.doCommit();
-      result=Status.STATUS_COMMITTED;
     }
  catch (    XAException e) {
       xaErrorCode=e.errorCode;
@@ -27,12 +24,14 @@ catch (    StoreFailureException e) {
   if (tx.getStatus() != Status.STATUS_COMMITTED) {
     try {
       tx.doRollback();
-      result=Status.STATUS_ROLLEDBACK;
     }
  catch (    XAException e) {
       e.printStackTrace();
       log.severe("Unable to rollback transaction. " + "Some resources may be commited others not. " + "Neo4j kernel should be SHUTDOWN for "+ "resource maintance and transaction recovery ---->");
       tmOk=false;
+      if (sfe != null) {
+        sfe.printStackTrace();
+      }
       throw new HeuristicMixedException("Unable to rollback ---> error code in commit: " + xaErrorCode + " ---> error code for rollback: "+ e.errorCode);
     }
     tx.doAfterCompletion();

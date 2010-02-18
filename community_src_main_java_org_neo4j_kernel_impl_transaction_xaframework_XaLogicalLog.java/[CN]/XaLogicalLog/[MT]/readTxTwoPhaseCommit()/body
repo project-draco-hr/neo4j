@@ -1,11 +1,12 @@
 {
   buffer.clear();
-  buffer.limit(4);
+  buffer.limit(12);
   if (fileChannel.read(buffer) != buffer.limit()) {
     return false;
   }
   buffer.flip();
   int identifier=buffer.getInt();
+  long txId=buffer.getLong();
   StartEntry entry=xidIdentMap.get(identifier);
   if (entry == null) {
     return false;
@@ -15,6 +16,8 @@
     return false;
   }
   try {
+    XaTransaction xaTx=xaRm.getXaTransaction(xid);
+    xaTx.setCommitTxId(txId);
     xaRm.injectTwoPhaseCommit(xid);
   }
  catch (  XAException e) {
