@@ -1,0 +1,24 @@
+{
+  params.put("backup_slave","true");
+  this.graphDb=new EmbeddedReadOnlyGraphDatabase(path,params);
+  this.xaDs=(NeoStoreXaDataSource)graphDb.getConfig().getTxModule().getXaDataSourceManager().getXaDataSource("nioneodb");
+  this.xaDs.makeBackupSlave();
+  recover();
+  jobEater=new JobEater();
+  logApplier=new LogApplier(xaDs);
+  jobEater.start();
+  logApplier.start();
+  this.masterIp=masterIp;
+  this.masterPort=masterPort;
+  masterConnection=new Connection(masterIp,masterPort);
+  while (!masterConnection.connected()) {
+    if (masterConnection.connectionRefused()) {
+      System.out.println("Unable to connect to master");
+      break;
+    }
+  }
+  if (masterConnection.connected()) {
+    jobEater.addJob(new ConnectToMasterJob(masterConnection,this));
+  }
+  System.out.println("At version: " + getVersion());
+}
