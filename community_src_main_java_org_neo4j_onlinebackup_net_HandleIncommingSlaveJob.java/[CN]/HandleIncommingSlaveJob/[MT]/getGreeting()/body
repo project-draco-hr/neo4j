@@ -6,9 +6,8 @@
     return false;
   }
   try {
-    buffer.limit(25);
     int read=connection.read();
-    if (read == 25) {
+    if (read > 29) {
       buffer.flip();
       byte slaveGreeting=buffer.get();
       if (slaveGreeting != HeaderConstants.SLAVE_GREETING) {
@@ -18,15 +17,19 @@
       long id=buffer.getLong();
       long timestamp=buffer.getLong();
       long version=buffer.getLong();
-      long masterId=master.getIdentifier();
-      long masterTimestamp=master.getCreationTime();
-      long masterVersion=master.getVersion();
-      if (id != master.getIdentifier() || timestamp != master.getCreationTime() || version > master.getVersion()) {
-        log("Got wrong id/time/version [" + id + "/"+ timestamp+ "/"+ version+ "]"+ "["+ masterId+ "/"+ masterTimestamp+ "/"+ masterVersion+ "]");
+      int strLen=buffer.getInt();
+      byte[] bytes=new byte[strLen];
+      buffer.get(bytes);
+      xaDsName=new String(bytes);
+      long masterId=master.getIdentifier(xaDsName);
+      long masterTimestamp=master.getCreationTime(xaDsName);
+      long masterVersion=master.getVersion(xaDsName);
+      if (id != masterId || timestamp != masterTimestamp || version > masterVersion) {
+        log("Got wrong id/time/version [" + id + "/"+ timestamp+ "/"+ version+ "]"+ "["+ masterId+ "/"+ masterTimestamp+ "/"+ masterVersion+ "] for data source "+ xaDsName);
         setStatus(Status.SEND_BYE);
         return true;
       }
-      log("Got slave version[" + version + "]. I am version["+ master.getVersion()+ "]");
+      log("Got slave version[" + version + "]. I am version["+ master.getVersion(xaDsName)+ "] for data source "+ xaDsName);
       slaveVersion=version;
       setStatus(Status.SETUP_GREETING);
       retries=0;
