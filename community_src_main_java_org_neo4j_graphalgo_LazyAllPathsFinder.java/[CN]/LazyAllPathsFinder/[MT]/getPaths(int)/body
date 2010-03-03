@@ -1,0 +1,34 @@
+{
+  StopEvaluator stopEvaluator=new StopEvaluator(){
+    public boolean isStopNode(    TraversalPosition position){
+      return position.depth() > maxDepth;
+    }
+  }
+;
+  final Map<Node,List<PropertyContainer>> trails=new HashMap<Node,List<PropertyContainer>>();
+  final Traverser traverser=startNode.traverse(Order.BREADTH_FIRST,stopEvaluator,ReturnableEvaluator.ALL_BUT_START_NODE,relationshipType,Direction.BOTH);
+  return new IterableWrapper<List<PropertyContainer>,Node>(traverser){
+    @Override protected List<PropertyContainer> underlyingObjectToObject(    Node node){
+      TraversalPosition position=traverser.currentPosition();
+      if (position.depth() > maxDepth) {
+        return null;
+      }
+      Relationship rel=position.lastRelationshipTraversed();
+      List<PropertyContainer> trail=new ArrayList<PropertyContainer>();
+      if (position.depth() > 1) {
+        Node parent=rel.getOtherNode(node);
+        List<PropertyContainer> parentTrail=trails.get(parent);
+        trail.addAll(parentTrail);
+        trail.add(rel);
+      }
+ else {
+        trail.add(startNode);
+        trail.add(rel);
+      }
+      trail.add(node);
+      trails.put(node,trail);
+      return trail;
+    }
+  }
+;
+}
