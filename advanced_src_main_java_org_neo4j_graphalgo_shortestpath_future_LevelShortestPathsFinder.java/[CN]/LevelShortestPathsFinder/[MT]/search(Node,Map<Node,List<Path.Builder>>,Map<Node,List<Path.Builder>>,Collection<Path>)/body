@@ -1,0 +1,33 @@
+{
+  Map<Node,List<Path.Builder>> replacement=new HashMap<Node,List<Path.Builder>>();
+  for (  Map.Entry<Node,List<Path.Builder>> entry : source.entrySet()) {
+    Node node=entry.getKey();
+    List<Path.Builder> paths=entry.getValue();
+    for (    Relationship rel : expander.expand(node)) {
+      Node other=rel.getOtherNode(node);
+      List<Path.Builder> otherPaths=target.get(other);
+      for (      Path.Builder path : paths) {
+        path=path.push(rel);
+        if (otherPaths != null) {
+          for (          Path.Builder otherPath : otherPaths) {
+            if (path.getStartNode().equals(start)) {
+              result.add(path.build(otherPath));
+            }
+ else {
+              result.add(otherPath.build(path));
+            }
+          }
+        }
+        if (result.isEmpty()) {
+          List<Path.Builder> newPaths=replacement.get(other);
+          if (newPaths == null) {
+            newPaths=new LinkedList<Path.Builder>();
+            replacement.put(other,newPaths);
+          }
+          newPaths.add(path);
+        }
+      }
+    }
+  }
+  return replacement;
+}
