@@ -9,13 +9,19 @@
     try {
       if (logToSend.read(buffer) <= 0) {
         releaseWriteBuffer();
-        setStatus(Status.GET_MESSAGE);
+        if (nextLogVersion != -1) {
+          logToSend=master.getLog(xaDsName,nextLogVersion);
+          logLength=master.getLogLength(xaDsName,nextLogVersion);
+          logVersionToSend=nextLogVersion;
+          nextLogVersion=-1;
+          setStatus(Status.SETUP_OFFER_LOG);
+        }
+ else {
+          setStatus(Status.GET_MESSAGE);
+        }
         logLength=-1;
         logVersionToSend=-1;
         logToSend=null;
-        if (logVersionToSend >= slaveVersion) {
-          slaveVersion=logVersionToSend + 1;
-        }
         return true;
       }
       buffer.flip();
