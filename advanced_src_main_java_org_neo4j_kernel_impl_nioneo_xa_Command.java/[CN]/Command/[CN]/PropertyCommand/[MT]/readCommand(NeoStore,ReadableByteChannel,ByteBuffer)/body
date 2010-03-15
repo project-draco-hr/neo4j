@@ -1,6 +1,6 @@
 {
   buffer.clear();
-  buffer.limit(5);
+  buffer.limit(9);
   if (byteChannel.read(buffer) != buffer.limit()) {
     return null;
   }
@@ -11,10 +11,18 @@
   if ((inUseFlag & Record.IN_USE.byteValue()) == Record.IN_USE.byteValue()) {
     inUse=true;
   }
- else   if (inUseFlag != Record.NOT_IN_USE.byteValue()) {
-    throw new IOException("Illegal in use flag: " + inUseFlag);
+  boolean nodeProperty=true;
+  if ((inUseFlag & Record.REL_PROPERTY.byteValue()) == Record.REL_PROPERTY.byteValue()) {
+    nodeProperty=false;
   }
+  int primitiveId=buffer.getInt();
   PropertyRecord record=new PropertyRecord(id);
+  if (primitiveId != -1 && nodeProperty) {
+    record.setNodeId(primitiveId);
+  }
+ else   if (primitiveId != -1) {
+    record.setRelId(primitiveId);
+  }
   if (inUse) {
     buffer.clear();
     buffer.limit(24);
