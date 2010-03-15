@@ -4,16 +4,25 @@
     if (nextRel == null) {
       return null;
     }
-    if (!sharedVisitedRels.add(nextRel.getId())) {
-      continue;
-    }
     Node result=nextRel.getOtherNode(this.lastParentTraverserNode);
-    if (this.visitedNodes.containsKey(result)) {
+    LevelData levelData=this.visitedNodes.get(result);
+    boolean createdLevelData=false;
+    if (levelData == null) {
+      levelData=new LevelData(result,this.currentDepth);
+      this.visitedNodes.put(result,levelData);
+      createdLevelData=true;
+    }
+    if (this.currentDepth < levelData.depth) {
+      throw new RuntimeException("This shouldn't happen... I think");
+    }
+ else     if (this.currentDepth == levelData.depth) {
+      for (      Path.Builder parentPath : this.lastParentLevelData.paths) {
+        levelData.paths.add(parentPath.push(nextRel));
+      }
+    }
+    if (!createdLevelData) {
       continue;
     }
-    Path.Builder parentPath=this.visitedNodes.get(lastParentTraverserNode).path;
-    LevelData levelData=new LevelData(result,currentDepth,parentPath.push(nextRel));
-    this.visitedNodes.put(result,levelData);
     this.nextNodes.add(result);
     return levelData;
   }
