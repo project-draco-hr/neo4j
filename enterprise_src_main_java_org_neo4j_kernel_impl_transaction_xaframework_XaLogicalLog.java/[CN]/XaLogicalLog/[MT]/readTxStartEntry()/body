@@ -1,48 +1,15 @@
 {
   long position=fileChannel.position();
-  buffer.clear();
-  buffer.limit(1);
-  if (fileChannel.read(buffer) != buffer.limit()) {
+  LogEntry.Start entry=LogIoUtils.readTxStartEntry(buffer,fileChannel,position);
+  if (entry == null) {
     return false;
   }
-  buffer.flip();
-  byte globalIdLength=buffer.get();
-  buffer.clear();
-  buffer.limit(1);
-  if (fileChannel.read(buffer) != buffer.limit()) {
-    return false;
-  }
-  buffer.flip();
-  byte branchIdLength=buffer.get();
-  byte globalId[]=new byte[globalIdLength];
-  ByteBuffer tmpBuffer=ByteBuffer.wrap(globalId);
-  if (fileChannel.read(tmpBuffer) != globalId.length) {
-    return false;
-  }
-  byte branchId[]=new byte[branchIdLength];
-  tmpBuffer=ByteBuffer.wrap(branchId);
-  if (fileChannel.read(tmpBuffer) != branchId.length) {
-    return false;
-  }
-  buffer.clear();
-  buffer.limit(4);
-  if (fileChannel.read(buffer) != buffer.limit()) {
-    return false;
-  }
-  buffer.flip();
-  int identifier=buffer.getInt();
+  int identifier=entry.getIdentifier();
   if (identifier >= nextIdentifier) {
     nextIdentifier=(identifier + 1);
   }
-  buffer.clear();
-  buffer.limit(4);
-  if (fileChannel.read(buffer) != buffer.limit()) {
-    return false;
-  }
-  buffer.flip();
-  int formatId=buffer.getInt();
-  Xid xid=new XidImpl(globalId,branchId,formatId);
-  xidIdentMap.put(identifier,new StartEntry(xid,position));
+  Xid xid=entry.getXid();
+  xidIdentMap.put(identifier,entry);
   XaTransaction xaTx=xaTf.create(identifier);
   xaTx.setRecovered();
   recoveredTxMap.put(identifier,xaTx);
