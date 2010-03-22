@@ -2,16 +2,15 @@
   try {
     Object consoleReader=Class.forName("jline.ConsoleReader").newInstance();
     consoleReader.getClass().getMethod("setBellEnabled",Boolean.TYPE).invoke(consoleReader,false);
-    ConsoleReader reader=(ConsoleReader)consoleReader;
-    reader.setBellEnabled(false);
-    reader.setUseHistory(true);
-    try {
-      History history=new History();
-      history.setHistoryFile(new File(".shell_history"));
-      reader.setHistory(history);
-    }
- catch (    IOException e) {
-    }
+    consoleReader.getClass().getMethod("setBellEnabled",Boolean.TYPE).invoke(consoleReader,false);
+    consoleReader.getClass().getMethod("setUseHistory",Boolean.TYPE).invoke(consoleReader,true);
+    Object completor=Class.forName(JLineConsole.class.getPackage().getName() + "." + "ShellTabCompletor").getConstructor(ShellClient.class).newInstance(client);
+    Class<?> completorClass=Class.forName("jline.Completor");
+    consoleReader.getClass().getMethod("addCompletor",completorClass).invoke(consoleReader,completor);
+    Class<?> historyClass=Class.forName("jline.History");
+    Object history=historyClass.newInstance();
+    history.getClass().getMethod("setHistoryFile",File.class).invoke(history,new File(".shell_history"));
+    consoleReader.getClass().getMethod("setHistory",historyClass).invoke(consoleReader,history);
     return new JLineConsole(consoleReader,client);
   }
  catch (  Exception e) {

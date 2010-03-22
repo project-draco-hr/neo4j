@@ -16,18 +16,22 @@
     }
  else     if (arg.equals(".")) {
     }
- else     if (arg.equals("start") || arg.equals("end")) {
+ else     if (arg.equals(START_ALIAS) || arg.equals(END_ALIAS)) {
       newId=getStartOrEnd(current,arg);
       paths.add(current.getTypedId());
     }
  else {
-      long suppliedId=Long.parseLong(arg);
-      if (parser.options().containsKey("r")) {
-        newId=new TypedId(NodeOrRelationship.TYPE_RELATIONSHIP,suppliedId);
+      long suppliedId=-1;
+      try {
+        suppliedId=Long.parseLong(arg);
       }
- else {
-        newId=new TypedId(NodeOrRelationship.TYPE_NODE,suppliedId);
+ catch (      NumberFormatException e) {
+        suppliedId=findNodeWithTitle(current.asNode(),arg,session);
+        if (suppliedId == -1) {
+          throw new ShellException("No connected node with title '" + arg + "'");
+        }
       }
+      newId=parser.options().containsKey("r") ? new TypedId(NodeOrRelationship.TYPE_RELATIONSHIP,suppliedId) : new TypedId(NodeOrRelationship.TYPE_NODE,suppliedId);
       if (newId.equals(current.getTypedId())) {
         throw new ShellException("Can't cd to where you stand");
       }
