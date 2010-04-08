@@ -1,0 +1,26 @@
+{
+  PatternNode root=new PatternNode(), place=new PatternNode();
+  final PatternNode friend=new PatternNode();
+  PatternRelationship friendship=root.createRelationshipTo(friend,FriendshipTypes.FRIEND,Direction.BOTH);
+  friendship.addPropertyConstraint("since",new ValueMatcher(){
+    long now=new Date().getTime();
+    public boolean matches(    Object value){
+      if (value instanceof Long) {
+        long ageInDays=(now - (Long)value) / MILLSECONDS_PER_DAY;
+        return ageInDays > (knownForYears * 365);
+      }
+      return false;
+    }
+  }
+);
+  friend.createRelationshipTo(place,FriendshipTypes.LIVES_IN);
+  place.addPropertyConstraint("name",CommonValueMatchers.exact(livesIn));
+  PatternMatcher matcher=PatternMatcher.getMatcher();
+  Iterable<PatternMatch> matches=matcher.match(root,me);
+  return new IterableWrapper<Node,PatternMatch>(matches){
+    @Override protected Node underlyingObjectToObject(    PatternMatch match){
+      return match.getNodeFor(friend);
+    }
+  }
+;
+}
