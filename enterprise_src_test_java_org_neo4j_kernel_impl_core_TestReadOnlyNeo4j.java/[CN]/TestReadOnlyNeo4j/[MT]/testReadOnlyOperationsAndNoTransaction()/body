@@ -1,0 +1,41 @@
+{
+  Node node1=getGraphDb().createNode();
+  Node node2=getGraphDb().createNode();
+  Relationship rel=node1.createRelationshipTo(node2,DynamicRelationshipType.withName("TEST"));
+  node1.setProperty("key1","value1");
+  rel.setProperty("key1","value1");
+  commit();
+  try {
+    getGraphDb().createNode();
+    fail("Write operation and no transaction should throw exception");
+  }
+ catch (  NotInTransactionException e) {
+  }
+  try {
+    node1.createRelationshipTo(node2,DynamicRelationshipType.withName("TEST2"));
+    fail("Write operation and no transaction should throw exception");
+  }
+ catch (  NotInTransactionException e) {
+  }
+  try {
+    node1.setProperty("key1","value2");
+    fail("Write operation and no transaction should throw exception");
+  }
+ catch (  NotInTransactionException e) {
+  }
+  try {
+    rel.removeProperty("key1");
+    fail("Write operation and no transaction should throw exception");
+  }
+ catch (  NotInTransactionException e) {
+  }
+  getEmbeddedGraphDb().getConfig().getGraphDbModule().getNodeManager().clearCache();
+  assertEquals(node1,getGraphDb().getNodeById(node1.getId()));
+  assertEquals(node2,getGraphDb().getNodeById(node2.getId()));
+  assertEquals(rel,getGraphDb().getRelationshipById(rel.getId()));
+  getEmbeddedGraphDb().getConfig().getGraphDbModule().getNodeManager().clearCache();
+  assertEquals("value1",node1.getProperty("key1"));
+  Relationship loadedRel=node1.getSingleRelationship(DynamicRelationshipType.withName("TEST"),Direction.OUTGOING);
+  assertEquals(rel,loadedRel);
+  assertEquals("value1",loadedRel.getProperty("key1"));
+}
