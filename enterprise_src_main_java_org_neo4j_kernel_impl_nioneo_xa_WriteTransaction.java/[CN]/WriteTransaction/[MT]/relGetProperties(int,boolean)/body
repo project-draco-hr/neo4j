@@ -1,0 +1,27 @@
+{
+  RelationshipRecord relRecord=getRelationshipRecord(relId);
+  if (relRecord != null) {
+    if (!relRecord.inUse() && !light) {
+      throw new IllegalStateException("Relationship[" + relId + "] has been deleted in this tx");
+    }
+  }
+ else {
+    relRecord=getRelationshipStore().getRecord(relId);
+  }
+  if (!relRecord.inUse()) {
+    throw new InvalidRecordException("Relationship[" + relId + "] not in use");
+  }
+  int nextProp=relRecord.getNextProp();
+  ArrayMap<Integer,PropertyData> propertyMap=new ArrayMap<Integer,PropertyData>(9,false,true);
+  while (nextProp != Record.NO_NEXT_PROPERTY.intValue()) {
+    PropertyRecord propRecord=getPropertyRecord(nextProp);
+    if (propRecord == null) {
+      propRecord=getPropertyStore().getLightRecord(nextProp);
+    }
+    if (!propRecord.isCreated()) {
+      propertyMap.put(propRecord.getKeyIndexId(),new PropertyData(propRecord.getId(),propertyGetValueOrNull(propRecord)));
+    }
+    nextProp=propRecord.getNextProp();
+  }
+  return propertyMap;
+}
