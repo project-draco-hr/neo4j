@@ -2,13 +2,20 @@
   this.dbPath=dbPath;
   this.useMemoryMapped=useMemoryMapped;
   OperatingSystemMXBean osBean=ManagementFactory.getOperatingSystemMXBean();
-  if (osBean instanceof UnixOperatingSystemMXBean) {
-    long mem=((UnixOperatingSystemMXBean)osBean).getTotalPhysicalMemorySize();
+  long mem=-1;
+  try {
+    Class<?> beanClass=Class.forName("com.sun.management.UnixOperatingSystemMXBean");
+    Method method=beanClass.getMethod("getTotalPhysicalMemorySize");
+    mem=(Long)method.invoke(osBean,new Object[0]);
+  }
+ catch (  Exception e) {
+  }
+  if (mem != -1) {
     totalPhysicalMemMb=(int)(mem / 1024 / 1024);
   }
  else {
     totalPhysicalMemMb=-1;
   }
-  long mem=Runtime.getRuntime().maxMemory();
+  mem=Runtime.getRuntime().maxMemory();
   maxVmUsageMb=(int)(mem / 1024 / 1024);
 }
