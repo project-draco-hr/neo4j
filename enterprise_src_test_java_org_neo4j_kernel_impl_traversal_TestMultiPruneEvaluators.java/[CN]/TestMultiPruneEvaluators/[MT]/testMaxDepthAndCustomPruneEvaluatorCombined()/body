@@ -1,0 +1,19 @@
+{
+  TraversalDescription description=new TraversalDescriptionImpl().filter(ReturnFilter.ALL).prune(TraversalFactory.pruneAfterDepth(1)).prune(new PruneEvaluator(){
+    public boolean pruneAfter(    Position position){
+      int counter=0;
+      for (Iterator<Relationship> rels=position.node().getRelationships(Direction.OUTGOING).iterator(); rels.hasNext(); ) {
+        counter++;
+        rels.next();
+      }
+      return counter < 3;
+    }
+  }
+);
+  Set<String> expectedNodes=new HashSet<String>(Arrays.asList("a","b","c","d","e"));
+  for (  Position position : description.traverse(referenceNode())) {
+    String name=(String)position.node().getProperty("name");
+    assertTrue(name + " shouldn't have been returned",expectedNodes.remove(name));
+  }
+  assertTrue(expectedNodes.isEmpty());
+}
