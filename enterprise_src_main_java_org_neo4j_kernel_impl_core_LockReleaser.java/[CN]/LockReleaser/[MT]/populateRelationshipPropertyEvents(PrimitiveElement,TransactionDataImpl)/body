@@ -1,0 +1,33 @@
+{
+  for (  int relId : element.relationships.keySet()) {
+    CowRelElement relElement=element.relationships.get(relId);
+    RelationshipProxy rel=new RelationshipProxy(relId,nodeManager);
+    RelationshipImpl relImpl=nodeManager.getRelForProxy(relId);
+    if (relElement.deleted) {
+      if (nodeManager.relCreated(relId)) {
+        continue;
+      }
+      List<PropertyEventData> props=relImpl.getAllCommittedProperties();
+      for (      PropertyEventData data : props) {
+        result.removedProperty(rel,data.getKey(),data.getValue());
+      }
+    }
+ else {
+      if (relElement.propertyAddMap != null) {
+        for (        PropertyData data : relElement.propertyAddMap.values()) {
+          String key=nodeManager.getKeyForProperty(data.getId());
+          Object oldValue=relImpl.getCommittedPropertyValue(key);
+          Object newValue=data.getValue();
+          result.assignedProperty(rel,key,newValue,oldValue);
+        }
+      }
+      if (relElement.propertyRemoveMap != null) {
+        for (        PropertyData data : relElement.propertyRemoveMap.values()) {
+          String key=nodeManager.getKeyForProperty(data.getId());
+          Object oldValue=relImpl.getCommittedPropertyValue(key);
+          result.removedProperty(rel,key,oldValue);
+        }
+      }
+    }
+  }
+}

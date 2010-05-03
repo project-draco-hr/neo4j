@@ -10,12 +10,13 @@
   if (tx.getStatus() == Status.STATUS_ACTIVE || tx.getStatus() == Status.STATUS_MARKED_ROLLBACK || tx.getStatus() == Status.STATUS_PREPARING) {
     tx.doBeforeCompletion();
     try {
+      rolledBackTxCount.incrementAndGet();
       tx.doRollback();
     }
  catch (    XAException e) {
       e.printStackTrace();
       log.severe("Unable to rollback marked or active transaction. " + "Some resources may be commited others not. " + "Neo4j kernel should be SHUTDOWN for "+ "resource maintance and transaction recovery ---->");
-      tmOk=false;
+      setTmNotOk();
       throw new SystemException("Unable to rollback " + " ---> error code for rollback: " + e.errorCode);
     }
     tx.doAfterCompletion();
@@ -28,7 +29,7 @@
  catch (    IOException e) {
       e.printStackTrace();
       log.severe("Error writing transaction log");
-      tmOk=false;
+      setTmNotOk();
       throw new SystemException("TM encountered a problem, " + " error writing transaction log," + e);
     }
     tx.setStatus(Status.STATUS_NO_TRANSACTION);
