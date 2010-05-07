@@ -1,0 +1,24 @@
+{
+  if (tx <= committedTx) {
+    throw new IllegalArgumentException("tx=" + tx + " but committedTx is "+ committedTx);
+  }
+  int masterId=getMaster();
+  String root=getRoot();
+  String path=root + "/" + machineId+ "_"+ sequenceNr;
+  byte[] data=new byte[4];
+  ByteBuffer buf=ByteBuffer.wrap(data);
+  buf.putInt(tx);
+  try {
+    zooKeeper.setData(path,data,-1);
+    if (masterId == machineId) {
+      zooKeeper.setData(root,data,-1);
+    }
+  }
+ catch (  KeeperException e) {
+    throw new ZooKeeperException("Unable to set current tx",e);
+  }
+catch (  InterruptedException e) {
+    Thread.interrupted();
+    throw new ZooKeeperException("Interrupted...",e);
+  }
+}
