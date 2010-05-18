@@ -1,8 +1,14 @@
 {
-  Traverser traverser=TRAVERSAL.expand(expander).sourceSelector(new SelectorFactory(costEvaluator)).filter(new StopCondition(end)).traverse(start);
-  return new IterableWrapper<WeightedPath,Path>(traverser.paths()){
-    @Override protected WeightedPath underlyingObjectToObject(    Path path){
-      return new WeightedPathImpl(costEvaluator,path);
+  ReturnFilter filter=new ReturnFilter(){
+    public boolean shouldReturn(    Position position){
+      return position.node().equals(end);
+    }
+  }
+;
+  final Traverser traverser=TRAVERSAL.expand(expander).sourceSelector(new SelectorFactory(costEvaluator)).filter(filter).traverse(start);
+  return new Iterable<WeightedPath>(){
+    public Iterator<WeightedPath> iterator(){
+      return new StopAfterWeightIterator(traverser.paths().iterator(),costEvaluator);
     }
   }
 ;
