@@ -1,0 +1,40 @@
+{
+  System.out.println("starting tests");
+  EmbeddedGraphDatabase graphDb=Util.startGraphDbInstance(STORE_LOCATION_DIR,getConfiguration());
+  IndexService indexService=new LuceneIndexService(graphDb);
+  LuceneFulltextIndexService fulltextIndex=new LuceneFulltextIndexService(graphDb);
+  System.out.println("backing up original db without any changes");
+  tryBackup(graphDb,BACKUP_LOCATION_DIR,1);
+  Transaction tx=graphDb.beginTx();
+  try {
+    indexService.index(addNode(graphDb),"number",2);
+    tx.success();
+  }
+  finally {
+    tx.finish();
+  }
+  System.out.println("one node added");
+  tryBackup(graphDb,BACKUP_LOCATION_DIR,2);
+  tx=graphDb.beginTx();
+  try {
+    indexService.index(addNode(graphDb),"number",3);
+    tx.success();
+  }
+  finally {
+    tx.finish();
+  }
+  System.out.println("one node added");
+  tx=graphDb.beginTx();
+  try {
+    indexService.index(addNode(graphDb),"number",4);
+    System.out.println("one node added, not commited");
+    tryBackup(graphDb,BACKUP_LOCATION_DIR,3);
+    tx.success();
+  }
+  finally {
+    tx.finish();
+  }
+  System.out.println("previous add commited");
+  tryBackup(graphDb,BACKUP_LOCATION_DIR,4);
+  Util.stopGraphDb(graphDb,indexService,fulltextIndex);
+}

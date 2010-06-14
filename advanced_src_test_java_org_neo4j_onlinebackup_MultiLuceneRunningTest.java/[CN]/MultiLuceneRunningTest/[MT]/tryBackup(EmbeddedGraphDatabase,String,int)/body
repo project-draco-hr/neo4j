@@ -1,0 +1,24 @@
+{
+  setupBackup(graphDb,location);
+  EmbeddedGraphDatabase bDb=Util.startGraphDbInstance(location);
+  IndexService bIndexService=new LuceneIndexService(bDb);
+  LuceneFulltextIndexService bFulltextIndex=new LuceneFulltextIndexService(bDb);
+  Transaction bTx=bDb.beginTx();
+  try {
+    List<Relationship> rels=new ArrayList<Relationship>();
+    for (    Relationship rel : bDb.getReferenceNode().getRelationships()) {
+      rels.add(rel);
+    }
+    assertEquals(relCount,rels.size());
+    Node node=bIndexService.getSingleNode("number",relCount);
+    assertEquals(true,node != null);
+    assertEquals(node.getId(),(long)(Long)node.getProperty("theId",-1L));
+    node=bFulltextIndex.getSingleNode("text","abc");
+    assertEquals(true,node != null);
+    bTx.success();
+  }
+  finally {
+    bTx.finish();
+  }
+  Util.stopGraphDb(bDb,bIndexService,bFulltextIndex);
+}
