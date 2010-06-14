@@ -1,0 +1,19 @@
+{
+  Util.deleteDir(new File(VAR));
+  System.out.println("setting up database and backup-copy " + "including Lucene and lucene-fulltext");
+  EmbeddedGraphDatabase graphDb=Util.startGraphDbInstance(STORE_LOCATION_DIR,getConfiguration());
+  IndexService index=new LuceneIndexService(graphDb);
+  LuceneFulltextIndexService fulltextIndex=new LuceneFulltextIndexService(graphDb);
+  Transaction tx=graphDb.beginTx();
+  try {
+    Node node=addNode(graphDb);
+    index.index(node,"number",1);
+    fulltextIndex.index(node,"text","abc def");
+    tx.success();
+  }
+  finally {
+    tx.finish();
+  }
+  Util.stopGraphDb(graphDb,index,fulltextIndex);
+  Util.copyDir(STORE_LOCATION_DIR,BACKUP_LOCATION_DIR);
+}
