@@ -1,18 +1,27 @@
 {
-  TraversalDescription base=TraversalFactory.createTraversalDescription().uniqueness(Uniqueness.RELATIONSHIP_GLOBAL).sourceSelector(new SourceSelectorFactory(){
+  TraversalDescription base=TraversalFactory.createTraversalDescription().uniqueness(Uniqueness.RELATIONSHIP_PATH).sourceSelector(new SourceSelectorFactory(){
     public SourceSelector create(    ExpansionSource startSource){
       return new LiteDepthFirstSelector(startSource,startThreshold);
     }
   }
 );
-  int firstHalf=onDepth / 2;
-  Traverser startTraverser=base.prune(TraversalFactory.pruneAfterDepth(firstHalf)).expand(expander).traverse(start);
-  Traverser endTraverser=base.prune(TraversalFactory.pruneAfterDepth(onDepth - firstHalf)).expand(expander.reversed()).traverse(end);
+  final int firstHalf=onDepth / 2;
+  Traverser startTraverser=base.prune(TraversalFactory.pruneAfterDepth(firstHalf)).expand(expander).filter(new Predicate<Position>(){
+    public boolean accept(    Position item){
+      return item.depth() == firstHalf;
+    }
+  }
+).traverse(start);
+  final int secondHalf=onDepth - firstHalf;
+  Traverser endTraverser=base.prune(TraversalFactory.pruneAfterDepth(secondHalf)).expand(expander.reversed()).filter(new Predicate<Position>(){
+    public boolean accept(    Position item){
+      return item.depth() == secondHalf;
+    }
+  }
+).traverse(end);
   final Iterator<Position> startIterator=startTraverser.iterator();
   final Iterator<Position> endIterator=endTraverser.iterator();
-  final Map<Node,Map<Integer,Visit>> visits=new HashMap<Node,Map<Integer,Visit>>();
-  visits.put(start,MapUtil.<Integer,Visit>genericMap(0,new Visit(startIterator.next(),startIterator)));
-  visits.put(end,MapUtil.<Integer,Visit>genericMap(0,new Visit(endIterator.next(),endIterator)));
+  final Map<Node,Visit> visits=new HashMap<Node,Visit>();
   return new PrefetchingIterator<Path>(){
     @Override protected Path fetchNextOrNull(){
       Position[] found=null;
