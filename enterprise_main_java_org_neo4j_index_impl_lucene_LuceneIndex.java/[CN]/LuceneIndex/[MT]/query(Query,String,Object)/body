@@ -1,0 +1,74 @@
+{
+  List<Long> ids=new ArrayList<Long>();
+  LuceneXaConnection con=getReadOnlyConnection();
+  LuceneTransaction luceneTx=null;
+  if (con != null) {
+    luceneTx=getReadOnlyConnection().getLuceneTx();
+  }
+  Set<Long> addedIds=Collections.emptySet();
+  Set<Long> removedIds=Collections.emptySet();
+  Query excludeQuery=null;
+  boolean isRemoveAll=false;
+  if (luceneTx != null) {
+    addedIds=keyForDirectLookup != null ? luceneTx.getAddedIds(this,keyForDirectLookup,valueForDirectLookup) : luceneTx.getAddedIds(this,query);
+    ids.addAll(addedIds);
+    removedIds=keyForDirectLookup != null ? luceneTx.getRemovedIds(this,keyForDirectLookup,valueForDirectLookup) : luceneTx.getRemovedIds(this,query);
+    excludeQuery=luceneTx.getExtraRemoveQuery(this);
+    isRemoveAll=luceneTx.isRemoveAll(this);
+  }
+  service.dataSource.getReadLock();
+  Iterator<Long> idIterator=null;
+  Integer idIteratorSize=null;
+  IndexSearcherRef searcher=null;
+  boolean isLazy=false;
+  try {
+    searcher=service.dataSource.getIndexSearcher(identifier);
+    if (!isRemoveAll && searcher != null) {
+      if (excludeQuery != null) {
+        removedIds=removedIds.isEmpty() ? new HashSet<Long>() : removedIds;
+        readNodesFromHits(new DocToIdIterator(search(searcher,excludeQuery),null,searcher),removedIds);
+      }
+      boolean foundInCache=false;
+      LruCache<String,Collection<Long>> cachedIdsMap=null;
+      if (keyForDirectLookup != null) {
+        cachedIdsMap=service.dataSource.getFromCache(identifier,keyForDirectLookup);
+        foundInCache=fillFromCache(cachedIdsMap,ids,keyForDirectLookup,valueForDirectLookup.toString(),removedIds);
+      }
+      if (!foundInCache) {
+        DocToIdIterator searchedNodeIds=new DocToIdIterator(search(searcher,query),removedIds,searcher);
+        if (searchedNodeIds.size() >= service.lazynessThreshold) {
+          isLazy=true;
+          Collection<Iterator<Long>> iterators=new ArrayList<Iterator<Long>>();
+          iterators.add(ids.iterator());
+          iterators.add(searchedNodeIds);
+          idIterator=new CombiningIterator<Long>(iterators);
+          idIteratorSize=ids.size() + searchedNodeIds.size();
+        }
+ else {
+          Collection<Long> readIds=readNodesFromHits(searchedNodeIds,ids);
+          if (cachedIdsMap != null) {
+            cachedIdsMap.put(valueForDirectLookup.toString(),readIds);
+          }
+        }
+      }
+    }
+  }
+  finally {
+    service.dataSource.releaseReadLock();
+  }
+  if (idIterator == null) {
+    idIterator=ids.iterator();
+    idIteratorSize=ids.size();
+  }
+  idIterator=FilteringIterator.noDuplicates(idIterator);
+  IndexHits<T> hits=new SimpleIndexHits<T>(IteratorUtil.asIterable(new IdToEntityIterator<T>(idIterator){
+    @Override protected T underlyingObjectToObject(    Long id){
+      return getById(id);
+    }
+  }
+),idIteratorSize);
+  if (isLazy) {
+    hits=new LazyIndexHits<T>(hits,searcher);
+  }
+  return hits;
+}
