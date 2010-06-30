@@ -1,0 +1,23 @@
+{
+  Index<Relationship> index=provider.relationshipIndex("fulltext",LuceneIndexProvider.FULLTEXT_CONFIG);
+  Node node1=graphDb.createNode();
+  Node node2=graphDb.createNode();
+  RelationshipType type=DynamicRelationshipType.withName("mytype");
+  Relationship rel1=node1.createRelationshipTo(node2,type);
+  Relationship rel2=node1.createRelationshipTo(node2,type);
+  String key="name";
+  index.add(rel1,key,"The quick brown fox");
+  index.add(rel2,key,"brown fox jumped over");
+  restartTx();
+  assertCollection(index.get(key,"The quick brown fox"),rel1);
+  assertCollection(index.get(key,"brown fox jumped over"),rel2);
+  assertCollection(index.query(key,"quick"),rel1);
+  assertCollection(index.query(key,"brown"),rel1,rel2);
+  assertCollection(index.query(key,"quick OR jumped"),rel1,rel2);
+  assertCollection(index.query(key,"brown AND fox"),rel1,rel2);
+  index.clear();
+  rel1.delete();
+  rel2.delete();
+  node1.delete();
+  node2.delete();
+}

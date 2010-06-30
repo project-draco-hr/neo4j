@@ -1,0 +1,60 @@
+{
+  dataSource.getWriteLock();
+  try {
+    for (    Map.Entry<IndexIdentifier,CommandList> entry : this.commandMap.entrySet()) {
+      IndexIdentifier identifier=entry.getKey();
+      IndexType type=dataSource.getType(identifier);
+      IndexWriter writer=null;
+      IndexSearcher searcher=null;
+      CommandList commandList=entry.getValue();
+      Map<Long,DocumentContext> documents=new HashMap<Long,DocumentContext>();
+      for (      LuceneCommand command : commandList.commands) {
+        if (writer == null) {
+          writer=dataSource.getIndexWriter(identifier);
+          writer.setMaxBufferedDocs(commandList.addCount + 100);
+          writer.setMaxBufferedDeleteTerms(commandList.removeCount + 100);
+          searcher=dataSource.getIndexSearcher(identifier).getSearcher();
+        }
+        long entityId=command.getEntityId();
+        DocumentContext context=documents.get(entityId);
+        if (context == null) {
+          Document document=LuceneDataSource.findDocument(type,searcher,entityId);
+          context=document == null ? new DocumentContext(type.newDocument(entityId),false,entityId) : new DocumentContext(document,true,entityId);
+          documents.put(entityId,context);
+        }
+        String key=command.getKey();
+        String value=command.getValue();
+        if (command instanceof AddCommand) {
+          type.addToDocument(context.document,key,value);
+          dataSource.invalidateCache(identifier,key,value);
+        }
+ else         if (command instanceof RemoveCommand) {
+          type.removeFromDocument(context.document,key,value);
+          dataSource.invalidateCache(identifier,key,value);
+        }
+ else         if (command instanceof ClearCommand) {
+          documents.clear();
+          dataSource.closeWriter(writer);
+          writer=null;
+          dataSource.closeIndexSearcher(identifier);
+          dataSource.invalidateCache(identifier);
+        }
+ else {
+          throw new RuntimeException("Unknown command type " + command + ", "+ command.getClass());
+        }
+      }
+      applyDocuments(writer,type,documents);
+      if (writer != null) {
+        dataSource.closeWriter(writer);
+      }
+      dataSource.invalidateIndexSearcher(identifier);
+    }
+    closeTxData();
+  }
+ catch (  IOException e) {
+    throw new RuntimeException(e);
+  }
+ finally {
+    dataSource.releaseWriteLock();
+  }
+}
