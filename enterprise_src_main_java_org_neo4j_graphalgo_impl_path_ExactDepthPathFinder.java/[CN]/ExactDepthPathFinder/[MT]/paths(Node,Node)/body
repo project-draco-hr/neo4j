@@ -1,0 +1,29 @@
+{
+  TraversalDescription base=TraversalFactory.createTraversalDescription().uniqueness(Uniqueness.RELATIONSHIP_GLOBAL).sourceSelector(new SourceSelectorFactory(){
+    public SourceSelector create(    ExpansionSource startSource){
+      return new LiteDepthFirstSelector(startSource,startThreshold);
+    }
+  }
+);
+  int firstHalf=onDepth / 2;
+  Traverser startTraverser=base.prune(TraversalFactory.pruneAfterDepth(firstHalf)).expand(expander).traverse(start);
+  Traverser endTraverser=base.prune(TraversalFactory.pruneAfterDepth(onDepth - firstHalf)).expand(expander.reversed()).traverse(end);
+  final Iterator<Position> startIterator=startTraverser.iterator();
+  final Iterator<Position> endIterator=endTraverser.iterator();
+  final Map<Node,Map<Integer,Visit>> visits=new HashMap<Node,Map<Integer,Visit>>();
+  visits.put(start,MapUtil.<Integer,Visit>genericMap(0,new Visit(startIterator.next(),startIterator)));
+  visits.put(end,MapUtil.<Integer,Visit>genericMap(0,new Visit(endIterator.next(),endIterator)));
+  return new PrefetchingIterator<Path>(){
+    @Override protected Path fetchNextOrNull(){
+      Position[] found=null;
+      while (found == null && (startIterator.hasNext() || endIterator.hasNext())) {
+        found=goOneStep(start,startIterator,visits);
+        if (found == null) {
+          found=goOneStep(end,endIterator,visits);
+        }
+      }
+      return found != null ? toPath(found,start) : null;
+    }
+  }
+;
+}
