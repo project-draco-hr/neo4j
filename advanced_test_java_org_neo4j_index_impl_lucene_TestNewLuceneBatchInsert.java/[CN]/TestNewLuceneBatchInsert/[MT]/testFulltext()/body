@@ -1,0 +1,31 @@
+{
+  BatchInserter inserter=new BatchInserterImpl(PATH);
+  BatchInserterIndexProvider provider=new LuceneBatchInserterIndexProvider(inserter);
+  String name="users";
+  BatchInserterIndex index=provider.nodeIndex(name,LuceneIndexProvider.FULLTEXT_CONFIG);
+  long id1=inserter.createNode(null);
+  index.add(id1,MapUtil.map("name","Mattias Persson","email","something@somewhere","something","bad"));
+  long id2=inserter.createNode(null);
+  index.add(id2,MapUtil.map("name","Lars PerssoN"));
+  index.flush();
+  assertCollection(index.get("name","Mattias Persson"),id1);
+  assertCollection(index.query("name","mattias"),id1);
+  assertCollection(index.query("name","bla"));
+  assertCollection(index.query("name","persson"),id1,id2);
+  assertCollection(index.query("email","*@*"),id1);
+  assertCollection(index.get("something","bad"),id1);
+  long id3=inserter.createNode(null);
+  index.add(id3,MapUtil.map("name",new String[]{"What Ever","Anything"}));
+  index.flush();
+  assertCollection(index.get("name","What Ever"),id3);
+  assertCollection(index.get("name","Anything"),id3);
+  provider.shutdown();
+  inserter.shutdown();
+  GraphDatabaseService db=new EmbeddedGraphDatabase(PATH);
+  LuceneIndexProvider indexProvider=new LuceneIndexProvider(db);
+  Index<Node> dbIndex=indexProvider.nodeIndex(name,LuceneIndexProvider.FULLTEXT_CONFIG);
+  Node node1=db.getNodeById(id1);
+  Node node2=db.getNodeById(id2);
+  assertCollection(dbIndex.query("name","persson"),node1,node2);
+  db.shutdown();
+}
