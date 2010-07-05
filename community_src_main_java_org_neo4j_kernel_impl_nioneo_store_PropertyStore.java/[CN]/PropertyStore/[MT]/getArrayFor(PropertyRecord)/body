@@ -1,27 +1,27 @@
 {
   int recordToFind=(int)propertyRecord.getPropBlock();
-  Iterator<DynamicRecord> records=propertyRecord.getValueRecords().iterator();
+  Map<Integer,DynamicRecord> recordsMap=new HashMap<Integer,DynamicRecord>();
+  for (  DynamicRecord record : propertyRecord.getValueRecords()) {
+    recordsMap.put(record.getId(),record);
+  }
   List<byte[]> byteList=new LinkedList<byte[]>();
   int totalSize=0;
-  while (recordToFind != Record.NO_NEXT_BLOCK.intValue() && records.hasNext()) {
-    DynamicRecord record=records.next();
-    if (record.getId() == recordToFind) {
-      if (record.isLight()) {
-        arrayPropertyStore.makeHeavy(record);
-      }
-      if (!record.isCharData()) {
-        ByteBuffer buf=ByteBuffer.wrap(record.getData());
-        byte[] bytes=new byte[record.getData().length];
-        totalSize+=bytes.length;
-        buf.get(bytes);
-        byteList.add(bytes);
-      }
- else {
-        throw new InvalidRecordException("Expected byte data on record " + record);
-      }
-      recordToFind=record.getNextBlock();
-      records=propertyRecord.getValueRecords().iterator();
+  while (recordToFind != Record.NO_NEXT_BLOCK.intValue()) {
+    DynamicRecord record=recordsMap.get(recordToFind);
+    if (record.isLight()) {
+      arrayPropertyStore.makeHeavy(record);
     }
+    if (!record.isCharData()) {
+      ByteBuffer buf=ByteBuffer.wrap(record.getData());
+      byte[] bytes=new byte[record.getData().length];
+      totalSize+=bytes.length;
+      buf.get(bytes);
+      byteList.add(bytes);
+    }
+ else {
+      throw new InvalidRecordException("Expected byte data on record " + record);
+    }
+    recordToFind=record.getNextBlock();
   }
   byte[] bArray=new byte[totalSize];
   int offset=0;
