@@ -7,26 +7,23 @@
       if (nodeManager.relCreated(relId)) {
         continue;
       }
-      List<PropertyEventData> props=relImpl.getAllCommittedProperties();
-      for (      PropertyEventData data : props) {
-        result.removedProperty(rel,data.getKey(),data.getValue());
+    }
+    if (relElement.propertyAddMap != null && !relElement.deleted) {
+      for (      PropertyData data : relElement.propertyAddMap.values()) {
+        String key=nodeManager.getKeyForProperty(data.getId());
+        Object oldValue=relImpl.getCommittedPropertyValue(key);
+        Object newValue=data.getValue();
+        result.assignedProperty(rel,key,newValue,oldValue);
       }
     }
- else {
-      if (relElement.propertyAddMap != null) {
-        for (        PropertyData data : relElement.propertyAddMap.values()) {
-          String key=nodeManager.getKeyForProperty(data.getId());
-          Object oldValue=relImpl.getCommittedPropertyValue(key);
-          Object newValue=data.getValue();
-          result.assignedProperty(rel,key,newValue,oldValue);
+    if (relElement.propertyRemoveMap != null) {
+      for (      PropertyData data : relElement.propertyRemoveMap.values()) {
+        String key=nodeManager.getKeyForProperty(data.getId());
+        Object oldValue=data.getValue();
+        if (oldValue != null && !relElement.deleted) {
+          relImpl.getCommittedPropertyValue(key);
         }
-      }
-      if (relElement.propertyRemoveMap != null) {
-        for (        PropertyData data : relElement.propertyRemoveMap.values()) {
-          String key=nodeManager.getKeyForProperty(data.getId());
-          Object oldValue=relImpl.getCommittedPropertyValue(key);
-          result.removedProperty(rel,key,oldValue);
-        }
+        result.removedProperty(rel,key,oldValue);
       }
     }
   }
