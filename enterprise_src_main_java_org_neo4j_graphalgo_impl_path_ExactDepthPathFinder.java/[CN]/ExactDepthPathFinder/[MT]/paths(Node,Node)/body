@@ -1,30 +1,30 @@
 {
-  TraversalDescription base=TraversalFactory.createTraversalDescription().uniqueness(Uniqueness.RELATIONSHIP_PATH).sourceSelector(new SourceSelectorFactory(){
-    public SourceSelector create(    ExpansionSource startSource){
+  TraversalDescription base=Traversal.description().uniqueness(Uniqueness.RELATIONSHIP_PATH).order(new BranchOrderingPolicy(){
+    public BranchSelector create(    TraversalBranch startSource){
       return new LiteDepthFirstSelector(startSource,startThreshold);
     }
   }
 );
   final int firstHalf=onDepth / 2;
-  Traverser startTraverser=base.prune(TraversalFactory.pruneAfterDepth(firstHalf)).expand(expander).filter(new Predicate<Position>(){
-    public boolean accept(    Position item){
-      return item.depth() == firstHalf;
+  Traverser startTraverser=base.prune(Traversal.pruneAfterDepth(firstHalf)).expand(expander).filter(new Predicate<Path>(){
+    public boolean accept(    Path item){
+      return item.length() == firstHalf;
     }
   }
 ).traverse(start);
   final int secondHalf=onDepth - firstHalf;
-  Traverser endTraverser=base.prune(TraversalFactory.pruneAfterDepth(secondHalf)).expand(expander.reversed()).filter(new Predicate<Position>(){
-    public boolean accept(    Position item){
-      return item.depth() == secondHalf;
+  Traverser endTraverser=base.prune(Traversal.pruneAfterDepth(secondHalf)).expand(expander.reversed()).filter(new Predicate<Path>(){
+    public boolean accept(    Path item){
+      return item.length() == secondHalf;
     }
   }
 ).traverse(end);
-  final Iterator<Position> startIterator=startTraverser.iterator();
-  final Iterator<Position> endIterator=endTraverser.iterator();
+  final Iterator<Path> startIterator=startTraverser.iterator();
+  final Iterator<Path> endIterator=endTraverser.iterator();
   final Map<Node,Visit> visits=new HashMap<Node,Visit>();
   return new PrefetchingIterator<Path>(){
     @Override protected Path fetchNextOrNull(){
-      Position[] found=null;
+      Path[] found=null;
       while (found == null && (startIterator.hasNext() || endIterator.hasNext())) {
         found=goOneStep(start,startIterator,visits);
         if (found == null) {
