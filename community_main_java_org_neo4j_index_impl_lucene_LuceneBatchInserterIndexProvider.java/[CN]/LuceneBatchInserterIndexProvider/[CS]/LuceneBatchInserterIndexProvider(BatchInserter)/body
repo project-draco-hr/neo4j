@@ -2,4 +2,26 @@
   this.inserter=inserter;
   this.indexStore=new IndexStore(((BatchInserterImpl)inserter).getStore());
   this.typeCache=new IndexTypeCache();
+  this.nodeEntityType=new EntityType(){
+    public Document newDocument(    long entityId){
+      return IndexType.newBaseDocument(entityId);
+    }
+    public Class<?> getType(){
+      return Node.class;
+    }
+  }
+;
+  this.relationshipEntityType=new EntityType(){
+    public Document newDocument(    long entityId){
+      Document doc=IndexType.newBaseDocument(entityId);
+      SimpleRelationship rel=inserter.getRelationshipById(entityId);
+      doc.add(new Field(LuceneIndex.KEY_START_NODE_ID,"" + rel.getStartNode(),Store.YES,org.apache.lucene.document.Field.Index.NOT_ANALYZED));
+      doc.add(new Field(LuceneIndex.KEY_END_NODE_ID,"" + rel.getEndNode(),Store.YES,org.apache.lucene.document.Field.Index.NOT_ANALYZED));
+      return doc;
+    }
+    public Class<?> getType(){
+      return Relationship.class;
+    }
+  }
+;
 }

@@ -15,29 +15,30 @@
           writer.setMaxBufferedDeleteTerms(commandList.removeCount + 100);
           searcher=dataSource.getIndexSearcher(identifier).getSearcher();
         }
-        long entityId=command.getEntityId();
+        if (command instanceof ClearCommand) {
+          documents.clear();
+          dataSource.closeWriter(writer);
+          writer=null;
+          dataSource.deleteIndex(identifier);
+          dataSource.invalidateCache(identifier);
+          continue;
+        }
+        long entityId=command.entityId;
         DocumentContext context=documents.get(entityId);
         if (context == null) {
           Document document=LuceneDataSource.findDocument(type,searcher,entityId);
-          context=document == null ? new DocumentContext(type.newDocument(entityId),false,entityId) : new DocumentContext(document,true,entityId);
+          context=document == null ? new DocumentContext(identifier.entityType.newDocument(entityId),false,entityId) : new DocumentContext(document,true,entityId);
           documents.put(entityId,context);
         }
-        String key=command.getKey();
-        String value=command.getValue();
-        if (command instanceof AddCommand) {
+        String key=command.key;
+        String value=command.value;
+        if (command instanceof AddCommand || command instanceof AddRelationshipCommand) {
           type.addToDocument(context.document,key,value);
           dataSource.invalidateCache(identifier,key,value);
         }
  else         if (command instanceof RemoveCommand) {
           type.removeFromDocument(context.document,key,value);
           dataSource.invalidateCache(identifier,key,value);
-        }
- else         if (command instanceof ClearCommand) {
-          documents.clear();
-          dataSource.closeWriter(writer);
-          writer=null;
-          dataSource.deleteIndex(identifier);
-          dataSource.invalidateCache(identifier);
         }
  else {
           throw new RuntimeException("Unknown command type " + command + ", "+ command.getClass());
