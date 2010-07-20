@@ -1,0 +1,37 @@
+{
+  final GraphDatabaseService graphDb=newGraphDbService();
+  final IndexProvider provider=new LuceneIndexProvider(graphDb);
+  final Index<Node> nodeIndex=provider.nodeIndex("node-index",LuceneIndexProvider.EXACT_CONFIG);
+  final Index<Relationship> relIndex=provider.relationshipIndex("rel-index",LuceneIndexProvider.EXACT_CONFIG);
+  final RelationshipType relType=DynamicRelationshipType.withName("recovery");
+  graphDb.beginTx();
+  Random random=new Random();
+  Thread stopper=new Thread(){
+    @Override public void run(){
+      sleepNice(1000);
+      graphDb.shutdown();
+    }
+  }
+;
+  final String[] keys={"apoc","zion","neo"};
+  try {
+    stopper.start();
+    for (int i=0; i < 50; i++) {
+      Node node=graphDb.createNode();
+      Node otherNode=graphDb.createNode();
+      Relationship rel=node.createRelationshipTo(otherNode,relType);
+      for (int ii=0; ii < 3; ii++) {
+        nodeIndex.add(node,keys[random.nextInt(keys.length)],random.nextInt());
+        relIndex.add(rel,keys[random.nextInt(keys.length)],random.nextInt());
+      }
+      sleepNice(10);
+    }
+  }
+ catch (  Exception e) {
+  }
+  sleepNice(1000);
+  final GraphDatabaseService newGraphDb=new EmbeddedGraphDatabase(getDbPath());
+  final IndexProvider newProvider=new LuceneIndexProvider(newGraphDb);
+  sleepNice(1000);
+  newGraphDb.shutdown();
+}
