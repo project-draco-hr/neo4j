@@ -1,0 +1,22 @@
+{
+  TxIdElement tx=new TxIdElement(context.slaveId(),localTxId);
+  Transaction otherTx=suspendOtherAndResumeThis(tx);
+  try {
+    LockManager lockManager=getConfig().getLockManager();
+    LockReleaser lockReleaser=getConfig().getLockReleaser();
+    for (    Node node : nodes) {
+      lockManager.getWriteLock(node);
+      lockReleaser.addLockToTransaction(node,LockType.WRITE);
+    }
+    return new Response<LockResult>(new LockResult(LockStatus.OK_LOCKED),new TransactionStream());
+  }
+ catch (  DeadlockDetectedException e) {
+    return new Response<LockResult>(new LockResult(e.getMessage()),new TransactionStream());
+  }
+catch (  IllegalResourceException e) {
+    return new Response<LockResult>(new LockResult(LockStatus.NOT_LOCKED),new TransactionStream());
+  }
+ finally {
+    suspendThisAndResumeOther(otherTx);
+  }
+}

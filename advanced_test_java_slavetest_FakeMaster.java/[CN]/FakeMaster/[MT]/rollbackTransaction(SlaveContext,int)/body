@@ -1,0 +1,24 @@
+{
+  TxIdElement txId=new TxIdElement(context.slaveId(),localTxId);
+  Transaction otherTx=suspendOtherAndResumeThis(txId);
+  try {
+    Transaction tx=transactions.get(txId);
+    if (tx == null) {
+      throw new RuntimeException("Shouldn't happen");
+    }
+    txManager.rollback();
+    return new Response<Void>(null,new TransactionStream());
+  }
+ catch (  IllegalStateException e) {
+    throw new RuntimeException(e);
+  }
+catch (  SecurityException e) {
+    throw new RuntimeException(e);
+  }
+catch (  SystemException e) {
+    throw new RuntimeException(e);
+  }
+ finally {
+    suspendThisAndResumeOther(otherTx);
+  }
+}
