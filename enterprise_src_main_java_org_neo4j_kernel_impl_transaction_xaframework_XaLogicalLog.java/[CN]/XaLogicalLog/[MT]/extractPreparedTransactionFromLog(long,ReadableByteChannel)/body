@@ -1,0 +1,45 @@
+{
+  buffer.clear();
+  buffer.limit(8);
+  log.read(buffer);
+  long versionInLog=buffer.getLong();
+  long prevTxId=buffer.getLong();
+  List<LogEntry> logEntryList=null;
+  Map<Integer,List<LogEntry>> transactions=new HashMap<Integer,List<LogEntry>>();
+  while (logEntryList == null && fileChannel.read(buffer) != buffer.limit()) {
+    buffer.flip();
+    byte entry=buffer.get();
+    LogEntry logEntry;
+switch (entry) {
+case LogEntry.TX_START:
+      logEntry=LogIoUtils.readTxStartEntry(buffer,log,-1);
+    if (logEntry.getIdentifier() == identifier) {
+      List<LogEntry> list=new LinkedList<LogEntry>();
+      list.add(logEntry);
+      transactions.put(logEntry.getIdentifier(),list);
+    }
+  break;
+case LogEntry.TX_PREPARE:
+logEntry=LogIoUtils.readTxPrepareEntry(buffer,log);
+if (logEntry.getIdentifier() == identifier) {
+logEntryList=transactions.get(logEntry.getIdentifier());
+logEntryList.add(logEntry);
+}
+break;
+case LogEntry.COMMAND:
+logEntry=LogIoUtils.readTxCommand(buffer,log,cf);
+if (logEntry.getIdentifier() == identifier) {
+transactions.get(logEntry.getIdentifier()).add(logEntry);
+}
+break;
+default :
+throw new IOException("Unable to locate transaction with internal identifier " + identifier);
+}
+buffer.clear();
+buffer.limit(1);
+}
+if (logEntryList == null) {
+throw new IOException("Transaction for internal identifier[" + identifier + "] not found in current log");
+}
+return logEntryList;
+}
