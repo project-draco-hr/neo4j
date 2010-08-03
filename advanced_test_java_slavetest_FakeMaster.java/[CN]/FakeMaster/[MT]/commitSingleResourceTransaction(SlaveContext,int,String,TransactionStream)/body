@@ -1,3 +1,21 @@
 {
-  throw new UnsupportedOperationException();
+  TxIdElement tx=new TxIdElement(context.slaveId(),eventIdentifier);
+  Transaction otherTx=suspendOtherAndResumeThis(tx);
+  try {
+    XaDataSource dataSource=getConfig().getTxModule().getXaDataSourceManager().getXaDataSource(resource);
+    final long txId=dataSource.applyPreparedTransaction(transactionStream.getChannels().iterator().next());
+    Predicate<Long> notThisTx=new Predicate<Long>(){
+      public boolean accept(      Long item){
+        return item != txId;
+      }
+    }
+;
+    return packResponse(context,txId,notThisTx);
+  }
+ catch (  IOException e) {
+    return new FailedResponse<Long>();
+  }
+ finally {
+    rollbackThisAndResumeOther(otherTx);
+  }
 }
