@@ -1,9 +1,12 @@
 {
-  GraphDatabaseService graphdb=instantiateSlave();
-  Transaction tx=graphdb.beginTx();
+  Master master=new FakeMaster(MASTER_PATH.getAbsolutePath());
+  FakeBroker broker=new FakeBroker(master);
+  GraphDatabaseService haDb=new HighlyAvailableGraphDatabase(SLAVE_PATH.getAbsolutePath(),new HashMap<String,String>(),broker);
+  broker.setSlave(haDb);
+  Transaction tx=haDb.beginTx();
   try {
-    Node node=graphdb.createNode();
-    graphdb.getReferenceNode().createRelationshipTo(node,REL_TYPE);
+    Node node=haDb.createNode();
+    haDb.getReferenceNode().createRelationshipTo(node,REL_TYPE);
     tx.success();
   }
   finally {
