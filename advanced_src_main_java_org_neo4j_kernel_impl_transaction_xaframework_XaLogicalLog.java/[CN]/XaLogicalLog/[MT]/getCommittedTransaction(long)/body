@@ -4,45 +4,10 @@
   if (txFile.exists()) {
     return new RandomAccessFile(name,"r").getChannel();
   }
-  long version=logVersion;
-  long committedTx=previousLogLastCommittedTx;
-  while (committedTx <= txId) {
-    version--;
-    ReadableByteChannel log=getLogicalLog(version);
-    ByteBuffer buf=ByteBuffer.allocate(16);
-    if (log.read(buf) != 16) {
-      throw new IOException("Unable to read log version " + version);
-    }
-    buf.flip();
-    long readVersion=buffer.getLong();
-    if (readVersion != version) {
-      throw new IOException("Got " + readVersion + " from log when expecting "+ version);
-    }
-    committedTx=buffer.getLong();
-    log.close();
-  }
-  ReadableByteChannel log;
-  if (version < logVersion) {
-    log=getLogicalLog(version);
-  }
- else {
-    String currentLogName=fileName + (currentLog == LOG1 ? ".1" : ".2");
-    log=new RandomAccessFile(currentLogName,"r").getChannel();
-  }
+  long version=findLogContainingTxId(txId);
+  ReadableByteChannel log=getLogicalLogOrMyself(version);
   List<LogEntry> logEntryList=extractTransactionFromLog(txId,version,log);
   log.close();
-  String tmpName="temporary-tx-write-out-" + txId + "-"+ System.currentTimeMillis();
-  while (new File(tmpName).exists()) {
-    tmpName="temporary-tx-write-out-" + txId + "-"+ System.currentTimeMillis()+ "_";
-  }
-  FileChannel txLog=new RandomAccessFile(tmpName,"r").getChannel();
-  LogBuffer buf=new DirectMappedLogBuffer(txLog);
-  for (  LogEntry entry : logEntryList) {
-    LogIoUtils.writeLogEntry(entry,buf);
-  }
-  txLog.close();
-  if (!new File(tmpName).renameTo(new File(name))) {
-    throw new IOException("Failed to rename " + tmpName + " to "+ name);
-  }
+  writeOutLogEntryList(logEntryList,name,"temporary-tx-write-out-" + txId);
   return new RandomAccessFile(name,"r").getChannel();
 }
