@@ -1,9 +1,8 @@
 {
   long version=logVersion;
   long committedTx=previousLogLastCommittedTx;
-  while (committedTx <= txId) {
-    version--;
-    ReadableByteChannel log=getLogicalLog(version);
+  while (version >= 0) {
+    ReadableByteChannel log=getLogicalLogOrMyself(version);
     ByteBuffer buf=ByteBuffer.allocate(16);
     if (log.read(buf) != 16) {
       throw new IOException("Unable to read log version " + version);
@@ -15,6 +14,10 @@
     }
     committedTx=buffer.getLong();
     log.close();
+    if (committedTx <= txId) {
+      break;
+    }
+    version--;
   }
   return version;
 }
