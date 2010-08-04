@@ -1,0 +1,33 @@
+{
+  initializeDbs(3);
+  GraphDatabaseService db1=haDbs.get(0);
+  GraphDatabaseService db2=haDbs.get(1);
+  GraphDatabaseService db3=haDbs.get(2);
+  Transaction tx=db1.beginTx();
+  try {
+    Node node=db1.createNode();
+    db1.getReferenceNode().createRelationshipTo(node,REL_TYPE);
+    tx.success();
+  }
+  finally {
+    tx.finish();
+  }
+  tx=db2.beginTx();
+  try {
+    db2.getReferenceNode().removeProperty("b??g");
+    Node node=db2.getReferenceNode().getSingleRelationship(REL_TYPE,Direction.OUTGOING).getEndNode();
+    node.setProperty("name","Hello");
+    tx.success();
+  }
+  finally {
+    tx.finish();
+  }
+  ((HighlyAvailableGraphDatabase)db1).pullUpdates();
+  ((HighlyAvailableGraphDatabase)db3).pullUpdates();
+  verificationFilter=new Predicate<Integer>(){
+    public boolean accept(    Integer item){
+      return item == 2;
+    }
+  }
+;
+}
