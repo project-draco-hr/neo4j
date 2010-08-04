@@ -1,0 +1,22 @@
+{
+  try {
+    FileUtils.deleteDirectory(PARENT_PATH);
+    GraphDatabaseService masterDb=new EmbeddedGraphDatabase(MASTER_PATH.getAbsolutePath());
+    masterDb.shutdown();
+    for (int i=0; i < numSlaves; i++) {
+      FileUtils.copyDirectory(MASTER_PATH,slavePath(i));
+    }
+    haDbs=new ArrayList<GraphDatabaseService>();
+    master=new FakeMaster(MASTER_PATH.getAbsolutePath());
+    for (int i=0; i < numSlaves; i++) {
+      File slavePath=slavePath(i);
+      FakeBroker broker=new FakeBroker(master,i);
+      GraphDatabaseService db=new HighlyAvailableGraphDatabase(slavePath.getAbsolutePath(),new HashMap<String,String>(),broker);
+      haDbs.add(db);
+      broker.setSlave(db);
+    }
+  }
+ catch (  IOException e) {
+    throw new RuntimeException(e);
+  }
+}
