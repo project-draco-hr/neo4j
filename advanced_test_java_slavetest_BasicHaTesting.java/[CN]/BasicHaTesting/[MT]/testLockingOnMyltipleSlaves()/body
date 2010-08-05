@@ -1,0 +1,33 @@
+{
+  initializeDbs(2);
+  GraphDatabaseService slave1=haDbs.get(0);
+  GraphDatabaseService slave2=haDbs.get(1);
+  Transaction tx=master.getGraphDb().beginTx();
+  try {
+    Node node1=master.getGraphDb().createNode();
+    master.getGraphDb().getReferenceNode().createRelationshipTo(node1,REL_TYPE);
+    Node node2=master.getGraphDb().createNode();
+    node1.createRelationshipTo(node2,REL_TYPE);
+    tx.success();
+  }
+  finally {
+    tx.finish();
+  }
+  ((HighlyAvailableGraphDatabase)slave1).pullUpdates();
+  ((HighlyAvailableGraphDatabase)slave2).pullUpdates();
+  Node slave1Node1=slave1.getReferenceNode().getSingleRelationship(REL_TYPE,Direction.OUTGOING).getEndNode();
+  Node slave1Node2=slave1Node1.getSingleRelationship(REL_TYPE,Direction.OUTGOING).getEndNode();
+  Node slave2Node1=slave2.getReferenceNode().getSingleRelationship(REL_TYPE,Direction.OUTGOING).getEndNode();
+  Node slave2Node2=slave2Node1.getSingleRelationship(REL_TYPE,Direction.OUTGOING).getEndNode();
+  Queue<String> results=new LinkedList<String>();
+  WaitingWorker worker1=new WaitingWorker("1",slave1,results);
+  WaitingWorker worker2=new WaitingWorker("2",slave2,results);
+  worker1.add(new GrabWriteLockJob(slave1Node1),true);
+  worker2.add(new GrabWriteLockJob(slave2Node2),true);
+  worker1.add(new GrabWriteLockJob(slave1Node2),true);
+  worker2.add(new GrabWriteLockJob(slave2Node1),true);
+  worker1.halt();
+  worker2.halt();
+  System.out.println(results);
+  assertCollection(results,"1:W " + slave1Node1.getId(),"2:W " + slave2Node2.getId(),"2:DL " + slave2Node1.getId());
+}
