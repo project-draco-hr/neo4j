@@ -1,0 +1,29 @@
+{
+  Transaction tx=db.beginTx();
+  try {
+    db.getNodeById(node1).setProperty("1","T1 1");
+    barrier2.countDown();
+    try {
+      barrier1.await();
+    }
+ catch (    InterruptedException e) {
+      Thread.interrupted();
+      e.printStackTrace();
+    }
+    db.getNodeById(node2).removeProperty("2");
+    db.getNodeById(node1).removeProperty("1");
+    System.out.println("YAY worker1 won");
+    tx.success();
+    successfull=true;
+  }
+ catch (  DeadlockDetectedException e) {
+    System.out.println("YAY worker1 deadlocked");
+    deadlocked=true;
+  }
+catch (  Throwable t) {
+    t.printStackTrace();
+  }
+ finally {
+    tx.finish();
+  }
+}
