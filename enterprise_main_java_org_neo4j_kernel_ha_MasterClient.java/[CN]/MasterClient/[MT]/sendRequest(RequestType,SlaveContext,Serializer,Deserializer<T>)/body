@@ -1,0 +1,19 @@
+{
+  try {
+    ChannelBuffer buffer=ChannelBuffers.dynamicBuffer();
+    buffer.writeByte(type.ordinal());
+    writeSlaveContext(buffer,slaveContext);
+    serializer.write(buffer);
+    client.channel.write(buffer);
+    ChannelBuffer message=client.blockingReadHandler.read();
+    T response=deserializer.read(message);
+    TransactionStreams txStreams=readTransactionStreams(message);
+    return new Response<T>(response,txStreams);
+  }
+ catch (  IOException e) {
+    throw new RuntimeException(e);
+  }
+catch (  InterruptedException e) {
+    throw new RuntimeException(e);
+  }
+}
