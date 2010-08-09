@@ -1,0 +1,47 @@
+{
+  initializeDbs(1);
+  GraphDatabaseService haDb1=haDbs.get(0);
+  GraphDatabaseService mDb=master.getGraphDb();
+  final RelationshipType TEST=DynamicRelationshipType.withName("TEST");
+  final RelationshipType KNOWS=DynamicRelationshipType.withName("KNOWS");
+  Transaction tx=mDb.beginTx();
+  Node masterNode;
+  try {
+    masterNode=mDb.createNode();
+    mDb.getReferenceNode().createRelationshipTo(masterNode,TEST);
+    tx.success();
+  }
+  finally {
+    tx.finish();
+  }
+  tx=haDb1.beginTx();
+  try {
+    Node node=haDb1.createNode();
+    mDb.getReferenceNode().createRelationshipTo(node,KNOWS);
+    fail("Should throw not found exception");
+  }
+ catch (  NotFoundException e) {
+  }
+ finally {
+    tx.finish();
+  }
+  try {
+    mDb.getReferenceNode().createRelationshipTo(masterNode,KNOWS);
+    fail("Should throw not in transaction exception");
+  }
+ catch (  NotInTransactionException e) {
+  }
+ finally {
+    tx.finish();
+  }
+  try {
+    Node node=haDb1.createNode();
+    haDb1.getReferenceNode().createRelationshipTo(node,KNOWS);
+    fail("Should throw not in transaction exception");
+  }
+ catch (  NotInTransactionException e) {
+  }
+ finally {
+    tx.finish();
+  }
+}
