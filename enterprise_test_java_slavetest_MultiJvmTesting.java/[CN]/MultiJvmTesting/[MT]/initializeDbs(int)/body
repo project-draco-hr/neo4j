@@ -1,0 +1,20 @@
+{
+  try {
+    FileUtils.deleteDirectory(PARENT_PATH);
+    GraphDatabaseService masterDb=new EmbeddedGraphDatabase(MASTER_PATH.getAbsolutePath());
+    masterDb.shutdown();
+    for (int i=0; i < numSlaves; i++) {
+      FileUtils.copyDirectory(MASTER_PATH,slavePath(i));
+    }
+    masterJvm=spawnJvm(MASTER_PATH,MASTER_PORT,"-master","true");
+    slaveJvms=new ArrayList<StandaloneDbCom>();
+    for (int i=0; i < numSlaves; i++) {
+      File slavePath=slavePath(i);
+      StandaloneDbCom slaveJvm=spawnJvm(slavePath,MASTER_PORT + 1 + i,"-id","" + i);
+      slaveJvms.add(slaveJvm);
+    }
+  }
+ catch (  IOException e) {
+    throw new RuntimeException(e);
+  }
+}

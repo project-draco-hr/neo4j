@@ -1,0 +1,42 @@
+{
+  initializeDbs(2);
+  StandaloneDbCom db1=slaveJvms.get(0);
+  StandaloneDbCom db2=slaveJvms.get(1);
+  final String name="Mattias";
+  db1.executeJob(new Job<Void>(){
+    public Void execute(    GraphDatabaseService db){
+      Transaction tx=db.beginTx();
+      try {
+        Node node=db.createNode();
+        db.getReferenceNode().createRelationshipTo(node,REL_TYPE);
+        node.setProperty("name",name);
+        tx.success();
+      }
+  finally {
+        tx.finish();
+      }
+      return null;
+    }
+  }
+);
+  String readName=db2.executeJob(new Job<String>(){
+    public String execute(    GraphDatabaseService db){
+      Transaction tx=db.beginTx();
+      try {
+        Node refNode=db.getReferenceNode();
+        refNode.removeProperty("yoyoyoyo");
+        Node node=refNode.getSingleRelationship(REL_TYPE,Direction.OUTGOING).getEndNode();
+        String name=(String)node.getProperty("name");
+        node.setProperty("title","Whatever");
+        tx.success();
+        return name;
+      }
+  finally {
+        tx.finish();
+      }
+    }
+  }
+);
+  assertEquals(name,readName);
+  db1.pullUpdates();
+}
