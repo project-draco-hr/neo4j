@@ -1,11 +1,22 @@
 {
   super();
-  boolean isMaster=args.getBoolean("master",null).booleanValue();
-  String storeDir=args.get("path",null);
-  AbstractBroker broker=isMaster ? new FakeMasterBroker() : new FakeSlaveBroker(args.getNumber("id",null).intValue());
-  this.db=new HighlyAvailableGraphDatabase(storeDir,new HashMap<String,String>(),broker);
-  broker.setDb(this.db);
-  this.location=location;
-  this.location.ensureRegistryCreated();
-  this.location.bind(this);
+  storeDir=args.get("path",null);
+  out=new PrintStream(new File(new File(storeDir),"output"));
+  System.setOut(out);
+  try {
+    println("About to start");
+    boolean isMaster=args.getBoolean("master",false).booleanValue();
+    AbstractBroker broker=isMaster ? new FakeMasterBroker() : new FakeSlaveBroker(args.getNumber("id",null).intValue());
+    this.db=new HighlyAvailableGraphDatabase(storeDir,new HashMap<String,String>(),broker);
+    println("Started HA db");
+    broker.setDb(this.db);
+    this.location=location;
+    this.location.ensureRegistryCreated();
+    this.location.bind(this);
+    println("RMI object bound");
+  }
+ catch (  Exception e) {
+    println("Exception",e);
+    throw e;
+  }
 }
