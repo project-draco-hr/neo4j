@@ -1,9 +1,17 @@
 {
-  shutdownIfNecessary();
-  if (brokerSaysIAmMaster()) {
+  boolean brokerSaysIAmMaster=brokerSaysIAmMaster();
+  boolean iAmCurrentlyMaster=masterServer != null;
+  if (brokerSaysIAmMaster) {
+    if (!iAmCurrentlyMaster) {
+      shutdownIfStarted();
+    }
+    this.masterServer=(MasterServer)broker.instantiateMasterServer(this);
     this.localGraph=new EmbeddedGraphDbImpl(storeDir,config,this,CommonFactories.defaultLockManagerFactory(),CommonFactories.defaultIdGeneratorFactory(),CommonFactories.defaultRelationshipTypeCreator(),CommonFactories.defaultTxIdGeneratorFactory(),CommonFactories.defaultTxRollbackHook());
   }
  else {
+    if (iAmCurrentlyMaster) {
+      shutdownIfStarted();
+    }
     this.localGraph=new EmbeddedGraphDbImpl(storeDir,config,this,new SlaveLockManagerFactory(broker,this),new SlaveIdGeneratorFactory(broker,this),new SlaveRelationshipTypeCreator(broker,this),new SlaveTxIdGeneratorFactory(broker,this),new SlaveTxRollbackHook(broker,this));
   }
 }
