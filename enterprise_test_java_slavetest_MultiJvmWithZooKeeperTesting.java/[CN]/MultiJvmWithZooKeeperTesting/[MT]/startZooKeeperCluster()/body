@@ -1,0 +1,18 @@
+{
+  FileUtils.deleteDirectory(BASE_ZOO_KEEPER_DATA_DIR);
+  zooKeeperClusterShutdownHooks=new ArrayList<Runnable>();
+  BASE_ZOO_KEEPER_DATA_DIR.mkdirs();
+  for (int i=0; i < ZOO_KEEPER_CLUSTER_SIZE; i++) {
+    File configFile=writeZooKeeperConfigFile(ZOO_KEEPER_CLUSTER_SIZE,i + 1);
+    final Process process=Runtime.getRuntime().exec(new String[]{"java","-cp",System.getProperty("java.class.path"),"org.apache.zookeeper.server.quorum.QuorumPeerMain",configFile.getAbsolutePath()});
+    zooKeeperClusterShutdownHooks.add(new Runnable(){
+      public void run(){
+        process.destroy();
+      }
+    }
+);
+  }
+  System.out.println("Awaiting zoo keeper cluster to start...");
+  Thread.sleep(10000);
+  System.out.println("Running tests...");
+}
