@@ -1,8 +1,18 @@
 {
-  Long nextId=nextLocalIdOrNull();
-  if (nextId == null) {
-    IdAllocation allocation=receiver.receive(broker.getMaster().allocateIds(receiver.getSlaveContext(),idType));
-    nextId=storeLocally(allocation);
+  try {
+    Long nextId=nextLocalIdOrNull();
+    if (nextId == null) {
+      IdAllocation allocation=receiver.receive(broker.getMaster().allocateIds(receiver.getSlaveContext(),idType));
+      nextId=storeLocally(allocation);
+    }
+    return nextId.intValue();
   }
-  return nextId.intValue();
+ catch (  ZooKeeperException e) {
+    receiver.somethingIsWrong(e);
+    throw e;
+  }
+catch (  HaCommunicationException e) {
+    receiver.somethingIsWrong(e);
+    throw e;
+  }
 }
