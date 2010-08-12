@@ -4,6 +4,7 @@
     List<String> children=zooKeeper.getChildren(root,false);
     int currentMasterId=-1;
     int lowestSeq=Integer.MAX_VALUE;
+    long highestTxId=-1;
     for (    String child : children) {
       int index=child.indexOf('_');
       int id=Integer.parseInt(child.substring(0,index));
@@ -12,7 +13,8 @@
         byte[] data=zooKeeper.getData(root + "/" + child,false,null);
         ByteBuffer buf=ByteBuffer.wrap(data);
         long tx=buf.getLong();
-        if (tx == globalCommittedTx) {
+        if (tx > highestTxId) {
+          highestTxId=tx;
           if (seq < lowestSeq) {
             currentMasterId=id;
             lowestSeq=seq;
