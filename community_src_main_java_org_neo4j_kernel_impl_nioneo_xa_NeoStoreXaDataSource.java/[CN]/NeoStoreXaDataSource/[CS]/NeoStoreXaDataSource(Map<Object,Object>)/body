@@ -18,7 +18,13 @@
   neoStore=new NeoStore(config);
   xaContainer=XaContainer.create(this,(String)config.get("logical_log"),new CommandFactory(neoStore),new TransactionFactory(),config);
   if (!readOnly) {
-    xaContainer.openLogicalLog();
+    neoStore.setRecoveredStatus(true);
+    try {
+      xaContainer.openLogicalLog();
+    }
+  finally {
+      neoStore.setRecoveredStatus(false);
+    }
   }
   if (!xaContainer.getResourceManager().hasRecoveredTransactions()) {
     neoStore.makeStoreOk();
