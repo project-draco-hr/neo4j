@@ -17,7 +17,9 @@
   log.fine("Logical log version: " + logVersion + " with committed tx["+ lastCommittedTx+ "]");
   long logEntriesFound=0;
   long lastEntryPos=fileChannel.position();
-  while (readEntry()) {
+  LogEntry entry;
+  while ((entry=readEntry()) != null) {
+    applyEntry(entry);
     logEntriesFound++;
     lastEntryPos=fileChannel.position();
   }
@@ -46,8 +48,8 @@
   }
  else {
     log.fine("[" + logFileName + "] Found "+ xidIdentMap.size()+ " prepared 2PC transactions.");
-    for (    LogEntry.Start entry : xidIdentMap.values()) {
-      log.fine("[" + logFileName + "] 2PC xid["+ entry.getXid()+ "]");
+    for (    LogEntry.Start startEntry : xidIdentMap.values()) {
+      log.fine("[" + logFileName + "] 2PC xid["+ startEntry.getXid()+ "]");
     }
   }
   recoveredTxMap.clear();
