@@ -1,28 +1,8 @@
 {
-  buffer.clear();
-  buffer.limit(1);
-  if (fileChannel.read(buffer) != buffer.limit()) {
-    return false;
+  long position=fileChannel.position();
+  LogEntry entry=LogIoUtils.readEntry(buffer,fileChannel,cf);
+  if (entry instanceof LogEntry.Start) {
+    ((LogEntry.Start)entry).setStartPosition(position);
   }
-  buffer.flip();
-  byte entry=buffer.get();
-switch (entry) {
-case LogEntry.TX_START:
-    return readTxStartEntry();
-case LogEntry.TX_PREPARE:
-  return readTxPrepareEntry();
-case LogEntry.TX_1P_COMMIT:
-return readTxOnePhaseCommit();
-case LogEntry.TX_2P_COMMIT:
-return readTxTwoPhaseCommit();
-case LogEntry.COMMAND:
-return readCommandEntry();
-case LogEntry.DONE:
-return readDoneEntry();
-case LogEntry.EMPTY:
-fileChannel.position(fileChannel.position() - 1);
-return false;
-default :
-throw new IOException("Internal recovery failed, " + "unknown log entry[" + entry + "]");
-}
+  return entry;
 }

@@ -9,59 +9,34 @@
   assertLogCanContainTx(txId,prevTxId);
   List<LogEntry> logEntryList=null;
   Map<Integer,List<LogEntry>> transactions=new HashMap<Integer,List<LogEntry>>();
-  buffer.clear();
-  buffer.limit(1);
-  while (logEntryList == null && log.read(buffer) == buffer.limit()) {
-    buffer.flip();
-    byte entry=buffer.get();
-    LogEntry logEntry;
-switch (entry) {
-case LogEntry.TX_START:
-      logEntry=LogIoUtils.readTxStartEntry(buffer,log,-1);
-    List<LogEntry> list=new LinkedList<LogEntry>();
-  list.add(logEntry);
-transactions.put(logEntry.getIdentifier(),list);
-break;
-case LogEntry.TX_PREPARE:
-logEntry=LogIoUtils.readTxPrepareEntry(buffer,log);
-transactions.get(logEntry.getIdentifier()).add(logEntry);
-break;
-case LogEntry.TX_1P_COMMIT:
-logEntry=LogIoUtils.readTxOnePhaseCommit(buffer,log);
-if (((LogEntry.OnePhaseCommit)logEntry).getTxId() == txId) {
-logEntryList=transactions.get(logEntry.getIdentifier());
-logEntryList.add(logEntry);
-}
+  LogEntry entry;
+  while ((entry=LogIoUtils.readEntry(buffer,log,cf)) != null && logEntryList == null) {
+    if (entry instanceof LogEntry.Start) {
+      List<LogEntry> list=new LinkedList<LogEntry>();
+      list.add(entry);
+      transactions.put(entry.getIdentifier(),list);
+    }
+ else     if (entry instanceof LogEntry.Commit) {
+      if (((LogEntry.Commit)entry).getTxId() == txId) {
+        logEntryList=transactions.get(entry.getIdentifier());
+        logEntryList.add(entry);
+      }
  else {
-transactions.remove(logEntry.getIdentifier());
-}
-break;
-case LogEntry.TX_2P_COMMIT:
-logEntry=LogIoUtils.readTxTwoPhaseCommit(buffer,log);
-if (((LogEntry.TwoPhaseCommit)logEntry).getTxId() == txId) {
-logEntryList=transactions.get(logEntry.getIdentifier());
-logEntryList.add(logEntry);
-}
+        transactions.remove(entry.getIdentifier());
+      }
+    }
+ else     if (entry instanceof LogEntry.Command) {
+      transactions.get(entry.getIdentifier()).add(entry);
+    }
+ else     if (entry instanceof LogEntry.Done) {
+      transactions.remove(entry.getIdentifier());
+    }
  else {
-transactions.remove(logEntry.getIdentifier());
-}
-break;
-case LogEntry.COMMAND:
-logEntry=LogIoUtils.readTxCommand(buffer,log,cf);
-transactions.get(logEntry.getIdentifier()).add(logEntry);
-break;
-case LogEntry.DONE:
-logEntry=LogIoUtils.readTxDoneEntry(buffer,log);
-transactions.remove(logEntry.getIdentifier());
-break;
-default :
-throw new IOException("Unable to locate transaction[" + txId + "]");
-}
-buffer.clear();
-buffer.limit(1);
-}
-if (logEntryList == null) {
-throw new IOException("Transaction[" + txId + "] not found in log ("+ expectedVersion+ ", "+ prevTxId+ ")");
-}
-return logEntryList;
+      throw new RuntimeException("Unknown entry: " + entry);
+    }
+  }
+  if (logEntryList == null) {
+    throw new IOException("Transaction[" + txId + "] not found in log ("+ expectedVersion+ ", "+ prevTxId+ ")");
+  }
+  return logEntryList;
 }
