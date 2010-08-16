@@ -1,41 +1,13 @@
 {
-  buffer.clear();
-  buffer.limit(1);
-  if (byteChannel.read(buffer) != buffer.limit()) {
-    return false;
+  LogEntry entry=LogIoUtils.readEntry(buffer,byteChannel,cf);
+  if (entry != null) {
+    entry.setIdentifier(newXidIdentifier);
+    applyEntry(entry);
   }
-  buffer.flip();
-  byte entry=buffer.get();
-  LogEntry logEntry=null;
-switch (entry) {
-case LogEntry.TX_START:
-    logEntry=readTxStartEntry(newXidIdentifier);
-  startEntry=(LogEntry.Start)logEntry;
-break;
-case LogEntry.TX_PREPARE:
-logEntry=readTxPrepareEntry(newXidIdentifier);
-break;
-case LogEntry.TX_1P_COMMIT:
-logEntry=readAndApplyTxOnePhaseCommit(newXidIdentifier);
-break;
-case LogEntry.TX_2P_COMMIT:
-logEntry=readAndApplyTxTwoPhaseCommit(newXidIdentifier);
-break;
-case LogEntry.COMMAND:
-logEntry=readCommandEntry(newXidIdentifier);
-break;
-case LogEntry.DONE:
-logEntry=readDoneEntry(newXidIdentifier);
-break;
-case LogEntry.EMPTY:
-break;
-default :
-throw new IOException("Internal recovery failed, " + "unknown log entry[" + entry + "]");
-}
-if (logEntry != null) {
-logEntry.setIdentifier(newXidIdentifier);
-LogIoUtils.writeLogEntry(logEntry,writeBuffer);
-return true;
-}
-return false;
+  if (entry != null) {
+    entry.setIdentifier(newXidIdentifier);
+    LogIoUtils.writeLogEntry(entry,writeBuffer);
+    return true;
+  }
+  return false;
 }
