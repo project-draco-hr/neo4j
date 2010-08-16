@@ -4,15 +4,8 @@
   while (version >= 0) {
     ReadableByteChannel log=getLogicalLogOrMyself(version);
     ByteBuffer buf=ByteBuffer.allocate(16);
-    if (log.read(buf) != 16) {
-      throw new IOException("Unable to read log version " + version);
-    }
-    buf.flip();
-    long readVersion=buf.getLong();
-    if (readVersion != version) {
-      throw new IOException("Got " + readVersion + " from log when expecting "+ version);
-    }
-    committedTx=buf.getLong();
+    long[] header=readAndAssertLogHeader(buf,log,version);
+    committedTx=header[1];
     log.close();
     if (committedTx <= txId) {
       break;
