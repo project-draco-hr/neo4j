@@ -1,8 +1,7 @@
 {
   log.info("Non clean shutdown detected on log [" + logFileName + "]. Recovery started ...");
-  buffer.clear();
-  buffer.limit(16);
-  if (fileChannel.read(buffer) != 16) {
+  long[] header=readLogHeader(buffer,fileChannel,false);
+  if (header == null) {
     log.info("Unable to read timestamp information, " + "no records in logical log.");
     fileChannel.close();
     boolean success=FileUtils.renameFile(new File(logFileName),new File(logFileName + "_unknown_timestamp_" + System.currentTimeMillis()+ ".log"));
@@ -10,9 +9,8 @@
     fileChannel=new RandomAccessFile(logFileName,"rw").getChannel();
     return;
   }
-  buffer.flip();
-  logVersion=buffer.getLong();
-  long lastCommittedTx=buffer.getLong();
+  logVersion=header[0];
+  long lastCommittedTx=header[1];
   previousLogLastCommittedTx=lastCommittedTx;
   log.fine("Logical log version: " + logVersion + " with committed tx["+ lastCommittedTx+ "]");
   long logEntriesFound=0;
