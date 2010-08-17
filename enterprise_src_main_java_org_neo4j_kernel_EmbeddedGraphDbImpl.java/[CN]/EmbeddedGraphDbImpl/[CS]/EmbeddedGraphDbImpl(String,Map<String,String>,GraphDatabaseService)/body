@@ -1,9 +1,23 @@
 {
   this.storeDir=storeDir;
   graphDbInstance=new GraphDbInstance(storeDir,true);
-  Map<Object,Object> params=graphDbInstance.start(graphDbService,config,kernelPanicEventGenerator,new SyncHookFactory());
+  final Map<Object,Object> params=graphDbInstance.start(graphDbService,config,kernelPanicEventGenerator,new SyncHookFactory());
   nodeManager=graphDbInstance.getConfig().getGraphDbModule().getNodeManager();
   this.graphDbService=graphDbService;
-  jmxShutdownHook=initJMX(params);
-  enableRemoteShellIfConfigSaysSo(params);
+  this.extensions=new KernelExtension.KernelData(instanceId){
+    @Override public String version(){
+      return KERNEL_VERSION;
+    }
+    @Override public Config getConfig(){
+      return EmbeddedGraphDbImpl.this.getConfig();
+    }
+    @Override public Map<Object,Object> getConfigParams(){
+      return params;
+    }
+    @Override public GraphDatabaseService graphDatabase(){
+      return EmbeddedGraphDbImpl.this.graphDbService;
+    }
+  }
+;
+  initializeExtensions();
 }
