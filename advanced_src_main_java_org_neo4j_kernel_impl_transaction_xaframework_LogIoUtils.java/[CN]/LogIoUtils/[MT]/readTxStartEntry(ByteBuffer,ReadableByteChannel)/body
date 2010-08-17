@@ -1,42 +1,12 @@
 {
-  buf.clear();
-  buf.limit(1);
-  if (channel.read(buf) != buf.limit()) {
-    return null;
-  }
-  buf.flip();
-  byte globalIdLength=buf.get();
-  buf.clear();
-  buf.limit(1);
-  if (channel.read(buf) != buf.limit()) {
-    return null;
-  }
-  buf.flip();
-  byte branchIdLength=buf.get();
+  byte globalIdLength=readNextByte(buf,channel);
+  byte branchIdLength=readNextByte(buf,channel);
   byte globalId[]=new byte[globalIdLength];
-  ByteBuffer tmpBuffer=ByteBuffer.wrap(globalId);
-  if (channel.read(tmpBuffer) != globalId.length) {
-    return null;
-  }
+  readIntoBufferAndFlip(ByteBuffer.wrap(globalId),channel,globalIdLength);
   byte branchId[]=new byte[branchIdLength];
-  tmpBuffer=ByteBuffer.wrap(branchId);
-  if (channel.read(tmpBuffer) != branchId.length) {
-    return null;
-  }
-  buf.clear();
-  buf.limit(4);
-  if (channel.read(buf) != buf.limit()) {
-    return null;
-  }
-  buf.flip();
-  int identifier=buf.getInt();
-  buf.clear();
-  buf.limit(4);
-  if (channel.read(buf) != buf.limit()) {
-    return null;
-  }
-  buf.flip();
-  int formatId=buf.getInt();
+  readIntoBufferAndFlip(ByteBuffer.wrap(branchId),channel,branchIdLength);
+  int identifier=readNextInt(buf,channel);
+  int formatId=readNextInt(buf,channel);
   Xid xid=new XidImpl(globalId,branchId,formatId);
   return new LogEntry.Start(xid,identifier,-1);
 }
