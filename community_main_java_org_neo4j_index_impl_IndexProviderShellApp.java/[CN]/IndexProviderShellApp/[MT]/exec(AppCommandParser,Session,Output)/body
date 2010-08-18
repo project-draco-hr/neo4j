@@ -1,0 +1,47 @@
+{
+  IndexProvider indexes=indexes();
+  boolean doCd=parser.options().containsKey("cd");
+  boolean doLs=parser.options().containsKey("ls");
+  boolean query=parser.options().containsKey("q");
+  boolean get=parser.options().containsKey("g") || query || doCd|| doLs;
+  boolean index=parser.options().containsKey("i");
+  boolean remove=parser.options().containsKey("r");
+  int count=boolCount(get,index,remove);
+  if (count != 1) {
+    throw new ShellException("Supply one of: -g, -i, -r");
+  }
+  if (get) {
+    String commandToRun=parser.options().get("c");
+    Collection<String> commandsToRun=new ArrayList<String>();
+    boolean specialCommand=false;
+    if (doCd || doLs) {
+      specialCommand=true;
+      if (doCd) {
+        commandsToRun.add("cd -a $n");
+      }
+ else       if (doLs) {
+        commandsToRun.add("ls $n");
+      }
+    }
+ else     if (commandToRun != null) {
+      commandsToRun.addAll(Arrays.asList(commandToRun.split(Pattern.quote("&&"))));
+    }
+    Iterable<Node> result;
+    if (query) {
+      result=query(indexes,parser,session,out);
+    }
+ else {
+      result=get(indexes,parser,session,out);
+    }
+    for (    Node node : result) {
+      printAndInterpretTemplateLines(commandsToRun,false,!specialCommand,node,getServer(),session,out);
+    }
+  }
+ else   if (index) {
+    index(indexes,parser,session,out);
+  }
+ else   if (remove) {
+    remove(indexes,parser,session,out);
+  }
+  return null;
+}
