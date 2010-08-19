@@ -1,18 +1,17 @@
 {
   try {
     TransactionStreams streams=new TransactionStreams();
-    for (    Map.Entry<String,Long> slaveEntry : context.lastAppliedTransactions().entrySet()) {
-      String resourceName=slaveEntry.getKey();
-      XaDataSource dataSource=getConfig().getTxModule().getXaDataSourceManager().getXaDataSource(resourceName);
+    for (    Pair<String,Long> txEntry : context.lastAppliedTransactions()) {
+      String resourceName=txEntry.first();
+      XaDataSource dataSource=graphDbConfig.getTxModule().getXaDataSourceManager().getXaDataSource(resourceName);
       long masterLastTx=dataSource.getLastCommittedTxId();
-      long slaveLastTx=slaveEntry.getValue();
       Collection<ReadableByteChannel> channels=new ArrayList<ReadableByteChannel>();
-      for (long txId=slaveLastTx + 1; txId <= masterLastTx; txId++) {
+      for (long txId=txEntry.other() + 1; txId <= masterLastTx; txId++) {
         if (filter.accept(txId)) {
           channels.add(dataSource.getCommittedTransaction(txId));
         }
       }
-      streams.add(slaveEntry.getKey(),new TransactionStream(channels));
+      streams.add(resourceName,new TransactionStream(channels));
     }
     return new Response<T>(response,streams);
   }
