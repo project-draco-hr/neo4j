@@ -1,19 +1,31 @@
 {
-  SingleJvmTesting single=new SingleJvmTesting();
-  single.initializeDbs(1);
-  time("No HA",executeOnMaster(single,job));
-  single.shutdownDbs();
-  single.initializeDbs(1);
-  time("Single JVM HA",executeOnSlave(single,job));
-  single.shutdownDbs();
-  MultiJvmTesting multi=new MultiJvmTesting();
-  multi.initializeDbs(1);
-  time("Multi JVM HA",executeOnSlave(multi,job));
-  multi.shutdownDbs();
-  MultiJvmWithZooKeeperTesting multiZoo=new MultiJvmWithZooKeeperTesting();
-  MultiJvmWithZooKeeperTesting.startZooKeeperCluster();
-  multiZoo.initializeDbs(1);
-  time("Multi JVM HA with ZooKeeper",executeOnSlave(multiZoo,job));
-  multiZoo.shutdownDbs();
-  MultiJvmWithZooKeeperTesting.shutdownZooKeeperCluster();
+  final boolean noHa=doTest("NO_HA");
+  final boolean singleJvm=doTest("SINGLE_JVM");
+  if (noHa || singleJvm) {
+    SingleJvmTesting single=new SingleJvmTesting();
+    if (noHa) {
+      single.initializeDbs(1);
+      time("No HA",executeOnMaster(single,job));
+      single.shutdownDbs();
+    }
+    if (singleJvm) {
+      single.initializeDbs(1);
+      time("Single JVM HA",executeOnSlave(single,job));
+      single.shutdownDbs();
+    }
+  }
+  if (doTest("MULTI_JVM")) {
+    MultiJvmTesting multi=new MultiJvmTesting();
+    multi.initializeDbs(1);
+    time("Multi JVM HA",executeOnSlave(multi,job));
+    multi.shutdownDbs();
+  }
+  if (doTest("FULL_HA")) {
+    MultiJvmWithZooKeeperTesting multiZoo=new MultiJvmWithZooKeeperTesting();
+    MultiJvmWithZooKeeperTesting.startZooKeeperCluster();
+    multiZoo.initializeDbs(1);
+    time("Multi JVM HA with ZooKeeper",executeOnSlave(multiZoo,job));
+    multiZoo.shutdownDbs();
+    MultiJvmWithZooKeeperTesting.shutdownZooKeeperCluster();
+  }
 }
