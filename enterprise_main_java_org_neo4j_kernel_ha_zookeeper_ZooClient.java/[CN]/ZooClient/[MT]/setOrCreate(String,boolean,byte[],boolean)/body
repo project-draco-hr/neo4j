@@ -1,14 +1,14 @@
 {
+  String created=null;
   try {
-    String root=getRoot();
-    String path=root + "/" + MASTER_NOTIFY_CHILD;
-    byte[] data=null;
+    path=pathIsRelative ? getRoot(addWatch) + "/" + path : path;
     boolean exists=false;
+    byte[] existingData=null;
     try {
-      data=zooKeeper.getData(path,true,null);
+      existingData=zooKeeper.getData(path,addWatch,null);
       exists=true;
-      if (data[0] == currentMasterId) {
-        return;
+      if (Arrays.equals(data,existingData)) {
+        return null;
       }
     }
  catch (    KeeperException e) {
@@ -17,13 +17,14 @@
       }
     }
     try {
-      data=new byte[]{(byte)currentMasterId};
       if (!exists) {
-        zooKeeper.create(path,data,ZooDefs.Ids.OPEN_ACL_UNSAFE,CreateMode.PERSISTENT);
+        created=zooKeeper.create(path,data,ZooDefs.Ids.OPEN_ACL_UNSAFE,CreateMode.PERSISTENT);
       }
       zooKeeper.setData(path,data,-1);
-      System.out.println("master-notify set to " + currentMasterId);
-      zooKeeper.getData(path,true,null);
+      if (addWatch) {
+        zooKeeper.getData(path,true,null);
+      }
+      return created;
     }
  catch (    KeeperException e) {
       if (e.code() != KeeperException.Code.NODEEXISTS) {
@@ -35,4 +36,5 @@
     Thread.interrupted();
     throw new ZooKeeperException("Interrupted",e);
   }
+  return created;
 }
