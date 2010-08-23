@@ -1,24 +1,20 @@
 {
   String path=event.getPath();
   System.out.println(this + ", " + new Date()+ " Got event: "+ event+ "(path="+ path+ ")");
-  if (path == null) {
-    if (event.getState() == Watcher.Event.KeeperState.Expired) {
-      keeperState=KeeperState.Expired;
-      instantiateZooKeeper();
-    }
- else     if (event.getState() == Watcher.Event.KeeperState.SyncConnected) {
-      sequenceNr=setup();
-      keeperState=KeeperState.SyncConnected;
-      receiver.somethingIsWrong(new Exception());
-    }
- else     if (event.getState() == Watcher.Event.KeeperState.Disconnected) {
-      keeperState=KeeperState.Disconnected;
-    }
+  if (path == null && event.getState() == Watcher.Event.KeeperState.Expired) {
+    keeperState=KeeperState.Expired;
+    instantiateZooKeeper();
   }
- else {
-    if (event.getType() == Watcher.Event.EventType.NodeChildrenChanged) {
-      receiver.somethingIsWrong(new Exception());
-      getRoot(true);
-    }
+ else   if (path == null && event.getState() == Watcher.Event.KeeperState.SyncConnected) {
+    sequenceNr=setup();
+    keeperState=KeeperState.SyncConnected;
+    receiver.somethingIsWrong(new Exception());
+  }
+ else   if (path == null && event.getState() == Watcher.Event.KeeperState.Disconnected) {
+    keeperState=KeeperState.Disconnected;
+  }
+ else   if (event.getType() == Watcher.Event.EventType.NodeDataChanged) {
+    System.out.println("NodeDataChanged (most likely master-notify)");
+    receiver.somethingIsWrong(new Exception());
   }
 }
