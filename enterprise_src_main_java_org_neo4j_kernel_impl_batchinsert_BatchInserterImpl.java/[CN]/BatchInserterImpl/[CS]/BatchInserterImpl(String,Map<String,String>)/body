@@ -1,4 +1,5 @@
 {
+  msgLog=StringLogger.getLogger(storeDir + "/messages.log");
   Map<Object,Object> params=getDefaultParams();
   params.put(Config.USE_MEMORY_MAPPED_BUFFERS,"false");
   boolean dump=Boolean.parseBoolean(stringParams.get(Config.DUMP_CONFIGURATION));
@@ -13,7 +14,11 @@
   if (dump) {
     Config.dumpConfiguration(params);
   }
+  msgLog.logMessage(Thread.currentThread() + " Starting BatchInserter(" + this+ ")");
   neoStore=new NeoStore(params);
+  if (!neoStore.isStoreOk()) {
+    throw new IllegalStateException(storeDir + " store is not cleanly shutdown.");
+  }
   neoStore.makeStoreOk();
   PropertyIndexData[] indexes=getPropertyIndexStore().getPropertyIndexes(10000);
   indexHolder=new PropertyIndexHolder(indexes);
