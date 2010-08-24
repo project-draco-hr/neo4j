@@ -1,49 +1,8 @@
 {
   waitForSyncConnected();
-  try {
-    Map<Integer,Pair<Integer,Long>> rawData=new HashMap<Integer,Pair<Integer,Long>>();
-    String root=getRoot();
-    List<String> children=zooKeeper.getChildren(root,false);
-    int currentMasterId=-1;
-    int lowestSeq=Integer.MAX_VALUE;
-    long highestTxId=-1;
-    for (    String child : children) {
-      if (child.equals(MASTER_NOTIFY_CHILD)) {
-        continue;
-      }
-      int index=child.indexOf('_');
-      int id=Integer.parseInt(child.substring(0,index));
-      int seq=Integer.parseInt(child.substring(index + 1));
-      try {
-        byte[] data=zooKeeper.getData(root + "/" + child,false,null);
-        ByteBuffer buf=ByteBuffer.wrap(data);
-        long tx=buf.getLong();
-        if (rawData.put(id,new Pair<Integer,Long>(seq,tx)) != null) {
-          System.out.println("warning: " + id + " found more than once");
-        }
-        if (tx >= highestTxId) {
-          if (tx > highestTxId || seq < lowestSeq) {
-            currentMasterId=id;
-            lowestSeq=seq;
-          }
-          highestTxId=tx;
-        }
-      }
- catch (      KeeperException inner) {
-        if (inner.code() != KeeperException.Code.NONODE) {
-          throw new ZooKeeperException("Unabe to get master.",inner);
-        }
-      }
-    }
-    System.out.println("getMaster: " + currentMasterId + " based on "+ rawData);
-    setMasterChangeWatcher(currentMasterId);
-    return currentMasterId;
+  MachineInfo result=super.getMaster();
+  if (result != null) {
+    setMasterChangeWatcher(result.getMachineId());
   }
- catch (  KeeperException e) {
-    throw new ZooKeeperException("Unable to get master",e);
-  }
-catch (  InterruptedException e) {
-    Thread.interrupted();
-    throw new ZooKeeperException("Interrupted.",e);
-  }
+  return result;
 }
