@@ -1,0 +1,34 @@
+{
+  try {
+    Map<Integer,MachineInfo> result=new HashMap<Integer,MachineInfo>();
+    String root=getRoot();
+    List<String> children=getZooKeeper().getChildren(root,false);
+    for (    String child : children) {
+      Pair<Integer,Integer> parsedChild=parseChild(child);
+      if (parsedChild == null) {
+        continue;
+      }
+      try {
+        int id=parsedChild.first();
+        int seq=parsedChild.other();
+        long tx=readDataAsLong(root + "/" + child);
+        if (!result.containsKey(id) || seq > result.get(id).sequenceId) {
+          result.put(id,new MachineInfo(id,seq,tx,getHaServer(id)));
+        }
+      }
+ catch (      KeeperException inner) {
+        if (inner.code() != KeeperException.Code.NONODE) {
+          throw new ZooKeeperException("Unabe to get master.",inner);
+        }
+      }
+    }
+    return result;
+  }
+ catch (  KeeperException e) {
+    throw new ZooKeeperException("Unable to get master",e);
+  }
+catch (  InterruptedException e) {
+    Thread.interrupted();
+    throw new ZooKeeperException("Interrupted.",e);
+  }
+}
