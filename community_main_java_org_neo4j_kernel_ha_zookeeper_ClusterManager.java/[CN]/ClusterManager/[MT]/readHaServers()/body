@@ -1,0 +1,24 @@
+{
+  waitForSyncConnected();
+  Map<Integer,String> result=new HashMap<Integer,String>();
+  String rootPath=getRoot();
+  try {
+    String haRootPath=rootPath + "/" + HA_SERVERS_CHILD;
+    for (    String child : zooKeeper.getChildren(rootPath + "/" + HA_SERVERS_CHILD,false)) {
+      byte[] serverData=zooKeeper.getData(child,false,null);
+      ByteBuffer buffer=ByteBuffer.wrap(serverData);
+      byte length=buffer.get();
+      char[] chars=new char[length];
+      buffer.asCharBuffer().get(chars);
+      result.put(Integer.parseInt(child),String.valueOf(chars));
+    }
+    System.out.println("Read HA servers:" + result + " from zoo keeper");
+    return result;
+  }
+ catch (  KeeperException e) {
+    throw new ZooKeeperException("Couldn't find the HA servers root node",e);
+  }
+catch (  InterruptedException e) {
+    throw new ZooKeeperException("Interrupted",e);
+  }
+}
