@@ -4,6 +4,7 @@
   }
   log.fine("Logical log version: " + logVersion + ", committing tx="+ nextTxId+ ")");
   long logEntriesFound=0;
+  scanIsComplete=false;
   LogApplier logApplier=new LogApplier(byteChannel);
   int xidIdent=getNextIdentifier();
   while (logApplier.readAndApplyAndWriteEntry(xidIdent)) {
@@ -21,11 +22,14 @@
     XaTransaction xaTx=xaRm.getXaTransaction(xid);
     xaTx.setCommitTxId(nextTxId);
     xaRm.commit(xid,true);
+    LogEntry doneEntry=new LogEntry.Done(entry.getIdentifier());
+    LogIoUtils.writeLogEntry(doneEntry,writeBuffer);
   }
  catch (  XAException e) {
     e.printStackTrace();
     throw new IOException(e.getMessage());
   }
+  scanIsComplete=true;
   log.info("Tx[" + nextTxId + "] "+ " applied successfully.");
   msgLog.logMessage("Applied external tx and generated tx id=" + nextTxId);
 }
