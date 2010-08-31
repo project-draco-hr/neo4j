@@ -6,12 +6,17 @@
       writeSlaveContext(buffer,slaveContext);
     }
     serializer.write(buffer);
-    client.channel.write(buffer);
-    ChannelBuffer message=client.blockingReadHandler.read(20,TimeUnit.SECONDS);
+    System.out.println("Sending request to master: " + type + ", "+ slaveContext);
+    Channel channel=getChannel();
+    channel.write(buffer);
+    BlockingReadHandler<ChannelBuffer> reader=(BlockingReadHandler<ChannelBuffer>)channel.getPipeline().get("blockingHandler");
+    ChannelBuffer message=reader.read(20,TimeUnit.SECONDS);
     if (message == null) {
       throw new HaCommunicationException("Channel has been closed");
     }
+    System.out.println("Got back response from master: " + type + ", "+ slaveContext);
     T response=deserializer.read(message);
+    System.out.println("...with response object " + response);
     TransactionStreams txStreams=type.includesSlaveContext() ? readTransactionStreams(message) : TransactionStreams.EMPTY;
     return new Response<T>(response,txStreams);
   }
@@ -19,6 +24,9 @@
     throw new HaCommunicationException(e);
   }
 catch (  InterruptedException e) {
+    throw new HaCommunicationException(e);
+  }
+catch (  Exception e) {
     throw new HaCommunicationException(e);
   }
 }
