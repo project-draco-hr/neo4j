@@ -1,15 +1,16 @@
 {
-synchronized (channelsPerClient) {
-    Collection<Integer> clientsToRemove=new ArrayList<Integer>();
-    for (    Map.Entry<Integer,Collection<Channel>> entry : channelsPerClient.entrySet()) {
-      if (!entry.getValue().isEmpty() && !pruneDeadChannels(entry.getValue())) {
-        System.out.println("Rolling back dead transaction from client " + entry.getKey() + " since it went down");
-        realMaster.rollbackOngoingTransactions(new SlaveContext(entry.getKey(),new Pair[0]));
-        clientsToRemove.add(entry.getKey());
+synchronized (ongoingTransactions) {
+    Collection<Channel> channelsToRemove=new ArrayList<Channel>();
+    for (    Map.Entry<Channel,Set<SlaveContext>> entry : ongoingTransactions.entrySet()) {
+      if (channelIsClosed(entry.getKey())) {
+        for (        SlaveContext tx : entry.getValue()) {
+          ((MasterImpl)realMaster).rollbackOngoingTransaction(tx);
+        }
       }
+      channelsToRemove.add(entry.getKey());
     }
-    for (    Integer id : clientsToRemove) {
-      channelsPerClient.remove(id);
+    for (    Channel channel : channelsToRemove) {
+      ongoingTransactions.remove(channel);
     }
   }
 }
