@@ -7,13 +7,14 @@
   if (tx == null) {
     throw new IllegalStateException("Not in transaction");
   }
+  boolean hasAnyLocks=false;
   try {
+    hasAnyLocks=finishHook.hasAnyLocks(tx);
     if (tx.getStatus() == Status.STATUS_ACTIVE || tx.getStatus() == Status.STATUS_MARKED_ROLLBACK || tx.getStatus() == Status.STATUS_PREPARING) {
       tx.setStatus(Status.STATUS_MARKED_ROLLBACK);
       tx.doBeforeCompletion();
       try {
         rolledBackTxCount.incrementAndGet();
-        rollbackHook.rollbackTransaction(getEventIdentifier());
         tx.doRollback();
       }
  catch (      XAException e) {
@@ -42,6 +43,8 @@
     }
   }
   finally {
-    rollbackHook.doneCommitting(tx.getEventIdentifier());
+    if (hasAnyLocks) {
+      finishHook.finishTransaction(tx.getEventIdentifier());
+    }
   }
 }
