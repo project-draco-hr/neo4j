@@ -7,26 +7,30 @@
     boolean brokerSaysIAmMaster=brokerSaysIAmMaster();
     boolean iAmCurrentlyMaster=masterServer != null;
     boolean restarted=false;
+    if (brokerSaysIAmMaster != iAmCurrentlyMaster) {
+      internalShutdown();
+    }
     if (brokerSaysIAmMaster) {
-      if (!iAmCurrentlyMaster) {
-        internalShutdown();
-      }
       if (this.localGraph == null) {
         startAsMaster();
         restarted=true;
       }
     }
  else {
-      if (iAmCurrentlyMaster) {
-        internalShutdown();
-      }
       if (this.localGraph == null) {
         startAsSlave();
         restarted=true;
       }
     }
     if (restarted) {
-      dbGotRestarted();
+      for (      TransactionEventHandler<?> handler : transactionEventHandlers) {
+        this.localGraph.registerTransactionEventHandler(handler);
+      }
+      for (      KernelEventHandler handler : kernelEventHandlers) {
+        this.localGraph.registerKernelEventHandler(handler);
+      }
+      this.localDataSourceManager=localGraph.getConfig().getTxModule().getXaDataSourceManager();
+      tryToEnsureIAmNotABrokenMachine();
     }
   }
   finally {

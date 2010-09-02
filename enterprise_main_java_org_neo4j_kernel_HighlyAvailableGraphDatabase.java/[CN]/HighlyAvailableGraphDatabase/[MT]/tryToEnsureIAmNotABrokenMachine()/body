@@ -1,0 +1,24 @@
+{
+  try {
+    if (broker.thisIsMaster()) {
+      return;
+    }
+    XaDataSource nioneoDataSource=this.localGraph.getConfig().getTxModule().getXaDataSourceManager().getXaDataSource(Config.DEFAULT_DATA_SOURCE_NAME);
+    long lastCommittedTx=nioneoDataSource.getLastCommittedTxId();
+    int masterForMyLastCommittedTx=nioneoDataSource.getMasterForCommittedTx(lastCommittedTx);
+    Master master=broker.getMaster();
+    int masterForMastersLastCommittedTx=master.getMasterIdForCommittedTx(machineId);
+    if (masterForMastersLastCommittedTx == masterForMyLastCommittedTx) {
+      broker.setLastCommittedTxId(lastCommittedTx);
+      return;
+    }
+ else {
+      if (!recreateDbSomehow()) {
+        throw new RuntimeException("I was master the previous session, " + "so can't start up in this state (and no method specified how " + "I should replicate from another DB)");
+      }
+    }
+  }
+ catch (  IOException e) {
+    throw new RuntimeException(e);
+  }
+}
