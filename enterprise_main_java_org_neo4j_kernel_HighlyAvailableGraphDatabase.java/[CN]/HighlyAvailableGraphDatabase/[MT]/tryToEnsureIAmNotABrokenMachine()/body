@@ -5,9 +5,10 @@
     }
     XaDataSource nioneoDataSource=this.localGraph.getConfig().getTxModule().getXaDataSourceManager().getXaDataSource(Config.DEFAULT_DATA_SOURCE_NAME);
     long lastCommittedTx=nioneoDataSource.getLastCommittedTxId();
-    int masterForMyLastCommittedTx=nioneoDataSource.getMasterForCommittedTx(lastCommittedTx);
+    long lastCommonTxId=Math.min(lastCommittedTx,broker.getMasterMachine().getLastCommittedTxId());
+    int masterForMyLastCommittedTx=nioneoDataSource.getMasterForCommittedTx(lastCommonTxId);
     Master master=broker.getMaster();
-    int masterForMastersLastCommittedTx=master.getMasterIdForCommittedTx(lastCommittedTx);
+    int masterForMastersLastCommittedTx=master.getMasterIdForCommittedTx(lastCommonTxId);
     if (masterForMastersLastCommittedTx == masterForMyLastCommittedTx) {
       broker.setLastCommittedTxId(lastCommittedTx);
       return;
@@ -17,7 +18,9 @@
       throw new RuntimeException("I am broken");
     }
   }
- catch (  IOException e) {
+ catch (  Exception e) {
+    e.printStackTrace();
+    shutdown();
     throw new RuntimeException(e);
   }
 }
