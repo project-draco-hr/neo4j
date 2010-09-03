@@ -1,0 +1,24 @@
+{
+  try {
+    if (master.other().getMachineId() == machineId) {
+      return;
+    }
+    XaDataSource nioneoDataSource=this.localGraph.getConfig().getTxModule().getXaDataSourceManager().getXaDataSource(Config.DEFAULT_DATA_SOURCE_NAME);
+    long myLastCommittedTx=nioneoDataSource.getLastCommittedTxId();
+    long highestCommonTxId=Math.min(myLastCommittedTx,master.other().getLastCommittedTxId());
+    int masterForMyHighestCommonTxId=nioneoDataSource.getMasterForCommittedTx(highestCommonTxId);
+    int masterForMastersHighestCommonTxId=master.first().getMasterIdForCommittedTx(highestCommonTxId);
+    if (masterForMyHighestCommonTxId == masterForMastersHighestCommonTxId) {
+      return;
+    }
+ else {
+      msgLog.logMessage("Broken store, my last committed tx,machineId[" + myLastCommittedTx + ","+ masterForMyHighestCommonTxId+ "] but master says machine id for that txId is "+ masterForMastersHighestCommonTxId);
+      throw new RuntimeException("I am broken");
+    }
+  }
+ catch (  Exception e) {
+    e.printStackTrace();
+    shutdown();
+    throw new RuntimeException(e);
+  }
+}

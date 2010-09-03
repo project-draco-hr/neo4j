@@ -2,18 +2,18 @@
   try {
     int eventIdentifier=txManager.getEventIdentifier();
     Pair<Long,ReadableByteChannel> tx=new Pair<Long,ReadableByteChannel>(-1L,dataSource.getPreparedTransaction(identifier));
-    Response<Long> response=broker.getMaster().commitSingleResourceTransaction(receiver.getSlaveContext(eventIdentifier),dataSource.getName(),new TransactionStream(Arrays.asList(tx)));
+    Response<Long> response=broker.getMaster().first().commitSingleResourceTransaction(receiver.getSlaveContext(eventIdentifier),dataSource.getName(),new TransactionStream(Arrays.asList(tx)));
     return receiver.receive(response);
   }
  catch (  IOException e) {
     throw new RuntimeException(e);
   }
 catch (  ZooKeeperException e) {
-    receiver.somethingIsWrong(e);
+    receiver.newMaster(broker.getMaster(),e);
     throw e;
   }
 catch (  HaCommunicationException e) {
-    receiver.somethingIsWrong(e);
+    receiver.newMaster(broker.getMaster(),e);
     throw e;
   }
 }
