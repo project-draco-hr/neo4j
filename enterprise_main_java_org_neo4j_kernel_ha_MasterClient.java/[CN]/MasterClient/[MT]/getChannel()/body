@@ -3,11 +3,24 @@
 synchronized (channels) {
     Channel channel=channels.get(thread);
     if (channel == null) {
-      channel=unusedChannels.poll();
+      while (channel == null) {
+        Channel unusedChannel=unusedChannels.poll();
+        if (unusedChannel == null) {
+          break;
+        }
+ else         if (unusedChannel.isConnected()) {
+          System.out.println("Found unused (and still connected) channel");
+          channel=unusedChannel;
+        }
+ else {
+          System.out.println("Found unused stale channel, discarding it");
+        }
+      }
       if (channel == null) {
         ChannelFuture channelFuture=bootstrap.connect(new InetSocketAddress(hostNameOrIp,port));
         channelFuture.awaitUninterruptibly();
         channel=channelFuture.getChannel();
+        System.out.println("Opened a new channel");
       }
       channels.put(thread,channel);
     }
