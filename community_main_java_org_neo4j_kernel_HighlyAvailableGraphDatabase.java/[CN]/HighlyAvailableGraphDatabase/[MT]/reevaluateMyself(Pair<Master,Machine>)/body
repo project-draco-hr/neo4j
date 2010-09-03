@@ -3,24 +3,27 @@
     return;
   }
   try {
-    broker.invalidateMaster();
-    boolean brokerSaysIAmMaster=brokerSaysIAmMaster();
     boolean iAmCurrentlyMaster=masterServer != null;
     boolean restarted=false;
-    if (brokerSaysIAmMaster != iAmCurrentlyMaster) {
-      internalShutdown();
-    }
-    if (brokerSaysIAmMaster) {
-      if (this.localGraph == null) {
-        startAsMaster();
-        restarted=true;
+    if (cachedMaster.getMachineId() != master.other().getMachineId()) {
+      if (master.other().getMachineId() == machineId) {
+        if (!iAmCurrentlyMaster) {
+          internalShutdown();
+          startAsMaster();
+          restarted=true;
+        }
       }
-    }
  else {
-      if (this.localGraph == null) {
-        startAsSlave();
-        restarted=true;
+        if (iAmCurrentlyMaster) {
+          internalShutdown();
+          startAsSlave();
+          tryToEnsureIAmNotABrokenMachine(master);
+          restarted=true;
+        }
       }
+    }
+    if (masterServer != null) {
+      broker.rebindMaster();
     }
     if (restarted) {
       for (      TransactionEventHandler<?> handler : transactionEventHandlers) {
@@ -30,8 +33,10 @@
         this.localGraph.registerKernelEventHandler(handler);
       }
       this.localDataSourceManager=localGraph.getConfig().getTxModule().getXaDataSourceManager();
-      tryToEnsureIAmNotABrokenMachine();
+      tryToEnsureIAmNotABrokenMachine(master);
     }
+    cachedMaster=master.other();
+    started=true;
   }
   finally {
     reevaluatingMyself.set(false);

@@ -9,7 +9,7 @@
     LockResult result=null;
     do {
       int eventIdentifier=getLocalTxId();
-      result=node != null ? receiver.receive(broker.getMaster().acquireNodeWriteLock(receiver.getSlaveContext(eventIdentifier),node.getId())) : receiver.receive(broker.getMaster().acquireRelationshipWriteLock(receiver.getSlaveContext(eventIdentifier),relationship.getId()));
+      result=node != null ? receiver.receive(broker.getMaster().first().acquireNodeWriteLock(receiver.getSlaveContext(eventIdentifier),node.getId())) : receiver.receive(broker.getMaster().first().acquireRelationshipWriteLock(receiver.getSlaveContext(eventIdentifier),relationship.getId()));
 switch (result.getStatus()) {
 case OK_LOCKED:
         super.getWriteLock(resource);
@@ -21,11 +21,11 @@ case DEAD_LOCKED:
  while (result.getStatus() == LockStatus.NOT_LOCKED);
 }
  catch (ZooKeeperException e) {
-receiver.somethingIsWrong(e);
+receiver.newMaster(broker.getMaster(),e);
 throw e;
 }
 catch (HaCommunicationException e) {
-receiver.somethingIsWrong(e);
+receiver.newMaster(broker.getMaster(),e);
 throw e;
 }
 }
