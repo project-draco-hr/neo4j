@@ -3,18 +3,23 @@
     return;
   }
   try {
+    System.out.println("reevaluateMyself " + master);
+    if (master == null) {
+      System.out.println("looked up master " + master);
+      master=broker.getMasterReally();
+    }
     boolean iAmCurrentlyMaster=masterServer != null;
     boolean restarted=false;
     if (cachedMaster.getMachineId() != master.other().getMachineId()) {
       if (master.other().getMachineId() == machineId) {
-        if (!iAmCurrentlyMaster) {
+        if (this.localGraph == null || !iAmCurrentlyMaster) {
           internalShutdown();
           startAsMaster();
           restarted=true;
         }
       }
  else {
-        if (iAmCurrentlyMaster) {
+        if (this.localGraph == null || iAmCurrentlyMaster) {
           internalShutdown();
           startAsSlave();
           tryToEnsureIAmNotABrokenMachine(master);
@@ -33,7 +38,6 @@
         this.localGraph.registerKernelEventHandler(handler);
       }
       this.localDataSourceManager=localGraph.getConfig().getTxModule().getXaDataSourceManager();
-      tryToEnsureIAmNotABrokenMachine(master);
     }
     cachedMaster=master.other();
     started=true;
