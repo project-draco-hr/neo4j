@@ -1,20 +1,25 @@
 {
   super();
   storeDir=args.get("path",null);
-  out=new PrintStream(new File(new File(storeDir),"output"));
+  out=new PrintStream(new File(new File(storeDir),"output")){
+    public void println(    String x){
+      super.println(new SimpleDateFormat("HH:mm:ss:SS").format(new Date()) + ": " + x);
+    }
+  }
+;
   System.setOut(out);
   System.setErr(out);
   try {
     int tempMachineId;
-    println("About to start");
+    System.out.println("About to start");
     HighlyAvailableGraphDatabase haDb=null;
-    println(args.asMap().toString());
+    System.out.println(args.asMap().toString());
     if (args.has(HighlyAvailableGraphDatabase.CONFIG_KEY_HA_MACHINE_ID)) {
       new EmbeddedGraphDatabase(storeDir).shutdown();
       tempMachineId=args.getNumber(HighlyAvailableGraphDatabase.CONFIG_KEY_HA_MACHINE_ID,null).intValue();
       Map<String,String> config=MapUtil.stringMap(HighlyAvailableGraphDatabase.CONFIG_KEY_HA_MACHINE_ID,"" + tempMachineId,HighlyAvailableGraphDatabase.CONFIG_KEY_HA_ZOO_KEEPER_SERVERS,args.get(HighlyAvailableGraphDatabase.CONFIG_KEY_HA_ZOO_KEEPER_SERVERS,null),HighlyAvailableGraphDatabase.CONFIG_KEY_HA_SERVER,args.get(HighlyAvailableGraphDatabase.CONFIG_KEY_HA_SERVER,null),"index",args.get("index",null));
       haDb=new HighlyAvailableGraphDatabase(storeDir,config);
-      println("Started HA db (w/ zoo keeper)");
+      System.out.println("Started HA db (w/ zoo keeper)");
     }
  else {
       boolean isMaster=args.getBoolean("master",false).booleanValue();
@@ -23,14 +28,14 @@
       Master master=new MasterClient("localhost",CommunicationProtocol.PORT);
       AbstractBroker broker=isMaster ? new FakeMasterBroker(tempMachineId) : new FakeSlaveBroker(master,masterId.intValue(),tempMachineId);
       haDb=new HighlyAvailableGraphDatabase(storeDir,MapUtil.stringMap(HighlyAvailableGraphDatabase.CONFIG_KEY_HA_MACHINE_ID,"" + tempMachineId,"index",args.get("index",null)),AbstractBroker.wrapSingleBroker(broker));
-      println("Started HA db (w/o zoo keeper)");
+      System.out.println("Started HA db (w/o zoo keeper)");
     }
     this.location=location;
     this.location.ensureRegistryCreated();
     this.location.bind(this);
     this.machineId=tempMachineId;
     this.db=haDb;
-    println("RMI object bound");
+    System.out.println("RMI object bound");
   }
  catch (  Exception e) {
     println("Exception",e);
