@@ -3,32 +3,28 @@
     return;
   }
   try {
-    System.out.println("reevaluateMyself " + master);
+    System.out.println("reevaluateMyself machineId[" + machineId + "] with master["+ master+ "]");
     if (master == null) {
       System.out.println("looked up master " + master);
       master=broker.getMasterReally();
     }
-    boolean iAmCurrentlyMaster=masterServer != null;
     boolean restarted=false;
-    if (cachedMaster.getMachineId() != master.other().getMachineId()) {
-      if (master.other().getMachineId() == machineId) {
-        if (this.localGraph == null || !iAmCurrentlyMaster) {
-          internalShutdown();
-          startAsMaster();
-          restarted=true;
-        }
+    boolean iAmCurrentlyMaster=masterServer != null;
+    if (master.other().getMachineId() == machineId) {
+      if (this.localGraph == null || !iAmCurrentlyMaster) {
+        internalShutdown();
+        startAsMaster();
+        restarted=true;
       }
- else {
-        if (this.localGraph == null || iAmCurrentlyMaster) {
-          internalShutdown();
-          startAsSlave();
-          tryToEnsureIAmNotABrokenMachine(master);
-          restarted=true;
-        }
-      }
-    }
-    if (masterServer != null) {
       broker.rebindMaster();
+    }
+ else {
+      if (this.localGraph == null || iAmCurrentlyMaster) {
+        internalShutdown();
+        startAsSlave();
+        tryToEnsureIAmNotABrokenMachine(master);
+        restarted=true;
+      }
     }
     if (restarted) {
       for (      TransactionEventHandler<?> handler : transactionEventHandlers) {
@@ -39,8 +35,6 @@
       }
       this.localDataSourceManager=localGraph.getConfig().getTxModule().getXaDataSourceManager();
     }
-    cachedMaster=master.other();
-    started=true;
   }
   finally {
     reevaluatingMyself.set(false);
