@@ -1,19 +1,19 @@
 {
   try {
     String path=event.getPath();
-    System.out.println(this + ", " + new Date()+ " Got event: "+ event+ "(path="+ path+ ")");
+    msgLog.logMessage(this + ", " + new Date()+ " Got event: "+ event+ "(path="+ path+ ")");
     if (path == null && event.getState() == Watcher.Event.KeeperState.Expired) {
       keeperState=KeeperState.Expired;
       zooKeeper=instantiateZooKeeper();
     }
  else     if (path == null && event.getState() == Watcher.Event.KeeperState.SyncConnected) {
       Pair<Master,Machine> masterBeforeIWrite=getMasterFromZooKeeper(false);
-      System.out.println("Get master before write:" + masterBeforeIWrite);
+      msgLog.logMessage("Get master before write:" + masterBeforeIWrite);
       sequenceNr=setup();
-      System.out.println("did setup");
+      msgLog.logMessage("Did setup, seq=" + sequenceNr);
       keeperState=KeeperState.SyncConnected;
       Pair<Master,Machine> masterAfterIWrote=getMasterFromZooKeeper(false);
-      System.out.println("Get master after write:" + masterAfterIWrote);
+      msgLog.logMessage("Get master after write:" + masterAfterIWrote);
       int masterId=masterAfterIWrote.other().getMachineId();
       if (masterBeforeIWrite.other().getMachineId() != masterId && masterId != machineId) {
         setDataChangeWatcher(MASTER_NOTIFY_CHILD,masterId);
@@ -38,11 +38,12 @@
         }
       }
  else {
-        System.out.println("Unrecognized data change " + path);
+        msgLog.logMessage("Unrecognized data change " + path);
       }
     }
   }
  catch (  RuntimeException e) {
+    msgLog.logMessage("Error in ZooClient.process",e);
     e.printStackTrace();
     throw e;
   }
