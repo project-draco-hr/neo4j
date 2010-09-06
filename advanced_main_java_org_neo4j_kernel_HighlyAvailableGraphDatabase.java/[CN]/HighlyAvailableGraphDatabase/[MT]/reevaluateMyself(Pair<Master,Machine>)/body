@@ -1,42 +1,33 @@
 {
-  if (!reevaluatingMyself.compareAndSet(false,true)) {
-    return;
+  if (master == null) {
+    master=broker.getMasterReally();
   }
-  try {
-    System.out.println("reevaluateMyself machineId[" + machineId + "] with master["+ master+ "]");
-    if (master == null) {
-      System.out.println("looked up master " + master);
-      master=broker.getMasterReally();
+  boolean restarted=false;
+  boolean iAmCurrentlyMaster=masterServer != null;
+  msgLog.logMessage("ReevaluateMyself: machineId=" + machineId + " with master["+ master+ "] (I am master="+ iAmCurrentlyMaster+ ")");
+  if (master.other().getMachineId() == machineId) {
+    if (this.localGraph == null || !iAmCurrentlyMaster) {
+      internalShutdown();
+      startAsMaster();
+      restarted=true;
     }
-    boolean restarted=false;
-    boolean iAmCurrentlyMaster=masterServer != null;
-    if (master.other().getMachineId() == machineId) {
-      if (this.localGraph == null || !iAmCurrentlyMaster) {
-        internalShutdown();
-        startAsMaster();
-        restarted=true;
-      }
-      broker.rebindMaster();
-    }
+    broker.rebindMaster();
+  }
  else {
-      if (this.localGraph == null || iAmCurrentlyMaster) {
-        internalShutdown();
-        startAsSlave();
-        tryToEnsureIAmNotABrokenMachine(master);
-        restarted=true;
-      }
+    if (this.localGraph == null || iAmCurrentlyMaster) {
+      internalShutdown();
+      startAsSlave();
+      restarted=true;
     }
-    if (restarted) {
-      for (      TransactionEventHandler<?> handler : transactionEventHandlers) {
-        this.localGraph.registerTransactionEventHandler(handler);
-      }
-      for (      KernelEventHandler handler : kernelEventHandlers) {
-        this.localGraph.registerKernelEventHandler(handler);
-      }
-      this.localDataSourceManager=localGraph.getConfig().getTxModule().getXaDataSourceManager();
-    }
+    tryToEnsureIAmNotABrokenMachine(master);
   }
-  finally {
-    reevaluatingMyself.set(false);
+  if (restarted) {
+    for (    TransactionEventHandler<?> handler : transactionEventHandlers) {
+      this.localGraph.registerTransactionEventHandler(handler);
+    }
+    for (    KernelEventHandler handler : kernelEventHandlers) {
+      this.localGraph.registerKernelEventHandler(handler);
+    }
+    this.localDataSourceManager=localGraph.getConfig().getTxModule().getXaDataSourceManager();
   }
 }
