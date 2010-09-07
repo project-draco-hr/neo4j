@@ -7,14 +7,15 @@
     }
     serializer.write(buffer);
     Channel channel=getChannel();
-    ((InputReader)channel.getPipeline().get("transactionReader")).setDeserializer(deserializer);
     channel.write(buffer);
-    @SuppressWarnings("unchecked") BlockingReadHandler<Response<T>> reader=(BlockingReadHandler<Response<T>>)channel.getPipeline().get("blockingHandler");
-    Response<T> result=reader.read(20,TimeUnit.SECONDS);
-    if (result == null) {
+    BlockingReadHandler<ChannelBuffer> reader=(BlockingReadHandler<ChannelBuffer>)channel.getPipeline().get("blockingHandler");
+    ChannelBuffer message=reader.read(20,TimeUnit.SECONDS);
+    if (message == null) {
       throw new HaCommunicationException("Channel has been closed");
     }
-    return result;
+    T response=deserializer.read(message);
+    TransactionStreams txStreams=type.includesSlaveContext() ? readTransactionStreams(message) : TransactionStreams.EMPTY;
+    return new Response<T>(response,txStreams);
   }
  catch (  IOException e) {
     throw new HaCommunicationException(e);

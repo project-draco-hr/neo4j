@@ -1,14 +1,8 @@
 {
   try {
     ChannelBuffer message=(ChannelBuffer)event.getMessage();
-    RequestType type=RequestType.values()[message.readByte()];
-    Channel channel=event.getChannel();
-    SlaveContext context=null;
-    if (type.includesSlaveContext()) {
-      context=CommunicationProtocol.readSlaveContext(message);
-      mapSlave(channel,context);
-    }
-    channel.write(new ChunkedResponse(type.caller.callMaster(realMaster,context,message),type.serializer,type.includesSlaveContext()));
+    ChannelBuffer result=handleRequest(realMaster,message,event.getChannel(),MasterServer.this);
+    event.getChannel().write(result);
   }
  catch (  Exception e) {
     e.printStackTrace();
