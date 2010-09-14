@@ -1,0 +1,17 @@
+{
+  int identifier=logEntryList.get(0).getIdentifier();
+  File tempFile=tempWriteOutFirst ? File.createTempFile(String.valueOf(identifier),"tx") : txFile;
+  msgLog.logMessage("write out log entry list to file:" + tempFile);
+  FileChannel txLog=new RandomAccessFile(tempFile,"rw").getChannel();
+  LogBuffer buf=new DirectMappedLogBuffer(txLog);
+  for (  LogEntry entry : logEntryList) {
+    LogIoUtils.writeLogEntry(entry,buf);
+  }
+  buf.force();
+  txLog.close();
+  if (tempWriteOutFirst) {
+    if (!tempFile.renameTo(txFile)) {
+      throw new IOException("Failed to rename " + tempFile + " to "+ txFile);
+    }
+  }
+}

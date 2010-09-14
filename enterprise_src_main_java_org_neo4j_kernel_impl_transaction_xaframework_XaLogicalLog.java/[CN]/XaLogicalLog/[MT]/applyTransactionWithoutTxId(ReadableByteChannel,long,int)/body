@@ -7,25 +7,28 @@
   scanIsComplete=false;
   LogApplier logApplier=new LogApplier(byteChannel);
   int xidIdent=getNextIdentifier();
+  long startEntryPosition=writeBuffer.getFileChannelPosition();
   while (logApplier.readAndWriteAndApplyEntry(xidIdent)) {
     logEntriesFound++;
   }
   byteChannel.close();
-  LogEntry.Start entry=logApplier.startEntry;
-  if (entry == null) {
+  LogEntry.Start startEntry=logApplier.startEntry;
+  if (startEntry == null) {
     throw new IOException("Unable to find start entry");
   }
+  startEntry.setStartPosition(startEntryPosition);
   LogEntry.OnePhaseCommit commit=new LogEntry.OnePhaseCommit(xidIdent,nextTxId,masterId);
   LogIoUtils.writeLogEntry(commit,writeBuffer);
-  Xid xid=entry.getXid();
+  Xid xid=startEntry.getXid();
   try {
     XaTransaction xaTx=xaRm.getXaTransaction(xid);
     xaTx.setCommitTxId(nextTxId);
     xaRm.commit(xid,true);
-    LogEntry doneEntry=new LogEntry.Done(entry.getIdentifier());
+    LogEntry doneEntry=new LogEntry.Done(startEntry.getIdentifier());
     LogIoUtils.writeLogEntry(doneEntry,writeBuffer);
-    xidIdentMap.remove(entry.getIdentifier());
-    recoveredTxMap.remove(entry.getIdentifier());
+    xidIdentMap.remove(startEntry.getIdentifier());
+    recoveredTxMap.remove(startEntry.getIdentifier());
+    cacheTxStartPosition(nextTxId,startEntry);
   }
  catch (  XAException e) {
     e.printStackTrace();

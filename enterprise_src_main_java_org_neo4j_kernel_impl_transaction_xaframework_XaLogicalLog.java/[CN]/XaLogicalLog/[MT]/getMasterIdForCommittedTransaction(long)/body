@@ -2,17 +2,11 @@
   if (txId == 1) {
     return MASTER_ID_REPRESENTING_NO_MASTER;
   }
-  long version=findLogContainingTxId(txId);
-  msgLog.logMessage("Get master id for txId:" + txId + " found in log version:"+ version);
-  if (version == -1) {
-    throw new RuntimeException("txId:" + txId + " not found in any logical log "+ "(starting at "+ logVersion+ " and searching backwards)");
-  }
-  ReadableByteChannel log=getLogicalLogOrMyself(version);
-  List<LogEntry> logEntryList=extractTransactionFromLog(txId,version,log);
+  List<LogEntry> logEntryList=extractLogEntryList(txId);
   for (  LogEntry entry : logEntryList) {
     if (entry instanceof LogEntry.Commit) {
       return ((LogEntry.Commit)entry).getMasterId();
     }
   }
-  throw new RuntimeException("Unable to find commit entry in for txId[" + txId + "] in log["+ version+ "]");
+  throw new RuntimeException("Unable to find commit entry in for txId[" + txId + "]");
 }
