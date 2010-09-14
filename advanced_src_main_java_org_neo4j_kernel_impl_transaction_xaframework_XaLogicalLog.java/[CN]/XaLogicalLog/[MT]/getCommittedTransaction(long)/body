@@ -1,18 +1,8 @@
 {
   String name=fileName + ".tx_" + txId;
   File txFile=new File(name);
-  if (txFile.exists()) {
-    return new RandomAccessFile(name,"r").getChannel();
-  }
-  long version=findLogContainingTxId(txId);
-  msgLog.logMessage("Get committed transaction txId:" + txId + " found in log version:"+ version);
-  if (version == -1) {
-    throw new RuntimeException("txId:" + txId + " not found in any logical log "+ "(starting at "+ logVersion+ " and searching backwards");
-  }
-  ReadableByteChannel log=getLogicalLogOrMyself(version);
-  List<LogEntry> logEntryList=extractTransactionFromLog(txId,version,log);
-  log.close();
-  writeOutLogEntryList(logEntryList,txFile);
+  List<LogEntry> logEntryList=extractLogEntryList(txId);
+  writeOutLogEntryList(logEntryList,txFile,true);
   ReadableByteChannel result=new RandomAccessFile(txFile,"r").getChannel();
   return result;
 }
