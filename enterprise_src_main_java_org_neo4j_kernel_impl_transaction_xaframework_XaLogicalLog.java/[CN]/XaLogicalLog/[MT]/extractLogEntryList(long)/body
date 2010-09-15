@@ -6,14 +6,16 @@
     FileChannel channel=new RandomAccessFile(name,"r").getChannel();
     logEntryList=extractTransactionFromLog(txId,-1,channel);
     channel.close();
-    return logEntryList;
+    return new Pair<List<LogEntry>,Boolean>(logEntryList,false);
   }
   Pair<Long,Long> cachedInfo=this.txStartPositionCache.get(txId);
+  boolean foundInCache=false;
   if (cachedInfo != null) {
     long version=cachedInfo.first();
     ReadableByteChannel log=getLogicalLogOrMyself(version,cachedInfo.other());
     logEntryList=extractTransactionFromLog(txId,version,log);
     log.close();
+    foundInCache=true;
   }
  else {
     long version=findLogContainingTxId(txId)[0];
@@ -27,5 +29,5 @@
     logEntryList=extractTransactionFromLog(txId,version,log);
     log.close();
   }
-  return logEntryList;
+  return new Pair<List<LogEntry>,Boolean>(logEntryList,!foundInCache);
 }
