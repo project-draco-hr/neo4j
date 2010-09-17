@@ -1,15 +1,17 @@
 {
   try {
-    ChannelBuffer buffer=ChannelBuffers.dynamicBuffer();
+    Triplet<Channel,ChannelBuffer,ByteBuffer> channelContext=getChannel();
+    Channel channel=channelContext.first();
+    ChannelBuffer buffer=channelContext.other();
+    buffer.clear();
     buffer.writeByte(type.ordinal());
     if (type.includesSlaveContext()) {
       writeSlaveContext(buffer,slaveContext);
     }
-    serializer.write(buffer);
-    Channel channel=getChannel();
+    serializer.write(buffer,channelContext.third());
     channel.write(buffer);
     BlockingReadHandler<ChannelBuffer> reader=(BlockingReadHandler<ChannelBuffer>)channel.getPipeline().get("blockingHandler");
-    ChannelBuffer message=reader.read(20,TimeUnit.SECONDS);
+    ChannelBuffer message=reader.read(READ_RESPONSE_TIMEOUT_SECONDS,TimeUnit.SECONDS);
     if (message == null) {
       throw new HaCommunicationException("Channel has been closed");
     }
