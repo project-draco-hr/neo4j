@@ -6,9 +6,38 @@
   buffer.putLong(entityId);
   char[] key=this.key.toCharArray();
   buffer.putInt(key.length);
-  char[] value=this.value.toCharArray();
-  buffer.putInt(value.length);
+  byte valueType=0;
+  BufferNumberPutter putter=null;
+  if (value instanceof Number) {
+    if (value instanceof Float) {
+      valueType=VALUE_TYPE_FLOAT;
+      putter=BufferNumberPutter.FLOAT;
+    }
+ else     if (value instanceof Double) {
+      valueType=VALUE_TYPE_DOUBLE;
+      putter=BufferNumberPutter.DOUBLE;
+    }
+ else     if (value instanceof Long) {
+      valueType=VALUE_TYPE_LONG;
+      putter=BufferNumberPutter.LONG;
+    }
+ else {
+      valueType=VALUE_TYPE_INT;
+      putter=BufferNumberPutter.INT;
+    }
+  }
+ else {
+    valueType=VALUE_TYPE_STRING;
+  }
+  buffer.put(valueType);
   buffer.put(indexName);
   buffer.put(key);
-  buffer.put(value);
+  if (valueType == VALUE_TYPE_STRING) {
+    char[] charValue=value.toString().toCharArray();
+    buffer.putInt(charValue.length);
+    buffer.put(charValue);
+  }
+ else {
+    putter.put(buffer,(Number)value);
+  }
 }
