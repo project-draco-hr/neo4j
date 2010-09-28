@@ -7,26 +7,19 @@
   buffer.flip();
   byte commandType=buffer.get();
   buffer.clear();
-  buffer.limit(21);
+  buffer.limit(18);
   if (channel.read(buffer) != buffer.limit()) {
     return null;
   }
   buffer.flip();
   byte cls=buffer.get();
-  Class<?> itemsClass=null;
-  if (cls == NODE) {
-    itemsClass=Node.class;
-  }
- else   if (cls == RELATIONSHIP) {
-    itemsClass=Relationship.class;
-  }
- else {
+  if (cls != NODE && cls != RELATIONSHIP) {
     return null;
   }
   int indexNameLength=buffer.getInt();
   long entityId=buffer.getLong();
   int keyCharLength=buffer.getInt();
-  int valueCharLength=buffer.getInt();
+  byte valueType=buffer.get();
   String indexName=PrimitiveUtils.readString(channel,buffer,indexNameLength);
   if (indexName == null) {
     return null;
@@ -35,25 +28,44 @@
   if (key == null) {
     return null;
   }
-  String value=PrimitiveUtils.readString(channel,buffer,valueCharLength);
-  if (value == null) {
-    return null;
-  }
-  Long startNodeId=null;
-  Long endNodeId=null;
-  if (commandType == ADD_COMMAND && cls == RELATIONSHIP) {
-    startNodeId=PrimitiveUtils.readLong(channel,buffer);
-    endNodeId=PrimitiveUtils.readLong(channel,buffer);
-    if (startNodeId == null || endNodeId == null) {
-      return null;
-    }
-  }
-  IndexIdentifier identifier=new IndexIdentifier(null,indexName,dataSource.indexStore.get(indexName));
+  Object value=null;
+  if (valueType >= VALUE_TYPE_INT && valueType <= VALUE_TYPE_DOUBLE) {
+switch (valueType) {
+case VALUE_TYPE_INT:
+      value=buffer.getInt();
+    break;
+case VALUE_TYPE_LONG:
+  value=buffer.getLong();
+break;
+case VALUE_TYPE_FLOAT:
+value=buffer.getFloat();
+break;
+case VALUE_TYPE_DOUBLE:
+value=buffer.getDouble();
+break;
+}
+}
+ else if (valueType == VALUE_TYPE_STRING) {
+value=PrimitiveUtils.readLengthAndString(channel,buffer);
+}
+if (value == null) {
+return null;
+}
+Long startNodeId=null;
+Long endNodeId=null;
+if (commandType == ADD_COMMAND && cls == RELATIONSHIP) {
+startNodeId=PrimitiveUtils.readLong(channel,buffer);
+endNodeId=PrimitiveUtils.readLong(channel,buffer);
+if (startNodeId == null || endNodeId == null) {
+return null;
+}
+}
+IndexIdentifier identifier=new IndexIdentifier(null,indexName,dataSource.indexStore.get(indexName));
 switch (commandType) {
 case ADD_COMMAND:
-    return cls == NODE ? new AddCommand(identifier,entityId,key,value) : new AddRelationshipCommand(identifier,entityId,key,value,startNodeId,endNodeId);
+return cls == NODE ? new AddCommand(identifier,entityId,key,value) : new AddRelationshipCommand(identifier,entityId,key,value,startNodeId,endNodeId);
 case REMOVE_COMMAND:
-  return new RemoveCommand(identifier,entityId,key,value);
+return new RemoveCommand(identifier,entityId,key,value);
 case CLEAR_COMMAND:
 return new ClearCommand(identifier);
 default :
