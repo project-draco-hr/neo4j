@@ -4,14 +4,15 @@
   }
   try {
     fileChannel=new RandomAccessFile(store,"rw").getChannel();
-    ByteBuffer buffer=buffer(SIZEOF_ID_DATA);
-    if (fileChannel.read(buffer) != SIZEOF_ID_DATA) {
-      throw new RuntimeException("Expected to read " + SIZEOF_ID_DATA + " bytes");
+    int bytesRead=fileChannel.read(buf);
+    if (bytesRead != FILE_LENGTH && bytesRead != FILE_LENGTH - 8) {
+      throw new RuntimeException("Expected to read " + FILE_LENGTH + " or "+ (FILE_LENGTH - 8)+ " bytes");
     }
-    buffer.flip();
-    creationTime=buffer.getLong();
-    randomIdentifier=buffer.getLong();
-    version=buffer.getLong();
+    buf.flip();
+    creationTime=buf.getLong();
+    randomIdentifier=buf.getLong();
+    version=buf.getLong();
+    lastCommittedTx=bytesRead == FILE_LENGTH ? buf.getLong() : 1;
   }
  catch (  IOException e) {
     throw new RuntimeException(e);
