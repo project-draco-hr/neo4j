@@ -6,37 +6,63 @@
   }
   buffer.flip();
   byte commandType=buffer.get();
-  buffer.clear();
-  buffer.limit(18);
-  if (channel.read(buffer) != buffer.limit()) {
-    return null;
+  if (commandType == CREATE_INDEX_COMMAND) {
+    buffer.clear();
+    String name=PrimitiveUtils.readLengthAndString(channel,buffer);
+    if (name == null) {
+      return null;
+    }
+    int size=PrimitiveUtils.readInt(channel,buffer);
+    Map<String,String> config=new HashMap<String,String>();
+    for (int i=0; i < size; i++) {
+      String key=PrimitiveUtils.readLengthAndString(channel,buffer);
+      String value=PrimitiveUtils.readLengthAndString(channel,buffer);
+      if (key == null || value == null) {
+        return null;
+      }
+      config.put(key,value);
+    }
+    return new CreateIndexCommand(name,config);
   }
-  buffer.flip();
-  byte cls=buffer.get();
-  if (cls != NODE && cls != RELATIONSHIP) {
-    return null;
-  }
-  int indexNameLength=buffer.getInt();
-  long entityId=buffer.getLong();
-  int keyCharLength=buffer.getInt();
-  byte valueType=buffer.get();
-  String indexName=PrimitiveUtils.readString(channel,buffer,indexNameLength);
-  if (indexName == null) {
-    return null;
-  }
-  String key=PrimitiveUtils.readString(channel,buffer,keyCharLength);
-  if (key == null) {
-    return null;
-  }
-  Object value=null;
-  if (valueType >= VALUE_TYPE_INT && valueType <= VALUE_TYPE_DOUBLE) {
+ else {
+    buffer.clear();
+    buffer.limit(18);
+    if (channel.read(buffer) != buffer.limit()) {
+      return null;
+    }
+    buffer.flip();
+    byte cls=buffer.get();
+    EntityType entityType=null;
+    if (cls == NODE) {
+      entityType=dataSource.nodeEntityType;
+    }
+ else     if (cls == RELATIONSHIP) {
+      entityType=dataSource.relationshipEntityType;
+    }
+ else {
+      return null;
+    }
+    int indexNameLength=buffer.getInt();
+    long entityId=buffer.getLong();
+    int keyCharLength=buffer.getInt();
+    byte valueType=buffer.get();
+    String indexName=PrimitiveUtils.readString(channel,buffer,indexNameLength);
+    if (indexName == null) {
+      return null;
+    }
+    String key=PrimitiveUtils.readString(channel,buffer,keyCharLength);
+    if (key == null) {
+      return null;
+    }
+    Object value=null;
+    if (valueType >= VALUE_TYPE_INT && valueType <= VALUE_TYPE_DOUBLE) {
 switch (valueType) {
 case VALUE_TYPE_INT:
-      value=buffer.getInt();
-    break;
+        value=buffer.getInt();
+      break;
 case VALUE_TYPE_LONG:
-  value=buffer.getLong();
-break;
+    value=buffer.getLong();
+  break;
 case VALUE_TYPE_FLOAT:
 value=buffer.getFloat();
 break;
@@ -60,15 +86,16 @@ if (startNodeId == null || endNodeId == null) {
 return null;
 }
 }
-IndexIdentifier identifier=new IndexIdentifier(null,indexName,dataSource.indexStore.get(indexName));
+IndexIdentifier identifier=new IndexIdentifier(cls,entityType,indexName,dataSource.indexStore.get(indexName));
 switch (commandType) {
 case ADD_COMMAND:
-return cls == NODE ? new AddCommand(identifier,entityId,key,value) : new AddRelationshipCommand(identifier,entityId,key,value,startNodeId,endNodeId);
+return cls == NODE ? new AddCommand(identifier,cls,entityId,key,value) : new AddRelationshipCommand(identifier,cls,new RelationshipId(entityId,startNodeId,endNodeId),key,value);
 case REMOVE_COMMAND:
-return new RemoveCommand(identifier,entityId,key,value);
+return new RemoveCommand(identifier,cls,entityId,key,value);
 case CLEAR_COMMAND:
 return new ClearCommand(identifier);
 default :
 throw new IOException("Unknown command type[" + commandType + "]");
+}
 }
 }

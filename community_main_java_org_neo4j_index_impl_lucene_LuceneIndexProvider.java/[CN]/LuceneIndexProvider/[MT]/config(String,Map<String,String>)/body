@@ -1,3 +1,37 @@
 {
-  return dataSource.indexStore.getIndexConfig(indexName,config,null,LuceneConfigDefaultsFiller.INSTANCE);
+  final Pair<Map<String,String>,Boolean> result=dataSource.indexStore.getIndexConfig(indexName,config,null,LuceneConfigDefaultsFiller.INSTANCE);
+  if (result.other()) {
+    Thread creator=new Thread(){
+      @Override public void run(){
+        Transaction tx=graphDb.beginTx();
+        try {
+          LuceneXaConnection connection=(LuceneXaConnection)dataSource.getXaConnection();
+          javax.transaction.Transaction javaxTx=((AbstractGraphDatabase)graphDb).getConfig().getTxModule().getTxManager().getTransaction();
+          javaxTx.enlistResource(connection.getXaResource());
+          try {
+            connection.getLuceneTx().createIndex(indexName,result.first());
+          }
+  finally {
+            javaxTx.delistResource(connection.getXaResource(),XAResource.TMSUCCESS);
+          }
+          tx.success();
+        }
+ catch (        Exception e) {
+          e.printStackTrace();
+        }
+ finally {
+          tx.finish();
+        }
+      }
+    }
+;
+    creator.start();
+    try {
+      creator.join();
+    }
+ catch (    InterruptedException e) {
+      Thread.interrupted();
+    }
+  }
+  return result.first();
 }
