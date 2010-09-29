@@ -3,12 +3,17 @@
   try {
     for (    Map.Entry<IndexIdentifier,CommandList> entry : this.commandMap.entrySet()) {
       IndexIdentifier identifier=entry.getKey();
-      IndexType type=dataSource.getType(identifier);
+      IndexType type=identifier == LuceneCommand.CreateIndexCommand.FAKE_IDENTIFIER ? null : dataSource.getType(identifier);
       IndexWriter writer=null;
       IndexSearcher searcher=null;
       CommandList commandList=entry.getValue();
       Map<Long,DocumentContext> documents=new HashMap<Long,DocumentContext>();
       for (      LuceneCommand command : commandList.commands) {
+        if (command instanceof CreateIndexCommand) {
+          CreateIndexCommand createCommand=(CreateIndexCommand)command;
+          dataSource.indexStore.setIfNecessary(createCommand.getName(),createCommand.getConfig());
+          continue;
+        }
         if (writer == null) {
           writer=dataSource.getIndexWriter(identifier);
           writer.setMaxBufferedDocs(commandList.addCount + 100);
@@ -23,12 +28,13 @@
           dataSource.invalidateCache(identifier);
           continue;
         }
-        long entityId=command.entityId;
-        DocumentContext context=documents.get(entityId);
+        Object entityId=command.entityId;
+        long id=entityId instanceof Long ? (Long)entityId : ((RelationshipId)entityId).id;
+        DocumentContext context=documents.get(id);
         if (context == null) {
-          Document document=LuceneDataSource.findDocument(type,searcher,entityId);
-          context=document == null ? new DocumentContext(identifier.entityType.newDocument(entityId),false,entityId) : new DocumentContext(document,true,entityId);
-          documents.put(entityId,context);
+          Document document=LuceneDataSource.findDocument(type,searcher,id);
+          context=document == null ? new DocumentContext(identifier.entityType.newDocument(entityId),false,id) : new DocumentContext(document,true,id);
+          documents.put(id,context);
         }
         String key=command.key;
         Object value=command.value;

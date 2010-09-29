@@ -18,10 +18,32 @@
  catch (    IOException e) {
       throw new RuntimeException("Unable to open lucene log in " + this.baseStorePath,e);
     }
-    xaContainer.getLogicalLog().setKeepLogs(shouldKeepLog((String)params.get("keep_logical_logs"),DEFAULT_NAME));
+    xaContainer.getLogicalLog().setKeepLogs(shouldKeepLog((String)params.get(Config.KEEP_LOGICAL_LOGS),DEFAULT_NAME));
     setLogicalLogAtCreationTime(xaContainer.getLogicalLog());
   }
  else {
     xaContainer=null;
   }
+  nodeEntityType=new EntityType(){
+    public Document newDocument(    Object entityId){
+      return IndexType.newBaseDocument((Long)entityId);
+    }
+    public Class<?> getType(){
+      return Node.class;
+    }
+  }
+;
+  relationshipEntityType=new EntityType(){
+    public Document newDocument(    Object entityId){
+      RelationshipId relId=(RelationshipId)entityId;
+      Document doc=IndexType.newBaseDocument(relId.id);
+      doc.add(new Field(LuceneIndex.KEY_START_NODE_ID,"" + relId.startNode,Store.YES,org.apache.lucene.document.Field.Index.NOT_ANALYZED));
+      doc.add(new Field(LuceneIndex.KEY_END_NODE_ID,"" + relId.endNode,Store.YES,org.apache.lucene.document.Field.Index.NOT_ANALYZED));
+      return doc;
+    }
+    public Class<?> getType(){
+      return Relationship.class;
+    }
+  }
+;
 }
