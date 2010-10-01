@@ -2,6 +2,10 @@
   dataSource.getWriteLock();
   try {
     for (    Map.Entry<IndexIdentifier,CommandList> entry : this.commandMap.entrySet()) {
+      if (entry.getValue().isEmpty()) {
+        continue;
+      }
+      boolean isRecovery=entry.getValue().isRecovery();
       IndexIdentifier identifier=entry.getKey();
       IndexType type=identifier == LuceneCommand.CreateIndexCommand.FAKE_IDENTIFIER ? null : dataSource.getType(identifier);
       IndexWriter writer=null;
@@ -15,9 +19,14 @@
           continue;
         }
         if (writer == null) {
-          writer=dataSource.getIndexWriter(identifier);
-          writer.setMaxBufferedDocs(commandList.addCount + 100);
-          writer.setMaxBufferedDeleteTerms(commandList.removeCount + 100);
+          if (isRecovery) {
+            writer=dataSource.getRecoveryIndexWriter(identifier);
+          }
+ else {
+            writer=dataSource.getIndexWriter(identifier);
+            writer.setMaxBufferedDocs(commandList.addCount + 100);
+            writer.setMaxBufferedDeleteTerms(commandList.removeCount + 100);
+          }
           searcher=dataSource.getIndexSearcher(identifier).getSearcher();
         }
         if (command instanceof ClearCommand) {
@@ -26,6 +35,9 @@
           writer=null;
           dataSource.deleteIndex(identifier);
           dataSource.invalidateCache(identifier);
+          if (isRecovery) {
+            dataSource.removeRecoveryIndexWriter(identifier);
+          }
           continue;
         }
         Object entityId=command.entityId;
@@ -51,10 +63,10 @@
         }
       }
       applyDocuments(writer,type,documents);
-      if (writer != null) {
+      if (writer != null && !isRecovery) {
         dataSource.closeWriter(writer);
+        dataSource.invalidateIndexSearcher(identifier);
       }
-      dataSource.invalidateIndexSearcher(identifier);
     }
     closeTxData();
   }
