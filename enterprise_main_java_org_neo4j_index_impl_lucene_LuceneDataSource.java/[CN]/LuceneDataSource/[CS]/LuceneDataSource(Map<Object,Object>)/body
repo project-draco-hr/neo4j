@@ -8,22 +8,6 @@
   this.store=newIndexStore(storeDir);
   this.typeCache=new IndexTypeCache();
   boolean isReadOnly=params.containsKey("read_only") ? (Boolean)params.get("read_only") : false;
-  if (!isReadOnly) {
-    XaCommandFactory cf=new LuceneCommandFactory();
-    XaTransactionFactory tf=new LuceneTransactionFactory(store);
-    xaContainer=XaContainer.create(this.baseStorePath + "/lucene.log",cf,tf,params);
-    try {
-      xaContainer.openLogicalLog();
-    }
- catch (    IOException e) {
-      throw new RuntimeException("Unable to open lucene log in " + this.baseStorePath,e);
-    }
-    xaContainer.getLogicalLog().setKeepLogs(shouldKeepLog((String)params.get(Config.KEEP_LOGICAL_LOGS),DEFAULT_NAME));
-    setLogicalLogAtCreationTime(xaContainer.getLogicalLog());
-  }
- else {
-    xaContainer=null;
-  }
   nodeEntityType=new EntityType(){
     public Document newDocument(    Object entityId){
       return IndexType.newBaseDocument((Long)entityId);
@@ -46,4 +30,20 @@
     }
   }
 ;
+  if (!isReadOnly) {
+    XaCommandFactory cf=new LuceneCommandFactory();
+    XaTransactionFactory tf=new LuceneTransactionFactory(store);
+    xaContainer=XaContainer.create(this.baseStorePath + "/lucene.log",cf,tf,params);
+    try {
+      xaContainer.openLogicalLog();
+    }
+ catch (    IOException e) {
+      throw new RuntimeException("Unable to open lucene log in " + this.baseStorePath,e);
+    }
+    xaContainer.getLogicalLog().setKeepLogs(shouldKeepLog((String)params.get(Config.KEEP_LOGICAL_LOGS),DEFAULT_NAME));
+    setLogicalLogAtCreationTime(xaContainer.getLogicalLog());
+  }
+ else {
+    xaContainer=null;
+  }
 }
