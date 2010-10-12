@@ -1,12 +1,26 @@
 {
+  if (this.searcher != null && !modified) {
+    return this.searcher;
+  }
   try {
-    if (this.searcher == null) {
-      this.writer.commit();
-      this.searcher=new IndexSearcher(directory,true);
+    IndexReader newReader=this.reader == null ? this.writer.getReader() : this.reader.reopen();
+    if (newReader == this.reader) {
+      return this.searcher;
     }
+    if (this.reader != null) {
+      this.reader.close();
+    }
+    this.reader=newReader;
+    if (this.searcher != null) {
+      this.searcher.close();
+    }
+    searcher=new IndexSearcher(reader);
   }
  catch (  IOException e) {
     throw new RuntimeException(e);
+  }
+ finally {
+    this.modified=false;
   }
   return this.searcher;
 }
