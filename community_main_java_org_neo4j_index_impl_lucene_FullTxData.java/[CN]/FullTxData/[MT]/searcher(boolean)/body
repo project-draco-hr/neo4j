@@ -1,5 +1,5 @@
 {
-  if (this.searcher != null && !modified) {
+  if (this.searcher != null && (!modified || !allowRefreshSearcher)) {
     return this.searcher;
   }
   try {
@@ -7,20 +7,18 @@
     if (newReader == this.reader) {
       return this.searcher;
     }
-    if (this.reader != null) {
-      this.reader.close();
-    }
+    safeClose(reader);
     this.reader=newReader;
-    if (this.searcher != null) {
-      this.searcher.close();
-    }
+    safeClose(searcher);
     searcher=new IndexSearcher(reader);
   }
  catch (  IOException e) {
     throw new RuntimeException(e);
   }
  finally {
-    this.modified=false;
+    if (allowRefreshSearcher) {
+      this.modified=false;
+    }
   }
   return this.searcher;
 }
