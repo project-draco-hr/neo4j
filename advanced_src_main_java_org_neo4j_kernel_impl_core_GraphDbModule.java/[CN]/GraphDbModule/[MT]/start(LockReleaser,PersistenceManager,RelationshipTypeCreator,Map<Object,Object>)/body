@@ -2,15 +2,19 @@
   if (!startIsOk) {
     return;
   }
-  boolean useNewCache=true;
-  if (params.containsKey("use_old_cache") && params.get("use_old_cache").equals("true")) {
-    useNewCache=false;
+  String cacheTypeName=(String)params.get(Config.CACHE_TYPE);
+  CacheType cacheType=null;
+  try {
+    cacheType=cacheTypeName != null ? CacheType.valueOf(cacheTypeName) : DEFAULT_CACHE_TYPE;
+  }
+ catch (  IllegalArgumentException e) {
+    throw new IllegalArgumentException("Invalid cache type, please use one of: " + Arrays.asList(CacheType.values()) + " or keep empty for default ("+ DEFAULT_CACHE_TYPE+ ")",e.getCause());
   }
   if (!readOnly) {
-    nodeManager=new NodeManager(graphDbService,cacheManager,lockManager,lockReleaser,transactionManager,persistenceManager,idGenerator,relTypeCreator,useNewCache);
+    nodeManager=new NodeManager(graphDbService,cacheManager,lockManager,lockReleaser,transactionManager,persistenceManager,idGenerator,relTypeCreator,cacheType);
   }
  else {
-    nodeManager=new ReadOnlyNodeManager(graphDbService,cacheManager,lockManager,lockReleaser,transactionManager,persistenceManager,idGenerator,useNewCache);
+    nodeManager=new ReadOnlyNodeManager(graphDbService,cacheManager,lockManager,lockReleaser,transactionManager,persistenceManager,idGenerator,cacheType);
   }
   RelationshipTypeData relTypes[]=null;
   PropertyIndexData propertyIndexes[]=null;
