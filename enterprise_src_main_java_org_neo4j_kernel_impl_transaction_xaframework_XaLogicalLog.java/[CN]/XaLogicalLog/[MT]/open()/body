@@ -5,7 +5,7 @@
       open(fileName);
     }
  else {
-      open(fileName + ".1");
+      open(getLog1FileName());
       setActiveLog(LOG1);
     }
   }
@@ -21,31 +21,27 @@
     buf.flip();
     char c=buf.asCharBuffer().get();
     File copy=new File(fileName + ".copy");
-    if (copy.exists()) {
-      if (!copy.delete()) {
-        log.warning("Unable to delete " + copy.getName());
-      }
-    }
+    safeDeleteFile(copy);
     if (c == CLEAN) {
-      String newLog=fileName + ".1";
+      String newLog=getLog1FileName();
       File file=new File(newLog);
       if (file.exists()) {
         fixCleanKill(newLog);
       }
-      file=new File(fileName + ".2");
+      file=new File(getLog2FileName());
       if (file.exists()) {
-        fixCleanKill(fileName + ".2");
+        fixCleanKill(file.getPath());
       }
       open(newLog);
       setActiveLog(LOG1);
     }
  else     if (c == LOG1) {
-      String newLog=fileName + ".1";
+      String newLog=getLog1FileName();
       if (!new File(newLog).exists()) {
         throw new IllegalStateException("Active marked as 1 but no " + newLog + " exist");
       }
       currentLog=LOG1;
-      File otherLog=new File(fileName + ".2");
+      File otherLog=new File(getLog2FileName());
       if (otherLog.exists()) {
         if (!otherLog.delete()) {
           log.warning("Unable to delete " + copy.getName());
@@ -54,11 +50,11 @@
       open(newLog);
     }
  else     if (c == LOG2) {
-      String newLog=fileName + ".2";
+      String newLog=getLog2FileName();
       if (!new File(newLog).exists()) {
         throw new IllegalStateException("Active marked as 2 but no " + newLog + " exist");
       }
-      File otherLog=new File(fileName + ".1");
+      File otherLog=new File(getLog1FileName());
       if (otherLog.exists()) {
         if (!otherLog.delete()) {
           log.warning("Unable to delete " + copy.getName());
@@ -71,10 +67,5 @@
       throw new IllegalStateException("Unknown active log: " + c);
     }
   }
-  if (!useMemoryMapped) {
-    writeBuffer=new DirectMappedLogBuffer(fileChannel);
-  }
- else {
-    writeBuffer=new MemoryMappedLogBuffer(fileChannel);
-  }
+  instantiateCorrectWriteBuffer();
 }

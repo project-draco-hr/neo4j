@@ -5,20 +5,17 @@
   if (xidIdentMap.size() > 0) {
     throw new IllegalStateException("There are active transactions");
   }
-  buffer.clear();
-  buffer.limit(8);
-  if (byteChannel.read(buffer) != 8) {
-    throw new IOException("Unable to read log version");
-  }
-  buffer.flip();
-  logVersion=buffer.getLong();
+  long[] header=readLogHeader(buffer,byteChannel,true);
+  logVersion=header[0];
+  long previousCommittedTx=header[1];
   if (logVersion != xaTf.getCurrentVersion()) {
     throw new IllegalStateException("Tried to apply version " + logVersion + " but expected version "+ xaTf.getCurrentVersion());
   }
-  msgLog.logMessage("Applying log version=" + logVersion);
-  log.fine("Logical log version: " + logVersion);
+  log.fine("Logical log version: " + logVersion + "(previous committed tx="+ previousCommittedTx+ ")");
+  msgLog.logMessage("Applying log version=" + logVersion + " (previous committed tx="+ previousCommittedTx+ ")");
   long logEntriesFound=0;
-  LogApplier logApplier=new LogApplier(byteChannel,buffer,xaTf,xaRm,cf,xidIdentMap,recoveredTxMap);
+  LogApplier logApplier=new LogApplier(byteChannel);
+  scanIsComplete=false;
   scanIsComplete=false;
   while (logApplier.readAndApplyEntry()) {
     logEntriesFound++;
