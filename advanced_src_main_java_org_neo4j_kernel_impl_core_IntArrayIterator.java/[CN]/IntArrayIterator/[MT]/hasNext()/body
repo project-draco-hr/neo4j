@@ -6,17 +6,17 @@
     if (currentTypeIterator.hasNext(nodeManager)) {
       int nextId=currentTypeIterator.next(nodeManager);
       try {
-        Relationship possibleElement=nodeManager.getRelationshipById(nextId);
-        if (direction == Direction.INCOMING && possibleElement.getEndNode().getId() == fromNode.id) {
-          nextElement=possibleElement;
+        if (direction == Direction.BOTH) {
+          nextElement=new RelationshipProxy(nextId,nodeManager);
           return true;
         }
- else         if (direction == Direction.OUTGOING && possibleElement.getStartNode().getId() == fromNode.id) {
-          nextElement=possibleElement;
+        RelationshipImpl possibleElement=nodeManager.getRelForProxy(nextId);
+        if (direction == Direction.INCOMING && possibleElement.getEndNodeId() == fromNode.id) {
+          nextElement=new RelationshipProxy(nextId,nodeManager);
           return true;
         }
- else         if (direction == Direction.BOTH) {
-          nextElement=possibleElement;
+ else         if (direction == Direction.OUTGOING && possibleElement.getStartNodeId() == fromNode.id) {
+          nextElement=new RelationshipProxy(nextId,nodeManager);
           return true;
         }
       }
@@ -26,32 +26,36 @@
     while (!currentTypeIterator.hasNext(nodeManager)) {
       if (typeIterator.hasNext()) {
         currentTypeIterator=typeIterator.next();
-        visitedTypes.add(currentTypeIterator.getType());
       }
- else {
-        boolean gotMore=fromNode.getMoreRelationships(nodeManager);
-        List<RelTypeElementIterator> list=Collections.EMPTY_LIST;
+ else       if (fromNode.getMoreRelationships(nodeManager)) {
+        Map<String,RelTypeElementIterator> newRels=new HashMap<String,RelTypeElementIterator>();
+        for (        RelTypeElementIterator itr : rels) {
+          RelTypeElementIterator newItr=itr;
+          if (itr.isSrcEmpty()) {
+            IntArray newSrc=fromNode.getIntArray(itr.getType());
+            if (newSrc != null) {
+              newItr=itr.setSrc(newSrc);
+            }
+          }
+          newRels.put(newItr.getType(),newItr);
+        }
         if (types.length == 0) {
-          list=fromNode.getAllRelationships(nodeManager);
-        }
- else {
-          list=fromNode.getAllRelationshipsOfType(nodeManager,types);
-        }
-        Iterator<RelTypeElementIterator> itr=list.iterator();
-        while (itr.hasNext()) {
-          RelTypeElementIterator element=itr.next();
-          if (visitedTypes.contains(element.getType())) {
-            itr.remove();
+          for (          Map.Entry<String,IntArray> entry : fromNode.getIntArrayMap().entrySet()) {
+            String type=entry.getKey();
+            RelTypeElementIterator itr=newRels.get(type);
+            if (itr == null || itr.isSrcEmpty()) {
+              itr=itr == null ? new FastRelTypeElement(type,fromNode,entry.getValue()) : itr.setSrc(entry.getValue());
+              newRels.put(type,itr);
+            }
           }
         }
-        typeIterator=list.iterator();
-        if (typeIterator.hasNext()) {
-          currentTypeIterator=typeIterator.next();
-          visitedTypes.add(currentTypeIterator.getType());
-        }
-        if (!gotMore) {
-          break;
-        }
+        rels.clear();
+        rels.addAll(newRels.values());
+        typeIterator=rels.iterator();
+        currentTypeIterator=typeIterator.hasNext() ? typeIterator.next() : new NullRelTypeElement();
+      }
+ else {
+        break;
       }
     }
   }

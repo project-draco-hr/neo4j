@@ -1,17 +1,22 @@
 {
   ensureRelationshipMapNotNull(nodeManager);
   List<RelTypeElementIterator> relTypeList=new LinkedList<RelTypeElementIterator>();
-  ArrayMap<String,IntArray> addMap=nodeManager.getCowRelationshipAddMap(this);
+  boolean hasModifications=nodeManager.getLockReleaser().hasRelationshipModifications(this);
+  ArrayMap<String,IntArray> addMap=null;
+  if (hasModifications) {
+    addMap=nodeManager.getCowRelationshipAddMap(this);
+  }
   for (  String type : relationshipMap.keySet()) {
     IntArray src=relationshipMap.get(type);
-    IntArray remove=nodeManager.getCowRelationshipRemoveMap(this,type);
+    IntArray remove=null;
     IntArray add=null;
-    if (addMap != null) {
-      add=addMap.get(type);
+    if (hasModifications) {
+      remove=nodeManager.getCowRelationshipRemoveMap(this,type);
+      if (addMap != null) {
+        add=addMap.get(type);
+      }
     }
-    if (src != null || add != null) {
-      relTypeList.add(RelTypeElement.create(type,this,src,add,remove));
-    }
+    relTypeList.add(RelTypeElement.create(type,this,src,add,remove));
   }
   if (addMap != null) {
     for (    String type : addMap.keySet()) {
