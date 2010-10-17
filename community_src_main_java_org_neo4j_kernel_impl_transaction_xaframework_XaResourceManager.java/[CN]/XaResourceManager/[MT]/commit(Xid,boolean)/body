@@ -9,7 +9,10 @@
     if (!xaTransaction.isReadOnly()) {
       if (!xaTransaction.isRecovered()) {
         xaTransaction.prepare();
-        log.commitOnePhase(xaTransaction.getIdentifier());
+        long txId=txIdGenerator.generate(dataSource,xaTransaction.getIdentifier());
+        int masterId=txIdGenerator.getCurrentMasterId();
+        xaTransaction.setCommitTxId(txId);
+        log.commitOnePhase(xaTransaction.getIdentifier(),xaTransaction.getCommitTxId(),masterId);
       }
     }
     txStatus.markAsPrepared();
@@ -20,10 +23,16 @@
   if (!xaTransaction.isReadOnly()) {
     if (!xaTransaction.isRecovered()) {
       if (!onePhase) {
-        log.commitTwoPhase(xaTransaction.getIdentifier());
+        long txId=txIdGenerator.generate(dataSource,xaTransaction.getIdentifier());
+        int masterId=txIdGenerator.getCurrentMasterId();
+        xaTransaction.setCommitTxId(txId);
+        log.commitTwoPhase(xaTransaction.getIdentifier(),xaTransaction.getCommitTxId(),masterId);
       }
     }
     txStatus.markCommitStarted();
+    if (xaTransaction.isRecovered() && xaTransaction.getCommitTxId() == -1) {
+      xaTransaction.setCommitTxId(dataSource.getLastCommittedTxId() + 1);
+    }
     xaTransaction.commit();
   }
   if (!xaTransaction.isRecovered()) {
