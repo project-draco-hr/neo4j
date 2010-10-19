@@ -7,6 +7,8 @@
   graphDbInstance=new GraphDbInstance(storeDir,true,config);
   this.msgLog=StringLogger.getLogger(storeDir + "/messages.log");
   this.graphDbService=graphDbService;
+  IndexStore indexStore=graphDbInstance.getConfig().getIndexStore();
+  this.indexManager=new IndexManagerImpl(this,indexStore);
   graphDbInstance.start(graphDbService,new KernelExtensionLoader(){
     public void load(    final Map<Object,Object> params){
       extensions=new KernelExtension.KernelData(){
@@ -24,7 +26,7 @@
         }
         protected void loaded(        KernelExtension extension){
           if (extension instanceof IndexProvider) {
-            indexProviders.put(extension.getKey(),(IndexProvider)extension);
+            indexManager.addProvider(extension.getKey(),(IndexProvider)extension);
           }
         }
       }
@@ -34,5 +36,4 @@
   }
 );
   nodeManager=config.getGraphDbModule().getNodeManager();
-  this.indexStore=graphDbInstance.getConfig().getIndexStore();
 }
