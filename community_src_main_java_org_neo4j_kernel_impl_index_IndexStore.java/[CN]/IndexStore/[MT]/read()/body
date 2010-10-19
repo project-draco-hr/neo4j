@@ -1,0 +1,29 @@
+{
+  if (!file.exists()) {
+    return;
+  }
+  FileChannel channel=null;
+  try {
+    channel=new RandomAccessFile(file,"r").getChannel();
+    Integer version=tryToReadVersion(channel);
+    if (version == null) {
+      close(channel);
+      channel=new RandomAccessFile(file,"r").getChannel();
+      readMap(channel,nodeConfig,version);
+      relConfig.putAll(nodeConfig);
+    }
+ else     if (version < VERSION) {
+      throw new UnsupportedOperationException("" + version);
+    }
+ else {
+      readMap(channel,nodeConfig,readNextInt(channel));
+      readMap(channel,relConfig,readNextInt(channel));
+    }
+  }
+ catch (  IOException e) {
+    throw new RuntimeException(e);
+  }
+ finally {
+    close(channel);
+  }
+}

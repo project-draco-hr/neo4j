@@ -1,0 +1,33 @@
+{
+  Map<String,String> storedConfig=indexStore.get(cls,indexName);
+  Map<String,String> configToUse=null;
+  IndexProvider indexProvider=null;
+  if (configToUse == null) {
+    configToUse=suppliedConfig;
+  }
+  if (configToUse == null) {
+    String provider=null;
+    if (dbConfig != null) {
+      provider=(String)dbConfig.get("index." + indexName);
+      if (provider == null) {
+        provider=(String)dbConfig.get("index");
+      }
+    }
+    if (provider == null) {
+      provider="lucene";
+    }
+    indexProvider=getIndexProvider(provider);
+    configToUse=indexProvider.fillInDefaults(MapUtil.stringMap(KEY_INDEX_PROVIDER,provider));
+  }
+ else {
+    indexProvider=getIndexProvider(configToUse.get(KEY_INDEX_PROVIDER));
+  }
+  if (storedConfig != null) {
+    if (suppliedConfig != null && !storedConfig.equals(suppliedConfig)) {
+      throw new IllegalArgumentException("Supplied index configuration:\n" + suppliedConfig + "\ndiffer from stored config:\n"+ storedConfig+ "\nfor '"+ indexName+ "'");
+    }
+    configToUse=storedConfig;
+  }
+  boolean created=indexStore.setIfNecessary(cls,indexName,configToUse);
+  return new Pair<Map<String,String>,Boolean>(configToUse,created);
+}
