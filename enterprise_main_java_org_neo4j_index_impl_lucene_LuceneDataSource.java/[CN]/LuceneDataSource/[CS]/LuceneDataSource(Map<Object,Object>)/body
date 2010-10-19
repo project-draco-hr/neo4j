@@ -4,8 +4,8 @@
   String storeDir=(String)params.get("store_dir");
   this.baseStorePath=getStoreDir(storeDir);
   cleanWriteLocks(baseStorePath);
-  this.indexStore=new IndexStore(storeDir);
-  this.store=newIndexStore(storeDir);
+  this.indexStore=(IndexStore)params.get(IndexStore.class);
+  this.providerStore=newIndexStore(storeDir);
   this.typeCache=new IndexTypeCache();
   boolean isReadOnly=false;
   if (params.containsKey("read_only")) {
@@ -21,7 +21,7 @@
     public Document newDocument(    Object entityId){
       return IndexType.newBaseDocument((Long)entityId);
     }
-    public Class<?> getType(){
+    public Class<? extends PropertyContainer> getType(){
       return Node.class;
     }
   }
@@ -34,13 +34,13 @@
       doc.add(new Field(LuceneIndex.KEY_END_NODE_ID,"" + relId.endNode,Store.YES,org.apache.lucene.document.Field.Index.NOT_ANALYZED));
       return doc;
     }
-    public Class<?> getType(){
+    public Class<? extends PropertyContainer> getType(){
       return Relationship.class;
     }
   }
 ;
   XaCommandFactory cf=new LuceneCommandFactory();
-  XaTransactionFactory tf=new LuceneTransactionFactory(store);
+  XaTransactionFactory tf=new LuceneTransactionFactory();
   xaContainer=XaContainer.create(this,this.baseStorePath + "/lucene.log",cf,tf,params);
   if (!isReadOnly) {
     try {

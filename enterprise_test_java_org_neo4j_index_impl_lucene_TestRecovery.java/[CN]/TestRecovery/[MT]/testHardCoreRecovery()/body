@@ -1,9 +1,26 @@
 {
   String path="target/hcdb";
   Neo4jTestCase.deleteFileOrDirectory(new File(path));
-  Process process=Runtime.getRuntime().exec(new String[]{"java","-cp",System.getProperty("java.class.path"),getClass().getPackage().getName() + ".Inserter",path});
+  Process process=Runtime.getRuntime().exec(new String[]{"java","-cp",System.getProperty("java.class.path"),Inserter.class.getName(),path});
   Thread.sleep(7000);
   process.destroy();
   process.waitFor();
-  new EmbeddedGraphDatabase(path).shutdown();
+  GraphDatabaseService db=new EmbeddedGraphDatabase(path);
+  Index<Node> index=db.nodeIndex("myIndex",null);
+  for (  Node node : db.getAllNodes()) {
+    for (    String key : node.getPropertyKeys()) {
+      String value=(String)node.getProperty(key);
+      boolean found=false;
+      for (      Node indexedNode : index.get(key,value)) {
+        if (indexedNode.equals(node)) {
+          found=true;
+          break;
+        }
+      }
+      if (!found) {
+        throw new IllegalStateException(node + " has property '" + key+ "'='"+ value+ "', but not in index");
+      }
+    }
+  }
+  db.shutdown();
 }

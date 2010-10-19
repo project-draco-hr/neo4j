@@ -1,11 +1,12 @@
 {
   buffer.clear();
-  buffer.limit(1);
+  buffer.limit(2);
   if (channel.read(buffer) != buffer.limit()) {
     return null;
   }
   buffer.flip();
   byte commandType=buffer.get();
+  byte entityTypeByte=buffer.get();
   if (commandType == CREATE_INDEX_COMMAND) {
     buffer.clear();
     String name=PrimitiveUtils.readLengthAndString(channel,buffer);
@@ -22,21 +23,20 @@
       }
       config.put(key,value);
     }
-    return new CreateIndexCommand(name,config);
+    return new CreateIndexCommand(entityTypeByte,name,config);
   }
  else {
     buffer.clear();
-    buffer.limit(18);
+    buffer.limit(17);
     if (channel.read(buffer) != buffer.limit()) {
       return null;
     }
     buffer.flip();
-    byte cls=buffer.get();
     EntityType entityType=null;
-    if (cls == NODE) {
+    if (entityTypeByte == NODE) {
       entityType=dataSource.nodeEntityType;
     }
- else     if (cls == RELATIONSHIP) {
+ else     if (entityTypeByte == RELATIONSHIP) {
       entityType=dataSource.relationshipEntityType;
     }
  else {
@@ -79,19 +79,19 @@ return null;
 }
 Long startNodeId=null;
 Long endNodeId=null;
-if (commandType == ADD_COMMAND && cls == RELATIONSHIP) {
+if (commandType == ADD_COMMAND && entityTypeByte == RELATIONSHIP) {
 startNodeId=PrimitiveUtils.readLong(channel,buffer);
 endNodeId=PrimitiveUtils.readLong(channel,buffer);
 if (startNodeId == null || endNodeId == null) {
 return null;
 }
 }
-IndexIdentifier identifier=new IndexIdentifier(cls,entityType,indexName,dataSource.indexStore.get(indexName));
+IndexIdentifier identifier=new IndexIdentifier(entityTypeByte,entityType,indexName,dataSource.indexStore.get(entityType.getType(),indexName));
 switch (commandType) {
 case ADD_COMMAND:
-return cls == NODE ? new AddCommand(identifier,cls,entityId,key,value) : new AddRelationshipCommand(identifier,cls,new RelationshipId(entityId,startNodeId,endNodeId),key,value);
+return entityTypeByte == NODE ? new AddCommand(identifier,entityTypeByte,entityId,key,value) : new AddRelationshipCommand(identifier,entityTypeByte,new RelationshipId(entityId,startNodeId,endNodeId),key,value);
 case REMOVE_COMMAND:
-return new RemoveCommand(identifier,cls,entityId,key,value);
+return new RemoveCommand(identifier,entityTypeByte,entityId,key,value);
 case DELETE_COMMAND:
 return new DeleteCommand(identifier);
 default :
