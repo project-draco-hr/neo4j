@@ -1,7 +1,9 @@
 {
   Map<String,String> storedConfig=indexStore.get(cls,indexName);
+  if (storedConfig != null && suppliedConfig == null) {
+    return Pair.of(storedConfig,Boolean.FALSE);
+  }
   Map<String,String> configToUse=null;
-  IndexProvider indexProvider=null;
   if (configToUse == null) {
     configToUse=suppliedConfig;
   }
@@ -16,11 +18,8 @@
     if (provider == null) {
       provider="lucene";
     }
-    indexProvider=getIndexProvider(provider);
+    IndexProvider indexProvider=getIndexProvider(provider);
     configToUse=indexProvider.fillInDefaults(MapUtil.stringMap(KEY_INDEX_PROVIDER,provider));
-  }
- else {
-    indexProvider=getIndexProvider(configToUse.get(KEY_INDEX_PROVIDER));
   }
   if (storedConfig != null) {
     if (suppliedConfig != null && !storedConfig.equals(suppliedConfig)) {
@@ -29,5 +28,5 @@
     configToUse=storedConfig;
   }
   boolean created=indexStore.setIfNecessary(cls,indexName,configToUse);
-  return new Pair<Map<String,String>,Boolean>(configToUse,created);
+  return new Pair<Map<String,String>,Boolean>(Collections.unmodifiableMap(configToUse),created);
 }
