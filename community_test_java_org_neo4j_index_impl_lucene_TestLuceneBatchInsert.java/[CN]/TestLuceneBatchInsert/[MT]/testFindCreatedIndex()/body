@@ -1,0 +1,26 @@
+{
+  String indexName="persons";
+  BatchInserter inserter=new BatchInserterImpl(PATH);
+  LuceneBatchInserterIndexProvider indexProvider=new LuceneBatchInserterIndexProvider(inserter);
+  BatchInserterIndex persons=indexProvider.nodeIndex("persons",MapUtil.stringMap("type","exact"));
+  Map<String,Object> properties=MapUtil.map("name","test");
+  long node=inserter.createNode(properties);
+  persons.add(node,properties);
+  indexProvider.shutdown();
+  inserter.shutdown();
+  GraphDatabaseService graphDb=new EmbeddedGraphDatabase(PATH);
+  Transaction tx=graphDb.beginTx();
+  try {
+    IndexManager indexManager=graphDb.index();
+    Assert.assertFalse(indexManager.existsForRelationships(indexName));
+    Assert.assertTrue(indexManager.existsForNodes(indexName));
+    Assert.assertNotNull(indexManager.forNodes(indexName));
+    Index<Node> nodes=graphDb.index().forNodes(indexName);
+    Assert.assertTrue(nodes.get("name","test").hasNext());
+    tx.success();
+    tx.finish();
+  }
+  finally {
+    graphDb.shutdown();
+  }
+}
