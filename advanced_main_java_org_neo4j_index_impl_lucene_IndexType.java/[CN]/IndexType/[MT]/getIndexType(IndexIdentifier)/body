@@ -2,14 +2,25 @@
   Map<String,String> config=identifier.config;
   String type=config.get(configKey(identifier.indexName,"type"));
   IndexType result=null;
-  if (type.equals("exact")) {
-    result=EXACT;
-  }
- else   if (type.equals("fulltext")) {
-    result=new FulltextType(getAnalyzer(config,identifier.indexName));
+  boolean toLowerCase=parseBoolean(config.get(configKey(identifier.indexName,"to_lower_case")),true);
+  Analyzer customAnalyzer=getCustomAnalyzer(config,identifier.indexName);
+  if (type != null) {
+    if (type.equals("exact")) {
+      result=EXACT;
+    }
+ else     if (type.equals("fulltext")) {
+      Analyzer analyzer=customAnalyzer;
+      if (analyzer == null) {
+        analyzer=toLowerCase ? LuceneDataSource.LOWER_CASE_WHITESPACE_ANALYZER : LuceneDataSource.WHITESPACE_ANALYZER;
+      }
+      result=new CustomType(analyzer,toLowerCase);
+    }
   }
  else {
-    throw new RuntimeException("Unknown type '" + type + "' for index '"+ identifier.indexName+ "'");
+    if (customAnalyzer == null) {
+      throw new IllegalArgumentException("No 'type' was given (which can point out " + "built-in analyzers, such as 'exact' and 'fulltext')" + " and no 'analyzer' was given either (which can point out a custom " + Analyzer.class.getName() + " to use)");
+    }
+    result=new CustomType(customAnalyzer,toLowerCase);
   }
   return result;
 }
