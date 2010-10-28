@@ -1,6 +1,7 @@
 {
+  Triplet<Channel,ChannelBuffer,ByteBuffer> channelContext=null;
   try {
-    Triplet<Channel,ChannelBuffer,ByteBuffer> channelContext=getChannel();
+    channelContext=getChannel();
     Channel channel=channelContext.first();
     ChannelBuffer buffer=channelContext.other();
     buffer.clear();
@@ -13,13 +14,18 @@
     BlockingReadHandler<ChannelBuffer> reader=(BlockingReadHandler<ChannelBuffer>)channel.getPipeline().get("blockingHandler");
     ChannelBuffer message=reader.read(READ_RESPONSE_TIMEOUT_SECONDS,TimeUnit.SECONDS);
     if (message == null) {
+      channelPool.dispose(channelContext);
       throw new HaCommunicationException("Channel has been closed");
     }
     T response=deserializer.read(message);
     TransactionStreams txStreams=type.includesSlaveContext() ? readTransactionStreams(message) : TransactionStreams.EMPTY;
     return new Response<T>(response,txStreams);
   }
- catch (  IOException e) {
+ catch (  ClosedChannelException e) {
+    channelPool.dispose(channelContext);
+    throw new HaCommunicationException(e);
+  }
+catch (  IOException e) {
     throw new HaCommunicationException(e);
   }
 catch (  InterruptedException e) {
