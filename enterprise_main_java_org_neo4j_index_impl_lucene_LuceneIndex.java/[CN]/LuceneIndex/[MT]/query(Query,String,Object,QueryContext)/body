@@ -4,14 +4,10 @@
   LuceneTransaction luceneTx=con != null ? con.getLuceneTx() : null;
   Collection<Long> addedIds=Collections.emptySet();
   Collection<Long> removedIds=Collections.emptySet();
-  Query excludeQuery=null;
-  boolean isRemoveAll=false;
   if (luceneTx != null) {
     addedIds=keyForDirectLookup != null ? luceneTx.getAddedIds(this,keyForDirectLookup,valueForDirectLookup) : luceneTx.getAddedIds(this,query,additionalParametersOrNull);
     ids.addAll(addedIds);
     removedIds=keyForDirectLookup != null ? luceneTx.getRemovedIds(this,keyForDirectLookup,valueForDirectLookup) : luceneTx.getRemovedIds(this,query);
-    excludeQuery=luceneTx.getExtraRemoveQuery(this);
-    isRemoveAll=luceneTx.isRemoveAll(this);
   }
   service.dataSource().getReadLock();
   Iterator<Long> idIterator=null;
@@ -20,11 +16,7 @@
   boolean isLazy=false;
   try {
     searcher=service.dataSource().getIndexSearcher(identifier);
-    if (!isRemoveAll && searcher != null) {
-      if (excludeQuery != null) {
-        removedIds=removedIds.isEmpty() ? new HashSet<Long>() : removedIds;
-        readNodesFromHits(new DocToIdIterator(search(searcher,excludeQuery,null),null,searcher),removedIds);
-      }
+    if (searcher != null) {
       boolean foundInCache=false;
       LruCache<String,Collection<Long>> cachedIdsMap=null;
       if (keyForDirectLookup != null) {
