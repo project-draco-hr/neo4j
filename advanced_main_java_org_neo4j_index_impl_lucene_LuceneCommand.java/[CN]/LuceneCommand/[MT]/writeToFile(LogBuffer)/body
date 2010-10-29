@@ -5,10 +5,13 @@
   buffer.putInt(indexName.length);
   long id=entityId instanceof Long ? (Long)entityId : ((RelationshipId)entityId).id;
   buffer.putLong(id);
-  char[] key=this.key.toCharArray();
-  buffer.putInt(key.length);
+  char[] key=this.key == null ? null : this.key.toCharArray();
+  buffer.putInt(key == null ? -1 : key.length);
   byte valueType=0;
-  if (value instanceof Number) {
+  if (value == null) {
+    valueType=VALUE_TYPE_NULL;
+  }
+ else   if (value instanceof Number) {
     if (value instanceof Float) {
       valueType=VALUE_TYPE_FLOAT;
     }
@@ -27,13 +30,15 @@
   }
   buffer.put(valueType);
   buffer.put(indexName);
-  buffer.put(key);
+  if (key != null) {
+    buffer.put(key);
+  }
   if (valueType == VALUE_TYPE_STRING) {
     char[] charValue=value.toString().toCharArray();
     buffer.putInt(charValue.length);
     buffer.put(charValue);
   }
- else {
+ else   if (valueType != VALUE_TYPE_NULL) {
     Number number=(Number)value;
 switch (valueType) {
 case VALUE_TYPE_FLOAT:
