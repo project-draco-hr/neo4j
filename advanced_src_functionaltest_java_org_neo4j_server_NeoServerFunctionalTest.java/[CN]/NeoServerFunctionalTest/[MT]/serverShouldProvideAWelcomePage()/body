@@ -1,0 +1,17 @@
+{
+  Configurator configurator=configurator();
+  Database database=database();
+  WebServer webServer=webServer();
+  webServer.setPort(6666);
+  HashSet<String> packages=new HashSet<String>();
+  packages.add("org.neo4j.server.web");
+  webServer.addPackages(packages);
+  NeoServer server=new NeoServer(configurator,database,webServer);
+  server.start();
+  Client client=Client.create();
+  ClientResponse response=client.resource("http://localhost:" + webServer.getPort() + "/welcome.html").get(ClientResponse.class);
+  assertThat(response.getStatus(),is(200));
+  assertThat(response.getHeaders().getFirst("Server"),containsString("Jetty"));
+  assertThat(response.getHeaders().getFirst("Content-Type"),containsString("html"));
+  server.shutdown();
+}
