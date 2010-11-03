@@ -1,12 +1,20 @@
 {
   jetty=new Server(jettyPort);
   jetty.setStopAtShutdown(true);
-  URL staticUrl=this.getClass().getClassLoader().getResource(contentResourcePath);
-  String urlString=staticUrl.toExternalForm();
-  WebAppContext staticContentContext=new WebAppContext(urlString,contentContextBase);
-  HandlerList handlers=new HandlerList();
-  handlers.setHandlers(new Handler[]{staticContentContext,new DefaultHandler()});
-  jetty.setHandler(handlers);
+  try {
+    final WebAppContext webadmin=new WebAppContext();
+    webadmin.setServer(jetty);
+    webadmin.setContextPath("/" + contentContextPath);
+    URL url=getClass().getClassLoader().getResource(contentResourcePath).toURI().toURL();
+    final Resource resource=new FileResource(url);
+    webadmin.setBaseResource(resource);
+    jetty.addHandler(webadmin);
+  }
+ catch (  Exception e) {
+    throw new RuntimeException(e);
+  }
+  Context jerseyContext=new Context(jetty,"/");
+  jerseyContext.addServlet(jerseyServletHolder,"/*");
   try {
     jetty.start();
   }
