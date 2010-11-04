@@ -1,0 +1,30 @@
+{
+  File serviceConfig=ConfigFileFactory.getServiceConfigFile();
+  if (serviceConfig != null) {
+    StringBuilder configFileBuilder=new StringBuilder();
+    FileReader in=new FileReader(serviceConfig);
+    BufferedReader br=new BufferedReader(in);
+    String line;
+    while ((line=br.readLine()) != null) {
+      if (!line.startsWith("wrapper.java.additional")) {
+        configFileBuilder.append(line);
+        configFileBuilder.append("\n");
+      }
+    }
+    in.close();
+    configFileBuilder.append(propertiesToJSWConfigString("wrapper.java.additional.",ServerPropertyRepresentation.PropertyType.JVM_ARGUMENT,1));
+    configFileBuilder.append("wrapper.app.parameter.1=org.neo4j.webadmin.Main\n");
+    configFileBuilder.append(propertiesToJSWConfigString("wrapper.app.parameter.",ServerPropertyRepresentation.PropertyType.APP_ARGUMENT,2));
+    FileOutputStream out=new FileOutputStream(serviceConfig);
+    out.write(configFileBuilder.toString().getBytes());
+    out.close();
+  }
+ else {
+    FileOutputStream jvmArgs=new FileOutputStream(ConfigFileFactory.getDevelopmentJvmArgsFile());
+    jvmArgs.write(propertiesToSpaceSeparatedString(ServerPropertyRepresentation.PropertyType.JVM_ARGUMENT).getBytes());
+    jvmArgs.close();
+    FileOutputStream appArgs=new FileOutputStream(ConfigFileFactory.getDevelopmentAppArgsFile());
+    appArgs.write(propertiesToSpaceSeparatedString(ServerPropertyRepresentation.PropertyType.APP_ARGUMENT).getBytes());
+    appArgs.close();
+  }
+}

@@ -1,0 +1,41 @@
+{
+  BackupLog log=(BackupLog)ctx.getJobDetail().getJobDataMap().get(BACKUP_LOG_KEY);
+  BackupJobDescription jobDesc=(BackupJobDescription)ctx.getJobDetail().getJobDataMap().get(JOB_DESCRIPTION_KEY);
+  log.logInfo(new Date(),jobDesc,"started");
+  try {
+    BackupPerformer.doBackup(new File(jobDesc.getPath()));
+    log.logSuccess(new Date(),jobDesc);
+  }
+ catch (  NoBackupFoundationException e) {
+    if (jobDesc.isAutoFoundation()) {
+      try {
+        BackupPerformer.doBackupFoundation(new File(jobDesc.getPath()));
+        BackupPerformer.doBackup(new File(jobDesc.getPath()));
+        log.logSuccess(new Date(),jobDesc);
+      }
+ catch (      BackupFailedException e1) {
+        e1.printStackTrace();
+        log.logFailure(new Date(),jobDesc,"Unable to create backup foundation, make sure I have write permissions to '" + (new File(jobDesc.getPath()).getAbsolutePath()) + "'.");
+      }
+catch (      NoBackupFoundationException e1) {
+        e1.printStackTrace();
+        log.logFailure(new Date(),jobDesc,"Fatal: Tried to create backup foundation, but failed: " + e1.getMessage());
+      }
+catch (      DatabaseBlockedException e1) {
+        log.logFailure(new Date(),jobDesc,"Backup failed: Database is manually blocked (is server shutting down?).");
+      }
+    }
+ else {
+      log.logFailure(new Date(),jobDesc,"Needs manual backup foundation.",BackupLogEntry.NEED_FOUNDATION_CODE);
+    }
+  }
+catch (  BackupFailedException e) {
+    log.logFailure(new Date(),jobDesc,"Backup failed: " + e.getMessage());
+  }
+catch (  DatabaseBlockedException e) {
+    log.logFailure(new Date(),jobDesc,"Backup failed: Database is manually blocked (is server shutting down?).");
+  }
+catch (  Exception e) {
+    e.printStackTrace();
+  }
+}
