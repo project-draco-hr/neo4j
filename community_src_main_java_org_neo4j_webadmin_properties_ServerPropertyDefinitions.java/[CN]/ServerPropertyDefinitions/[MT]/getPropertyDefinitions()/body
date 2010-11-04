@@ -1,0 +1,30 @@
+{
+  ArrayList<ServerPropertyRepresentation> properties=new ArrayList<ServerPropertyRepresentation>();
+  if (DatabaseLocator.isLocalDatabase()) {
+    TreeMap<String,String> gcs=new TreeMap<String,String>();
+    gcs.put("Serial GC","-XX:+UseSerialGC");
+    gcs.put("Throughput GC","-XX:+UseParallelGC");
+    gcs.put("Concurrent Low Pause GC","-XX:+UseConcMarkSweepGC");
+    gcs.put("Incremental Low Pause GC","-Xincgc");
+    properties.add(new ServerPropertyRepresentation("jvm.garbagecollector","Garbage collector","-XX:+UseSerialGC",PropertyType.JVM_ARGUMENT,new ValueDefinition("","",gcs)));
+    properties.add(new ServerPropertyRepresentation("jvm.min_heap_size","Min heap size","512m",PropertyType.JVM_ARGUMENT,new ValueDefinition("-Xms","")));
+    properties.add(new ServerPropertyRepresentation("jvm.max_heap_size","Max heap size","512m",PropertyType.JVM_ARGUMENT,new ValueDefinition("-Xmx","")));
+    if (PlatformUtils.jvmServerModeIsAvailable()) {
+      properties.add(new ServerPropertyRepresentation("jvm.server","JVM server mode","",PropertyType.JVM_ARGUMENT,new ValueDefinition("","","-server")));
+    }
+  }
+  properties.add(new HiddenServerPropertyRepresentation("web.root","Web root",AdminServer.INSTANCE.getStaticPath(),PropertyType.APP_ARGUMENT,new ValueDefinition("-webRoot=","")));
+  properties.add(new ServerPropertyRepresentation("db.root","Database location",DatabaseLocator.getDatabaseLocation(),PropertyType.APP_ARGUMENT,new ValueDefinition("-dbPath=","")));
+  if (DatabaseLocator.isLocalDatabase()) {
+    properties.add(new ServerPropertyRepresentation("keep_logical_logs","Enable logical logs","false",PropertyType.CONFIG_PROPERTY,new ValueDefinition("","","true","false")));
+    properties.add(new ServerPropertyRepresentation("enable_remote_shell","Enable remote shell","false",PropertyType.CONFIG_PROPERTY,new ValueDefinition("","","true","false")));
+    properties.add(new ServerPropertyRepresentation("create.array_block_size","Array block size","133",PropertyType.DB_CREATION_PROPERTY));
+    properties.add(new ServerPropertyRepresentation("create.string_block_size","String block size","133",PropertyType.DB_CREATION_PROPERTY));
+  }
+ else {
+    properties.add(new ServerPropertyRepresentation("general.jmx.uri","JMX URI","",PropertyType.GENERAL_PROPERTY));
+  }
+  properties.add(new ServerPropertyRepresentation("general.backup.path","Backup path","",PropertyType.GENERAL_PROPERTY));
+  properties.add(new ServerPropertyRepresentation("general.data.listfields","Data browser list fields","name",PropertyType.GENERAL_PROPERTY));
+  return properties;
+}
