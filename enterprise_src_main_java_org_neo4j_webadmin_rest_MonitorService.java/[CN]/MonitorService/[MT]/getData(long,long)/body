@@ -1,0 +1,13 @@
+{
+  if (start >= stop || (stop - start) > MAX_TIMESPAN) {
+    return buildExceptionResponse(Status.BAD_REQUEST,"Start time must be before stop time, and the total time span can be no bigger than " + MAX_TIMESPAN + "ms. Time span was "+ (stop - start)+ "ms.",new IllegalArgumentException(),JsonRenderers.DEFAULT);
+  }
+  try {
+    FetchRequest request=RrdManager.getRrdDB().createFetchRequest(ConsolFun.AVERAGE,start,stop,getResolutionFor(stop - start));
+    String entity=JsonRenderers.DEFAULT.render(new RrdDataRepresentation(request.fetchData()));
+    return addHeaders(Response.ok(entity,JsonRenderers.DEFAULT.getMediaType())).build();
+  }
+ catch (  Exception e) {
+    return buildExceptionResponse(Status.INTERNAL_SERVER_ERROR,"SEVERE: Round robin IO error.",e,JsonRenderers.DEFAULT);
+  }
+}
