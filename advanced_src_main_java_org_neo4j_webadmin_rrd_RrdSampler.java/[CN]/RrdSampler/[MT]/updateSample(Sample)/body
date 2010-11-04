@@ -1,0 +1,36 @@
+{
+  try {
+    MBeanServerConnection server=MBeanServerFactory.getServer();
+    reloadMBeanNames();
+    sample.setTime(new Date().getTime());
+    sample.setValue(RrdManager.NODE_CACHE_SIZE,0d);
+    if (primitivesName != null) {
+      Long attribute=(Long)server.getAttribute(primitivesName,JMX_ATTR_NODE_COUNT);
+      sample.setValue(RrdManager.NODE_COUNT,attribute);
+      sample.setValue(RrdManager.RELATIONSHIP_COUNT,(Long)server.getAttribute(primitivesName,JMX_ATTR_RELATIONSHIP_COUNT));
+      sample.setValue(RrdManager.PROPERTY_COUNT,(Long)server.getAttribute(primitivesName,JMX_ATTR_PROPERTY_COUNT));
+    }
+    if (memoryName != null) {
+      sample.setValue(RrdManager.MEMORY_PERCENT,(((Long)((CompositeDataSupport)server.getAttribute(memoryName,JMX_ATTR_HEAP_MEMORY)).get("used") + 0.0d) / (Long)((CompositeDataSupport)server.getAttribute(memoryName,JMX_ATTR_HEAP_MEMORY)).get("max")) * 100);
+    }
+    sample.update();
+  }
+ catch (  IOException e) {
+    throw new RuntimeException("IO Error trying to access round robin database path. See nested exception.",e);
+  }
+catch (  AttributeNotFoundException e) {
+    e.printStackTrace();
+  }
+catch (  InstanceNotFoundException e) {
+    e.printStackTrace();
+  }
+catch (  MBeanException e) {
+    e.printStackTrace();
+  }
+catch (  ReflectionException e) {
+    e.printStackTrace();
+  }
+catch (  Exception e) {
+    e.printStackTrace();
+  }
+}
