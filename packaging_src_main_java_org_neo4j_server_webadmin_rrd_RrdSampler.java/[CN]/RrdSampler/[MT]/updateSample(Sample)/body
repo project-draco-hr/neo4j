@@ -1,14 +1,17 @@
 {
   try {
     MBeanServerConnection server=MBeanServerFactory.getServer();
+    kernel=((EmbeddedGraphDatabase)NeoServer.INSTANCE.database()).getManagementBean(Kernel.class);
+    manager=new Neo4jManager(kernel);
     reloadMBeanNames();
     sample.setTime(new Date().getTime());
     sample.setValue(RrdManager.NODE_CACHE_SIZE,0d);
     if (primitivesName != null) {
-      Long attribute=(Long)server.getAttribute(primitivesName,JMX_ATTR_NODE_COUNT);
+      Long attribute=(Long)manager.getPrimitivesBean().getNumberOfNodeIdsInUse();
       sample.setValue(RrdManager.NODE_COUNT,attribute);
-      sample.setValue(RrdManager.RELATIONSHIP_COUNT,(Long)server.getAttribute(primitivesName,JMX_ATTR_RELATIONSHIP_COUNT));
-      sample.setValue(RrdManager.PROPERTY_COUNT,(Long)server.getAttribute(primitivesName,JMX_ATTR_PROPERTY_COUNT));
+      sample.setValue(RrdManager.RELATIONSHIP_COUNT,(Long)manager.getPrimitivesBean().getNumberOfRelationshipIdsInUse());
+      Log.debug("sampling node count: " + manager.getPrimitivesBean().getNumberOfNodeIdsInUse());
+      sample.setValue(RrdManager.PROPERTY_COUNT,(Long)manager.getPrimitivesBean().getNumberOfPropertyIdsInUse());
     }
     if (memoryName != null) {
       sample.setValue(RrdManager.MEMORY_PERCENT,(((Long)((CompositeDataSupport)server.getAttribute(memoryName,JMX_ATTR_HEAP_MEMORY)).get("used") + 0.0d) / (Long)((CompositeDataSupport)server.getAttribute(memoryName,JMX_ATTR_HEAP_MEMORY)).get("max")) * 100);
