@@ -1,14 +1,23 @@
 {
-  INSTANCE=this;
-  webServerPort=configurator.configuration().getInt(WEBSERVER_PORT,DEFAULT_WEBSERVER_PORT);
   try {
-    startWebserver();
-    log.info("Starting round-robin system state sampler..");
-    RrdSampler.INSTANCE.start();
-    log.info("Started round-robin system state sampler.");
+    this.configurator=new Configurator(new Validator(new DatabaseLocationMustBeSpecifiedRule()),getConfigFile());
+    webServerPort=configurator.configuration().getInt(WEBSERVER_PORT_PROPERTY_KEY,DEFAULT_WEBSERVER_PORT);
+    this.database=new Database(configurator.configuration().getString(DATABASE_LOCATION_PROPERTY_KEY));
+    this.webServer=new Jetty6WebServer();
+    log.info("Starting Neo Server on port [%s]",webServerPort);
+    webServer.setPort(webServerPort);
+    log.info("Mounting webadmin at [%s]",WEB_ADMIN_PATH);
+    webServer.addStaticContent(STATIC_CONTENT_LOCATION,WEB_ADMIN_PATH);
+    log.info("Mounting management API at [%s]",WEB_ADMIN_REST_API_SERVICE_NAME);
+    webServer.addJAXRSPackages(listFrom(new String[]{WEB_ADMIN_REST_API_PACKAGE}),WEB_ADMIN_REST_API_SERVICE_NAME);
+    log.info("Mounting REST API at [%s]",REST_API_SERVICE_NAME);
+    webServer.addJAXRSPackages(listFrom(new String[]{REST_API_PACKAGE}),REST_API_SERVICE_NAME);
+    webServer.start();
+    log.info("Started Neo Server on port [%s]",restApiUri().getPort());
     return null;
   }
  catch (  Exception e) {
+    e.printStackTrace();
     log.error("Failed to start Neo Server on port [%s]",webServerPort);
     e.printStackTrace();
     return 1;
