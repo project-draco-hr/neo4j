@@ -1,0 +1,30 @@
+{
+  if (startNodeId == endNodeId) {
+    throw new StartNodeSameAsEndNodeException();
+  }
+  Transaction tx=graphdb.db.beginTx();
+  try {
+    Node startNode;
+    Node endNode;
+    try {
+      startNode=graphdb.db.getNodeById(startNodeId);
+    }
+ catch (    NotFoundException e) {
+      throw new StartNodeNotFoundException();
+    }
+    try {
+      endNode=graphdb.db.getNodeById(endNodeId);
+    }
+ catch (    NotFoundException e) {
+      throw new EndNodeNotFoundException();
+    }
+    Relationship relationship=startNode.createRelationshipTo(endNode,DynamicRelationshipType.withName(type));
+    properties.storeTo(relationship);
+    RelationshipRepresentation result=new RelationshipRepresentation(baseUri,relationship);
+    tx.success();
+    return result;
+  }
+  finally {
+    tx.finish();
+  }
+}
