@@ -1,0 +1,35 @@
+{
+  json=dodgeStartingUnicodeMarker(json);
+  long endNodeId;
+  String type;
+  PropertiesMap properties;
+  try {
+    Map<String,Object> payload=JsonHelper.jsonToMap(json);
+    endNodeId=getNodeIdFromUri((String)payload.get("to"));
+    type=((String)payload.get("type")).toString();
+    @SuppressWarnings("unchecked") Map<String,Object> props=(Map<String,Object>)payload.get("data");
+    if (props != null) {
+      properties=new PropertiesMap(props);
+    }
+ else {
+      properties=new PropertiesMap(Collections.<String,Object>emptyMap());
+    }
+  }
+ catch (  PropertyValueException e) {
+    return buildBadJsonExceptionResponse(json,e,renderer);
+  }
+  RelationshipRepresentation relationship;
+  try {
+    relationship=actions.createRelationship(type,startNodeId,endNodeId,properties);
+  }
+ catch (  StartNodeNotFoundException e) {
+    return Response.status(Status.NOT_FOUND).build();
+  }
+catch (  EndNodeNotFoundException e) {
+    return Response.status(Status.BAD_REQUEST).build();
+  }
+catch (  StartNodeSameAsEndNodeException e) {
+    return Response.status(Status.BAD_REQUEST).build();
+  }
+  return addHeaders(Response.created(relationship.selfUri()).entity(renderer.render(relationship)).type(renderer.getMediaType())).build();
+}
