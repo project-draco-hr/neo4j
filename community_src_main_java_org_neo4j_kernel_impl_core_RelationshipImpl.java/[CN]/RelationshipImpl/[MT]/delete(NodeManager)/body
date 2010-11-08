@@ -3,7 +3,7 @@
   NodeImpl endNode=null;
   boolean startNodeLocked=false;
   boolean endNodeLocked=false;
-  nodeManager.acquireLock(this,LockType.WRITE);
+  boolean thisLocked=false;
   boolean success=false;
   try {
     startNode=nodeManager.getLightNode(startNodeId);
@@ -16,6 +16,8 @@
       nodeManager.acquireLock(endNode,LockType.WRITE);
       endNodeLocked=true;
     }
+    nodeManager.acquireLock(this,LockType.WRITE);
+    thisLocked=true;
     ArrayMap<Integer,PropertyData> skipMap=nodeManager.getCowPropertyRemoveMap(this,true);
     ArrayMap<Integer,PropertyData> removedProps=nodeManager.deleteRelationship(this);
     if (removedProps.size() > 0) {
@@ -35,6 +37,15 @@
   finally {
     boolean releaseFailed=false;
     try {
+      if (thisLocked) {
+        nodeManager.releaseLock(this,LockType.WRITE);
+      }
+    }
+ catch (    Exception e) {
+      releaseFailed=true;
+      e.printStackTrace();
+    }
+    try {
       if (startNodeLocked) {
         nodeManager.releaseLock(startNode,LockType.WRITE);
       }
@@ -52,7 +63,6 @@
       releaseFailed=true;
       e.printStackTrace();
     }
-    nodeManager.releaseLock(this,LockType.WRITE);
     if (!success) {
       nodeManager.setRollbackOnly();
     }
