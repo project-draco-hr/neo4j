@@ -3,7 +3,7 @@
     this.configurator=new Configurator(new Validator(new DatabaseLocationMustBeSpecifiedRule()),getConfigFile());
     webServerPort=configurator.configuration().getInt(WEBSERVER_PORT_PROPERTY_KEY,DEFAULT_WEBSERVER_PORT);
     this.database=new Database(configurator.configuration().getString(DATABASE_LOCATION_PROPERTY_KEY));
-    this.webServer=new Jetty6WebServer();
+    this.webServer=new Jetty6WebServer(database.db);
     log.info("Starting Neo Server on port [%s]",webServerPort);
     webServer.setPort(webServerPort);
     log.info("Mounting webadmin at [%s]",WEB_ADMIN_PATH);
@@ -12,7 +12,7 @@
     webServer.addJAXRSPackages(listFrom(new String[]{WEB_ADMIN_REST_API_PACKAGE}),WEB_ADMIN_REST_API_SERVICE_NAME);
     log.info("Mounting REST API at [%s]",REST_API_SERVICE_NAME);
     webServer.addJAXRSPackages(listFrom(new String[]{REST_API_PACKAGE}),REST_API_SERVICE_NAME);
-    RrdSampler.instance().start();
+    webServer.addJAXRSPackages(listFrom(new String[]{"org.example.coffeeshop"}),"/");
     webServer.start();
     log.info("Started Neo Server on port [%s]",restApiUri().getPort());
     return null;
