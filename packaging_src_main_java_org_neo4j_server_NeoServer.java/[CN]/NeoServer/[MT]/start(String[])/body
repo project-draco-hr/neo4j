@@ -1,8 +1,10 @@
 {
+  String databaseLocation="undefined";
   try {
     this.configurator=new Configurator(new Validator(new DatabaseLocationMustBeSpecifiedRule()),getConfigFile());
     webServerPort=configurator.configuration().getInt(WEBSERVER_PORT_PROPERTY_KEY,DEFAULT_WEBSERVER_PORT);
-    this.database=new Database(configurator.configuration().getString(DATABASE_LOCATION_PROPERTY_KEY));
+    databaseLocation=configurator.configuration().getString(DATABASE_LOCATION_PROPERTY_KEY);
+    this.database=new Database(databaseLocation);
     this.webServer=new Jetty6WebServer();
     this.webServer.setServer(this);
     log.info("Starting Neo Server on port [%s]",webServerPort);
@@ -24,10 +26,15 @@
     log.info("Started Neo Server on port [%s]",restApiUri().getPort());
     return null;
   }
- catch (  Exception e) {
+ catch (  TransactionFailureException tfe) {
+    log.error("Failed to start Neo Server, because " + tfe + ". Another process may be using database location "+ databaseLocation);
+    tfe.printStackTrace();
+    return GRAPH_DATABASE_STARTUP_ERROR_CODE;
+  }
+catch (  Exception e) {
     e.printStackTrace();
     log.error("Failed to start Neo Server on port [%s]",webServerPort);
     e.printStackTrace();
-    return WEB_SERVER_STARTUP_EXCEPTION_ERROR_CODE;
+    return WEB_SERVER_STARTUP_ERROR_CODE;
   }
 }
