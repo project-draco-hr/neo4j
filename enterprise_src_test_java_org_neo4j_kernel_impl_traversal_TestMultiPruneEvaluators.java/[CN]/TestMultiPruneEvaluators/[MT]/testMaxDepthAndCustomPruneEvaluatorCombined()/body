@@ -1,10 +1,11 @@
 {
-  TraversalDescription description=Traversal.description().filter(Traversal.returnAll()).prune(Traversal.pruneAfterDepth(1)).prune(new PruneEvaluator(){
-    public boolean pruneAfter(    Path position){
-      return IteratorUtil.count(position.endNode().getRelationships(Direction.OUTGOING).iterator()) < 3;
+  Evaluator lessThanThreeRels=new Evaluator(){
+    public Evaluation evaluate(    Path path){
+      return IteratorUtil.count(path.endNode().getRelationships(Direction.OUTGOING).iterator()) < 3 ? Evaluation.INCLUDE_AND_PRUNE : Evaluation.INCLUDE_AND_CONTINUE;
     }
   }
-);
+;
+  TraversalDescription description=Traversal.description().evaluator(Evaluators.all()).evaluator(Evaluators.toDepth(1)).evaluator(lessThanThreeRels);
   Set<String> expectedNodes=new HashSet<String>(Arrays.asList("a","b","c","d","e"));
   for (  Path position : description.traverse(referenceNode())) {
     String name=(String)position.endNode().getProperty("name");
