@@ -10,10 +10,8 @@
     removedIds=keyForDirectLookup != null ? luceneTx.getRemovedIds(this,keyForDirectLookup,valueForDirectLookup) : luceneTx.getRemovedIds(this,query);
   }
   service.dataSource().getReadLock();
-  Iterator<Long> idIterator=null;
-  int idIteratorSize=-1;
+  IndexHits<Long> idIterator=null;
   IndexSearcherRef searcher=null;
-  boolean isLazy=false;
   try {
     searcher=service.dataSource().getIndexSearcher(identifier);
     if (searcher != null) {
@@ -24,20 +22,15 @@
         foundInCache=fillFromCache(cachedIdsMap,ids,keyForDirectLookup,valueForDirectLookup.toString(),removedIds);
       }
       if (!foundInCache) {
-        DocToIdIterator searchedNodeIds=new DocToIdIterator(search(searcher,query,additionalParametersOrNull),removedIds,searcher);
-        if (searchedNodeIds.size() >= service.lazynessThreshold) {
-          isLazy=true;
-          Collection<Iterator<Long>> iterators=new ArrayList<Iterator<Long>>();
-          iterators.add(ids.iterator());
-          iterators.add(searchedNodeIds);
-          idIterator=new CombiningIterator<Long>(iterators);
-          idIteratorSize=ids.size() + searchedNodeIds.size();
+        DocToIdIterator searchedIds=new DocToIdIterator(search(searcher,query,additionalParametersOrNull),removedIds,searcher);
+        if (ids.isEmpty()) {
+          idIterator=searchedIds;
         }
  else {
-          Collection<Long> readIds=readNodesFromHits(searchedNodeIds,ids);
-          if (cachedIdsMap != null) {
-            cachedIdsMap.put(valueForDirectLookup.toString(),readIds);
-          }
+          Collection<IndexHits<Long>> iterators=new ArrayList<IndexHits<Long>>();
+          iterators.add(searchedIds);
+          iterators.add(new ConstantScoreIterator<Long>(ids,Float.NaN));
+          idIterator=new CombinedIndexHits<Long>(iterators);
         }
       }
     }
@@ -45,12 +38,8 @@
   finally {
     service.dataSource().releaseReadLock();
   }
-  if (idIterator == null) {
-    idIterator=ids.iterator();
-    idIteratorSize=ids.size();
-  }
-  idIterator=FilteringIterator.noDuplicates(idIterator);
-  IndexHits<T> hits=new IndexHitsImpl<T>(IteratorUtil.asIterable(new IdToEntityIterator<T>(idIterator){
+  idIterator=idIterator == null ? new ConstantScoreIterator<Long>(ids,0) : idIterator;
+  return new IdToEntityIterator<T>(idIterator,searcher){
     @Override protected T underlyingObjectToObject(    Long id){
       return getById(id);
     }
@@ -58,9 +47,5 @@
       abandonedIds.add(item);
     }
   }
-),idIteratorSize);
-  if (isLazy) {
-    hits=new LazyIndexHits<T>(hits,searcher);
-  }
-  return hits;
+;
 }
