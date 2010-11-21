@@ -1,8 +1,9 @@
 {
-  String type=config.get(configKey(identifier.indexName,"type"));
+  String type=config.get(LuceneIndexProvider.KEY_TYPE);
   IndexType result=null;
-  boolean toLowerCase=parseBoolean(config.get(configKey(identifier.indexName,LuceneIndexProvider.KEY_TO_LOWER_CASE)),true);
-  Analyzer customAnalyzer=getCustomAnalyzer(config,identifier.indexName);
+  Similarity similarity=getCustomSimilarity(config);
+  boolean toLowerCase=parseBoolean(config.get(LuceneIndexProvider.KEY_TO_LOWER_CASE),true);
+  Analyzer customAnalyzer=getCustomAnalyzer(config);
   if (type != null) {
     if (type.equals("exact")) {
       result=EXACT;
@@ -12,14 +13,14 @@
       if (analyzer == null) {
         analyzer=toLowerCase ? LuceneDataSource.LOWER_CASE_WHITESPACE_ANALYZER : LuceneDataSource.WHITESPACE_ANALYZER;
       }
-      result=new CustomType(analyzer,toLowerCase);
+      result=new CustomType(analyzer,toLowerCase,similarity);
     }
   }
  else {
     if (customAnalyzer == null) {
       throw new IllegalArgumentException("No 'type' was given (which can point out " + "built-in analyzers, such as 'exact' and 'fulltext')" + " and no 'analyzer' was given either (which can point out a custom " + Analyzer.class.getName() + " to use)");
     }
-    result=new CustomType(customAnalyzer,toLowerCase);
+    result=new CustomType(customAnalyzer,toLowerCase,similarity);
   }
   return result;
 }
