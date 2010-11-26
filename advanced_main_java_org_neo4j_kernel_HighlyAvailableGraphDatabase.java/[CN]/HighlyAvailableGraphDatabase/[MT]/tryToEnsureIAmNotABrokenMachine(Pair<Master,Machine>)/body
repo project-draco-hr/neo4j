@@ -3,7 +3,7 @@
     if (master.other().getMachineId() == machineId) {
       return;
     }
-    XaDataSource nioneoDataSource=this.localGraph.getConfig().getTxModule().getXaDataSourceManager().getXaDataSource(Config.DEFAULT_DATA_SOURCE_NAME);
+    XaDataSource nioneoDataSource=getConfig().getTxModule().getXaDataSourceManager().getXaDataSource(Config.DEFAULT_DATA_SOURCE_NAME);
     long myLastCommittedTx=nioneoDataSource.getLastCommittedTxId();
     long highestCommonTxId=Math.min(myLastCommittedTx,master.other().getLastCommittedTxId());
     int masterForMyHighestCommonTxId=nioneoDataSource.getMasterForCommittedTx(highestCommonTxId);
@@ -15,12 +15,13 @@
  else {
       String msg="Broken store, my last committed tx,machineId[" + myLastCommittedTx + ","+ masterForMyHighestCommonTxId+ "] but master says machine id for that txId is "+ masterForMastersHighestCommonTxId;
       msgLog.logMessage(msg,true);
-      shutdown();
-      throw new RuntimeException(msg);
+      RuntimeException exception=new BranchedDataException(msg);
+      shutdown(exception);
+      throw exception;
     }
   }
  catch (  IOException e) {
-    shutdown();
+    shutdown(new RuntimeException(e));
     throw new RuntimeException(e);
   }
 }
