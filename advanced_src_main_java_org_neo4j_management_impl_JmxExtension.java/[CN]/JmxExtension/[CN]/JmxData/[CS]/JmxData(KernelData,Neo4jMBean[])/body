@@ -3,43 +3,16 @@
   @SuppressWarnings("hiding") JMXServiceURL url=null;
   try {
     Class<?> cal=Class.forName("sun.management.ConnectorAddressLink");
-    Method importRemote=cal.getMethod("importRemoteFrom",int.class);
-    @SuppressWarnings("unchecked") Map<String,String> remote=(Map<String,String>)importRemote.invoke(null,Integer.valueOf(0));
-    Set<Integer> instances=new HashSet<Integer>();
-    for (    String key : remote.keySet()) {
-      if (key.startsWith("sun.management.JMXConnectorServer")) {
-        int end=key.lastIndexOf('.');
-        if (end < 0)         continue;
-        int start=key.lastIndexOf('.',end);
-        if (start < 0)         continue;
-        final int id;
-        try {
-          id=Integer.parseInt(key.substring(start,end));
-        }
- catch (        NumberFormatException e) {
-          continue;
-        }
-        instances.add(Integer.valueOf(id));
-      }
+    try {
+      Method importRemoteFrom=cal.getMethod("importRemoteFrom",int.class);
+      @SuppressWarnings("unchecked") Map<String,String> remote=(Map<String,String>)importRemoteFrom.invoke(null,Integer.valueOf(0));
+      url=getUrlFrom(remote);
     }
-    if (!instances.isEmpty()) {
-      String prefix="sun.management.JMXConnectorServer.";
-      if (instances.size() > 1) {
-        for (        Object key : instances.toArray()) {
-          if (!remote.containsKey("sun.management.JMXConnectorServer." + key + ".remoteAddress")) {
-            instances.remove(key);
-          }
-        }
-        if (instances.contains(Integer.valueOf(0))) {
-          prefix=prefix + "0.";
-        }
-      }
-      if (instances.size() == 1) {
-        String remoteAddress=remote.get(prefix + instances.iterator().next() + "remoteAddress");
-        url=new JMXServiceURL(remoteAddress);
-      }
- else       if (!instances.isEmpty()) {
-      }
+ catch (    NoSuchMethodException ex) {
+    }
+    if (url == null) {
+      Method importFrom=cal.getMethod("importFrom",int.class);
+      url=getUrlFrom((String)importFrom.invoke(null,Integer.valueOf(0)));
     }
   }
  catch (  LinkageError e) {
