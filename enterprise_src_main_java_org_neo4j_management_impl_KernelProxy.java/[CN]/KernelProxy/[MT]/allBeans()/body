@@ -15,12 +15,24 @@
     }
  catch (    Throwable e) {
     }
-    if (beanType != null && beanType != Kernel.class) {
+    CREATE_PROXY:     while (beanType != null && beanType != Kernel.class) {
       try {
         beans.add(BeanProxy.load(server,beanType,instance.getObjectName()));
       }
  catch (      IllegalArgumentException couldNotCreateProxy) {
+        Class<?>[] interfaces=beanType.getInterfaces();
+        if (interfaces.length == 0) {
+          beanType=beanType.getSuperclass();
+          continue;
+        }
+        for (        Class<?> type : interfaces) {
+          if (type.getName().equals(beanType.getName() + "MBean")) {
+            beanType=type;
+            continue CREATE_PROXY;
+          }
+        }
       }
+      break;
     }
   }
   return beans;
