@@ -1,0 +1,86 @@
+{
+  this.beans=beans;
+  @SuppressWarnings("hiding") JMXServiceURL url=null;
+  try {
+    Class<?> cal=Class.forName("sun.management.ConnectorAddressLink");
+    Method importRemote=cal.getMethod("importRemoteFrom",int.class);
+    @SuppressWarnings("unchecked") Map<String,String> remote=(Map<String,String>)importRemote.invoke(null,Integer.valueOf(0));
+    Set<Integer> instances=new HashSet<Integer>();
+    for (    String key : remote.keySet()) {
+      if (key.startsWith("sun.management.JMXConnectorServer")) {
+        int end=key.lastIndexOf('.');
+        if (end < 0)         continue;
+        int start=key.lastIndexOf('.',end);
+        if (start < 0)         continue;
+        final int id;
+        try {
+          id=Integer.parseInt(key.substring(start,end));
+        }
+ catch (        NumberFormatException e) {
+          continue;
+        }
+        instances.add(Integer.valueOf(id));
+      }
+    }
+    if (!instances.isEmpty()) {
+      String prefix="sun.management.JMXConnectorServer.";
+      if (instances.size() > 1) {
+        for (        Object key : instances.toArray()) {
+          if (!remote.containsKey("sun.management.JMXConnectorServer." + key + ".remoteAddress")) {
+            instances.remove(key);
+          }
+        }
+        if (instances.contains(Integer.valueOf(0))) {
+          prefix=prefix + "0.";
+        }
+      }
+      if (instances.size() == 1) {
+        String remoteAddress=remote.get(prefix + instances.iterator().next() + "remoteAddress");
+        url=new JMXServiceURL(remoteAddress);
+      }
+ else       if (!instances.isEmpty()) {
+      }
+    }
+  }
+ catch (  LinkageError e) {
+    log.log(Level.INFO,"Failed to load local JMX configuration.",e);
+  }
+catch (  Exception e) {
+    log.log(Level.INFO,"Failed to load local JMX configuration.",e);
+  }
+  if (url == null) {
+    Object portObj=kernel.getParam("jmx.port");
+    int port=0;
+    if (portObj instanceof Integer) {
+      port=((Integer)portObj).intValue();
+    }
+ else     if (portObj instanceof String) {
+      try {
+        port=Integer.parseInt((String)portObj);
+      }
+ catch (      NumberFormatException ok) {
+      }
+    }
+    if (port > 0) {
+      Object useSslObj=kernel.getParam("jmx.use_ssl");
+      boolean useSSL=false;
+      if (useSslObj instanceof Boolean) {
+        useSSL=((Boolean)useSslObj).booleanValue();
+      }
+ else       if (useSslObj instanceof String) {
+        useSSL=Boolean.parseBoolean((String)useSslObj);
+      }
+      JMXConnectorServer server=createServer(port,useSSL);
+      if (server != null) {
+        try {
+          server.getMBeanServer().registerMBean(server,getObjectName(kernel,null,"JMX Server"));
+        }
+ catch (        Exception e) {
+          log.log(Level.INFO,"Failed to register MBean server as JMX bean",e);
+        }
+        url=server.getAddress();
+      }
+    }
+  }
+  this.url=url;
+}
