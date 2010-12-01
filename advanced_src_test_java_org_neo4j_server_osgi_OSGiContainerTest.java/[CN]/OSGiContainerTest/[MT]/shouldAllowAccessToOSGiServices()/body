@@ -1,12 +1,17 @@
 {
-  String expectedBundleSymbolicName="OSGiAwareBundle";
-  InputStream bundleStream=newBundle().add(LifecycleActivator.class).add(ExampleServiceImpl.class).set(Constants.BUNDLE_SYMBOLICNAME,expectedBundleSymbolicName).set(Constants.EXPORT_PACKAGE,"org.neo4j.server.osgi.bundles.service").set(Constants.IMPORT_PACKAGE,"org.neo4j.server.osgi.bundles.service, org.neo4j.server.osgi.services, org.osgi.framework").build(withBnd());
-  File awareJar=new File(container.getBundleDirectory(),"aware.jar");
+  String expectedBundleSymbolicName="OSGiServiceProviderBundle";
+  InputStream bundleStream=newBundle().add(ServiceProviderActivator.class).add(ExampleServiceImpl.class).set(Constants.BUNDLE_SYMBOLICNAME,expectedBundleSymbolicName).set(Constants.EXPORT_PACKAGE,"org.neo4j.server.osgi.bundles.service").set(Constants.IMPORT_PACKAGE,"org.neo4j.server.osgi.bundles.service, org.neo4j.server.osgi.services, org.osgi.framework").set(Constants.BUNDLE_ACTIVATOR,ServiceProviderActivator.class.getName()).build(withBnd());
+  File awareJar=new File(container.getBundleDirectory(),"service-impl.jar");
   OutputStream jarOutputStream=new FileOutputStream(awareJar);
   StreamUtils.copyStream(bundleStream,jarOutputStream,true);
   container.start();
-  Bundle awareBundle=container.getBundles()[1];
-  ExampleServiceImpl service=(ExampleServiceImpl)awareBundle.getBundleContext().getService(awareBundle.getRegisteredServices()[0]);
+  Bundle serviceProviderBundle=container.getBundles()[1];
+  assertNotNull(serviceProviderBundle);
+  assertThat(serviceProviderBundle.getState(),is(Bundle.ACTIVE));
+  assertThat((String)serviceProviderBundle.getHeaders().get(Constants.BUNDLE_SYMBOLICNAME),is(expectedBundleSymbolicName));
+  BundleContext bundleContext=serviceProviderBundle.getBundleContext();
+  ServiceReference[] registeredServices=bundleContext.getServiceReferences(ExampleBundleService.class.getName(),null);
+  ExampleBundleService service=(ExampleBundleService)bundleContext.getService(registeredServices[0]);
   assertThat(service,is(notNullValue()));
   container.shutdown();
 }
