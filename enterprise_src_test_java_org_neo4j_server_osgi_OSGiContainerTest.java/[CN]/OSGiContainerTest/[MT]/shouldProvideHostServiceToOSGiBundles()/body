@@ -1,7 +1,9 @@
 {
-  String expectedBundleSymbolicName="ServiceConsumerBundle";
-  InputStream bundleStream=newBundle().add(WhovilleActivator.class).set(Constants.BUNDLE_SYMBOLICNAME,expectedBundleSymbolicName).set(Constants.EXPORT_PACKAGE,"org.neo4j.server.osgi.bundles.consumer").set(Constants.IMPORT_PACKAGE,"org.neo4j.server.osgi.bundles.consumer, org.neo4j.server.osgi.services, org.osgi.framework").set(Constants.BUNDLE_ACTIVATOR,WhovilleActivator.class.getName()).build(withBnd());
-  File awareJar=new File(container.getBundleDirectory(),"consumer-impl.jar");
+  HortonActivator hortonActivator=new HortonActivator();
+  createContainer(hortonActivator);
+  String expectedBundleSymbolicName="WhovilleBundle";
+  InputStream bundleStream=newBundle().add(WhovilleActivator.class).set(Constants.BUNDLE_SYMBOLICNAME,expectedBundleSymbolicName).set(Constants.EXPORT_PACKAGE,"org.neo4j.server.osgi.bundles.consumer").set(Constants.IMPORT_PACKAGE,"org.neo4j.server.osgi.bundles.consumer, org.neo4j.server.osgi.services, org.osgi.framework, org.osgi.util.tracker").set(Constants.BUNDLE_ACTIVATOR,WhovilleActivator.class.getName()).build(withBnd());
+  File awareJar=new File(container.getBundleDirectory(),"whoville.jar");
   OutputStream jarOutputStream=new FileOutputStream(awareJar);
   StreamUtils.copyStream(bundleStream,jarOutputStream,true);
   container.start();
@@ -9,10 +11,11 @@
   assertNotNull(registeredServices);
   Bundle serviceConsumerBundle=container.getBundles()[1];
   BundleContext bundleContext=serviceConsumerBundle.getBundleContext();
-  assertThat(serviceConsumerBundle.getState(),is(Bundle.ACTIVE));
   assertThat((String)serviceConsumerBundle.getHeaders().get(Constants.BUNDLE_SYMBOLICNAME),is(expectedBundleSymbolicName));
+  assertThat(serviceConsumerBundle.getState(),is(Bundle.ACTIVE));
   ServiceReference[] hostServices=bundleContext.getServiceReferences(ExampleHostService.class.getName(),null);
   ExampleHostService service=(ExampleHostService)bundleContext.getService(hostServices[0]);
   assertNotNull(service);
+  assertThat(hortonActivator.whovilleCommunicationCount,is(1));
   container.shutdown();
 }
