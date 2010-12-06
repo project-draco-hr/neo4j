@@ -19,7 +19,8 @@
       long newSessionId=zooKeeper.getSessionId();
       Pair<Master,Machine> masterBeforeIWrite=getMasterFromZooKeeper(false);
       msgLog.logMessage("Get master before write:" + masterBeforeIWrite);
-      if (newSessionId != sessionId || masterBeforeIWrite.other().getMachineId() != getCachedMaster().other().getMachineId()) {
+      boolean masterBeforeIWriteDiffers=masterBeforeIWrite.other().getMachineId() != getCachedMaster().other().getMachineId();
+      if (newSessionId != sessionId || masterBeforeIWriteDiffers) {
         sequenceNr=setup();
         msgLog.logMessage("Did setup, seq=" + sequenceNr + " new sessionId="+ newSessionId);
         keeperState=KeeperState.SyncConnected;
@@ -27,7 +28,9 @@
         msgLog.logMessage("Get master after write:" + masterAfterIWrote);
         int masterId=masterAfterIWrote.other().getMachineId();
         setDataChangeWatcher(MASTER_NOTIFY_CHILD,masterId);
-        receiver.newMaster(masterAfterIWrote,new Exception());
+        if (sessionId != -1) {
+          receiver.newMaster(masterAfterIWrote,new Exception());
+        }
         sessionId=newSessionId;
       }
  else {
