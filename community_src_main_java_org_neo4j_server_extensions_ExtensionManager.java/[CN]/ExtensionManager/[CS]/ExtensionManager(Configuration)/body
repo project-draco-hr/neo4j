@@ -1,0 +1,35 @@
+{
+  LOADING_EXTENSIONS:   for (  ServerExtension extension : ServerExtension.load()) {
+    final Collection<MediaExtender> extenders;
+    try {
+      extenders=extension.getServerMediaExtenders(serverConfig);
+    }
+ catch (    Exception e) {
+      error(extension,"Exception while loading extension",e);
+      continue;
+    }
+    Map<Class<?>,Map<String,MediaExtender>> additions=newExtendersMap();
+    for (    MediaExtender extender : extenders) {
+      Map<String,MediaExtender> map=additions.get(extender.forType());
+      if (map == null) {
+        error(extension,"Cannot extend type: " + extender.forType(),null);
+        continue LOADING_EXTENSIONS;
+      }
+      if (map.put(extender.name(),extender) != null) {
+        error(extension,"Multiple definitions of \"" + extender.name() + "\" for "+ extender.forType().getSimpleName(),null);
+        continue LOADING_EXTENSIONS;
+      }
+      if (mediaExtenders.get(extender.forType()).containsKey(extender.name())) {
+        error(extension,"The extension \"" + extender.name() + "\" is already defined for "+ extender.forType().getSimpleName(),null);
+        continue LOADING_EXTENSIONS;
+      }
+    }
+    for (    Map.Entry<Class<?>,Map<String,MediaExtender>> add : additions.entrySet()) {
+      Map<String,MediaExtender> map=add.getValue();
+      Map<String,ExtensionUri> uris=mediaExtenders.get(add.getKey());
+      for (      Map.Entry<String,MediaExtender> entry : map.entrySet()) {
+        uris.put(entry.getKey(),null);
+      }
+    }
+  }
+}
