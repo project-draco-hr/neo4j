@@ -1,14 +1,19 @@
 {
+  Pair<IndexWriter,AtomicBoolean> writer=indexWriters.get(identifier);
+  if (writer != null) {
+    return writer.first();
+  }
   try {
     Directory dir=getDirectory(baseStorePath,identifier);
     directoryExists(dir);
     IndexType type=getType(identifier);
-    IndexWriter writer=new IndexWriter(dir,type.analyzer,MaxFieldLength.UNLIMITED);
+    writer=Pair.of(new IndexWriter(dir,type.analyzer,MaxFieldLength.UNLIMITED),new AtomicBoolean());
     Similarity similarity=type.getSimilarity();
     if (similarity != null) {
-      writer.setSimilarity(similarity);
+      writer.first().setSimilarity(similarity);
     }
-    return writer;
+    indexWriters.put(identifier,writer);
+    return writer.first();
   }
  catch (  IOException e) {
     throw new RuntimeException(e);
