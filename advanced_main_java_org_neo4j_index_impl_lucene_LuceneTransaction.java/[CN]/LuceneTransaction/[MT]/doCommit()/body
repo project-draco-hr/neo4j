@@ -6,15 +6,14 @@
         continue;
       }
       IndexIdentifier identifier=entry.getKey();
-      IndexType type=identifier == LuceneCommand.CreateIndexCommand.FAKE_IDENTIFIER ? null : dataSource.getType(identifier);
       CommandList commandList=entry.getValue();
+      IndexType type=identifier == LuceneCommand.CreateIndexCommand.FAKE_IDENTIFIER || !commandList.containsWrites() ? null : dataSource.getType(identifier);
       CommitContext context=new CommitContext(dataSource,identifier,type,commandList);
       for (      LuceneCommand command : commandList.commands) {
         command.perform(context);
       }
       applyDocuments(context.writer,type,context.documents);
-      if (context.writer != null && !context.isRecovery) {
-        context.safeCloseWriter();
+      if (context.writer != null) {
         dataSource.invalidateIndexSearcher(identifier);
       }
     }
