@@ -5,21 +5,44 @@
     if (Set.class.isAssignableFrom(raw)) {
       TypeCaster caster=TYPES.get(raw);
       if (caster != null) {
-        return new ListParameterExtractor(caster,raw,parameter,description);
+        return new ListParameterExtractor(caster,raw,parameter,description){
+          @Override Object convert(          Object[] result){
+            return new HashSet<Object>(Arrays.asList(result));
+          }
+        }
+;
       }
     }
  else     if (Iterable.class.isAssignableFrom(raw)) {
       TypeCaster caster=TYPES.get(raw);
       if (caster != null) {
-        return new ListParameterExtractor(caster,raw,parameter,description);
+        return new ListParameterExtractor(caster,raw,parameter,description){
+          @Override Object convert(          Object[] result){
+            return Arrays.asList(result);
+          }
+        }
+;
       }
     }
   }
  else   if (type instanceof Class<?>) {
     Class<?> raw=(Class<?>)type;
-    TypeCaster caster=TYPES.get(raw);
-    if (caster != null) {
-      return new ParameterExtractor(caster,raw,parameter,description);
+    if (raw.isArray()) {
+      TypeCaster caster=TYPES.get(raw.getComponentType());
+      if (caster != null) {
+        return new ListParameterExtractor(caster,raw,parameter,description){
+          @Override Object convert(          Object[] result){
+            return result;
+          }
+        }
+;
+      }
+    }
+ else {
+      TypeCaster caster=TYPES.get(raw);
+      if (caster != null) {
+        return new ParameterExtractor(caster,raw,parameter,description);
+      }
     }
   }
   throw new IllegalStateException("Unsupported parameter type: " + type);
