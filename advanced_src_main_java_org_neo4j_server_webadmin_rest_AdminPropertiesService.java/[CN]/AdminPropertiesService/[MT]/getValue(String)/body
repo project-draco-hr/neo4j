@@ -2,10 +2,18 @@
   String lowerCaseKey=key.toLowerCase();
   String value;
   if ("neo4j-servers".equals(lowerCaseKey)) {
-    AdminPropertyRepresentation representation=new AdminPropertyRepresentation(uriInfo.getBaseUri().toString());
-    representation.addUrl("url",getDataUri());
-    representation.addUrl("manageUrl",getManagementUri());
-    return Response.ok(JsonRenderers.DEFAULT.render(representation)).type(MediaType.APPLICATION_JSON).build();
+    return output.ok(new MappingRepresentation("neo4j-servers"){
+      @Override protected void serialize(      MappingSerializer serializer){
+        serializer.putMapping(uriInfo.getBaseUri().toString(),new MappingRepresentation("urls"){
+          @Override protected void serialize(          MappingSerializer serializer){
+            serializer.putString("url",getDataUri());
+            serializer.putString("manageUrl",getManagementUri());
+          }
+        }
+);
+      }
+    }
+);
   }
  else   if (DATA_URI_KEY.equals(lowerCaseKey)) {
     value=getDataUri();
@@ -19,5 +27,5 @@
   if (value == null) {
     value="undefined";
   }
-  return Response.ok(value).type(MediaType.APPLICATION_JSON).build();
+  return output.ok(ValueRepresentation.string(value));
 }
