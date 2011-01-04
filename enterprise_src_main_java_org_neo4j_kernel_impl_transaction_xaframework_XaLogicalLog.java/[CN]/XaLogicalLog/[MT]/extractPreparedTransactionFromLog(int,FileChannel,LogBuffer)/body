@@ -1,8 +1,8 @@
 {
   LogEntry.Start startEntry=xidIdentMap.get(identifier);
   log.position(startEntry.getStartPosition());
-  List<LogEntry> logEntryList=new ArrayList<LogEntry>();
   LogEntry entry;
+  boolean found=false;
   while ((entry=LogIoUtils.readEntry(buffer,log,cf)) != null) {
     if (entry.getIdentifier() != identifier) {
       continue;
@@ -11,14 +11,14 @@
       break;
     }
     if (entry instanceof LogEntry.Start || entry instanceof LogEntry.Command) {
-      logEntryList.add(entry);
+      LogIoUtils.writeLogEntry(entry,targetBuffer);
+      found=true;
     }
  else {
       throw new RuntimeException("Expected start or command entry but found: " + entry);
     }
   }
-  if (logEntryList.isEmpty()) {
+  if (!found) {
     throw new IOException("Transaction for internal identifier[" + identifier + "] not found in current log");
   }
-  return logEntryList;
 }
