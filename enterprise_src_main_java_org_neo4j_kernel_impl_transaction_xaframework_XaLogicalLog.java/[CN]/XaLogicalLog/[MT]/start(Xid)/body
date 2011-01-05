@@ -4,12 +4,10 @@
   }
   int xidIdent=getNextIdentifier();
   try {
-    byte globalId[]=xid.getGlobalTransactionId();
-    byte branchId[]=xid.getBranchQualifier();
-    int formatId=xid.getFormatId();
     long position=writeBuffer.getFileChannelPosition();
-    writeBuffer.put(LogEntry.TX_START).put((byte)globalId.length).put((byte)branchId.length).put(globalId).put(branchId).putInt(xidIdent).putInt(formatId);
-    xidIdentMap.put(xidIdent,new LogEntry.Start(xid,xidIdent,position));
+    LogEntry.Start start=new LogEntry.Start(xid,xidIdent,position);
+    LogIoUtils.writeStart(writeBuffer,xidIdent,start.getVersion(),xid);
+    xidIdentMap.put(xidIdent,start);
   }
  catch (  IOException e) {
     throw new XAException("Logical log couldn't start transaction: " + e);
