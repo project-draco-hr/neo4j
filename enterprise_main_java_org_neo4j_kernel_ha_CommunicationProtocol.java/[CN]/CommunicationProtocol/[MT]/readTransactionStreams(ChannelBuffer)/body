@@ -1,9 +1,20 @@
 {
-  final TransactionStreams result=new TransactionStreams();
-  for (int count=buffer.readByte(); count > 0; count--) {
-    String resource=readString(buffer);
-    TransactionStream stream=readTransactionStream(buffer);
-    result.add(resource,stream);
+  final String[] datasources=new String[buffer.readUnsignedByte() + 1];
+  datasources[0]=null;
+  for (int i=1; i < datasources.length; i++) {
+    datasources[i]=readString(buffer);
   }
-  return result;
+  return new TransactionStream(){
+    @Override protected Triplet<String,Long,TxExtractor> fetchNextOrNull(){
+      String datasource=datasources[buffer.readUnsignedByte()];
+      if (datasource == null)       return null;
+      long txId=buffer.readLong();
+      TxExtractor extractor=TxExtractor.create(new BlockLogReader(buffer));
+      return Triplet.of(datasource,txId,extractor);
+    }
+    @Override public String[] dataSourceNames(){
+      return Arrays.copyOfRange(datasources,1,datasources.length);
+    }
+  }
+;
 }
