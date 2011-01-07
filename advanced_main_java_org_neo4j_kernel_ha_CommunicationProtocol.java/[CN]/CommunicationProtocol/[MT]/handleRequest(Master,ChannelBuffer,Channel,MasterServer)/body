@@ -14,7 +14,6 @@
       partialRequests.put(channel,partialRequest);
     }
     partialRequest.add(buffer);
-    return null;
   }
  else {
     PartialRequest partialRequest=partialRequests.remove(channel);
@@ -37,16 +36,30 @@
       partialRequest.add(buffer);
       bufferToReadFrom=targetBuffers.first();
     }
-    Response<?> response=type.caller.callMaster(realMaster,context,bufferToReadFrom);
+    final Response<?> response=type.caller.callMaster(realMaster,context,bufferToReadFrom);
     targetBuffers.first().clear();
-    ChannelBuffer theBuffer=new ChunkingChannelBuffer(targetBuffers.first(),channel,MAX_FRAME_LENGTH);
-    type.serializer.write(response.response(),theBuffer);
-    if (type.includesSlaveContext()) {
-      writeTransactionStreams(response.transactions(),theBuffer,targetBuffers.other());
+    final ChunkingChannelBuffer chunkingBuffer=new ChunkingChannelBuffer(targetBuffers.first(),channel,MAX_FRAME_LENGTH);
+    final ByteBuffer targetByteBuffer=targetBuffers.other();
+    final RequestType finalType=type;
+    final SlaveContext finalContext=context;
+    new Thread(){
+      public void run(){
+        try {
+          finalType.serializer.write(response.response(),chunkingBuffer);
+          if (finalType.includesSlaveContext()) {
+            writeTransactionStreams(response.transactions(),chunkingBuffer,targetByteBuffer);
+          }
+          chunkingBuffer.done();
+          if (finalType == RequestType.FINISH || finalType == RequestType.PULL_UPDATES) {
+            server.unmapSlave(channel,finalContext);
+          }
+        }
+ catch (        IOException e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
+      }
     }
-    if (type == RequestType.FINISH || type == RequestType.PULL_UPDATES) {
-      server.unmapSlave(channel,context);
-    }
-    return theBuffer;
+.start();
   }
 }
