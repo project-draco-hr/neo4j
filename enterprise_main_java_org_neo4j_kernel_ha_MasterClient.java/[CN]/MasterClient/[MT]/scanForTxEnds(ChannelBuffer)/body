@@ -1,0 +1,24 @@
+{
+  int positionBeforeScanning=buffer.readerIndex();
+  try {
+    int result=0;
+    while (buffer.readableBytes() > 10) {
+      readTransactionHeader(buffer);
+      while (buffer.readable()) {
+        int blockSize=buffer.readUnsignedByte();
+        boolean fullBlock=blockSize == BlockLogBuffer.FULL_BLOCK_AND_MORE;
+        if (!fullBlock && buffer.readableBytes() >= blockSize) {
+          result++;
+        }
+        buffer.skipBytes(Math.min(fullBlock ? BlockLogBuffer.DATA_SIZE : blockSize,buffer.readableBytes()));
+        if (!fullBlock) {
+          break;
+        }
+      }
+    }
+    return result;
+  }
+  finally {
+    buffer.readerIndex(positionBeforeScanning);
+  }
+}
