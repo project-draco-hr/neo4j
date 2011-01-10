@@ -16,7 +16,7 @@
     }
     @SuppressWarnings("unchecked") BlockingReadHandler<ChannelBuffer> reader=(BlockingReadHandler<ChannelBuffer>)channel.getPipeline().get("blockingHandler");
     final Triplet<Channel,ChannelBuffer,ByteBuffer> finalChannelContext=channelContext;
-    DechunkingChannelBuffer dechunkingBuffer=new DechunkingChannelBuffer(ChannelBuffers.dynamicBuffer(),reader){
+    DechunkingChannelBuffer dechunkingBuffer=new DechunkingChannelBuffer(reader){
       @Override protected ChannelBuffer readNext(){
         ChannelBuffer result=super.readNext();
         if (result == null) {
@@ -28,14 +28,7 @@
     }
 ;
     T response=deserializer.read(dechunkingBuffer);
-    String[] datasources=type.includesSlaveContext() ? readTransactionStreamHeader(dechunkingBuffer) : null;
-    while (dechunkingBuffer.expectsMoreChunks()) {
-      applyFullyAvailableTransactions(datasources,dechunkingBuffer);
-      if (dechunkingBuffer.expectsMoreChunks()) {
-        dechunkingBuffer.forceReadNextChunk();
-      }
-    }
-    TransactionStream txStreams=type.includesSlaveContext() ? readTransactionStreams(datasources,dechunkingBuffer) : TransactionStream.EMPTY;
+    TransactionStream txStreams=type.includesSlaveContext() ? readTransactionStreams(dechunkingBuffer) : TransactionStream.EMPTY;
     return new Response<T>(response,txStreams);
   }
  catch (  ClosedChannelException e) {
