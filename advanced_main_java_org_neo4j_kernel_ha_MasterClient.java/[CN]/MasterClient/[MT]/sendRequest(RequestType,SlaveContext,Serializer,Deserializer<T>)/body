@@ -15,21 +15,27 @@
       channel.write(buffer);
     }
     @SuppressWarnings("unchecked") BlockingReadHandler<ChannelBuffer> reader=(BlockingReadHandler<ChannelBuffer>)channel.getPipeline().get("blockingHandler");
-    Pair<ChannelBuffer,Boolean> messageContext=readNextMessage(channelContext,reader);
-    ChannelBuffer message=messageContext.first();
-    T response=deserializer.read(message);
-    String[] datasources=type.includesSlaveContext() ? readTransactionStreamHeader(message) : null;
-    if (messageContext.other()) {
-      message=createDynamicBufferFrom(message);
-      boolean more=true;
-      while (more) {
-        Pair<ChannelBuffer,Boolean> followingMessage=readNextMessage(channelContext,reader);
-        more=followingMessage.other();
-        message.writeBytes(followingMessage.first());
-        message=applyFullyAvailableTransactions(datasources,message);
+    final Triplet<Channel,ChannelBuffer,ByteBuffer> finalChannelContext=channelContext;
+    DechunkingChannelBuffer dechunkingBuffer=new DechunkingChannelBuffer(ChannelBuffers.dynamicBuffer(),reader){
+      @Override protected ChannelBuffer readNext(){
+        ChannelBuffer result=super.readNext();
+        if (result == null) {
+          channelPool.dispose(finalChannelContext);
+          throw new HaCommunicationException("Channel has been closed");
+        }
+        return result;
       }
     }
-    TransactionStream txStreams=type.includesSlaveContext() ? readTransactionStreams(datasources,message) : TransactionStream.EMPTY;
+;
+    T response=deserializer.read(dechunkingBuffer);
+    String[] datasources=type.includesSlaveContext() ? readTransactionStreamHeader(dechunkingBuffer) : null;
+    while (dechunkingBuffer.expectsMoreChunks()) {
+      applyFullyAvailableTransactions(datasources,dechunkingBuffer);
+      if (dechunkingBuffer.expectsMoreChunks()) {
+        dechunkingBuffer.forceReadNextChunk();
+      }
+    }
+    TransactionStream txStreams=type.includesSlaveContext() ? readTransactionStreams(datasources,dechunkingBuffer) : TransactionStream.EMPTY;
     return new Response<T>(response,txStreams);
   }
  catch (  ClosedChannelException e) {
