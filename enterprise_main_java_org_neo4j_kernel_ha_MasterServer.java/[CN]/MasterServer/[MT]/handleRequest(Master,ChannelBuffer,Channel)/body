@@ -1,6 +1,5 @@
 {
   byte continuation=buffer.readByte();
-  Map<Channel,PartialRequest> partialRequests=server.getPartialRequests();
   if (continuation == ChunkingChannelBuffer.CONTINUATION_MORE) {
     PartialRequest partialRequest=partialRequests.get(channel);
     if (partialRequest == null) {
@@ -9,7 +8,7 @@
       if (type.includesSlaveContext()) {
         context=readSlaveContext(buffer);
       }
-      Pair<ChannelBuffer,ByteBuffer> targetBuffers=server.mapSlave(channel,context);
+      Pair<ChannelBuffer,ByteBuffer> targetBuffers=mapSlave(channel,context);
       partialRequest=new PartialRequest(type,context,targetBuffers);
       partialRequests.put(channel,partialRequest);
     }
@@ -26,7 +25,7 @@
       if (type.includesSlaveContext()) {
         context=readSlaveContext(buffer);
       }
-      targetBuffers=server.mapSlave(channel,context);
+      targetBuffers=mapSlave(channel,context);
       bufferToReadFrom=buffer;
     }
  else {
@@ -42,7 +41,7 @@
     final ByteBuffer targetByteBuffer=targetBuffers.other();
     final RequestType finalType=type;
     final SlaveContext finalContext=context;
-    new Thread(){
+    executor.submit(new Runnable(){
       public void run(){
         try {
           finalType.serializer.write(response.response(),chunkingBuffer);
@@ -51,7 +50,7 @@
           }
           chunkingBuffer.done();
           if (finalType == RequestType.FINISH || finalType == RequestType.PULL_UPDATES) {
-            server.unmapSlave(channel,finalContext);
+            unmapSlave(channel,finalContext);
           }
         }
  catch (        IOException e) {
@@ -60,6 +59,6 @@
         }
       }
     }
-.start();
+);
   }
 }
