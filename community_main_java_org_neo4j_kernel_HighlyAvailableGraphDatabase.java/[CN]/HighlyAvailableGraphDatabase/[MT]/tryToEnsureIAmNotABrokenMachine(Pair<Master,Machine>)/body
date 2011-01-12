@@ -1,27 +1,29 @@
 {
+  if (master.other().getMachineId() == machineId) {
+    return;
+  }
+  XaDataSource nioneoDataSource=getConfig().getTxModule().getXaDataSourceManager().getXaDataSource(Config.DEFAULT_DATA_SOURCE_NAME);
+  long myLastCommittedTx=nioneoDataSource.getLastCommittedTxId();
+  long highestCommonTxId=Math.min(myLastCommittedTx,master.other().getLastCommittedTxId());
+  int masterForMyHighestCommonTxId=-1;
   try {
-    if (master.other().getMachineId() == machineId) {
-      return;
-    }
-    XaDataSource nioneoDataSource=getConfig().getTxModule().getXaDataSourceManager().getXaDataSource(Config.DEFAULT_DATA_SOURCE_NAME);
-    long myLastCommittedTx=nioneoDataSource.getLastCommittedTxId();
-    long highestCommonTxId=Math.min(myLastCommittedTx,master.other().getLastCommittedTxId());
-    int masterForMyHighestCommonTxId=nioneoDataSource.getMasterForCommittedTx(highestCommonTxId);
-    int masterForMastersHighestCommonTxId=master.first().getMasterIdForCommittedTx(highestCommonTxId);
-    if (masterForMyHighestCommonTxId == masterForMastersHighestCommonTxId) {
-      msgLog.logMessage("Master id for last committed tx ok with highestCommonTxId=" + highestCommonTxId + " with masterId="+ masterForMyHighestCommonTxId,true);
-      return;
-    }
- else {
-      String msg="Broken store, my last committed tx,machineId[" + myLastCommittedTx + ","+ masterForMyHighestCommonTxId+ "] but master says machine id for that txId is "+ masterForMastersHighestCommonTxId;
-      msgLog.logMessage(msg,true);
-      RuntimeException exception=new BranchedDataException(msg);
-      shutdown(exception);
-      throw exception;
-    }
+    masterForMyHighestCommonTxId=nioneoDataSource.getMasterForCommittedTx(highestCommonTxId);
+    ;
   }
  catch (  IOException e) {
-    shutdown(new RuntimeException(e));
-    throw new RuntimeException(e);
+    msgLog.logMessage("Couldn't get master ID for txId " + highestCommonTxId + ". It may be that a log file is missing due to the db being copied from master?",e);
+    return;
+  }
+  int masterForMastersHighestCommonTxId=master.first().getMasterIdForCommittedTx(highestCommonTxId);
+  if (masterForMyHighestCommonTxId == masterForMastersHighestCommonTxId) {
+    msgLog.logMessage("Master id for last committed tx ok with highestCommonTxId=" + highestCommonTxId + " with masterId="+ masterForMyHighestCommonTxId,true);
+    return;
+  }
+ else {
+    String msg="Broken store, my last committed tx,machineId[" + myLastCommittedTx + ","+ masterForMyHighestCommonTxId+ "] but master says machine id for that txId is "+ masterForMastersHighestCommonTxId;
+    msgLog.logMessage(msg,true);
+    RuntimeException exception=new BranchedDataException(msg);
+    shutdown(exception);
+    throw exception;
   }
 }
