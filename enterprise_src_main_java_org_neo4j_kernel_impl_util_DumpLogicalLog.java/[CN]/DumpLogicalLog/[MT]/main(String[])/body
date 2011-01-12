@@ -4,16 +4,18 @@
       System.out.println("=== " + fileName + " ===");
       FileChannel fileChannel=new RandomAccessFile(fileName,"r").getChannel();
       ByteBuffer buffer=ByteBuffer.allocateDirect(9 + Xid.MAXGTRIDSIZE + Xid.MAXBQUALSIZE * 10);
-      buffer.clear();
-      buffer.limit(16);
-      if (fileChannel.read(buffer) != 16) {
+      long logVersion, prevLastCommittedTx;
+      try {
+        long[] header=LogIoUtils.readLogHeader(buffer,fileChannel,true);
+        logVersion=header[0];
+        prevLastCommittedTx=header[1];
+      }
+ catch (      IOException ex) {
         System.out.println("Unable to read timestamp information, " + "no records in logical log.");
+        System.out.println(ex.getMessage());
         fileChannel.close();
         return;
       }
-      buffer.flip();
-      long logVersion=buffer.getLong();
-      long prevLastCommittedTx=buffer.getLong();
       System.out.println("Logical log version: " + logVersion + " with prev committed tx["+ prevLastCommittedTx+ "]");
       long logEntriesFound=0;
       XaCommandFactory cf=new CommandFactory();
