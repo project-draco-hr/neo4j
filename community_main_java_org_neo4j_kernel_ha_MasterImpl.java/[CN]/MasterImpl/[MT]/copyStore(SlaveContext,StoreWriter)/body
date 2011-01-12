@@ -14,19 +14,25 @@
   context=new SlaveContext(context.machineId(),context.getEventIdentifier(),appliedTransactions);
   File baseDir=getBaseDir();
   for (  XaDataSource ds : sources) {
-    for (    File storefile : ds.listStoreFiles()) {
+    try {
+      ClosableIterable<File> files=ds.listStoreFiles();
       try {
-        FileInputStream stream=new FileInputStream(storefile);
-        try {
-          writer.write(relativePath(baseDir,storefile),stream.getChannel(),storefile.length() > 0);
-        }
+        for (        File storefile : files) {
+          FileInputStream stream=new FileInputStream(storefile);
+          try {
+            writer.write(relativePath(baseDir,storefile),stream.getChannel(),storefile.length() > 0);
+          }
   finally {
-          stream.close();
+            stream.close();
+          }
         }
       }
- catch (      IOException e) {
-        return new FailedResponse<Void>();
+  finally {
+        files.close();
       }
+    }
+ catch (    IOException e) {
+      return new FailedResponse<Void>();
     }
   }
   writer.done();
