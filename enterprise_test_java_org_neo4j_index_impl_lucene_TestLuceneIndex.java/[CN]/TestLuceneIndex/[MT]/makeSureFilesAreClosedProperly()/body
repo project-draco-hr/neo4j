@@ -1,46 +1,63 @@
 {
   commitTx();
-  Index<Node> index=nodeIndex("open-files",LuceneIndexProvider.EXACT_CONFIG);
-  long time=System.currentTimeMillis();
-  for (int i=0; System.currentTimeMillis() - time < 100 * 1000; i++) {
-    if (i % 10 == 0) {
-      if (i % 100 == 0) {
-        IndexHits<Node> itr=index.get("key","value5");
-        int size=0;
-        if (System.currentTimeMillis() % 2 == 0) {
-          try {
-            itr.getSingle();
-          }
- catch (          NoSuchElementException e) {
-          }
-          size=99;
-        }
+  final Index<Node> index=nodeIndex("open-files",LuceneIndexProvider.EXACT_CONFIG);
+  final long time=System.currentTimeMillis();
+  final CountDownLatch latch=new CountDownLatch(30);
+  for (int t=0; t < latch.getCount(); t++) {
+    new Thread(){
+      public void run(){
+        for (int i=0; System.currentTimeMillis() - time < 100 * 1000; i++) {
+          if (i % 10 == 0) {
+            if (i % 100 == 0) {
+              int size=0;
+              int type=(int)(System.currentTimeMillis() % 3);
+              if (type == 0) {
+                IndexHits<Node> itr=index.get("key","value5");
+                try {
+                  itr.getSingle();
+                }
+ catch (                NoSuchElementException e) {
+                }
+                size=99;
+              }
+ else               if (type == 1) {
+                IndexHits<Node> itr=index.get("key","value5");
+                for (; itr.hasNext() && size < 5; size++) {
+                  itr.next();
+                }
+                itr.close();
+              }
  else {
-          for (; itr.hasNext() && size < 5; size++) {
-            itr.next();
+                IndexHits<Node> itr=index.get("key","crap value");
+                if (System.currentTimeMillis() % 10 > 5) {
+                  IteratorUtil.count((Iterator<Node>)itr);
+                }
+              }
+              System.out.println("C iterated " + size + " only");
+            }
+ else {
+              int size=IteratorUtil.count((Iterator<Node>)index.get("key","value5"));
+              System.out.println("hit size:" + size);
+            }
           }
-          itr.close();
-        }
-        System.out.println("C iterated " + size + " only");
-      }
  else {
-        int size=IteratorUtil.count((Iterator)index.get("key","value5"));
-        System.out.println("hit size:" + size);
-      }
-    }
- else {
-      Transaction tx=graphDb.beginTx();
-      try {
-        for (int ii=0; ii < 20; ii++) {
-          Node node=graphDb.createNode();
-          index.add(node,"key","value" + ii);
-        }
-        tx.success();
-      }
+            Transaction tx=graphDb.beginTx();
+            try {
+              for (int ii=0; ii < 20; ii++) {
+                Node node=graphDb.createNode();
+                index.add(node,"key","value" + ii);
+              }
+              tx.success();
+            }
   finally {
-        tx.finish();
+              tx.finish();
+            }
+          }
+        }
+        latch.countDown();
       }
     }
-    if (i % 1000 == 0)     System.out.println(i);
+.start();
   }
+  latch.await();
 }
