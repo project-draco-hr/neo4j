@@ -21,31 +21,36 @@
     if (doCd || doLs) {
       specialCommand=true;
       if (doCd) {
-        commandsToRun.add("cd -a $n");
+        commandsToRun.add("cd -a $i");
       }
  else       if (doLs) {
-        commandsToRun.add("ls $n");
+        commandsToRun.add("ls $i");
       }
     }
  else     if (commandToRun != null) {
       commandsToRun.addAll(Arrays.asList(commandToRun.split(Pattern.quote("&&"))));
     }
-    if (getIndex(parser.arguments().get(0),Node.class,out) == null) {
+    if (getIndex(parser.arguments().get(0),getEntityType(parser),out) == null) {
       return null;
     }
-    Iterable<Node> result=query ? query(parser) : get(parser);
-    for (    Node node : result) {
-      printAndInterpretTemplateLines(commandsToRun,false,!specialCommand,node,getServer(),session,out);
+    IndexHits<PropertyContainer> result=query ? query(parser,out) : get(parser,out);
+    try {
+      for (      PropertyContainer hit : result) {
+        printAndInterpretTemplateLines(commandsToRun,false,!specialCommand,NodeOrRelationship.wrap(hit),getServer(),session,out);
+      }
+    }
+  finally {
+      result.close();
     }
   }
  else   if (index) {
-    index(parser,session);
+    index(parser,session,out);
   }
  else   if (remove) {
     if (getIndex(parser.arguments().get(0),Node.class,out) == null) {
       return null;
     }
-    remove(parser,session);
+    remove(parser,session,out);
   }
  else   if (getConfig) {
     displayConfig(parser,out);
