@@ -17,9 +17,10 @@
   if (parser.options().get("t") == null) {
     throw new ShellException("Must supply relationship type " + "(-t <relationship-type-name>)");
   }
-  RelationshipType type=this.getRelationshipType(parser.options().get("t"));
-  Direction direction=this.getDirection(parser.options().get("d"));
-  Node currentNode=getCurrent(session).asNode();
+  RelationshipType type=getRelationshipType(parser.options().get("t"));
+  Direction direction=getDirection(parser.options().get("d"));
+  NodeOrRelationship current=getCurrent(session);
+  Node currentNode=current.asNode();
   Node startNode=direction == Direction.OUTGOING ? currentNode : node;
   Node endNode=direction == Direction.OUTGOING ? node : currentNode;
   Relationship relationship=startNode.createRelationshipTo(endNode,type);
@@ -31,6 +32,12 @@
   }
   if (verbose) {
     out.println("Relationship " + getDisplayName(getServer(),session,relationship,true,false) + " created");
+  }
+  if (parser.options().containsKey("cd")) {
+    List<TypedId> wd=readCurrentWorkingDir(session);
+    wd.add(current.getTypedId());
+    writeCurrentWorkingDir(wd,session);
+    setCurrent(session,NodeOrRelationship.wrap(node));
   }
   return null;
 }
