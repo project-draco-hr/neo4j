@@ -1,14 +1,22 @@
 {
-  verify(master.getGraphDb(),haDbs.toArray(new GraphDatabaseService[haDbs.size()]));
-  shutdownDbs();
+  try {
+    verify(master.getGraphDb(),haDbs.toArray(new GraphDatabaseService[haDbs.size()]));
+  }
+  finally {
+    shutdownDbs();
+  }
   GraphDatabaseService masterOfflineDb=new EmbeddedGraphDatabase(dbPath(0).getAbsolutePath());
   GraphDatabaseService[] slaveOfflineDbs=new GraphDatabaseService[haDbs.size()];
   for (int i=1; i <= haDbs.size(); i++) {
     slaveOfflineDbs[i - 1]=new EmbeddedGraphDatabase(dbPath(i).getAbsolutePath());
   }
-  verify(masterOfflineDb,slaveOfflineDbs);
-  masterOfflineDb.shutdown();
-  for (  GraphDatabaseService db : slaveOfflineDbs) {
-    db.shutdown();
+  try {
+    verify(masterOfflineDb,slaveOfflineDbs);
+  }
+  finally {
+    masterOfflineDb.shutdown();
+    for (    GraphDatabaseService db : slaveOfflineDbs) {
+      db.shutdown();
+    }
   }
 }
