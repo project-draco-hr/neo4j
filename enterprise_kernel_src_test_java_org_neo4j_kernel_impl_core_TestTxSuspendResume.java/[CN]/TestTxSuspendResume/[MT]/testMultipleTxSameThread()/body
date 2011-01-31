@@ -1,0 +1,17 @@
+{
+  EmbeddedGraphDatabase neo2=new EmbeddedGraphDatabase(getStorePath("test-neo2"));
+  TransactionManager tm=neo2.getConfig().getTxModule().getTxManager();
+  tm.begin();
+  Node refNode=neo2.getReferenceNode();
+  Transaction tx1=tm.suspend();
+  tm.begin();
+  refNode.setProperty("test2","test");
+  Transaction tx2=tm.suspend();
+  tm.resume(tx1);
+  CommitThread thread=new CommitThread(tm,tx2);
+  thread.start();
+  refNode.removeProperty("test2");
+  assertTrue(thread.success());
+  tm.commit();
+  neo2.shutdown();
+}

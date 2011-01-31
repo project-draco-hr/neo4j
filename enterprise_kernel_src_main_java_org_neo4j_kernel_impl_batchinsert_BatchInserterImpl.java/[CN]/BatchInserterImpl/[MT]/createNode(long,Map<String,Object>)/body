@@ -1,0 +1,19 @@
+{
+  if (id < 0 || id > 0xFFFFFFFFL) {
+    throw new IllegalArgumentException("id=" + id);
+  }
+  int nodeId=(int)(id & 0xFFFFFFFF);
+  NodeStore nodeStore=neoStore.getNodeStore();
+  if (neoStore.getNodeStore().loadLightNode(nodeId)) {
+    throw new IllegalArgumentException("id=" + id + " already in use");
+  }
+  long highId=nodeStore.getHighId();
+  if (highId <= id) {
+    nodeStore.setHighId(nodeId + 1);
+  }
+  NodeRecord nodeRecord=new NodeRecord(nodeId);
+  nodeRecord.setInUse(true);
+  nodeRecord.setCreated();
+  nodeRecord.setNextProp(createPropertyChain(properties));
+  getNodeStore().updateRecord(nodeRecord);
+}
