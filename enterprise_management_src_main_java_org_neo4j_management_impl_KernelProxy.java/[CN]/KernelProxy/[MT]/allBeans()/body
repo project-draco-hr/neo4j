@@ -1,0 +1,39 @@
+{
+  List<Object> beans=new ArrayList<Object>();
+  Iterable<ObjectInstance> mbeans;
+  try {
+    mbeans=server.queryMBeans(kernel.getMBeanQuery(),null);
+  }
+ catch (  IOException handled) {
+    return beans;
+  }
+  for (  ObjectInstance instance : mbeans) {
+    String className=instance.getClassName();
+    Class<?> beanType=null;
+    try {
+      if (className != null)       beanType=Class.forName(className);
+    }
+ catch (    Throwable e) {
+    }
+    CREATE_PROXY:     while (beanType != null && beanType != Kernel.class) {
+      try {
+        beans.add(BeanProxy.load(server,beanType,instance.getObjectName()));
+      }
+ catch (      IllegalArgumentException couldNotCreateProxy) {
+        Class<?>[] interfaces=beanType.getInterfaces();
+        if (interfaces.length == 0) {
+          beanType=beanType.getSuperclass();
+          continue;
+        }
+        for (        Class<?> type : interfaces) {
+          if (type.getName().equals(beanType.getName() + "MBean")) {
+            beanType=type;
+            continue CREATE_PROXY;
+          }
+        }
+      }
+      break;
+    }
+  }
+  return beans;
+}
