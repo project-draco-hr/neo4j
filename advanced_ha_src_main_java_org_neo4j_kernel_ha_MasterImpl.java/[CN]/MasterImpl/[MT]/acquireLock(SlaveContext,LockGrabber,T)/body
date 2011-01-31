@@ -1,0 +1,20 @@
+{
+  Transaction otherTx=suspendOtherAndResumeThis(context);
+  try {
+    LockManager lockManager=graphDbConfig.getLockManager();
+    LockReleaser lockReleaser=graphDbConfig.getLockReleaser();
+    for (    T entity : entities) {
+      lockGrabber.grab(lockManager,lockReleaser,entity);
+    }
+    return packResponse(context,new LockResult(LockStatus.OK_LOCKED),ALL);
+  }
+ catch (  DeadlockDetectedException e) {
+    return packResponse(context,new LockResult(e.getMessage()),ALL);
+  }
+catch (  IllegalResourceException e) {
+    return packResponse(context,new LockResult(LockStatus.NOT_LOCKED),ALL);
+  }
+ finally {
+    suspendThisAndResumeOther(otherTx,context);
+  }
+}
