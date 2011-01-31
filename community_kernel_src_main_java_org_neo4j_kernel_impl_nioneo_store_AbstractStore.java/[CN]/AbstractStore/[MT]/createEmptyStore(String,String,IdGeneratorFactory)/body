@@ -1,0 +1,22 @@
+{
+  if (fileName == null) {
+    throw new IllegalArgumentException("Null filename");
+  }
+  File file=new File(fileName);
+  if (file.exists()) {
+    throw new IllegalStateException("Can't create store[" + fileName + "], file already exists");
+  }
+  try {
+    FileChannel channel=new FileOutputStream(fileName).getChannel();
+    int endHeaderSize=typeAndVersionDescriptor.getBytes().length;
+    ByteBuffer buffer=ByteBuffer.allocate(endHeaderSize);
+    buffer.put(typeAndVersionDescriptor.getBytes()).flip();
+    channel.write(buffer);
+    channel.force(false);
+    channel.close();
+  }
+ catch (  IOException e) {
+    throw new UnderlyingStorageException("Unable to create store " + fileName,e);
+  }
+  idGeneratorFactory.create(fileName + ".id");
+}

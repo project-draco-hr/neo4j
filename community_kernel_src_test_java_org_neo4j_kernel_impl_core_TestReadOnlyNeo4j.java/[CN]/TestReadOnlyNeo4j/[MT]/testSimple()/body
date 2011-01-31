@@ -1,0 +1,29 @@
+{
+  GraphDatabaseService readGraphDb=new EmbeddedReadOnlyGraphDatabase(getStorePath("neo-test"));
+  Transaction tx=readGraphDb.beginTx();
+  int count=0;
+  for (  Node node : readGraphDb.getAllNodes()) {
+    for (    Relationship rel : node.getRelationships()) {
+      rel.getOtherNode(node);
+      for (      String key : rel.getPropertyKeys()) {
+        rel.getProperty(key);
+      }
+    }
+    for (    String key : node.getPropertyKeys()) {
+      node.getProperty(key);
+    }
+    if (count++ >= 10) {
+      break;
+    }
+  }
+  tx.success();
+  tx.finish();
+  tx=readGraphDb.beginTx();
+  try {
+    readGraphDb.createNode();
+  }
+ catch (  ReadOnlyDbException e) {
+  }
+  tx.finish();
+  readGraphDb.shutdown();
+}
