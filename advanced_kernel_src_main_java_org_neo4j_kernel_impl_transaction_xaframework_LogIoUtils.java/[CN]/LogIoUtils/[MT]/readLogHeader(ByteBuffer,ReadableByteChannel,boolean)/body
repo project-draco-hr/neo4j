@@ -1,0 +1,19 @@
+{
+  buffer.clear();
+  buffer.limit(16);
+  if (channel.read(buffer) != 16) {
+    if (strict) {
+      throw new IOException("Unable to read log version and last committed tx");
+    }
+    return null;
+  }
+  buffer.flip();
+  long version=buffer.getLong();
+  long previousCommittedTx=buffer.getLong();
+  long logFormatVersion=(version >> 56) & 0xFF;
+  if (CURRENT_FORMAT_VERSION != logFormatVersion) {
+    throw new IOException(String.format("Unsupported log format version 0x%x (expected 0x%x)",logFormatVersion,CURRENT_FORMAT_VERSION));
+  }
+  version=version & 0x00FFFFFFFFFFFFFFL;
+  return new long[]{version,previousCommittedTx};
+}

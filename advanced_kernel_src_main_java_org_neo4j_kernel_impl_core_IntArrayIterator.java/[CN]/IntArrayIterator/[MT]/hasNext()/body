@@ -1,0 +1,64 @@
+{
+  if (nextElement != null) {
+    return true;
+  }
+  do {
+    if (currentTypeIterator.hasNext(nodeManager)) {
+      int nextId=currentTypeIterator.next(nodeManager);
+      try {
+        if (direction == Direction.BOTH) {
+          nextElement=new RelationshipProxy(nextId,nodeManager);
+          return true;
+        }
+        RelationshipImpl possibleElement=nodeManager.getRelForProxy(nextId);
+        if (direction == Direction.INCOMING && possibleElement.getEndNodeId() == fromNode.id) {
+          nextElement=new RelationshipProxy(nextId,nodeManager);
+          return true;
+        }
+ else         if (direction == Direction.OUTGOING && possibleElement.getStartNodeId() == fromNode.id) {
+          nextElement=new RelationshipProxy(nextId,nodeManager);
+          return true;
+        }
+      }
+ catch (      NotFoundException e) {
+      }
+    }
+    while (!currentTypeIterator.hasNext(nodeManager)) {
+      if (typeIterator.hasNext()) {
+        currentTypeIterator=typeIterator.next();
+      }
+ else       if (fromNode.getMoreRelationships(nodeManager)) {
+        Map<String,RelTypeElementIterator> newRels=new HashMap<String,RelTypeElementIterator>();
+        for (        RelTypeElementIterator itr : rels) {
+          RelTypeElementIterator newItr=itr;
+          if (itr.isSrcEmpty()) {
+            IntArray newSrc=fromNode.getIntArray(itr.getType());
+            if (newSrc != null) {
+              newItr=itr.setSrc(newSrc);
+            }
+          }
+          newRels.put(newItr.getType(),newItr);
+        }
+        if (types.length == 0) {
+          for (          Map.Entry<String,IntArray> entry : fromNode.getIntArrayMap().entrySet()) {
+            String type=entry.getKey();
+            RelTypeElementIterator itr=newRels.get(type);
+            if (itr == null || itr.isSrcEmpty()) {
+              itr=itr == null ? new FastRelTypeElement(type,fromNode,entry.getValue()) : itr.setSrc(entry.getValue());
+              newRels.put(type,itr);
+            }
+          }
+        }
+        rels.clear();
+        rels.addAll(newRels.values());
+        typeIterator=rels.iterator();
+        currentTypeIterator=typeIterator.hasNext() ? typeIterator.next() : new NullRelTypeElement();
+      }
+ else {
+        break;
+      }
+    }
+  }
+ while (currentTypeIterator.hasNext(nodeManager));
+  return false;
+}

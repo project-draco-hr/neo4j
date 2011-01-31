@@ -1,0 +1,36 @@
+{
+  PrimitiveElement element=cowMap.remove(cowTxId);
+  if (element == null) {
+    return;
+  }
+  ArrayMap<Integer,CowNodeElement> cowNodeElements=element.nodes;
+  Set<Entry<Integer,CowNodeElement>> nodeEntrySet=cowNodeElements.entrySet();
+  for (  Entry<Integer,CowNodeElement> entry : nodeEntrySet) {
+    NodeImpl node=nodeManager.getNodeIfCached(entry.getKey());
+    if (node != null) {
+      CowNodeElement nodeElement=entry.getValue();
+      if (param == Status.STATUS_COMMITTED) {
+        node.commitRelationshipMaps(nodeElement.relationshipAddMap,nodeElement.relationshipRemoveMap);
+        node.commitPropertyMaps(nodeElement.propertyAddMap,nodeElement.propertyRemoveMap);
+      }
+ else       if (param != Status.STATUS_ROLLEDBACK) {
+        throw new TransactionFailureException("Unknown transaction status: " + param);
+      }
+    }
+  }
+  ArrayMap<Integer,CowRelElement> cowRelElements=element.relationships;
+  Set<Entry<Integer,CowRelElement>> relEntrySet=cowRelElements.entrySet();
+  for (  Entry<Integer,CowRelElement> entry : relEntrySet) {
+    RelationshipImpl rel=nodeManager.getRelIfCached(entry.getKey());
+    if (rel != null) {
+      CowRelElement relElement=entry.getValue();
+      if (param == Status.STATUS_COMMITTED) {
+        rel.commitPropertyMaps(relElement.propertyAddMap,relElement.propertyRemoveMap);
+      }
+ else       if (param != Status.STATUS_ROLLEDBACK) {
+        throw new TransactionFailureException("Unknown transaction status: " + param);
+      }
+    }
+  }
+  cowMap.remove(cowTxId);
+}
