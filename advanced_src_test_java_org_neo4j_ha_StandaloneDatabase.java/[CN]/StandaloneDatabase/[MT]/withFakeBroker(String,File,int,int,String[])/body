@@ -1,0 +1,19 @@
+{
+  StandaloneDatabase standalone=new StandaloneDatabase(testMethodName,new Bootstrap(path,machineId){
+    @Override HighlyAvailableGraphDatabase start(    String storeDir,    Map<String,String> config){
+      final Broker broker;
+      if (machineId == masterId) {
+        broker=new FakeMasterBroker(machineId,storeDir);
+      }
+ else {
+        broker=new FakeSlaveBroker(new MasterClient("localhost",CommunicationProtocol.PORT,storeDir),masterId,machineId,storeDir);
+      }
+      HighlyAvailableGraphDatabase db=new HighlyAvailableGraphDatabase(storeDir,config,AbstractBroker.wrapSingleBroker(broker));
+      System.out.println("Started HA db (w/o zoo keeper)");
+      return db;
+    }
+  }
+);
+  standalone.awaitStarted();
+  return standalone;
+}
