@@ -1,0 +1,60 @@
+{
+  if (!acquireReadBuffer()) {
+    return false;
+  }
+  log("Get log");
+  try {
+    int read=connection.read();
+    if (read > 0) {
+      buffer.flip();
+      if (logToWrite.position() + read <= logLength) {
+        logToWrite.write(buffer);
+      }
+ else {
+        int readLimit=buffer.limit();
+        int logLimit=(int)(logLength - logToWrite.position());
+        buffer.limit(logLimit);
+        logToWrite.write(buffer);
+        buffer.limit(readLimit);
+        byte[] pushData=new byte[readLimit - logLimit];
+        buffer.get(pushData);
+        connection.pushBackReadData(pushData);
+      }
+      if (logToWrite.position() >= logLength) {
+        log("Log transfer complete");
+        if (xaDs.getCurrentLogVersion() < (masterVersion - 1)) {
+          setStatus(Status.SETUP_REQUEST);
+        }
+ else {
+          setStatus(Status.GET_MESSAGE);
+        }
+        logToWrite.close();
+        String newName=xaDs.getFileName(logVersionWriting);
+        File newLog=new File(newName);
+        if (newLog.exists()) {
+          log("Error new log file[" + newName + "] already exist");
+          close();
+        }
+        if (!tempFile.renameTo(new File(newName))) {
+          log("Unable to move log to " + newName);
+          close();
+        }
+        logVersionWriting=-1;
+        tempFile=null;
+        logToWrite=null;
+      }
+      return true;
+    }
+ else {
+      return false;
+    }
+  }
+ catch (  IOException e) {
+    close();
+    log("Error getting log.",e);
+    return true;
+  }
+ finally {
+    releaseReadBuffer();
+  }
+}

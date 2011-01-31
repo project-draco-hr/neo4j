@@ -1,0 +1,22 @@
+{
+  if (slaveList.size() == 0) {
+    return;
+  }
+  for (  XaDataSource xaDs : xaDsMgr.getAllRegisteredDataSources()) {
+    xaDs.rotateLogicalLog();
+  }
+  List<HandleSlaveConnection> newList=new CopyOnWriteArrayList<HandleSlaveConnection>();
+  for (  HandleSlaveConnection slave : slaveList) {
+    XaDataSource xaDs=xaDsMgr.getXaDataSource(slave.getXaDsName());
+    if (xaDs != null) {
+      long version=xaDs.getCurrentLogVersion() - 1;
+      if (!slave.offerLogToSlave(version)) {
+        System.out.println("Failed to offer log to slave: " + slave);
+      }
+ else {
+        newList.add(slave);
+      }
+    }
+  }
+  slaveList=newList;
+}

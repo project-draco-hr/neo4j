@@ -1,0 +1,36 @@
+{
+  List<Neo4jBackupTask> tasks=new ArrayList<Neo4jBackupTask>();
+  logger.info("Checking and preparing " + xaNames + " data sources.");
+  for (  String xaName : xaNames) {
+    XaDataSourceResource srcDataSource=srcResource.getDataSource(xaName);
+    if (srcDataSource == null) {
+      String message="XaDataSource not found in backup source: [" + xaName + "]";
+      logger.severe(message);
+      throw new RuntimeException(message);
+    }
+ else {
+      XaDataSourceResource dstDataSource=dstResource.getDataSource(xaName);
+      if (dstDataSource == null) {
+        String message="XaDataSource not found in backup destination: [" + xaName + "]";
+        logger.severe(message);
+        throw new RuntimeException(message);
+      }
+ else {
+        Neo4jBackupTask task=new Neo4jBackupTask(srcDataSource,dstDataSource);
+        task.prepare();
+        tasks.add(task);
+      }
+    }
+  }
+  if (tasks.size() == 0) {
+    String message="No data sources to backup were found.";
+    logger.severe(message);
+    throw new RuntimeException(message);
+  }
+ else {
+    for (    Neo4jBackupTask task : tasks) {
+      task.run();
+    }
+    logger.info("Completed backup of " + tasks + " data sources.");
+  }
+}

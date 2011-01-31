@@ -1,0 +1,60 @@
+{
+  if (!acquireReadBuffer()) {
+    return false;
+  }
+  try {
+    buffer.limit(17);
+    int read=connection.read();
+    if (read == 17) {
+      buffer.flip();
+      byte request=buffer.get();
+      if (request != HeaderConstants.OFFER_LOG) {
+        log("Unkown request: " + request);
+        close();
+        return true;
+      }
+      long version=buffer.getLong();
+      if (version < xaDs.getCurrentLogVersion()) {
+        log("Got wrong version [" + version + "]");
+        setStatus(Status.SETUP_NOT_OK);
+        return true;
+      }
+      if (version > masterVersion) {
+        masterVersion=version;
+      }
+      logLength=buffer.getLong();
+      log("Got offer: " + version + ","+ logLength);
+      if (!xaDs.hasLogicalLog(version)) {
+        try {
+          logVersionWriting=version;
+          do {
+            tempFile=new File(xaDs.getName() + "-logical-transfer.v" + Long.toString(version)+ "_"+ r.nextLong());
+          }
+ while (tempFile.exists());
+          logToWrite=new RandomAccessFile(tempFile,"rw").getChannel();
+          logToWrite.truncate(0);
+        }
+ catch (        IOException e) {
+          close();
+          throw new SocketException("Unable to setup logical log[" + version + "] for writing",e);
+        }
+        setStatus(Status.SETUP_OK);
+      }
+ else {
+        log("We already have log version[" + version + "]");
+        setStatus(Status.SETUP_NOT_OK);
+      }
+      retries=0;
+      return true;
+    }
+ else {
+      if (read > 0) {
+        connection.pushBackAllReadData();
+      }
+      return false;
+    }
+  }
+  finally {
+    releaseReadBuffer();
+  }
+}
