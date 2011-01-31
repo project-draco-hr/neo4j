@@ -1,0 +1,23 @@
+{
+  super.add(entityId,key,value);
+  try {
+    ensureLuceneDataInstantiated();
+    long id=entityId instanceof Long ? (Long)entityId : ((RelationshipId)entityId).id;
+    Document document=findDocument(id);
+    if (document != null) {
+      index.type.addToDocument(document,key,value);
+      writer.updateDocument(index.type.idTerm(id),document);
+    }
+ else {
+      document=index.getIdentifier().entityType.newDocument(entityId);
+      cachedDocuments.put(id,document);
+      index.type.addToDocument(document,key,value);
+      writer.addDocument(document);
+    }
+    invalidateSearcher();
+    return this;
+  }
+ catch (  IOException e) {
+    throw new RuntimeException(e);
+  }
+}
