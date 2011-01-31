@@ -1,0 +1,44 @@
+{
+  RelationshipType[] types=new RelationshipType[relationshipTypeNames.length];
+  for (int i=0; i < types.length; i++) {
+    types[i]=new RelType(relationshipTypeNames[i]);
+  }
+  final Iterator<Relationship> relationships=graphDb.getNodeById(nodeId).getRelationships(types).iterator();
+  return new SimpleIterator<RelationshipSpecification>(){
+    Relationship next=null;
+    @Override boolean hasNext(){
+      while (next == null && relationships.hasNext()) {
+        Relationship candidate=relationships.next();
+switch (direction) {
+case OUTGOING:
+          if (candidate.getStartNode().getId() == nodeId) {
+            next=candidate;
+            return true;
+          }
+        break;
+case INCOMING:
+      if (candidate.getEndNode().getId() == nodeId) {
+        next=candidate;
+        return true;
+      }
+    break;
+case BOTH:
+  next=candidate;
+return true;
+default :
+throw new IllegalArgumentException();
+}
+}
+return next != null;
+}
+@Override RelationshipSpecification getNext(){
+try {
+return new RelationshipSpecification(next);
+}
+  finally {
+next=null;
+}
+}
+}
+;
+}
