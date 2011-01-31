@@ -1,0 +1,28 @@
+{
+  StoreId storeId=null;
+  if (!new File(storeDir,"neostore").exists()) {
+    MASTER_ARBITRATION:     while (true) {
+      Pair<Master,Machine> master=broker.getMaster();
+      master=master.first() != null ? master : broker.getMasterReally();
+      if (master != null && master.first() != null) {
+        master.first().copyStore(new SlaveContext(machineId,0,new Pair[0]),new ToFileStoreWriter(storeDir));
+        break MASTER_ARBITRATION;
+      }
+ else       if (allowInit) {
+        StoreId myStoreId=new StoreId();
+        storeId=broker.createCluster(myStoreId);
+        if (storeId.equals(myStoreId)) {
+          break MASTER_ARBITRATION;
+        }
+      }
+      try {
+        Thread.sleep(100);
+      }
+ catch (      InterruptedException e) {
+        throw new RuntimeException("Startup interrupted",e);
+      }
+    }
+  }
+  newMaster(null,storeId,new Exception());
+  localGraph();
+}

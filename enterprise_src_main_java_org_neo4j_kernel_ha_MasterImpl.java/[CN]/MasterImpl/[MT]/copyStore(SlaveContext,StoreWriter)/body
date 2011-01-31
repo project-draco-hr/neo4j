@@ -1,0 +1,40 @@
+{
+  Collection<XaDataSource> sources=graphDbConfig.getTxModule().getXaDataSourceManager().getAllRegisteredDataSources();
+  Pair<String,Long>[] appliedTransactions=new Pair[sources.size()];
+  int i=0;
+  for (  XaDataSource ds : sources) {
+    appliedTransactions[i++]=Pair.of(ds.getName(),ds.getLastCommittedTxId());
+    try {
+      ds.rotateLogicalLog();
+    }
+ catch (    IOException e) {
+      return new FailedResponse<Void>();
+    }
+  }
+  context=new SlaveContext(context.machineId(),context.getEventIdentifier(),appliedTransactions);
+  File baseDir=getBaseDir();
+  for (  XaDataSource ds : sources) {
+    try {
+      ClosableIterable<File> files=ds.listStoreFiles();
+      try {
+        for (        File storefile : files) {
+          FileInputStream stream=new FileInputStream(storefile);
+          try {
+            writer.write(relativePath(baseDir,storefile),stream.getChannel(),storefile.length() > 0);
+          }
+  finally {
+            stream.close();
+          }
+        }
+      }
+  finally {
+        files.close();
+      }
+    }
+ catch (    IOException e) {
+      return new FailedResponse<Void>();
+    }
+  }
+  writer.done();
+  return packResponse(context,null,ALL);
+}

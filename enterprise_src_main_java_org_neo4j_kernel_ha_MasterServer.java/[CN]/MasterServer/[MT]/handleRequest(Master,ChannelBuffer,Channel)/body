@@ -1,0 +1,67 @@
+{
+  byte continuation=buffer.readByte();
+  if (continuation == ChunkingChannelBuffer.CONTINUATION_MORE) {
+    PartialRequest partialRequest=partialRequests.get(channel);
+    if (partialRequest == null) {
+      RequestType type=RequestType.values()[buffer.readByte()];
+      SlaveContext context=null;
+      if (type.includesSlaveContext()) {
+        context=readSlaveContext(buffer);
+      }
+      Pair<ChannelBuffer,ByteBuffer> targetBuffers=mapSlave(channel,context);
+      partialRequest=new PartialRequest(type,context,targetBuffers);
+      partialRequests.put(channel,partialRequest);
+    }
+    partialRequest.add(buffer);
+  }
+ else {
+    PartialRequest partialRequest=partialRequests.remove(channel);
+    RequestType type=null;
+    SlaveContext context=null;
+    Pair<ChannelBuffer,ByteBuffer> targetBuffers;
+    ChannelBuffer bufferToReadFrom=null;
+    ChannelBuffer bufferToWriteTo=null;
+    if (partialRequest == null) {
+      type=RequestType.values()[buffer.readByte()];
+      if (type.includesSlaveContext()) {
+        context=readSlaveContext(buffer);
+      }
+      targetBuffers=mapSlave(channel,context);
+      bufferToReadFrom=buffer;
+      bufferToWriteTo=targetBuffers.first();
+    }
+ else {
+      type=partialRequest.type;
+      context=partialRequest.slaveContext;
+      targetBuffers=partialRequest.buffers;
+      partialRequest.add(buffer);
+      bufferToReadFrom=targetBuffers.first();
+      bufferToWriteTo=ChannelBuffers.dynamicBuffer();
+    }
+    bufferToWriteTo.clear();
+    final ChunkingChannelBuffer chunkingBuffer=new ChunkingChannelBuffer(bufferToWriteTo,channel,MAX_FRAME_LENGTH);
+    final Response<?> response=type.caller.callMaster(realMaster,context,bufferToReadFrom,chunkingBuffer);
+    final ByteBuffer targetByteBuffer=targetBuffers.other();
+    final RequestType finalType=type;
+    final SlaveContext finalContext=context;
+    executor.submit(new Runnable(){
+      public void run(){
+        try {
+          finalType.serializer.write(response.response(),chunkingBuffer);
+          if (finalType.includesSlaveContext()) {
+            writeTransactionStreams(response.transactions(),chunkingBuffer,targetByteBuffer);
+          }
+          chunkingBuffer.done();
+          if (finalType == RequestType.FINISH || finalType == RequestType.PULL_UPDATES) {
+            unmapSlave(channel,finalContext);
+          }
+        }
+ catch (        IOException e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
+      }
+    }
+);
+  }
+}
