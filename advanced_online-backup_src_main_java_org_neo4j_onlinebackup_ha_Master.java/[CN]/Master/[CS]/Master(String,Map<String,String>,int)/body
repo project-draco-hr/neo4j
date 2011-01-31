@@ -1,0 +1,19 @@
+{
+  this.graphDb=new EmbeddedGraphDatabase(path,params);
+  this.xaDsMgr=graphDb.getConfig().getTxModule().getXaDataSourceManager();
+  for (  XaDataSource xaDs : xaDsMgr.getAllRegisteredDataSources()) {
+    xaDs.keepLogicalLogs(true);
+  }
+  this.port=listenPort;
+  try {
+    serverChannel=ServerSocketChannel.open();
+    serverChannel.configureBlocking(false);
+    serverChannel.socket().bind(new InetSocketAddress(listenPort));
+  }
+ catch (  IOException e) {
+    throw new SocketException("Unable to bind at port[" + listenPort + "]",e);
+  }
+  jobEater=new JobEater();
+  jobEater.addJob(new AcceptJob(this,serverChannel));
+  jobEater.start();
+}

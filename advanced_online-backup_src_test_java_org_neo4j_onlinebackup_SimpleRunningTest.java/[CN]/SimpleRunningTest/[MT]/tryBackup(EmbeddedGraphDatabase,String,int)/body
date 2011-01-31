@@ -1,0 +1,22 @@
+{
+  System.out.println("backing up to running EmbeddedGraphDatabase instance");
+  EmbeddedGraphDatabase bDb=Util.startGraphDbInstance(location);
+  Backup backupComp=Neo4jBackup.neo4jDataSource(graphDb,bDb);
+  configureBackup(backupComp);
+  backupComp.doBackup();
+  Util.stopGraphDb(bDb);
+  bDb=Util.startGraphDbInstance(location);
+  Transaction bTx=bDb.beginTx();
+  try {
+    List<Relationship> rels=new ArrayList<Relationship>();
+    for (    Relationship rel : bDb.getReferenceNode().getRelationships()) {
+      rels.add(rel);
+    }
+    assertEquals(relCount,rels.size());
+    bTx.success();
+  }
+  finally {
+    bTx.finish();
+  }
+  Util.stopGraphDb(bDb);
+}
