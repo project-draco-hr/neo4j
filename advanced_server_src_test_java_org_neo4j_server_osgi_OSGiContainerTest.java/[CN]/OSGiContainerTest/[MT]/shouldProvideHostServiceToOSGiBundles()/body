@@ -1,0 +1,18 @@
+{
+  HortonActivator hortonActivator=new HortonActivator();
+  createContainer(hortonActivator);
+  WhovilleActivator whoville=new WhovilleActivator();
+  whoville.produceJar(container.getBundleDirectory(),"whoville.jar");
+  String expectedBundleSymbolicName=whoville.getBundleSymbolicName();
+  container.start();
+  ServiceReference[] registeredServices=container.getFramework().getRegisteredServices();
+  assertNotNull(registeredServices);
+  Bundle serviceConsumerBundle=container.getBundles()[1];
+  BundleContext bundleContext=serviceConsumerBundle.getBundleContext();
+  assertThat((String)serviceConsumerBundle.getHeaders().get(Constants.BUNDLE_SYMBOLICNAME),is(expectedBundleSymbolicName));
+  assertThat(serviceConsumerBundle.getState(),is(Bundle.ACTIVE));
+  ServiceReference[] hostServices=bundleContext.getServiceReferences(ExampleHostService.class.getName(),null);
+  ExampleHostService service=(ExampleHostService)bundleContext.getService(hostServices[0]);
+  assertNotNull(service);
+  assertThat(hortonActivator.whovilleCommunicationCount,is(1));
+}
