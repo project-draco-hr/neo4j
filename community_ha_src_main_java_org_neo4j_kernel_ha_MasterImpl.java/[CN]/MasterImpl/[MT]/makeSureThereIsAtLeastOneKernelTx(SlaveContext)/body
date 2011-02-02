@@ -1,0 +1,18 @@
+{
+  Collection<Pair<String,Long>> txs=new ArrayList<Pair<String,Long>>();
+  for (  Pair<String,Long> txEntry : context.lastAppliedTransactions()) {
+    String resourceName=txEntry.first();
+    XaDataSource dataSource=graphDbConfig.getTxModule().getXaDataSourceManager().getXaDataSource(resourceName);
+    if (dataSource instanceof NeoStoreXaDataSource) {
+      if (txEntry.other() == 1 || txEntry.other() < dataSource.getLastCommittedTxId()) {
+        return context;
+      }
+      txs.add(Pair.of(resourceName,dataSource.getLastCommittedTxId() - 1));
+      System.out.println("Pushed in one extra tx " + dataSource.getLastCommittedTxId());
+    }
+ else {
+      txs.add(Pair.of(resourceName,dataSource.getLastCommittedTxId()));
+    }
+  }
+  return new SlaveContext(context.machineId(),context.getEventIdentifier(),txs.toArray(new Pair[0]));
+}
