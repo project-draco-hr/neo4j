@@ -1,26 +1,30 @@
 {
   StoreId storeId=null;
   if (!new File(storeDir,"neostore").exists()) {
-    MASTER_ARBITRATION:     while (true) {
-      Pair<Master,Machine> master=broker.getMaster();
-      master=master.first() != null ? master : broker.getMasterReally();
-      if (master != null && master.first() != null) {
-        master.first().copyStore(new SlaveContext(machineId,0,new Pair[0]),new ToFileStoreWriter(storeDir));
-        break MASTER_ARBITRATION;
-      }
- else       if (allowInit) {
-        StoreId myStoreId=new StoreId();
-        storeId=broker.createCluster(myStoreId);
-        if (storeId.equals(myStoreId)) {
-          break MASTER_ARBITRATION;
+    startupLatch=new CountDownLatch(1);
+    try {
+      long endTime=System.currentTimeMillis() + 10000;
+      MASTER_ARBITRATION:       while (System.currentTimeMillis() < endTime) {
+        Pair<Master,Machine> master=broker.getMaster();
+        master=master.first() != null ? master : broker.getMasterReally();
+        if (master != null && master.first() != null) {
+          if (copyStoreFromMaster(master)) {
+            break MASTER_ARBITRATION;
+          }
         }
+ else         if (allowInit) {
+          StoreId myStoreId=new StoreId();
+          storeId=broker.createCluster(myStoreId);
+          if (storeId.equals(myStoreId)) {
+            break MASTER_ARBITRATION;
+          }
+        }
+        sleepWithoutInterruption(100,"Startup interrupted");
       }
-      try {
-        Thread.sleep(100);
-      }
- catch (      InterruptedException e) {
-        throw new RuntimeException("Startup interrupted",e);
-      }
+    }
+  finally {
+      startupLatch.countDown();
+      startupLatch=null;
     }
   }
   newMaster(null,storeId,new Exception());
