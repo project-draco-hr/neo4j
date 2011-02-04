@@ -1,30 +1,35 @@
 {
   StoreId storeId=null;
   if (!new File(storeDir,"neostore").exists()) {
-    startupLatch=new CountDownLatch(1);
-    try {
-      long endTime=System.currentTimeMillis() + 10000;
-      MASTER_ARBITRATION:       while (System.currentTimeMillis() < endTime) {
-        Pair<Master,Machine> master=broker.getMaster();
-        master=master.first() != null ? master : broker.getMasterReally();
-        if (master != null && master.first() != null) {
-          if (copyStoreFromMaster(master)) {
-            break MASTER_ARBITRATION;
-          }
+    long endTime=System.currentTimeMillis() + 10000;
+    Exception exception=null;
+    while (System.currentTimeMillis() < endTime) {
+      Pair<Master,Machine> master=broker.getMaster();
+      master=master.first() != null ? master : broker.getMasterReally();
+      if (master != null && master.first() != null) {
+        try {
+          copyStoreFromMaster(master);
+          exception=null;
+          break;
         }
- else         if (allowInit) {
-          StoreId myStoreId=new StoreId();
-          storeId=broker.createCluster(myStoreId);
-          if (storeId.equals(myStoreId)) {
-            break MASTER_ARBITRATION;
-          }
+ catch (        Exception e) {
+          exception=e;
+          broker.getMasterReally();
+          msgLog.logMessage("Problems copying store from master",e);
         }
-        sleepWithoutInterruption(100,"Startup interrupted");
       }
+ else       if (allowInit) {
+        exception=null;
+        StoreId myStoreId=new StoreId();
+        storeId=broker.createCluster(myStoreId);
+        if (storeId.equals(myStoreId)) {
+          break;
+        }
+      }
+      sleepWithoutInterruption(300,"Startup interrupted");
     }
-  finally {
-      startupLatch.countDown();
-      startupLatch=null;
+    if (exception != null) {
+      throw new RuntimeException("Tried to join the cluster, but was unable to",exception);
     }
   }
   newMaster(null,storeId,new Exception());
