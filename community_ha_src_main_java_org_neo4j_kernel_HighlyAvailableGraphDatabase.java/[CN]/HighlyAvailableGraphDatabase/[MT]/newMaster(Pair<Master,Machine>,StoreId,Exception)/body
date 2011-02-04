@@ -1,21 +1,10 @@
 {
   try {
-    msgLog.logMessage("newMaster(" + master + ") called",e,true);
-    reevaluateMyself(master,storeId);
+    doNewMaster(master,storeId,e);
   }
- catch (  ZooKeeperException ee) {
-    ee.printStackTrace();
-  }
-catch (  HaCommunicationException ee) {
-    ee.printStackTrace();
-  }
-catch (  Throwable t) {
-    t.printStackTrace();
-    msgLog.logMessage("Reevaluation ended in unknown exception " + t + " so shutting down",true);
-    shutdown(t instanceof RuntimeException ? (RuntimeException)t : new RuntimeException(t));
-    if (t instanceof RuntimeException) {
-      throw (RuntimeException)t;
-    }
-    throw new RuntimeException(t);
+ catch (  BranchedDataException bde) {
+    System.out.println("Branched data occured, retrying");
+    getFreshDatabaseFromMaster(master);
+    doNewMaster(master,storeId,bde);
   }
 }

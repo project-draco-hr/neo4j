@@ -1,0 +1,20 @@
+{
+  msgLog.logMessage("Copying store from master");
+  Response<Void> response=master.first().copyStore(new SlaveContext(machineId,0,new Pair[0]),new ToFileStoreWriter(storeDir));
+  EmbeddedGraphDatabase tempDb=new EmbeddedGraphDatabase(storeDir);
+  try {
+    applyReceivedTransactions(response,tempDb.getConfig().getTxModule().getXaDataSourceManager(),new TxHandler(){
+      private final Set<String> visitedDataSources=new HashSet<String>();
+      @Override public void accept(      Triplet<String,Long,TxExtractor> tx,      XaDataSource dataSource){
+        if (visitedDataSources.add(tx.first())) {
+          dataSource.setLastCommittedTxId(tx.second() - 1);
+        }
+      }
+    }
+);
+  }
+  finally {
+    tempDb.shutdown();
+  }
+  msgLog.logMessage("Done copying store from master");
+}
