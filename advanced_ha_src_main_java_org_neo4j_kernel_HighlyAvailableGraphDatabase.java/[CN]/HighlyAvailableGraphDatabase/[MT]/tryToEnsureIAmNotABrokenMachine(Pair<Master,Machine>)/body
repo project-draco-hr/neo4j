@@ -2,6 +2,11 @@
   if (master.other().getMachineId() == machineId) {
     return;
   }
+ else   if (master.first() == null) {
+    RuntimeException cause=new RuntimeException("Unable to get master from ZK");
+    shutdown(cause,false);
+    throw cause;
+  }
   XaDataSource nioneoDataSource=getConfig().getTxModule().getXaDataSourceManager().getXaDataSource(Config.DEFAULT_DATA_SOURCE_NAME);
   long myLastCommittedTx=nioneoDataSource.getLastCommittedTxId();
   long highestCommonTxId=Math.min(myLastCommittedTx,master.other().getLastCommittedTxId());
@@ -23,7 +28,7 @@
     String msg="Broken store, my last committed tx,machineId[" + myLastCommittedTx + ","+ masterForMyHighestCommonTxId+ "] but master says machine id for that txId is "+ masterForMastersHighestCommonTxId;
     msgLog.logMessage(msg,true);
     RuntimeException exception=new BranchedDataException(msg);
-    shutdown(exception);
+    shutdown(exception,false);
     throw exception;
   }
 }
