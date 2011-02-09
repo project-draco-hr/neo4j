@@ -29,16 +29,23 @@
     }
   }
 ;
-  KernelExtensionLoader extensionLoader=new KernelExtensionLoader(){
-    public void init(){
-      extensions.initAll(msgLog);
+  boolean started=false;
+  try {
+    KernelExtensionLoader extensionLoader=new KernelExtensionLoader(){
+      public void init(){
+        extensions.initAll(msgLog);
+      }
+      public void load(){
+        extensions.loadAll(msgLog);
+      }
     }
-    public void load(){
-      extensions.loadAll(msgLog);
-    }
-  }
 ;
-  graphDbInstance.start(graphDbService,extensionLoader);
-  nodeManager=config.getGraphDbModule().getNodeManager();
-  extensionLoader.load();
+    graphDbInstance.start(graphDbService,extensionLoader);
+    nodeManager=config.getGraphDbModule().getNodeManager();
+    extensionLoader.load();
+    started=true;
+  }
+  finally {
+    if (!started)     extensions.shutdown(msgLog);
+  }
 }
