@@ -1,0 +1,69 @@
+{
+  if (type instanceof ParameterizedType) {
+    ParameterizedType paramType=(ParameterizedType)type;
+    Class<?> raw=(Class<?>)paramType.getRawType();
+    Type componentType=paramType.getActualTypeArguments()[0];
+    Class<?> component=null;
+    if (componentType instanceof Class<?>) {
+      component=(Class<?>)componentType;
+    }
+    if (Set.class == raw) {
+      TypeCaster caster=TYPES.get(component);
+      if (caster != null) {
+        return new ListParameterExtractor(caster,component,parameter,description){
+          @Override Object convert(          Object[] result){
+            return new HashSet<Object>(Arrays.asList(result));
+          }
+        }
+;
+      }
+    }
+ else     if (List.class == raw || Collection.class == raw || Iterable.class == raw) {
+      TypeCaster caster=TYPES.get(component);
+      if (caster != null) {
+        return new ListParameterExtractor(caster,component,parameter,description){
+          @Override Object convert(          Object[] result){
+            return Arrays.asList(result);
+          }
+        }
+;
+      }
+    }
+  }
+ else   if (type instanceof Class<?>) {
+    Class<?> raw=(Class<?>)type;
+    if (raw.isArray()) {
+      TypeCaster caster=TYPES.get(raw.getComponentType());
+      if (caster != null) {
+        return new ListParameterExtractor(caster,raw.getComponentType(),parameter,description){
+          @Override Object convert(          Object[] result){
+            return result;
+          }
+        }
+;
+      }
+    }
+ else {
+      TypeCaster caster=TYPES.get(raw);
+      if (caster != null) {
+        return new ParameterExtractor(caster,raw,parameter,description);
+      }
+    }
+  }
+ else   if (type instanceof GenericArrayType) {
+    GenericArrayType array=(GenericArrayType)type;
+    Type component=array.getGenericComponentType();
+    if (component instanceof Class<?>) {
+      TypeCaster caster=TYPES.get(component);
+      if (caster != null) {
+        return new ListParameterExtractor(caster,(Class<?>)component,parameter,description){
+          @Override Object convert(          Object[] result){
+            return result;
+          }
+        }
+;
+      }
+    }
+  }
+  throw new IllegalStateException("Unsupported parameter type: " + type);
+}
