@@ -1,18 +1,15 @@
 {
-  GraphDatabaseShellServer server=getServer(kernel);
-  if (server != null) {
-    throw new IllegalStateException("Shell already enabled");
-  }
-  if (config == null)   config=Collections.<String,Serializable>emptyMap();
+  ShellBootstrap bootstrap=new ShellBootstrap(config);
+  GraphDatabaseShellServer server=getState(kernel);
   try {
-    server=new GraphDatabaseShellServer(kernel.graphDatabase(),(Boolean)getConfig(config,StartClient.ARG_READONLY,Boolean.FALSE));
-    int port=(Integer)getConfig(config,StartClient.ARG_PORT,AbstractServer.DEFAULT_PORT);
-    String name=(String)getConfig(config,StartClient.ARG_NAME,AbstractServer.DEFAULT_NAME);
-    server.makeRemotelyAvailable(port,name);
+    if (server != null) {
+      bootstrap.enable(server);
+    }
+ else {
+      loadAgent(kernel,bootstrap);
+    }
   }
- catch (  Exception ex) {
-    if (server != null)     server.shutdown();
-    throw new IllegalStateException("Can't start remote Neo4j shell",ex);
+ catch (  RemoteException cause) {
+    throw new RuntimeException("Could not load remote shell",cause);
   }
-  setServer(kernel,server);
 }
