@@ -9,9 +9,9 @@
   this.graphDbService=graphDbService;
   IndexStore indexStore=graphDbInstance.getConfig().getIndexStore();
   this.indexManager=new IndexManagerImpl(this,indexStore);
-  extensions=new KernelExtension.KernelData(){
-    @Override public String version(){
-      return KERNEL_VERSION;
+  extensions=new KernelData(){
+    @Override public Version version(){
+      return Version.getKernel();
     }
     @Override public Config getConfig(){
       return config;
@@ -22,24 +22,20 @@
     @Override public GraphDatabaseService graphDatabase(){
       return EmbeddedGraphDbImpl.this.graphDbService;
     }
-    @Override protected void initialized(    KernelExtension extension){
-      if (extension instanceof IndexProvider) {
-        indexManager.addProvider(extension.getKey(),(IndexProvider)extension);
-      }
-    }
   }
 ;
   boolean started=false;
   try {
     KernelExtensionLoader extensionLoader=new KernelExtensionLoader(){
-      public void preInit(){
-        extensions.preInitAll(msgLog);
+      private Collection<KernelExtension<?>> loaded;
+      public void configureKernelExtensions(){
+        loaded=extensions.loadExtensionConfigurations(msgLog);
       }
-      public void init(){
-        extensions.initAll(msgLog);
+      public void initializeIndexProviders(){
+        extensions.loadIndexImplementations(indexManager,msgLog);
       }
       public void load(){
-        extensions.loadAll(msgLog);
+        extensions.loadExtensions(loaded,msgLog);
       }
     }
 ;
