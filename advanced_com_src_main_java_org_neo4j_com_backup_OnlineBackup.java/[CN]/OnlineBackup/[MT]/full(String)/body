@@ -1,11 +1,17 @@
 {
-  Response<Void> response=client.fullBackup(new ToFileStoreWriter(targetDirectory));
-  GraphDatabaseService targetDb=startTemporaryDb(targetDirectory);
+  BackupClient client=new BackupClient(hostNameOrIp,port,new NotYetExistingGraphDatabase(targetDirectory));
   try {
-    unpackResponse(response,targetDb,MasterUtil.txHandlerForFullCopy());
+    Response<Void> response=client.fullBackup(new ToFileStoreWriter(targetDirectory));
+    GraphDatabaseService targetDb=startTemporaryDb(targetDirectory);
+    try {
+      unpackResponse(response,targetDb,MasterUtil.txHandlerForFullCopy());
+    }
+  finally {
+      targetDb.shutdown();
+    }
   }
   finally {
-    targetDb.shutdown();
+    client.shutdown();
   }
   return this;
 }
