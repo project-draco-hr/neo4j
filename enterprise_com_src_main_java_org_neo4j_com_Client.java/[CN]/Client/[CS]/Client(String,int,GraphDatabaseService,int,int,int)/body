@@ -1,0 +1,33 @@
+{
+  this.graphDb=graphDb;
+  channelPool=new ResourcePool<Triplet<Channel,ChannelBuffer,ByteBuffer>>(maxConcurrentTransactions,maxUnusedPoolSize){
+    @Override protected Triplet<Channel,ChannelBuffer,ByteBuffer> create(){
+      ChannelFuture channelFuture=bootstrap.connect(address);
+      channelFuture.awaitUninterruptibly(5,TimeUnit.SECONDS);
+      Triplet<Channel,ChannelBuffer,ByteBuffer> channel=null;
+      if (channelFuture.isSuccess()) {
+        channel=Triplet.of(channelFuture.getChannel(),ChannelBuffers.dynamicBuffer(),ByteBuffer.allocateDirect(1024 * 1024));
+        msgLog.logMessage("Opened a new channel to " + address,true);
+        return channel;
+      }
+      String msg="Client could not connect to " + address;
+      msgLog.logMessage(msg,true);
+      throw new ComException(msg);
+    }
+    @Override protected boolean isAlive(    Triplet<Channel,ChannelBuffer,ByteBuffer> resource){
+      return resource.first().isConnected();
+    }
+    @Override protected void dispose(    Triplet<Channel,ChannelBuffer,ByteBuffer> resource){
+      Channel channel=resource.first();
+      if (channel.isConnected())       channel.close();
+    }
+  }
+;
+  address=new InetSocketAddress(hostNameOrIp,port);
+  executor=Executors.newCachedThreadPool();
+  bootstrap=new ClientBootstrap(new NioClientSocketChannelFactory(executor,executor));
+  bootstrap.setPipelineFactory(this);
+  String storeDir=((AbstractGraphDatabase)graphDb).getStoreDir();
+  msgLog=StringLogger.getLogger(storeDir + "/messages.log");
+  msgLog.logMessage("Client connected to " + hostNameOrIp + ":"+ port,true);
+}
