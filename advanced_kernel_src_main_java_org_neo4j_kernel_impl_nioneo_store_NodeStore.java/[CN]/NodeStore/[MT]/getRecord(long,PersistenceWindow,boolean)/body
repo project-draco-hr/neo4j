@@ -1,0 +1,22 @@
+{
+  Buffer buffer=window.getOffsettedBuffer(id);
+  long inUseByte=buffer.get();
+  boolean inUse=(inUseByte & 0x1) == Record.IN_USE.intValue();
+  if (!inUse) {
+    if (check) {
+      return null;
+    }
+    throw new InvalidRecordException("Record[" + id + "] not in use");
+  }
+  long nextRel=buffer.getInt();
+  long nextProp=buffer.getInt();
+  long relModifier=nextRel == Record.NO_NEXT_RELATIONSHIP.intValue() ? 0 : (inUseByte & 0xE) << 31;
+  long propModifier=nextProp == Record.NO_NEXT_PROPERTY.intValue() ? 0 : (inUseByte & 0xF0) << 28;
+  nextRel|=relModifier;
+  nextProp|=propModifier;
+  NodeRecord nodeRecord=new NodeRecord(id);
+  nodeRecord.setInUse(inUse);
+  nodeRecord.setNextRel(nextRel);
+  nodeRecord.setNextProp(nextProp);
+  return nodeRecord;
+}

@@ -1,8 +1,13 @@
 {
-  int id=(int)record.getId();
+  long id=record.getId();
   Buffer buffer=window.getOffsettedBuffer(id);
   if (record.inUse()) {
-    buffer.put(Record.IN_USE.byteValue()).putInt((int)record.getNextRel()).putInt((int)record.getNextProp());
+    long nextRel=record.getNextRel();
+    long nextProp=record.getNextProp();
+    short relModifier=nextRel == Record.NO_NEXT_RELATIONSHIP.intValue() ? 0 : (short)((nextRel & 0x700000000L) >> 31);
+    short propModifier=nextProp == Record.NO_NEXT_PROPERTY.intValue() ? 0 : (short)((nextProp & 0xF00000000L) >> 28);
+    short inUseUnsignedByte=(short)((Record.IN_USE.byteValue() | relModifier | propModifier));
+    buffer.put((byte)(inUseUnsignedByte & 0xFF)).putInt((int)nextRel).putInt((int)nextProp);
   }
  else {
     buffer.put(Record.NOT_IN_USE.byteValue());
