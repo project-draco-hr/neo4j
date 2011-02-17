@@ -1,0 +1,21 @@
+{
+  Buffer buffer=window.getOffsettedBuffer(id);
+  byte inUseByte=buffer.get();
+  boolean inUse=(inUseByte & 0x1) == Record.IN_USE.intValue();
+  if (!inUse) {
+    throw new InvalidRecordException("Record[" + id + "] not in use");
+  }
+  PropertyRecord record=new PropertyRecord(id);
+  int typeInt=buffer.getInt();
+  record.setType(getEnumType(typeInt & 0xFFFF));
+  record.setInUse(true);
+  record.setKeyIndexId(buffer.getInt());
+  record.setPropBlock(buffer.getLong());
+  long prevProp=buffer.getInt();
+  long prevModifier=prevProp == Record.NO_NEXT_PROPERTY.intValue() && (inUseByte & 0xF0) == 0 ? 0 : (inUseByte & 0xF0) << 28;
+  long nextProp=buffer.getInt();
+  long nextModifier=nextProp == Record.NO_NEXT_PROPERTY.intValue() && (typeInt & 0xF0000) == 0 ? 0 : (typeInt & 0xF0000) << 16;
+  record.setPrevProp(prevProp | prevModifier);
+  record.setNextProp(nextProp | nextModifier);
+  return record;
+}

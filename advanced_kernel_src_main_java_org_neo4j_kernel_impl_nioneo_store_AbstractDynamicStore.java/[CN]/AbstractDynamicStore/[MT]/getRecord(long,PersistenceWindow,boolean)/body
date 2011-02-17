@@ -1,0 +1,32 @@
+{
+  DynamicRecord record=new DynamicRecord(blockId);
+  Buffer buffer=window.getOffsettedBuffer(blockId);
+  byte inUseByte=buffer.get();
+  boolean inUse=(inUseByte & 0x1) == Record.IN_USE.intValue();
+  if (!inUse) {
+    throw new InvalidRecordException("Not in use, blockId[" + blockId + "]");
+  }
+  long prevBlock=buffer.getInt();
+  long prevModifier=prevBlock == Record.NO_NEXT_BLOCK.intValue() && (inUseByte & 0xF0) == 0 ? 0 : (inUseByte & 0xF0) << 28;
+  int dataSize=getBlockSize() - BLOCK_HEADER_SIZE;
+  int nrOfBytesInt=buffer.getInt();
+  int nrOfBytes=nrOfBytesInt & 0xFFFFFF;
+  long nextBlock=buffer.getInt();
+  long nextModifier=nextBlock == Record.NO_NEXT_BLOCK.intValue() && (nrOfBytesInt & 0xF000000) == 0 ? 0 : (nrOfBytesInt & 0xF000000) << 8;
+  if (nextBlock != Record.NO_NEXT_BLOCK.intValue() && nrOfBytes < dataSize || nrOfBytes > dataSize) {
+    throw new InvalidRecordException("Next block set[" + nextBlock + "] current block illegal size["+ nrOfBytes+ "/"+ dataSize+ "]");
+  }
+  record.setInUse(true);
+  record.setLength(nrOfBytes);
+  record.setPrevBlock(prevBlock | prevModifier);
+  record.setNextBlock(nextBlock | nextModifier);
+  if (loadData) {
+    byte byteArrayElement[]=new byte[nrOfBytes];
+    buffer.get(byteArrayElement);
+    record.setData(byteArrayElement);
+  }
+ else {
+    record.setIsLight(true);
+  }
+  return record;
+}
