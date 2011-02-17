@@ -1,0 +1,35 @@
+{
+  Buffer buffer=window.getOffsettedBuffer(id);
+  long inUseByte=buffer.get();
+  boolean inUse=(inUseByte & 0x1) == Record.IN_USE.intValue();
+  if (!inUse) {
+    if (checkInUse) {
+      return null;
+    }
+    throw new InvalidRecordException("Record[" + id + "] not in use");
+  }
+  long firstNode=buffer.getInt();
+  long firstNodeMod=(inUseByte & 0xE) << 31;
+  long secondNode=buffer.getInt();
+  long typeInt=buffer.getInt();
+  long secondNodeMod=(typeInt & 0x70000000L) << 4;
+  int type=(int)(typeInt & 0xFFFF);
+  RelationshipRecord record=new RelationshipRecord(id,firstNode | firstNodeMod,secondNode | secondNodeMod,type);
+  record.setInUse(inUse);
+  long firstPrevRel=buffer.getInt();
+  long firstPrevRelMod=firstPrevRel == Record.NO_NEXT_RELATIONSHIP.intValue() && (typeInt & 0xE000000) == 0 ? 0 : (typeInt & 0xE000000) << 7;
+  record.setFirstPrevRel(firstPrevRel | firstPrevRelMod);
+  long firstNextRel=buffer.getInt();
+  long firstNextRelMod=firstNextRel == Record.NO_NEXT_RELATIONSHIP.intValue() && (typeInt & 0x1C00000) == 0 ? 0 : (typeInt & 0x1C00000) << 10;
+  record.setFirstNextRel(firstNextRel | firstNextRelMod);
+  long secondPrevRel=buffer.getInt();
+  long secondPrevRelMod=secondPrevRel == Record.NO_NEXT_RELATIONSHIP.intValue() && (typeInt & 0x380000) == 0 ? 0 : (typeInt & 0x380000) << 13;
+  record.setSecondPrevRel(secondPrevRel | secondPrevRelMod);
+  long secondNextRel=buffer.getInt();
+  long secondNextRelMod=secondNextRel == Record.NO_NEXT_RELATIONSHIP.intValue() && (typeInt & 0x70000) == 0 ? 0 : (typeInt & 0x70000) << 16;
+  record.setSecondNextRel(secondNextRel | secondNextRelMod);
+  long nextProp=buffer.getInt();
+  long nextPropMod=nextProp == Record.NO_NEXT_PROPERTY.intValue() && (inUseByte & 0xF0) == 0 ? 0 : (inUseByte & 0xF0) << 28;
+  record.setNextProp(nextProp | nextPropMod);
+  return record;
+}
