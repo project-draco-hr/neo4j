@@ -1,0 +1,46 @@
+{
+  long idBelow=highMark - minus;
+  setHighId(IdType.NODE,idBelow);
+  setHighId(IdType.RELATIONSHIP,idBelow);
+  setHighId(IdType.PROPERTY,idBelow);
+  setHighId(IdType.ARRAY_BLOCK,idBelow);
+  setHighId(IdType.STRING_BLOCK,idBelow);
+  String propertyKey="name";
+  int intPropertyValue=123;
+  String stringPropertyValue="Long string, longer than would fit in shortstring";
+  long[] arrayPropertyValue=new long[]{1021L,321L,343212L};
+  Transaction tx=db.beginTx();
+  Node nodeBelowTheLine=db.createNode();
+  nodeBelowTheLine.setProperty(propertyKey,intPropertyValue);
+  assertEquals(idBelow,nodeBelowTheLine.getId());
+  Node nodeAboveTheLine=db.createNode();
+  nodeAboveTheLine.setProperty(propertyKey,stringPropertyValue);
+  Relationship relBelowTheLine=nodeBelowTheLine.createRelationshipTo(nodeAboveTheLine,this);
+  relBelowTheLine.setProperty(propertyKey,arrayPropertyValue);
+  assertEquals(idBelow,relBelowTheLine.getId());
+  Relationship relAboveTheLine=nodeAboveTheLine.createRelationshipTo(nodeBelowTheLine,this);
+  assertEquals(highMark,relAboveTheLine.getId());
+  assertEquals(highMark,nodeAboveTheLine.getId());
+  assertEquals(intPropertyValue,nodeBelowTheLine.getProperty(propertyKey));
+  assertEquals(stringPropertyValue,nodeAboveTheLine.getProperty(propertyKey));
+  assertTrue(Arrays.equals(arrayPropertyValue,(long[])relBelowTheLine.getProperty(propertyKey)));
+  tx.success();
+  tx.finish();
+  for (int i=0; i < 2; i++) {
+    assertEquals(nodeAboveTheLine,db.getNodeById(highMark));
+    assertEquals(idBelow,nodeBelowTheLine.getId());
+    assertEquals(highMark,nodeAboveTheLine.getId());
+    assertEquals(idBelow,relBelowTheLine.getId());
+    assertEquals(highMark,relAboveTheLine.getId());
+    assertEquals(relBelowTheLine,db.getNodeById(idBelow).getSingleRelationship(this,Direction.OUTGOING));
+    assertEquals(relAboveTheLine,db.getNodeById(idBelow).getSingleRelationship(this,Direction.INCOMING));
+    assertEquals(idBelow,relBelowTheLine.getId());
+    assertEquals(highMark,relAboveTheLine.getId());
+    assertEquals(asSet(asList(relBelowTheLine,relAboveTheLine)),asSet(asCollection(db.getNodeById(idBelow).getRelationships())));
+    if (i == 0) {
+      System.out.println("restarting");
+      db.shutdown();
+      db=new EmbeddedGraphDatabase(PATH);
+    }
+  }
+}

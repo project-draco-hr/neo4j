@@ -8,15 +8,13 @@
     }
     throw new InvalidRecordException("Record[" + id + "] not in use");
   }
-  long nextRel=buffer.getInt();
-  long nextProp=buffer.getInt();
-  long relModifier=nextRel == Record.NO_NEXT_RELATIONSHIP.intValue() && (inUseByte & 0xE) == 0 ? 0 : (inUseByte & 0xE) << 31;
-  long propModifier=nextProp == Record.NO_NEXT_PROPERTY.intValue() && (inUseByte & 0xF0) == 0 ? 0 : (inUseByte & 0xF0) << 28;
-  nextRel|=relModifier;
-  nextProp|=propModifier;
+  long nextRel=buffer.getUnsignedInt();
+  long nextProp=buffer.getUnsignedInt();
+  long relModifier=nextRel == IdGeneratorImpl.INTEGER_MINUS_ONE && (inUseByte & 0xE) == 0 ? 0 : (inUseByte & 0xE) << 31;
+  long propModifier=nextProp == IdGeneratorImpl.INTEGER_MINUS_ONE && (inUseByte & 0xF0) == 0 ? 0 : (inUseByte & 0xF0) << 28;
   NodeRecord nodeRecord=new NodeRecord(id);
   nodeRecord.setInUse(inUse);
-  nodeRecord.setNextRel(nextRel);
-  nodeRecord.setNextProp(nextProp);
+  nodeRecord.setNextRel(longFromIntAndMod(nextRel,relModifier));
+  nodeRecord.setNextProp(longFromIntAndMod(nextProp,propModifier));
   return nodeRecord;
 }
