@@ -6,20 +6,21 @@
   if (!inUse) {
     throw new InvalidRecordException("Not in use, blockId[" + blockId + "]");
   }
-  long prevBlock=buffer.getInt();
-  long prevModifier=prevBlock == Record.NO_NEXT_BLOCK.intValue() && (inUseByte & 0xF0) == 0 ? 0 : (inUseByte & 0xF0) << 28;
+  long prevBlock=buffer.getUnsignedInt();
+  long prevModifier=prevBlock == IdGeneratorImpl.INTEGER_MINUS_ONE && (inUseByte & 0xF0) == 0 ? 0 : (inUseByte & 0xF0) << 28;
   int dataSize=getBlockSize() - BLOCK_HEADER_SIZE;
   int nrOfBytesInt=buffer.getInt();
   int nrOfBytes=nrOfBytesInt & 0xFFFFFF;
-  long nextBlock=buffer.getInt();
-  long nextModifier=nextBlock == Record.NO_NEXT_BLOCK.intValue() && (nrOfBytesInt & 0xF000000) == 0 ? 0 : (nrOfBytesInt & 0xF000000) << 8;
-  if (nextBlock != Record.NO_NEXT_BLOCK.intValue() && nrOfBytes < dataSize || nrOfBytes > dataSize) {
+  long nextBlock=buffer.getUnsignedInt();
+  long nextModifier=nextBlock == IdGeneratorImpl.INTEGER_MINUS_ONE && (nrOfBytesInt & 0xF000000) == 0 ? 0 : (nrOfBytesInt & 0xF000000) << 8;
+  long longNextBlock=longFromIntAndMod(nextBlock,nextModifier);
+  if (longNextBlock != Record.NO_NEXT_BLOCK.intValue() && nrOfBytes < dataSize || nrOfBytes > dataSize) {
     throw new InvalidRecordException("Next block set[" + nextBlock + "] current block illegal size["+ nrOfBytes+ "/"+ dataSize+ "]");
   }
   record.setInUse(true);
   record.setLength(nrOfBytes);
-  record.setPrevBlock(prevBlock | prevModifier);
-  record.setNextBlock(nextBlock | nextModifier);
+  record.setPrevBlock(longFromIntAndMod(prevBlock,prevModifier));
+  record.setNextBlock(longNextBlock);
   if (loadData) {
     byte byteArrayElement[]=new byte[nrOfBytes];
     buffer.get(byteArrayElement);
