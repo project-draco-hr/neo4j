@@ -1,0 +1,31 @@
+{
+  char active='1';
+  File activeLog=new File(storeDir,"nioneo_logical.log.active");
+  FileChannel af=new RandomAccessFile(activeLog,"r").getChannel();
+  ByteBuffer buffer=ByteBuffer.allocate(1024);
+  af.read(buffer);
+  buffer.flip();
+  File activeLogBackup=new File(storeDir,"nioneo_logical.log.bak.active");
+  FileChannel activeCopy=new RandomAccessFile(activeLogBackup,"rw").getChannel();
+  activeCopy.write(buffer);
+  activeCopy.close();
+  af.close();
+  buffer.flip();
+  active=buffer.asCharBuffer().get();
+  buffer.clear();
+  File currentLog=new File(storeDir,"nioneo_logical.log." + active);
+  FileChannel source=new RandomAccessFile(currentLog,"r").getChannel();
+  File currentLogBackup=new File(storeDir,"nioneo_logical.log.bak." + active);
+  FileChannel dest=new RandomAccessFile(currentLogBackup,"rw").getChannel();
+  int read=-1;
+  do {
+    read=source.read(buffer);
+    buffer.flip();
+    dest.write(buffer);
+    buffer.clear();
+  }
+ while (read == 1024);
+  source.close();
+  dest.close();
+  return Pair.of(Pair.of(activeLog,activeLogBackup),Pair.of(currentLog,currentLogBackup));
+}
