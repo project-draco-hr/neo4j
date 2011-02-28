@@ -1,0 +1,24 @@
+{
+  String fileName=new File(PATH,"neostore.relationshiptypestore.db").getAbsolutePath();
+  Map<Object,Object> config=MapUtil.<Object,Object>genericMap(IdGeneratorFactory.class,new NoLimitidGeneratorFactory());
+  RelationshipTypeStore store=new RelationshipTypeStoreWithOneOlderVersion(fileName,config,IdType.RELATIONSHIP_TYPE);
+  int numberOfTypes=(int)pow(2,16);
+  for (int i=0; i < numberOfTypes; i++) {
+    String name="type" + i;
+    RelationshipTypeRecord record=new RelationshipTypeRecord(i);
+    record.setCreated();
+    record.setInUse(true);
+    int typeBlockId=(int)store.nextBlockId();
+    record.setTypeBlock(typeBlockId);
+    int length=name.length();
+    char[] chars=new char[length];
+    name.getChars(0,length,chars,0);
+    Collection<DynamicRecord> typeRecords=store.allocateTypeNameRecords(typeBlockId,chars);
+    for (    DynamicRecord typeRecord : typeRecords) {
+      record.addTypeRecord(typeRecord);
+    }
+    store.setHighId(store.getHighId() + 1);
+    store.updateRecord(record);
+  }
+  store.close();
+}
