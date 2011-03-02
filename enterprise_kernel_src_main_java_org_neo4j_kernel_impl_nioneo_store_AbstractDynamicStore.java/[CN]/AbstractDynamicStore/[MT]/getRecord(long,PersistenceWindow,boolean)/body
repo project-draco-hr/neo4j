@@ -1,18 +1,18 @@
 {
   DynamicRecord record=new DynamicRecord(blockId);
   Buffer buffer=window.getOffsettedBuffer(blockId);
-  byte inUseByte=buffer.get();
+  long inUseByte=buffer.get();
   boolean inUse=(inUseByte & 0x1) == Record.IN_USE.intValue();
   if (!inUse) {
     throw new InvalidRecordException("Not in use, blockId[" + blockId + "]");
   }
   long prevBlock=buffer.getUnsignedInt();
-  long prevModifier=prevBlock == IdGeneratorImpl.INTEGER_MINUS_ONE && (inUseByte & 0xF0) == 0 ? 0 : (inUseByte & 0xF0) << 28;
+  long prevModifier=(inUseByte & 0xF0L) << 28;
   int dataSize=getBlockSize() - BLOCK_HEADER_SIZE;
-  int nrOfBytesInt=buffer.getInt();
-  int nrOfBytes=nrOfBytesInt & 0xFFFFFF;
+  long nrOfBytesInt=buffer.getInt();
+  int nrOfBytes=(int)(nrOfBytesInt & 0xFFFFFF);
   long nextBlock=buffer.getUnsignedInt();
-  long nextModifier=nextBlock == IdGeneratorImpl.INTEGER_MINUS_ONE && (nrOfBytesInt & 0xF000000) == 0 ? 0 : (nrOfBytesInt & 0xF000000) << 8;
+  long nextModifier=(nrOfBytesInt & 0xF000000L) << 8;
   long longNextBlock=longFromIntAndMod(nextBlock,nextModifier);
   if (longNextBlock != Record.NO_NEXT_BLOCK.intValue() && nrOfBytes < dataSize || nrOfBytes > dataSize) {
     throw new InvalidRecordException("Next block set[" + nextBlock + "] current block illegal size["+ nrOfBytes+ "/"+ dataSize+ "]");
