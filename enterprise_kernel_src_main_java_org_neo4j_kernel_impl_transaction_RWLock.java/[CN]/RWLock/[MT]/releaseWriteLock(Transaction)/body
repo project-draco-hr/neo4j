@@ -1,0 +1,30 @@
+{
+  if (tx == null && (tx=ragManager.getCurrentTransaction()) == null) {
+    tx=new PlaceboTransaction();
+  }
+  TxLockElement tle=txLockElementMap.get(tx);
+  if (tle == null) {
+    throw new LockNotFoundException("No transaction lock element found for " + tx);
+  }
+  if (tle.writeCount == 0) {
+    throw new LockNotFoundException("" + tx + " don't have writeLock");
+  }
+  writeCount--;
+  tle.writeCount--;
+  if (tle.readCount == 0 && tle.writeCount == 0) {
+    if (!this.isMarked()) {
+      txLockElementMap.remove(tx);
+    }
+    ragManager.lockReleased(this,tx);
+  }
+  if (writeCount == 0 && waitingThreadList.size() > 0) {
+    do {
+      WaitElement we=waitingThreadList.removeLast();
+      we.waitingThread.interrupt();
+      if (we.lockType == LockType.WRITE) {
+        break;
+      }
+    }
+ while (waitingThreadList.size() > 0);
+  }
+}
