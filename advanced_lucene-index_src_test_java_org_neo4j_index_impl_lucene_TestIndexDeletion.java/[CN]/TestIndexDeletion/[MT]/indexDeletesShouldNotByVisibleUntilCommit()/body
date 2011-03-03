@@ -3,7 +3,11 @@
   WorkThread firstTx=createWorker();
   WorkThread secondTx=createWorker();
   firstTx.beginTransaction();
+  firstTx.waitForCommandToComplete();
   firstTx.removeFromIndex(key,value);
-  assertThat(secondTx.queryIndex(key,value),contains(node));
+  firstTx.waitForCommandToComplete();
+  IndexHits<Node> indexHits=secondTx.queryIndex(key,value);
+  secondTx.waitForCommandToComplete();
+  assertThat(indexHits,contains(node));
   firstTx.rollback();
 }
