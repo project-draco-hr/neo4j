@@ -3,14 +3,29 @@
   Node node=this.getCurrent(session).asNode();
   boolean caseInsensitiveFilters=parser.options().containsKey("i");
   boolean looseFilters=parser.options().containsKey("l");
-  Object[] relationshipTypes=parseRelationshipTypes(parser,out,caseInsensitiveFilters,looseFilters);
-  if (relationshipTypes.length == 0) {
-    out.println("No matching relationship types");
-    return null;
+  boolean quiet=parser.options().containsKey("q");
+  TraversalDescription description=Traversal.description();
+  String order=parser.options().get("o");
+  if (order != null) {
+    description=description.order(parseOrder(order));
   }
-  StopEvaluator stopEvaluator=parseStopEvaluator(parser);
-  ReturnableEvaluator returnableEvaluator=parseReturnableEvaluator(parser);
-  Order order=parseOrder(parser);
+  String relationshipTypes=parser.options().get("r");
+  if (relationshipTypes != null) {
+    Map<String,Object> types=parseFilter(relationshipTypes,out);
+    description=description.expand(toExpander(getServer().getDb(),null,types,caseInsensitiveFilters,looseFilters));
+  }
+  String uniqueness=parser.options().get("u");
+  if (uniqueness != null) {
+    description=description.uniqueness(parseUniqueness(uniqueness));
+  }
+  String depthLimit=parser.options().get("d");
+  if (depthLimit != null) {
+    description=description.prune(pruneAfterDepth(parseInt(depthLimit)));
+  }
+  String evaluator=parser.options().get("e");
+  if (evaluator != null) {
+    description=description.evaluator(parseEvaluator(evaluator));
+  }
   String filterString=parser.options().get("f");
   Map<String,Object> filterMap=filterString != null ? parseFilter(filterString,out) : null;
   String commandToRun=parser.options().get("c");
@@ -18,21 +33,22 @@
   if (commandToRun != null) {
     commandsToRun.addAll(Arrays.asList(commandToRun.split(Pattern.quote("&&"))));
   }
-  for (  Node traversedNode : node.traverse(order,stopEvaluator,returnableEvaluator,relationshipTypes)) {
+  for (  Path path : description.traverse(node)) {
     boolean hit=false;
     if (filterMap == null) {
       hit=true;
     }
  else {
+      Node endNode=path.endNode();
       Map<String,Boolean> matchPerFilterKey=new HashMap<String,Boolean>();
-      for (      String key : traversedNode.getPropertyKeys()) {
+      for (      String key : endNode.getPropertyKeys()) {
         for (        Map.Entry<String,Object> filterEntry : filterMap.entrySet()) {
           String filterKey=filterEntry.getKey();
           if (matchPerFilterKey.containsKey(filterKey)) {
             continue;
           }
           if (matches(newPattern(filterKey,caseInsensitiveFilters),key,caseInsensitiveFilters,looseFilters)) {
-            Object value=traversedNode.getProperty(key);
+            Object value=endNode.getProperty(key);
             String filterPattern=filterEntry.getValue() != null ? filterEntry.getValue().toString() : null;
             if (matches(newPattern(filterPattern,caseInsensitiveFilters),value.toString(),caseInsensitiveFilters,looseFilters)) {
               matchPerFilterKey.put(filterKey,true);
@@ -45,7 +61,7 @@
       }
     }
     if (hit) {
-      printAndInterpretTemplateLines(commandsToRun,false,true,NodeOrRelationship.wrap(traversedNode),getServer(),session,out);
+      printPath(path,quiet,session,out);
     }
   }
   return null;

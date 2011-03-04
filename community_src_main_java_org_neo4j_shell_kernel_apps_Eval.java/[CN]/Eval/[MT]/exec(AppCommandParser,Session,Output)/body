@@ -1,13 +1,10 @@
 {
-  if (scriptEngineManager == null) {
-    out.println("Scripting not available, make sure javax.script.* is available on " + "the classpath in the JVM the shell server runs in");
-    return null;
-  }
+  scripting=scripting != null ? scripting : new ScriptEngineViaReflection(getServer());
   String javascriptCode=parser.getLineWithoutApp();
-  javascriptCode=includeImports(javascriptCode);
-  Object scriptEngine=scriptEngineManager.getClass().getMethod("getEngineByName",String.class).invoke(scriptEngineManager,"javascript");
-  addToContext(scriptEngine,"db",getServer().getDb(),"out",out,"current",getCurrent(session).asPropertyContainer());
-  Object result=scriptEngine.getClass().getMethod("eval",String.class).invoke(scriptEngine,javascriptCode);
+  javascriptCode=decorateWithImports(javascriptCode,STANDARD_EVAL_IMPORTS);
+  Object scriptEngine=scripting.getJavascriptEngine();
+  scripting.addDefaultContext(scriptEngine,session,out);
+  Object result=scripting.interpret(scriptEngine,javascriptCode);
   if (result != null) {
     out.println(result.toString());
   }
