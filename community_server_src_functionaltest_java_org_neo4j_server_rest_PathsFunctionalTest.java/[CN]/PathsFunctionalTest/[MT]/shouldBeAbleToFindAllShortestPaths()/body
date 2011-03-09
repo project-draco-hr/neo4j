@@ -1,16 +1,14 @@
 {
-  Client client=Client.create();
-  WebResource resource=client.resource(functionalTestHelper.nodeUri(nodes[0]) + "/paths");
-  ClientResponse response=resource.type(MediaType.APPLICATION_JSON).accept(MediaType.APPLICATION_JSON).entity(getAllShortestPathPayLoad()).post(ClientResponse.class);
+  long[] nodes=createMoreComplexGraph();
+  ClientResponse response=postPathQuery(nodes,getAllShortestPathPayLoad(nodes[1]),"/paths");
   assertEquals(200,response.getStatus());
-  assertEquals(MediaType.APPLICATION_JSON_TYPE,response.getType());
   String entity=response.getEntity(String.class);
   Collection<?> result=(Collection<?>)JsonHelper.jsonToSingleValue(entity);
   assertEquals(2,result.size());
   for (  Object representation : result) {
     Map<?,?> path=(Map<?,?>)representation;
-    assertTrue(path.get("start").toString().endsWith("/node/" + nodes[0]));
-    assertTrue(path.get("end").toString().endsWith("/node/" + nodes[1]));
-    assertEquals(2,path.get("length"));
+    assertThatPathStartsWith(path,nodes[0]);
+    assertThatPathEndsWith(path,nodes[1]);
+    assertThatPathHasLength(path,2);
   }
 }
