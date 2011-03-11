@@ -1,8 +1,5 @@
 {
-  String path="target/var/performance";
-  Neo4jTestCase.deleteFileOrDirectory(new File(path));
-  final GraphDatabaseService db=new EmbeddedGraphDatabase(path);
-  final Index<Node> index=db.index().forNodes("index");
+  final Index<Node> index=nodeIndex("index",LuceneIndexImplementation.EXACT_CONFIG);
   final int count=5000;
   final int group=1;
   final int threads=3;
@@ -17,10 +14,10 @@
         try {
           for (int i=0; i < count; i+=group) {
             if (halt.get())             break;
-            Transaction tx=db.beginTx();
+            Transaction tx=graphDb.beginTx();
             try {
               for (int ii=0; ii < group; ii++) {
-                Node node=db.createNode();
+                Node node=graphDb.createNode();
                 index.get("key","value" + System.currentTimeMillis() % count).getSingle();
                 index.add(node,"key","value" + id.getAndIncrement());
               }
@@ -47,5 +44,4 @@
   }
   long t1=System.currentTimeMillis() - t;
   System.out.println(t1 + ", " + (double)t1 / (double)count);
-  db.shutdown();
 }
