@@ -1,0 +1,20 @@
+{
+  File lockFile=new File(storeDir,"lock");
+  if (!lockFile.exists()) {
+    if (!lockFile.createNewFile()) {
+      throw new IOException("Couldn't create lock file " + lockFile.getAbsolutePath());
+    }
+  }
+  FileChannel fileChannel=new RandomAccessFile(lockFile,"rw").getChannel();
+  java.nio.channels.FileLock fileChannelLock=null;
+  try {
+    fileChannelLock=fileChannel.tryLock();
+  }
+ catch (  OverlappingFileLockException e) {
+  }
+  if (fileChannelLock == null) {
+    fileChannel.close();
+    return null;
+  }
+  return new WindowsFileLock(lockFile,fileChannel,fileChannelLock);
+}

@@ -1,0 +1,20 @@
+{
+  String configValue=config != null ? (String)config.get(USE_MEMORY_MAPPED_BUFFERS) : null;
+  boolean memoryMapped=parseBoolean(configValue);
+  if (!memoryMapped || osIsWindows()) {
+    return new LogBufferFactory(){
+      public LogBuffer create(      FileChannel fileChannel) throws IOException {
+        return new DirectMappedLogBuffer(fileChannel);
+      }
+      public FileChannel combine(      FileChannel fileChannel,      LogBuffer logBuffer) throws IOException {
+        ByteBuffer byteBuffer=((DirectMappedLogBuffer)logBuffer).getByteBuffer().duplicate();
+        byteBuffer.flip();
+        return new BufferedReadableByteChannel(fileChannel,byteBuffer);
+      }
+    }
+;
+  }
+  return new DefaultLogBufferFactory(){
+  }
+;
+}
