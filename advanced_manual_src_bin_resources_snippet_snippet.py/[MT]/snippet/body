@@ -1,4 +1,4 @@
-def snippet(source=None, component=None, classifier='test-sources', tag=None, **other):
+def snippet(source=None, component=None, classifier='test-sources', tag=None, tablength='4', **other):
     for key in other:
         sys.stderr.write(("WARNING: unknown config key: '%s'\n" % key))
     if (not tag):
@@ -9,17 +9,29 @@ def snippet(source=None, component=None, classifier='test-sources', tag=None, **
         raise ValueError("'component' must be specified")
     if (not classifier):
         raise ValueError("'classifier' must be specified")
+    try:
+        tablength = (' ' * int(tablength))
+    except:
+        raise ValueError("'tablength' must be specified as an integer")
     START = ('START SNIPPET: %s' % tag)
     END = ('END SNIPPET: %s' % tag)
-    sourceFile = open(('target/%(classifier)s/%(component)s-%(classifier)s-jar/%(source)s' % locals()))
+    sourceFile = open((PATH_PATTERN % locals()))
     try:
+        buff = []
+        mindent = (1 << 32)
         emit = False
         for line in sourceFile:
             if (END in line):
                 emit = False
             if emit:
-                sys.stdout.write(line.replace(']]>', ']]>]]&gt;<![CDATA['))
+                line = line.replace(']]>', ']]>]]&gt;<![CDATA[')
+                meat = line.lstrip()
+                indent = line[:(- len(meat))].replace('\t', tablength)
+                mindent = min(mindent, len(indent))
+                buff.append((indent + meat))
             if (START in line):
                 emit = True
     finally:
         sourceFile.close()
+    for line in buff:
+        yield line[mindent:]
