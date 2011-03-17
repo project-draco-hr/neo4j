@@ -1,0 +1,30 @@
+{
+  IndexManager index=graphDb.index();
+  RelationshipIndex roles=index.forRelationships("roles");
+  Index<Node> actors=graphDb.index().forNodes("actors");
+  Index<Node> movies=index.forNodes("movies");
+  Node reeves=actors.get("name","Keanu Reeves").getSingle();
+  Node theMatrix=movies.get("title","The Matrix").getSingle();
+  IndexHits<Relationship> reevesAsNeoHits;
+  reevesAsNeoHits=roles.get("name","Neo",reeves,null);
+  Relationship reevesAsNeo=reevesAsNeoHits.iterator().next();
+  reevesAsNeoHits.close();
+  assertEquals("Neo",reevesAsNeo.getProperty("name"));
+  Node actor=reevesAsNeo.getStartNode();
+  assertEquals(reeves,actor);
+  IndexHits<Relationship> matrixNeoHits;
+  matrixNeoHits=roles.query("name","*eo",null,theMatrix);
+  Relationship matrixNeo=matrixNeoHits.iterator().next();
+  matrixNeoHits.close();
+  assertEquals("Neo",matrixNeo.getProperty("name"));
+  actor=matrixNeo.getStartNode();
+  assertEquals(reeves,actor);
+  roles.add(reevesAsNeo,"type",reevesAsNeo.getType().name());
+  IndexHits<Relationship> typeHits;
+  typeHits=roles.get("type","ACTS_IN",null,theMatrix);
+  Relationship typeNeo=typeHits.iterator().next();
+  typeHits.close();
+  assertEquals("Neo",typeNeo.getProperty("name"));
+  actor=matrixNeo.getStartNode();
+  assertEquals(reeves,actor);
+}
