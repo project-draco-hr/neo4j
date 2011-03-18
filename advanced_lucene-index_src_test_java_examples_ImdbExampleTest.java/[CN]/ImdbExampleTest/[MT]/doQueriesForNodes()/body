@@ -33,12 +33,13 @@
     assertTrue(((String)movie.getProperty("title")).startsWith("The"));
   }
   assertEquals(2,hits.size());
-  hits=movies.query("title",new QueryContext("The Matrix*").sort(Sort.RELEVANCE));
+  hits=movies.query("title",new QueryContext("The*").sort(Sort.RELEVANCE));
   float previous=Float.MAX_VALUE;
   for (  Node movie : hits) {
     assertTrue(hits.currentScore() <= previous);
     previous=hits.currentScore();
   }
+  assertEquals(2,hits.size());
   Node actor=actors.query(new TermQuery(new Term("name","Keanu Reeves"))).getSingle();
   assertEquals("Keanu Reeves",actor.getProperty("name"));
   Node theMatrix=movies.get("title","The Matrix").getSingle();
@@ -57,4 +58,15 @@
   assertEquals(theMatrix,hits.getSingle());
   hits=movies.query("title:*Matrix* AND year:1999");
   assertEquals(theMatrix,hits.getSingle());
+  QueryContext query=new QueryContext("title:*Matrix* year:1999").defaultOperator(Operator.AND);
+  hits=movies.query(query);
+  assertEquals(1,hits.size());
+  hits=movies.query("title",new QueryContext("*").sort("title"));
+  for (  Node hit : hits) {
+  }
+  assertEquals(3,hits.size());
+  hits=movies.query(new QueryContext("title:*").sort("year","title"));
+  for (  Node hit : hits) {
+  }
+  assertEquals(3,hits.size());
 }
