@@ -1,0 +1,21 @@
+{
+  if (directoryContainsDb(targetDirectory)) {
+    throw new RuntimeException(targetDirectory + " already contains a database");
+  }
+  BackupClient client=new BackupClient(hostNameOrIp,port,new NotYetExistingGraphDatabase(targetDirectory));
+  try {
+    Response<Void> response=client.fullBackup(new ToFileStoreWriter(targetDirectory));
+    GraphDatabaseService targetDb=startTemporaryDb(targetDirectory);
+    try {
+      unpackResponse(response,targetDb,MasterUtil.txHandlerForFullCopy());
+    }
+  finally {
+      targetDb.shutdown();
+    }
+  }
+  finally {
+    client.shutdown();
+    StringLogger.close(targetDirectory);
+  }
+  return this;
+}
