@@ -1,32 +1,20 @@
 {
   Args arguments=new Args(args);
+  checkArguments(arguments);
   boolean full=arguments.has(FULL);
-  boolean incremental=arguments.has(INCREMENTAL);
-  if (full & incremental || !(full | incremental)) {
-    System.out.println("Specify either " + dash(FULL) + " or "+ dash(INCREMENTAL));
-    exitAbnormally();
-  }
   String from=arguments.get(FROM,null);
-  if (from == null) {
-    System.out.println("Please specify " + dash(FROM));
-    exitAbnormally();
-  }
   String to=arguments.get(TO,null);
-  if (to == null) {
-    System.out.println("Specify target location with " + dash(TO) + " <target-directory>");
-    exitAbnormally();
-  }
   URI backupURI=null;
   try {
     backupURI=new URI(from);
   }
- catch (  URISyntaxException e1) {
-    System.out.println("Please properly specify a location to backup as a valid URI in the form {simple|ha}://host[:port]");
+ catch (  URISyntaxException e) {
+    System.out.println("Please properly specify a location to backup as a valid URI in the form <scheme>://<host>[:port], where scheme is the target database's running mode, eg ha");
     exitAbnormally();
   }
   String module=backupURI.getScheme();
   BackupExtensionService service=null;
-  if (module != null && !"simple".equals(module)) {
+  if (module != null && !DEFAULT_SCHEME.equals(module)) {
     try {
       service=Service.load(BackupExtensionService.class,module);
     }
