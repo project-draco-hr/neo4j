@@ -1,0 +1,42 @@
+{
+  Args arguments=new Args(args);
+  boolean full=arguments.has(FULL);
+  boolean incremental=arguments.has(INCREMENTAL);
+  if (full & incremental || !(full | incremental)) {
+    System.out.println("Specify either " + dash(FULL) + " or "+ dash(INCREMENTAL));
+    exitAbnormally();
+  }
+  String from=arguments.get(FROM,null);
+  if (from == null) {
+    System.out.println("Please specify " + dash(FROM));
+    exitAbnormally();
+  }
+  String to=arguments.get(TO,null);
+  if (to == null) {
+    System.out.println("Specify target location with " + dash(TO) + " <target-directory>");
+    exitAbnormally();
+  }
+  URI backupURI=null;
+  try {
+    backupURI=new URI(from);
+  }
+ catch (  URISyntaxException e1) {
+    System.out.println("Please properly specify a location to backup as a valid URI in the form {simple|ha}://host[:port]");
+    exitAbnormally();
+  }
+  String module=backupURI.getScheme();
+  BackupExtensionService service=null;
+  if (module != null && !"simple".equals(module)) {
+    try {
+      service=Service.load(BackupExtensionService.class,module);
+    }
+ catch (    NoSuchElementException e) {
+      System.out.println(String.format("%s was specified as a backup module but it was not found. Please make sure that the implementing service is on the classpath.",module));
+      exitAbnormally();
+    }
+  }
+  if (service != null) {
+    backupURI=service.resolve(from);
+  }
+  doBackup(full,backupURI,to);
+}
