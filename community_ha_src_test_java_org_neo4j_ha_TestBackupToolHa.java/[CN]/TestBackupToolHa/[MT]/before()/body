@@ -1,0 +1,14 @@
+{
+  if (osIsWindows())   return;
+  FileUtils.deleteDirectory(new File(PATH));
+  FileUtils.deleteDirectory(new File(BACKUP_PATH));
+  zk=new LocalhostZooKeeperCluster(TestBackupToolHa.class,2181,2182,2183);
+  instances=new ArrayList<GraphDatabaseService>();
+  for (int i=0; i < 3; i++) {
+    String storeDir=new File(PATH,"" + i).getAbsolutePath();
+    Map<String,String> config=stringMap(CONFIG_KEY_HA_MACHINE_ID,"" + i,CONFIG_KEY_HA_SERVER,"localhost:" + (6666 + i),CONFIG_KEY_HA_ZOO_KEEPER_SERVERS,zk.getConnectionString(),ENABLE_ONLINE_BACKUP,"port=" + (4444 + i));
+    GraphDatabaseService instance=new HighlyAvailableGraphDatabase(storeDir,config);
+    instances.add(instance);
+  }
+  representation=createSomeData(instances.get(1));
+}
