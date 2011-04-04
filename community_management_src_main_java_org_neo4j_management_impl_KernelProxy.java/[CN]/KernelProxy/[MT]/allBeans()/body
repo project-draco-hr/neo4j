@@ -2,7 +2,7 @@
   List<Object> beans=new ArrayList<Object>();
   Iterable<ObjectInstance> mbeans;
   try {
-    mbeans=server.queryMBeans(kernel.getMBeanQuery(),null);
+    mbeans=server.queryMBeans(mbeanQuery(),null);
   }
  catch (  IOException handled) {
     return beans;
@@ -13,26 +13,16 @@
     try {
       if (className != null)       beanType=Class.forName(className);
     }
- catch (    Throwable e) {
+ catch (    Exception ignored) {
     }
-    CREATE_PROXY:     while (beanType != null && beanType != Kernel.class) {
+catch (    LinkageError ignored) {
+    }
+    if (beanType != null) {
       try {
         beans.add(BeanProxy.load(server,beanType,instance.getObjectName()));
       }
- catch (      IllegalArgumentException couldNotCreateProxy) {
-        Class<?>[] interfaces=beanType.getInterfaces();
-        if (interfaces.length == 0) {
-          beanType=beanType.getSuperclass();
-          continue;
-        }
-        for (        Class<?> type : interfaces) {
-          if (type.getName().equals(beanType.getName() + "MBean")) {
-            beanType=type;
-            continue CREATE_PROXY;
-          }
-        }
+ catch (      Exception ignored) {
       }
-      break;
     }
   }
   return beans;
