@@ -1,0 +1,42 @@
+{
+  ResultConverter result=ResultConverter.get(method.getGenericReturnType());
+  Type[] types=method.getGenericParameterTypes();
+  Annotation[][] annotations=method.getParameterAnnotations();
+  SourceExtractor sourceExtractor=null;
+  DataExtractor[] extractors=new DataExtractor[types.length];
+  for (int i=0; i < types.length; i++) {
+    Description description=null;
+    Parameter param=null;
+    Source source=null;
+    for (    Annotation annotation : annotations[i]) {
+      if (annotation instanceof Description) {
+        description=(Description)annotation;
+      }
+ else       if (annotation instanceof Parameter) {
+        param=(Parameter)annotation;
+      }
+ else       if (annotation instanceof Source) {
+        source=(Source)annotation;
+      }
+    }
+    if (param != null && source != null) {
+      throw new IllegalStateException(String.format("Method parameter %d of %s cannot be retrieved as both Parameter and Source",Integer.valueOf(i),method));
+    }
+ else     if (source != null) {
+      if (types[i] != discovery) {
+        throw new IllegalStateException("Source parameter type must equal the discovery type.");
+      }
+      if (sourceExtractor != null) {
+        throw new IllegalStateException("Server Extension methods may have at most one Source parameter.");
+      }
+      extractors[i]=sourceExtractor=new SourceExtractor(source,description);
+    }
+ else     if (param != null) {
+      extractors[i]=parameterExtractor(types[i],param,description);
+    }
+ else {
+      throw new IllegalStateException("Parameters of Server Extension methods must be annotated as either Source or Parameter.");
+    }
+  }
+  return new PluginMethod(nameOf(method),discovery,plugin,result,method,extractors,method.getAnnotation(Description.class));
+}
