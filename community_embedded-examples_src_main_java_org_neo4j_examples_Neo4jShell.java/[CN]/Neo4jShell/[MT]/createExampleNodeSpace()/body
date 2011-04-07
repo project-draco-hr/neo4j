@@ -1,0 +1,29 @@
+{
+  Transaction tx=graphDb.beginTx();
+  try {
+    System.out.println("Creating example node space ...");
+    Random random=new Random();
+    Node usersReferenceNode=graphDb.createNode();
+    graphDb.getReferenceNode().createRelationshipTo(usersReferenceNode,RelTypes.USERS_REFERENCE);
+    List<Node> users=new ArrayList<Node>();
+    for (int id=0; id < 100; id++) {
+      Node userNode=createUser(formUserName(id));
+      usersReferenceNode.createRelationshipTo(userNode,RelTypes.USER);
+      if (id > 10) {
+        int numberOfFriends=random.nextInt(5);
+        Set<Node> knows=new HashSet<Node>();
+        for (int i=0; i < numberOfFriends; i++) {
+          Node friend=users.get(random.nextInt(users.size()));
+          if (knows.add(friend)) {
+            userNode.createRelationshipTo(friend,RelTypes.KNOWS);
+          }
+        }
+      }
+      users.add(userNode);
+    }
+    tx.success();
+  }
+  finally {
+    tx.finish();
+  }
+}

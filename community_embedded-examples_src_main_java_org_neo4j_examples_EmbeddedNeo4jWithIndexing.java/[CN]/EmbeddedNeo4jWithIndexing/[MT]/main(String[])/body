@@ -1,0 +1,32 @@
+{
+  graphDb=new EmbeddedGraphDatabase(DB_PATH);
+  indexService=graphDb.index().forNodes("nodes");
+  registerShutdownHook();
+  Transaction tx=graphDb.beginTx();
+  try {
+    Node usersReferenceNode=graphDb.createNode();
+    graphDb.getReferenceNode().createRelationshipTo(usersReferenceNode,RelTypes.USERS_REFERENCE);
+    for (int id=0; id < 100; id++) {
+      Node userNode=createAndIndexUser(idToUserName(id));
+      usersReferenceNode.createRelationshipTo(userNode,RelTypes.USER);
+    }
+    System.out.println("Users created");
+    int idToFind=45;
+    Node foundUser=indexService.get(USERNAME_KEY,idToUserName(idToFind)).getSingle();
+    System.out.println("The username of user " + idToFind + " is "+ foundUser.getProperty(USERNAME_KEY));
+    for (    Relationship relationship : usersReferenceNode.getRelationships(RelTypes.USER,Direction.OUTGOING)) {
+      Node user=relationship.getEndNode();
+      indexService.remove(user,USERNAME_KEY,user.getProperty(USERNAME_KEY));
+      user.delete();
+      relationship.delete();
+    }
+    usersReferenceNode.getSingleRelationship(RelTypes.USERS_REFERENCE,Direction.INCOMING).delete();
+    usersReferenceNode.delete();
+    tx.success();
+  }
+  finally {
+    tx.finish();
+  }
+  System.out.println("Shutting down database ...");
+  shutdown();
+}

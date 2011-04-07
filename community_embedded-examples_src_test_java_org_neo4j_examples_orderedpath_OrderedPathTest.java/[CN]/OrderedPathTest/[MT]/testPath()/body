@@ -1,0 +1,36 @@
+{
+  final ArrayList<RelationshipType> orderedPathContext=new ArrayList<RelationshipType>();
+  orderedPathContext.add(REL1);
+  orderedPathContext.add(withName("REL2"));
+  orderedPathContext.add(withName("REL3"));
+  TraversalDescription td=Traversal.description().evaluator(new Evaluator(){
+    public Evaluation evaluate(    Path path){
+      if (path.length() == 0) {
+        return Evaluation.EXCLUDE_AND_CONTINUE;
+      }
+      String currentName=path.lastRelationship().getType().name();
+      String relationshipType=orderedPathContext.get(path.length() - 1).name();
+      if (path.length() == orderedPathContext.size()) {
+        if (currentName.equals(relationshipType)) {
+          return Evaluation.INCLUDE_AND_PRUNE;
+        }
+ else {
+          return Evaluation.EXCLUDE_AND_PRUNE;
+        }
+      }
+ else {
+        if (currentName.equals(relationshipType)) {
+          return Evaluation.EXCLUDE_AND_CONTINUE;
+        }
+ else {
+          return Evaluation.EXCLUDE_AND_PRUNE;
+        }
+      }
+    }
+  }
+);
+  Traverser t=td.traverse(db.getNodeById(1));
+  for (  Path path : t) {
+    System.out.println(path);
+  }
+}
