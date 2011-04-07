@@ -1,0 +1,29 @@
+{
+  try {
+    StartupHealthCheck startupHealthCheck=new StartupHealthCheck(rules());
+    Jetty6WebServer webServer=new Jetty6WebServer();
+    server=new NeoServerWithEmbeddedWebServer(getGraphDatabaseFactory(),new AddressResolver(),startupHealthCheck,getConfigFile(),webServer,getServerModules());
+    server.start();
+    log.info("Server started on [%s]",server.baseUri());
+    Runtime.getRuntime().addShutdownHook(new Thread(){
+      @Override public void run(){
+        log.info("Neo4j Server shutdown initiated by kill signal");
+        if (server != null) {
+          server.stop();
+        }
+      }
+    }
+);
+    return OK;
+  }
+ catch (  TransactionFailureException tfe) {
+    tfe.printStackTrace();
+    log.error(String.format("Failed to start Neo Server on port [%d], because ",server.getWebServerPort()) + tfe + ". Another process may be using database location "+ server.getDatabase().getLocation());
+    return GRAPH_DATABASE_STARTUP_ERROR_CODE;
+  }
+catch (  Exception e) {
+    e.printStackTrace();
+    log.error("Failed to start Neo Server on port [%s]",server.getWebServerPort());
+    return WEB_SERVER_STARTUP_ERROR_CODE;
+  }
+}
