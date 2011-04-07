@@ -1,0 +1,18 @@
+{
+  String indexName="favorites";
+  ClientResponse response=Client.create().resource(functionalTestHelper.nodeIndexUri()).type(MediaType.APPLICATION_JSON).accept(MediaType.APPLICATION_JSON).entity("{\"name\":\"fulltext\", \"config\":{\"type\":\"fulltext\",\"provider\":\"lucene\"}}").post(ClientResponse.class);
+  assertEquals(201,response.getStatus());
+  assertNotNull(response.getHeaders().getFirst("Location"));
+  assertEquals(1,helper.getNodeIndexes().length);
+  assertNotNull(helper.getNodeIndex(indexName));
+  String key="key";
+  String value="value with   spaces  in it";
+  value=URIHelper.encode(value);
+  helper.createNodeIndex(indexName);
+  response=Client.create().resource(functionalTestHelper.indexNodeUri(indexName,key,value)).entity(JsonHelper.createJsonFrom(functionalTestHelper.nodeUri(0)),MediaType.APPLICATION_JSON).accept(MediaType.APPLICATION_JSON).post(ClientResponse.class);
+  assertEquals(Status.CREATED.getStatusCode(),response.getStatus());
+  response=Client.create().resource(functionalTestHelper.indexNodeUri(indexName,key,value)).accept(MediaType.APPLICATION_JSON).get(ClientResponse.class);
+  assertEquals(200,response.getStatus());
+  Collection<?> hits=(Collection<?>)JsonHelper.jsonToSingleValue(response.getEntity(String.class));
+  assertEquals(1,hits.size());
+}
