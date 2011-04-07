@@ -1,0 +1,24 @@
+{
+  String fromString=parser.options().get("from");
+  String toString=parser.arguments().get(0);
+  String algo=parser.options().get("a");
+  String maxDepthString=parser.options().get("m");
+  boolean quietPrint=parser.options().containsKey("q");
+  boolean caseInsensitiveFilters=parser.options().containsKey("i");
+  boolean looseFilters=parser.options().containsKey("l");
+  int maxDepth=maxDepthString != null ? Integer.parseInt(maxDepthString) : Integer.MAX_VALUE;
+  fromString=fromString != null ? fromString : String.valueOf(this.getCurrent(session).getId());
+  Map<String,Object> filter=parseFilter(parser.options().get("f"),out);
+  RelationshipExpander expander=toExpander(getServer().getDb(),Direction.BOTH,filter,caseInsensitiveFilters,looseFilters);
+  PathFinder<Path> finder=expander != null ? getPathFinder(algo,expander,maxDepth,out) : null;
+  if (finder != null) {
+    Node fromNode=getNodeById(Long.parseLong(fromString));
+    Node toNode=getNodeById(Long.parseLong(toString));
+    boolean single=parser.options().containsKey("s");
+    Iterable<Path> paths=single ? Arrays.asList(finder.findSinglePath(fromNode,toNode)) : finder.findAllPaths(fromNode,toNode);
+    for (    Path path : paths) {
+      printPath(path,quietPrint,session,out);
+    }
+  }
+  return null;
+}

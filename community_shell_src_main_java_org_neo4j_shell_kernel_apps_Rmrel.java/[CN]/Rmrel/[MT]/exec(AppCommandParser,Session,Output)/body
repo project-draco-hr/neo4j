@@ -1,0 +1,29 @@
+{
+  assertCurrentIsNode(session);
+  if (parser.arguments().isEmpty()) {
+    throw new ShellException("Must supply relationship id to delete as the first argument");
+  }
+  Node currentNode=this.getCurrent(session).asNode();
+  Relationship rel=findRel(currentNode,Long.parseLong(parser.arguments().get(0)));
+  rel.delete();
+  if (!currentNode.equals(getServer().getDb().getReferenceNode()) && !currentNode.getRelationships().iterator().hasNext()) {
+    throw new ShellException("It would result in the current node " + currentNode + " to be decoupled (no relationships left)");
+  }
+  Node otherNode=rel.getOtherNode(currentNode);
+  if (!otherNode.getRelationships().iterator().hasNext()) {
+    boolean deleteOtherNodeWhenEmpty=parser.options().containsKey("d");
+    if (!deleteOtherNodeWhenEmpty) {
+      throw new ShellException("Since the node " + getDisplayName(getServer(),session,otherNode,false) + " would be decoupled after this, you must supply the"+ " -d (for delete-when-decoupled) so that the other node "+ "("+ otherNode+ ") may be deleted");
+    }
+    otherNode.delete();
+  }
+ else {
+    if (!this.hasPathToRefNode(otherNode)) {
+      throw new ShellException("It would result in " + otherNode + " to be recursively decoupled with the reference node");
+    }
+    if (!this.hasPathToRefNode(currentNode)) {
+      throw new ShellException("It would result in " + currentNode + " to be recursively decoupled with the reference node");
+    }
+  }
+  return null;
+}

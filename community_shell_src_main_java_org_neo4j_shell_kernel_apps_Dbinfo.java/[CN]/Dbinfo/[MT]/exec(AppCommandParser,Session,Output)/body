@@ -1,0 +1,67 @@
+{
+  Kernel kernel=getKernel();
+  boolean list=parser.options().containsKey("l"), get=parser.options().containsKey("g");
+  if ((list && get) || (!list && !get)) {
+    StringBuilder usage=new StringBuilder();
+    getUsage(usage);
+    usage.append(".\n");
+    out.print(usage.toString());
+    return null;
+  }
+  MBeanServer mbeans=getPlatformMBeanServer();
+  String bean=null;
+  String[] attributes=null;
+  if (list) {
+    bean=parser.options().get("l");
+  }
+ else   if (get) {
+    bean=parser.options().get("g");
+    attributes=parser.arguments().toArray(new String[parser.arguments().size()]);
+  }
+  if (bean == null) {
+    StringBuilder result=new StringBuilder();
+    availableBeans(mbeans,kernel,result);
+    out.print(result.toString());
+    return null;
+  }
+  ObjectName mbean;
+{
+    mbean=kernel.getMBeanQuery();
+    Hashtable<String,String> properties=new Hashtable<String,String>(mbean.getKeyPropertyList());
+    properties.put("name",bean);
+    try {
+      Iterator<ObjectName> names=mbeans.queryNames(new ObjectName(mbean.getDomain(),properties),null).iterator();
+      if (names.hasNext()) {
+        mbean=names.next();
+        if (names.hasNext())         mbean=null;
+      }
+ else {
+        mbean=null;
+      }
+    }
+ catch (    Exception e) {
+      mbean=null;
+    }
+  }
+  if (mbean == null) {
+    throw new ShellException("No such management bean \"" + bean + "\".");
+  }
+  if (attributes == null) {
+    for (    MBeanAttributeInfo attr : mbeans.getMBeanInfo(mbean).getAttributes()) {
+      out.println(attr.getName() + " - " + attr.getDescription());
+    }
+  }
+ else {
+    if (attributes.length == 0) {
+      MBeanAttributeInfo[] allAttributes=mbeans.getMBeanInfo(mbean).getAttributes();
+      attributes=new String[allAttributes.length];
+      for (int i=0; i < allAttributes.length; i++) {
+        attributes[i]=allAttributes[i].getName();
+      }
+    }
+    for (    Object value : mbeans.getAttributes(mbean,attributes)) {
+      out.println(value.toString());
+    }
+  }
+  return null;
+}

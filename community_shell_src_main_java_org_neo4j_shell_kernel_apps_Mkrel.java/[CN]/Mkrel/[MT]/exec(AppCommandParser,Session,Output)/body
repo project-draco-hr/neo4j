@@ -1,0 +1,43 @@
+{
+  assertCurrentIsNode(session);
+  boolean createNode=parser.options().containsKey("c");
+  boolean suppliedNode=!parser.arguments().isEmpty();
+  Node node=null;
+  if (createNode) {
+    node=getServer().getDb().createNode();
+    session.set(KEY_LAST_CREATED_NODE,"" + node.getId());
+    setProperties(node,parser.options().get("np"));
+  }
+ else   if (suppliedNode) {
+    node=getNodeById(Long.parseLong(parser.arguments().get(0)));
+  }
+ else {
+    throw new ShellException("Must either create node (-c)" + " or supply node id as the first argument");
+  }
+  if (parser.options().get("t") == null) {
+    throw new ShellException("Must supply relationship type " + "(-t <relationship-type-name>)");
+  }
+  RelationshipType type=getRelationshipType(parser.options().get("t"));
+  Direction direction=getDirection(parser.options().get("d"));
+  NodeOrRelationship current=getCurrent(session);
+  Node currentNode=current.asNode();
+  Node startNode=direction == Direction.OUTGOING ? currentNode : node;
+  Node endNode=direction == Direction.OUTGOING ? node : currentNode;
+  Relationship relationship=startNode.createRelationshipTo(endNode,type);
+  setProperties(relationship,parser.options().get("rp"));
+  session.set(KEY_LAST_CREATED_RELATIONSHIP,relationship.getId());
+  boolean verbose=parser.options().containsKey("v");
+  if (createNode && verbose) {
+    out.println("Node " + getDisplayName(getServer(),session,node,false) + " created");
+  }
+  if (verbose) {
+    out.println("Relationship " + getDisplayName(getServer(),session,relationship,true,false) + " created");
+  }
+  if (parser.options().containsKey("cd")) {
+    List<TypedId> wd=readCurrentWorkingDir(session);
+    wd.add(current.getTypedId());
+    writeCurrentWorkingDir(wd,session);
+    setCurrent(session,NodeOrRelationship.wrap(node));
+  }
+  return null;
+}
