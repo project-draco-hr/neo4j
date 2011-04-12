@@ -1,33 +1,47 @@
 {
-  ScriptEngineManager manager=new ScriptEngineManager();
-  ScriptEngine engine=manager.getEngineByName("gremlin");
   Neo4jGraph graph=new Neo4jGraph(neo4j);
-  engine.getBindings(ScriptContext.ENGINE_SCOPE).put("g",graph);
+  this.engine.getBindings(ScriptContext.ENGINE_SCOPE).put("g",graph);
   try {
-    Object result=engine.eval(script);
+    final Object result=engine.eval(script);
     if (result instanceof Iterable) {
-      List<Representation> results=new ArrayList<Representation>();
-      for (      Object r : (Iterable)result) {
+      RepresentationType type=RepresentationType.STRING;
+      final List<Representation> results=new ArrayList<Representation>();
+      for (      final Object r : (Iterable)result) {
         if (r instanceof Vertex) {
+          type=RepresentationType.NODE;
           results.add(new NodeRepresentation(((Neo4jVertex)r).getRawVertex()));
         }
  else         if (r instanceof Edge) {
+          type=RepresentationType.RELATIONSHIP;
           results.add(new RelationshipRepresentation(((Neo4jEdge)r).getRawEdge()));
         }
  else         if (r instanceof Graph) {
-          results.add(new DatabaseRepresentation(graph.getRawGraph()));
+          type=RepresentationType.STRING;
+          results.add(ValueRepresentation.string(graph.getRawGraph().toString()));
+        }
+ else         if (r instanceof Double || r instanceof Float) {
+          type=RepresentationType.DOUBLE;
+          results.add(ValueRepresentation.number(((Number)r).doubleValue()));
+        }
+ else         if (r instanceof Long || r instanceof Integer) {
+          type=RepresentationType.LONG;
+          results.add(ValueRepresentation.number(((Number)r).longValue()));
         }
  else {
+          type=RepresentationType.STRING;
           results.add(ValueRepresentation.string(r.toString()));
         }
       }
-      return new ListRepresentation(RepresentationType.NODE,results);
+      return new ListRepresentation(type,results);
     }
  else {
       return ValueRepresentation.string(result.toString());
     }
   }
- catch (  ScriptException e) {
+ catch (  final ScriptException e) {
     return ValueRepresentation.string(e.getMessage());
+  }
+ finally {
+    this.engine.setBindings(new SimpleBindings(),ScriptContext.ENGINE_SCOPE);
   }
 }
