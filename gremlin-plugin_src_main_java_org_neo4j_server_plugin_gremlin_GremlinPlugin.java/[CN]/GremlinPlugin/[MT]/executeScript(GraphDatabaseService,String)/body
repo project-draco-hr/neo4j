@@ -1,0 +1,33 @@
+{
+  ScriptEngineManager manager=new ScriptEngineManager();
+  ScriptEngine engine=manager.getEngineByName("gremlin");
+  Neo4jGraph graph=new Neo4jGraph(neo4j);
+  engine.getBindings(ScriptContext.ENGINE_SCOPE).put("g",graph);
+  try {
+    Object result=engine.eval(script);
+    if (result instanceof Iterable) {
+      List<Representation> results=new ArrayList<Representation>();
+      for (      Object r : (Iterable)result) {
+        if (r instanceof Vertex) {
+          results.add(new NodeRepresentation(((Neo4jVertex)r).getRawVertex()));
+        }
+ else         if (r instanceof Edge) {
+          results.add(new RelationshipRepresentation(((Neo4jEdge)r).getRawEdge()));
+        }
+ else         if (r instanceof Graph) {
+          results.add(new DatabaseRepresentation(graph.getRawGraph()));
+        }
+ else {
+          results.add(ValueRepresentation.string(r.toString()));
+        }
+      }
+      return new ListRepresentation(RepresentationType.NODE,results);
+    }
+ else {
+      return ValueRepresentation.string(result.toString());
+    }
+  }
+ catch (  ScriptException e) {
+    return ValueRepresentation.string(e.getMessage());
+  }
+}
