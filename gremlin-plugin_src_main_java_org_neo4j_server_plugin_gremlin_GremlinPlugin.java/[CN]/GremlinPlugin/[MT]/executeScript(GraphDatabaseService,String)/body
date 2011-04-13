@@ -1,0 +1,47 @@
+{
+  Neo4jGraph graph=new Neo4jGraph(neo4j);
+  this.engine.getBindings(ScriptContext.ENGINE_SCOPE).put("g",graph);
+  try {
+    final Object result=engine.eval(script);
+    if (result instanceof Iterable) {
+      RepresentationType type=RepresentationType.STRING;
+      final List<Representation> results=new ArrayList<Representation>();
+      for (      final Object r : (Iterable)result) {
+        if (r instanceof Vertex) {
+          type=RepresentationType.NODE;
+          results.add(new NodeRepresentation(((Neo4jVertex)r).getRawVertex()));
+        }
+ else         if (r instanceof Edge) {
+          type=RepresentationType.RELATIONSHIP;
+          results.add(new RelationshipRepresentation(((Neo4jEdge)r).getRawEdge()));
+        }
+ else         if (r instanceof Graph) {
+          type=RepresentationType.STRING;
+          results.add(ValueRepresentation.string(graph.getRawGraph().toString()));
+        }
+ else         if (r instanceof Double || r instanceof Float) {
+          type=RepresentationType.DOUBLE;
+          results.add(ValueRepresentation.number(((Number)r).doubleValue()));
+        }
+ else         if (r instanceof Long || r instanceof Integer) {
+          type=RepresentationType.LONG;
+          results.add(ValueRepresentation.number(((Number)r).longValue()));
+        }
+ else {
+          type=RepresentationType.STRING;
+          results.add(ValueRepresentation.string(r.toString()));
+        }
+      }
+      return new ListRepresentation(type,results);
+    }
+ else {
+      return ValueRepresentation.string(result.toString());
+    }
+  }
+ catch (  final ScriptException e) {
+    return ValueRepresentation.string(e.getMessage());
+  }
+ finally {
+    this.engine.setBindings(new SimpleBindings(),ScriptContext.ENGINE_SCOPE);
+  }
+}
