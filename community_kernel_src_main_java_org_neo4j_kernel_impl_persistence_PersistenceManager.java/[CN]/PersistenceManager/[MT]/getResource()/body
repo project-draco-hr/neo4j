@@ -7,10 +7,12 @@
   con=txConnectionMap.get(tx);
   if (con == null) {
     try {
-      con=persistenceSource.createResourceConnection();
-      if (!tx.enlistResource(con.getXAResource())) {
-        throw new ResourceAcquisitionFailedException("Unable to enlist '" + con.getXAResource() + "' in "+ "transaction");
+      XaConnection xaConnection=(NeoStoreXaConnection)persistenceSource.getXaDataSource().getXaConnection();
+      XAResource xaResource=xaConnection.getXaResource();
+      if (!tx.enlistResource(xaResource)) {
+        throw new ResourceAcquisitionFailedException("Unable to enlist '" + xaResource + "' in "+ "transaction");
       }
+      con=persistenceSource.createResourceConnection(xaConnection);
       tx.registerSynchronization(new TxCommitHook(tx));
       registerTransactionEventHookIfNeeded();
       txConnectionMap.put(tx,con);

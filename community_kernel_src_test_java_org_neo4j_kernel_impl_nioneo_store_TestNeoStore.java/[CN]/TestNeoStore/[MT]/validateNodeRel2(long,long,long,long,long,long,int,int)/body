@@ -1,6 +1,6 @@
 {
-  assertTrue(nStore.loadLightNode(node));
-  ArrayMap<Integer,PropertyData> props=nStore.getProperties(node,false);
+  assertTrue(xaCon.getWriteTransaction().nodeLoadLight(node));
+  ArrayMap<Integer,PropertyData> props=xaCon.getWriteTransaction().nodeLoadProperties(node,false);
   int count=0;
   for (  int keyId : props.keySet()) {
     long id=props.get(keyId).getId();
@@ -9,17 +9,17 @@
     if (data.getId() == prop1) {
       assertEquals("prop1",MyPropertyIndex.getIndexFor(keyId).getKey());
       assertEquals("string2",data.getValue());
-      nStore.changeProperty(node,prop1,"-string2");
+      xaCon.getWriteTransaction().nodeChangeProperty(node,prop1,"-string2");
     }
  else     if (data.getId() == prop2) {
       assertEquals("prop2",MyPropertyIndex.getIndexFor(keyId).getKey());
       assertEquals(new Integer(2),data.getValue());
-      nStore.changeProperty(node,prop2,new Integer(-2));
+      xaCon.getWriteTransaction().nodeChangeProperty(node,prop2,new Integer(-2));
     }
  else     if (data.getId() == prop3) {
       assertEquals("prop3",MyPropertyIndex.getIndexFor(keyId).getKey());
       assertEquals(new Boolean(false),data.getValue());
-      nStore.changeProperty(node,prop3,new Boolean(true));
+      xaCon.getWriteTransaction().nodeChangeProperty(node,prop3,new Boolean(true));
     }
  else {
       throw new IOException();
@@ -28,20 +28,20 @@
   }
   assertEquals(3,count);
   count=0;
-  RelationshipChainPosition pos=rStore.getRelationshipChainPosition(node);
+  RelationshipChainPosition pos=xaCon.getWriteTransaction().getRelationshipChainPosition(node);
   while (true) {
-    Iterable<RelationshipData> relData=rStore.getMoreRelationships(node,pos);
+    Iterable<RelationshipRecord> relData=xaCon.getWriteTransaction().getMoreRelationships(node,pos);
     if (!relData.iterator().hasNext()) {
       break;
     }
-    for (    RelationshipData rel : relData) {
+    for (    RelationshipRecord rel : relData) {
       if (rel.getId() == rel1) {
-        assertEquals(node,rel.secondNode());
-        assertEquals(relType1,rel.relationshipType());
+        assertEquals(node,rel.getSecondNode());
+        assertEquals(relType1,rel.getType());
       }
  else       if (rel.getId() == rel2) {
-        assertEquals(node,rel.firstNode());
-        assertEquals(relType2,rel.relationshipType());
+        assertEquals(node,rel.getFirstNode());
+        assertEquals(relType2,rel.getType());
       }
  else {
         throw new IOException();
