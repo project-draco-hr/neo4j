@@ -1,0 +1,26 @@
+{
+  createBigMasterStore(200);
+  startUpMaster(MapUtil.stringMap());
+  AtomicBoolean called=new AtomicBoolean();
+  Thread shutdownThread=startThreadWhichWillShutdownDb(called,1,100);
+  int slaveMachineId=addDb(MapUtil.stringMap(),false);
+  try {
+    awaitAllStarted();
+  }
+ catch (  Exception e) {
+  }
+  shutdownThread.join();
+  assertTrue(called.get());
+  int otherNeostoreFilesCount=0;
+  for (  File dbFile : dbPath(slaveMachineId).listFiles()) {
+    if (dbFile.getName().equals("neostore")) {
+      fail("The neostore file shouldn't have been copied at a cancelled copying");
+    }
+ else     if (dbFile.getName().startsWith("neostore.")) {
+      otherNeostoreFilesCount++;
+    }
+  }
+  assertTrue(otherNeostoreFilesCount > 0);
+  startDb(slaveMachineId,MapUtil.stringMap(),true);
+  awaitAllStarted();
+}
