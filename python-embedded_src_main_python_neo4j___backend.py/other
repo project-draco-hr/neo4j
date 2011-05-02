@@ -1,0 +1,66 @@
+'Neo4j backend selection for Python.'
+import sys, neo4j
+if (sys.version_info >= (3,)):
+
+
+    class Type(type):
+
+        def __new__(Type, name, bases, body):
+            if ('__metaclass__' in body):
+                return body['__metaclass__'](name, bases, body)
+            else:
+                return type.__new__(Type, name, bases, body)
+    Object = Type('Object', (object,), {})
+    del Type
+    strings = str
+    integers = (int,)
+else:
+    Object = object
+    strings = (str, unicode)
+    integers = (int, long)
+try:
+    import java
+except:
+    import jpype, os
+    jpype.startJVM(jpype.getDefaultJVMPath(), ('-Djava.class.path=' + os.getenv('CLASSPATH', '.')))
+    graphdb = jpype.JPackage('org.neo4j.graphdb')
+    kernel = jpype.JPackage('org.neo4j.kernel')
+    Direction = graphdb.Direction
+    PropertyContainer = graphdb.PropertyContainer
+    Transaction = graphdb.Transaction
+    GraphDatabaseService = graphdb.GraphDatabaseService
+    Node = graphdb.Node
+    Relationship = graphdb.Relationship
+    EmbeddedGraphDatabase = kernel.EmbeddedGraphDatabase
+    HashMap = jpype.JPackage('java.util').HashMap
+    rel_type = graphdb.DynamicRelationshipType.withName
+    del graphdb, kernel
+
+    def from_java(value):
+        global from_java
+        java = jpype.java.lang
+        floats = (java.Double, java.Float)
+        integers = (java.Long, java.Integer, java.Short, java.Byte)
+
+        def from_java(value):
+            if isinstance(value, floats):
+                return value.doubleValue()
+            if isinstance(value, integers):
+                return value.longValue()
+            return value
+        return from_java(value)
+
+    def to_java(value):
+        return value
+else:
+    from org.neo4j.kernel import EmbeddedGraphDatabase
+    from org.neo4j.graphdb import Direction, DynamicRelationshipType, PropertyContainer, Transaction, GraphDatabaseService, Node, Relationship
+    from java.util import HashMap
+    rel_type = DynamicRelationshipType.withName
+
+    def from_java(value):
+        return value
+
+    def to_java(value):
+        return value
+GraphDatabase = extends(GraphDatabaseService)
