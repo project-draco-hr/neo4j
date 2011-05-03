@@ -1,0 +1,35 @@
+{
+  super.add(holder,entityId,key,value);
+  try {
+    ensureLuceneDataInstantiated();
+    long id=entityId instanceof Long ? (Long)entityId : ((RelationshipId)entityId).id;
+    Document document=findDocument(id);
+    boolean add=false;
+    if (document == null) {
+      document=index.getIdentifier().entityType.newDocument(entityId);
+      cachedDocuments.put(id,document);
+      add=true;
+    }
+    if (key == null && value == null) {
+      document.add(new Field(ORPHANS_KEY,ORPHANS_VALUE,Store.NO,Index.NOT_ANALYZED));
+      addOrphan(null);
+    }
+ else     if (value == null) {
+      document.add(new Field(ORPHANS_KEY,key,Store.NO,Index.NOT_ANALYZED));
+      addOrphan(key);
+    }
+ else {
+      index.type.addToDocument(document,key,value);
+    }
+    if (add) {
+      writer.addDocument(document);
+    }
+ else {
+      writer.updateDocument(index.type.idTerm(id),document);
+    }
+    invalidateSearcher();
+  }
+ catch (  IOException e) {
+    throw new RuntimeException(e);
+  }
+}

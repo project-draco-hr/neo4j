@@ -1,5 +1,5 @@
 {
-  Triplet<IndexWriter,AtomicBoolean,SnapshotDeletionPolicy> writer=indexWriters.get(identifier);
+  Pair<IndexWriter,AtomicBoolean> writer=indexWriters.get(identifier);
   if (writer != null) {
     return writer.first();
   }
@@ -7,13 +7,14 @@
     Directory dir=getDirectory(baseStorePath,identifier);
     directoryExists(dir);
     IndexType type=getType(identifier);
-    SnapshotDeletionPolicy deletionPolicy=new MultipleBackupDeletionPolicy();
-    IndexWriter indexWriter=new IndexWriter(dir,type.analyzer,deletionPolicy,MaxFieldLength.UNLIMITED);
-    writer=Triplet.of(indexWriter,new AtomicBoolean(),deletionPolicy);
+    IndexWriterConfig writerConfig=new IndexWriterConfig(LUCENE_VERSION,type.analyzer);
+    writerConfig.setIndexDeletionPolicy(new MultipleBackupDeletionPolicy());
     Similarity similarity=type.getSimilarity();
     if (similarity != null) {
-      writer.first().setSimilarity(similarity);
+      writerConfig.setSimilarity(similarity);
     }
+    IndexWriter indexWriter=new IndexWriter(dir,writerConfig);
+    writer=Pair.of(indexWriter,new AtomicBoolean());
     indexWriters.put(identifier,writer);
     return writer.first();
   }
