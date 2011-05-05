@@ -44,18 +44,43 @@
   assertEquals("Keanu Reeves",actor.getProperty("name"));
   Node theMatrix=movies.get("title","The Matrix").getSingle();
   Node theMatrixReloaded=movies.get("title","The Matrix Reloaded").getSingle();
+  Node malena=movies.get("title","Mal??na").getSingle();
   hits=movies.query(new WildcardQuery(new Term("title","The Matrix*")));
   for (  Node movie : hits) {
     System.out.println(movie.getProperty("title"));
     assertTrue(((String)movie.getProperty("title")).startsWith("The Matrix"));
   }
   assertEquals(2,hits.size());
-  movies.add(theMatrix,"year-numeric",new ValueContext(1999L).indexNumeric());
-  movies.add(theMatrixReloaded,"year-numeric",new ValueContext(2003L).indexNumeric());
-  long startYear=1997;
-  long endYear=2001;
-  hits=movies.query(NumericRangeQuery.newLongRange("year-numeric",startYear,endYear,true,true));
+  movies.add(theMatrix,"year-numeric",new ValueContext(1999).indexNumeric());
+  movies.add(theMatrixReloaded,"year-numeric",new ValueContext(2003).indexNumeric());
+  movies.add(malena,"year-numeric",new ValueContext(2000).indexNumeric());
+  int from=1997;
+  int to=1999;
+  hits=movies.query(QueryContext.numericRange("year-numeric",from,to));
   assertEquals(theMatrix,hits.getSingle());
+  hits=movies.query(QueryContext.numericRange("year-numeric",from,null).sortNumeric("year-numeric",false));
+  List<String> sortedMovies=new ArrayList<String>();
+  @SuppressWarnings("serial") List<String> expectedSortedMovies=new ArrayList<String>(){
+{
+      add("The Matrix");
+      add("Mal??na");
+      add("The Matrix Reloaded");
+    }
+  }
+;
+  for (  Node hit : hits) {
+    sortedMovies.add((String)hit.getProperty("title"));
+  }
+  assertEquals(expectedSortedMovies,sortedMovies);
+  movies.add(theMatrix,"score",new ValueContext(8.7).indexNumeric());
+  movies.add(theMatrixReloaded,"score",new ValueContext(7.1).indexNumeric());
+  movies.add(malena,"score",new ValueContext(7.4).indexNumeric());
+  hits=movies.query(QueryContext.numericRange("score",8.0,9.0,true,false));
+  found.clear();
+  for (  Node hit : hits) {
+    found.add((String)hit.getProperty("title"));
+  }
+  assertEquals(expectedMovies,found);
   hits=movies.query("title:*Matrix* AND year:1999");
   assertEquals(theMatrix,hits.getSingle());
   QueryContext query=new QueryContext("title:*Matrix* year:1999").defaultOperator(Operator.AND);
