@@ -3,7 +3,7 @@
   LuceneXaConnection con=getReadOnlyConnection();
   LuceneTransaction luceneTx=con != null ? con.getLuceneTx() : null;
   Collection<Long> removedIds=Collections.emptySet();
-  Searcher additionsSearcher=null;
+  IndexSearcher additionsSearcher=null;
   if (luceneTx != null) {
     if (keyForDirectLookup != null) {
       ids.addAll(luceneTx.getAddedIds(this,keyForDirectLookup,valueForDirectLookup));
@@ -31,7 +31,7 @@
           idIterator=searchedIds;
         }
  else {
-          Collection<IndexHits<Long>> iterators=new ArrayList<IndexHits<Long>>();
+          Collection<IndexHits<Long>> iterators=new ArrayList<IndexHits<Long>>(searchedIds.size() + ids.size());
           iterators.add(searchedIds);
           iterators.add(new ConstantScoreIterator<Long>(ids,Float.NaN));
           idIterator=new CombinedIndexHits<Long>(iterators);
@@ -43,13 +43,5 @@
     service.dataSource().releaseReadLock();
   }
   idIterator=idIterator == null ? new ConstantScoreIterator<Long>(ids,0) : idIterator;
-  return new IdToEntityIterator<T>(idIterator){
-    @Override protected T underlyingObjectToObject(    Long id){
-      return getById(id);
-    }
-    protected void itemDodged(    Long item){
-      abandonedIds.add(item);
-    }
-  }
-;
+  return newEntityIterator(idIterator);
 }

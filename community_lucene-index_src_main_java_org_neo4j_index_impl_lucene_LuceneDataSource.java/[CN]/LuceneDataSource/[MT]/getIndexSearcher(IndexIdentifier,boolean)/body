@@ -3,14 +3,14 @@
     IndexSearcherRef searcher=indexSearchers.get(identifier);
     if (searcher == null) {
       IndexWriter writer=getIndexWriter(identifier);
-      IndexReader reader=writer.getReader();
+      IndexReader reader=IndexReader.open(writer,true);
       IndexSearcher indexSearcher=new IndexSearcher(reader);
       searcher=new IndexSearcherRef(identifier,indexSearcher);
       indexSearchers.put(identifier,searcher);
     }
  else {
-      Triplet<IndexWriter,AtomicBoolean,SnapshotDeletionPolicy> writer=indexWriters.get(identifier);
-      if (writer != null && writer.second().compareAndSet(true,false)) {
+      Pair<IndexWriter,AtomicBoolean> writer=indexWriters.get(identifier);
+      if (writer != null && writer.other().compareAndSet(true,false)) {
         searcher=refreshSearcher(searcher);
         if (searcher != null) {
           indexSearchers.put(identifier,searcher);

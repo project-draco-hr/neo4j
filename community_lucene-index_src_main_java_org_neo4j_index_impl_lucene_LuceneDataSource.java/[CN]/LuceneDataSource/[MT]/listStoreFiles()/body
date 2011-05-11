@@ -1,10 +1,10 @@
 {
   final Collection<File> files=new ArrayList<File>();
   final Collection<SnapshotDeletionPolicy> snapshots=new ArrayList<SnapshotDeletionPolicy>();
-  for (  Map.Entry<IndexIdentifier,Triplet<IndexWriter,AtomicBoolean,SnapshotDeletionPolicy>> writer : indexWriters.entrySet()) {
-    SnapshotDeletionPolicy deletionPolicy=writer.getValue().third();
+  for (  Map.Entry<IndexIdentifier,Pair<IndexWriter,AtomicBoolean>> writer : indexWriters.entrySet()) {
+    SnapshotDeletionPolicy deletionPolicy=(SnapshotDeletionPolicy)writer.getValue().first().getConfig().getIndexDeletionPolicy();
     File indexDirectory=getFileDirectory(baseStorePath,writer.getKey());
-    for (    String fileName : deletionPolicy.snapshot().getFileNames()) {
+    for (    String fileName : deletionPolicy.snapshot(SNAPSHOT_ID).getFileNames()) {
       files.add(new File(indexDirectory,fileName));
     }
     snapshots.add(deletionPolicy);
@@ -16,7 +16,12 @@
     }
     public void close(){
       for (      SnapshotDeletionPolicy deletionPolicy : snapshots) {
-        deletionPolicy.release();
+        try {
+          deletionPolicy.release(SNAPSHOT_ID);
+        }
+ catch (        IOException e) {
+          e.printStackTrace();
+        }
       }
     }
   }
