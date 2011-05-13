@@ -1,5 +1,5 @@
 {
-  ArrayMap<Integer,PropertyData> props=rStore.getProperties(rel,false);
+  ArrayMap<Integer,PropertyData> props=xaCon.getWriteTransaction().relLoadProperties(rel,false);
   int count=0;
   for (  int keyId : props.keySet()) {
     long id=props.get(keyId).getId();
@@ -16,7 +16,7 @@
  else     if (data.getId() == prop3) {
       assertEquals("prop3",MyPropertyIndex.getIndexFor(keyId).getKey());
       assertEquals(new Boolean(true),data.getValue());
-      rStore.removeProperty(rel,prop3);
+      xaCon.getWriteTransaction().relRemoveProperty(rel,prop3);
     }
  else {
       throw new IOException();
@@ -24,16 +24,16 @@
     count++;
   }
   assertEquals(3,count);
-  assertEquals(3,rStore.getProperties(rel,false).size());
-  RelationshipData relData=rStore.getRelationship(rel);
-  assertEquals(firstNode,relData.firstNode());
-  assertEquals(secondNode,relData.secondNode());
-  assertEquals(relType,relData.relationshipType());
-  rStore.deleteRelationship(rel);
-  RelationshipChainPosition firstPos=rStore.getRelationshipChainPosition(firstNode);
-  Iterator<RelationshipRecord> first=both(rStore.getMoreRelationships(firstNode,firstPos)).iterator();
-  RelationshipChainPosition secondPos=rStore.getRelationshipChainPosition(secondNode);
-  Iterator<RelationshipRecord> second=both(rStore.getMoreRelationships(secondNode,secondPos)).iterator();
+  assertEquals(3,xaCon.getWriteTransaction().relLoadProperties(rel,false).size());
+  RelationshipRecord relData=xaCon.getWriteTransaction().relLoadLight(rel);
+  assertEquals(firstNode,relData.getFirstNode());
+  assertEquals(secondNode,relData.getSecondNode());
+  assertEquals(relType,relData.getType());
+  xaCon.getWriteTransaction().relDelete(rel);
+  RelationshipChainPosition firstPos=xaCon.getWriteTransaction().getRelationshipChainPosition(firstNode);
+  Iterator<RelationshipRecord> first=both(xaCon.getWriteTransaction().getMoreRelationships(firstNode,firstPos)).iterator();
+  RelationshipChainPosition secondPos=xaCon.getWriteTransaction().getRelationshipChainPosition(secondNode);
+  Iterator<RelationshipRecord> second=both(xaCon.getWriteTransaction().getMoreRelationships(secondNode,secondPos)).iterator();
   assertTrue(first.hasNext());
   assertTrue(second.hasNext());
 }
