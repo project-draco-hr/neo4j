@@ -1,0 +1,39 @@
+{
+  long nextRel=position.getNextRecord();
+  List<RelationshipRecord> out=new ArrayList<RelationshipRecord>();
+  List<RelationshipRecord> in=new ArrayList<RelationshipRecord>();
+  Pair<Iterable<RelationshipRecord>,Iterable<RelationshipRecord>> result=Pair.<Iterable<RelationshipRecord>,Iterable<RelationshipRecord>>of(out,in);
+  for (int i=0; i < grabSize && nextRel != Record.NO_NEXT_RELATIONSHIP.intValue(); i++) {
+    RelationshipRecord relRecord=relStore.getChainRecord(nextRel);
+    if (relRecord == null) {
+      position.setNextRecord(Record.NO_NEXT_RELATIONSHIP.intValue());
+      return result;
+    }
+    long firstNode=relRecord.getFirstNode();
+    long secondNode=relRecord.getSecondNode();
+    boolean isOutgoing=firstNode == nodeId;
+    if (relRecord.inUse()) {
+      if (isOutgoing) {
+        out.add(relRecord);
+      }
+ else {
+        in.add(relRecord);
+      }
+    }
+ else {
+      i--;
+    }
+    if (isOutgoing) {
+      nextRel=relRecord.getFirstNextRel();
+    }
+ else     if (secondNode == nodeId) {
+      nextRel=relRecord.getSecondNextRel();
+    }
+ else {
+      System.out.println(relRecord);
+      throw new InvalidRecordException("Node[" + nodeId + "] is neither firstNode["+ firstNode+ "] nor secondNode["+ secondNode+ "] for Relationship["+ relRecord.getId()+ "]");
+    }
+  }
+  position.setNextRecord(nextRel);
+  return result;
+}
