@@ -1,15 +1,17 @@
 {
-  Iterable<Relationship> relationships=start.getRelationships(types);
-  if (directions.isEmpty()) {
-    return relationships.iterator();
+  if (types.isEmpty()) {
+    return start.getRelationships().iterator();
+  }
+ else   if (types.size() == 1) {
+    Entry<Direction,RelationshipType[]> entry=types.entrySet().iterator().next();
+    return start.getRelationships(entry.getKey(),entry.getValue()).iterator();
   }
  else {
-    return new FilteringIterator<Relationship>(relationships.iterator(),new Predicate<Relationship>(){
-      public boolean accept(      Relationship rel){
-        Direction dir=directions.get(rel.getType().name());
-        return matchDirection(dir == null ? Direction.BOTH : dir,start,rel);
+    return new NestingIterator<Relationship,Entry<Direction,RelationshipType[]>>(types.entrySet().iterator()){
+      @Override protected Iterator<Relationship> createNestedIterator(      Entry<Direction,RelationshipType[]> item){
+        return start.getRelationships(item.getKey(),item.getValue()).iterator();
       }
     }
-);
+;
   }
 }

@@ -3,10 +3,9 @@
     tx.doRollback();
   }
  catch (  XAException e) {
-    e.printStackTrace();
-    log.severe("Unable to rollback marked transaction. " + "Some resources may be commited others not. " + "Neo4j kernel should be SHUTDOWN for "+ "resource maintance and transaction recovery ---->");
+    log.log(Level.SEVERE,"Unable to rollback marked transaction. " + "Some resources may be commited others not. " + "Neo4j kernel should be SHUTDOWN for "+ "resource maintance and transaction recovery ---->",e);
     setTmNotOk();
-    throw new HeuristicMixedException("Unable to rollback " + " ---> error code for rollback: " + e.errorCode);
+    throw Exceptions.withCause(new HeuristicMixedException("Unable to rollback " + " ---> error code for rollback: " + e.errorCode),e);
   }
   tx.doAfterCompletion();
   txThreadMap.remove(thread);
@@ -16,10 +15,9 @@
     }
   }
  catch (  IOException e) {
-    e.printStackTrace();
-    log.severe("Error writing transaction log");
+    log.log(Level.SEVERE,"Error writing transaction log",e);
     setTmNotOk();
-    throw new SystemException("TM encountered a problem, " + " error writing transaction log," + e);
+    throw Exceptions.withCause(new SystemException("TM encountered a problem, " + " error writing transaction log"),e);
   }
   tx.setStatus(Status.STATUS_NO_TRANSACTION);
   throw new RollbackException("Failed to commit, transaction rolledback");

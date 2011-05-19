@@ -10,15 +10,14 @@
     }
  catch (    XAException e) {
       xaErrorCode=e.errorCode;
-      e.printStackTrace();
-      log.severe("Commit failed, status=" + getTxStatusAsString(tx.getStatus()) + ", errorCode="+ xaErrorCode);
+      log.log(Level.SEVERE,"Commit failed, status=" + getTxStatusAsString(tx.getStatus()) + ", errorCode="+ xaErrorCode,e);
       if (tx.getStatus() == Status.STATUS_COMMITTED) {
         setTmNotOk();
         throw new TransactionFailureException("commit threw exception but status is committed?",e);
       }
     }
 catch (    Throwable t) {
-      t.printStackTrace();
+      log.log(Level.SEVERE,"Commit failed",t);
       commitFailureCause=t;
     }
   }
@@ -27,13 +26,16 @@ catch (    Throwable t) {
       tx.doRollback();
     }
  catch (    XAException e) {
-      e.printStackTrace();
-      log.severe("Unable to rollback transaction. " + "Some resources may be commited others not. " + "Neo4j kernel should be SHUTDOWN for "+ "resource maintance and transaction recovery ---->");
+      log.log(Level.SEVERE,"Unable to rollback transaction. " + "Some resources may be commited others not. " + "Neo4j kernel should be SHUTDOWN for "+ "resource maintance and transaction recovery ---->",e);
       setTmNotOk();
+      String commitError;
       if (commitFailureCause != null) {
-        commitFailureCause.printStackTrace();
+        commitError="error in commit: " + commitFailureCause;
       }
-      throw new HeuristicMixedException("Unable to rollback ---> error code in commit: " + xaErrorCode + " ---> error code for rollback: "+ e.errorCode);
+ else {
+        commitError="error code in commit: " + xaErrorCode;
+      }
+      throw Exceptions.withCause(new HeuristicMixedException("Unable to rollback ---> " + commitError + " ---> error code for rollback: "+ e.errorCode),e);
     }
     tx.doAfterCompletion();
     txThreadMap.remove(thread);
@@ -43,17 +45,16 @@ catch (    Throwable t) {
       }
     }
  catch (    IOException e) {
-      e.printStackTrace();
-      log.severe("Error writing transaction log");
+      log.log(Level.SEVERE,"Error writing transaction log",e);
       setTmNotOk();
-      throw new SystemException("TM encountered a problem, " + " error writing transaction log," + e);
+      throw Exceptions.withCause(new SystemException("TM encountered a problem, " + " error writing transaction log"),e);
     }
     tx.setStatus(Status.STATUS_NO_TRANSACTION);
     if (commitFailureCause == null) {
       throw new HeuristicRollbackException("Failed to commit, transaction rolledback ---> " + "error code was: " + xaErrorCode);
     }
  else {
-      throw new HeuristicRollbackException("Failed to commit, transaction rolledback ---> " + commitFailureCause);
+      throw Exceptions.withCause(new HeuristicRollbackException("Failed to commit, transaction rolledback ---> " + commitFailureCause),commitFailureCause);
     }
   }
   tx.doAfterCompletion();
@@ -64,10 +65,9 @@ catch (    Throwable t) {
     }
   }
  catch (  IOException e) {
-    e.printStackTrace();
-    log.severe("Error writing transaction log");
+    log.log(Level.SEVERE,"Error writing transaction log",e);
     setTmNotOk();
-    throw new SystemException("TM encountered a problem, " + " error writing transaction log," + e);
+    throw Exceptions.withCause(new SystemException("TM encountered a problem, " + " error writing transaction log"),e);
   }
   tx.setStatus(Status.STATUS_NO_TRANSACTION);
 }
