@@ -1,0 +1,33 @@
+{
+  initializeDbs(1,MapUtil.stringMap(Config.CACHE_TYPE,"strong"));
+  HighlyAvailableGraphDatabase sDb=(HighlyAvailableGraphDatabase)haDbs.get(0);
+  HighlyAvailableGraphDatabase mDb=(HighlyAvailableGraphDatabase)master.getGraphDb();
+  long relId;
+  Node node;
+  Transaction tx=mDb.beginTx();
+  try {
+    node=mDb.createNode();
+    node.createRelationshipTo(mDb.createNode(),REL_TYPE);
+    relId=node.createRelationshipTo(mDb.createNode(),REL_TYPE).getId();
+    node.createRelationshipTo(mDb.createNode(),REL_TYPE);
+    tx.success();
+  }
+  finally {
+    tx.finish();
+  }
+  sDb.pullUpdates();
+  tx=sDb.beginTx();
+  try {
+    sDb.getRelationshipById(relId).delete();
+    tx.success();
+  }
+  finally {
+    tx.finish();
+  }
+  int relCount=0;
+  for (  Relationship rel : node.getRelationships()) {
+    rel.getOtherNode(node);
+    relCount++;
+  }
+  assertEquals("wrong number of relationships",2,relCount);
+}
