@@ -1,0 +1,43 @@
+{
+  Transaction tx=gdb.beginTx();
+  try {
+    for (int i=0; i < count; i++) {
+      int index=r.nextInt(nodes.size());
+      Node node=nodes.get(index);
+      float op=r.nextFloat();
+      if (op < 0.1f) {
+        node.createRelationshipTo(gdb.createNode(),getRandomRelationshipType());
+      }
+ else       if (op < 0.25f) {
+        node.createRelationshipTo(node,getRandomRelationshipType());
+      }
+ else       if (op < 0.75f) {
+        Node otherNode=nodes.get(r.nextInt(nodes.size()));
+        node.createRelationshipTo(otherNode,getRandomRelationshipType());
+      }
+ else       if (op < 0.95) {
+        for (        Relationship rel : node.getRelationships()) {
+          if (r.nextFloat() < 0.25f) {
+            rel.delete();
+          }
+        }
+      }
+ else       if (nodes.size() > 100) {
+        for (        Relationship rel : node.getRelationships()) {
+          rel.delete();
+        }
+        nodes.remove(index);
+        node.delete();
+      }
+      if (r.nextFloat() < 0.2f) {
+        tx.success();
+        tx.finish();
+        tx=gdb.beginTx();
+      }
+    }
+    tx.success();
+  }
+  finally {
+    tx.finish();
+  }
+}
