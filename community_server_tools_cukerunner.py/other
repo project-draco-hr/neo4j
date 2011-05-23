@@ -1,0 +1,16 @@
+from __future__ import with_statement
+from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
+import subprocess
+import os, cgi
+FEATURES_FOLDER = 'src/features'
+SCENARIO_TEMPLATE = '\n<li>\n  %(name)s <input type="submit" name="action:%(feature)s:%(lineno)d" value="Run" />\n</li>\n'
+FEATURE_TEMPLATE = '\n<li>\n  <h3>%(name)s <input type="submit" name="action:%(feature)s" value="Run" /></h3>\n  <ul class="scenarios">\n    %(scenarios)s\n  </ul>\n</li>\n'
+PAGE_TEMPLATE = '\n<!DOCTYPE html>\n<html>\n  <head>\n    <title>Cucumber test runner</title>\n    <style>\n      body {\n        color: #333;\n        font-size: 90%%;\n        font-family: sans-serif;\n      }\n\n      ul {\n        list-style:none;\n        padding-left:5px;\n        font-size:10px;\n        line-height:26px;\n      }\n\n      ul li {\n        display:block;\n        height:26px;\n        border-top:1px solid #eee;\n        clear:both;\n      }\n\n      ul.scenarios li:nth-child(2n+1) {\n        background:#eeffff;\n      }\n    \n      ul li input {\n        float:right;\n      }\n\n      #features > li {\n        height:50px; \n      }\n\n      #feature-container {\n        width:50%%;\n        float:left;\n      }\n\n      #output-container {\n        width:45%%;\n        float:left;\n        margin-left:4%%;\n      }\n      #output-container textarea {\n        height: 400px;\n        width:100%%;\n      } \n    </style>\n  </head>\n  <body>\n    <div id="feature-container">\n      <h3>Features:</h3>\n      <form action="" method="POST">\n        <p><input type="checkbox" name="external-server" %(external_checkbox)s /> run with external server. <input type="submit" name="action:%(features_folder)s" value="Run all" style="float:right;"/></p>\n        <ul id="features">\n          %(features)s\n        </ul>\n      </form>\n    </div>\n    <div id="output-container">\n      <h3>Output:</h3>\n      <textarea>%(console_output)s</textarea>\n    </div>\n  </body>\n</html>\n'
+if (__name__ == '__main__'):
+    try:
+        s = HTTPServer(('', 8666), Handler)
+        print 'Starting server at http://localhost:8666/'
+        s.serve_forever()
+    except Exception as e:
+        print e
+        s.socket.close()
