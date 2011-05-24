@@ -1,10 +1,12 @@
 {
   long nodeId=node.getId();
-  RelationshipChainPosition position=node.getRelChainPosition();
-  Pair<Iterable<RelationshipRecord>,Iterable<RelationshipRecord>> rels=persistenceManager.getMoreRelationships(nodeId,position);
+  long position=node.getRelChainPosition();
+  Pair<Map<DirectionWrapper,Iterable<RelationshipRecord>>,Long> rels=persistenceManager.getMoreRelationships(nodeId,position);
+  node.setRelChainPosition(rels.other());
   ArrayMap<String,RelIdArray> newRelationshipMap=new ArrayMap<String,RelIdArray>();
   Map<Long,RelationshipImpl> relsMap=new HashMap<Long,RelationshipImpl>(150);
-  receiveRelationships(rels.first(),newRelationshipMap,relsMap,Direction.OUTGOING);
-  receiveRelationships(rels.other(),newRelationshipMap,relsMap,Direction.INCOMING);
+  for (  Map.Entry<DirectionWrapper,Iterable<RelationshipRecord>> entry : rels.first().entrySet()) {
+    receiveRelationships(entry.getValue(),newRelationshipMap,relsMap,entry.getKey());
+  }
   return Pair.of(newRelationshipMap,relsMap);
 }
