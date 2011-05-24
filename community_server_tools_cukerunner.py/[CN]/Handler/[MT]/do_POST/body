@@ -3,11 +3,14 @@ def do_POST(self):
     feature = ''
     external_server = False
     use_dev_html = False
+    bare_bones = False
     for field in form.keys():
         if (field == 'external-server'):
             external_server = True
         if (field == 'use-dev-html'):
             use_dev_html = True
+        if (field == 'bare-bones'):
+            bare_bones = True
         if field.strip().startswith('action:'):
             feature = field.strip()[7:]
     command = ['mvn', 'integration-test', '-Pneodev', '-Dtests=web', ('-DcukeArgs=%s' % feature)]
@@ -18,6 +21,8 @@ def do_POST(self):
     print ' '.join(command)
     p = subprocess.Popen(command, stdout=subprocess.PIPE)
     (out, err) = p.communicate()
+    out = clean_output(out, bare_bones)
     external_checkbox = ('checked="checked"' if external_server else '')
     dev_html_checkbox = ('checked="checked"' if use_dev_html else '')
-    self.do_GET(out, external_checkbox=external_checkbox, dev_html_checkbox=dev_html_checkbox)
+    bare_bones_checkbox = ('checked="checked"' if bare_bones else '')
+    self.do_GET(out, external_checkbox=external_checkbox, dev_html_checkbox=dev_html_checkbox, bare_bones_checkbox=bare_bones_checkbox)
