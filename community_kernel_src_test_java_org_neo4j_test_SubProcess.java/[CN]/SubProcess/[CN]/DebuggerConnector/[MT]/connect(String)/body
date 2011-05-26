@@ -17,9 +17,14 @@
         continue TYPES;
       }
     }
-    ClassPrepareRequest prepare=erm.createClassPrepareRequest();
+    com.sun.jdi.request.ClassPrepareRequest prepare=erm.createClassPrepareRequest();
     prepare.addClassFilter(entry.getKey());
     prepare.enable();
   }
-  new Thread(new DebugDispatch(vm.eventQueue(),breakpoints),"Debugger: [" + string + "]").start();
+  if (vm.canRequestMonitorEvents()) {
+    erm.createMonitorContendedEnterRequest().enable();
+  }
+  DebugDispatch dispatch=new DebugDispatch(vm.eventQueue(),breakpoints);
+  new Thread(dispatch,"Debugger: [" + string + "]").start();
+  return dispatch;
 }

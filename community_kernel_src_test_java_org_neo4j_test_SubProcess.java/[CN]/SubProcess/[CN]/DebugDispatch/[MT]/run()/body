@@ -9,7 +9,28 @@
     }
     try {
       for (      com.sun.jdi.event.Event event : events) {
-        if (event instanceof com.sun.jdi.event.LocatableEvent) {
+        if (event instanceof com.sun.jdi.event.MonitorContendedEnterEvent) {
+          com.sun.jdi.event.MonitorContendedEnterEvent monitor=(com.sun.jdi.event.MonitorContendedEnterEvent)event;
+          final com.sun.jdi.ThreadReference thread;
+          try {
+            thread=monitor.monitor().owningThread();
+          }
+ catch (          com.sun.jdi.IncompatibleThreadStateException e) {
+            e.printStackTrace();
+            continue;
+          }
+          if (thread != null && thread.isSuspended()) {
+            DeadlockCallback callback=suspended.get(thread);
+            try {
+              if (callback != null)               callback.deadlock(new DebuggedThread(this,thread));
+            }
+ catch (            DeadlockDetectedError deadlock) {
+              @SuppressWarnings("hiding") Handler handler=this.handler;
+              if (handler != null)               handler.kill(false);
+            }
+          }
+        }
+ else         if (event instanceof com.sun.jdi.event.LocatableEvent) {
           callback((com.sun.jdi.event.LocatableEvent)event);
         }
  else         if (event instanceof com.sun.jdi.event.ClassPrepareEvent) {

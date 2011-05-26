@@ -10,6 +10,7 @@
   }
   Process process;
   String pid;
+  DebugDispatch debugDispatch=null;
 synchronized (debugger != null ? DebuggerConnector.class : new Object()) {
     if (debugger != null) {
       process=start("java",debugger.listen(),"-cp",classPath(System.getProperty("java.class.path")),SubProcess.class.getName(),serialize(callback));
@@ -21,10 +22,12 @@ synchronized (debugger != null ? DebuggerConnector.class : new Object()) {
     pipe("[" + toString() + ":"+ pid+ "] ",process.getErrorStream(),System.err);
     pipe("[" + toString() + ":"+ pid+ "] ",process.getInputStream(),System.out);
     if (debugger != null) {
-      debugger.connect(toString() + ":" + pid);
+      debugDispatch=debugger.connect(toString() + ":" + pid);
     }
   }
   Dispatcher dispatcher=callback.get(process);
   if (dispatcher == null)   throw new IllegalStateException("failed to start sub process");
-  return t.cast(Proxy.newProxyInstance(t.getClassLoader(),new Class[]{t},live(new Handler(t,dispatcher,process,"<" + toString() + ":"+ pid+ ">"))));
+  Handler handler=new Handler(t,dispatcher,process,"<" + toString() + ":"+ pid+ ">");
+  if (debugDispatch != null)   debugDispatch.handler=handler;
+  return t.cast(Proxy.newProxyInstance(t.getClassLoader(),new Class[]{t},live(handler)));
 }
