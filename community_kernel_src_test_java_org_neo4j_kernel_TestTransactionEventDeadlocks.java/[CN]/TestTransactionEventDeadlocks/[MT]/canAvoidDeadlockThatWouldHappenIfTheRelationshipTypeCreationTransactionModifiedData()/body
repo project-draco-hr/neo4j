@@ -1,0 +1,33 @@
+{
+  final Node root=graphdb.getReferenceNode();
+  Transaction tx=graphdb.beginTx();
+  try {
+    root.setProperty("counter",Long.valueOf(0L));
+    tx.success();
+  }
+  finally {
+    tx.finish();
+  }
+  graphdb.registerTransactionEventHandler(new TransactionEventHandler<Void>(){
+    @SuppressWarnings("boxing") @Override public Void beforeCommit(    TransactionData data) throws Exception {
+      root.setProperty("counter",((Long)root.removeProperty("counter")) + 1);
+      return null;
+    }
+    @Override public void afterCommit(    TransactionData data,    Void state){
+    }
+    @Override public void afterRollback(    TransactionData data,    Void state){
+    }
+  }
+);
+  tx=graphdb.beginTx();
+  try {
+    root.setProperty("state","not broken yet");
+    root.createRelationshipTo(graphdb.createNode(),DynamicRelationshipType.withName("TEST"));
+    root.removeProperty("state");
+    tx.success();
+  }
+  finally {
+    tx.finish();
+  }
+  assertEquals(1L,root.getProperty("counter"));
+}
