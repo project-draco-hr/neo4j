@@ -1,0 +1,29 @@
+{
+  final AtomicReference<DebuggedThread> shutdownThread=new AtomicReference<DebuggedThread>(), indexThread=new AtomicReference<DebuggedThread>();
+  return new SubProcessBreakPoint[]{new SubProcessBreakPoint(XaContainer.class,"close"){
+    @Override protected void callback(    DebugInterface debug){
+      if (LuceneDataSource.class.getName().equals(debug.getCallingClassName(1))) {
+        shutdownThread.set(debug.thread().suspend(this));
+        resume(indexThread.getAndSet(null));
+        this.disable();
+      }
+    }
+    @Override public void deadlock(    SubProcess.DebuggedThread thread){
+      shutdownThread.set(null);
+      thread.resume();
+    }
+  }
+.enable(),new SubProcessBreakPoint(BreakTask.class,"breakpoint1"){
+    @Override protected void callback(    DebugInterface debug){
+      indexThread.set(debug.thread().suspend(this));
+      restart.countDown();
+    }
+  }
+.enable(),new SubProcessBreakPoint(BreakTask.class,"breakpoint2"){
+    @Override protected void callback(    DebugInterface debug){
+      resume(shutdownThread.getAndSet(null));
+      last.countDown();
+    }
+  }
+.enable()};
+}
