@@ -3,13 +3,13 @@
   Response response;
   Transaction tx=db.beginTx();
   try {
+    List<Object> operations=input.readList(body);
+    List<BatchOperationRepresentation> results=new ArrayList<BatchOperationRepresentation>(operations.size());
     InternalJettyServletRequest req=new InternalJettyServletRequest();
     InternalJettyServletResponse res=new InternalJettyServletResponse();
     String servletBaseUrl=uriInfo.getBaseUri().toString();
     String servletPath=uriInfo.getBaseUri().getPath();
     servletBaseUrl=servletBaseUrl.substring(0,servletBaseUrl.length() - 1);
-    List<Object> operations=input.readList(body);
-    List<BatchOperationRepresentation> results=new ArrayList<BatchOperationRepresentation>(operations.size());
     String opBody, opMethod, opPath;
     Integer opId;
     Map<String,Object> op;
@@ -19,20 +19,28 @@
       opPath=(String)op.get(TO_KEY);
       opBody=op.containsKey(BODY_KEY) ? JsonHelper.createJsonFrom(op.get(BODY_KEY)) : "";
       opId=op.containsKey(ID_KEY) ? (Integer)op.get(ID_KEY) : null;
+      if (!opPath.startsWith("/")) {
+        opPath="/" + opPath;
+      }
       req.setup(opMethod,new HttpURI(servletBaseUrl + opPath),opBody,new Cookie[]{});
       res.setup();
       webServer.handle(servletPath + opPath,req,res);
-      results.add(new BatchOperationRepresentation(opId,res.getStatus(),res.getOutputStream().toString(),res.getHeaders()));
+      if (is2XXStatusCode(res.getStatus())) {
+        results.add(new BatchOperationRepresentation(opId,opPath,res.getOutputStream().toString(),res.getHeaders()));
+      }
+ else {
+        tx.failure();
+        return output.badRequest(new RuntimeException(res.getReason()));
+      }
     }
-    response=output.ok(BatchOperationRepresentation.list(results));
     tx.success();
+    return output.ok(BatchOperationRepresentation.list(results));
   }
  catch (  Exception e) {
-    e.printStackTrace();
+    tx.failure();
     return output.badRequest(e);
   }
  finally {
     tx.finish();
   }
-  return response;
 }
