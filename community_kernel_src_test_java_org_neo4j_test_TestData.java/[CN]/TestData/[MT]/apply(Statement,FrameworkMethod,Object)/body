@@ -1,0 +1,37 @@
+{
+  final Title title=method.getAnnotation(Title.class);
+  final Documented doc=method.getAnnotation(Documented.class);
+  final GraphDescription graph=GraphDescription.create(method.getAnnotation(GraphDescription.Graph.class));
+  return new Statement(){
+    @Override public void evaluate() throws Throwable {
+      product=create(graph,title == null ? null : title.value(),doc == null ? null : doc.value(),method.getName());
+      try {
+        try {
+          base.evaluate();
+        }
+ catch (        Throwable err) {
+          try {
+            transformation.destroy(product);
+          }
+ catch (          Throwable sub) {
+            List<Throwable> failures=new ArrayList<Throwable>();
+            if (err instanceof MultipleFailureException) {
+              failures.addAll(((MultipleFailureException)err).getFailures());
+            }
+ else {
+              failures.add(err);
+            }
+            failures.add(sub);
+            throw new MultipleFailureException(failures);
+          }
+          throw err;
+        }
+        transformation.destroy(product);
+      }
+  finally {
+        product=null;
+      }
+    }
+  }
+;
+}
