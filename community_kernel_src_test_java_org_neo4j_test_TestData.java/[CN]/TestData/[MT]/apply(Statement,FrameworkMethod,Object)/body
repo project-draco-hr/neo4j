@@ -1,17 +1,19 @@
 {
   final Title title=method.getAnnotation(Title.class);
   final Documented doc=method.getAnnotation(Documented.class);
-  final GraphDescription graph=GraphDescription.create(method.getAnnotation(GraphDescription.Graph.class));
+  GraphDescription.Graph g=method.getAnnotation(GraphDescription.Graph.class);
+  if (g == null)   g=method.getMethod().getDeclaringClass().getAnnotation(GraphDescription.Graph.class);
+  final GraphDescription graph=GraphDescription.create(g);
   return new Statement(){
     @Override public void evaluate() throws Throwable {
-      product=create(graph,title == null ? null : title.value(),doc == null ? null : doc.value(),method.getName());
+      product.set(create(graph,title == null ? null : title.value(),doc == null ? null : doc.value(),method.getName()));
       try {
         try {
           base.evaluate();
         }
  catch (        Throwable err) {
           try {
-            transformation.destroy(product);
+            destroy(get(false),false);
           }
  catch (          Throwable sub) {
             List<Throwable> failures=new ArrayList<Throwable>();
@@ -26,10 +28,10 @@
           }
           throw err;
         }
-        transformation.destroy(product);
+        destroy(get(false),false);
       }
   finally {
-        product=null;
+        product.set(null);
       }
     }
   }
