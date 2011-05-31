@@ -1,0 +1,45 @@
+{
+  Node a=createInstance("A");
+  Node b1=createInstance("B1");
+  Node b2=createInstance("B2");
+  Node b3=createInstance("B3");
+  Node c1=createInstance("C1");
+  Node c3=createInstance("C3");
+  final RelationshipType R1=MyRelTypes.R1;
+  final RelationshipType R2=MyRelTypes.R2;
+  a.createRelationshipTo(b1,R1);
+  a.createRelationshipTo(b2,R1);
+  a.createRelationshipTo(b3,R1);
+  b1.createRelationshipTo(c1,R2);
+  b3.createRelationshipTo(c3,R2);
+  PatternNode pA=new PatternNode("pA");
+  PatternNode pB=new PatternNode("pB");
+  pA.createRelationshipTo(pB,R1);
+  PatternNode oB=new PatternNode("pB");
+  PatternNode oC=new PatternNode("oC");
+  oB.createOptionalRelationshipTo(oC,R2);
+  int count=0;
+  for (  PatternMatch match : doMatch(pA,a,oB)) {
+    assertEquals(match.getNodeFor(pA),a);
+    Node bMatch=match.getNodeFor(pB);
+    Node optionalBMatch=match.getNodeFor(oB);
+    Node optionalCMatch=match.getNodeFor(oC);
+    if (!bMatch.equals(b1) && !bMatch.equals(b2) && !bMatch.equals(b3)) {
+      fail("either b1, b2 or b3");
+    }
+    if (optionalBMatch != null) {
+      assertEquals(bMatch,optionalBMatch);
+      if (optionalBMatch.equals(b1)) {
+        assertEquals(optionalCMatch,c1);
+      }
+ else       if (optionalBMatch.equals(b3)) {
+        assertEquals(optionalCMatch,c3);
+      }
+ else {
+        assertEquals(optionalCMatch,null);
+      }
+    }
+    count++;
+  }
+  assertEquals(count,3);
+}

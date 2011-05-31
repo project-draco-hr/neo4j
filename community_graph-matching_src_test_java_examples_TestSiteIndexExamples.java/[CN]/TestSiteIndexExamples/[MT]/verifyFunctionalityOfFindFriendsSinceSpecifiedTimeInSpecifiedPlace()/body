@@ -1,0 +1,35 @@
+{
+  Node root=createGraph(new GraphDefinition<Node>(){
+    public Node create(    GraphDatabaseService graphdb){
+      Node me=graphdb.createNode();
+      Node stockholm=graphdb.createNode(), gothenburg=graphdb.createNode();
+      stockholm.setProperty("name","Stockholm");
+      gothenburg.setProperty("name","Gothenburg");
+      Node andy=friend(me,graphdb.createNode(),"Andy",10,stockholm);
+      friend(me,graphdb.createNode(),"Bob",5,stockholm);
+      Node cecilia=friend(me,graphdb.createNode(),"Cecilia",2,stockholm);
+      andy.createRelationshipTo(cecilia,FriendshipTypes.FRIEND).setProperty("since",yearsAgo(10));
+      friend(me,graphdb.createNode(),"David",10,gothenburg);
+      return me;
+    }
+    Node friend(    Node me,    Node friend,    String name,    int knownForYears,    Node place){
+      friend.setProperty("name",name);
+      me.createRelationshipTo(friend,FriendshipTypes.FRIEND).setProperty("since",yearsAgo(knownForYears));
+      friend.createRelationshipTo(place,FriendshipTypes.LIVES_IN);
+      return friend;
+    }
+    Calendar calendar=Calendar.getInstance();
+    long yearsAgo(    int years){
+      return new GregorianCalendar(calendar.get(Calendar.YEAR) - years,calendar.get(Calendar.MONTH),calendar.get(Calendar.DATE)).getTime().getTime();
+    }
+  }
+);
+  Set<String> expected=new HashSet<String>(Arrays.asList("Andy","Bob"));
+  Iterable<Node> friends=findFriendsSinceSpecifiedTimeInSpecifiedPlace(root,"Stockholm",3);
+  for (  Node friend : friends) {
+    String name=(String)friend.getProperty("name",null);
+    assertNotNull(name);
+    assertTrue("Unexpected friend: " + name,expected.remove(name));
+  }
+  assertTrue("These friends were not found: " + expected,expected.isEmpty());
+}
