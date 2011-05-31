@@ -1,10 +1,9 @@
 {
   AbstractGraphDatabase db=database.graph;
-  Response response;
   Transaction tx=db.beginTx();
   try {
     List<Object> operations=input.readList(body);
-    List<BatchOperationRepresentation> results=new ArrayList<BatchOperationRepresentation>(operations.size());
+    BatchOperationResults results=new BatchOperationResults(operations.size());
     InternalJettyServletRequest req=new InternalJettyServletRequest();
     InternalJettyServletResponse res=new InternalJettyServletResponse();
     String servletBaseUrl=uriInfo.getBaseUri().toString();
@@ -26,7 +25,7 @@
       res.setup();
       webServer.handle(servletPath + opPath,req,res);
       if (is2XXStatusCode(res.getStatus())) {
-        results.add(new BatchOperationRepresentation(opId,opPath,res.getOutputStream().toString(),res.getHeaders()));
+        results.addOperationResult(opPath,opId,res.getOutputStream().toString(),res.getHeader("Location"));
       }
  else {
         tx.failure();
@@ -34,7 +33,7 @@
       }
     }
     tx.success();
-    return output.ok(BatchOperationRepresentation.list(results));
+    return Response.ok().entity(results.toJSON().getBytes("UTF-8")).header(HttpHeaders.CONTENT_ENCODING,"UTF-8").type(MediaType.APPLICATION_JSON).build();
   }
  catch (  Exception e) {
     tx.failure();
