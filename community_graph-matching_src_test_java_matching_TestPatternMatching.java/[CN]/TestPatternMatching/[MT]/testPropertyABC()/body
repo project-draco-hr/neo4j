@@ -1,0 +1,47 @@
+{
+  Node a=createInstance("A");
+  a.setProperty("hasProperty",true);
+  Node b1=createInstance("B1");
+  b1.setProperty("equals",1);
+  b1.setProperty("name","Thomas Anderson");
+  Node b2=createInstance("B2");
+  b2.setProperty("equals",1);
+  b2.setProperty("name","Thomas Anderson");
+  Node b3=createInstance("B3");
+  b3.setProperty("equals",2);
+  Node c=createInstance("C");
+  final RelationshipType R=MyRelTypes.R1;
+  a.createRelationshipTo(b1,R);
+  a.createRelationshipTo(b2,R);
+  a.createRelationshipTo(b3,R);
+  b1.createRelationshipTo(c,R);
+  b2.createRelationshipTo(c,R);
+  b3.createRelationshipTo(c,R);
+  PatternNode pA=new PatternNode();
+  pA.addPropertyConstraint("hasProperty",CommonValueMatchers.has());
+  PatternNode pB=new PatternNode();
+  pB.addPropertyConstraint("equals",CommonValueMatchers.exact(1));
+  pB.addPropertyConstraint("name",CommonValueMatchers.regex(Pattern.compile("^Thomas.*")));
+  PatternNode pC=new PatternNode();
+  pA.createRelationshipTo(pB,R);
+  pB.createRelationshipTo(pC,R);
+  int count=0;
+  for (  PatternMatch match : doMatch(pA,a)) {
+    assertEquals(match.getNodeFor(pA),a);
+    Node b=match.getNodeFor(pB);
+    if (!b.equals(b1) && !b.equals(b2)) {
+      fail("either b1 or b2");
+    }
+    assertEquals(match.getNodeFor(pC),c);
+    count++;
+  }
+  assertEquals(2,count);
+  count=0;
+  for (  PatternMatch match : doMatch(pB,b2)) {
+    assertEquals(match.getNodeFor(pA),a);
+    assertEquals(match.getNodeFor(pB),b2);
+    assertEquals(match.getNodeFor(pC),c);
+    count++;
+  }
+  assertEquals(1,count);
+}
