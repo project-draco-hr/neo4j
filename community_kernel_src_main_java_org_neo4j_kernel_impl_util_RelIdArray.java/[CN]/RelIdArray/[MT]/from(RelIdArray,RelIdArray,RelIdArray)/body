@@ -1,12 +1,12 @@
 {
   if (remove == null) {
     if (src == null) {
-      return add;
+      return add.downgradeIfPossible();
     }
     if (add != null) {
-      RelIdArray newArray=new RelIdArray();
+      RelIdArray newArray=src.newSimilarInstance();
       newArray.addAll(src);
-      newArray.addAll(add);
+      newArray=newArray.addAll(add);
       return newArray;
     }
     return src;
@@ -15,11 +15,18 @@
     if (src == null && add == null) {
       return null;
     }
-    RelIdArray newArray=new RelIdArray();
-    newArray.addAll(src);
+    RelIdArray newArray=null;
     Set<Long> removedSet=remove.asSet();
-    evictExcluded(newArray,removedSet);
+    if (src != null) {
+      newArray=src.newSimilarInstance();
+      newArray.addAll(src);
+      evictExcluded(newArray,removedSet);
+    }
+ else {
+      newArray=new RelIdArray();
+    }
     if (add != null) {
+      newArray=newArray.upgradeIfNeeded(add);
       for (RelIdIterator fromIterator=add.iterator(DirectionWrapper.BOTH); fromIterator.hasNext(); ) {
         long value=fromIterator.next();
         if (!removedSet.contains(value)) {
