@@ -1,0 +1,37 @@
+{
+  if (server == null) {
+    return;
+  }
+  new Transactor(server.getDatabase().graph,new UnitOfWork(){
+    @Override public void doWork(){
+      deleteAllNodesAndRelationships(server);
+      deleteAllIndexes(server);
+    }
+    private void deleteAllNodesAndRelationships(    final NeoServerWithEmbeddedWebServer server){
+      Iterable<Node> allNodes=server.getDatabase().graph.getAllNodes();
+      for (      Node n : allNodes) {
+        Iterable<Relationship> relationships=n.getRelationships();
+        for (        Relationship rel : relationships) {
+          rel.delete();
+        }
+        if (n.getId() != 0) {
+          n.delete();
+        }
+ else {
+          for (          String key : n.getPropertyKeys()) {
+            n.removeProperty(key);
+          }
+        }
+      }
+    }
+    private void deleteAllIndexes(    final NeoServerWithEmbeddedWebServer server){
+      for (      String indexName : server.getDatabase().graph.index().nodeIndexNames()) {
+        server.getDatabase().graph.index().forNodes(indexName).delete();
+      }
+      for (      String indexName : server.getDatabase().graph.index().relationshipIndexNames()) {
+        server.getDatabase().graph.index().forRelationships(indexName).delete();
+      }
+    }
+  }
+).execute();
+}
