@@ -1,0 +1,24 @@
+{
+  String method=(String)desc.get(METHOD_KEY);
+  String path=(String)desc.get(TO_KEY);
+  String body=desc.containsKey(BODY_KEY) ? JsonHelper.createJsonFrom(desc.get(BODY_KEY)) : "";
+  Integer id=desc.containsKey(ID_KEY) ? (Integer)desc.get(ID_KEY) : null;
+  Map<Integer,String> locations=results.getLocations();
+  path=replaceLocationPlaceholders(path,locations);
+  body=replaceLocationPlaceholders(body,locations);
+  if (path.startsWith(servletUrl)) {
+    path=path.substring(servletUrl.length());
+  }
+  if (!path.startsWith("/")) {
+    path="/" + path;
+  }
+  req.setup(method,servletUrl + path,body);
+  res.setup();
+  webServer.handle(servletPath + path,req,res);
+  if (is2XXStatusCode(res.getStatus())) {
+    results.addOperationResult(path,id,res.getOutputStream().toString(),res.getHeader("Location"));
+  }
+ else {
+    throw new RuntimeException(res.getReason());
+  }
+}
