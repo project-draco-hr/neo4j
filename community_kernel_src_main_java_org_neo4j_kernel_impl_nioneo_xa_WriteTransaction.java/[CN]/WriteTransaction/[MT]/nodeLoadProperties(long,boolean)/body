@@ -1,8 +1,7 @@
 {
-  ArrayMap<Integer,PropertyData> propertyMap=new ArrayMap<Integer,PropertyData>(9,false,true);
   NodeRecord nodeRecord=getNodeRecord(nodeId);
   if (nodeRecord != null && nodeRecord.isCreated()) {
-    return propertyMap;
+    return null;
   }
   if (nodeRecord != null) {
     if (!nodeRecord.inUse() && !light) {
@@ -13,11 +12,5 @@
   if (!nodeRecord.inUse()) {
     throw new InvalidRecordException("Node[" + nodeId + "] not in use");
   }
-  long nextProp=nodeRecord.getNextProp();
-  while (nextProp != Record.NO_NEXT_PROPERTY.intValue()) {
-    PropertyRecord propRecord=getPropertyStore().getLightRecord(nextProp);
-    propertyMap.put(propRecord.getKeyIndexId(),new PropertyData(propRecord.getId(),propertyGetValueOrNull(propRecord)));
-    nextProp=propRecord.getNextProp();
-  }
-  return propertyMap;
+  return ReadTransaction.loadProperties(getPropertyStore(),nodeRecord.getNextProp());
 }
