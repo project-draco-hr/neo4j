@@ -1,19 +1,20 @@
 {
-  tearDownTest();
+  stopDb();
   config=new HashMap<String,String>();
   config.put(Config.NODE_KEYS_INDEXABLE,"propName");
-  setUpTest();
+  config.put(Config.AUTO_INDEXING_ENABLED,"true");
+  startDb();
   newTransaction();
-  Node node1=getGraphDb().createNode();
-  Node node2=getGraphDb().createNode();
+  Node node1=graphDb.createNode();
+  Node node2=graphDb.createNode();
   node1.setProperty("propName","node1");
   node2.setProperty("propName","node2");
   node2.setProperty("propName_","node2");
   Relationship rel=node1.createRelationshipTo(node2,DynamicRelationshipType.withName("DYNAMIC"));
   rel.setProperty("propName","rel1");
   newTransaction();
-  AutoIndexer autoIndexer=getGraphDb().index().getAutoIndexer();
-  assertEquals(node1,autoIndexer.getNodesFor("propName","node1").getSingle());
-  assertEquals(node1,autoIndexer.getNodesFor("propName","node2").getSingle());
-  assertFalse(autoIndexer.getRelationshipsFor("propName","rel1").hasNext());
+  AutoIndexer autoIndexer=graphDb.index().getAutoIndexer();
+  assertEquals(node1,autoIndexer.getNodeIndex().get("propName","node1").getSingle());
+  assertEquals(node2,autoIndexer.getNodeIndex().get("propName","node2").getSingle());
+  assertFalse(autoIndexer.getRelationshipIndex().get("propName","rel1").hasNext());
 }
