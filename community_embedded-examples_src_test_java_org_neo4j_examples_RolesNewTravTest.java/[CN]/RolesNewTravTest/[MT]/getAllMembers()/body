@@ -1,0 +1,23 @@
+{
+  Transaction tx=graphDb.beginTx();
+  try {
+    System.out.println("All members:");
+    Node referenceNode=graphDb.getReferenceNode();
+    TraversalDescription td=Traversal.description().breadthFirst().relationships(RoleRels.ROOT,Direction.INCOMING).relationships(RoleRels.MEMBER_OF,Direction.INCOMING).relationships(RoleRels.PART_OF,Direction.INCOMING).filter(new Predicate<Path>(){
+      public boolean accept(      Path item){
+        if (item.length() == 0) {
+          return false;
+        }
+        return item.lastRelationship().isType(RoleRels.MEMBER_OF);
+      }
+    }
+);
+    for (    Node group : td.traverse(referenceNode).nodes()) {
+      System.out.println(group.getProperty(NAME));
+    }
+    tx.success();
+  }
+  finally {
+    tx.finish();
+  }
+}
