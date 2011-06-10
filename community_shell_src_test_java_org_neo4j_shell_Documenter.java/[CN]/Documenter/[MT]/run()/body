@@ -1,0 +1,34 @@
+{
+  File dir=new File("target/docs/dev/shell");
+  if (!dir.exists()) {
+    dir.mkdirs();
+  }
+  File file=new File(dir,this.title.toLowerCase().replace(" ","-") + ".txt");
+  PrintWriter out=null;
+  try {
+    out=new PrintWriter(new FileWriter(file));
+  }
+ catch (  IOException e1) {
+    e1.printStackTrace();
+  }
+  out.println("[source,plain]");
+  out.println("-----");
+  for (  Job job : stack) {
+    try {
+      DocOutput output=new DocOutput();
+      client.getServer().interpretLine(job.query,client.session(),output);
+      String result=output.baos.toString();
+      assertTrue(result + "did not contain " + job.assertion,result.contains(job.assertion));
+      doc(job,out,result);
+    }
+ catch (    RemoteException e) {
+      e.printStackTrace();
+    }
+catch (    ShellException e) {
+      e.printStackTrace();
+    }
+  }
+  out.println("-----");
+  out.flush();
+  out.close();
+}
