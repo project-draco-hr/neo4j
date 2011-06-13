@@ -1,0 +1,45 @@
+{
+  Map<String,String> config=new HashMap<String,String>();
+  config.put(Config.NODE_KEYS_INDEXABLE,"nodeProp1, nodeProp2");
+  config.put(Config.RELATIONSHIP_KEYS_NON_INDEXABLE,"relPropNonIndexable");
+  config.put(Config.NODE_AUTO_INDEXING,"true");
+  config.put(Config.RELATIONSHIP_AUTO_INDEXING,"true");
+  EmbeddedGraphDatabase graphDb=new EmbeddedGraphDatabase(getStoreDir("testAPIOverConfig"),config);
+  AutoIndexer<Node> nodeAutoIndexer=graphDb.index().getNodeAutoIndexer();
+  try {
+    nodeAutoIndexer.startIgnoringProperty("nodeProp2");
+    fail("Configuration from db startup and through the API should be consolidated");
+  }
+ catch (  IllegalStateException e) {
+  }
+  nodeAutoIndexer.setAutoIndexingEnabled(false);
+  nodeAutoIndexer.startIgnoringProperty("nodeProp2");
+  nodeAutoIndexer.stopAutoIndexingProperty("nodeProp1");
+  nodeAutoIndexer.stopAutoIndexingProperty("nodeProp2");
+  nodeAutoIndexer.setAutoIndexingEnabled(true);
+  AutoIndexer<Relationship> relAutoIndexer=graphDb.index().getRelationshipAutoIndexer();
+  relAutoIndexer.setAutoIndexingEnabled(false);
+  Transaction tx=graphDb.beginTx();
+  Node node1=null, node2=null;
+  Relationship rel=null;
+  try {
+    node1=graphDb.createNode();
+    node2=graphDb.createNode();
+    rel=node1.createRelationshipTo(node2,DynamicRelationshipType.withName("DYNAMIC"));
+    node1.setProperty("nodeProp1","nodeProp1Value");
+    node2.setProperty("nodeProp2","nodeProp2Value");
+    rel.setProperty("relProp2","relProp1Value");
+    tx.success();
+  }
+ catch (  Exception e) {
+    tx.failure();
+  }
+ finally {
+    tx.finish();
+  }
+  AutoIndex<Node> autoNodeIndex=nodeAutoIndexer.getAutoIndex();
+  assertEquals(node1,autoNodeIndex.get("nodeProp1","nodeProp1Value").getSingle());
+  assertFalse(autoNodeIndex.get("nodeProp2","nodeProp2Value").hasNext());
+  AutoIndex<Relationship> autoRelIndex=relAutoIndexer.getAutoIndex();
+  assertFalse(autoRelIndex.get("relProp2","relProp1Value").hasNext());
+}
