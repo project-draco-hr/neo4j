@@ -1,0 +1,19 @@
+{
+  final String propNameToIndex="test";
+  AutoIndexer<Relationship> autoIndexer=graphDb.index().getRelationshipAutoIndexer();
+  autoIndexer.startAutoIndexingProperty(propNameToIndex);
+  autoIndexer.setEnabled(true);
+  newTransaction();
+  Node node1=graphDb.createNode();
+  Node node2=graphDb.createNode();
+  Node node3=graphDb.createNode();
+  Relationship rel12=node1.createRelationshipTo(node2,DynamicRelationshipType.withName("DYNAMIC"));
+  Relationship rel23=node2.createRelationshipTo(node3,DynamicRelationshipType.withName("DYNAMIC"));
+  rel12.setProperty(propNameToIndex,"rel12");
+  rel23.setProperty(propNameToIndex,"rel23");
+  assertFalse(autoIndexer.getAutoIndex().get(propNameToIndex,"rel12").hasNext());
+  assertFalse(autoIndexer.getAutoIndex().get(propNameToIndex,"rel23").hasNext());
+  newTransaction();
+  assertEquals(rel12,autoIndexer.getAutoIndex().get(propNameToIndex,"rel12").getSingle());
+  assertEquals(rel23,autoIndexer.getAutoIndex().get(propNameToIndex,"rel23").getSingle());
+}

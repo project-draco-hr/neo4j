@@ -1,0 +1,35 @@
+{
+  Map<String,String> config=new HashMap<String,String>();
+  config.put(Config.NODE_KEYS_INDEXABLE,"nodeProp1, nodeProp2");
+  config.put(Config.RELATIONSHIP_KEYS_INDEXABLE,"relProp1, relProp2");
+  config.put(Config.NODE_AUTO_INDEXING,"true");
+  config.put(Config.RELATIONSHIP_AUTO_INDEXING,"true");
+  EmbeddedGraphDatabase graphDb=new EmbeddedGraphDatabase(getStoreDir("testConfig"),config);
+  Transaction tx=graphDb.beginTx();
+  Node node1=null, node2=null;
+  Relationship rel=null;
+  try {
+    node1=graphDb.createNode();
+    node2=graphDb.createNode();
+    rel=node1.createRelationshipTo(node2,DynamicRelationshipType.withName("DYNAMIC"));
+    node1.setProperty("nodeProp1","nodeProp1Value");
+    node2.setProperty("nodeProp2","nodeProp2Value");
+    node1.setProperty("nonIndexed","nodeProp2NonIndexedValue");
+    rel.setProperty("relProp1","relProp1Value");
+    rel.setProperty("relPropNonIndexed","relPropValueNonIndexed");
+    tx.success();
+  }
+ catch (  Exception e) {
+    tx.failure();
+  }
+ finally {
+    tx.finish();
+  }
+  AutoIndex<Node> autoNodeIndex=graphDb.index().getNodeAutoIndexer().getAutoIndex();
+  assertEquals(node1,autoNodeIndex.get("nodeProp1","nodeProp1Value").getSingle());
+  assertEquals(node2,autoNodeIndex.get("nodeProp2","nodeProp2Value").getSingle());
+  assertFalse(autoNodeIndex.get("nonIndexed","nodeProp2NonIndexedValue").hasNext());
+  AutoIndex<Relationship> autoRelIndex=graphDb.index().getRelationshipAutoIndexer().getAutoIndex();
+  assertEquals(rel,autoRelIndex.get("relProp1","relProp1Value").getSingle());
+  assertFalse(autoRelIndex.get("relPropNonIndexed","relPropValueNonIndexed").hasNext());
+}
