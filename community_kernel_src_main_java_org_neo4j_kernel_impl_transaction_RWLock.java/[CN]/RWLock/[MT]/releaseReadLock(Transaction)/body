@@ -22,7 +22,9 @@
     if (we.lockType == LockType.WRITE) {
       if (readCount == we.element.readCount) {
         waitingThreadList.removeLast();
-        we.waitingThread.interrupt();
+        if (!we.element.movedOn) {
+          we.waitingThread.interrupt();
+        }
       }
  else {
         java.util.ListIterator<WaitElement> listItr=waitingThreadList.listIterator(waitingThreadList.lastIndexOf(we));
@@ -30,12 +32,16 @@
           we=listItr.previous();
           if (we.lockType == LockType.WRITE && readCount == we.element.readCount) {
             listItr.remove();
-            we.waitingThread.interrupt();
-            break;
+            if (!we.element.movedOn) {
+              we.waitingThread.interrupt();
+              break;
+            }
           }
  else           if (we.lockType == LockType.READ) {
             listItr.remove();
-            we.waitingThread.interrupt();
+            if (!we.element.movedOn) {
+              we.waitingThread.interrupt();
+            }
           }
         }
       }
@@ -43,7 +49,9 @@
  else {
       if (writeCount == 0) {
         waitingThreadList.removeLast();
-        we.waitingThread.interrupt();
+        if (!we.element.movedOn) {
+          we.waitingThread.interrupt();
+        }
       }
     }
   }
