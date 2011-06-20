@@ -1,0 +1,57 @@
+{
+  String path="target/var/lazyloadrels";
+  FileUtils.deleteRecursively(new File(path));
+  GraphDatabaseService graphDB=new EmbeddedGraphDatabase(path);
+  int num_edges=100;
+  Node hub;
+  Transaction tx=graphDB.beginTx();
+  for (int num_nodes=0; num_nodes < 256; num_nodes+=1) {
+    graphDB.createNode();
+  }
+  tx.success();
+  tx.finish();
+  hub=graphDB.getNodeById(5);
+  int nextID=7;
+  tx=graphDB.beginTx();
+  for (int k=0; k < num_edges; k+=1) {
+    Node neighbor=graphDB.getNodeById(nextID);
+    nextID+=7;
+    nextID&=255;
+    if (nextID == 0) {
+      nextID=1;
+    }
+    hub.createRelationshipTo(neighbor,DynamicRelationshipType.withName("outtie"));
+  }
+  tx.success();
+  tx.finish();
+  tx=graphDB.beginTx();
+  for (int k=0; k < num_edges; k+=1) {
+    Node neighbor=graphDB.getNodeById(nextID);
+    nextID+=7;
+    nextID&=255;
+    if (nextID == 0) {
+      nextID=1;
+    }
+    neighbor.createRelationshipTo(hub,DynamicRelationshipType.withName("innie"));
+  }
+  tx.success();
+  tx.finish();
+  graphDB.shutdown();
+  graphDB=new EmbeddedGraphDatabase("neo4j_broken");
+  hub=graphDB.getNodeById(5);
+  int count=0;
+  for (  @SuppressWarnings("unused") Relationship r1 : hub.getRelationships()) {
+    for (    @SuppressWarnings("unused") Relationship r2 : hub.getRelationships()) {
+      count+=1;
+    }
+  }
+  assertEquals(40000,count);
+  count=0;
+  for (  @SuppressWarnings("unused") Relationship r1 : hub.getRelationships()) {
+    for (    @SuppressWarnings("unused") Relationship r2 : hub.getRelationships()) {
+      count+=1;
+    }
+  }
+  assertEquals(40000,count);
+  graphDB.shutdown();
+}
