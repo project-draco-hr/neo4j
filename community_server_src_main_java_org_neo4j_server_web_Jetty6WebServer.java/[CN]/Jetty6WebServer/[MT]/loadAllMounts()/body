@@ -1,0 +1,27 @@
+{
+  SessionManager sm=new HashSessionManager();
+  final SortedSet<String> mountpoints=new TreeSet<String>(new Comparator<String>(){
+    @Override public int compare(    final String o1,    final String o2){
+      return o2.compareTo(o1);
+    }
+  }
+);
+  mountpoints.addAll(staticContent.keySet());
+  mountpoints.addAll(jaxRSPackages.keySet());
+  for (  String contentKey : mountpoints) {
+    final boolean isStatic=staticContent.containsKey(contentKey);
+    final boolean isJaxrs=jaxRSPackages.containsKey(contentKey);
+    if (isStatic && isJaxrs) {
+      throw new RuntimeException(format("content-key '%s' is mapped twice (static and jaxrs)",contentKey));
+    }
+ else     if (isStatic) {
+      loadStaticContent(sm,contentKey);
+    }
+ else     if (isJaxrs) {
+      loadJAXRSPackage(sm,contentKey);
+    }
+ else {
+      throw new RuntimeException(format("content-key '%s' is not mapped",contentKey));
+    }
+  }
+}
