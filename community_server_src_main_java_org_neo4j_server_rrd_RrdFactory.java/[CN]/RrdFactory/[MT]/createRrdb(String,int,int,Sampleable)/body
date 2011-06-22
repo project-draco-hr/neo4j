@@ -1,11 +1,25 @@
 {
-  if (!new File(inDirectory).exists()) {
-    RrdDef rrdDef=createRrdDb(inDirectory,stepSize);
+  if (!new File(rrdPath).exists()) {
+    RrdDef rrdDef=createRrdDb(rrdPath,stepSize);
     defineDataSources(stepSize,rrdDef,sampleables);
     addArchives(stepsPerArchive,rrdDef);
     return new RrdDb(rrdDef);
   }
  else {
-    return new RrdDb(inDirectory);
+    try {
+      return new RrdDb(rrdPath);
+    }
+ catch (    IOException e) {
+      if (e.getMessage().startsWith("Invalid file header.")) {
+        File rrdFile=new File(rrdPath);
+        if (rrdFile.canWrite()) {
+          rrdFile.delete();
+          log.error("Deleted corrupt RRDB statistics logging file.");
+          return createRrdb(rrdPath,stepSize,stepsPerArchive,sampleables);
+        }
+        throw new IOException("RRD file ['" + rrdFile.getAbsolutePath() + "'] has become corrupted, but I do not have write permissions to recreate it.",e);
+      }
+      throw e;
+    }
   }
 }
