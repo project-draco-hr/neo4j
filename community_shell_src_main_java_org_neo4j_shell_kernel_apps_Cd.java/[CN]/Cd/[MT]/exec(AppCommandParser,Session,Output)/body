@@ -1,6 +1,5 @@
 {
   List<TypedId> paths=readCurrentWorkingDir(session);
-  NodeOrRelationship current=getCurrent(session);
   NodeOrRelationship newThing=null;
   if (parser.arguments().isEmpty()) {
     try {
@@ -8,13 +7,20 @@
       paths.clear();
     }
  catch (    NotFoundException nne) {
-      out.println("Can't find reference node, not moving.");
+      clearCurrent(session);
+      writeCurrentWorkingDir(paths,session);
       return null;
     }
   }
  else {
+    NodeOrRelationship current=null;
+    try {
+      current=getCurrent(session);
+    }
+ catch (    ShellException e) {
+    }
     String arg=parser.arguments().get(0);
-    TypedId newId=current.getTypedId();
+    TypedId newId=null;
     if (arg.equals("..")) {
       if (paths.size() > 0) {
         newId=paths.remove(paths.size() - 1);
@@ -23,6 +29,9 @@
  else     if (arg.equals(".")) {
     }
  else     if (arg.equals(START_ALIAS) || arg.equals(END_ALIAS)) {
+      if (current == null) {
+        throw new ShellException("Can't do " + START_ALIAS + " or "+ END_ALIAS+ " on a non-existent relationship");
+      }
       newId=getStartOrEnd(current,arg);
       paths.add(current.getTypedId());
     }
@@ -32,24 +41,33 @@
         suppliedId=Long.parseLong(arg);
       }
  catch (      NumberFormatException e) {
-        suppliedId=findNodeWithTitle(current.asNode(),arg,session);
+        if (current != null) {
+          suppliedId=findNodeWithTitle(current.asNode(),arg,session);
+        }
         if (suppliedId == -1) {
           throw new ShellException("No connected node with title '" + arg + "'");
         }
       }
       newId=parser.options().containsKey("r") ? new TypedId(NodeOrRelationship.TYPE_RELATIONSHIP,suppliedId) : new TypedId(NodeOrRelationship.TYPE_NODE,suppliedId);
-      if (newId.equals(current.getTypedId())) {
+      if (current != null && newId.equals(current.getTypedId())) {
         throw new ShellException("Can't cd to where you stand");
       }
       boolean absolute=parser.options().containsKey("a");
-      if (!absolute && !this.isConnected(current,newId)) {
+      if (!absolute && current != null && !isConnected(current,newId)) {
         throw new ShellException(getDisplayName(getServer(),session,newId,false) + " isn't connected to the current primitive," + " use -a to force it to go there anyway");
       }
-      paths.add(current.getTypedId());
+      if (current != null) {
+        paths.add(current.getTypedId());
+      }
     }
-    newThing=this.getThingById(newId);
+    newThing=newId != null ? getThingById(newId) : current;
   }
-  setCurrent(session,newThing);
+  if (newThing != null) {
+    setCurrent(session,newThing);
+  }
+ else {
+    clearCurrent(session);
+  }
   writeCurrentWorkingDir(paths,session);
   return null;
 }
