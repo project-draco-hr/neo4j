@@ -5,18 +5,18 @@
   value=URIHelper.encode(value);
   String indexName="spacey-values";
   helper.createNodeIndex(indexName);
-  ClientResponse response=CLIENT.resource(functionalTestHelper.indexNodeUri(indexName,key,value)).entity(JsonHelper.createJsonFrom(functionalTestHelper.nodeUri(nodeId)),MediaType.APPLICATION_JSON).accept(MediaType.APPLICATION_JSON).post(ClientResponse.class);
+  final RestRequest request=RestRequest.req();
+  JaxRsResponse response=request.post(functionalTestHelper.indexNodeUri(indexName,key,value),JsonHelper.createJsonFrom(functionalTestHelper.nodeUri(nodeId)));
   assertEquals(Status.CREATED.getStatusCode(),response.getStatus());
   URI location=response.getLocation();
   response.close();
-  response=CLIENT.resource(functionalTestHelper.indexNodeUri(indexName,key,value)).accept(MediaType.APPLICATION_JSON_TYPE).get(ClientResponse.class);
+  response=request.get(functionalTestHelper.indexNodeUri(indexName,key,value));
   assertEquals(Status.OK.getStatusCode(),response.getStatus());
   Collection<?> hits=(Collection<?>)JsonHelper.jsonToSingleValue(response.getEntity(String.class));
   assertEquals(1,hits.size());
   response.close();
   CLIENT.resource(location).delete();
-  response=CLIENT.resource(functionalTestHelper.indexNodeUri(indexName,key,value)).accept(MediaType.APPLICATION_JSON_TYPE).get(ClientResponse.class);
+  response=request.get(functionalTestHelper.indexNodeUri(indexName,key,value));
   hits=(Collection<?>)JsonHelper.jsonToSingleValue(response.getEntity(String.class));
   assertEquals(0,hits.size());
-  response.close();
 }
