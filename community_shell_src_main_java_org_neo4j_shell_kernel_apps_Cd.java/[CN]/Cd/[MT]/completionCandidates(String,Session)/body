@@ -3,33 +3,33 @@
   if (lastWord.startsWith("-")) {
     return super.completionCandidates(partOfLine,session);
   }
+  TreeSet<String> result=new TreeSet<String>();
+  NodeOrRelationship current;
   try {
-    TreeSet<String> result=new TreeSet<String>();
-    NodeOrRelationship current=getCurrent(session);
-    if (current.isNode()) {
-      Node node=current.asNode();
-      for (      Node otherNode : RelationshipToNodeIterable.wrap(node.getRelationships(),node)) {
-        long otherNodeId=otherNode.getId();
-        String title=findTitle(getServer(),session,otherNode);
-        if (title != null) {
-          if (!result.contains(title)) {
-            maybeAddCompletionCandidate(result,title + "," + otherNodeId,lastWord);
-          }
-        }
-        maybeAddCompletionCandidate(result,"" + otherNodeId,lastWord);
-      }
-    }
- else {
-      maybeAddCompletionCandidate(result,START_ALIAS,lastWord);
-      maybeAddCompletionCandidate(result,END_ALIAS,lastWord);
-      Relationship rel=current.asRelationship();
-      maybeAddCompletionCandidate(result,"" + rel.getStartNode().getId(),lastWord);
-      maybeAddCompletionCandidate(result,"" + rel.getEndNode().getId(),lastWord);
-    }
-    return new ArrayList<String>(result);
+    current=getCurrent(session);
   }
  catch (  ShellException e) {
-    e.printStackTrace();
-    return super.completionCandidates(partOfLine,session);
+    return Collections.emptyList();
   }
+  if (current.isNode()) {
+    Node node=current.asNode();
+    for (    Node otherNode : RelationshipToNodeIterable.wrap(node.getRelationships(),node)) {
+      long otherNodeId=otherNode.getId();
+      String title=findTitle(getServer(),session,otherNode);
+      if (title != null) {
+        if (!result.contains(title)) {
+          maybeAddCompletionCandidate(result,title + "," + otherNodeId,lastWord);
+        }
+      }
+      maybeAddCompletionCandidate(result,"" + otherNodeId,lastWord);
+    }
+  }
+ else {
+    maybeAddCompletionCandidate(result,START_ALIAS,lastWord);
+    maybeAddCompletionCandidate(result,END_ALIAS,lastWord);
+    Relationship rel=current.asRelationship();
+    maybeAddCompletionCandidate(result,"" + rel.getStartNode().getId(),lastWord);
+    maybeAddCompletionCandidate(result,"" + rel.getEndNode().getId(),lastWord);
+  }
+  return new ArrayList<String>(result);
 }
