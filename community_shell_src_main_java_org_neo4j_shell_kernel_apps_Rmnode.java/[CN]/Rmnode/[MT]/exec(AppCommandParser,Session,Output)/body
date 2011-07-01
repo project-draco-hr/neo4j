@@ -1,0 +1,31 @@
+{
+  NodeOrRelationship node=null;
+  if (parser.arguments().isEmpty()) {
+    node=getCurrent(session);
+  }
+ else {
+    long id=parseInt(parser.arguments().get(0));
+    try {
+      node=wrap(getNodeById(id));
+    }
+ catch (    NotFoundException e) {
+      throw new ShellException("No node " + id + " found");
+    }
+  }
+  if (!node.isNode()) {
+    out.println("Please select a node to delete");
+    return null;
+  }
+  boolean forceDeletion=parser.options().containsKey("f");
+  if (forceDeletion) {
+    for (    Relationship relationship : node.asNode().getRelationships()) {
+      out.println("Relationship " + getDisplayName(getServer(),session,relationship,true,false) + " deleted");
+      relationship.delete();
+    }
+  }
+  if (node.asNode().hasRelationship()) {
+    throw new ShellException(getDisplayName(getServer(),session,node.asNode(),false) + " cannot be deleted because it still have relationships. Use -f to force deletion of its relationships");
+  }
+  node.asNode().delete();
+  return null;
+}
