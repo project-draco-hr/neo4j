@@ -69,8 +69,14 @@
       log.fine("TxLog contained unresolved " + "xids that needed rollback. They couldn't be matched to " + "any of the XAResources recover list. "+ "Assuming " + rollbackList.size() + " transactions already rolled back.");
       msgLog.logMessage("TM: no match found for in total " + rollbackList.size() + " transaction that should have been rolled back",true);
     }
+    for (    XAResource participant : MapUtil.reverse(resourceMap).keySet()) {
+      xaResourceToDataSource(participant).rotateLogicalLog();
+    }
   }
- catch (  XAException e) {
+ catch (  IOException e) {
+    throw new TransactionFailureException("Recovery failed.",e);
+  }
+catch (  XAException e) {
     throw new TransactionFailureException("Recovery failed.",e);
   }
 }
