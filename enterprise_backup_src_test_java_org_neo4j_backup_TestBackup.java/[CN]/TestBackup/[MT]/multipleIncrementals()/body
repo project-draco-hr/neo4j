@@ -1,0 +1,17 @@
+{
+  GraphDatabaseService db=new EmbeddedGraphDatabase(serverPath,stringMap(ENABLE_ONLINE_BACKUP,"true"));
+  Index<Node> index=db.index().forNodes("yo");
+  OnlineBackup backup=OnlineBackup.from("localhost");
+  backup.full(backupPath);
+  long lastCommittedTxForLucene=getLastCommittedTx(backupPath);
+  for (int i=0; i < 5; i++) {
+    Transaction tx=db.beginTx();
+    Node node=db.createNode();
+    index.add(node,"key","value" + i);
+    tx.success();
+    tx.finish();
+    backup.incremental(backupPath);
+    assertEquals(lastCommittedTxForLucene + i + 1,getLastCommittedTx(backupPath));
+  }
+  db.shutdown();
+}
