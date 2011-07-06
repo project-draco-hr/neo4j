@@ -1,0 +1,19 @@
+{
+  String storeDir="target/test-data/db";
+  FileUtils.deleteRecursively(new File(storeDir));
+  GraphDatabaseService newDb=new EmbeddedGraphDatabase(storeDir);
+  Transaction tx=newDb.beginTx();
+  newDb.getReferenceNode().delete();
+  Node node=newDb.createNode();
+  String name="Test";
+  node.setProperty("name",name);
+  tx.success();
+  tx.finish();
+  GraphDatabaseShellServer server=new GraphDatabaseShellServer(newDb);
+  ShellClient client=new SameJvmClient(server);
+  executeCommand(server,client,"pwd",Pattern.quote("(?)"));
+  executeCommand(server,client,"ls " + node.getId(),"Test");
+  executeCommand(server,client,"cd -a " + node.getId());
+  executeCommand(server,client,"ls","Test");
+  newDb.shutdown();
+}
