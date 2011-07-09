@@ -1,9 +1,19 @@
 {
   if (Config.osIsWindows()) {
     if (fileName.endsWith("neostore")) {
-      return getWindowsFileLock(new File(fileName).getParentFile());
+      return getLockFileBasedFileLock(new File(fileName).getParentFile());
     }
     return new PlaceboFileLock();
+  }
+ else   if (fileName.endsWith("neostore") && Config.osIsMacOS()) {
+    FileLock regular=wrapOrNull(channel.tryLock());
+    if (regular == null)     return null;
+    FileLock extra=getLockFileBasedFileLock(new File(fileName).getParentFile());
+    if (extra == null) {
+      regular.release();
+      return null;
+    }
+    return new DoubleFileLock(regular,extra);
   }
  else {
     return wrapOrNull(channel.tryLock());
