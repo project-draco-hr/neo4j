@@ -31,7 +31,13 @@
     }
     txStatus.markCommitStarted();
     if (xaTransaction.isRecovered() && xaTransaction.getCommitTxId() == -1) {
-      xaTransaction.setCommitTxId(dataSource.getLastCommittedTxId() + 1);
+      boolean previousRecoveredValue=dataSource.setRecovered(true);
+      try {
+        xaTransaction.setCommitTxId(dataSource.getLastCommittedTxId() + 1);
+      }
+  finally {
+        dataSource.setRecovered(previousRecoveredValue);
+      }
     }
     xaTransaction.commit();
   }
@@ -39,7 +45,7 @@
     log.done(xaTransaction.getIdentifier());
   }
  else   if (!log.scanIsComplete() || recoveredTxCount > 0) {
-    recoveredDoneRecords.add(xaTransaction.getIdentifier());
+    recoveredDoneRecords.add(Triplet.of(xaTransaction.getIdentifier(),onePhase,xaTransaction.getCommitTxId()));
   }
   xidMap.remove(xid);
   if (xaTransaction.isRecovered()) {

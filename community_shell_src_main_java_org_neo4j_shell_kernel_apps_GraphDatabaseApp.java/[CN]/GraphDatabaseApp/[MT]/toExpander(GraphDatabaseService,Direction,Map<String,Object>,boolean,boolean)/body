@@ -1,27 +1,9 @@
 {
   defaultDirection=defaultDirection != null ? defaultDirection : Direction.BOTH;
+  Map<String,Direction> matches=filterMapToTypes(db,defaultDirection,relationshipTypes,caseInsensitiveFilters,looseFilters);
   Expander expander=Traversal.emptyExpander();
-  boolean addedSomething=false;
-  for (  RelationshipType type : db.getRelationshipTypes()) {
-    Direction direction=null;
-    if (relationshipTypes == null || relationshipTypes.isEmpty()) {
-      direction=defaultDirection;
-    }
- else {
-      for (      Map.Entry<String,Object> entry : relationshipTypes.entrySet()) {
-        if (matches(newPattern(entry.getKey(),caseInsensitiveFilters),type.name(),caseInsensitiveFilters,looseFilters)) {
-          direction=getDirection(entry.getValue() != null ? entry.getValue().toString() : null,defaultDirection);
-          break;
-        }
-      }
-    }
-    if (direction != null) {
-      expander=expander.add(type,direction);
-      addedSomething=true;
-    }
-  }
-  if (!relationshipTypes.isEmpty() && !addedSomething) {
-    return null;
+  for (  Map.Entry<String,Direction> entry : matches.entrySet()) {
+    expander=expander.add(DynamicRelationshipType.withName(entry.getKey()),entry.getValue());
   }
   return expander;
 }

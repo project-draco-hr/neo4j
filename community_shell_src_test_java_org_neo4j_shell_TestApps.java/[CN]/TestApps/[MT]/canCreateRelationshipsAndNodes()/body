@@ -1,0 +1,22 @@
+{
+  RelationshipType type1=withName("type1");
+  RelationshipType type2=withName("type2");
+  RelationshipType type3=withName("type3");
+  executeCommandExpectingException("mkrel -c","type");
+  executeCommand("mkrel -ct " + type1.name());
+  Relationship relationship=db.getReferenceNode().getSingleRelationship(type1,Direction.OUTGOING);
+  Node node=relationship.getEndNode();
+  executeCommand("mkrel -t " + type2.name() + " "+ node.getId());
+  Relationship otherRelationship=db.getReferenceNode().getSingleRelationship(type2,Direction.OUTGOING);
+  assertEquals(node,otherRelationship.getEndNode());
+  executeCommand("mkrel -ct " + type3.name() + " --np \"{'name':'Neo','destiny':'The one'}\" --rp \"{'number':11}\"");
+  Relationship thirdRelationship=db.getReferenceNode().getSingleRelationship(type3,Direction.OUTGOING);
+  assertEquals(11,thirdRelationship.getProperty("number"));
+  Node thirdNode=thirdRelationship.getEndNode();
+  assertEquals("Neo",thirdNode.getProperty("name"));
+  assertEquals("The one",thirdNode.getProperty("destiny"));
+  executeCommand("cd -r " + thirdRelationship.getId());
+  executeCommand("mv number other-number");
+  assertNull(thirdRelationship.getProperty("number",null));
+  assertEquals(11,thirdRelationship.getProperty("other-number"));
+}

@@ -3,12 +3,22 @@
     msgLog.logMessage("XaResourceManager[" + name + "] checkRecoveryComplete "+ xidMap.size()+ " xids");
     tf.recoveryComplete();
     try {
-      for (      int identifier : recoveredDoneRecords) {
+      for (      Triplet<Integer,Boolean,Long> recoveredTx : recoveredDoneRecords) {
+        int identifier=recoveredTx.first();
+        boolean onePhase=recoveredTx.second();
+        long txId=recoveredTx.third();
+        int masterId=XaLogicalLog.MASTER_ID_REPRESENTING_NO_MASTER;
+        if (!onePhase) {
+          log.commitTwoPhase(identifier,txId,masterId);
+        }
         log.doneInternal(identifier);
       }
       recoveredDoneRecords.clear();
     }
  catch (    IOException e) {
+      e.printStackTrace();
+    }
+catch (    XAException e) {
       e.printStackTrace();
     }
     msgLog.logMessage("XaResourceManager[" + name + "] recovery completed.");
