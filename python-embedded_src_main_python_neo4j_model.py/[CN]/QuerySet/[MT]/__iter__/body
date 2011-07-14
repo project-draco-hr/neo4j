@@ -1,0 +1,20 @@
+def __iter__(self):
+    if (not self._graph):
+        raise RuntimeError('You have to provide a graph database instance to the query set before you can retrieve results.')
+    if (len(self._lookups) > 0):
+        index_query = ' AND '.join(self._lookups)
+    else:
+        index_query = '*:*'
+    hits = self._index(self._graph).query(index_query)
+    try:
+        for entity in hits:
+            for predicate in self._filters:
+                if (not predicate(entity)):
+                    break
+            else:
+                yield Neo4jEntity.__new__(self._Entity, entity)
+    finally:
+        try:
+            hits.close()
+        except:
+            pass
