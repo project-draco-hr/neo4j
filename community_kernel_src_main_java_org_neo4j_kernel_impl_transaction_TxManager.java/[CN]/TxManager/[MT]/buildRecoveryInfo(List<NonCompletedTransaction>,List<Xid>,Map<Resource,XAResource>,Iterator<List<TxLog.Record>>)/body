@@ -3,7 +3,7 @@
     Iterator<TxLog.Record> dListItr=danglingRecordList.next().iterator();
     TxLog.Record startRecord=dListItr.next();
     if (startRecord.getType() != TxLog.TX_START) {
-      throw new TransactionFailureException("First record not a start record, type=" + startRecord.getType());
+      throw logAndReturn("TM error building recovery info",new TransactionFailureException("First record not a start record, type=" + startRecord.getType()));
     }
     HashSet<Resource> branchSet=new HashSet<Resource>();
     int markedCommit=-1;
@@ -11,18 +11,18 @@
       TxLog.Record record=dListItr.next();
       if (record.getType() == TxLog.BRANCH_ADD) {
         if (markedCommit != -1) {
-          throw new TransactionFailureException("Already marked commit " + startRecord);
+          throw logAndReturn("TM error building recovery info",new TransactionFailureException("Already marked commit " + startRecord));
         }
         branchSet.add(new Resource(record.getBranchId()));
       }
  else       if (record.getType() == TxLog.MARK_COMMIT) {
         if (markedCommit != -1) {
-          throw new TransactionFailureException("Already marked commit " + startRecord);
+          throw logAndReturn("TM error building recovery info",new TransactionFailureException("Already marked commit " + startRecord));
         }
         markedCommit=record.getSequenceNumber();
       }
  else {
-        throw new TransactionFailureException("Illegal record type[" + record.getType() + "]");
+        throw logAndReturn("TM error building recovery info",new TransactionFailureException("Illegal record type[" + record.getType() + "]"));
       }
     }
     Iterator<Resource> resourceItr=branchSet.iterator();

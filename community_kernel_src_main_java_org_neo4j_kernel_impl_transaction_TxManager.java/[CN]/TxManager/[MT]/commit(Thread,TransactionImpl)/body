@@ -13,7 +13,7 @@
       log.log(Level.SEVERE,"Commit failed, status=" + getTxStatusAsString(tx.getStatus()) + ", errorCode="+ xaErrorCode,e);
       if (tx.getStatus() == Status.STATUS_COMMITTED) {
         setTmNotOk();
-        throw new TransactionFailureException("commit threw exception but status is committed?",e);
+        throw logAndReturn("TM error tx commit",new TransactionFailureException("commit threw exception but status is committed?",e));
       }
     }
 catch (    Throwable t) {
@@ -35,7 +35,7 @@ catch (    Throwable t) {
  else {
         commitError="error code in commit: " + xaErrorCode;
       }
-      throw Exceptions.withCause(new HeuristicMixedException("Unable to rollback ---> " + commitError + " ---> error code for rollback: "+ e.errorCode),e);
+      throw logAndReturn("TM error tx commit",Exceptions.withCause(new HeuristicMixedException("Unable to rollback ---> " + commitError + " ---> error code for rollback: "+ e.errorCode),e));
     }
     tx.doAfterCompletion();
     txThreadMap.remove(thread);
@@ -47,14 +47,14 @@ catch (    Throwable t) {
  catch (    IOException e) {
       log.log(Level.SEVERE,"Error writing transaction log",e);
       setTmNotOk();
-      throw Exceptions.withCause(new SystemException("TM encountered a problem, " + " error writing transaction log"),e);
+      throw logAndReturn("TM error tx commit",Exceptions.withCause(new SystemException("TM encountered a problem, " + " error writing transaction log"),e));
     }
     tx.setStatus(Status.STATUS_NO_TRANSACTION);
     if (commitFailureCause == null) {
-      throw new HeuristicRollbackException("Failed to commit, transaction rolledback ---> " + "error code was: " + xaErrorCode);
+      throw logAndReturn("TM error tx commit",new HeuristicRollbackException("Failed to commit, transaction rolledback ---> " + "error code was: " + xaErrorCode));
     }
  else {
-      throw Exceptions.withCause(new HeuristicRollbackException("Failed to commit, transaction rolledback ---> " + commitFailureCause),commitFailureCause);
+      throw logAndReturn("TM error tx commit",Exceptions.withCause(new HeuristicRollbackException("Failed to commit, transaction rolledback ---> " + commitFailureCause),commitFailureCause));
     }
   }
   tx.doAfterCompletion();
@@ -67,7 +67,7 @@ catch (    Throwable t) {
  catch (  IOException e) {
     log.log(Level.SEVERE,"Error writing transaction log",e);
     setTmNotOk();
-    throw Exceptions.withCause(new SystemException("TM encountered a problem, " + " error writing transaction log"),e);
+    throw logAndReturn("TM error tx commit",Exceptions.withCause(new SystemException("TM encountered a problem, " + " error writing transaction log"),e));
   }
   tx.setStatus(Status.STATUS_NO_TRANSACTION);
 }

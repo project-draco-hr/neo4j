@@ -1,6 +1,6 @@
 {
   if (!tmOk) {
-    throw new SystemException("TM has encountered some problem, " + "please perform neccesary action (tx recovery/restart)");
+    throw logAndReturn("TM error tx rollback",new SystemException("TM has encountered some problem, " + "please perform neccesary action (tx recovery/restart)"));
   }
   Thread thread=Thread.currentThread();
   TransactionImpl tx=txThreadMap.get(thread);
@@ -20,7 +20,7 @@
  catch (      XAException e) {
         log.log(Level.SEVERE,"Unable to rollback marked or active transaction. " + "Some resources may be commited others not. " + "Neo4j kernel should be SHUTDOWN for "+ "resource maintance and transaction recovery ---->",e);
         setTmNotOk();
-        throw Exceptions.withCause(new SystemException("Unable to rollback " + " ---> error code for rollback: " + e.errorCode),e);
+        throw logAndReturn("TM error tx rollback",Exceptions.withCause(new SystemException("Unable to rollback " + " ---> error code for rollback: " + e.errorCode),e));
       }
       tx.doAfterCompletion();
       txThreadMap.remove(thread);
@@ -32,7 +32,7 @@
  catch (      IOException e) {
         log.log(Level.SEVERE,"Error writing transaction log",e);
         setTmNotOk();
-        throw Exceptions.withCause(new SystemException("TM encountered a problem, " + " error writing transaction log"),e);
+        throw logAndReturn("TM error tx rollback",Exceptions.withCause(new SystemException("TM encountered a problem, " + " error writing transaction log"),e));
       }
       tx.setStatus(Status.STATUS_NO_TRANSACTION);
     }
