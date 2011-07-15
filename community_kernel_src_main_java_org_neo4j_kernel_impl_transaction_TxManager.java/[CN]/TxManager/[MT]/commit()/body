@@ -1,17 +1,17 @@
 {
   if (!tmOk) {
-    throw new SystemException("TM has encountered some problem, " + "please perform neccesary action (tx recovery/restart)");
+    throw logAndReturn("TM error tx commit",new SystemException("TM has encountered some problem, " + "please perform neccesary action (tx recovery/restart)"));
   }
   Thread thread=Thread.currentThread();
   TransactionImpl tx=txThreadMap.get(thread);
   if (tx == null) {
-    throw new IllegalStateException("Not in transaction");
+    throw logAndReturn("TM error tx commit",new IllegalStateException("Not in transaction"));
   }
   boolean hasAnyLocks=false;
   try {
     hasAnyLocks=finishHook.hasAnyLocks(tx);
     if (tx.getStatus() != Status.STATUS_ACTIVE && tx.getStatus() != Status.STATUS_MARKED_ROLLBACK) {
-      throw new IllegalStateException("Tx status is: " + getTxStatusAsString(tx.getStatus()));
+      throw logAndReturn("TM error tx commit",new IllegalStateException("Tx status is: " + getTxStatusAsString(tx.getStatus())));
     }
     tx.doBeforeCompletion();
     if (tx.getStatus() == Status.STATUS_ACTIVE) {
@@ -23,7 +23,7 @@
       rollbackCommit(thread,tx);
     }
  else {
-      throw new IllegalStateException("Tx status is: " + getTxStatusAsString(tx.getStatus()));
+      throw logAndReturn("TM error tx commit",new IllegalStateException("Tx status is: " + getTxStatusAsString(tx.getStatus())));
     }
   }
   finally {

@@ -47,7 +47,8 @@
         recoveredXidsList.remove(xid);
         Resource resource=new Resource(xid.getBranchQualifier());
         if (!resourceMap.containsKey(resource)) {
-          throw new TransactionFailureException("Couldn't find XAResource for " + xid);
+          final TransactionFailureException ex=new TransactionFailureException("Couldn't find XAResource for " + xid);
+          throw logAndReturn("TM: recovery error",ex);
         }
         log.fine("Commiting tx seq[" + seq + "]["+ xid+ "] ... ");
         msgLog.logMessage("TM: Committing tx " + xid,true);
@@ -59,7 +60,8 @@
       Xid xid=rollbackItr.next();
       Resource resource=new Resource(xid.getBranchQualifier());
       if (!resourceMap.containsKey(resource)) {
-        throw new TransactionFailureException("Couldn't find XAResource for " + xid);
+        final TransactionFailureException ex=new TransactionFailureException("Couldn't find XAResource for " + xid);
+        throw logAndReturn("TM: recovery error",ex);
       }
       log.fine("Rollback " + xid + " ... ");
       msgLog.logMessage("TM: no match found for " + xid + " removing",true);
@@ -74,9 +76,9 @@
     }
   }
  catch (  IOException e) {
-    throw new TransactionFailureException("Recovery failed.",e);
+    throw logAndReturn("TM: recovery failed",new TransactionFailureException("Recovery failed.",e));
   }
 catch (  XAException e) {
-    throw new TransactionFailureException("Recovery failed.",e);
+    throw logAndReturn("TM: recovery failed",new TransactionFailureException("Recovery failed.",e));
   }
 }
