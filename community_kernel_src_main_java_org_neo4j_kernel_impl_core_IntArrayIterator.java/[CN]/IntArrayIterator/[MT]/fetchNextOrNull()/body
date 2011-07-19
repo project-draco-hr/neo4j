@@ -1,0 +1,60 @@
+{
+  do {
+    if (currentTypeIterator.hasNext()) {
+      long nextId=currentTypeIterator.next();
+      try {
+        return new RelationshipProxy(nextId,nodeManager);
+      }
+ catch (      NotFoundException e) {
+      }
+    }
+    while (!currentTypeIterator.hasNext()) {
+      if (typeIterator.hasNext()) {
+        currentTypeIterator=typeIterator.next();
+      }
+ else       if (fromNode.getMoreRelationships(nodeManager) || !isFullyLoaded) {
+        Map<String,RelIdIterator> newRels=new HashMap<String,RelIdIterator>();
+        for (        RelIdIterator itr : rels) {
+          RelIdIterator newItr=itr;
+          String type=itr.getIds().getType();
+          RelIdArray newSrc=fromNode.getRelationshipIds(type);
+          if (newSrc != null) {
+            if (itr.isPlacebo()) {
+              newItr=newSrc.iterator(direction);
+            }
+ else             if (newSrc.couldBeNeedingUpdate()) {
+              itr.updateSource(newSrc);
+            }
+            newItr.doAnotherRound();
+          }
+          newRels.put(type,newItr);
+        }
+        if (types.length == 0) {
+          for (          RelIdArray ids : fromNode.getRelationshipIds()) {
+            String type=ids.getType();
+            RelIdIterator itr=newRels.get(type);
+            if (itr == null) {
+              RelIdArray remove=nodeManager.getCowRelationshipRemoveMap(fromNode,type);
+              itr=remove == null ? ids.iterator(direction) : RelIdArray.from(ids,null,remove).iterator(direction);
+              newRels.put(type,itr);
+            }
+ else             if (itr.isPlacebo()) {
+              itr.updateSource(ids);
+              newRels.put(type,itr);
+            }
+          }
+        }
+        rels.clear();
+        rels.addAll(newRels.values());
+        typeIterator=rels.iterator();
+        currentTypeIterator=typeIterator.hasNext() ? typeIterator.next() : RelIdArray.EMPTY.iterator(direction);
+        isFullyLoaded=!fromNode.hasMoreRelationshipsToLoad();
+      }
+ else {
+        break;
+      }
+    }
+  }
+ while (currentTypeIterator.hasNext());
+  return null;
+}
