@@ -5,10 +5,15 @@
   for (  Map.Entry<IndexIdentifier,Pair<IndexWriter,AtomicBoolean>> writer : indexWriters.entrySet()) {
     SnapshotDeletionPolicy deletionPolicy=(SnapshotDeletionPolicy)writer.getValue().first().getConfig().getIndexDeletionPolicy();
     File indexDirectory=getFileDirectory(baseStorePath,writer.getKey());
-    for (    String fileName : deletionPolicy.snapshot(SNAPSHOT_ID).getFileNames()) {
-      files.add(new File(indexDirectory,fileName));
+    try {
+      IndexCommit commit=deletionPolicy.snapshot(SNAPSHOT_ID);
+      for (      String fileName : commit.getFileNames()) {
+        files.add(new File(indexDirectory,fileName));
+      }
+      snapshots.add(deletionPolicy);
     }
-    snapshots.add(deletionPolicy);
+ catch (    IllegalStateException e) {
+    }
   }
   files.add(providerStore.getFile());
   return new ClosableIterable<File>(){
