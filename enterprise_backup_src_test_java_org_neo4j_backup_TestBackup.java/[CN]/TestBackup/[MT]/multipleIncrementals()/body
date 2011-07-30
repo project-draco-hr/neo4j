@@ -1,17 +1,28 @@
 {
-  GraphDatabaseService db=new EmbeddedGraphDatabase(serverPath,stringMap(ENABLE_ONLINE_BACKUP,"true"));
-  Index<Node> index=db.index().forNodes("yo");
-  OnlineBackup backup=OnlineBackup.from("localhost");
-  backup.full(backupPath);
-  long lastCommittedTxForLucene=getLastCommittedTx(backupPath);
-  for (int i=0; i < 5; i++) {
+  GraphDatabaseService db=null;
+  try {
+    db=new EmbeddedGraphDatabase(serverPath,stringMap(ENABLE_ONLINE_BACKUP,"true"));
     Transaction tx=db.beginTx();
-    Node node=db.createNode();
-    index.add(node,"key","value" + i);
+    Index<Node> index=db.index().forNodes("yo");
+    index.add(db.createNode(),"justTo","commitATx");
     tx.success();
     tx.finish();
-    backup.incremental(backupPath);
-    assertEquals(lastCommittedTxForLucene + i + 1,getLastCommittedTx(backupPath));
+    OnlineBackup backup=OnlineBackup.from("localhost");
+    backup.full(backupPath);
+    long lastCommittedTxForLucene=getLastCommittedTx(backupPath);
+    for (int i=0; i < 5; i++) {
+      tx=db.beginTx();
+      Node node=db.createNode();
+      index.add(node,"key","value" + i);
+      tx.success();
+      tx.finish();
+      backup.incremental(backupPath);
+      assertEquals(lastCommittedTxForLucene + i + 1,getLastCommittedTx(backupPath));
+    }
   }
-  db.shutdown();
+  finally {
+    if (db != null) {
+      db.shutdown();
+    }
+  }
 }
