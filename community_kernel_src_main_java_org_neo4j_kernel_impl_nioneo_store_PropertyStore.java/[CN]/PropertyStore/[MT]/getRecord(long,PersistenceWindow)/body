@@ -1,21 +1,28 @@
 {
   Buffer buffer=window.getOffsettedBuffer(id);
-  long inUseByte=buffer.get();
-  boolean inUse=(inUseByte & 0x1) == Record.IN_USE.intValue();
-  if (!inUse) {
-    throw new InvalidRecordException("Record[" + id + "] not in use");
+  Bits bits=new Bits(30);
+  bits.read(buffer);
+  long[] propBlock=new long[2];
+  for (int i=propBlock.length - 1; i >= 0; i--) {
+    propBlock[i]=bits.getLong(0xFFFFFFFFFFFFFFFFL);
+    bits.shiftRight(64);
   }
   PropertyRecord record=new PropertyRecord(id);
-  long typeInt=buffer.getInt();
-  record.setType(getEnumType((int)typeInt & 0xFFFF));
-  record.setInUse(true);
-  record.setKeyIndexId(buffer.getInt());
-  record.setPropBlock(buffer.getLong());
-  long prevProp=buffer.getUnsignedInt();
-  long prevModifier=(inUseByte & 0xF0L) << 28;
-  long nextProp=buffer.getUnsignedInt();
-  long nextModifier=(typeInt & 0xF0000L) << 16;
-  record.setPrevProp(longFromIntAndMod(prevProp,prevModifier));
-  record.setNextProp(longFromIntAndMod(nextProp,nextModifier));
+  record.setPropBlock(propBlock);
+  long prevProp=bits.getInt(0xFFFFFFFF);
+  bits.shiftRight(32);
+  long prevMod=bits.getByte((byte)0xF);
+  bits.shiftRight(8);
+  record.setPrevProp(longFromIntAndMod(prevProp,prevMod));
+  long nextProp=bits.getInt(0xFFFFFFFF);
+  bits.shiftRight(32);
+  long nextMod=bits.getByte((byte)0xF);
+  bits.shiftRight(4);
+  record.setNextProp(longFromIntAndMod(nextProp,nextMod));
+  record.setHeader(bits.getInt(0xFFF));
+  bits.shiftRight(12);
+  record.setKeyIndexId(bits.getInt(0x7FFFFF));
+  bits.shiftRight(23);
+  record.setInUse(bits.getByte((byte)0x1) == 1);
   return record;
 }

@@ -2,11 +2,10 @@
   if (value instanceof String) {
     String string=(String)value;
     if (ShortString.encode(string,record)) {
-      record.setType(PropertyType.SHORT_STRING);
       return;
     }
     long stringBlockId=nextStringBlockId();
-    record.setPropBlock(stringBlockId);
+    record.setSinglePropBlock(stringBlockId);
     int length=string.length();
     char[] chars=new char[length];
     string.getChars(0,length,chars,0);
@@ -15,49 +14,50 @@
       valueRecord.setType(PropertyType.STRING.intValue());
       record.addValueRecord(valueRecord);
     }
-    record.setType(PropertyType.STRING);
+    record.setHeader(PropertyType.STRING.getHeader());
   }
  else   if (value instanceof Integer) {
-    record.setPropBlock(((Integer)value).intValue());
-    record.setType(PropertyType.INT);
+    record.setSinglePropBlock(((Integer)value).intValue());
+    record.setHeader(PropertyType.INT.getHeader());
   }
  else   if (value instanceof Boolean) {
-    record.setPropBlock((((Boolean)value).booleanValue() ? 1 : 0));
-    record.setType(PropertyType.BOOL);
+    record.setSinglePropBlock((((Boolean)value).booleanValue() ? 1 : 0));
+    record.setHeader(PropertyType.BOOL.getHeader());
   }
  else   if (value instanceof Float) {
-    record.setPropBlock(Float.floatToRawIntBits(((Float)value).floatValue()));
-    record.setType(PropertyType.FLOAT);
+    record.setSinglePropBlock(Float.floatToRawIntBits(((Float)value).floatValue()));
+    record.setHeader(PropertyType.FLOAT.getHeader());
   }
  else   if (value instanceof Long) {
-    record.setPropBlock(((Long)value).longValue());
-    record.setType(PropertyType.LONG);
+    record.setSinglePropBlock(((Long)value).longValue());
+    record.setHeader(PropertyType.LONG.getHeader());
   }
  else   if (value instanceof Double) {
-    record.setPropBlock(Double.doubleToRawLongBits(((Double)value).doubleValue()));
-    record.setType(PropertyType.DOUBLE);
+    record.setSinglePropBlock(Double.doubleToRawLongBits(((Double)value).doubleValue()));
+    record.setHeader(PropertyType.DOUBLE.getHeader());
   }
  else   if (value instanceof Byte) {
-    record.setPropBlock(((Byte)value).byteValue());
-    record.setType(PropertyType.BYTE);
+    record.setSinglePropBlock(((Byte)value).byteValue());
+    record.setHeader(PropertyType.BYTE.getHeader());
   }
  else   if (value instanceof Character) {
-    record.setPropBlock(((Character)value).charValue());
-    record.setType(PropertyType.CHAR);
+    record.setSinglePropBlock(((Character)value).charValue());
+    record.setHeader(PropertyType.CHAR.getHeader());
   }
  else   if (value.getClass().isArray()) {
+    if (ShortArray.encode(value,record,DEFAULT_PAYLOAD_SIZE))     return;
     long arrayBlockId=nextArrayBlockId();
-    record.setPropBlock(arrayBlockId);
+    record.setSinglePropBlock(arrayBlockId);
     Collection<DynamicRecord> arrayRecords=allocateArrayRecords(arrayBlockId,value);
     for (    DynamicRecord valueRecord : arrayRecords) {
       valueRecord.setType(PropertyType.ARRAY.intValue());
       record.addValueRecord(valueRecord);
     }
-    record.setType(PropertyType.ARRAY);
+    record.setHeader(PropertyType.ARRAY.getHeader());
   }
  else   if (value instanceof Short) {
-    record.setPropBlock(((Short)value).shortValue());
-    record.setType(PropertyType.SHORT);
+    record.setSinglePropBlock(((Short)value).shortValue());
+    record.setHeader(PropertyType.SHORT.getHeader());
   }
  else {
     throw new IllegalArgumentException("Unknown property type on: " + value + ", "+ value.getClass());
