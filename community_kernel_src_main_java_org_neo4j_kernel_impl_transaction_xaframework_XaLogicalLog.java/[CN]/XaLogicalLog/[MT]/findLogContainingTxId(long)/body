@@ -2,11 +2,18 @@
   long version=logVersion;
   long committedTx=previousLogLastCommittedTx;
   while (version >= 0) {
-    ReadableByteChannel log=getLogicalLogOrMyself(version,0);
-    ByteBuffer buf=ByteBuffer.allocate(16);
-    long[] header=readAndAssertLogHeader(buf,log,version);
-    committedTx=header[1];
-    log.close();
+    Long cachedLastTx=logHeaderCache.get(version);
+    if (cachedLastTx != null) {
+      committedTx=cachedLastTx;
+    }
+ else {
+      ReadableByteChannel logChannel=getLogicalLogOrMyselfCommitted(version,0);
+      ByteBuffer buf=ByteBuffer.allocate(16);
+      long[] header=readAndAssertLogHeader(buf,logChannel,version);
+      committedTx=header[1];
+      logHeaderCache.put(version,committedTx);
+      logChannel.close();
+    }
     if (committedTx < txId) {
       break;
     }

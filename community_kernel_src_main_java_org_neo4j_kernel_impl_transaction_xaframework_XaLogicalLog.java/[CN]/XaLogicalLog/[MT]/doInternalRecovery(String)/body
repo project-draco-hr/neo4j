@@ -15,6 +15,7 @@
   logVersion=header[0];
   long lastCommittedTx=header[1];
   previousLogLastCommittedTx=lastCommittedTx;
+  logHeaderCache.put(logVersion,previousLogLastCommittedTx);
   log.fine("Logical log version: " + logVersion + " with committed tx["+ lastCommittedTx+ "]");
   msgLog.logMessage("[" + logFileName + "] logVersion="+ logVersion+ " with committed tx="+ lastCommittedTx,true);
   long logEntriesFound=0;
@@ -29,19 +30,19 @@
   fileChannel=((BufferedFileChannel)fileChannel).getSource();
   fileChannel.position(lastEntryPos);
   msgLog.logMessage("[" + logFileName + "] entries found="+ logEntriesFound+ " lastEntryPos="+ lastEntryPos,true);
-  buffer.clear();
-  while (buffer.hasRemaining()) {
-    buffer.put((byte)0);
+  sharedBuffer.clear();
+  while (sharedBuffer.hasRemaining()) {
+    sharedBuffer.put((byte)0);
   }
-  buffer.flip();
+  sharedBuffer.flip();
   long endPosition=fileChannel.size();
   do {
     long bytesLeft=fileChannel.size() - fileChannel.position();
-    if (bytesLeft < buffer.capacity()) {
-      buffer.limit((int)bytesLeft);
+    if (bytesLeft < sharedBuffer.capacity()) {
+      sharedBuffer.limit((int)bytesLeft);
     }
-    fileChannel.write(buffer);
-    buffer.flip();
+    fileChannel.write(sharedBuffer);
+    sharedBuffer.flip();
   }
  while (fileChannel.position() < endPosition);
   fileChannel.position(lastEntryPos);

@@ -1,27 +1,28 @@
 {
   long version=0;
-  ReadableByteChannel log=null;
+  ReadableByteChannel logChannel=null;
   TxPosition txPosition=txStartPositionCache.get(txId);
   try {
     if (txPosition != null) {
       version=txPosition.version;
-      log=getLogicalLogOrMyself(version,txPosition.position);
+      logChannel=getLogicalLogOrMyselfCommitted(version,txPosition.position);
     }
  else {
       version=findLogContainingTxId(txId)[0];
       if (version == -1) {
         throw new RuntimeException("txId:" + txId + " not found in any logical log "+ "(starting at "+ logVersion+ " and searching backwards");
       }
-      log=getLogicalLogOrMyself(version,0);
-      long[] header=readAndAssertLogHeader(buffer,log,version);
+      logChannel=getLogicalLogOrMyselfCommitted(version,0);
+      ByteBuffer localBuffer=ByteBuffer.allocate(9 + Xid.MAXGTRIDSIZE + Xid.MAXBQUALSIZE * 10);
+      long[] header=readAndAssertLogHeader(localBuffer,logChannel,version);
       long prevTxId=header[1];
       assertLogCanContainTx(txId,prevTxId);
     }
-    return extractTransactionFromLog(txId,version,log,targetBuffer);
+    return extractTransactionFromLog(txId,version,logChannel,targetBuffer);
   }
   finally {
-    if (log != null) {
-      log.close();
+    if (logChannel != null) {
+      logChannel.close();
     }
   }
 }
