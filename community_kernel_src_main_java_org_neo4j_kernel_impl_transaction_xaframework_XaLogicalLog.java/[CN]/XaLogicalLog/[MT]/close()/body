@@ -7,7 +7,6 @@
   if (xidIdentMap.size() > 0) {
     log.info("Close invoked with " + xidIdentMap.size() + " running transaction(s). ");
     writeBuffer.force();
-    writeBuffer=null;
     fileChannel.close();
     log.info("Dirty log: " + fileName + "."+ currentLog+ " now closed. Recovery will be started automatically next "+ "time it is opened.");
     return;
@@ -17,16 +16,17 @@
   if (currentLog != CLEAN) {
     setActiveLog(CLEAN);
   }
-  if (!keepLogs || backupSlave) {
+  if (!keepLogs) {
     if (logWas == CLEAN) {
-      deleteCurrentLogFile(fileName);
+      deleteLogFile(fileName);
     }
  else {
-      deleteCurrentLogFile(fileName + "." + logWas);
+      deleteLogFile(fileName + "." + logWas);
     }
   }
  else {
-    renameCurrentLogFileAndIncrementVersion(fileName + "." + logWas,endPosition);
+    renameLogFileToRightVersion(fileName + "." + logWas,endPosition);
+    xaTf.getAndSetNewVersion();
   }
   msgLog.logMessage("Closed log " + fileName,true);
 }
