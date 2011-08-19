@@ -1,8 +1,7 @@
 {
   Buffer buffer=window.getOffsettedBuffer(id);
-  Bits bits=new Bits(30);
+  Bits bits=new Bits(RECORD_SIZE);
   bits.read(buffer);
-  Bits originalBits=bits.clone();
   long[] propBlock=new long[PropertyType.getPayloadSizeLongs()];
   for (int i=propBlock.length - 1; i >= 0; i--) {
     propBlock[i]=bits.getLong(0xFFFFFFFFFFFFFFFFL);
@@ -20,14 +19,12 @@
   long nextMod=(long)bits.getByte((byte)0xF) << 32;
   bits.shiftRight(4);
   record.setNextProp(longFromIntAndMod(nextProp,nextMod));
-  int header=bits.getInt(0xFFF);
-  bits.shiftRight(12);
-  record.setKeyIndexId(bits.getInt(0x7FFFFF));
-  bits.shiftRight(23);
-  record.setInUse(bits.getByte((byte)0x1) == 1);
+  byte category=bits.getByte((byte)0xF);
+  record.setCategory(category);
+  bits.shiftRight(3);
+  record.setInUse(category != 0);
   if (!record.inUse()) {
     throw new InvalidRecordException("Record[" + id + "] not in use");
   }
-  record.setHeader(header);
   return record;
 }
