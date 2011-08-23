@@ -3,7 +3,11 @@
   this.frameLength=frameLength;
   this.msgLog=StringLogger.getLogger(storeDir);
   executor=Executors.newCachedThreadPool();
+  masterCallExecutor=Executors.newCachedThreadPool();
+  unfinishedTransactionExecutor=Executors.newSingleThreadExecutor();
   channelFactory=new NioServerSocketChannelFactory(executor,executor,maxNumberOfConcurrentTransactions);
+  silentChannelExecutor=Executors.newSingleThreadScheduledExecutor();
+  silentChannelExecutor.scheduleWithFixedDelay(silentChannelFinisher(),5,5,TimeUnit.SECONDS);
   bootstrap=new ServerBootstrap(channelFactory);
   bootstrap.setPipelineFactory(this);
   Channel channel;
@@ -18,11 +22,4 @@
   channelGroup=new DefaultChannelGroup();
   channelGroup.add(channel);
   msgLog.logMessage(getClass().getSimpleName() + " communication server started and bound to " + port,true);
-  deadConnectionsPoller=new ScheduledThreadPoolExecutor(1);
-  deadConnectionsPoller.scheduleWithFixedDelay(new Runnable(){
-    public void run(){
-      checkForDeadChannels();
-    }
-  }
-,DEAD_CONNECTIONS_CHECK_INTERVAL,DEAD_CONNECTIONS_CHECK_INTERVAL,TimeUnit.SECONDS);
 }

@@ -13,9 +13,16 @@
     final Triplet<Channel,ChannelBuffer,ByteBuffer> finalChannelContext=channelContext;
     DechunkingChannelBuffer dechunkingBuffer=new DechunkingChannelBuffer(reader,readTimeout){
       @Override protected ChannelBuffer readNext(){
-        ChannelBuffer result=super.readNext();
+        ChannelBuffer result=null;
+        try {
+          result=super.readNext();
+        }
+ catch (        ComException e) {
+          disposeChannel(finalChannelContext);
+          throw e;
+        }
         if (result == null) {
-          channelPool.dispose(finalChannelContext);
+          disposeChannel(finalChannelContext);
           throw new ComException("Channel has been closed");
         }
         return result;
@@ -32,11 +39,11 @@
   }
  catch (  Exception e) {
     if (channelContext != null) {
-      channelPool.dispose(channelContext);
+      disposeChannel(channelContext);
     }
     throw new ComException(e);
   }
  finally {
-    releaseChannel();
+    releaseChannel(type,channelContext);
   }
 }

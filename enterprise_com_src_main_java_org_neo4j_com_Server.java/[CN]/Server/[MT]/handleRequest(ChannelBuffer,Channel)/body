@@ -5,7 +5,7 @@
     if (partialRequest == null) {
       RequestType<M> type=getRequestContext(buffer.readByte());
       SlaveContext context=readContext(buffer);
-      Pair<ChannelBuffer,ByteBuffer> targetBuffers=mapSlave(channel,context);
+      Pair<ChannelBuffer,ByteBuffer> targetBuffers=mapSlave(channel,context,type);
       partialRequest=new PartialRequest(type,context,targetBuffers);
       partialRequests.put(channel,partialRequest);
     }
@@ -21,7 +21,7 @@
     if (partialRequest == null) {
       type=getRequestContext(buffer.readByte());
       context=readContext(buffer);
-      targetBuffers=mapSlave(channel,context);
+      targetBuffers=mapSlave(channel,context,type);
       bufferToReadFrom=buffer;
       bufferToWriteTo=targetBuffers.first();
     }
@@ -35,6 +35,6 @@
     }
     bufferToWriteTo.clear();
     final ChunkingChannelBuffer chunkingBuffer=new ChunkingChannelBuffer(bufferToWriteTo,channel,frameLength);
-    executor.submit(responseWriter(type,channel,context,chunkingBuffer,bufferToReadFrom,targetBuffers.other()));
+    masterCallExecutor.submit(masterCaller(type,channel,context,chunkingBuffer,bufferToReadFrom,targetBuffers.other()));
   }
 }
