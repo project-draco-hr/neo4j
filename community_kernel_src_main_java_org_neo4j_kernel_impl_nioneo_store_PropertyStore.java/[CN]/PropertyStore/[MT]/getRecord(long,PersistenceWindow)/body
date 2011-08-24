@@ -3,28 +3,26 @@
   Bits bits=new Bits(RECORD_SIZE);
   bits.read(buffer);
   long[] propBlock=new long[PropertyType.getPayloadSizeLongs()];
+  boolean someBlockInUse=false;
   for (int i=propBlock.length - 1; i >= 0; i--) {
     propBlock[i]=bits.getLong(0xFFFFFFFFFFFFFFFFL);
     bits.shiftRight(64);
+    if (propBlock[i] != 0)     someBlockInUse=true;
+  }
+  if (!someBlockInUse) {
+    throw new InvalidRecordException("Record[" + id + "] not in use");
   }
   PropertyRecord record=new PropertyRecord(id);
+  record.setInUse(true);
   record.setPropBlock(propBlock);
-  long prevProp=bits.getLong(0xFFFFFFFFL);
-  bits.shiftRight(32);
-  long prevMod=(long)bits.getByte((byte)0xF) << 32;
-  bits.shiftRight(8);
-  record.setPrevProp(longFromIntAndMod(prevProp,prevMod));
   long nextProp=bits.getLong(0xFFFFFFFFL);
+  bits.shiftRight(32);
+  long prevProp=bits.getLong(0xFFFFFFFFL);
   bits.shiftRight(32);
   long nextMod=(long)bits.getByte((byte)0xF) << 32;
   bits.shiftRight(4);
+  long prevMod=(long)bits.getByte((byte)0xF) << 32;
+  record.setPrevProp(longFromIntAndMod(prevProp,prevMod));
   record.setNextProp(longFromIntAndMod(nextProp,nextMod));
-  byte category=bits.getByte((byte)0xF);
-  record.setCategory(category);
-  bits.shiftRight(3);
-  record.setInUse(category != 0);
-  if (!record.inUse()) {
-    throw new InvalidRecordException("Record[" + id + "] not in use");
-  }
   return record;
 }
