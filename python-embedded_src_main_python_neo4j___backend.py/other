@@ -22,7 +22,18 @@ try:
     import java
 except:
     import jpype, os
-    jvmargs = [('-Djava.class.path=' + os.getenv('CLASSPATH', '.'))]
+    classpath = os.getenv('CLASSPATH', None)
+    if (classpath is None):
+        jars = []
+        from pkg_resources import resource_listdir, resource_filename
+        for name in resource_listdir(__name__, 'javalib'):
+            if name.endswith('.jar'):
+                jars.append(resource_filename(__name__, ('javalib/%s' % name)))
+        if (len(jars) > 0):
+            classpath = ':'.join(jars)
+        else:
+            classpath = '.'
+    jvmargs = [('-Djava.class.path=' + classpath)]
     debug = False
     if debug:
         jvmargs = (jvmargs + ['-Xdebug', '-Xnoagent', '-Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=8000'])
