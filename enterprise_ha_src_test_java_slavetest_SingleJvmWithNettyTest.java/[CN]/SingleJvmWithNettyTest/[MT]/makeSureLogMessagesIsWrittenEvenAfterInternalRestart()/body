@@ -1,0 +1,35 @@
+{
+  initializeDbs(1);
+  final CountDownLatch latch1=new CountDownLatch(1);
+  final GraphDatabaseService slave=getSlave(0);
+  Thread t1=new Thread(){
+    @Override public void run(){
+      try {
+        Transaction tx=slave.beginTx();
+        slave.createNode();
+        latch1.await();
+        tx.success();
+        tx.finish();
+      }
+ catch (      InterruptedException e) {
+        throw new RuntimeException(e);
+      }
+    }
+  }
+;
+  t1.start();
+  Thread t2=new Thread(){
+    @Override public void run(){
+      Transaction tx=slave.beginTx();
+      slave.createNode();
+      latch1.countDown();
+      tx.success();
+      tx.finish();
+    }
+  }
+;
+  t2.start();
+  t1.join();
+  t2.join();
+  assertEquals(2,countOccurences("Opened a new channel",new File(dbPath(1),"messages.log")));
+}
