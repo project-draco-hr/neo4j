@@ -1,2 +1,31 @@
 {
+  byte typeId=bArray[0];
+  if (typeId == PropertyType.STRING.intValue()) {
+    ByteBuffer buf=ByteBuffer.wrap(bArray);
+    buf.get();
+    String[] array=new String[buf.getInt()];
+    for (int i=0; i < array.length; i++) {
+      int charLength=buf.getInt() / 2;
+      char charBuffer[]=new char[charLength];
+      for (int j=0; j < charLength; j++) {
+        charBuffer[j]=buf.getChar();
+      }
+      array[i]=new String(charBuffer);
+    }
+    return array;
+  }
+ else {
+    ShortArray type=ShortArray.typeOf(typeId);
+    Bits bits=Bits.bitsFromBytesLeft(bArray);
+    bits.pullLeftByte();
+    int bitsUsedInLastByte=bits.pullLeftByte();
+    int requiredBits=bits.pullLeftByte();
+    if (requiredBits == 0)     return type.createArray(0);
+    int length=((bArray.length - 3) * 8 - (8 - bitsUsedInLastByte)) / requiredBits;
+    Object result=type.createArray(length);
+    for (int i=0; i < length; i++) {
+      type.pullLeft(bits,result,i,requiredBits);
+    }
+    return result;
+  }
 }
