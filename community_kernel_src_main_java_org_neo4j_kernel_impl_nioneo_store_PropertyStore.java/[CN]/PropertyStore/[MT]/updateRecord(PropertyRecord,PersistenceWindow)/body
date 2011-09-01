@@ -8,40 +8,37 @@
     bits.or(prevModifier,0xF).shiftLeft(4).or(nextModifier,0xF);
     bits.shiftLeft(32).or((int)record.getPrevProp());
     bits.shiftLeft(32).or((int)record.getNextProp());
-    int longsPushed=0;
-    for (    PropertyBlock block : record.getPropertyBlocks()) {
-      if (!block.inUse()) {
-        bits.shiftLeft(64).or(0);
-        longsPushed++;
-        continue;
-      }
-      for (      long propBlockValue : block.getValueBlocks()) {
-        longsPushed++;
-        bits.shiftLeft(64).or(propBlockValue);
-      }
-      if (!block.isLight()) {
-        for (        DynamicRecord valueRecord : block.getValueRecords()) {
-          if (valueRecord.getType() == PropertyType.STRING.intValue()) {
-            stringPropertyStore.updateRecord(valueRecord);
-          }
- else           if (valueRecord.getType() == PropertyType.ARRAY.intValue()) {
-            arrayPropertyStore.updateRecord(valueRecord);
-          }
- else {
-            throw new InvalidRecordException("Unknown dynamic record");
-          }
-        }
-      }
-    }
-    while (longsPushed < PropertyType.getPayloadSizeLongs()) {
-      bits.shiftLeft(64).or(0l);
-      longsPushed++;
-    }
   }
  else {
     if (!isInRecoveryMode()) {
       freeId(id);
     }
+  }
+  int longsPushed=0;
+  for (  PropertyBlock block : record.getPropertyBlocks()) {
+    if (block.inUse()) {
+      for (      long propBlockValue : block.getValueBlocks()) {
+        longsPushed++;
+        bits.shiftLeft(64).or(propBlockValue);
+      }
+    }
+    if (!block.isLight()) {
+      for (      DynamicRecord valueRecord : block.getValueRecords()) {
+        if (valueRecord.getType() == PropertyType.STRING.intValue()) {
+          stringPropertyStore.updateRecord(valueRecord);
+        }
+ else         if (valueRecord.getType() == PropertyType.ARRAY.intValue()) {
+          arrayPropertyStore.updateRecord(valueRecord);
+        }
+ else {
+          throw new InvalidRecordException("Unknown dynamic record");
+        }
+      }
+    }
+  }
+  while (longsPushed < PropertyType.getPayloadSizeLongs()) {
+    bits.shiftLeft(64).or(0l);
+    longsPushed++;
   }
   bits.apply(buffer);
 }
