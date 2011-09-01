@@ -35,16 +35,17 @@
     record.setInUse(inUse);
     record.setNextProp(nextProp);
     record.setPrevProp(prevProp);
-  }
-  buffer.clear();
-  buffer.limit(1);
-  if (byteChannel.read(buffer) != buffer.limit()) {
-    return null;
-  }
-  buffer.flip();
-  int nrPropBlocks=buffer.get();
-  while (nrPropBlocks-- > 0) {
-    record.addPropertyBlock(readPropertyBlock(byteChannel,buffer));
+    int nrPropBlocks=buffer.get();
+    if (nrPropBlocks == 0) {
+      throw new IllegalStateException("Number of blocks reported for record " + id + " which is in use was "+ nrPropBlocks);
+    }
+    while (nrPropBlocks-- > 0) {
+      PropertyBlock block=readPropertyBlock(byteChannel,buffer);
+      if (block == null) {
+        return null;
+      }
+      record.addPropertyBlock(block);
+    }
   }
   return new PropertyCommand(neoStore == null ? null : neoStore.getPropertyStore(),record);
 }

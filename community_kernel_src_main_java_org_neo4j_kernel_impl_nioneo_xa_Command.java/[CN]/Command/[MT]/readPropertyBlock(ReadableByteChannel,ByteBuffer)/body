@@ -1,24 +1,48 @@
 {
+  PropertyBlock toReturn=new PropertyBlock();
   buffer.clear();
   buffer.limit(1);
   if (byteChannel.read(buffer) != buffer.limit()) {
     return null;
   }
-  int blockSize=buffer.get() / 8;
+  buffer.flip();
+  byte inUse=buffer.get();
+  if (inUse == 0) {
+    toReturn.setInUse(false);
+    return toReturn;
+  }
+  if (inUse != 1) {
+    throw new IllegalStateException(inUse + " is not a valid value for the inUse field");
+  }
   buffer.clear();
-  buffer.limit(blockSize * 8 + 4);
+  buffer.limit(1);
   if (byteChannel.read(buffer) != buffer.limit()) {
     return null;
   }
-  long[] blocks=readLongs(buffer,blockSize);
-  PropertyBlock toReturn=new PropertyBlock();
+  buffer.flip();
+  int blockSize=buffer.get();
+  if (blockSize <= 0) {
+    throw new IllegalStateException("blockSize field was read in as " + blockSize + " for a property block record that was marked as in use");
+  }
+  toReturn.setInUse(true);
+  buffer.clear();
+  buffer.limit(blockSize + 4);
+  if (byteChannel.read(buffer) != buffer.limit()) {
+    return null;
+  }
+  buffer.flip();
+  long[] blocks=readLongs(buffer,blockSize / 8);
   toReturn.setValueBlocks(blocks);
-  int noOfDynRecs=buffer.get();
+  int noOfDynRecs=buffer.getInt();
   if (noOfDynRecs == 0) {
     return toReturn;
   }
   for (int i=0; i < noOfDynRecs; i++) {
-    toReturn.addValueRecord(readDynamicRecord(byteChannel,buffer));
+    DynamicRecord dr=readDynamicRecord(byteChannel,buffer);
+    if (dr == null) {
+      return null;
+    }
+    toReturn.addValueRecord(dr);
   }
   return toReturn;
 }
