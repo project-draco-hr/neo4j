@@ -2,27 +2,31 @@
   Buffer buffer=window.getOffsettedBuffer(id);
   Bits bits=new Bits(RECORD_SIZE);
   bits.read(buffer);
-  long[] propBlock=new long[PropertyType.getPayloadSizeLongs()];
+  bits.pullLeftLong(8 * 7);
+  PropertyRecord record=new PropertyRecord(id);
+  record.setInUse(true);
+  long prevMod=(long)bits.pullLeftByte(4) << 32;
+  long nextMod=(long)bits.pullLeftByte(4) << 32;
+  long prevProp=bits.pullLeftLong(32);
+  long nextProp=bits.pullLeftLong(32);
+  record.setPrevProp(longFromIntAndMod(prevProp,prevMod));
+  record.setNextProp(longFromIntAndMod(nextProp,nextMod));
   boolean someBlockInUse=false;
-  for (int i=propBlock.length - 1; i >= 0; i--) {
-    propBlock[i]=bits.getLong(0xFFFFFFFFFFFFFFFFL);
-    bits.shiftRight(64);
-    if (propBlock[i] != 0)     someBlockInUse=true;
+  while (bits.getLongs()[0] != 0) {
+    PropertyBlock newBlock=getPropertyBlock(bits);
+    if (newBlock.inUse()) {
+      someBlockInUse=true;
+      record.addPropertyBlock(newBlock);
+      for (int i=0; i < newBlock.getType().getSizeInLongs(); i++) {
+        bits.pullLeftLong();
+      }
+    }
+ else {
+      break;
+    }
   }
   if (!someBlockInUse) {
     throw new InvalidRecordException("Record[" + id + "] not in use");
   }
-  PropertyRecord record=new PropertyRecord(id);
-  record.setInUse(true);
-  record.setPropBlock(propBlock);
-  long nextProp=bits.getLong(0xFFFFFFFFL);
-  bits.shiftRight(32);
-  long prevProp=bits.getLong(0xFFFFFFFFL);
-  bits.shiftRight(32);
-  long nextMod=(long)bits.getByte((byte)0xF) << 32;
-  bits.shiftRight(4);
-  long prevMod=(long)bits.getByte((byte)0xF) << 32;
-  record.setPrevProp(longFromIntAndMod(prevProp,prevMod));
-  record.setNextProp(longFromIntAndMod(nextProp,nextMod));
   return record;
 }

@@ -1,0 +1,24 @@
+{
+  buffer.clear();
+  buffer.limit(1);
+  if (byteChannel.read(buffer) != buffer.limit()) {
+    return null;
+  }
+  int blockSize=buffer.get() / 8;
+  buffer.clear();
+  buffer.limit(blockSize * 8 + 4);
+  if (byteChannel.read(buffer) != buffer.limit()) {
+    return null;
+  }
+  long[] blocks=readLongs(buffer,blockSize);
+  PropertyBlock toReturn=new PropertyBlock();
+  toReturn.setValueBlocks(blocks);
+  int noOfDynRecs=buffer.get();
+  if (noOfDynRecs == 0) {
+    return toReturn;
+  }
+  for (int i=0; i < noOfDynRecs; i++) {
+    toReturn.addValueRecord(readDynamicRecord(byteChannel,buffer));
+  }
+  return toReturn;
+}

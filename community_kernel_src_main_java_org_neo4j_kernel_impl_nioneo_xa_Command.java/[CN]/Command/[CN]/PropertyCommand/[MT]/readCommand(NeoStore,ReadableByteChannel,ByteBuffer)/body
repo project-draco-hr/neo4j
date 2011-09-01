@@ -25,32 +25,26 @@
   }
   if (inUse) {
     buffer.clear();
-    buffer.limit(16 + PropertyType.getPayloadSize());
+    buffer.limit(16 + 1);
     if (byteChannel.read(buffer) != buffer.limit()) {
       return null;
     }
     buffer.flip();
     long nextProp=buffer.getLong();
     long prevProp=buffer.getLong();
-    long[] propBlock=readLongs(buffer,PropertyType.getPayloadSizeLongs());
     record.setInUse(inUse);
     record.setNextProp(nextProp);
-    record.setPropBlock(propBlock);
     record.setPrevProp(prevProp);
   }
   buffer.clear();
-  buffer.limit(4);
+  buffer.limit(1);
   if (byteChannel.read(buffer) != buffer.limit()) {
     return null;
   }
   buffer.flip();
-  int nrValueRecords=buffer.getInt();
-  for (int i=0; i < nrValueRecords; i++) {
-    DynamicRecord dr=readDynamicRecord(byteChannel,buffer);
-    if (dr == null) {
-      return null;
-    }
-    record.addValueRecord(dr);
+  int nrPropBlocks=buffer.get();
+  while (nrPropBlocks-- > 0) {
+    record.addPropertyBlock(readPropertyBlock(byteChannel,buffer));
   }
   return new PropertyCommand(neoStore == null ? null : neoStore.getPropertyStore(),record);
 }

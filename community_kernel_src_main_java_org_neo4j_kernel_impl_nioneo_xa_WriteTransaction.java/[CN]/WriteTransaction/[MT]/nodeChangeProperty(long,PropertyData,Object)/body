@@ -1,0 +1,45 @@
+{
+  long propertyId=propertyData.getId();
+  NodeRecord nodeRecord=getNodeRecord(nodeId);
+  if (nodeRecord == null) {
+    nodeRecord=getNodeStore().getRecord(nodeId);
+  }
+  if (!nodeRecord.inUse()) {
+    throw new IllegalStateException("Property change on node[" + nodeId + "] illegal since it has been deleted.");
+  }
+  PropertyRecord propertyRecord=getPropertyRecord(propertyId);
+  if (propertyRecord == null) {
+    propertyRecord=getPropertyStore().getRecord(propertyId);
+    addPropertyRecord(propertyRecord);
+  }
+  if (!propertyRecord.inUse()) {
+    throw new IllegalStateException("Unable to change property[" + propertyId + "] since it is deleted.");
+  }
+  propertyRecord.setNodeId(nodeId);
+  PropertyBlock block=propertyRecord.getPropertyBlock(propertyData.getIndex());
+  if (block == null) {
+    throw new IllegalStateException("Property with index[" + propertyData.getIndex() + "] is not present in property["+ propertyId+ "]");
+  }
+  if (block.isLight()) {
+    getPropertyStore().makeHeavy(block);
+  }
+  propertyRecord.setChanged();
+  block.setChanged();
+  if (block.getType() == PropertyType.STRING) {
+    for (    DynamicRecord record : block.getValueRecords()) {
+      if (record.inUse()) {
+        record.setInUse(false,PropertyType.STRING.intValue());
+      }
+    }
+  }
+ else   if (block.getType() == PropertyType.ARRAY) {
+    for (    DynamicRecord record : block.getValueRecords()) {
+      if (record.inUse()) {
+        record.setInUse(false,PropertyType.ARRAY.intValue());
+      }
+    }
+  }
+  getPropertyStore().encodeValue(block,propertyData.getIndex(),value);
+  addPropertyRecord(propertyRecord);
+  return block.newPropertyData(propertyRecord,value);
+}
