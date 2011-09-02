@@ -1,25 +1,21 @@
 {
-  Buffer buffer=window.getOffsettedBuffer(id);
   Bits bits=Bits.bits(RECORD_SIZE);
+  Buffer buffer=window.getOffsettedBuffer(id);
   bits.read(buffer);
-  bits.pullLeftLong(8 * 7);
   PropertyRecord record=new PropertyRecord(id);
   record.setInUse(true);
-  long prevMod=(long)bits.pullLeftByte(4) << 32;
-  long nextMod=(long)bits.pullLeftByte(4) << 32;
-  long prevProp=bits.pullLeftLong(32);
-  long nextProp=bits.pullLeftLong(32);
+  long prevMod=(long)bits.getByte(4) << 32;
+  long nextMod=(long)bits.getByte(4) << 32;
+  long prevProp=bits.getUnsignedInt();
+  long nextProp=bits.getUnsignedInt();
   record.setPrevProp(longFromIntAndMod(prevProp,prevMod));
   record.setNextProp(longFromIntAndMod(nextProp,nextMod));
   boolean someBlockInUse=false;
-  while (bits.getLongs()[0] != 0) {
+  while (bits.available()) {
     PropertyBlock newBlock=getPropertyBlock(bits);
     if (newBlock.inUse()) {
       someBlockInUse=true;
       record.addPropertyBlock(newBlock);
-      for (int i=0; i < newBlock.getType().getSizeInLongs(); i++) {
-        bits.pullLeftLong();
-      }
     }
  else {
       break;

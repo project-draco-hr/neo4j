@@ -5,21 +5,18 @@
   if (record.inUse()) {
     short prevModifier=record.getPrevProp() == Record.NO_NEXT_RELATIONSHIP.intValue() ? 0 : (short)((record.getPrevProp() & 0xF00000000L) >> 32);
     short nextModifier=record.getNextProp() == Record.NO_NEXT_RELATIONSHIP.intValue() ? 0 : (short)((record.getNextProp() & 0xF00000000L) >> 32);
-    bits.or(prevModifier,0xF).shiftLeft(4).or(nextModifier,0xF);
-    bits.shiftLeft(32).or((int)record.getPrevProp());
-    bits.shiftLeft(32).or((int)record.getNextProp());
+    bits.put(prevModifier,4).put(nextModifier,4);
+    bits.put((int)record.getPrevProp()).put((int)record.getNextProp());
   }
  else {
     if (!isInRecoveryMode()) {
       freeId(id);
     }
   }
-  int longsPushed=0;
   for (  PropertyBlock block : record.getPropertyBlocks()) {
     if (block.inUse()) {
       for (      long propBlockValue : block.getValueBlocks()) {
-        longsPushed++;
-        bits.shiftLeft(64).or(propBlockValue);
+        bits.put(propBlockValue);
       }
     }
     if (!block.isLight()) {
@@ -35,10 +32,6 @@
         }
       }
     }
-  }
-  while (longsPushed < PropertyType.getPayloadSizeLongs()) {
-    bits.shiftLeft(64).or(0l);
-    longsPushed++;
   }
   bits.apply(buffer);
 }
