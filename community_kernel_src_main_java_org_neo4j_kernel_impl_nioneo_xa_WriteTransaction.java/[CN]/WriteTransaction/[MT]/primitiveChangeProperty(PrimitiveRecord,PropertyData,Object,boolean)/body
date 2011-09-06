@@ -1,0 +1,37 @@
+{
+  long propertyId=propertyData.getId();
+  PropertyRecord propertyRecord=getPropertyRecord(propertyId,false);
+  if (!propertyRecord.inUse()) {
+    throw new IllegalStateException("Unable to change property[" + propertyId + "] since it has been deleted.");
+  }
+  if (isNode) {
+    propertyRecord.setNodeId(primitive.getId());
+  }
+ else {
+    propertyRecord.setRelId(primitive.getId());
+  }
+  PropertyBlock block=propertyRecord.getPropertyBlock(propertyData.getIndex());
+  if (block == null) {
+    throw new IllegalStateException("Property with index[" + propertyData.getIndex() + "] is not present in property["+ propertyId+ "]");
+  }
+  if (block.isLight()) {
+    getPropertyStore().makeHeavy(block);
+  }
+  propertyRecord.setChanged();
+  for (  DynamicRecord record : block.getValueRecords()) {
+    if (record.inUse()) {
+      record.setInUse(false,block.getType().intValue());
+    }
+  }
+  int oldSize=block.getSize();
+  getPropertyStore().encodeValue(block,propertyData.getIndex(),value);
+  if (oldSize < block.getSize()) {
+    PropertyBlock newBlock=new PropertyBlock();
+    newBlock.setInUse(true);
+    newBlock.setValueBlocks(block.getValueBlocks());
+    block.setInUse(false);
+    propertyRecord=addPropertyBlockToPrimitive(newBlock,primitive,isNode);
+    block=newBlock;
+  }
+  return block.newPropertyData(propertyRecord,value);
+}

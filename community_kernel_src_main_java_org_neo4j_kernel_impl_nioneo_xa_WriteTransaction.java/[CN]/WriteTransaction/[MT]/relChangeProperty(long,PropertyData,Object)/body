@@ -1,5 +1,4 @@
 {
-  long propertyId=propertyData.getId();
   RelationshipRecord relRecord=getRelationshipRecord(relId);
   if (relRecord == null) {
     relRecord=getRelationshipStore().getRecord(relId);
@@ -7,34 +6,5 @@
   if (!relRecord.inUse()) {
     throw new IllegalStateException("Property change on relationship[" + relId + "] illegal since it has been deleted.");
   }
-  PropertyRecord propertyRecord=getPropertyRecord(propertyId,false);
-  if (!propertyRecord.inUse()) {
-    throw new IllegalStateException("Unable to change property[" + propertyId + "] since it is deleted.");
-  }
-  propertyRecord.setRelId(relId);
-  PropertyBlock block=propertyRecord.getPropertyBlock(propertyData.getIndex());
-  if (block == null) {
-    throw new IllegalStateException("Property with index[" + propertyData.getIndex() + "] is not present in property["+ propertyId+ "]");
-  }
-  if (block.isLight()) {
-    getPropertyStore().makeHeavy(block);
-  }
-  propertyRecord.setChanged();
-  block.setChanged();
-  if (block.getType() == PropertyType.STRING) {
-    for (    DynamicRecord record : block.getValueRecords()) {
-      if (record.inUse()) {
-        record.setInUse(false,PropertyType.STRING.intValue());
-      }
-    }
-  }
- else   if (block.getType() == PropertyType.ARRAY) {
-    for (    DynamicRecord record : block.getValueRecords()) {
-      if (record.inUse()) {
-        record.setInUse(false,PropertyType.ARRAY.intValue());
-      }
-    }
-  }
-  getPropertyStore().encodeValue(block,propertyData.getIndex(),value);
-  return block.newPropertyData(propertyRecord,value);
+  return primitiveChangeProperty(relRecord,propertyData,value,true);
 }
