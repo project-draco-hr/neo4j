@@ -1,6 +1,14 @@
 {
   this.startTxId=startTxId;
   this.nextExpectedTxId=startTxId;
+  long diff=endTxIdHint - startTxId + 1;
+  if (diff < CACHE_FIND_THRESHOLD) {
+    TxPosition earliestPosition=getEarliestStartPosition(startTxId,endTxIdHint);
+    if (earliestPosition != null) {
+      this.version=earliestPosition.version;
+      this.source=getLogicalLogOrMyselfCommitted(version,earliestPosition.position);
+    }
+  }
   if (source == null) {
     this.version=findLogContainingTxId(startTxId)[0];
     this.source=getLogicalLogOrMyselfCommitted(version,0);
