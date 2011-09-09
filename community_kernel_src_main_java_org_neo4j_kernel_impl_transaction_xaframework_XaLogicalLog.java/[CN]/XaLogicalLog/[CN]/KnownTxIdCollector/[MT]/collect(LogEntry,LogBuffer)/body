@@ -7,13 +7,19 @@
   }
  else   if (entry instanceof LogEntry.Commit) {
     long commitTxId=((LogEntry.Commit)entry).getTxId();
-    if (commitTxId >= startTxId) {
-      interesting=true;
-      identifier=entry.getIdentifier();
-      List<LogEntry> entries=transactions.get(identifier);
-      entries.add(entry);
-      writeToBuffer(entries,target);
+    if (commitTxId < startTxId)     return false;
+    if (previousTxId != 0) {
+      if (commitTxId == previousTxId)       return false;
+      if (commitTxId != previousTxId + 1) {
+        throw new RuntimeException("Unexpected tx " + commitTxId + " after "+ previousTxId+ ", starting from "+ startTxId);
+      }
     }
+    interesting=true;
+    identifier=entry.getIdentifier();
+    List<LogEntry> entries=transactions.get(identifier);
+    entries.add(entry);
+    writeToBuffer(entries,target);
+    previousTxId=commitTxId;
   }
  else   if (entry instanceof LogEntry.Command || entry instanceof LogEntry.Prepare) {
     List<LogEntry> list=transactions.get(entry.getIdentifier());
