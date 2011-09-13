@@ -1,0 +1,23 @@
+{
+  initializeDbs(1);
+  GraphDatabaseService master=getMaster().getGraphDb();
+  Transaction masterTx=master.beginTx();
+  long masterNodeId=master.createNode().getId();
+  masterTx.success();
+  masterTx.finish();
+  HighlyAvailableGraphDatabase slave=(HighlyAvailableGraphDatabase)getSlave(0);
+  slave.pullUpdates();
+  Transaction slaveTx=slave.beginTx();
+  slave.getNodeById(masterNodeId).setProperty("key","value");
+  slave.index().forNodes("name").add(slave.getNodeById(masterNodeId),"key","value");
+  slave.createNode().getId();
+  getMasterHaDb().shutdown();
+  ((PlaceHolderGraphDatabaseService)getMaster().getGraphDb()).setDb(startUpMasterDb(MapUtil.stringMap()).getDb());
+  slaveTx.success();
+  try {
+    slaveTx.finish();
+    fail("Shouldn't be able to commit here");
+  }
+ catch (  TransactionFailureException e) {
+  }
+}
