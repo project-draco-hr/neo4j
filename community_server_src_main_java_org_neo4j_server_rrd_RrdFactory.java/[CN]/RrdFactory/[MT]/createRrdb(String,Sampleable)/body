@@ -1,0 +1,27 @@
+{
+  File rrdFile=new File(rrdPathx);
+  if (rrdFile.exists()) {
+    try {
+      if (!validateStepSize(rrdFile)) {
+        return recreateArchive(rrdFile,sampleables);
+      }
+      Sampleable[] missing=checkDataSources(rrdFile.getAbsolutePath(),sampleables);
+      if (missing.length > 0) {
+        updateDataSources(rrdFile.getAbsolutePath(),missing);
+      }
+      return new RrdDb(rrdFile.getAbsolutePath());
+    }
+ catch (    IOException e) {
+      if (e.getMessage().startsWith("Invalid file header.")) {
+        return recreateArchive(rrdFile,sampleables);
+      }
+      throw e;
+    }
+  }
+ else {
+    RrdDef rrdDef=new RrdDef(rrdFile.getAbsolutePath(),STEP_SIZE);
+    defineDataSources(rrdDef,sampleables);
+    addArchives(rrdDef);
+    return new RrdDb(rrdDef);
+  }
+}
