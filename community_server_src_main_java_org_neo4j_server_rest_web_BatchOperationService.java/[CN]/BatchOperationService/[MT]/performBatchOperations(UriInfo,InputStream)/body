@@ -1,0 +1,47 @@
+{
+  AbstractGraphDatabase db=database.graph;
+  Transaction tx=db.beginTx();
+  try {
+    JsonParser jp=jsonFactory.createJsonParser(body);
+    BatchOperationResults results=new BatchOperationResults();
+    JsonToken token;
+    String field;
+    String jobMethod, jobPath, jobBody;
+    Integer jobId;
+    while ((token=jp.nextToken()) != null) {
+      if (token == JsonToken.START_OBJECT) {
+        jobMethod=jobPath=jobBody="";
+        jobId=null;
+        while ((token=jp.nextToken()) != JsonToken.END_OBJECT && token != null) {
+          field=jp.getText();
+          token=jp.nextToken();
+          if (field.equals(METHOD_KEY)) {
+            jobMethod=jp.getText().toUpperCase();
+          }
+ else           if (field.equals(TO_KEY)) {
+            jobPath=jp.getText();
+          }
+ else           if (field.equals(ID_KEY)) {
+            jobId=jp.getIntValue();
+          }
+ else           if (field.equals(BODY_KEY)) {
+            jobBody=StreamingJsonUtils.readCurrentValueAsString(jp,token);
+          }
+        }
+        performJob(results,uriInfo,jobMethod,jobPath,jobBody,jobId);
+      }
+    }
+    Response res=Response.ok().entity(results.toJSON()).header(HttpHeaders.CONTENT_ENCODING,"UTF-8").type(MediaType.APPLICATION_JSON).build();
+    tx.success();
+    return res;
+  }
+ catch (  Exception e) {
+    System.out.println(e.getMessage());
+    e.printStackTrace();
+    tx.failure();
+    return output.badRequest(e);
+  }
+ finally {
+    tx.finish();
+  }
+}
