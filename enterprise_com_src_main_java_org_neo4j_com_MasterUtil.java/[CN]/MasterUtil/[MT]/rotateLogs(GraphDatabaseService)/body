@@ -1,0 +1,17 @@
+{
+  XaDataSourceManager dsManager=((AbstractGraphDatabase)graphDb).getConfig().getTxModule().getXaDataSourceManager();
+  Collection<XaDataSource> sources=dsManager.getAllRegisteredDataSources();
+  @SuppressWarnings("unchecked") Pair<String,Long>[] appliedTransactions=new Pair[sources.size()];
+  int i=0;
+  for (  XaDataSource ds : sources) {
+    appliedTransactions[i++]=Pair.of(ds.getName(),ds.getLastCommittedTxId());
+    try {
+      ds.getXaContainer().getResourceManager().rotateLogicalLog();
+    }
+ catch (    IOException e) {
+      StringLogger.getLogger(((AbstractGraphDatabase)graphDb).getStoreDir()).logMessage("Unable to rotate log for " + ds,e);
+      throw new MasterFailureException(e);
+    }
+  }
+  return appliedTransactions;
+}
