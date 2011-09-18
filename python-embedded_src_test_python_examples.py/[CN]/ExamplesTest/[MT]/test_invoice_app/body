@@ -1,9 +1,7 @@
 def test_invoice_app(self):
     folder_to_put_db_in = tempfile.mkdtemp()
     try:
-        from neo4j import GraphDatabase, INCOMING, Evaluation
-        from datetime import date
-        import time
+        from neo4j import GraphDatabase, OUTGOING, Evaluation
         db = GraphDatabase(folder_to_put_db_in)
         with db.transaction:
             customers = db.node()
@@ -15,15 +13,15 @@ def test_invoice_app(self):
         def create_customer(name):
             with db.transaction:
                 customer = db.node(name=name)
-                customers.CUSTOMER(customer)
+                customer.INSTANCE_OF(customers)
                 customer_idx['name'][name] = customer
             return customer
 
         def create_invoice(customer, amount):
             with db.transaction:
                 invoice = db.node(amount=amount)
-                invoices.INVOICE(invoice)
-                invoice.RECIPIENT(customer)
+                invoice.INSTANCE_OF(invoices)
+                invoice.SENT_TO(customer)
             return customer
 
         def get_customer(name):
@@ -36,14 +34,14 @@ def test_invoice_app(self):
                 if (node.has_key('amount') and (node['amount'] > min_sum)):
                     return Evaluation.INCLUDE_AND_CONTINUE
                 return Evaluation.EXCLUDE_AND_CONTINUE
-            return db.traversal().relationships('RECIPIENT', INCOMING).evaluator(evaluator).traverse(customer).nodes()
+            return db.traversal().relationships('SENT_TO', OUTGOING).evaluator(evaluator).traverse(customer).nodes()
         for name in ['Acme Inc.', 'Example Ltd.']:
             create_customer(name)
-        for relationship in customers.CUSTOMER:
+        for relationship in customers.INSTANCE_OF:
             for i in range(1, 12):
                 create_invoice(relationship.end, (100 * i))
         large_invoices = get_invoices_with_amount_over(get_customer('Acme Inc.'), 500)
-        for invoice in get_customer('Acme Inc.').RECIPIENT.incoming:
+        for invoice in get_customer('Acme Inc.').SENT_TO.incoming:
             pass
         self.assertEqual(len(large_invoices), 6)
         db.shutdown()
