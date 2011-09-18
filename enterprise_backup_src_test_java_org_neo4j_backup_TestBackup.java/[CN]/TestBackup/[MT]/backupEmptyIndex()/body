@@ -1,0 +1,24 @@
+{
+  String key="name";
+  String value="Neo";
+  GraphDatabaseService db=new EmbeddedGraphDatabase(serverPath,configForBackup());
+  Index<Node> index=db.index().forNodes(key);
+  Transaction tx=db.beginTx();
+  Node node=db.createNode();
+  node.setProperty(key,value);
+  tx.success();
+  tx.finish();
+  OnlineBackup.from("localhost").full(backupPath);
+  assertEquals(DbRepresentation.of(db),DbRepresentation.of(backupPath));
+  FileUtils.deleteDirectory(new File(backupPath));
+  OnlineBackup.from("localhost").full(backupPath);
+  assertEquals(DbRepresentation.of(db),DbRepresentation.of(backupPath));
+  tx=db.beginTx();
+  index.add(node,key,value);
+  tx.success();
+  tx.finish();
+  FileUtils.deleteDirectory(new File(backupPath));
+  OnlineBackup.from("localhost").full(backupPath);
+  assertEquals(DbRepresentation.of(db),DbRepresentation.of(backupPath));
+  db.shutdown();
+}
