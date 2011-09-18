@@ -14,10 +14,12 @@
   assertTrue(result.contains("File1"));
   assertFalse(result.contains("File2"));
   gen.get().addSnippet("result2",AsciidocHelper.createOutputSnippet(result));
-  query="start root=(node_auto_index,'name:FileRoot') " + "match " + "(root)-[:contains^0..10]->(dir)-[:leaf]->(file),"+ "(dir)<-[:canRead]-(role),"+ "(role)<-[:hasRole]-(user),"+ "(file)<-[:owns]-(owner) "+ "return root, file, dir, role, user, owner";
+  query="START file=(node_auto_index,'name:File*') " + "MATCH " + "dir-[:leaf]->file, "+ "file<-[:owns]-owner, "+ "path = dir<-[:contains^1..10]-(parent),"+ "(parent)<-[r?:canRead]-()<-[:hasRole]-readUserMoreThan1DirUp, "+ "dir<-[s?:canRead]-()<-[:hasRole]-readUser1DirUp "+ "RETURN path, file, readUser1DirUp, readUserMoreThan1DirUp, owner";
   gen.get().addSnippet("query3",AsciidocHelper.createCypherSnippet(query));
   result=engine.execute(parser.parse(query)).toString();
   assertTrue(result.contains("File1"));
   assertTrue(result.contains("File2"));
+  assertTrue(result.contains("AdminUser3"));
+  assertTrue(result.contains("AdminUser4"));
   gen.get().addSnippet("result3",AsciidocHelper.createOutputSnippet(result));
 }
