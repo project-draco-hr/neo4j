@@ -4,8 +4,17 @@
   LogApplier logApplier=new LogApplier(byteChannel);
   int xidIdent=getNextIdentifier();
   long startEntryPosition=writeBuffer.getFileChannelPosition();
-  while (logApplier.readAndWriteAndApplyEntry(xidIdent)) {
-    logEntriesFound++;
+  boolean successfullyApplied=false;
+  try {
+    while (logApplier.readAndWriteAndApplyEntry(xidIdent)) {
+      logEntriesFound++;
+    }
+    successfullyApplied=true;
+  }
+  finally {
+    if (!successfullyApplied) {
+      xidIdentMap.remove(xidIdent);
+    }
   }
   byteChannel.close();
   scanIsComplete=true;
