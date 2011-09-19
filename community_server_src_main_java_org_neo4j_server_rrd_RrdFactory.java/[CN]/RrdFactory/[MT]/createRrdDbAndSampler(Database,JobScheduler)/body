@@ -1,9 +1,8 @@
 {
-  Sampleable[] sampleables=new Sampleable[]{new MemoryUsedSampleable(),new NodeIdsInUseSampleable(db),new PropertyCountSampleable(db),new RelationshipCountSampleable(db)};
-  String basePath=config.getString(Configurator.RRDB_LOCATION_PROPERTY_KEY,getDefaultDirectory(db.graph));
-  RrdDb rrdb=createRrdb(basePath,STEP_SIZE,STEPS_PER_ARCHIVE,sampleables);
-  RrdSampler sampler=new RrdSampler(rrdb.createSample(),sampleables);
-  RrdJob job=new RrdJob(sampler);
-  scheduler.scheduleToRunEveryXSeconds(job,RRD_THREAD_NAME,3);
+  Sampleable[] sampleables={new MemoryUsedSampleable(),new NodeIdsInUseSampleable(db.graph),new PropertyCountSampleable(db.graph),new RelationshipCountSampleable(db.graph),new RequestBytesSampleable(db),new RequestAvgTimeSampleable(db),new RequestMaxTimeSampleable(db),new RequestMinTimeSampleable(db),new RequestCountSampleable(db)};
+  String basePath=config.getString(RRDB_LOCATION_PROPERTY_KEY,getDefaultDirectory(db.graph));
+  RrdDb rrdb=createRrdb(basePath,sampleables);
+  RrdJob job=new RrdJob(new RequestSnapshotSampler(db),new RrdSamplerImpl(rrdb.createSample(),sampleables));
+  scheduler.scheduleAtFixedRate(job,RRD_THREAD_NAME,SECONDS.toSeconds(3));
   return rrdb;
 }

@@ -1,7 +1,17 @@
 {
   TestableRrdFactory factory=createRrdFactory();
+  File rrd=new File(db.graph.getStoreDir(),"rrd");
+  RrdDef rrdDef=new RrdDef(rrd.getAbsolutePath(),3000);
+  rrdDef.addDatasource("test",DsType.GAUGE,1,NaN,NaN);
+  rrdDef.addArchive(ConsolFun.AVERAGE,0.2,1,1600);
+  RrdDb r=new RrdDb(rrdDef);
+  r.close();
   RrdDb rrdDbAndSampler=factory.createRrdDbAndSampler(db,new NullJobScheduler());
-  assertThat(factory.directoryUsed,startsWith(db.graph.getStoreDir()));
-  assertThat(factory.directoryUsed,endsWith("rrd"));
+  assertThat(new File(factory.directoryUsed).getParentFile().list(new FilenameFilter(){
+    @Override public boolean accept(    File file,    String s){
+      return s.startsWith("rrd-invalid");
+    }
+  }
+).length,is(1));
   rrdDbAndSampler.close();
 }

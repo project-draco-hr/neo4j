@@ -1,0 +1,23 @@
+{
+  data.get();
+  gen.get().addSnippet("graph1",AsciidocHelper.createGraphViz("The Domain Structure",graphdb(),gen.get().getTitle()));
+  CypherParser parser=new CypherParser();
+  ExecutionEngine engine=new ExecutionEngine(db);
+  String query="start root=(node_auto_index,'name:Dir0') match (root)-[:contains^0..10]->()-[:leaf]->(file) return file";
+  gen.get().addSnippet("query1",AsciidocHelper.createCypherSnippet(query));
+  String result=engine.execute(parser.parse(query)).toString();
+  assertTrue(result.contains("File1"));
+  gen.get().addSnippet("result1",AsciidocHelper.createOutputSnippet(result));
+  query="start root=(node_auto_index,'name:Dir0') match (root)-[:contains^0..10]->()-[:leaf]->(file)<-[:owns]-(user) where user.name = 'User1' return file, user";
+  gen.get().addSnippet("query2",AsciidocHelper.createCypherSnippet(query));
+  result=engine.execute(parser.parse(query)).toString();
+  assertTrue(result.contains("File1"));
+  assertFalse(result.contains("File2"));
+  gen.get().addSnippet("result2",AsciidocHelper.createOutputSnippet(result));
+  query="start root=(node_auto_index,'name:FileRoot') " + "match " + "(root)-[:contains^0..10]->(dir)-[:leaf]->(file),"+ "(dir)<-[:canRead]-(role),"+ "(role)<-[:hasRole]-(user),"+ "(file)<-[:owns]-(owner) "+ "return root, file, dir, role, user, owner";
+  gen.get().addSnippet("query3",AsciidocHelper.createCypherSnippet(query));
+  result=engine.execute(parser.parse(query)).toString();
+  assertTrue(result.contains("File1"));
+  assertTrue(result.contains("File2"));
+  gen.get().addSnippet("result3",AsciidocHelper.createOutputSnippet(result));
+}
