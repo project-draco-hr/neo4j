@@ -1,26 +1,8 @@
 {
-  Bits bits=Bits.bits(RECORD_SIZE);
   Buffer buffer=window.getOffsettedBuffer(id);
-  bits.read(buffer);
-  PropertyRecord record=new PropertyRecord(id);
-  long prevMod=(long)bits.getByte(4) << 32;
-  long nextMod=(long)bits.getByte(4) << 32;
-  long prevProp=bits.getUnsignedInt();
-  long nextProp=bits.getUnsignedInt();
-  record.setPrevProp(longFromIntAndMod(prevProp,prevMod));
-  record.setNextProp(longFromIntAndMod(nextProp,nextMod));
-  while (bits.available()) {
-    PropertyBlock newBlock=getPropertyBlock(bits);
-    if (newBlock.inUse()) {
-      record.addPropertyBlock(newBlock);
-      record.setInUse(true);
-    }
- else {
-      break;
-    }
-  }
-  if (!record.inUse()) {
+  PropertyRecord toReturn=getRecordFromBuffer(id,buffer);
+  if (!toReturn.inUse()) {
     throw new InvalidRecordException("Record[" + id + "] not in use");
   }
-  return record;
+  return toReturn;
 }
