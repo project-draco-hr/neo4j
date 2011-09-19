@@ -1,0 +1,39 @@
+{
+  initializeDbs(1);
+  List<WorkerThread> jobs=new LinkedList<WorkerThread>();
+  for (int i=0; i < Client.DEFAULT_MAX_NUMBER_OF_CONCURRENT_REQUESTS_PER_CLIENT; i++) {
+    WorkerThread job=new WorkerThread(this);
+    jobs.add(job);
+    job.start();
+  }
+  for (int i=0; i < 10; i++) {
+    int count=0;
+    for (    WorkerThread job : jobs) {
+      if (job.nodeHasBeenCreatedOnTx()) {
+        count++;
+      }
+ else {
+        break;
+      }
+    }
+    if (count == jobs.size()) {
+      break;
+    }
+    sleeep(100);
+  }
+  WorkerThread jobShouldNotBlock=new WorkerThread(this);
+  jobShouldNotBlock.start();
+  for (int i=0; i < 10; i++) {
+    if (jobShouldNotBlock.nodeHasBeenCreatedOnTx()) {
+      break;
+    }
+    sleeep(250);
+  }
+  assertTrue("Create node should not have been blocked",jobShouldNotBlock.nodeHasBeenCreatedOnTx());
+  for (  WorkerThread job : jobs) {
+    job.finish();
+    job.join();
+  }
+  jobShouldNotBlock.finish();
+  jobShouldNotBlock.join();
+}
