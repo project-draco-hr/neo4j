@@ -18,27 +18,38 @@
   }
   neoStore=new NeoStore(config);
   xaContainer=XaContainer.create(this,(String)config.get("logical_log"),new CommandFactory(neoStore),new TransactionFactory(),config);
-  if (!readOnly) {
-    neoStore.setRecoveredStatus(true);
-    try {
-      xaContainer.openLogicalLog();
-    }
+  try {
+    if (!readOnly) {
+      neoStore.setRecoveredStatus(true);
+      try {
+        xaContainer.openLogicalLog();
+      }
   finally {
-      neoStore.setRecoveredStatus(false);
+        neoStore.setRecoveredStatus(false);
+      }
     }
-  }
-  if (!xaContainer.getResourceManager().hasRecoveredTransactions()) {
-    neoStore.makeStoreOk();
-  }
+    if (!xaContainer.getResourceManager().hasRecoveredTransactions()) {
+      neoStore.makeStoreOk();
+    }
  else {
-    logger.fine("Waiting for TM to take care of recovered " + "transactions.");
+      logger.fine("Waiting for TM to take care of recovered " + "transactions.");
+    }
+    idGenerators=new ArrayMap<Class<?>,Store>(5,false,false);
+    this.idGenerators.put(Node.class,neoStore.getNodeStore());
+    this.idGenerators.put(Relationship.class,neoStore.getRelationshipStore());
+    this.idGenerators.put(RelationshipType.class,neoStore.getRelationshipTypeStore());
+    this.idGenerators.put(PropertyStore.class,neoStore.getPropertyStore());
+    this.idGenerators.put(PropertyIndex.class,neoStore.getPropertyStore().getIndexStore());
+    xaContainer.getLogicalLog().setKeepLogs(shouldKeepLog((String)config.get(Config.KEEP_LOGICAL_LOGS),"nioneodb"));
+    setLogicalLogAtCreationTime(xaContainer.getLogicalLog());
   }
-  idGenerators=new ArrayMap<Class<?>,Store>(5,false,false);
-  this.idGenerators.put(Node.class,neoStore.getNodeStore());
-  this.idGenerators.put(Relationship.class,neoStore.getRelationshipStore());
-  this.idGenerators.put(RelationshipType.class,neoStore.getRelationshipTypeStore());
-  this.idGenerators.put(PropertyStore.class,neoStore.getPropertyStore());
-  this.idGenerators.put(PropertyIndex.class,neoStore.getPropertyStore().getIndexStore());
-  xaContainer.getLogicalLog().setKeepLogs(shouldKeepLog((String)config.get(Config.KEEP_LOGICAL_LOGS),"nioneodb"));
-  setLogicalLogAtCreationTime(xaContainer.getLogicalLog());
+ catch (  Throwable e) {
+    try {
+      neoStore.close();
+    }
+ catch (    Exception closeException) {
+      msgLog.logMessage("Couldn't close neostore after startup failure");
+    }
+    throw Exceptions.launderedException(e);
+  }
 }
