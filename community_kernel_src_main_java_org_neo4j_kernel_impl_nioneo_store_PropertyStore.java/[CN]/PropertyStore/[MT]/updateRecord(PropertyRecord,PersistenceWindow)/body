@@ -1,37 +1,15 @@
 {
   long id=record.getId();
   Buffer buffer=window.getOffsettedBuffer(id);
-  Bits bits=Bits.bits(RECORD_SIZE);
   if (record.inUse()) {
-    short prevModifier=record.getPrevProp() == Record.NO_NEXT_RELATIONSHIP.intValue() ? 0 : (short)((record.getPrevProp() & 0xF00000000L) >> 32);
-    short nextModifier=record.getNextProp() == Record.NO_NEXT_RELATIONSHIP.intValue() ? 0 : (short)((record.getNextProp() & 0xF00000000L) >> 32);
-    bits.put(prevModifier,4).put(nextModifier,4);
-    bits.put((int)record.getPrevProp()).put((int)record.getNextProp());
+    updateInUseRecord(record,buffer);
   }
  else {
     if (!isInRecoveryMode()) {
       freeId(id);
     }
+    buffer.setOffset(buffer.getOffset() + 9);
+    buffer.putLong(0);
   }
-  for (  PropertyBlock block : record.getPropertyBlocks()) {
-    if (block.inUse()) {
-      for (      long propBlockValue : block.getValueBlocks()) {
-        bits.put(propBlockValue);
-      }
-    }
-    if (!block.isLight()) {
-      for (      DynamicRecord valueRecord : block.getValueRecords()) {
-        if (valueRecord.getType() == PropertyType.STRING.intValue()) {
-          stringPropertyStore.updateRecord(valueRecord);
-        }
- else         if (valueRecord.getType() == PropertyType.ARRAY.intValue()) {
-          arrayPropertyStore.updateRecord(valueRecord);
-        }
- else {
-          throw new InvalidRecordException("Unknown dynamic record" + valueRecord + " from property record "+ record);
-        }
-      }
-    }
-  }
-  bits.apply(buffer);
+  updateDynamicRecords(record.getDeletedRecords());
 }
