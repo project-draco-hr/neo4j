@@ -1,0 +1,31 @@
+{
+  msgLog.logMessage("TxManager is blocking new transactions and waiting for active to fail...");
+  blocked=true;
+  List<Transaction> failedTransactions=new ArrayList<Transaction>();
+synchronized (txThreadMap) {
+    for (    Transaction tx : txThreadMap.values()) {
+      try {
+        int status=tx.getStatus();
+        if (status != Status.STATUS_COMMITTING && status != Status.STATUS_ROLLING_BACK) {
+          tx.setRollbackOnly();
+        }
+      }
+ catch (      IllegalStateException e) {
+        failedTransactions.add(tx);
+      }
+catch (      SystemException e) {
+        failedTransactions.add(tx);
+      }
+    }
+  }
+  msgLog.logMessage("TxManager blocked transactions" + ((failedTransactions.isEmpty() ? "" : ", but failed for: " + failedTransactions.toString())));
+  long endTime=System.currentTimeMillis() + maxWaitTimeMillis;
+  while (txThreadMap.size() > 0 && System.currentTimeMillis() < endTime) {
+    try {
+      System.out.println("Waiting for all transactions to fail");
+      Thread.sleep(200);
+    }
+ catch (    InterruptedException e) {
+    }
+  }
+}
