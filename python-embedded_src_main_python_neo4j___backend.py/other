@@ -22,7 +22,7 @@ try:
     import java
 except:
     import jpype, os
-    classpath = os.getenv('NEO4J_PYTHON_CLASSPATH', None)
+    classpath = os.getenv('CLASSPATH', None)
     if (classpath is None):
         jars = []
         from pkg_resources import resource_listdir, resource_filename
@@ -30,7 +30,8 @@ except:
             if name.endswith('.jar'):
                 jars.append(resource_filename(__name__, ('javalib/%s' % name)))
         if (len(jars) > 0):
-            classpath = ':'.join(jars)
+            divider = (';' if (sys.platform == 'win32') else ':')
+            classpath = divider.join(jars)
         else:
             classpath = '.'
     jvmargs = [('-Djava.class.path=' + classpath)]
@@ -40,7 +41,7 @@ except:
 
     def getJVMPath():
         jvm = jpype.getDefaultJVMPath()
-        if ((jvm is None) or (not os.path.exists(jvm))):
+        if ((sys.platform == 'win32') and ((jvm is None) or (not os.path.exists(jvm)))):
             rootJre = os.getenv('JAVA_HOME', 'c:/Program Files/Java/jre6')
             if os.path.exists((rootJre + '/bin/javac.exe')):
                 rootJre += '/jre'
