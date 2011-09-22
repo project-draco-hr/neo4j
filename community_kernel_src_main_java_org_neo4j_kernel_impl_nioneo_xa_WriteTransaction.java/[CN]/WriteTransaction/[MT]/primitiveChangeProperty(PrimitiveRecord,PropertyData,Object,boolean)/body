@@ -1,6 +1,6 @@
 {
   long propertyId=propertyData.getId();
-  PropertyRecord propertyRecord=getPropertyRecord(propertyId,true);
+  PropertyRecord propertyRecord=getPropertyRecord(propertyId,true,true);
   if (!propertyRecord.inUse()) {
     throw new IllegalStateException("Unable to change property[" + propertyId + "] since it has been deleted.");
   }
@@ -19,24 +19,19 @@
   }
   propertyRecord.setChanged();
   for (  DynamicRecord record : block.getValueRecords()) {
-    if (record.inUse()) {
-      record.setInUse(false,block.getType().intValue());
-      propertyRecord.addDeletedRecord(record);
-    }
+    record.setInUse(false,block.getType().intValue());
+    propertyRecord.addDeletedRecord(record);
   }
   int oldSize=block.getSize();
   int oldRecordSize=propertyRecord.size();
   getPropertyStore().encodeValue(block,propertyData.getIndex(),value);
   if (oldRecordSize - oldSize + block.getSize() > PropertyType.getPayloadSize()) {
-    PropertyBlock newBlock=new PropertyBlock();
     PropertyRecord oldRecord=propertyRecord;
-    newBlock.setValueBlocks(block.getValueBlocks());
     propertyRecord.removePropertyBlock(propertyData.getIndex());
-    propertyRecord=addPropertyBlockToPrimitive(newBlock,primitive,isNode);
+    propertyRecord=addPropertyBlockToPrimitive(block,primitive,isNode);
     if (propertyRecord != oldRecord && oldRecord.size() == 0) {
       oldRecord.setInUse(false);
     }
-    block=newBlock;
   }
   return block.newPropertyData(propertyRecord,value);
 }
