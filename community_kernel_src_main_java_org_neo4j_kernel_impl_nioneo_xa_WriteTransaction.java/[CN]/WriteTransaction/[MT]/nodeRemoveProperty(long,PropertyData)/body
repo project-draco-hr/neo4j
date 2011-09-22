@@ -13,19 +13,19 @@
     throw new IllegalStateException("Unable to delete property[" + propertyId + "] since it is already deleted.");
   }
   propRecord.setNodeId(nodeId);
-  PropertyBlock block=propRecord.getPropertyBlock(propertyData.getIndex());
+  PropertyBlock block=propRecord.removePropertyBlock(propertyData.getIndex());
   if (block == null) {
     throw new IllegalStateException("Property with index[" + propertyData.getIndex() + "] is not present in property["+ propertyId+ "]");
   }
   if (block.isLight()) {
     getPropertyStore().makeHeavy(block);
   }
-  block.setInUse(false);
   block.setChanged();
   propRecord.setChanged();
   for (  DynamicRecord valueRecord : block.getValueRecords()) {
     if (valueRecord.inUse()) {
       valueRecord.setInUse(false,block.getType().intValue());
+      propRecord.addDeletedRecord(valueRecord);
     }
   }
   if (propRecord.getUsedPayloadBytes() > 0) {

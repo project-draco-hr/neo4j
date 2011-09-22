@@ -1,2 +1,27 @@
 {
+  PropertyRecord record;
+  PersistenceWindow window=acquireWindow(id,OperationType.READ);
+  try {
+    record=getRecord(id,window);
+  }
+  finally {
+    releaseWindow(window);
+  }
+  for (  PropertyBlock block : record.getPropertyBlocks()) {
+    if (block.getType() == PropertyType.STRING) {
+      Collection<DynamicRecord> stringRecords=stringPropertyStore.getLightRecords(block.getSingleValueLong());
+      for (      DynamicRecord stringRecord : stringRecords) {
+        stringRecord.setType(PropertyType.STRING.intValue());
+        block.addValueRecord(stringRecord);
+      }
+    }
+ else     if (block.getType() == PropertyType.ARRAY) {
+      Collection<DynamicRecord> arrayRecords=arrayPropertyStore.getLightRecords(block.getSingleValueLong());
+      for (      DynamicRecord arrayRecord : arrayRecords) {
+        arrayRecord.setType(PropertyType.ARRAY.intValue());
+        block.addValueRecord(arrayRecord);
+      }
+    }
+  }
+  return record;
 }
