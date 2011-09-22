@@ -1,5 +1,9 @@
 {
-  boolean interesting=false;
+  if (futureQueue.containsKey(nextExpectedTxId)) {
+    List<LogEntry> list=futureQueue.remove(nextExpectedTxId);
+    writeToBuffer(list,target);
+    return commitEntryOf(list);
+  }
   if (entry instanceof LogEntry.Start) {
     List<LogEntry> list=new LinkedList<LogEntry>();
     list.add(entry);
@@ -7,23 +11,21 @@
   }
  else   if (entry instanceof LogEntry.Commit) {
     long commitTxId=((LogEntry.Commit)entry).getTxId();
-    if (commitTxId < startTxId)     return false;
-    if (previousTxId != 0) {
-      if (commitTxId == previousTxId)       return false;
-      if (commitTxId != previousTxId + 1) {
-        throw new RuntimeException("Unexpected tx " + commitTxId + " after "+ previousTxId+ ", starting from "+ startTxId);
-      }
-    }
- else     if (commitTxId != startTxId) {
-      throw new RuntimeException("Unexpected tx " + commitTxId + ". Was expecting "+ startTxId);
-    }
-    interesting=true;
+    if (commitTxId < startTxId)     return null;
     identifier=entry.getIdentifier();
     List<LogEntry> entries=transactions.get(identifier);
-    if (entries == null)     return false;
+    if (entries == null)     return null;
     entries.add(entry);
+    if (nextExpectedTxId != startTxId) {
+      if (commitTxId < nextExpectedTxId)       return null;
+    }
+    if (commitTxId != nextExpectedTxId) {
+      futureQueue.put(commitTxId,entries);
+      return null;
+    }
     writeToBuffer(entries,target);
-    previousTxId=commitTxId;
+    nextExpectedTxId=commitTxId + 1;
+    return entry;
   }
  else   if (entry instanceof LogEntry.Command || entry instanceof LogEntry.Prepare) {
     List<LogEntry> list=transactions.get(entry.getIdentifier());
@@ -37,5 +39,5 @@
  else {
     throw new RuntimeException("Unknown entry: " + entry);
   }
-  return interesting;
+  return null;
 }
