@@ -1,10 +1,11 @@
 {
-  LogEntry entry;
-  while ((entry=LogIoUtils.readEntry(localBuffer,source,cf)) != null) {
-    if (collector.collect(entry,target)) {
+  LogEntry entry=null;
+  while (collector.hasInFutureQueue() || (entry=LogIoUtils.readEntry(localBuffer,source,cf)) != null) {
+    LogEntry foundEntry=collector.collect(entry,target);
+    if (foundEntry != null) {
       previousCommitEntry=lastCommitEntry;
       LogIoUtils.writeLogEntry(new LogEntry.Done(collector.getIdentifier()),target);
-      lastCommitEntry=(LogEntry.Commit)entry;
+      lastCommitEntry=(LogEntry.Commit)foundEntry;
       return lastCommitEntry.getTxId();
     }
   }
