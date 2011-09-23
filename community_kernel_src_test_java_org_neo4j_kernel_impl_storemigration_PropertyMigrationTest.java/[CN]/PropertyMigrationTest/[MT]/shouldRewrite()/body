@@ -1,6 +1,7 @@
 {
   URL legacyStoreResource=getClass().getResource("oldformatstore/neostore");
   LegacyStore legacyStore=new LegacyStore(legacyStoreResource.getFile());
+  File legacyDir=new File(legacyStoreResource.getFile()).getParentFile();
   LegacyPropertyStoreReader propertyStoreReader=legacyStore.getPropertyStoreReader();
   LegacyDynamicRecordFetcher legacyDynamicRecordFetcher=legacyStore.getDynamicRecordFetcher();
   LegacyNodeStoreReader legacyNodeStoreReader=legacyStore.getLegacyNodeStoreReader();
@@ -13,7 +14,8 @@
   NeoStore.createStore(storeFileName,config);
   NeoStore neoStore=new NeoStore(config);
   PropertyStore propertyStore=neoStore.getPropertyStore();
-  new PropertyMigration(legacyNodeStoreReader,propertyStoreReader,legacyDynamicRecordFetcher).migrateNodeProperties(new PropertyWriter(propertyStore));
-  assertEquals(1000,propertyStore.getHighId());
+  new PropertyMigration(legacyNodeStoreReader,propertyStoreReader,legacyDynamicRecordFetcher).migrateNodeProperties(neoStore.getNodeStore(),new PropertyWriter(propertyStore));
   neoStore.close();
+  copyInFilesThatAreNotMigrated(legacyDir,outputDir);
+  verifyThatAllNodesHaveTheCorrectProperties(outputDir);
 }
