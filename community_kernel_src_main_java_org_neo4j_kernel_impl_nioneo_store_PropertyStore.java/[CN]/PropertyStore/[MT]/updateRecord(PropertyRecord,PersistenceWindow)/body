@@ -2,14 +2,49 @@
   long id=record.getId();
   Buffer buffer=window.getOffsettedBuffer(id);
   if (record.inUse()) {
-    updateInUseRecord(record,buffer);
-  }
+    short prevModifier=record.getPrevProp() == Record.NO_NEXT_RELATIONSHIP.intValue() ? 0 : (short)((record.getPrevProp() & 0xF00000000L) >> 28);
+    short nextModifier=record.getNextProp() == Record.NO_NEXT_RELATIONSHIP.intValue() ? 0 : (short)((record.getNextProp() & 0xF00000000L) >> 32);
+    byte modifiers=(byte)(prevModifier | nextModifier);
+    buffer.put(modifiers);
+    buffer.putInt((int)record.getPrevProp()).putInt((int)record.getNextProp());
+    int longsAppended=0;
+    List<PropertyBlock> blocks=record.getPropertyBlocks();
+    for (int i=0; i < blocks.size(); i++) {
+      PropertyBlock block=blocks.get(i);
+      long[] propBlockValues=block.getValueBlocks();
+switch (propBlockValues.length) {
+case 4:
+        buffer.putLong(propBlockValues[0]);
+      buffer.putLong(propBlockValues[1]);
+    buffer.putLong(propBlockValues[2]);
+  buffer.putLong(propBlockValues[3]);
+break;
+case 3:
+buffer.putLong(propBlockValues[0]);
+buffer.putLong(propBlockValues[1]);
+buffer.putLong(propBlockValues[2]);
+break;
+case 2:
+buffer.putLong(propBlockValues[0]);
+buffer.putLong(propBlockValues[1]);
+break;
+case 1:
+buffer.putLong(propBlockValues[0]);
+break;
+}
+longsAppended+=propBlockValues.length;
+updateDynamicRecords(block.getValueRecords());
+}
+if (longsAppended < PropertyType.getPayloadSizeLongs()) {
+buffer.putLong(0);
+}
+}
  else {
-    if (!isInRecoveryMode()) {
-      freeId(id);
-    }
-    buffer.setOffset(buffer.getOffset() + 9);
-    buffer.putLong(0);
-  }
-  updateDynamicRecords(record.getDeletedRecords());
+if (!isInRecoveryMode()) {
+freeId(id);
+}
+buffer.setOffset(buffer.getOffset() + 9);
+buffer.putLong(0);
+}
+updateDynamicRecords(record.getDeletedRecords());
 }
