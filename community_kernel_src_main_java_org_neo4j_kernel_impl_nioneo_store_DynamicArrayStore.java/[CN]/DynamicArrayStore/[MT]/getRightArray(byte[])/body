@@ -1,16 +1,21 @@
 {
-  byte typeId=bArray[0];
+  byte typeId=(byte)(bArray[0] & 0x3F);
   if (typeId == PropertyType.STRING.intValue()) {
+    byte encoding=(byte)((bArray[0] & 0x30) >> 6);
     ByteBuffer buf=ByteBuffer.wrap(bArray);
     buf.get();
     String[] array=new String[buf.getInt()];
-    for (int i=0; i < array.length; i++) {
-      int charLength=buf.getInt() / 2;
-      char charBuffer[]=new char[charLength];
-      for (int j=0; j < charLength; j++) {
-        charBuffer[j]=buf.getChar();
+    for (int r=0; r < array.length; r++) {
+      if (encoding == 1) {
+        char[] chars=new char[buf.getInt()];
+        for (int i=0; i < chars.length; i++)         chars[i]=(char)buf.get();
+        array[r]=new String(chars);
       }
-      array[i]=new String(charBuffer);
+ else {
+        byte[] bytes=new byte[buf.getInt()];
+        buf.get(bytes);
+        array[r]=UTF8.decode(bytes);
+      }
     }
     return array;
   }
