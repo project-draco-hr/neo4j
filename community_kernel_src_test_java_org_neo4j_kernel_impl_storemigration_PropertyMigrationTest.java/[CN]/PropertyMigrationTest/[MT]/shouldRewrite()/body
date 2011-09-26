@@ -4,7 +4,7 @@
   File legacyDir=new File(legacyStoreResource.getFile()).getParentFile();
   LegacyPropertyStoreReader propertyStoreReader=legacyStore.getPropertyStoreReader();
   LegacyDynamicRecordFetcher legacyDynamicRecordFetcher=legacyStore.getDynamicRecordFetcher();
-  LegacyNodeStoreReader legacyNodeStoreReader=legacyStore.getLegacyNodeStoreReader();
+  LegacyNodeStoreReader legacyNodeStoreReader=legacyStore.getNodeStoreReader();
   HashMap config=MigrationTestUtils.defaultConfig();
   File outputDir=new File("target/outputDatabase");
   FileUtils.deleteRecursively(outputDir);
@@ -13,8 +13,8 @@
   config.put("neo_store",storeFileName);
   NeoStore.createStore(storeFileName,config);
   NeoStore neoStore=new NeoStore(config);
-  PropertyStore propertyStore=neoStore.getPropertyStore();
-  new PropertyMigration(legacyNodeStoreReader,propertyStoreReader,legacyDynamicRecordFetcher).migrateNodeProperties(neoStore.getNodeStore(),new PropertyWriter(propertyStore));
+  new PropertyMigration(legacyNodeStoreReader,propertyStoreReader,legacyDynamicRecordFetcher).migrateNodeProperties(neoStore.getNodeStore(),new PropertyWriter(neoStore.getPropertyStore()));
+  new PropertyIndexMigration(legacyStore).migratePropertyIndexes(neoStore);
   neoStore.close();
   copyInFilesThatAreNotMigrated(legacyDir,outputDir);
   verifyThatAllNodesHaveTheCorrectProperties(outputDir);
