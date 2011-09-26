@@ -5,6 +5,19 @@
   for (int i=0; i < additionalNodeCount; i++) {
     executeJobOnMaster(new CommonJobs.CreateNodeAndNewIndexJob("users","the key " + i,"the best value","a key " + i,"the worst value"));
   }
-  addDb(MapUtil.stringMap(),true);
+  int slaveId=addDb(MapUtil.stringMap(),true);
   awaitAllStarted();
+  shutdownDb(slaveId);
+  File slavePath=dbPath(slaveId);
+  EmbeddedGraphDatabase slaveDb=new EmbeddedGraphDatabase(slavePath.getAbsolutePath());
+  XaDataSource dataSource=slaveDb.getConfig().getTxModule().getXaDataSourceManager().getXaDataSource(Config.DEFAULT_DATA_SOURCE_NAME);
+  long lastTxId=dataSource.getLastCommittedTxId();
+  LogExtractor extractor=dataSource.getXaContainer().getLogicalLog().getLogExtractor(2,lastTxId);
+  for (long txId=2; txId < lastTxId; txId++) {
+    long extractedTxId=extractor.extractNext(new InMemoryLogBuffer());
+    assertEquals(txId,extractedTxId);
+  }
+  extractor.close();
+  slaveDb.shutdown();
+  startDb(slaveId,MapUtil.stringMap(),true);
 }
