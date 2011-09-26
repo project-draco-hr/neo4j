@@ -1,31 +1,17 @@
 {
-  int size=1 + 4;
-  ByteBuffer buf=null;
-  if (isAllLatin1(array)) {
-    for (    String string : array)     size+=4 + string.length();
-    buf=ByteBuffer.allocate(size);
-    buf.put((byte)((1 << 6) | PropertyType.STRING.intValue()));
-    buf.putInt(array.length);
-    for (    String str : array) {
-      int length=str.length();
-      buf.putInt(length);
-      for (int i=0; i < length; i++)       buf.put((byte)str.charAt(i));
-    }
+  List<byte[]> stringsAsBytes=new ArrayList<byte[]>();
+  int totalBytesRequired=1 + 4;
+  for (  String string : array) {
+    byte[] bytes=PropertyStore.encodeString(string);
+    stringsAsBytes.add(bytes);
+    totalBytesRequired+=4 + bytes.length;
   }
- else {
-    List<byte[]> stringsAsBytes=new ArrayList<byte[]>();
-    for (    String string : array) {
-      byte[] stringAsBytes=UTF8.encode(string);
-      size+=4 + stringAsBytes.length;
-      stringsAsBytes.add(stringAsBytes);
-    }
-    buf=ByteBuffer.allocate(size);
-    buf.put((byte)PropertyType.STRING.intValue());
-    buf.putInt(array.length);
-    for (    byte[] stringAsBytes : stringsAsBytes) {
-      buf.putInt(stringAsBytes.length);
-      buf.put(stringAsBytes);
-    }
+  ByteBuffer buf=ByteBuffer.allocate(totalBytesRequired);
+  buf.put(PropertyType.STRING.byteValue());
+  buf.putInt(array.length);
+  for (  byte[] stringAsBytes : stringsAsBytes) {
+    buf.putInt(stringAsBytes.length);
+    buf.put(stringAsBytes);
   }
   return allocateRecords(startBlock,buf.array());
 }

@@ -1,23 +1,17 @@
 {
-  byte typeId=(byte)(bArray[0] & 0x3F);
+  byte typeId=bArray[0];
   if (typeId == PropertyType.STRING.intValue()) {
-    byte encoding=(byte)((bArray[0] & 0x30) >> 6);
     ByteBuffer buf=ByteBuffer.wrap(bArray);
     buf.get();
-    String[] array=new String[buf.getInt()];
-    for (int r=0; r < array.length; r++) {
-      if (encoding == 1) {
-        char[] chars=new char[buf.getInt()];
-        for (int i=0; i < chars.length; i++)         chars[i]=(char)buf.get();
-        array[r]=new String(chars);
-      }
- else {
-        byte[] bytes=new byte[buf.getInt()];
-        buf.get(bytes);
-        array[r]=UTF8.decode(bytes);
-      }
+    int arrayLength=buf.getInt();
+    String[] result=new String[arrayLength];
+    for (int i=0; i < arrayLength; i++) {
+      int byteLength=buf.getInt();
+      byte[] stringByteArray=new byte[byteLength];
+      buf.get(stringByteArray);
+      result[i]=(String)PropertyStore.getStringFor(stringByteArray);
     }
-    return array;
+    return result;
   }
  else {
     ShortArray type=ShortArray.typeOf(typeId);
