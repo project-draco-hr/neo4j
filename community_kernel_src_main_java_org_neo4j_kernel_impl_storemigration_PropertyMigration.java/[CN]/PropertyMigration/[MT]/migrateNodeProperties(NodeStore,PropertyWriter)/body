@@ -1,15 +1,9 @@
 {
-  Iterable<NodeRecord> records=legacyNodeStoreReader.readNodeStore();
+  Iterable<NodeRecord> records=legacyStore.getNodeStoreReader().readNodeStore();
   for (  NodeRecord nodeRecord : records) {
-    if (nodeRecord.getNextProp() != Record.NO_NEXT_RELATIONSHIP.intValue()) {
-      LegacyPropertyRecord propertyRecord=propertyStoreReader.readPropertyRecord(nodeRecord.getNextProp());
-      List<Pair<Integer,Object>> properties=new ArrayList<Pair<Integer,Object>>();
-      while (propertyRecord.getNextProp() != Record.NO_NEXT_PROPERTY.intValue()) {
-        properties.add(extractValue(propertyRecord));
-        propertyRecord=propertyStoreReader.readPropertyRecord(propertyRecord.getNextProp());
-      }
-      properties.add(extractValue(propertyRecord));
-      long propertyRecordId=propertyWriter.writeProperties(properties);
+    long startOfPropertyChain=nodeRecord.getNextProp();
+    if (startOfPropertyChain != Record.NO_NEXT_RELATIONSHIP.intValue()) {
+      long propertyRecordId=migrateProperties(startOfPropertyChain,propertyWriter);
       nodeRecord.setNextProp(propertyRecordId);
       nodeStore.setHighId(nodeRecord.getId());
       nodeStore.updateRecord(nodeRecord);
