@@ -1,12 +1,22 @@
 {
   ChannelBuffer readBuffer=readNext();
-  more=readBuffer.readByte() == ChunkingChannelBuffer.CONTINUATION_MORE;
-  if (!more && buffer == null) {
-    buffer=readBuffer;
-  }
+  byte header=readBuffer.readByte();
+switch (header) {
+case ChunkingChannelBuffer.CONTINUATION_LAST:
+    more=false;
+  break;
+case ChunkingChannelBuffer.CONTINUATION_MORE:
+more=true;
+break;
+default :
+throw new ComException("Unexpected header " + header);
+}
+if (!more && buffer == null) {
+buffer=readBuffer;
+}
  else {
-    buffer=buffer == null ? ChannelBuffers.dynamicBuffer() : buffer;
-    discardReadBytes();
-    buffer.writeBytes(readBuffer);
-  }
+buffer=buffer == null ? ChannelBuffers.dynamicBuffer() : buffer;
+discardReadBytes();
+buffer.writeBytes(readBuffer);
+}
 }
