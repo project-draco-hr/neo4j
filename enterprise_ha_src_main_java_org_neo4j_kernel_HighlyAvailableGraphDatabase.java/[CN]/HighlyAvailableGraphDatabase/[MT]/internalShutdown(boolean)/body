@@ -13,8 +13,15 @@
     this.masterServer=null;
   }
   if (this.localGraph != null) {
-    if (attemptWaitForTransactionsToFinish) {
-      ((AbstractTransactionManager)getConfig().getTxModule().getTxManager()).attemptWaitForTxCompletionAndBlockFutureTransactions(7000);
+    if (rotateLogs) {
+      for (      XaDataSource dataSource : getConfig().getTxModule().getXaDataSourceManager().getAllRegisteredDataSources()) {
+        try {
+          dataSource.rotateLogicalLog();
+        }
+ catch (        IOException e) {
+          msgLog.logMessage("Couldn't rotate logical log for " + dataSource.getName(),e);
+        }
+      }
     }
     msgLog.logMessage("Internal shutdown localGraph",true);
     this.localGraph.shutdown();
