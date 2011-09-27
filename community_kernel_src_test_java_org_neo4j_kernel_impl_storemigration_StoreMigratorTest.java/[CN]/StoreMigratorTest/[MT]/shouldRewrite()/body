@@ -11,25 +11,11 @@
   NeoStore neoStore=new NeoStore(config);
   new StoreMigrator(legacyStore).migrateTo(neoStore);
   neoStore.close();
-  EmbeddedGraphDatabase database=new EmbeddedGraphDatabase(outputDir.getPath());
-  String longString=MigrationTestUtils.makeLongString();
-  int[] longArray=MigrationTestUtils.makeLongArray();
-  int nodeCount=0;
-  for (  Node node : database.getAllNodes()) {
-    nodeCount++;
-    if (node.getId() > 0) {
-      verifyProperties(node,longString,longArray);
-    }
-  }
-  assertEquals(501,nodeCount);
-  Node currentNode=database.getReferenceNode();
-  int traversalCount=0;
-  while (currentNode.hasRelationship(Direction.OUTGOING)) {
-    traversalCount++;
-    Relationship relationship=currentNode.getRelationships(Direction.OUTGOING).iterator().next();
-    verifyProperties(relationship,longString,longArray);
-    currentNode=relationship.getEndNode();
-  }
-  assertEquals(500,traversalCount);
+  GraphDatabaseService database=new EmbeddedGraphDatabase(outputDir.getPath());
+  DatabaseContentVerifier verifier=new DatabaseContentVerifier(database);
+  verifier.verifyNodes();
+  verifier.verifyRelationships();
+  verifier.verifyNodeIdsReused();
+  verifier.verifyRelationshipIdsReused();
   database.shutdown();
 }
