@@ -1,0 +1,42 @@
+{
+  FileChannel fileChannel=new RandomAccessFile(fileName,"r").getChannel();
+  int recordLength=33;
+  int endHeaderSize=UTF8.encode(FROM_VERSION).length;
+  long recordCount=(fileChannel.size() - endHeaderSize) / recordLength;
+  ByteBuffer buffer=ByteBuffer.allocateDirect(recordLength);
+  ArrayList<RelationshipRecord> records=new ArrayList<RelationshipRecord>();
+  for (long id=0; id < recordCount; id++) {
+    buffer.position(0);
+    fileChannel.read(buffer);
+    buffer.flip();
+    long inUseByte=buffer.get();
+    boolean inUse=(inUseByte & 0x1) == Record.IN_USE.intValue();
+    if (inUse) {
+      long firstNode=getUnsignedInt(buffer);
+      long firstNodeMod=(inUseByte & 0xEL) << 31;
+      long secondNode=getUnsignedInt(buffer);
+      long typeInt=buffer.getInt();
+      long secondNodeMod=(typeInt & 0x70000000L) << 4;
+      int type=(int)(typeInt & 0xFFFF);
+      RelationshipRecord record=new RelationshipRecord(id,longFromIntAndMod(firstNode,firstNodeMod),longFromIntAndMod(secondNode,secondNodeMod),type);
+      record.setInUse(inUse);
+      long firstPrevRel=getUnsignedInt(buffer);
+      long firstPrevRelMod=(typeInt & 0xE000000L) << 7;
+      record.setFirstPrevRel(longFromIntAndMod(firstPrevRel,firstPrevRelMod));
+      long firstNextRel=getUnsignedInt(buffer);
+      long firstNextRelMod=(typeInt & 0x1C00000L) << 10;
+      record.setFirstNextRel(longFromIntAndMod(firstNextRel,firstNextRelMod));
+      long secondPrevRel=getUnsignedInt(buffer);
+      long secondPrevRelMod=(typeInt & 0x380000L) << 13;
+      record.setSecondPrevRel(longFromIntAndMod(secondPrevRel,secondPrevRelMod));
+      long secondNextRel=getUnsignedInt(buffer);
+      long secondNextRelMod=(typeInt & 0x70000L) << 16;
+      record.setSecondNextRel(longFromIntAndMod(secondNextRel,secondNextRelMod));
+      long nextProp=getUnsignedInt(buffer);
+      long nextPropMod=(inUseByte & 0xF0L) << 28;
+      record.setNextProp(longFromIntAndMod(nextProp,nextPropMod));
+      records.add(record);
+    }
+  }
+  return records;
+}
