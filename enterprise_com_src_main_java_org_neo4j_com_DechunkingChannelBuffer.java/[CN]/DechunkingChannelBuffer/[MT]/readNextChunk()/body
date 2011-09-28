@@ -1,22 +1,16 @@
 {
   ChannelBuffer readBuffer=readNext();
   byte header=readBuffer.readByte();
-switch (header) {
-case ChunkingChannelBuffer.CONTINUATION_LAST:
-    more=false;
-  break;
-case ChunkingChannelBuffer.CONTINUATION_MORE:
-more=true;
-break;
-default :
-throw new ComException("Unexpected header " + header);
-}
-if (!more && buffer == null) {
-buffer=readBuffer;
-}
+  more=(header & 0x1) != 0;
+  failure=(header & 0x2) != 0;
+  if ((header & 0xFC) != 0)   throw new ComException("Unexpected header " + header);
+  if (!more && buffer == null) {
+    buffer=readBuffer;
+  }
  else {
-buffer=buffer == null ? ChannelBuffers.dynamicBuffer() : buffer;
-discardReadBytes();
-buffer.writeBytes(readBuffer);
-}
+    buffer=buffer == null ? ChannelBuffers.dynamicBuffer() : buffer;
+    discardReadBytes();
+    buffer.writeBytes(readBuffer);
+  }
+  if (failure)   readAndThrowFailureResponse();
 }
