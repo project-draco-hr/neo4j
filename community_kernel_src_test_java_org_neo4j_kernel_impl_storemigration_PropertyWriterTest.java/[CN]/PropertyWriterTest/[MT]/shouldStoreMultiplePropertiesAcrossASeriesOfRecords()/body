@@ -1,0 +1,29 @@
+{
+  HashMap config=MigrationTestUtils.defaultConfig();
+  File outputDir=new File("target/outputDatabase");
+  FileUtils.deleteRecursively(outputDir);
+  assertTrue(outputDir.mkdirs());
+  File propertyStoreFile=new File(outputDir,"neostore.propertystore.db");
+  PropertyStore.createStore(propertyStoreFile.getPath(),config);
+  PropertyStore propertyStore=new PropertyStore(propertyStoreFile.getPath(),config);
+  assertEquals(0,propertyStore.getHighId());
+  PropertyWriter propertyWriter=new PropertyWriter(propertyStore);
+  ArrayList<Pair<Integer,Object>> properties=new ArrayList<Pair<Integer,Object>>();
+  for (int i=0; i < 100; i++) {
+    properties.add(Pair.of(i,(Object)i));
+  }
+  long propertyRecordId=propertyWriter.writeProperties(properties);
+  assertEquals(25,propertyStore.getHighId());
+  assertEquals(0,propertyRecordId);
+  List<PropertyBlock> propertyBlocks=new ArrayList<PropertyBlock>();
+  PropertyRecord propertyRecord=propertyStore.getRecord(0);
+  propertyBlocks.addAll(propertyStore.getRecord(propertyRecordId).getPropertyBlocks());
+  while (propertyRecord.getNextProp() != Record.NO_NEXT_PROPERTY.intValue()) {
+    long currentRecordId=propertyRecord.getId();
+    propertyRecord=propertyStore.getRecord(propertyRecord.getNextProp());
+    assertEquals(currentRecordId,propertyRecord.getPrevProp());
+    propertyBlocks.addAll(propertyStore.getRecord(propertyRecordId).getPropertyBlocks());
+  }
+  assertEquals(100,propertyBlocks.size());
+  propertyStore.close();
+}
