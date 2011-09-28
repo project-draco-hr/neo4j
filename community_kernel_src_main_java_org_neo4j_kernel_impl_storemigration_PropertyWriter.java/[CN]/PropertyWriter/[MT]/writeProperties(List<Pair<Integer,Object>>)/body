@@ -1,21 +1,29 @@
 {
-  PropertyRecord propertyRecord=new PropertyRecord(propertyStore.nextId());
-  long startOfPropertyList=propertyRecord.getId();
-  for (  Pair<Integer,Object> property : properties) {
-    PropertyBlock block=new PropertyBlock();
-    propertyStore.encodeValue(block,property.first(),property.other());
-    int newBlockSizeInBytes=block.getSize();
-    if (propertyRecord.size() + newBlockSizeInBytes > PropertyType.getPayloadSize()) {
-      long currentId=propertyRecord.getId();
-      long nextId=propertyStore.nextId();
-      propertyRecord.setNextProp(nextId);
-      propertyStore.updateRecord(propertyRecord);
-      propertyRecord=new PropertyRecord(nextId);
-      propertyRecord.setPrevProp(currentId);
-    }
-    propertyRecord.addPropertyBlock(block);
-    propertyRecord.setInUse(true);
+  if (properties == null || properties.isEmpty()) {
+    return Record.NO_NEXT_PROPERTY.intValue();
   }
-  propertyStore.updateRecord(propertyRecord);
-  return startOfPropertyList;
+  List<PropertyRecord> propRecords=new ArrayList<PropertyRecord>();
+  PropertyRecord currentRecord=new PropertyRecord(propertyStore.nextId());
+  currentRecord.setInUse(true);
+  currentRecord.setCreated();
+  propRecords.add(currentRecord);
+  for (  Pair<Integer,Object> propertyDatum : properties) {
+    PropertyBlock block=new PropertyBlock();
+    propertyStore.encodeValue(block,propertyDatum.first(),propertyDatum.other());
+    if (currentRecord.size() + block.getSize() > PropertyType.getPayloadSize()) {
+      PropertyRecord prevRecord=currentRecord;
+      long propertyId=propertyStore.nextId();
+      currentRecord=new PropertyRecord(propertyId);
+      currentRecord.setInUse(true);
+      currentRecord.setCreated();
+      prevRecord.setNextProp(propertyId);
+      currentRecord.setPrevProp(prevRecord.getId());
+      propRecords.add(currentRecord);
+    }
+    currentRecord.addPropertyBlock(block);
+  }
+  for (int i=propRecords.size() - 1; i >= 0; i--) {
+    propertyStore.updateRecord(propRecords.get(i));
+  }
+  return propRecords.get(0).getId();
 }
