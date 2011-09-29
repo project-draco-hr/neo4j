@@ -1,0 +1,40 @@
+{
+  gen.get().addSourceSnippets(this.getClass(),"createReltype","startDb","transaction","addData","removingData","shutdownServer","readData");
+  gen.get().addGithubLink("github",this.getClass(),"neo4j/community","embedded-examples");
+  GraphDatabaseService graphDb=new EmbeddedGraphDatabase(DB_PATH);
+  registerShutdownHook(graphDb);
+  Transaction tx=graphDb.beginTx();
+  try {
+    Node firstNode=graphDb.createNode();
+    Node secondNode=graphDb.createNode();
+    Relationship relationship=firstNode.createRelationshipTo(secondNode,RelTypes.KNOWS);
+    firstNode.setProperty("message","Hello, ");
+    secondNode.setProperty("message","world!");
+    relationship.setProperty("message","brave Neo4j ");
+    System.out.print(firstNode.getProperty("message"));
+    System.out.print(relationship.getProperty("message"));
+    System.out.print(secondNode.getProperty("message"));
+    String greeting=((String)firstNode.getProperty("message")) + ((String)relationship.getProperty("message")) + ((String)secondNode.getProperty("message"));
+    gen.get().addSnippet("output",createOutputSnippet(greeting));
+    tx.success();
+  }
+  finally {
+    tx.finish();
+  }
+  gen.get().addSnippet("graph",createGraphViz("Hello World Graph",graphDb,gen.get().getTitle()));
+  tx=graphDb.beginTx();
+  try {
+    for (    Node node : graphDb.getAllNodes()) {
+      for (      Relationship rel : node.getRelationships()) {
+        rel.delete();
+      }
+      node.delete();
+    }
+    tx.success();
+  }
+  finally {
+    tx.finish();
+  }
+  System.out.println("Shutting down database ...");
+  graphDb.shutdown();
+}
