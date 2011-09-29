@@ -1,0 +1,22 @@
+{
+  try {
+    File workingDirectory=new File(storageFileName).getParentFile();
+    File upgradeDirectory=new File(workingDirectory,"upgrade");
+    upgradeDirectory.mkdir();
+    String upgradeFileName=new File(upgradeDirectory,"neostore").getPath();
+    Map<Object,Object> upgradeConfig=new HashMap<Object,Object>(originalConfig);
+    upgradeConfig.put("neo_store",upgradeFileName);
+    NeoStore.createStore(upgradeFileName,upgradeConfig);
+    NeoStore neoStore=new NeoStore(upgradeConfig);
+    new StoreMigrator(new LegacyStore(storageFileName)).migrateTo(neoStore);
+    neoStore.close();
+    for (    File file : upgradeDirectory.listFiles()) {
+      if (!file.isDirectory()) {
+        FileUtils.copyFile(file,new File(workingDirectory,file.getName()));
+      }
+    }
+  }
+ catch (  IOException e) {
+    throw new RuntimeException(e);
+  }
+}
