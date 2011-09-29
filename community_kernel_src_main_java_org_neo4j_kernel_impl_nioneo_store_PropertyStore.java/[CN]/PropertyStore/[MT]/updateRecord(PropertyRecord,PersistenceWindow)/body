@@ -12,39 +12,24 @@
     for (int i=0; i < blocks.size(); i++) {
       PropertyBlock block=blocks.get(i);
       long[] propBlockValues=block.getValueBlocks();
-switch (propBlockValues.length) {
-case 4:
-        buffer.putLong(propBlockValues[0]);
-      buffer.putLong(propBlockValues[1]);
-    buffer.putLong(propBlockValues[2]);
-  buffer.putLong(propBlockValues[3]);
-break;
-case 3:
-buffer.putLong(propBlockValues[0]);
-buffer.putLong(propBlockValues[1]);
-buffer.putLong(propBlockValues[2]);
-break;
-case 2:
-buffer.putLong(propBlockValues[0]);
-buffer.putLong(propBlockValues[1]);
-break;
-case 1:
-buffer.putLong(propBlockValues[0]);
-break;
-}
-longsAppended+=propBlockValues.length;
-updateDynamicRecords(block.getValueRecords());
-}
-if (longsAppended < PropertyType.getPayloadSizeLongs()) {
-buffer.putLong(0);
-}
-}
+      for (int k=0; k < propBlockValues.length; k++) {
+        buffer.putLong(propBlockValues[k]);
+      }
+      longsAppended+=propBlockValues.length;
+      if (!block.isLight() && block.getValueRecords().get(0).isCreated()) {
+        updateDynamicRecords(block.getValueRecords());
+      }
+    }
+    if (longsAppended < PropertyType.getPayloadSizeLongs()) {
+      buffer.putLong(0);
+    }
+  }
  else {
-if (!isInRecoveryMode()) {
-freeId(id);
-}
-buffer.setOffset(buffer.getOffset() + 9);
-buffer.putLong(0);
-}
-updateDynamicRecords(record.getDeletedRecords());
+    if (!isInRecoveryMode()) {
+      freeId(id);
+    }
+    buffer.setOffset(buffer.getOffset() + 9);
+    buffer.putLong(0);
+  }
+  updateDynamicRecords(record.getDeletedRecords());
 }
