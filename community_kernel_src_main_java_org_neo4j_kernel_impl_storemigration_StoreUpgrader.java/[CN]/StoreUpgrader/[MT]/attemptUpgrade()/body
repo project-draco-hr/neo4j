@@ -2,6 +2,7 @@
   try {
     File workingDirectory=new File(storageFileName).getParentFile();
     File upgradeDirectory=new File(workingDirectory,"upgrade");
+    File backupDirectory=new File(workingDirectory,"upgrade_backup");
     upgradeDirectory.mkdir();
     String upgradeFileName=new File(upgradeDirectory,"neostore").getPath();
     Map<Object,Object> upgradeConfig=new HashMap<Object,Object>(originalConfig);
@@ -10,11 +11,9 @@
     NeoStore neoStore=new NeoStore(upgradeConfig);
     new StoreMigrator(new LegacyStore(storageFileName)).migrateTo(neoStore);
     neoStore.close();
-    for (    File file : upgradeDirectory.listFiles()) {
-      if (!file.isDirectory()) {
-        FileUtils.copyFile(file,new File(workingDirectory,file.getName()));
-      }
-    }
+    backupDirectory.mkdir();
+    moveStoreFiles(workingDirectory,backupDirectory);
+    moveStoreFiles(upgradeDirectory,workingDirectory);
   }
  catch (  IOException e) {
     throw new RuntimeException(e);
