@@ -1,0 +1,18 @@
+{
+  String expectedTypeDescriptorAndVersion=getTypeAndVersionDescriptor();
+  int length=UTF8.encode(expectedTypeDescriptorAndVersion).length;
+  byte bytes[]=new byte[length];
+  ByteBuffer buffer=ByteBuffer.wrap(bytes);
+  long fileSize=getFileChannel().size();
+  if (fileSize >= length) {
+    getFileChannel().position(fileSize - length);
+  }
+ else   if (!isReadOnly()) {
+    setStoreNotOk();
+  }
+  getFileChannel().read(buffer);
+  String foundTypeDescriptorAndVersion=UTF8.decode(bytes);
+  if (!expectedTypeDescriptorAndVersion.equals(foundTypeDescriptorAndVersion)) {
+    throw new NotCurrentStoreVersionException(ALL_STORES_VERSION,foundTypeDescriptorAndVersion,"",false);
+  }
+}
