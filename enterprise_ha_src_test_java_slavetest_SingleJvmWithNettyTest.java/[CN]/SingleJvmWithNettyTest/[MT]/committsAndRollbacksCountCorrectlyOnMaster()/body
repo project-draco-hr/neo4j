@@ -1,0 +1,21 @@
+{
+  initializeDbs(1);
+  GraphDatabaseService master=getMaster().getGraphDb();
+  GraphDatabaseService slave=getSlave(0);
+  Pair<Integer,Integer> masterTxsBefore=getTransactionCounts(master);
+  executeJobOnMaster(new CommonJobs.CreateNodeJob());
+  assertEquals(Pair.of(masterTxsBefore.first() + 1,masterTxsBefore.other()),getTransactionCounts(master));
+  masterTxsBefore=getTransactionCounts(master);
+  Pair<Integer,Integer> slaveTxsBefore=getTransactionCounts(slave);
+  executeJob(new CommonJobs.CreateNodeJob(),0);
+  assertEquals(Pair.of(masterTxsBefore.first() + 1,masterTxsBefore.other()),getTransactionCounts(master));
+  assertEquals(Pair.of(slaveTxsBefore.first() + 1,slaveTxsBefore.other()),getTransactionCounts(slave));
+  masterTxsBefore=getTransactionCounts(master);
+  executeJobOnMaster(new CommonJobs.CreateNodeJob(false));
+  assertEquals(Pair.of(masterTxsBefore.first(),masterTxsBefore.other() + 1),getTransactionCounts(master));
+  masterTxsBefore=getTransactionCounts(master);
+  slaveTxsBefore=getTransactionCounts(slave);
+  executeJob(new CommonJobs.CreateNodeJob(false),0);
+  assertEquals(Pair.of(masterTxsBefore.first(),masterTxsBefore.other() + 1),getTransactionCounts(master));
+  assertEquals(Pair.of(slaveTxsBefore.first(),slaveTxsBefore.other() + 1),getTransactionCounts(slave));
+}
