@@ -1,3 +1,34 @@
 {
-  gen.get().expectedStatus(200).get(functionalTestHelper.dataUri());
+  EmbeddedGraphDatabase db=(EmbeddedGraphDatabase)((ImpermanentGraphDatabase)graphdb()).getInner();
+  Transaction tx=db.beginTx();
+  db.getConfig().getGraphDbModule().setReferenceNodeId(data.get().get("I").getId());
+  tx.success();
+  tx.finish();
+  String body=gen.get().expectedStatus(200).get(getDataUri()).entity();
+  Map<String,Object> map=JsonHelper.jsonToMap(body);
+  assertEquals(getDataUri() + "node",map.get("node"));
+  assertNotNull(map.get("reference_node"));
+  assertNotNull(map.get("node_index"));
+  assertNotNull(map.get("relationship_index"));
+  assertNotNull(map.get("extensions_info"));
+  assertNotNull(map.get("batch"));
+  assertEquals(Version.getKernelRevision(),map.get("neo4j_version"));
+  JaxRsResponse response=RestRequest.req().get(getDataUri());
+  if (map.get("reference_node") != null) {
+    response=RestRequest.req().get((String)map.get("reference_node"));
+    assertEquals(200,response.getStatus());
+    response.close();
+  }
+  response=RestRequest.req().get((String)map.get("node_index"));
+  assertEquals(204,response.getStatus());
+  response.close();
+  response=RestRequest.req().get((String)map.get("relationship_index"));
+  assertEquals(204,response.getStatus());
+  response.close();
+  response=RestRequest.req().get((String)map.get("extensions_info"));
+  assertEquals(200,response.getStatus());
+  response.close();
+  response=RestRequest.req().post((String)map.get("batch"),"[]");
+  assertEquals(200,response.getStatus());
+  response.close();
 }
