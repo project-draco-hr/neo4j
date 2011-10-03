@@ -1,0 +1,22 @@
+{
+  LegacyStore legacyStore=new LegacyStore(new File(new File(legacyStoreDirectory),"neostore").getPath());
+  HashMap config=new HashMap();
+  config.put(IdGeneratorFactory.class,CommonFactories.defaultIdGeneratorFactory());
+  config.put(FileSystemAbstraction.class,CommonFactories.defaultFileSystemAbstraction());
+  File targetStoreDirectoryFile=new File(targetStoreDirectory);
+  if (targetStoreDirectoryFile.exists()) {
+    throw new IllegalStateException("Cannot migrate to a directory that already exists, please delete first and re-run");
+  }
+  boolean success=targetStoreDirectoryFile.mkdirs();
+  if (!success) {
+    throw new IllegalStateException("Failed to create directory");
+  }
+  File targetStoreFile=new File(targetStoreDirectory,"neostore");
+  config.put("neo_store",targetStoreFile.getPath());
+  NeoStore.createStore(targetStoreFile.getPath(),config);
+  NeoStore neoStore=new NeoStore(config);
+  new StoreMigrator(legacyStore).migrateTo(neoStore);
+  neoStore.close();
+  EmbeddedGraphDatabase database=new EmbeddedGraphDatabase(targetStoreDirectoryFile.getPath());
+  database.shutdown();
+}
