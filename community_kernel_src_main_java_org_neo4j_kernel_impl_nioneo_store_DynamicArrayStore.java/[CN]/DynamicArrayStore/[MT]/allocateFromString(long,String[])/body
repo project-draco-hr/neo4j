@@ -1,19 +1,17 @@
 {
-  int size=5;
-  for (  String str : array) {
-    size+=4 + str.length() * 2;
+  List<byte[]> stringsAsBytes=new ArrayList<byte[]>();
+  int totalBytesRequired=1 + 4;
+  for (  String string : array) {
+    byte[] bytes=PropertyStore.encodeString(string);
+    stringsAsBytes.add(bytes);
+    totalBytesRequired+=4 + bytes.length;
   }
-  ByteBuffer buf=ByteBuffer.allocate(size);
-  buf.put(ArrayType.STRING.byteValue());
+  ByteBuffer buf=ByteBuffer.allocate(totalBytesRequired);
+  buf.put(PropertyType.STRING.byteValue());
   buf.putInt(array.length);
-  for (  String str : array) {
-    int length=str.length();
-    char[] chars=new char[length];
-    str.getChars(0,length,chars,0);
-    buf.putInt(length * 2);
-    for (    char c : chars) {
-      buf.putChar(c);
-    }
+  for (  byte[] stringAsBytes : stringsAsBytes) {
+    buf.putInt(stringAsBytes.length);
+    buf.put(stringAsBytes);
   }
   return allocateRecords(startBlock,buf.array());
 }
