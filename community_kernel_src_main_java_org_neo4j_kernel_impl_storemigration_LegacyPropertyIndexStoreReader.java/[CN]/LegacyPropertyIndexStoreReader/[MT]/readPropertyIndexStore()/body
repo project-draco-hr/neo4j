@@ -1,0 +1,24 @@
+{
+  FileChannel fileChannel=new RandomAccessFile(fileName,"r").getChannel();
+  int recordLength=9;
+  int endHeaderSize=UTF8.encode(FROM_VERSION).length;
+  long recordCount=(fileChannel.size() - endHeaderSize) / recordLength;
+  LinkedList<PropertyIndexRecord> records=new LinkedList<PropertyIndexRecord>();
+  ByteBuffer buffer=ByteBuffer.allocateDirect(recordLength);
+  for (int id=0; id <= recordCount; id++) {
+    buffer.position(0);
+    fileChannel.read(buffer);
+    buffer.flip();
+    long inUseByte=buffer.get();
+    boolean inUse=inUseByte == Record.IN_USE.byteValue();
+    if (inUse) {
+      PropertyIndexRecord record=new PropertyIndexRecord(id);
+      record.setInUse(inUse);
+      record.setPropertyCount(buffer.getInt());
+      record.setKeyBlockId(buffer.getInt());
+      records.add(record);
+    }
+  }
+  fileChannel.close();
+  return records;
+}

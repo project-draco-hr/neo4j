@@ -1,0 +1,29 @@
+{
+  if (properties == null || properties.isEmpty()) {
+    return Record.NO_NEXT_PROPERTY.intValue();
+  }
+  List<PropertyRecord> propRecords=new ArrayList<PropertyRecord>();
+  PropertyRecord currentRecord=new PropertyRecord(propertyStore.nextId());
+  currentRecord.setInUse(true);
+  currentRecord.setCreated();
+  propRecords.add(currentRecord);
+  for (  Pair<Integer,Object> propertyDatum : properties) {
+    PropertyBlock block=new PropertyBlock();
+    propertyStore.encodeValue(block,propertyDatum.first(),propertyDatum.other());
+    if (currentRecord.size() + block.getSize() > PropertyType.getPayloadSize()) {
+      PropertyRecord prevRecord=currentRecord;
+      long propertyId=propertyStore.nextId();
+      currentRecord=new PropertyRecord(propertyId);
+      currentRecord.setInUse(true);
+      currentRecord.setCreated();
+      prevRecord.setNextProp(propertyId);
+      currentRecord.setPrevProp(prevRecord.getId());
+      propRecords.add(currentRecord);
+    }
+    currentRecord.addPropertyBlock(block);
+  }
+  for (int i=propRecords.size() - 1; i >= 0; i--) {
+    propertyStore.updateRecord(propRecords.get(i));
+  }
+  return propRecords.get(0).getId();
+}

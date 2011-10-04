@@ -1,0 +1,49 @@
+{
+  Node node=getGraphDb().createNode();
+  long recordsInUseAtStart=propertyRecordsInUse();
+  int stuffedShortStrings=0;
+  for (; stuffedShortStrings < 3 * PropertyType.getPayloadSizeLongs(); stuffedShortStrings++) {
+    node.setProperty("shortString" + stuffedShortStrings,String.valueOf(stuffedShortStrings));
+  }
+  newTransaction();
+  clearCache();
+  assertEquals(recordsInUseAtStart + 3,propertyRecordsInUse());
+  int secondBlockInSecondRecord=PropertyType.getPayloadSizeLongs() + 1;
+  int thirdBlockInSecondRecord=PropertyType.getPayloadSizeLongs() + 2;
+  assertEquals(String.valueOf(secondBlockInSecondRecord),node.removeProperty("shortString" + secondBlockInSecondRecord));
+  assertEquals(String.valueOf(thirdBlockInSecondRecord),node.removeProperty("shortString" + thirdBlockInSecondRecord));
+  newTransaction();
+  clearCache();
+  assertEquals(recordsInUseAtStart + 3,propertyRecordsInUse());
+  for (int i=0; i < stuffedShortStrings; i++) {
+    if (i == secondBlockInSecondRecord) {
+      assertFalse(node.hasProperty("shortString" + i));
+    }
+ else     if (i == thirdBlockInSecondRecord) {
+      assertFalse(node.hasProperty("shortString" + i));
+    }
+ else {
+      assertEquals(String.valueOf(i),node.getProperty("shortString" + i));
+    }
+  }
+  int deletedProps=0;
+  for (int i=PropertyType.getPayloadSizeLongs(); i < PropertyType.getPayloadSizeLongs() * 2; i++) {
+    if (node.hasProperty("shortString" + i)) {
+      deletedProps++;
+      node.removeProperty("shortString" + i);
+    }
+  }
+  assertEquals(PropertyType.getPayloadSizeLongs() - 2,deletedProps);
+  newTransaction();
+  clearCache();
+  assertEquals(recordsInUseAtStart + 2,propertyRecordsInUse());
+  for (int i=0; i < PropertyType.getPayloadSizeLongs(); i++) {
+    assertEquals(String.valueOf(i),node.removeProperty("shortString" + i));
+  }
+  for (int i=PropertyType.getPayloadSizeLongs(); i < PropertyType.getPayloadSizeLongs() * 2; i++) {
+    assertFalse(node.hasProperty("shortString" + i));
+  }
+  for (int i=PropertyType.getPayloadSizeLongs() * 2; i < PropertyType.getPayloadSizeLongs() * 3; i++) {
+    assertEquals(String.valueOf(i),node.removeProperty("shortString" + i));
+  }
+}

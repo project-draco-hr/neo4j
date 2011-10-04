@@ -1,0 +1,26 @@
+{
+  Relationship rel=getGraphDb().createNode().createRelationshipTo(getGraphDb().createNode(),DynamicRelationshipType.withName("LOCKS"));
+  long recordsInUseAtStart=propertyRecordsInUse();
+  long valueRecordsInUseAtStart=dynamicArrayRecordsInUse();
+  List<Long> theYoyoData=new ArrayList<Long>();
+  for (int i=0; i < PropertyType.getPayloadSizeLongs() - 1; i++) {
+    theYoyoData.add(1l << 63);
+    Long[] value=theYoyoData.toArray(new Long[]{});
+    rel.setProperty("yoyo",value);
+    assertEquals(recordsInUseAtStart + 1,propertyRecordsInUse());
+    assertEquals(valueRecordsInUseAtStart,dynamicArrayRecordsInUse());
+    if (withNewTx) {
+      newTransaction();
+      clearCache();
+    }
+  }
+  theYoyoData.add(1l << 63);
+  Long[] value=theYoyoData.toArray(new Long[]{});
+  rel.setProperty("yoyo",value);
+  assertEquals(recordsInUseAtStart + 1,propertyRecordsInUse());
+  assertEquals(valueRecordsInUseAtStart + 1,dynamicArrayRecordsInUse());
+  newTransaction();
+  clearCache();
+  rel.setProperty("filler",new long[]{1 << 63,1 << 63,1 << 63});
+  assertEquals(recordsInUseAtStart + 2,propertyRecordsInUse());
+}
