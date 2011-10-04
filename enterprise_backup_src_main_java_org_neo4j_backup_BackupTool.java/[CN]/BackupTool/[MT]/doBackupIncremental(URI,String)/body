@@ -1,0 +1,29 @@
+{
+  System.out.println("Performing incremental backup from '" + from + "'");
+  OnlineBackup backup=newOnlineBackup(from);
+  boolean failedBecauseOfStoreVersionMismatch=false;
+  try {
+    backup.incremental(to);
+  }
+ catch (  TransactionFailureException e) {
+    if (e.getCause() instanceof UpgradeNotAllowedByConfigurationException) {
+      failedBecauseOfStoreVersionMismatch=true;
+    }
+ else {
+      throw e;
+    }
+  }
+catch (  ComException e) {
+    exitAbnormally("Couldn't connect to '" + from + "', "+ e.getMessage());
+  }
+  if (failedBecauseOfStoreVersionMismatch) {
+    System.out.println("The database present in the target directory is of an older version. Backing that up in " + "target" + " and performing a full backup from source");
+    try {
+      moveExistingDatabase(to);
+    }
+ catch (    IOException e) {
+      exitAbnormally("There was a problem moving the old database out of the way - cannot continue, aborting: " + e.getMessage());
+    }
+    doBackupFull(from,to);
+  }
+}
