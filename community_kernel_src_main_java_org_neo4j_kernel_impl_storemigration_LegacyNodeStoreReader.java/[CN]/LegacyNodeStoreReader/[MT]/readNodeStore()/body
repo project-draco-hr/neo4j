@@ -6,8 +6,8 @@
         long id=0;
         @Override protected NodeRecord fetchNextOrNull(){
           NodeRecord nodeRecord=null;
-          do {
-            buffer.position(0);
+          while (nodeRecord == null && id <= maxId) {
+            buffer.clear();
             try {
               fileChannel.read(buffer);
             }
@@ -17,19 +17,18 @@
             buffer.flip();
             long inUseByte=buffer.get();
             boolean inUse=(inUseByte & 0x1) == Record.IN_USE.intValue();
+            nodeRecord=new NodeRecord(id);
+            nodeRecord.setInUse(inUse);
             if (inUse) {
               long nextRel=getUnsignedInt(buffer);
               long nextProp=getUnsignedInt(buffer);
               long relModifier=(inUseByte & 0xEL) << 31;
               long propModifier=(inUseByte & 0xF0L) << 28;
-              nodeRecord=new NodeRecord(id);
-              nodeRecord.setInUse(inUse);
               nodeRecord.setNextRel(longFromIntAndMod(nextRel,relModifier));
               nodeRecord.setNextProp(longFromIntAndMod(nextProp,propModifier));
             }
             id++;
           }
- while (nodeRecord == null && id < maxId);
           return nodeRecord;
         }
         @Override public void remove(){

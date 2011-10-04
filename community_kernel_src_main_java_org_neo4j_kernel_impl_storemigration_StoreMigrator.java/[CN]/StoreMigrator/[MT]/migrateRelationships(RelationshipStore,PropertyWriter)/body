@@ -1,13 +1,18 @@
 {
   Iterable<RelationshipRecord> records=legacyStore.getRelationshipStoreReader().readRelationshipStore();
   for (  RelationshipRecord relationshipRecord : records) {
-    long startOfPropertyChain=relationshipRecord.getNextProp();
-    if (startOfPropertyChain != Record.NO_NEXT_RELATIONSHIP.intValue()) {
-      long propertyRecordId=migrateProperties(startOfPropertyChain,propertyWriter);
-      relationshipRecord.setNextProp(propertyRecordId);
-    }
     relationshipStore.setHighId(relationshipRecord.getId() + 1);
-    relationshipStore.updateRecord(relationshipRecord);
+    if (relationshipRecord.inUse()) {
+      long startOfPropertyChain=relationshipRecord.getNextProp();
+      if (startOfPropertyChain != Record.NO_NEXT_RELATIONSHIP.intValue()) {
+        long propertyRecordId=migrateProperties(startOfPropertyChain,propertyWriter);
+        relationshipRecord.setNextProp(propertyRecordId);
+      }
+      relationshipStore.updateRecord(relationshipRecord);
+    }
+ else {
+      relationshipStore.freeId(relationshipRecord.getId());
+    }
   }
   legacyStore.getRelationshipStoreReader().close();
 }

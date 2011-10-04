@@ -6,8 +6,8 @@
         long id=0;
         @Override protected RelationshipRecord fetchNextOrNull(){
           RelationshipRecord record=null;
-          do {
-            buffer.position(0);
+          while (record == null && id <= maxId) {
+            buffer.clear();
             try {
               fileChannel.read(buffer);
             }
@@ -42,9 +42,12 @@
               long nextPropMod=(inUseByte & 0xF0L) << 28;
               record.setNextProp(longFromIntAndMod(nextProp,nextPropMod));
             }
+ else {
+              record=new RelationshipRecord(id,-1,-1,-1);
+              record.setInUse(false);
+            }
             id++;
           }
- while (record == null && id < maxId);
           return record;
         }
         @Override public void remove(){
