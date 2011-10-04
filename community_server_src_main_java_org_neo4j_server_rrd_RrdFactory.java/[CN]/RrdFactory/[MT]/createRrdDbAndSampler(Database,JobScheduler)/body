@@ -1,15 +1,8 @@
 {
-  Sampleable[] primitives={new MemoryUsedSampleable(),new NodeIdsInUseSampleable(db.graph),new PropertyCountSampleable(db.graph),new RelationshipCountSampleable(db.graph)};
-  Sampleable[] usage={new RequestBytesSampleable(db),new RequestMeanTimeSampleable(db),new RequestMedianTimeSampleable(db),new RequestMaxTimeSampleable(db),new RequestMinTimeSampleable(db),new RequestCountSampleable(db)};
+  Sampleable[] primitives={new NodeIdsInUseSampleable(db.graph),new PropertyCountSampleable(db.graph),new RelationshipCountSampleable(db.graph)};
+  Sampleable[] usage={};
   final String basePath=config.getString(RRDB_LOCATION_PROPERTY_KEY,getDefaultDirectory(db.graph));
   final RrdDb rrdb=createRrdb(basePath,join(primitives,usage));
   scheduler.scheduleAtFixedRate(new RrdJob(new RrdSamplerImpl(rrdb,primitives)),RRD_THREAD_NAME + "[primitives]",SECONDS.toMillis(0),SECONDS.toMillis(3));
-  scheduler.scheduleAtFixedRate(new RrdJob(new RrdSamplerImpl(rrdb,usage){
-    @Override public void updateSample(){
-      db.statisticCollector().createSnapshot();
-      super.updateSample();
-    }
-  }
-),RRD_THREAD_NAME + "[usage]",SECONDS.toMillis(1),SECONDS.toMillis(60));
   return rrdb;
 }
