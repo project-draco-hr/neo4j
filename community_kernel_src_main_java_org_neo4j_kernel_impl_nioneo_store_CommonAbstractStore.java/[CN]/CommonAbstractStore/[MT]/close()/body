@@ -16,8 +16,11 @@
     }
     return;
   }
-  long highId=idGenerator.getHighId();
   int recordSize=-1;
+  long highId=-1;
+  if (idGenerator != null) {
+    highId=idGenerator.getHighId();
+  }
   if (this instanceof AbstractDynamicStore) {
     recordSize=((AbstractDynamicStore)this).getBlockSize();
   }
@@ -27,7 +30,7 @@
   closeIdGenerator();
   boolean success=false;
   IOException storedIoe=null;
-  if (!readOnly || backupSlave) {
+  if (typeDescriptorAndVersionTruncated) {
     for (int i=0; i < 10; i++) {
       try {
         fileChannel.position(highId * recordSize);
@@ -51,7 +54,11 @@
   }
  else {
     try {
+      if (fileLock != null) {
+        fileLock.release();
+      }
       fileChannel.close();
+      success=true;
     }
  catch (    IOException e) {
       logger.log(Level.WARNING,"Could not close fileChannel [" + storageFileName + "]",e);
