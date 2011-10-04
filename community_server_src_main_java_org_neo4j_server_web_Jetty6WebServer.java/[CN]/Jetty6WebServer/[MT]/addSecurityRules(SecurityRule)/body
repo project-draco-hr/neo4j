@@ -1,0 +1,27 @@
+{
+  jetty.addLifeCycleListener(new Listener(){
+    @Override public void lifeCycleStopping(    LifeCycle arg0){
+    }
+    @Override public void lifeCycleStopped(    LifeCycle arg0){
+    }
+    @Override public void lifeCycleStarting(    LifeCycle arg0){
+    }
+    @Override public void lifeCycleStarted(    LifeCycle arg0){
+      for (      Handler handler : jetty.getHandlers()) {
+        if (handler instanceof Context) {
+          final Context context=(Context)handler;
+          for (          SecurityRule rule : rules) {
+            if (context.getContextPath().equals(rule.forUriPath())) {
+              final Filter jettyFilter=new SecurityFilter(rule);
+              context.addFilter(new FilterHolder(jettyFilter),"/*",Handler.ALL);
+              log.info("Security rule [%s] installed on server",rule.getClass().getCanonicalName());
+            }
+          }
+        }
+      }
+    }
+    @Override public void lifeCycleFailure(    LifeCycle arg0,    Throwable arg1){
+    }
+  }
+);
+}
