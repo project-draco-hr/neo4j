@@ -1,7 +1,7 @@
 {
   File workingDirectory=new File("target/" + StoreUpgraderInterruptionTest.class.getSimpleName());
   MigrationTestUtils.prepareSampleLegacyDatabase(workingDirectory);
-  StoreMigrator failingStoreMigrator=new StoreMigrator(){
+  StoreMigrator failingStoreMigrator=new StoreMigrator(new SilentMigrationProgressMonitor()){
     public void migrate(    LegacyStore legacyStore,    NeoStore neoStore) throws IOException {
       super.migrate(legacyStore,neoStore);
       throw new RuntimeException("This upgrade is failing");
@@ -17,6 +17,6 @@
     assertEquals("This upgrade is failing",e.getMessage());
   }
   assertTrue(allStoreFilesHaveVersion(workingDirectory,"v0.9.9"));
-  new StoreUpgrader(defaultConfig(),alwaysAllowed(),new UpgradableDatabase(),new StoreMigrator(),new DatabaseFiles()).attemptUpgrade(new File(workingDirectory,NeoStore.DEFAULT_NAME).getPath());
+  new StoreUpgrader(defaultConfig(),alwaysAllowed(),new UpgradableDatabase(),new StoreMigrator(new SilentMigrationProgressMonitor()),new DatabaseFiles()).attemptUpgrade(new File(workingDirectory,NeoStore.DEFAULT_NAME).getPath());
   assertTrue(allStoreFilesHaveVersion(workingDirectory,ALL_STORES_VERSION));
 }

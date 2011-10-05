@@ -9,8 +9,10 @@
   config.put("neo_store",storeFileName);
   NeoStore.createStore(storeFileName,config);
   NeoStore neoStore=new NeoStore(config);
-  new StoreMigrator().migrate(legacyStore,neoStore);
+  ListAccumulatorMigrationProgressMonitor monitor=new ListAccumulatorMigrationProgressMonitor();
+  new StoreMigrator(monitor).migrate(legacyStore,neoStore);
   neoStore.close();
+  assertEquals(100,monitor.events.size());
   GraphDatabaseService database=new EmbeddedGraphDatabase(outputDir.getPath());
   DatabaseContentVerifier verifier=new DatabaseContentVerifier(database);
   verifier.verifyNodes();
