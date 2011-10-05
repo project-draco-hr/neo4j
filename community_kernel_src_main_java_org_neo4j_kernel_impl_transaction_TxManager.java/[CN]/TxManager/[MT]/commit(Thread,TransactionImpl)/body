@@ -25,7 +25,7 @@ catch (    Throwable t) {
     try {
       tx.doRollback();
     }
- catch (    XAException e) {
+ catch (    Throwable e) {
       log.log(Level.SEVERE,"Unable to rollback transaction. " + "Some resources may be commited others not. " + "Neo4j kernel should be SHUTDOWN for "+ "resource maintance and transaction recovery ---->",e);
       setTmNotOk(e);
       String commitError;
@@ -35,7 +35,11 @@ catch (    Throwable t) {
  else {
         commitError="error code in commit: " + xaErrorCode;
       }
-      throw logAndReturn("TM error tx commit",Exceptions.withCause(new HeuristicMixedException("Unable to rollback ---> " + commitError + " ---> error code for rollback: "+ e.errorCode),e));
+      String rollbackErrorCode="Uknown error code";
+      if (e instanceof XAException) {
+        rollbackErrorCode=Integer.toString(((XAException)e).errorCode);
+      }
+      throw logAndReturn("TM error tx commit",Exceptions.withCause(new HeuristicMixedException("Unable to rollback ---> " + commitError + " ---> error code for rollback: "+ rollbackErrorCode),e));
     }
     tx.doAfterCompletion();
     txThreadMap.remove(thread);
