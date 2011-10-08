@@ -1,0 +1,54 @@
+{
+  assertTrue(xaCon.getWriteTransaction().nodeLoadLight(node));
+  ArrayMap<Integer,PropertyData> props=xaCon.getWriteTransaction().nodeLoadProperties(node,false);
+  int count=0;
+  for (  int keyId : props.keySet()) {
+    long id=props.get(keyId).getId();
+    PropertyRecord record=pStore.getRecord(id);
+    PropertyBlock block=record.getPropertyBlock(props.get(keyId).getIndex());
+    PropertyData data=block.newPropertyData(record);
+    if (data.getIndex() == prop1.getIndex()) {
+      assertEquals("prop1",MyPropertyIndex.getIndexFor(keyId).getKey());
+      assertEquals("string1",data.getValue());
+      xaCon.getWriteTransaction().nodeChangeProperty(node,prop1,"-string1");
+    }
+ else     if (data.getIndex() == prop2.getIndex()) {
+      assertEquals("prop2",MyPropertyIndex.getIndexFor(keyId).getKey());
+      assertEquals(new Integer(1),data.getValue());
+      xaCon.getWriteTransaction().nodeChangeProperty(node,prop2,new Integer(-1));
+    }
+ else     if (data.getIndex() == prop3.getIndex()) {
+      assertEquals("prop3",MyPropertyIndex.getIndexFor(keyId).getKey());
+      assertEquals(new Boolean(true),data.getValue());
+      xaCon.getWriteTransaction().nodeChangeProperty(node,prop3,new Boolean(false));
+    }
+ else {
+      throw new IOException();
+    }
+    count++;
+  }
+  assertEquals(3,count);
+  count=0;
+  AtomicLong pos=getPosition(xaCon,node);
+  while (true) {
+    Iterable<RelationshipRecord> relData=getMore(xaCon,node,pos);
+    if (!relData.iterator().hasNext()) {
+      break;
+    }
+    for (    RelationshipRecord rel : relData) {
+      if (rel.getId() == rel1) {
+        assertEquals(node,rel.getFirstNode());
+        assertEquals(relType1,rel.getType());
+      }
+ else       if (rel.getId() == rel2) {
+        assertEquals(node,rel.getSecondNode());
+        assertEquals(relType2,rel.getType());
+      }
+ else {
+        throw new IOException();
+      }
+      count++;
+    }
+  }
+  assertEquals(2,count);
+}

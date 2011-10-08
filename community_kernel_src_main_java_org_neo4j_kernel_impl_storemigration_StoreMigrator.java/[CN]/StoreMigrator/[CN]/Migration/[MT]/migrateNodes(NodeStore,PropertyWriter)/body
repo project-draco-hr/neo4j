@@ -1,0 +1,19 @@
+{
+  Iterable<NodeRecord> records=legacyStore.getNodeStoreReader().readNodeStore();
+  for (  NodeRecord nodeRecord : records) {
+    reportProgress(nodeRecord.getId());
+    nodeStore.setHighId(nodeRecord.getId() + 1);
+    if (nodeRecord.inUse()) {
+      long startOfPropertyChain=nodeRecord.getNextProp();
+      if (startOfPropertyChain != Record.NO_NEXT_RELATIONSHIP.intValue()) {
+        long propertyRecordId=migrateProperties(startOfPropertyChain,propertyWriter);
+        nodeRecord.setNextProp(propertyRecordId);
+      }
+      nodeStore.updateRecord(nodeRecord);
+    }
+ else {
+      nodeStore.freeId(nodeRecord.getId());
+    }
+  }
+  legacyStore.getNodeStoreReader().close();
+}

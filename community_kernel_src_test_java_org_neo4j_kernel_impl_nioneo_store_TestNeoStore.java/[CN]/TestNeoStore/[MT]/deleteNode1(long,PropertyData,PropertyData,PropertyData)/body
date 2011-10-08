@@ -1,0 +1,33 @@
+{
+  ArrayMap<Integer,PropertyData> props=xaCon.getWriteTransaction().nodeLoadProperties(node,false);
+  int count=0;
+  for (  int keyId : props.keySet()) {
+    long id=props.get(keyId).getId();
+    PropertyRecord record=pStore.getRecord(id);
+    PropertyBlock block=record.getPropertyBlock(props.get(keyId).getIndex());
+    PropertyData data=block.newPropertyData(record);
+    if (data.getIndex() == prop1.getIndex()) {
+      assertEquals("prop1",MyPropertyIndex.getIndexFor(keyId).getKey());
+      assertEquals("-string1",data.getValue());
+    }
+ else     if (data.getIndex() == prop2.getIndex()) {
+      assertEquals("prop2",MyPropertyIndex.getIndexFor(keyId).getKey());
+      assertEquals(new Integer(-1),data.getValue());
+    }
+ else     if (data.getIndex() == prop3.getIndex()) {
+      assertEquals("prop3",MyPropertyIndex.getIndexFor(keyId).getKey());
+      assertEquals(new Boolean(false),data.getValue());
+      xaCon.getWriteTransaction().nodeRemoveProperty(node,prop3);
+    }
+ else {
+      throw new IOException();
+    }
+    count++;
+  }
+  assertEquals(3,count);
+  assertEquals(3,xaCon.getWriteTransaction().nodeLoadProperties(node,false).size());
+  AtomicLong pos=getPosition(xaCon,node);
+  Iterator<RelationshipRecord> rels=getMore(xaCon,node,pos).iterator();
+  assertTrue(rels.hasNext());
+  xaCon.getWriteTransaction().nodeDelete(node);
+}

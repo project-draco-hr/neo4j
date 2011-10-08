@@ -1,0 +1,24 @@
+{
+  String expectedTypeDescriptorAndVersion=getTypeAndVersionDescriptor();
+  int length=UTF8.encode(expectedTypeDescriptorAndVersion).length;
+  byte bytes[]=new byte[length];
+  ByteBuffer buffer=ByteBuffer.wrap(bytes);
+  long fileSize=getFileChannel().size();
+  if (fileSize >= length) {
+    getFileChannel().position(fileSize - length);
+  }
+ else   if (!isReadOnly()) {
+    setStoreNotOk(new IllegalStateException("Invalid file size " + fileSize + " for "+ this+ ". Expected "+ length+ " or bigger"));
+    return;
+  }
+  getFileChannel().read(buffer);
+  String foundTypeDescriptorAndVersion=UTF8.decode(bytes);
+  if (!expectedTypeDescriptorAndVersion.equals(foundTypeDescriptorAndVersion) && !isReadOnly()) {
+    if (foundTypeDescriptorAndVersion.startsWith(getTypeDescriptor())) {
+      throw new NotCurrentStoreVersionException(ALL_STORES_VERSION,foundTypeDescriptorAndVersion,"",false);
+    }
+ else {
+      setStoreNotOk(new IllegalStateException("Unexpected version " + foundTypeDescriptorAndVersion + ", expected "+ expectedTypeDescriptorAndVersion));
+    }
+  }
+}
