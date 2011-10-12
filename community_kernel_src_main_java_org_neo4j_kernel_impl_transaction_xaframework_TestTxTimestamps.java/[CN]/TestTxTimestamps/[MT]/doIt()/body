@@ -1,0 +1,39 @@
+{
+  long[] expectedStartTimestamps=new long[10];
+  long[] expectedCommitTimestamps=new long[expectedStartTimestamps.length];
+  for (int i=0; i < expectedStartTimestamps.length; i++) {
+    Transaction tx=db.beginTx();
+    expectedStartTimestamps[i]=System.currentTimeMillis();
+    Node node=db.createNode();
+    node.setProperty("name","Mattias " + i);
+    tx.success();
+    expectedCommitTimestamps[i]=System.currentTimeMillis();
+    tx.finish();
+    Thread.sleep(500);
+  }
+  db.getConfig().getTxModule().getXaDataSourceManager().getXaDataSource(Config.DEFAULT_DATA_SOURCE_NAME).rotateLogicalLog();
+  ByteBuffer buffer=ByteBuffer.allocate(1024 * 500);
+  RandomAccessFile file=new RandomAccessFile(new File(db.getStoreDir(),NeoStoreXaDataSource.LOGICAL_LOG_DEFAULT_NAME + ".v0"),"r");
+  try {
+    XaCommandFactory commandFactory=new CommandFactory();
+    FileChannel channel=file.getChannel();
+    LogIoUtils.readLogHeader(buffer,channel,true);
+    LogEntry entry=null;
+    int foundTxCount=0;
+    while ((entry=LogIoUtils.readEntry(buffer,channel,commandFactory)) != null) {
+      if (entry instanceof LogEntry.Start) {
+        long diff=((LogEntry.Start)entry).getTimeWritten() - expectedStartTimestamps[foundTxCount];
+        assertTrue(diff < 200);
+      }
+ else       if (entry instanceof LogEntry.Commit) {
+        long diff=((LogEntry.Commit)entry).getTimeWritten() - expectedStartTimestamps[foundTxCount];
+        assertTrue(diff < 200);
+        foundTxCount++;
+      }
+    }
+    assertEquals(expectedCommitTimestamps.length,foundTxCount);
+  }
+  finally {
+    file.close();
+  }
+}
