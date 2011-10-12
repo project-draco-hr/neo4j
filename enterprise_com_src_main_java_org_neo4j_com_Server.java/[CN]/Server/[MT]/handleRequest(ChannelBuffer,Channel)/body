@@ -1,8 +1,6 @@
 {
-  byte[] header=new byte[2];
-  buffer.readBytes(header);
-  DechunkingChannelBuffer.assertSameProtocolVersion(header,applicationProtocolVersion);
-  byte continuation=(byte)(header[0] & 0x1);
+  Byte continuation=readContinuationHeader(buffer,channel);
+  if (continuation == null)   return;
   if (continuation == ChunkingChannelBuffer.CONTINUATION_MORE) {
     PartialRequest partialRequest=partialRequests.get(channel);
     if (partialRequest == null) {
@@ -37,7 +35,7 @@
       bufferToWriteTo=ChannelBuffers.dynamicBuffer();
     }
     bufferToWriteTo.clear();
-    final ChunkingChannelBuffer chunkingBuffer=new ChunkingChannelBuffer(bufferToWriteTo,channel,frameLength,applicationProtocolVersion);
+    final ChunkingChannelBuffer chunkingBuffer=new ChunkingChannelBuffer(bufferToWriteTo,channel,frameLength,getInternalProtocolVersion(),applicationProtocolVersion);
     submitSilent(masterCallExecutor,masterCaller(type,channel,context,chunkingBuffer,bufferToReadFrom,targetBuffers.other()));
   }
 }
