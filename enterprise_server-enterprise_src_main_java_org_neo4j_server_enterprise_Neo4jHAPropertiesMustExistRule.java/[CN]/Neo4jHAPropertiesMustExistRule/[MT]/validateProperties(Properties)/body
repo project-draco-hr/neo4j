@@ -32,15 +32,27 @@
         failureMessage=e.getMessage();
         return false;
       }
-      String machineId=dbTuning.getProperty(HighlyAvailableGraphDatabase.CONFIG_KEY_SERVER_ID,"<not set>");
+      String machineId=null;
       try {
+        machineId=getSinglePropertyFromCandidates(dbTuning,HighlyAvailableGraphDatabase.CONFIG_KEY_SERVER_ID,HighlyAvailableGraphDatabase.CONFIG_KEY_OLD_SERVER_ID,"<not set>");
         if (Integer.parseInt(machineId) < 0)         throw new NumberFormatException();
       }
  catch (      NumberFormatException e) {
         failureMessage=String.format("%s in %s needs to be a non-negative integer, not %s",HighlyAvailableGraphDatabase.CONFIG_KEY_SERVER_ID,dbTuningFilename,machineId);
         return false;
       }
-      String[] zkServers=dbTuning.getProperty(HighlyAvailableGraphDatabase.CONFIG_KEY_COORDINATORS,"").split(",");
+catch (      IllegalArgumentException e) {
+        failureMessage=String.format("%s in %s",e.getMessage(),dbTuningFilename);
+        return false;
+      }
+      String[] zkServers=null;
+      try {
+        zkServers=getSinglePropertyFromCandidates(dbTuning,HighlyAvailableGraphDatabase.CONFIG_KEY_COORDINATORS,HighlyAvailableGraphDatabase.CONFIG_KEY_OLD_COORDINATORS,"").split(",");
+      }
+ catch (      IllegalArgumentException e) {
+        failureMessage=String.format("%s in %s",e.getMessage(),dbTuningFilename);
+        return false;
+      }
       if (zkServers.length <= 0) {
         failureMessage=String.format("%s in %s needs to specify at least one server",HighlyAvailableGraphDatabase.CONFIG_KEY_SERVER_ID,dbTuningFilename);
         return false;
