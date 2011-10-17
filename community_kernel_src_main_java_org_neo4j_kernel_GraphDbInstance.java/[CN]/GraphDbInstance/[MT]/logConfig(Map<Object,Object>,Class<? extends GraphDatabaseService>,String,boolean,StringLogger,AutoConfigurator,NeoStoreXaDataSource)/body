@@ -1,15 +1,26 @@
 {
   logger.logMessage("--- CONFIGURATION START ---");
-  logger.logMessage("Graph Database: " + graphDb.getName());
+  logger.logMessage("Graph Database: " + graphDb.getName() + " "+ ds.getStoreId());
   logger.logMessage(autoConfigurator.getNiceMemoryInformation());
   logger.logMessage("Kernel version: " + Version.getKernel());
   logger.logMessage("Neo4j component versions:");
   for (  Version componentVersion : Service.load(Version.class)) {
     logger.logMessage("  " + componentVersion);
   }
+  ds.logStoreVersions();
   RuntimeMXBean runtime=ManagementFactory.getRuntimeMXBean();
+  logger.logMessage("Process id: " + runtime.getName());
   OperatingSystemMXBean os=ManagementFactory.getOperatingSystemMXBean();
   logger.logMessage(String.format("Operating System: %s; version: %s; arch: %s; cpus: %s",os.getName(),os.getVersion(),os.getArch(),Integer.valueOf(os.getAvailableProcessors())));
+  logBeanProperty(logger,"Max number of file descriptors: ",os,"com.sun.management.UnixOperatingSystemMXBean","getMaxFileDescriptorCount");
+  logBeanProperty(logger,"Number of open file descriptors: ",os,"com.sun.management.UnixOperatingSystemMXBean","getOpenFileDescriptorCount");
+  logBeanBytesProperty(logger,"Total Physical memory: ",os,"com.sun.management.OperatingSystemMXBean","getTotalPhysicalMemorySize");
+  logBeanBytesProperty(logger,"Free Physical memory: ",os,"com.sun.management.OperatingSystemMXBean","getFreePhysicalMemorySize");
+  logBeanBytesProperty(logger,"Committed virtual memory: ",os,"com.sun.management.OperatingSystemMXBean","getCommittedVirtualMemorySize");
+  logBeanBytesProperty(logger,"Total swap space: ",os,"com.sun.management.OperatingSystemMXBean","getTotalSwapSpaceSize");
+  logBeanBytesProperty(logger,"Free swap space: ",os,"com.sun.management.OperatingSystemMXBean","getFreeSwapSpaceSize");
+  logBeanBytesProperty(logger,"Total physical memory: ",os,"com.ibm.lang.management.OperatingSystemMXBean","getTotalPhysicalMemory");
+  logBeanBytesProperty(logger,"Free physical memory: ",os,"com.ibm.lang.management.OperatingSystemMXBean","getFreePhysicalMemorySize");
   logger.logMessage("Byte order: " + ByteOrder.nativeOrder());
   logger.logMessage("VM Name: " + runtime.getVmName());
   logger.logMessage("VM Vendor: " + runtime.getVmVendor());
@@ -48,6 +59,7 @@
   logConfiguration(params,logger,dumpToConsole);
   logger.logMessage("Storage files:");
   logStoreFiles(logger,"  ",new File(storeDir));
+  ds.logIdUsage();
   logger.logMessage("--- CONFIGURATION END ---");
   logger.flush();
 }
