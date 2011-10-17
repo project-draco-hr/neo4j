@@ -1,0 +1,36 @@
+{
+  StringBuilder result=new StringBuilder("ZooKeeper status: ").append(server).append(" ").append(command);
+  String[] hostAndPort=server.split(":");
+  if (hostAndPort.length != 2)   return result.append(" BAD SERVER STRING").toString();
+  String host=hostAndPort[0];
+  int port;
+  try {
+    port=Integer.parseInt(hostAndPort[1]);
+  }
+ catch (  NumberFormatException e) {
+    return result.append(" BAD SERVER STRING").toString();
+  }
+  try {
+    Socket soc=new Socket(host,port);
+    BufferedReader in=new BufferedReader(new InputStreamReader(soc.getInputStream()));
+    try {
+      PrintWriter out=new PrintWriter(soc.getOutputStream(),true);
+      try {
+        out.println(command);
+        for (String line; (line=in.readLine()) != null; ) {
+          result.append("\n  ").append(line);
+        }
+      }
+  finally {
+        out.close();
+      }
+    }
+  finally {
+      in.close();
+    }
+  }
+ catch (  Exception e) {
+    result.append(" FAILED: " + e);
+  }
+  return result.toString();
+}
