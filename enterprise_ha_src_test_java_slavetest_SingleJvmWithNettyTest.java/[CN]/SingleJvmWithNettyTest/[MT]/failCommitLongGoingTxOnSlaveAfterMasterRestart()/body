@@ -10,7 +10,7 @@
   Transaction slaveTx=slave.beginTx();
   slave.getNodeById(masterNodeId).setProperty("key","value");
   slave.index().forNodes("name").add(slave.getNodeById(masterNodeId),"key","value");
-  slave.createNode().getId();
+  long slaveNodeId=slave.createNode().getId();
   getMasterHaDb().shutdown();
   ((PlaceHolderGraphDatabaseService)getMaster().getGraphDb()).setDb(startUpMasterDb(MapUtil.stringMap()).getDb());
   slaveTx.success();
@@ -19,5 +19,11 @@
     fail("Shouldn't be able to commit here");
   }
  catch (  TransactionFailureException e) {
+  }
+  assertNull(slave.getNodeById(masterNodeId).getProperty("key",null));
+  try {
+    slave.getNodeById(slaveNodeId);
+  }
+ catch (  NotFoundException e) {
   }
 }
