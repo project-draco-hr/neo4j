@@ -1,0 +1,66 @@
+{
+  logger.logMessage("--- CONFIGURATION START ---");
+  logger.logMessage("Graph Database: " + graphDb.getName() + " "+ ds.getStoreId());
+  logger.logMessage(autoConfigurator.getNiceMemoryInformation());
+  logger.logMessage("Kernel version: " + Version.getKernel());
+  logger.logMessage("Neo4j component versions:");
+  for (  Version componentVersion : Service.load(Version.class)) {
+    logger.logMessage("  " + componentVersion);
+  }
+  ds.logStoreVersions();
+  RuntimeMXBean runtime=ManagementFactory.getRuntimeMXBean();
+  logger.logMessage("Process id: " + runtime.getName());
+  OperatingSystemMXBean os=ManagementFactory.getOperatingSystemMXBean();
+  logger.logMessage(String.format("Operating System: %s; version: %s; arch: %s; cpus: %s",os.getName(),os.getVersion(),os.getArch(),Integer.valueOf(os.getAvailableProcessors())));
+  logBeanProperty(logger,"Max number of file descriptors: ",os,SUN_UNIX_BEAN,"getMaxFileDescriptorCount");
+  logBeanProperty(logger,"Number of open file descriptors: ",os,SUN_UNIX_BEAN,"getOpenFileDescriptorCount");
+  logBeanBytesProperty(logger,"Total Physical memory: ",os,SUN_OS_BEAN,"getTotalPhysicalMemorySize");
+  logBeanBytesProperty(logger,"Free Physical memory: ",os,SUN_OS_BEAN,"getFreePhysicalMemorySize");
+  logBeanBytesProperty(logger,"Committed virtual memory: ",os,SUN_OS_BEAN,"getCommittedVirtualMemorySize");
+  logBeanBytesProperty(logger,"Total swap space: ",os,SUN_OS_BEAN,"getTotalSwapSpaceSize");
+  logBeanBytesProperty(logger,"Free swap space: ",os,SUN_OS_BEAN,"getFreeSwapSpaceSize");
+  logBeanBytesProperty(logger,"Total physical memory: ",os,IBM_OS_BEAN,"getTotalPhysicalMemory");
+  logBeanBytesProperty(logger,"Free physical memory: ",os,IBM_OS_BEAN,"getFreePhysicalMemorySize");
+  logger.logMessage("Byte order: " + ByteOrder.nativeOrder());
+  logger.logMessage("VM Name: " + runtime.getVmName());
+  logger.logMessage("VM Vendor: " + runtime.getVmVendor());
+  logger.logMessage("VM Version: " + runtime.getVmVersion());
+  CompilationMXBean compiler=ManagementFactory.getCompilationMXBean();
+  logger.logMessage("JIT compiler: " + ((compiler == null) ? "unknown" : compiler.getName()));
+  Collection<String> classpath;
+  if (runtime.isBootClassPathSupported()) {
+    classpath=buildClassPath(GraphDbInstance.class.getClassLoader(),new String[]{"bootstrap","classpath"},runtime.getBootClassPath(),runtime.getClassPath());
+  }
+ else {
+    classpath=buildClassPath(GraphDbInstance.class.getClassLoader(),new String[]{"classpath"},runtime.getClassPath());
+  }
+  logger.logMessage("Class Path:");
+  for (  String path : classpath) {
+    logger.logMessage("  " + path);
+  }
+  logPath(logger,"Library Path:",runtime.getLibraryPath());
+  for (  GarbageCollectorMXBean gc : ManagementFactory.getGarbageCollectorMXBeans()) {
+    logger.logMessage("Garbage Collector: " + gc.getName() + ": "+ Arrays.toString(gc.getMemoryPoolNames()));
+  }
+  for (  MemoryPoolMXBean pool : ManagementFactory.getMemoryPoolMXBeans()) {
+    MemoryUsage usage=pool.getUsage();
+    logger.logMessage(String.format("Memory Pool: %s (%s): committed=%s, used=%s, max=%s, threshold=%s",pool.getName(),pool.getType(),usage == null ? "?" : bytes(usage.getCommitted()),usage == null ? "?" : bytes(usage.getUsed()),usage == null ? "?" : bytes(usage.getMax()),pool.isUsageThresholdSupported() ? bytes(pool.getUsageThreshold()) : "?"));
+  }
+  logger.logMessage("VM Arguments: " + runtime.getInputArguments());
+  logger.logMessage("System properties:");
+  for (  Object property : System.getProperties().keySet()) {
+    if (property instanceof String) {
+      String key=(String)property;
+      if (key.startsWith("java.") || key.startsWith("os.") || key.endsWith(".boot.class.path")|| key.equals("line.separator"))       continue;
+      logger.logMessage("  " + key + " = "+ System.getProperty(key));
+    }
+  }
+  logger.logMessage("Neo4j Kernel properties:");
+  logConfiguration(params,logger,dumpToConsole);
+  logger.logMessage("Storage files:");
+  logStoreFiles(logger,"  ",new File(storeDir));
+  ds.logIdUsage();
+  logLinuxSchedulers(logger);
+  logger.logMessage("--- CONFIGURATION END ---");
+  logger.flush();
+}
