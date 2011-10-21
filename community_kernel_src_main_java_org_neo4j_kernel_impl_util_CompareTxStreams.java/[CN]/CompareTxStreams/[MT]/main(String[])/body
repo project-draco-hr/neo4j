@@ -1,0 +1,34 @@
+{
+  EmbeddedGraphDatabase db1=new EmbeddedGraphDatabase(args[0]);
+  EmbeddedGraphDatabase db2=new EmbeddedGraphDatabase(args[1]);
+  try {
+    LogExtractor extractor1=getLogExtractor(db1);
+    LogExtractor extractor2=getLogExtractor(db2);
+    boolean branchingDetected=false;
+    long lastTx=1;
+    while (true) {
+      long tx1=extractor1.extractNext(new InMemoryLogBuffer());
+      long tx2=extractor2.extractNext(new InMemoryLogBuffer());
+      if (tx1 != tx2)       throw new RuntimeException("Differing tx " + tx1 + " and "+ tx2);
+      if (tx1 == -1 || tx2 == -1)       break;
+      lastTx=tx1;
+      if (!branchingDetected) {
+        if (extractor1.getLastCommitEntry().getMasterId() != extractor2.getLastCommitEntry().getMasterId() || extractor1.getLastTxChecksum() != extractor2.getLastTxChecksum()) {
+          branchingDetected=true;
+          System.out.println("Branch at " + tx1 + ": masters:"+ extractor1.getLastCommitEntry().getMasterId()+ ","+ extractor2.getLastCommitEntry().getMasterId()+ " checksums:"+ extractor1.getLastTxChecksum()+ ","+ extractor2.getLastTxChecksum());
+        }
+      }
+ else {
+        if (extractor1.getLastCommitEntry().getMasterId() == extractor2.getLastCommitEntry().getMasterId() && extractor1.getLastTxChecksum() == extractor2.getLastTxChecksum()) {
+          branchingDetected=false;
+          System.out.println("Merged again at " + tx1);
+        }
+      }
+    }
+    System.out.println("Last tx " + lastTx);
+  }
+  finally {
+    db1.shutdown();
+    db2.shutdown();
+  }
+}
