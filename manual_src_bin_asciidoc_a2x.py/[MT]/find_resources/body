@@ -1,0 +1,33 @@
+def find_resources(files, tagname, attrname, filter=None):
+    '\n    Search all files and return a list of local URIs from attrname attribute\n    values in tagname tags.\n    Handles HTML open and XHTML closed tags.\n    Non-local URIs are skipped.\n    files can be a file name or a list of file names.\n    The filter function takes a dictionary of tag attributes and returns True if\n    the URI is to be included.\n    '
+
+
+    class FindResources(HTMLParser.HTMLParser):
+
+        def handle_startendtag(self, tag, attrs):
+            self.handle_starttag(tag, attrs)
+
+        def handle_starttag(self, tag, attrs):
+            attrs = dict(attrs)
+            if ((tag == tagname) and ((filter is None) or filter(attrs))):
+                uri = urlparse.urlparse(attrs[attrname])
+                if ((uri[0] in ('', 'file')) and (not uri[1]) and uri[2]):
+                    result.append(uri[2])
+    if isinstance(files, str):
+        files = [files]
+    result = []
+    for f in files:
+        verbose(('finding resources in: %s' % f))
+        if OPTIONS.dry_run:
+            continue
+        parser = FindResources()
+        mo = re.search('^<\\?xml.* encoding="(.*?)"', open(f).readline())
+        if mo:
+            encoding = mo.group(1)
+            parser.feed(open(f).read().decode(encoding))
+        else:
+            parser.feed(open(f).read())
+        parser.close()
+    result = list(set(result))
+    result.sort()
+    return result

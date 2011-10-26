@@ -1,0 +1,26 @@
+def validate(self):
+    'Validate block after the complete configuration has been loaded.'
+    if (self.is_conf_entry('delimiter') and (not self.delimiter)):
+        raise EAsciiDoc, ('[%s] missing delimiter' % self.name)
+    if self.style:
+        if (not is_name(self.style)):
+            raise EAsciiDoc, ('illegal style name: %s' % self.style)
+        if (not (self.style in self.styles)):
+            if (not isinstance(self, List)):
+                message.warning(("[%s] '%s' style not in %s" % (self.name, self.style, self.styles.keys())))
+    all_styles_have_template = True
+    for (k, v) in self.styles.items():
+        t = v.get('template')
+        if (t and (not (t in config.sections))):
+            if (not re.search('{.+}', t)):
+                message.warning(('missing template section: [%s]' % t))
+        if (not t):
+            all_styles_have_template = False
+    if (self.is_conf_entry('template') and (not ('skip' in self.options))):
+        if self.template:
+            if (not (self.template in config.sections)):
+                if (not re.search('{.+}', self.template)):
+                    message.warning(('missing template section: [%s]' % self.template))
+        elif (not all_styles_have_template):
+            if (not isinstance(self, List)):
+                message.warning(('missing styles templates: [%s]' % self.name))

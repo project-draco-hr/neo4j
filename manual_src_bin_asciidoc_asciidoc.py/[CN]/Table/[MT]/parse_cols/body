@@ -1,0 +1,67 @@
+def parse_cols(self, cols, halign, valign):
+    "\n        Build list of column objects from table 'cols', 'halign' and 'valign'\n        attributes.\n        "
+    COLS_RE1 = '^((?P<count>\\d+)\\*)?(?P<align>[<\\^>.]{,3})?(?P<width>\\d+%?)?(?P<style>[a-z]\\w*)?$'
+    COLS_RE2 = '^((?P<count>\\d+)\\*)?(?P<width>\\d+%?)?(?P<align>[<\\^>.]{,3})?(?P<style>[a-z]\\w*)?$'
+    reo1 = re.compile(COLS_RE1)
+    reo2 = re.compile(COLS_RE2)
+    cols = str(cols)
+    if re.match('^\\d+$', cols):
+        for i in range(int(cols)):
+            self.columns.append(Column())
+    else:
+        for col in re.split('\\s*,\\s*', cols):
+            mo = reo1.match(col)
+            if (not mo):
+                mo = reo2.match(col)
+            if mo:
+                count = int((mo.groupdict().get('count') or 1))
+                for i in range(count):
+                    self.columns.append(Column(mo.group('width'), mo.group('align'), self.get_style(mo.group('style'))))
+            else:
+                self.error(('illegal column spec: %s' % col), self.start)
+    for col in self.columns:
+        col.halign = (col.halign or halign or document.attributes.get('halign') or 'left')
+        col.valign = (col.valign or valign or document.attributes.get('valign') or 'top')
+    n = 0
+    percents = 0
+    props = 0
+    for col in self.columns:
+        if col.width:
+            if (col.width[(-1)] == '%'):
+                percents += int(col.width[:(-1)])
+            else:
+                props += int(col.width)
+            n += 1
+    if ((percents > 0) and (props > 0)):
+        self.error(('mixed percent and proportional widths: %s' % cols), self.start)
+    pcunits = (percents > 0)
+    if ((n < len(self.columns)) and (percents < 100)):
+        if pcunits:
+            width = (float((100 - percents)) / float((len(self.columns) - n)))
+        else:
+            width = 1
+        for col in self.columns:
+            if (not col.width):
+                if pcunits:
+                    col.width = (str(int(width)) + '%')
+                    percents += width
+                else:
+                    col.width = str(width)
+                    props += width
+    percents = 0
+    for col in self.columns:
+        if pcunits:
+            col.pcwidth = float(col.width[:(-1)])
+        else:
+            col.pcwidth = ((float(col.width) / props) * 100)
+        col.abswidth = (self.abswidth * (col.pcwidth / 100))
+        if (config.pageunits in ('cm', 'mm', 'in', 'em')):
+            col.abswidth = ('%.2f' % round(col.abswidth, 2))
+        else:
+            col.abswidth = ('%d' % round(col.abswidth))
+        percents += col.pcwidth
+        col.pcwidth = int(col.pcwidth)
+    if (round(percents) > 100):
+        self.error(('total width exceeds 100%%: %s' % cols), self.start)
+    elif (round(percents) < 100):
+        self.error(('total width less than 100%%: %s' % cols), self.start)

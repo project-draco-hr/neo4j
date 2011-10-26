@@ -1,0 +1,57 @@
+def translate(self):
+    AbstractBlock.translate(self)
+    reader.read()
+    self.columns = []
+    self.rows = []
+    attrs = {}
+    BlockTitle.consume(attrs)
+    AttributeList.consume(attrs)
+    self.merge_attributes(attrs)
+    self.validate_attributes()
+    self.attributes['pagewidth'] = config.pagewidth
+    self.attributes['pageunits'] = config.pageunits
+    self.attributes['tableabswidth'] = int(self.abswidth)
+    self.attributes['tablepcwidth'] = int(self.pcwidth)
+    text = reader.read_until(self.delimiter)
+    if reader.eof():
+        self.error('missing closing delimiter', self.start)
+    else:
+        delimiter = reader.read()
+        assert re.match(self.delimiter, delimiter)
+    if (len(text) == 0):
+        message.warning(('[%s] table is empty' % self.name))
+        return
+    cols = attrs.get('cols')
+    if (not cols):
+        if (self.parameters.format == 'csv'):
+            cols = (text[0].count(self.parameters.separator) + 1)
+        else:
+            cols = 0
+            for cell in self.parse_psv_dsv(text[:1]):
+                cols += cell.span
+    self.parse_cols(cols, attrs.get('halign'), attrs.get('valign'))
+    self.attributes['colcount'] = len(self.columns)
+    self.build_colspecs()
+    self.parse_rows(text)
+    self.attributes['rowcount'] = str(len(self.rows))
+    headrows = footrows = bodyrows = None
+    if (self.rows and ('header' in self.parameters.options)):
+        headrows = self.subs_rows(self.rows[0:1], 'header')
+        self.attributes['headrows'] = '\x07headrows\x07'
+        self.rows = self.rows[1:]
+    if (self.rows and ('footer' in self.parameters.options)):
+        footrows = self.subs_rows(self.rows[(-1):], 'footer')
+        self.attributes['footrows'] = '\x07footrows\x07'
+        self.rows = self.rows[:(-1)]
+    if self.rows:
+        bodyrows = self.subs_rows(self.rows)
+        self.attributes['bodyrows'] = '\x07bodyrows\x07'
+    table = subs_attrs(config.sections[self.parameters.template], self.attributes)
+    table = writer.newline.join(table)
+    if headrows:
+        table = table.replace('\x07headrows\x07', headrows, 1)
+    if footrows:
+        table = table.replace('\x07footrows\x07', footrows, 1)
+    if bodyrows:
+        table = table.replace('\x07bodyrows\x07', bodyrows, 1)
+    writer.write(table, trace='table')

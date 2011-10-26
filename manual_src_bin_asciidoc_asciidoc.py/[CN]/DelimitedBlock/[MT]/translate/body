@@ -1,0 +1,40 @@
+def translate(self):
+    AbstractBlock.translate(self)
+    reader.read()
+    attrs = {}
+    if (self.short_name() != 'comment'):
+        BlockTitle.consume(attrs)
+        AttributeList.consume(attrs)
+    self.merge_attributes(attrs)
+    options = self.parameters.options
+    if ('skip' in options):
+        reader.read_until(self.delimiter, same_file=True)
+    elif (safe() and (self.name == 'blockdef-backend')):
+        message.unsafe('Backend Block')
+        reader.read_until(self.delimiter, same_file=True)
+    else:
+        template = self.parameters.template
+        template = subs_attrs(template, attrs)
+        name = (self.short_name() + ' block')
+        if ('sectionbody' in options):
+            (stag, etag) = config.section2tags(template, self.attributes)
+            writer.write(stag, trace=(name + ' open'))
+            Section.translate_body(self)
+            writer.write(etag, trace=(name + ' close'))
+        else:
+            stag = config.section2tags(template, self.attributes, skipend=True)[0]
+            body = reader.read_until(self.delimiter, same_file=True)
+            presubs = self.parameters.presubs
+            postsubs = self.parameters.postsubs
+            body = Lex.subs(body, presubs)
+            if self.parameters.filter:
+                body = filter_lines(self.parameters.filter, body, self.attributes)
+            body = Lex.subs(body, postsubs)
+            etag = config.section2tags(template, self.attributes, skipstart=True)[1]
+            writer.write(dovetail_tags(stag, body, etag), trace=name)
+        trace((self.short_name() + ' block close'), etag)
+    if reader.eof():
+        self.error('missing closing delimiter', self.start)
+    else:
+        delimiter = reader.read()
+        assert re.match(self.delimiter, delimiter)

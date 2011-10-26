@@ -1,0 +1,42 @@
+def code_filter():
+    'This function does all the work.'
+    global language, backend
+    inline_comment = inline_comments[language]
+    blk_comment = block_comments[language]
+    if blk_comment:
+        blk_comment = (re.escape(block_comments[language][0]), re.escape(block_comments[language][1]))
+    (stag, etag) = commenttags[backend]
+    in_comment = 0
+    tag_comment = 0
+    line = sys.stdin.readline()
+    while line:
+        line = string.rstrip(line)
+        line = string.expandtabs(line, tabsize)
+        line = string.replace(line, '&', '&amp;')
+        line = string.replace(line, '<', '&lt;')
+        line = string.replace(line, '>', '&gt;')
+        if blk_comment:
+            if in_comment:
+                if re.match((('.*' + blk_comment[1]) + '$'), line):
+                    in_comment = 0
+            elif re.match(((('^\\s*' + blk_comment[0]) + '.*') + blk_comment[1]), line):
+                tag_comment = 1
+            elif re.match(('^\\s*' + blk_comment[0]), line):
+                tag_comment = 1
+                in_comment = 1
+            else:
+                tag_comment = 0
+        if tag_comment:
+            if line:
+                line = ((stag + line) + etag)
+        else:
+            if inline_comment:
+                pos = string.find(line, inline_comment)
+            else:
+                pos = (-1)
+            if (pos >= 0):
+                line = (((re.sub('\\b(?P<word>\\w+)\\b', sub_keyword, line[:pos]) + stag) + line[pos:]) + etag)
+            else:
+                line = re.sub('\\b(?P<word>\\w+)\\b', sub_keyword, line)
+        sys.stdout.write((line + os.linesep))
+        line = sys.stdin.readline()

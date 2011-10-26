@@ -1,0 +1,68 @@
+def filter_lines(filter_cmd, lines, attrs={}):
+    "\n    Run 'lines' through the 'filter_cmd' shell command and return the result.\n    The 'attrs' dictionary contains additional filter attributes.\n    "
+
+    def findfilter(name, dir, filter):
+        "Find filter file 'fname' with style name 'name' in directory\n        'dir'. Return found file path or None if not found."
+        if name:
+            result = os.path.join(dir, 'filters', name, filter)
+            if os.path.isfile(result):
+                return result
+        result = os.path.join(dir, 'filters', filter)
+        if os.path.isfile(result):
+            return result
+        return None
+    if ((not filter_cmd) or (not filter_cmd.strip())):
+        return lines
+    s = subs_attrs(filter_cmd, attrs)
+    if (not s):
+        message.error(('undefined filter attribute in command: %s' % filter_cmd))
+        return []
+    filter_cmd = s.strip()
+    mo = re.match('^"(?P<cmd>[^"]+)"(?P<tail>.*)$', filter_cmd)
+    if (not mo):
+        mo = re.match("^'(?P<cmd>[^']+)'(?P<tail>.*)$", filter_cmd)
+        if (not mo):
+            mo = re.match('^(?P<cmd>\\S+)(?P<tail>.*)$', filter_cmd)
+    cmd = mo.group('cmd').strip()
+    found = None
+    if (not os.path.dirname(cmd)):
+        filtername = attrs.get('style')
+        d = document.attributes.get('docdir')
+        if d:
+            found = findfilter(filtername, d, cmd)
+        if (not found):
+            if USER_DIR:
+                found = findfilter(filtername, USER_DIR, cmd)
+            if (not found):
+                if localapp():
+                    found = findfilter(filtername, APP_DIR, cmd)
+                else:
+                    found = findfilter(filtername, CONF_DIR, cmd)
+    elif os.path.isfile(cmd):
+        found = cmd
+    else:
+        message.warning(('filter not found: %s' % cmd))
+    if found:
+        filter_cmd = ((('"' + found) + '"') + mo.group('tail'))
+    if (sys.platform == 'win32'):
+        if found:
+            if cmd.endswith('.py'):
+                filter_cmd = ('python ' + filter_cmd)
+            elif cmd.endswith('.rb'):
+                filter_cmd = ('ruby ' + filter_cmd)
+    message.verbose(('filtering: ' + filter_cmd))
+    try:
+        p = subprocess.Popen(filter_cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+        output = p.communicate(os.linesep.join(lines))[0]
+    except Exception:
+        raise EAsciiDoc, ('filter error: %s: %s' % (filter_cmd, sys.exc_info()[1]))
+    if output:
+        result = [s.rstrip() for s in output.split(os.linesep)]
+    else:
+        result = []
+    filter_status = p.wait()
+    if filter_status:
+        message.warning(('filter non-zero exit code: %s: returned %d' % (filter_cmd, filter_status)))
+    if (lines and (not result)):
+        message.warning(('no output from filter: %s' % filter_cmd))
+    return result

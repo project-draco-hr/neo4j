@@ -1,0 +1,43 @@
+def to_epub(self):
+    self.to_docbook()
+    xsl_file = self.xsl_stylesheet()
+    docbook_file = self.dst_path('.xml')
+    epub_file = self.dst_path('.epub')
+    build_dir = (epub_file + '.d')
+    shell_rmtree(build_dir)
+    shell_makedirs(build_dir)
+    exec_xsltproc(xsl_file, docbook_file, build_dir, self.xsltproc_opts)
+    src_dir = os.path.dirname(self.asciidoc_file)
+    dst_dir = os.path.join(build_dir, 'OEBPS')
+    opf_file = os.path.join(dst_dir, 'content.opf')
+    opf_resources = find_resources(opf_file, 'item', 'href')
+    html_files = find_files(dst_dir, '*.html')
+    self.copy_resources(html_files, src_dir, dst_dir, opf_resources)
+    self.update_epub_manifest(opf_file)
+    cwd = os.getcwd()
+    shell_cd(build_dir)
+    try:
+        if (not self.dry_run):
+            zip = zipfile.ZipFile(epub_file, 'w')
+            try:
+                verbose('archiving: mimetype')
+                open('mimetype', 'w').write('application/epub+zip')
+                zip.write('mimetype', compress_type=zipfile.ZIP_STORED)
+                for (p, dirs, files) in os.walk('.'):
+                    for f in files:
+                        f = os.path.normpath(os.path.join(p, f))
+                        if (f != 'mimetype'):
+                            verbose(('archiving: %s' % f))
+                            zip.write(f, compress_type=zipfile.ZIP_DEFLATED)
+            finally:
+                zip.close()
+        verbose(('created archive: %s' % epub_file))
+    finally:
+        shell_cd(cwd)
+    if (not self.keep_artifacts):
+        shell_rmtree(build_dir)
+    if (self.epubcheck and EPUBCHECK):
+        if (not find_executable(EPUBCHECK)):
+            warning(('epubcheck skipped: unable to find executable: %s' % EPUBCHECK))
+        else:
+            shell(('"%s" "%s"' % (EPUBCHECK, epub_file)))

@@ -1,0 +1,53 @@
+def translate(self, has_header):
+    if (self.doctype == 'manpage'):
+        if (Lex.next() is not Title):
+            message.error('name section expected')
+        else:
+            Title.translate()
+            if (Title.level != 1):
+                message.error('name section title must be at level 1')
+            if (not isinstance(Lex.next(), Paragraph)):
+                message.error('malformed name section body')
+            lines = reader.read_until('^$')
+            s = ' '.join(lines)
+            mo = re.match('^(?P<manname>.*?)\\s+-\\s+(?P<manpurpose>.*)$', s)
+            if (not mo):
+                message.error('malformed name section body')
+            self.attributes['manname'] = mo.group('manname').strip()
+            self.attributes['manpurpose'] = mo.group('manpurpose').strip()
+            names = [s.strip() for s in self.attributes['manname'].split(',')]
+            if (len(names) > 9):
+                message.warning('to many manpage names')
+            for (i, name) in enumerate(names):
+                self.attributes[('manname%d' % (i + 1))] = name
+    if has_header:
+        self.attributes['doctitle'] = Title.dosubs(self.attributes['doctitle'])
+        if config.header_footer:
+            hdr = config.subs_section('header', {})
+            writer.write(hdr, trace='header')
+        if ('title' in self.attributes):
+            del self.attributes['title']
+        self.consume_attributes_and_comments()
+        if (self.doctype in ('article', 'book')):
+            if (Lex.next() is not Title):
+                (stag, etag) = config.section2tags('preamble')
+                writer.write(stag, trace='preamble open')
+                Section.translate_body()
+                writer.write(etag, trace='preamble close')
+        elif ((self.doctype == 'manpage') and ('name' in config.sections)):
+            writer.write(config.subs_section('name', {}), trace='name')
+    else:
+        self.process_author_names()
+        if config.header_footer:
+            hdr = config.subs_section('header', {})
+            writer.write(hdr, trace='header')
+        if (Lex.next() is not Title):
+            Section.translate_body()
+    while (not reader.eof()):
+        if (Lex.next() is not Title):
+            raise EAsciiDoc, 'section title expected'
+        Section.translate()
+    Section.setlevel(0)
+    if config.header_footer:
+        ftr = config.subs_section('footer', {})
+        writer.write(ftr, trace='footer')

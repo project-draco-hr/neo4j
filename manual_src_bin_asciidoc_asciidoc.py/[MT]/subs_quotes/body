@@ -1,0 +1,34 @@
+def subs_quotes(text):
+    'Quoted text is marked up and the resulting text is\n    returned.'
+    keys = config.quotes.keys()
+    for q in keys:
+        i = q.find('|')
+        if ((i != (-1)) and (q != '|') and (q != '||')):
+            lq = q[:i]
+            rq = q[(i + 1):]
+        else:
+            lq = rq = q
+        tag = config.quotes[q]
+        if (not tag):
+            continue
+        if (tag[0] == '#'):
+            tag = tag[1:]
+            reo = re.compile((((((('(?msu)(^|.)(\\[(?P<attrlist>[^[\\]]+?)\\])?' + '(?:') + re.escape(lq)) + ')') + '(?P<content>.+?)(?:') + re.escape(rq)) + ')'))
+        else:
+            reo = re.compile((((((('(?msu)(^|[^\\w;:}])(\\[(?P<attrlist>[^[\\]]+?)\\])?' + '(?:') + re.escape(lq)) + ')') + '(?P<content>\\S|\\S.*?\\S)(?:') + re.escape(rq)) + ')(?=\\W|$)'))
+        pos = 0
+        while True:
+            mo = reo.search(text, pos)
+            if (not mo):
+                break
+            if (text[mo.start()] == '\\'):
+                text = (text[:mo.start()] + text[(mo.start() + 1):])
+                pos = (mo.start() + 1)
+            else:
+                attrlist = {}
+                parse_attributes(mo.group('attrlist'), attrlist)
+                (stag, etag) = config.tag(tag, attrlist)
+                s = (((mo.group(1) + stag) + mo.group('content')) + etag)
+                text = ((text[:mo.start()] + s) + text[mo.end():])
+                pos = (mo.start() + len(s))
+    return text

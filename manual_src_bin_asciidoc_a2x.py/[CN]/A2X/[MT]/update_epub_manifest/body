@@ -1,0 +1,35 @@
+def update_epub_manifest(self, opf_file):
+    '\n        Scan the OEBPS directory for any files that have not been registered in\n        the OPF manifest then add them to the manifest.\n        '
+    opf_dir = os.path.dirname(opf_file)
+    resource_files = []
+    for (p, dirs, files) in os.walk(os.path.dirname(opf_file)):
+        for f in files:
+            f = os.path.join(p, f)
+            if os.path.isfile(f):
+                assert f.startswith(opf_dir)
+                f = ('.' + f[len(opf_dir):])
+                f = os.path.normpath(f)
+                if (f not in ['content.opf']):
+                    resource_files.append(f)
+    opf = xml.dom.minidom.parseString(open(opf_file).read())
+    manifest_files = []
+    manifest = opf.getElementsByTagName('manifest')[0]
+    for el in manifest.getElementsByTagName('item'):
+        f = el.getAttribute('href')
+        f = os.path.normpath(f)
+        manifest_files.append(f)
+    count = 0
+    for f in resource_files:
+        if (f not in manifest_files):
+            count += 1
+            verbose(('adding to manifest: %s' % f))
+            item = opf.createElement('item')
+            item.setAttribute('href', f.replace(os.path.sep, '/'))
+            item.setAttribute('id', ('a2x-%d' % count))
+            mimetype = mimetypes.guess_type(f)[0]
+            if (mimetype is None):
+                die(('unknown mimetype: %s' % f))
+            item.setAttribute('media-type', mimetype)
+            manifest.appendChild(item)
+    if (count > 0):
+        open(opf_file, 'w').write(opf.toxml())

@@ -1,0 +1,43 @@
+@staticmethod
+def translate():
+    assert (Lex.next() is AttributeEntry)
+    attr = AttributeEntry
+    reader.read()
+    while attr.value.endswith(' +'):
+        if (not reader.read_next()):
+            break
+        attr.value = (attr.value[:(-1)] + reader.read().strip())
+    if (attr.name2 is not None):
+        if (attr.name2 != ''):
+            section = {}
+            if ((attr.name in ('attributes', 'miscellaneous')) and (attr.name2[(-1)] == '!')):
+                section[attr.name] = [attr.name2]
+            else:
+                section[attr.name] = [('%s=%s' % (attr.name2, attr.value))]
+            config.load_sections(section)
+            config.load_miscellaneous(config.conf_attrs)
+        elif (attr.name in config.sections):
+            config.sections[attr.name] = [attr.value]
+        else:
+            message.warning(('missing configuration section: %s' % attr.name))
+    else:
+        if (attr.name[(-1)] == '!'):
+            attr.name = attr.name[:(-1)]
+            attr.value = None
+        attr.name = re.sub('(?u)[^\\w\\-_]', '', attr.name).lower()
+        if ((attr.name in config.cmd_attrs) and (attr.name not in ('trace', 'numbered'))):
+            return
+        if (attr.value is not None):
+            mo = re.match('^pass:(?P<attrs>.*)\\[(?P<value>.*)\\]$', attr.value)
+            if mo:
+                attr.subs = mo.group('attrs')
+                attr.value = mo.group('value')
+            else:
+                attr.subs = document.attributes.get('attributeentry-subs', 'specialcharacters,attributes')
+            attr.subs = parse_options(attr.subs, SUBS_OPTIONS, 'illegal substitution option')
+            attr.value = Lex.subs((attr.value,), attr.subs)
+            attr.value = writer.newline.join(attr.value)
+            document.attributes[attr.name] = attr.value
+        elif (attr.name in document.attributes):
+            del document.attributes[attr.name]
+        attr.attributes[attr.name] = attr.value

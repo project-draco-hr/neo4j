@@ -1,0 +1,33 @@
+def load_conf(self):
+    '\n        Load a2x configuration file from default locations and --conf-file\n        option.\n        '
+    global ASCIIDOC
+    CONF_FILE = 'a2x.conf'
+    a2xdir = os.path.dirname(os.path.realpath(__file__))
+    conf_files = []
+    conf_files.append(os.path.join(a2xdir, CONF_FILE))
+    asciidoc = os.path.join(a2xdir, 'asciidoc.py')
+    asciidoc_conf = os.path.join(a2xdir, 'asciidoc.conf')
+    if (os.path.isfile(asciidoc) and os.path.isfile(asciidoc_conf)):
+        self.asciidoc = asciidoc
+    else:
+        self.asciidoc = None
+        conf_files.append(os.path.join(CONF_DIR, CONF_FILE))
+    home_dir = os.environ.get('HOME')
+    if (home_dir is not None):
+        conf_files.append(os.path.join(home_dir, '.asciidoc', CONF_FILE))
+    if (self.conf_file is not None):
+        if (not os.path.isfile(self.conf_file)):
+            die(('missing configuration file: %s' % self.conf_file))
+        conf_files.append(self.conf_file)
+    if (self.xsl_file is not None):
+        if (not os.path.isfile(self.xsl_file)):
+            die(('missing XSL file: %s' % self.xsl_file))
+        self.xsl_file = os.path.abspath(self.xsl_file)
+    for f in conf_files:
+        if os.path.isfile(f):
+            verbose(('loading conf file: %s' % f))
+            execfile(f, globals())
+    if (not self.asciidoc):
+        self.asciidoc = find_executable(ASCIIDOC)
+        if (not self.asciidoc):
+            die(('unable to find asciidoc: %s' % ASCIIDOC))

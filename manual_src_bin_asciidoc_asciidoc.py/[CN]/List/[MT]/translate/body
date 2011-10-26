@@ -1,0 +1,54 @@
+def translate(self):
+    AbstractBlock.translate(self)
+    if (self.short_name() in ('bibliography', 'glossary', 'qanda')):
+        message.deprecated(('old %s list syntax' % self.short_name()))
+    lists.open.append(self)
+    attrs = self.mo.groupdict().copy()
+    for k in ('label', 'text', 'index'):
+        if (k in attrs):
+            del attrs[k]
+    if self.index:
+        attrs['style'] = self.calc_style(self.index)
+    BlockTitle.consume(attrs)
+    AttributeList.consume(attrs)
+    self.merge_attributes(attrs, ['tags'])
+    if (self.type in ('numbered', 'callout')):
+        self.number_style = self.attributes.get('style')
+        if (self.number_style not in self.NUMBER_STYLES):
+            message.error(('illegal numbered list style: %s' % self.number_style))
+            self.attributes['style'] = self.number_style = self.style
+    self.tag = lists.tags[self.parameters.tags]
+    self.check_tags()
+    if ('width' in self.attributes):
+        v = str(self.attributes['width'])
+        mo = re.match('^(\\d{1,2})%?$', v)
+        if mo:
+            labelwidth = int(mo.group(1))
+            self.attributes['labelwidth'] = str(labelwidth)
+            self.attributes['itemwidth'] = str((100 - labelwidth))
+        else:
+            self.error(('illegal attribute value: width="%s"' % v))
+    (stag, etag) = subs_tag(self.tag.list, self.attributes)
+    if stag:
+        writer.write(stag, trace='list open')
+    self.ordinal = 0
+    while ((Lex.next() is self) and (not BlockTitle.title)):
+        self.ordinal += 1
+        document.attributes['listindex'] = str(self.ordinal)
+        if (self.type in ('numbered', 'callout')):
+            self.check_index()
+        if (self.type in ('bulleted', 'numbered', 'callout')):
+            reader.read()
+            self.translate_item()
+        elif (self.type == 'labeled'):
+            self.translate_entry()
+        else:
+            raise AssertionError, ('illegal [%s] list type' % self.name)
+    if etag:
+        writer.write(etag, trace='list close')
+    if (self.type == 'callout'):
+        calloutmap.validate(self.ordinal)
+        calloutmap.listclose()
+    lists.open.pop()
+    if len(lists.open):
+        document.attributes['listindex'] = str(lists.open[(-1)].ordinal)

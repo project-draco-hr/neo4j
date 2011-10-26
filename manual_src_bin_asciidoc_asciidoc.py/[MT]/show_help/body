@@ -1,0 +1,31 @@
+def show_help(topic, f=None):
+    'Print help topic to file object f.'
+    if (f is None):
+        f = sys.stdout
+    lang = config.cmd_attrs.get('lang')
+    if (lang and (lang != 'en')):
+        help_file = (('help-' + lang) + '.conf')
+    else:
+        help_file = HELP_FILE
+    config.load_from_dirs(help_file)
+    if (len(config.sections) == 0):
+        help_file = HELP_FILE
+        config.load_from_dirs(help_file)
+    if (len(config.sections) == 0):
+        message.stderr('no help topics found')
+        sys.exit(1)
+    n = 0
+    for k in config.sections:
+        if re.match(re.escape(topic), k):
+            n += 1
+            lines = config.sections[k]
+    if (n == 0):
+        if (topic != 'topics'):
+            message.stderr(('help topic not found: [%s] in %s' % (topic, help_file)))
+        message.stderr(('available help topics: %s' % ', '.join(config.sections.keys())))
+        sys.exit(1)
+    elif (n > 1):
+        message.stderr(('ambiguous help topic: %s' % topic))
+    else:
+        for line in lines:
+            print  >> f, line

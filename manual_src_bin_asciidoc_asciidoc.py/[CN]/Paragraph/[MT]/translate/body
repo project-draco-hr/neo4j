@@ -1,0 +1,24 @@
+def translate(self):
+    AbstractBlock.translate(self)
+    attrs = self.mo.groupdict().copy()
+    if ('text' in attrs):
+        del attrs['text']
+    BlockTitle.consume(attrs)
+    AttributeList.consume(attrs)
+    self.merge_attributes(attrs)
+    reader.read()
+    body = reader.read_until(paragraphs.terminators)
+    body = ([self.text] + list(body))
+    presubs = self.parameters.presubs
+    postsubs = self.parameters.postsubs
+    if (document.attributes.get('plaintext') is None):
+        body = Lex.set_margin(body)
+    body = Lex.subs(body, presubs)
+    template = self.parameters.template
+    template = subs_attrs(template, attrs)
+    stag = config.section2tags(template, self.attributes, skipend=True)[0]
+    if self.parameters.filter:
+        body = filter_lines(self.parameters.filter, body, self.attributes)
+    body = Lex.subs(body, postsubs)
+    etag = config.section2tags(template, self.attributes, skipstart=True)[1]
+    writer.write(dovetail_tags(stag, body, etag), trace='paragraph')

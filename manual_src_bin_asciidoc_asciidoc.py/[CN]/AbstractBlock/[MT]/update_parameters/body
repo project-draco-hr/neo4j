@@ -1,0 +1,60 @@
+def update_parameters(self, src, dst=None, all=False):
+    "\n        Parse processing parameters from src dictionary to dst object.\n        dst defaults to self.parameters.\n        If all is True then copy src entries that aren't parameter names.\n        "
+    dst = (dst or self.parameters)
+    msg = ('[%s] malformed entry %%s: %%s' % self.name)
+
+    def copy(obj, k, v):
+        if isinstance(obj, dict):
+            obj[k] = v
+        else:
+            setattr(obj, k, v)
+    for (k, v) in src.items():
+        if ((not re.match('\\d+', k)) and (not is_name(k))):
+            raise EAsciiDoc, (msg % (k, v))
+        if (k == 'template'):
+            if (not is_name(v)):
+                raise EAsciiDoc, (msg % (k, v))
+            copy(dst, k, v)
+        elif (k == 'filter'):
+            copy(dst, k, v)
+        elif (k == 'options'):
+            if isinstance(v, str):
+                v = parse_options(v, (), (msg % (k, v)))
+                v = tuple(set(dst.options).union(set(v)))
+            copy(dst, k, v)
+        elif (k in ('subs', 'presubs', 'postsubs')):
+            if (k == 'subs'):
+                k = 'presubs'
+            if isinstance(v, str):
+                v = parse_options(v, SUBS_OPTIONS, (msg % (k, v)))
+            copy(dst, k, v)
+        elif (k == 'delimiter'):
+            if (v and is_re(v)):
+                copy(dst, k, v)
+            else:
+                raise EAsciiDoc, (msg % (k, v))
+        elif (k == 'style'):
+            if is_name(v):
+                copy(dst, k, v)
+            else:
+                raise EAsciiDoc, (msg % (k, v))
+        elif (k == 'posattrs'):
+            v = parse_options(v, (), (msg % (k, v)))
+            copy(dst, k, v)
+        else:
+            mo = re.match('^(?P<style>.*)-style$', k)
+            if mo:
+                if (not v):
+                    raise EAsciiDoc, (msg % (k, v))
+                style = mo.group('style')
+                if (not is_name(style)):
+                    raise EAsciiDoc, (msg % (k, v))
+                d = {}
+                if (not parse_named_attributes(v, d)):
+                    raise EAsciiDoc, (msg % (k, v))
+                if ('subs' in d):
+                    d['presubs'] = d['subs']
+                    del d['subs']
+                self.styles[style] = d
+            elif (all or (k in self.PARAM_NAMES)):
+                copy(dst, k, v)

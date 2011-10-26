@@ -1,0 +1,26 @@
+def parse_header(self, doctype, backend):
+    "\n        Parses header, sets corresponding document attributes and finalizes\n        document doctype and backend properties.\n        Returns False if the document does not have a header.\n        'doctype' and 'backend' are the doctype and backend option values\n        passed on the command-line, None if no command-line option was not\n        specified.\n        "
+    assert (self.level == 0)
+    self.consume_attributes_and_comments()
+    if (doctype is not None):
+        self.doctype = doctype
+    elif (self.doctype is None):
+        self.doctype = DEFAULT_DOCTYPE
+    has_header = (Title.isnext() and (Title.level == 0) and (AttributeList.style() != 'float'))
+    if ((self.doctype == 'manpage') and (not has_header)):
+        message.error('manpage document title is mandatory', halt=True)
+    if has_header:
+        Header.parse()
+    self.attributes.update(config.cmd_attrs)
+    self.set_deprecated_attribute('revision', 'revnumber')
+    self.set_deprecated_attribute('date', 'revdate')
+    if (doctype is not None):
+        self.doctype = doctype
+    if (backend is not None):
+        self.backend = backend
+    elif (self.backend is None):
+        self.backend = DEFAULT_BACKEND
+    else:
+        self.backend = self.backend
+    assert (self.doctype in ('article', 'manpage', 'book')), 'illegal document type'
+    return has_header

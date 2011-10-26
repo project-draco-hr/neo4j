@@ -1,0 +1,39 @@
+def validate_attributes(self):
+    'Validate and parse table attributes.'
+    format = self.format
+    tags = self.tags
+    separator = self.separator
+    abswidth = float(config.pagewidth)
+    pcwidth = 100.0
+    for (k, v) in self.attributes.items():
+        if (k == 'format'):
+            if (v not in self.FORMATS):
+                self.error(('illegal %s=%s' % (k, v)))
+            else:
+                format = v
+        elif (k == 'tags'):
+            if (v not in tables.tags):
+                self.error(('illegal %s=%s' % (k, v)))
+            else:
+                tags = v
+        elif (k == 'separator'):
+            separator = v
+        elif (k == 'width'):
+            if ((not re.match('^\\d{1,3}%$', v)) or (int(v[:(-1)]) > 100)):
+                self.error(('illegal %s=%s' % (k, v)))
+            else:
+                abswidth = ((float(v[:(-1)]) / 100) * config.pagewidth)
+                pcwidth = float(v[:(-1)])
+    if (not separator):
+        separator = Table.SEPARATORS[format]
+    if (format == 'csv'):
+        if (len(separator) > 1):
+            self.error(('illegal csv separator=%s' % separator))
+            separator = ','
+    elif (not is_re(separator)):
+        self.error(('illegal regular expression: separator=%s' % separator))
+    self.parameters.format = format
+    self.parameters.tags = tags
+    self.parameters.separator = separator
+    self.abswidth = abswidth
+    self.pcwidth = pcwidth

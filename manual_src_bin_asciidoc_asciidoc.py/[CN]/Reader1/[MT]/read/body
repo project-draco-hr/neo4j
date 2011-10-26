@@ -1,0 +1,77 @@
+def read(self, skip=False):
+    'Read next line. Return None if EOF. Expand tabs. Strip trailing\n        white space. Maintain self.next read ahead buffer. If skip=True then\n        conditional exclusion is active (ifdef and ifndef macros).'
+    if (len(self.next) <= self.READ_BUFFER_MIN):
+        s = self.f.readline()
+        if s:
+            self._lineno = (self._lineno + 1)
+        while s:
+            if (self.tabsize != 0):
+                s = s.expandtabs(self.tabsize)
+            s = s.rstrip()
+            self.next.append([self.fname, self._lineno, s])
+            if (len(self.next) > self.READ_BUFFER_MIN):
+                break
+            s = self.f.readline()
+            if s:
+                self._lineno = (self._lineno + 1)
+    if (len(self.next) > 0):
+        self.cursor = self.next[0]
+        del self.next[0]
+        result = self.cursor[2]
+        mo = macros.match('+', '^include[1]?$', result)
+        if (mo and (not skip)):
+            attrs = {}
+            parse_attributes(mo.group('attrlist'), attrs)
+            warnings = attrs.get('warnings', True)
+            if (self.current_depth >= self.max_depth):
+                return result
+            fname = subs_attrs(mo.group('target'))
+            if (not fname):
+                return Reader1.read(self)
+            if (self.fname != '<stdin>'):
+                fname = os.path.expandvars(os.path.expanduser(fname))
+                fname = safe_filename(fname, os.path.dirname(self.fname))
+                if (not fname):
+                    return Reader1.read(self)
+                if (not os.path.isfile(fname)):
+                    if warnings:
+                        message.warning(('include file not found: %s' % fname))
+                    return Reader1.read(self)
+                if (mo.group('name') == 'include1'):
+                    if (not config.dumping):
+                        if (fname not in config.include1):
+                            message.verbose(('include1: ' + fname), linenos=False)
+                            config.include1[fname] = [s.rstrip() for s in open(fname)]
+                        return ('{include1:%s}' % fname)
+                    else:
+                        return result
+            parent = Reader1()
+            assign(parent, self)
+            self.parent = parent
+            if ('tabsize' in attrs):
+                try:
+                    val = int(attrs['tabsize'])
+                    if (not (val >= 0)):
+                        raise ValueError, 'not >= 0'
+                    self.tabsize = val
+                except ValueError:
+                    raise EAsciiDoc, 'illegal include macro tabsize argument'
+            else:
+                self.tabsize = config.tabsize
+            if ('depth' in attrs):
+                try:
+                    val = int(attrs['depth'])
+                    if (not (val >= 1)):
+                        raise ValueError, 'not >= 1'
+                    self.max_depth = (self.current_depth + val)
+                except ValueError:
+                    raise EAsciiDoc, 'illegal include macro depth argument'
+            message.verbose(('include: ' + fname), linenos=False)
+            self.open(fname)
+            self.current_depth = (self.current_depth + 1)
+            result = Reader1.read(self)
+    elif (not Reader1.eof(self)):
+        result = Reader1.read(self)
+    else:
+        result = None
+    return result

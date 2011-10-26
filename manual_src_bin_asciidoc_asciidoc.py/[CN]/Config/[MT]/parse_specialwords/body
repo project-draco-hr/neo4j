@@ -1,0 +1,21 @@
+def parse_specialwords(self):
+    'Parse special words section into self.specialwords dictionary.'
+    reo = re.compile('(?:\\s|^)(".+?"|[^"\\s]+)(?=\\s|$)')
+    for line in self.sections.get('specialwords', ()):
+        e = parse_entry(line)
+        if (not e):
+            raise EAsciiDoc, ('[specialwords] entry in %s is malformed: %s' % (self.fname, line))
+        (name, wordlist) = e
+        if (not is_name(name)):
+            raise EAsciiDoc, ('[specialwords] name in %s is illegal: %s' % (self.fname, name))
+        if (wordlist is None):
+            for (k, v) in self.specialwords.items():
+                if (v == name):
+                    del self.specialwords[k]
+        else:
+            words = reo.findall(wordlist)
+            for word in words:
+                word = strip_quotes(word)
+                if (not is_re(word)):
+                    raise EAsciiDoc, ('[specialwords] entry in %s is not a valid regular expression: %s' % (self.fname, word))
+                self.specialwords[word] = name

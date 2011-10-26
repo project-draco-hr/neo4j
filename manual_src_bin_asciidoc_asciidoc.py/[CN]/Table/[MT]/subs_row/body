@@ -1,0 +1,53 @@
+def subs_row(self, row, rowtype):
+    '\n        Substitute the list of Cells using the data tag.\n        Returns a list of marked up table cell elements.\n        '
+    result = []
+    i = 0
+    for cell in row:
+        if cell.reserved:
+            i += cell.span
+            continue
+        if (i >= len(self.columns)):
+            break
+        col = self.columns[i]
+        self.attributes['halign'] = (cell.halign or col.halign)
+        self.attributes['valign'] = (cell.valign or col.valign)
+        self.attributes['colabswidth'] = col.abswidth
+        self.attributes['colpcwidth'] = col.pcwidth
+        self.attributes['colnumber'] = str((i + 1))
+        self.attributes['colspan'] = str(cell.span)
+        self.attributes['colstart'] = self.attributes['colnumber']
+        self.attributes['colend'] = str((i + cell.span))
+        self.attributes['rowspan'] = str(cell.vspan)
+        self.attributes['morerows'] = str((cell.vspan - 1))
+        if (i > (len(self.columns) - 1)):
+            data = ''
+        else:
+            data = cell.data
+        if (rowtype == 'header'):
+            colstyle = cell.style
+        else:
+            colstyle = (cell.style or col.style)
+        tags = self.get_tags(colstyle)
+        (presubs, postsubs) = self.get_subs(colstyle)
+        data = [data]
+        data = Lex.subs(data, presubs)
+        data = filter_lines(self.get_param('filter', colstyle), data, self.attributes)
+        data = Lex.subs(data, postsubs)
+        if (rowtype != 'header'):
+            ptag = tags.paragraph
+            if ptag:
+                (stag, etag) = subs_tag(ptag, self.attributes)
+                text = '\n'.join(data).strip()
+                data = []
+                for para in re.split('\\n{2,}', text):
+                    data += dovetail_tags([stag], para.split('\n'), [etag])
+        if (rowtype == 'header'):
+            dtag = tags.headdata
+        elif (rowtype == 'footer'):
+            dtag = tags.footdata
+        else:
+            dtag = tags.bodydata
+        (stag, etag) = subs_tag(dtag, self.attributes)
+        result = (result + dovetail_tags([stag], data, [etag]))
+        i += cell.span
+    return result

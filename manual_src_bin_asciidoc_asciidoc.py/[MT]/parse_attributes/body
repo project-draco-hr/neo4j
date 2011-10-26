@@ -1,0 +1,35 @@
+def parse_attributes(attrs, dict):
+    'Update a dictionary with name/value attributes from the attrs string.\n    The attrs string is a comma separated list of values and keyword name=value\n    pairs. Values must preceed keywords and are named \'1\',\'2\'... The entire\n    attributes list is named \'0\'. If keywords are specified string values must\n    be quoted. Examples:\n\n    attrs: \'\'\n    dict: {}\n\n    attrs: \'hello,world\'\n    dict: {\'2\': \'world\', \'0\': \'hello,world\', \'1\': \'hello\'}\n\n    attrs: \'"hello", planet="earth"\'\n    dict: {\'planet\': \'earth\', \'0\': \'"hello",planet="earth"\', \'1\': \'hello\'}\n    '
+
+    def f(*args, **keywords):
+        for i in range(len(args)):
+            if (not (str((i + 1)) in keywords)):
+                keywords[str((i + 1))] = args[i]
+        return keywords
+    if (not attrs):
+        return
+    dict['0'] = attrs
+    s = re.sub('\\s', ' ', attrs)
+    d = {}
+    try:
+        d.update(get_args(s))
+        d.update(get_kwargs(s))
+        for v in d.values():
+            if (not (isinstance(v, str) or isinstance(v, int) or isinstance(v, float) or (v is None))):
+                raise Exception
+    except Exception:
+        s = s.replace('"', '\\"')
+        s = s.split(',')
+        s = map((lambda x: (('"' + x.strip()) + '"')), s)
+        s = ','.join(s)
+        try:
+            d = {}
+            d.update(get_args(s))
+            d.update(get_kwargs(s))
+        except Exception:
+            return
+        for k in d.keys():
+            if (d[k] == ''):
+                del d[k]
+    dict.update(d)
+    assert (len(d) > 0)

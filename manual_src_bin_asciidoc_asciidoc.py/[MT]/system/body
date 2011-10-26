@@ -1,0 +1,143 @@
+def system(name, args, is_macro=False, attrs=None):
+    "\n    Evaluate a system attribute ({name:args}) or system block macro\n    (name::[args]).\n    If is_macro is True then we are processing a system block macro otherwise\n    it's a system attribute.\n    The attrs dictionary is updated by the counter and set system attributes.\n    NOTE: The include1 attribute is used internally by the include1::[] macro\n    and is not for public use.\n    "
+    if is_macro:
+        syntax = ('%s::[%s]' % (name, args))
+        separator = '\n'
+    else:
+        syntax = ('{%s:%s}' % (name, args))
+        separator = writer.newline
+    if (name not in ('eval', 'eval3', 'sys', 'sys2', 'sys3', 'include', 'include1', 'counter', 'counter2', 'set', 'set2', 'template')):
+        if is_macro:
+            msg = ('illegal system macro name: %s' % name)
+        else:
+            msg = ('illegal system attribute name: %s' % name)
+        message.warning(msg)
+        return None
+    if is_macro:
+        s = subs_attrs(args)
+        if (s is None):
+            message.warning(('skipped %s: undefined attribute in: %s' % (name, args)))
+            return None
+        args = s
+    if (name != 'include1'):
+        message.verbose(('evaluating: %s' % syntax))
+    if (safe() and (name not in ('include', 'include1'))):
+        message.unsafe(syntax)
+        return None
+    result = None
+    if (name in ('eval', 'eval3')):
+        try:
+            result = eval(args)
+            if (result is True):
+                result = ''
+            elif (result is False):
+                result = None
+            elif (result is not None):
+                result = str(result)
+        except Exception:
+            message.warning(('%s: evaluation error' % syntax))
+    elif (name in ('sys', 'sys2', 'sys3')):
+        result = ''
+        (fd, tmp) = tempfile.mkstemp()
+        os.close(fd)
+        try:
+            cmd = args
+            cmd = (cmd + (' > %s' % tmp))
+            if (name == 'sys2'):
+                cmd = (cmd + ' 2>&1')
+            if os.system(cmd):
+                message.warning(('%s: non-zero exit status' % syntax))
+            try:
+                if os.path.isfile(tmp):
+                    lines = [s.rstrip() for s in open(tmp)]
+                else:
+                    lines = []
+            except Exception:
+                raise EAsciiDoc, ('%s: temp file read error' % syntax)
+            result = separator.join(lines)
+        finally:
+            if os.path.isfile(tmp):
+                os.remove(tmp)
+    elif (name in ('counter', 'counter2')):
+        mo = re.match('^(?P<attr>[^:]*?)(:(?P<seed>.*))?$', args)
+        attr = mo.group('attr')
+        seed = mo.group('seed')
+        if (seed and ((not re.match('^\\d+$', seed)) and (len(seed) > 1))):
+            message.warning(('%s: illegal counter seed: %s' % (syntax, seed)))
+            return None
+        if (not is_name(attr)):
+            message.warning(('%s: illegal attribute name' % syntax))
+            return None
+        value = document.attributes.get(attr)
+        if value:
+            if ((not re.match('^\\d+$', value)) and (len(value) > 1)):
+                message.warning(('%s: illegal counter value: %s' % (syntax, value)))
+                return None
+            if re.match('^\\d+$', value):
+                expr = (value + '+1')
+            else:
+                expr = ('chr(ord("%s")+1)' % value)
+            try:
+                result = str(eval(expr))
+            except Exception:
+                message.warning(('%s: evaluation error: %s' % (syntax, expr)))
+        elif seed:
+            result = seed
+        else:
+            result = '1'
+        document.attributes[attr] = result
+        if (attrs is not None):
+            attrs[attr] = result
+        if (name == 'counter2'):
+            result = ''
+    elif (name in ('set', 'set2')):
+        mo = re.match('^(?P<attr>[^:]*?)(:(?P<value>.*))?$', args)
+        attr = mo.group('attr')
+        value = mo.group('value')
+        if (value is None):
+            value = ''
+        if attr.endswith('!'):
+            attr = attr[:(-1)]
+            value = None
+        if (not is_name(attr)):
+            message.warning(('%s: illegal attribute name' % syntax))
+        else:
+            if (attrs is not None):
+                attrs[attr] = value
+            if (name != 'set2'):
+                document.attributes[attr] = value
+        if (value is None):
+            result = None
+        else:
+            result = ''
+    elif (name == 'include'):
+        if (not os.path.exists(args)):
+            message.warning(('%s: file does not exist' % syntax))
+        elif (not is_safe_file(args)):
+            message.unsafe(syntax)
+        else:
+            result = [s.rstrip() for s in open(args)]
+            if result:
+                result = subs_attrs(result)
+                result = separator.join(result)
+                result = result.expandtabs(reader.tabsize)
+            else:
+                result = ''
+    elif (name == 'include1'):
+        result = separator.join(config.include1[args])
+    elif (name == 'template'):
+        if (not (args in config.sections)):
+            message.warning(('%s: template does not exist' % syntax))
+        else:
+            result = []
+            for line in config.sections[args]:
+                line = subs_attrs(line)
+                if (line is not None):
+                    result.append(line)
+            result = '\n'.join(result)
+    else:
+        assert False
+    if (result and (name in ('eval3', 'sys3'))):
+        macros.passthroughs.append(result)
+        result = (('\x07' + str((len(macros.passthroughs) - 1))) + '\x07')
+    return result

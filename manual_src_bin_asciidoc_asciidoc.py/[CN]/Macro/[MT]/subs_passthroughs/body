@@ -1,0 +1,30 @@
+def subs_passthroughs(self, text, passthroughs):
+    ' Replace macro attribute lists in text with placeholders.\n        Substitute and append the passthrough attribute lists to the\n        passthroughs list.'
+
+    def subs_func(mo):
+        'Function called to perform inline macro substitution.\n            Uses matched macro regular expression object and returns string\n            containing the substituted macro body.'
+        if (mo.group()[0] == '\\'):
+            return mo.group()
+        d = mo.groupdict()
+        if (not ('passtext' in d)):
+            message.warning(('passthrough macro %s: missing passtext group' % d.get('name', '')))
+            return mo.group()
+        passtext = d['passtext']
+        if re.search('\x07\\d+\x07', passtext):
+            message.warning('nested inline passthrough')
+            return mo.group()
+        if d.get('subslist'):
+            if d['subslist'].startswith(':'):
+                message.error(('block macro cannot occur here: %s' % mo.group()), halt=True)
+            subslist = parse_options(d['subslist'], SUBS_OPTIONS, 'illegal passthrough macro subs option')
+        else:
+            subslist = self.subslist
+        passtext = Lex.subs_1(passtext, subslist)
+        if (passtext is None):
+            passtext = ''
+        if (self.prefix == ''):
+            passtext = passtext.replace('\\]', ']')
+        passthroughs.append(passtext)
+        result = ((((text[mo.start():mo.start('passtext')] + '\x07') + str((len(passthroughs) - 1))) + '\x07') + text[mo.end('passtext'):mo.end()])
+        return result
+    return self.reo.sub(subs_func, text)

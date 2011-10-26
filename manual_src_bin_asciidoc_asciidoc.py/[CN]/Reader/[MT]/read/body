@@ -1,0 +1,87 @@
+def read(self):
+    result = self.read_super()
+    if (result is None):
+        return None
+    while self.skip:
+        mo = macros.match('+', 'ifdef|ifndef|ifeval|endif', result)
+        if mo:
+            name = mo.group('name')
+            target = mo.group('target')
+            attrlist = mo.group('attrlist')
+            if (name == 'endif'):
+                self.depth -= 1
+                if (self.depth < 0):
+                    raise EAsciiDoc, ('mismatched macro: %s' % result)
+                if (self.depth == self.skipto):
+                    self.skip = False
+                    if (target and (self.skipname != target)):
+                        raise EAsciiDoc, ('mismatched macro: %s' % result)
+            elif (name in ('ifdef', 'ifndef')):
+                if (not target):
+                    raise EAsciiDoc, ('missing macro target: %s' % result)
+                if (not attrlist):
+                    self.depth += 1
+            elif (name == 'ifeval'):
+                if (not attrlist):
+                    raise EAsciiDoc, ('missing ifeval condition: %s' % result)
+                self.depth += 1
+        result = self.read_super()
+        if (result is None):
+            return None
+    mo = macros.match('+', 'ifdef|ifndef|ifeval|endif', result)
+    if mo:
+        name = mo.group('name')
+        target = mo.group('target')
+        attrlist = mo.group('attrlist')
+        if (name == 'endif'):
+            self.depth = (self.depth - 1)
+        else:
+            if ((not target) and (name in ('ifdef', 'ifndef'))):
+                raise EAsciiDoc, ('missing macro target: %s' % result)
+            defined = is_attr_defined(target, document.attributes)
+            if (name == 'ifdef'):
+                if attrlist:
+                    if defined:
+                        return attrlist
+                else:
+                    self.skip = (not defined)
+            elif (name == 'ifndef'):
+                if attrlist:
+                    if (not defined):
+                        return attrlist
+                else:
+                    self.skip = defined
+            elif (name == 'ifeval'):
+                if safe():
+                    message.unsafe('ifeval invalid')
+                    raise EAsciiDoc, 'ifeval invalid safe document'
+                if (not attrlist):
+                    raise EAsciiDoc, ('missing ifeval condition: %s' % result)
+                cond = False
+                attrlist = subs_attrs(attrlist)
+                if attrlist:
+                    try:
+                        cond = eval(attrlist)
+                    except Exception as e:
+                        raise EAsciiDoc, ('error evaluating ifeval condition: %s: %s' % (result, str(e)))
+                    message.verbose(('ifeval: %s: %r' % (attrlist, cond)))
+                self.skip = (not cond)
+            if ((not attrlist) or (name == 'ifeval')):
+                if self.skip:
+                    self.skipto = self.depth
+                    self.skipname = target
+                self.depth = (self.depth + 1)
+        result = self.read()
+    if result:
+        mo = macros.match('+', 'eval|sys|sys2', result)
+        if mo:
+            action = mo.group('name')
+            cmd = mo.group('attrlist')
+            s = system(action, cmd, is_macro=True)
+            if (s is not None):
+                self.cursor[2] = s
+                result = s
+    if result:
+        if macros.match('+', '\\\\eval|\\\\sys|\\\\sys2|\\\\ifdef|\\\\ifndef|\\\\endif|\\\\include|\\\\include1', result):
+            result = result[1:]
+    return result

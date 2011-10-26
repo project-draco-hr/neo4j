@@ -1,0 +1,39 @@
+def load_sections(self, sections, attrs=None):
+    "\n        Loads sections dictionary. Each dictionary entry contains a\n        list of lines.\n        Updates 'attrs' with parsed [attributes] section entries.\n        "
+    for k in sections.keys():
+        for i in range((len(sections[k]) - 1), (-1), (-1)):
+            if (not sections[k][i]):
+                del sections[k][i]
+            elif (not self.entries_section(k)):
+                break
+    for (k, v) in sections.items():
+        if k.startswith('+'):
+            k = k[1:]
+            if (k in self.sections):
+                self.sections[k] += v
+            else:
+                self.sections[k] = v
+        else:
+            self.sections[k] = v
+    self.parse_tags()
+    d = {}
+    parse_entries(sections.get('miscellaneous', ()), d, unquote=True, allow_name_only=True)
+    parse_entries(sections.get('attributes', ()), d, unquote=True, allow_name_only=True)
+    update_attrs(self.conf_attrs, d)
+    if (attrs is not None):
+        attrs.update(d)
+    d = {}
+    parse_entries(sections.get('titles', ()), d)
+    Title.load(d)
+    parse_entries(sections.get('specialcharacters', ()), self.specialchars, escape_delimiter=False)
+    parse_entries(sections.get('quotes', ()), self.quotes)
+    self.parse_specialwords()
+    self.parse_replacements()
+    self.parse_replacements('replacements2')
+    self.parse_specialsections()
+    paragraphs.load(sections)
+    lists.load(sections)
+    blocks.load(sections)
+    tables_OLD.load(sections)
+    tables.load(sections)
+    macros.load(sections.get('macros', ()))

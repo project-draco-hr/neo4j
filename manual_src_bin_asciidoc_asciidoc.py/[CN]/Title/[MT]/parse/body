@@ -1,0 +1,56 @@
+@staticmethod
+def parse(lines):
+    'Parse title at start of lines tuple.'
+    if (len(lines) == 0):
+        return False
+    if (len(lines[0]) == 0):
+        return False
+    result = False
+    for level in range(len(Title.underlines)):
+        k = ('sect%s' % level)
+        if (k in Title.dump_dict):
+            mo = re.match(Title.dump_dict[k], lines[0])
+            if mo:
+                Title.attributes = mo.groupdict()
+                Title.level = level
+                Title.linecount = 1
+                result = True
+                break
+    if (not result):
+        if (not Title.pattern):
+            return False
+        if (len(lines) < 2):
+            return False
+        (title, ul) = lines[:2]
+        title_len = column_width(title)
+        ul_len = char_len(ul)
+        if (ul_len < 2):
+            return False
+        if (ul[:2] not in Title.underlines):
+            return False
+        if (not (((ul_len - 3) < title_len < (ul_len + 3)) or ((ul_len - 3) < char_len(title) < (ul_len + 3)))):
+            return False
+        s = (ul[:2] * ((ul_len + 1) / 2))
+        if (ul != s[:ul_len]):
+            return False
+        if (not re.search('(?u)\\w', title)):
+            return False
+        mo = re.match(Title.pattern, title)
+        if mo:
+            Title.attributes = mo.groupdict()
+            Title.level = list(Title.underlines).index(ul[:2])
+            Title.linecount = 2
+            result = True
+    if result:
+        if (not ('title' in Title.attributes)):
+            message.warning('[titles] entry has no <title> group')
+            Title.attributes['title'] = lines[0]
+        for (k, v) in Title.attributes.items():
+            if (v is None):
+                del Title.attributes[k]
+    try:
+        Title.level += int(document.attributes.get('leveloffset', '0'))
+    except:
+        pass
+    Title.attributes['level'] = str(Title.level)
+    return result

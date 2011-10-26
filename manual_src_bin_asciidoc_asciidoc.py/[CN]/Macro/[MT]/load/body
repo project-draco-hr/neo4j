@@ -1,0 +1,25 @@
+def load(self, entry):
+    e = parse_entry(entry)
+    if (e is None):
+        self.name = None
+        self.pattern = entry
+        return
+    if (not is_re(e[0])):
+        raise EAsciiDoc, ('illegal macro regular expression: %s' % e[0])
+    (pattern, name) = e
+    if (name and (name[0] in ('+', '#'))):
+        (prefix, name) = (name[0], name[1:])
+    else:
+        prefix = ''
+    mo = re.match('^(?P<name>[^[]*)(\\[(?P<subslist>.*)\\])?$', name)
+    name = mo.group('name')
+    if (name and (not is_name(name))):
+        raise EAsciiDoc, ('illegal section name in macro entry: %s' % entry)
+    subslist = mo.group('subslist')
+    if (subslist is not None):
+        subslist = parse_options(subslist, SUBS_OPTIONS, ('illegal subs in macro entry: %s' % entry))
+    self.pattern = pattern
+    self.reo = re.compile(pattern)
+    self.prefix = prefix
+    self.name = name
+    self.subslist = (subslist or [])

@@ -1,0 +1,161 @@
+'\nasciidoc - converts an AsciiDoc text file to HTML or DocBook\n\nCopyright (C) 2002-2010 Stuart Rackham. Free use of this software is granted\nunder the terms of the GNU General Public License (GPL).\n'
+import sys, os, re, time, traceback, tempfile, subprocess, codecs, locale, unicodedata, copy
+VERSION = '8.6.6'
+MIN_PYTHON_VERSION = 2.4
+DEFAULT_BACKEND = 'html'
+DEFAULT_DOCTYPE = 'article'
+SUBS_OPTIONS = ('specialcharacters', 'quotes', 'specialwords', 'replacements', 'attributes', 'macros', 'callouts', 'normal', 'verbatim', 'none', 'replacements2')
+SUBS_NORMAL = ('specialcharacters', 'quotes', 'attributes', 'specialwords', 'replacements', 'macros', 'replacements2')
+SUBS_VERBATIM = ('specialcharacters', 'callouts')
+NAME_RE = '(?u)[^\\W\\d][-\\w]*'
+(OR, AND) = (',', '+')
+if (float(sys.version[:3]) < 2.4):
+    pass
+elif (float(sys.version[:3]) < 2.6):
+    import compiler
+    from compiler.ast import Const, Dict, Expression, Name, Tuple, UnarySub, Keyword
+
+    def literal_eval(node_or_string):
+        ' \n        Safely evaluate an expression node or a string containing a Python\n        expression.  The string or node provided may only consist of the  \n        following Python literal structures: strings, numbers, tuples, \n        lists, dicts, booleans, and None.\n        '
+        _safe_names = {'None': None, 'True': True, 'False': False, }
+        if isinstance(node_or_string, basestring):
+            node_or_string = compiler.parse(node_or_string, mode='eval')
+        if isinstance(node_or_string, Expression):
+            node_or_string = node_or_string.node
+
+        def _convert(node):
+            if (isinstance(node, Const) and isinstance(node.value, (basestring, int, float, long, complex))):
+                return node.value
+            elif isinstance(node, Tuple):
+                return tuple(map(_convert, node.nodes))
+            elif isinstance(node, compiler.ast.List):
+                return list(map(_convert, node.nodes))
+            elif isinstance(node, Dict):
+                return dict(((_convert(k), _convert(v)) for (k, v) in node.items))
+            elif isinstance(node, Name):
+                if (node.name in _safe_names):
+                    return _safe_names[node.name]
+            elif isinstance(node, UnarySub):
+                return (- _convert(node.expr))
+            raise ValueError('malformed string')
+        return _convert(node_or_string)
+
+    def get_args(val):
+        d = {}
+        args = compiler.parse((('d(' + val) + ')'), mode='eval').node.args
+        i = 1
+        for arg in args:
+            if isinstance(arg, Keyword):
+                break
+            d[str(i)] = literal_eval(arg)
+            i = (i + 1)
+        return d
+
+    def get_kwargs(val):
+        d = {}
+        args = compiler.parse((('d(' + val) + ')'), mode='eval').node.args
+        i = 0
+        for arg in args:
+            if isinstance(arg, Keyword):
+                break
+            i += 1
+        args = args[i:]
+        for arg in args:
+            d[str(arg.name)] = literal_eval(arg.expr)
+        return d
+
+    def parse_to_list(val):
+        values = compiler.parse((('[' + val) + ']'), mode='eval').node.asList()
+        return [literal_eval(v) for v in values]
+else:
+    import ast
+    from ast import literal_eval
+
+    def get_args(val):
+        d = {}
+        args = ast.parse((('d(' + val) + ')'), mode='eval').body.args
+        i = 1
+        for arg in args:
+            if isinstance(arg, ast.Name):
+                d[str(i)] = literal_eval(arg.id)
+            else:
+                d[str(i)] = literal_eval(arg)
+            i += 1
+        return d
+
+    def get_kwargs(val):
+        d = {}
+        args = ast.parse((('d(' + val) + ')'), mode='eval').body.keywords
+        for arg in args:
+            d[arg.arg] = literal_eval(arg.value)
+        return d
+
+    def parse_to_list(val):
+        values = ast.parse((('[' + val) + ']'), mode='eval').body.elts
+        return [literal_eval(v) for v in values]
+east_asian_widths = {'W': 2, 'F': 2, 'Na': 1, 'H': 1, 'N': 1, 'A': 1, }
+'Mapping of result codes from `unicodedata.east_asian_width()` to character\ncolumn widths.'
+UTF8_BOM = '\xef\xbb\xbf'
+import shutil, zipfile
+APP_FILE = None
+APP_DIR = None
+USER_DIR = None
+CONF_DIR = '/etc/asciidoc'
+HELP_FILE = 'help.conf'
+document = Document()
+config = Config()
+reader = Reader()
+writer = Writer()
+message = Message()
+paragraphs = Paragraphs()
+lists = Lists()
+blocks = DelimitedBlocks()
+tables_OLD = Tables_OLD()
+tables = Tables()
+macros = Macros()
+calloutmap = CalloutMap()
+trace = Trace()
+messages = message.messages
+if (__name__ == '__main__'):
+    import getopt
+    try:
+        (opts, args) = getopt.getopt(sys.argv[1:], 'a:b:cd:ef:hno:svw:', ['attribute=', 'backend=', 'conf-file=', 'doctype=', 'dump-conf', 'help', 'no-conf', 'no-header-footer', 'out-file=', 'section-numbers', 'verbose', 'version', 'safe', 'unsafe', 'doctest', 'filter=', 'theme='])
+    except getopt.GetoptError:
+        message.stderr('illegal command options')
+        sys.exit(1)
+    opt_names = [opt[0] for opt in opts]
+    if ('--doctest' in opt_names):
+        import doctest
+        options = (doctest.NORMALIZE_WHITESPACE + doctest.ELLIPSIS)
+        (failures, tries) = doctest.testmod(optionflags=options)
+        if (failures == 0):
+            message.stderr('All doctests passed')
+            sys.exit(0)
+        else:
+            sys.exit(1)
+    count = 0
+    for (o, v) in opts:
+        if (o in ('-b', '--backend', '--filter', '--theme')):
+            if (o == '-b'):
+                o = '--backend'
+            plugin = o[2:]
+            cmd = v
+            if (cmd not in Plugin.CMDS):
+                continue
+            count += 1
+    if (count > 1):
+        die('--backend, --filter and --theme options are mutually exclusive')
+    if (count == 1):
+        if (not cmd):
+            die(('missing --%s command' % plugin))
+        if (cmd not in Plugin.CMDS):
+            die(('illegal --%s command: %s' % (plugin, cmd)))
+        Plugin.type = plugin
+        config.init(sys.argv[0])
+        config.verbose = bool((set(['-v', '--verbose']) & set(opt_names)))
+        getattr(Plugin, cmd)(args)
+    else:
+        try:
+            execute(sys.argv[0], opts, args)
+        except KeyboardInterrupt:
+            sys.exit(1)

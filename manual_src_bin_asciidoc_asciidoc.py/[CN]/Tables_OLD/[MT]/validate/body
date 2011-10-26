@@ -1,0 +1,52 @@
+def validate(self):
+    for i in range(len(self.blocks)):
+        if (self.blocks[i].name == 'old_tabledef-default'):
+            default = self.blocks[i]
+            break
+    else:
+        raise EAsciiDoc, 'missing section: [OLD_tabledef-default]'
+    if (default.format is None):
+        default.subs = 'fixed'
+    for b in self.blocks:
+        if (b is not default):
+            if (b.fillchar is None):
+                b.fillchar = default.fillchar
+            if (b.format is None):
+                b.format = default.format
+            if (b.template is None):
+                b.template = default.template
+            if (b.colspec is None):
+                b.colspec = default.colspec
+            if (b.headrow is None):
+                b.headrow = default.headrow
+            if (b.footrow is None):
+                b.footrow = default.footrow
+            if (b.bodyrow is None):
+                b.bodyrow = default.bodyrow
+            if (b.headdata is None):
+                b.headdata = default.headdata
+            if (b.footdata is None):
+                b.footdata = default.footdata
+            if (b.bodydata is None):
+                b.bodydata = default.bodydata
+    for b in self.blocks:
+        if ((not b.fillchar) or (len(b.fillchar) != 1)):
+            raise EAsciiDoc, ('[%s] missing or illegal fillchar' % b.name)
+    delimiters = []
+    for b in self.blocks:
+        b.delimiter = (((((((('^(' + Table_OLD.COL_STOP) + '(\\d*|') + re.escape(b.fillchar)) + '*)') + ')+') + re.escape(b.fillchar)) + '+') + '([\\d\\.]*)$')
+        delimiters.append(b.delimiter)
+        if (not b.headrow):
+            b.headrow = b.bodyrow
+        if (not b.footrow):
+            b.footrow = b.bodyrow
+        if (not b.headdata):
+            b.headdata = b.bodydata
+        if (not b.footdata):
+            b.footdata = b.bodydata
+    self.delimiters = re_join(delimiters)
+    for b in self.blocks:
+        b.validate()
+        if config.verbose:
+            if b.check_msg:
+                message.warning(('[%s] table definition: %s' % (b.name, b.check_msg)))

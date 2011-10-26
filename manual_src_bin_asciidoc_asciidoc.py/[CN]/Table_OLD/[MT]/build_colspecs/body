@@ -1,0 +1,36 @@
+def build_colspecs(self):
+    'Generate colwidths and colspecs. This can only be done after the\n        table arguments have been parsed since we use the table format.'
+    self.attributes['cols'] = len(self.columns)
+    totalwidth = 0
+    for c in self.columns:
+        totalwidth = (totalwidth + c.rulerwidth)
+    if (totalwidth <= 0):
+        raise EAsciiDoc, 'zero width table'
+    for c in self.columns:
+        width = float(c.rulerwidth)
+        if (self.format == 'fixed'):
+            if (self.tablewidth is None):
+                colfraction = (width / config.textwidth)
+            else:
+                colfraction = (width / totalwidth)
+        else:
+            colfraction = (width / totalwidth)
+        c.colwidth = (colfraction * config.pagewidth)
+        if (self.tablewidth is not None):
+            c.colwidth = (c.colwidth * self.tablewidth)
+            if (self.tablewidth > 1):
+                c.colwidth = (c.colwidth / 100)
+    if self.colspec:
+        cols = []
+        i = 0
+        for c in self.columns:
+            i += 1
+            self.attributes['colalign'] = c.colalign
+            self.attributes['colwidth'] = str(int(c.colwidth))
+            self.attributes['colnumber'] = str((i + 1))
+            s = subs_attrs(self.colspec, self.attributes)
+            if (not s):
+                message.warning('colspec dropped: contains undefined attribute')
+            else:
+                cols.append(s)
+        self.attributes['colspecs'] = writer.newline.join(cols)

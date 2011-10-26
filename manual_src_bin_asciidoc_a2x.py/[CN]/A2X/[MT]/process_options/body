@@ -1,0 +1,71 @@
+def process_options(self):
+    '\n        Validate and command options and set defaults.\n        '
+    if (not os.path.isfile(self.asciidoc_file)):
+        die(('missing SOURCE_FILE: %s' % self.asciidoc_file))
+    self.asciidoc_file = os.path.abspath(self.asciidoc_file)
+    if (not self.destination_dir):
+        self.destination_dir = os.path.dirname(self.asciidoc_file)
+    else:
+        if (not os.path.isdir(self.destination_dir)):
+            die(('missing --destination-dir: %s' % self.destination_dir))
+        self.destination_dir = os.path.abspath(self.destination_dir)
+    self.resource_dirs = []
+    self.resource_files = []
+    if self.resource_manifest:
+        if (not os.path.isfile(self.resource_manifest)):
+            die(('missing --resource-manifest: %s' % self.resource_manifest))
+        for r in open(self.resource_manifest):
+            self.resources.append(r.strip())
+    for r in self.resources:
+        r = os.path.expanduser(r)
+        r = os.path.expandvars(r)
+        if r.endswith(('/', '\\')):
+            if os.path.isdir(r):
+                self.resource_dirs.append(r)
+            else:
+                die(('missing resource directory: %s' % r))
+        elif os.path.isdir(r):
+            self.resource_dirs.append(r)
+        elif (r.startswith('.') and ('=' in r)):
+            (ext, mimetype) = r.split('=')
+            mimetypes.add_type(mimetype, ext)
+        else:
+            self.resource_files.append(r)
+    for p in (os.path.dirname(self.asciidoc), CONF_DIR):
+        for d in ('images', 'stylesheets'):
+            d = os.path.join(p, d)
+            if os.path.isdir(d):
+                self.resource_dirs.append(d)
+    verbose(('resource files: %s' % self.resource_files))
+    verbose(('resource directories: %s' % self.resource_dirs))
+    if ((not self.doctype) and (self.format == 'manpage')):
+        self.doctype = 'manpage'
+    if self.doctype:
+        self.asciidoc_opts += (' --doctype %s' % self.doctype)
+    for attr in self.attributes:
+        self.asciidoc_opts += (' --attribute "%s"' % attr)
+    if self.verbose:
+        self.asciidoc_opts += ' --verbose'
+        self.dblatex_opts += ' -V'
+    if (self.icons or self.icons_dir):
+        params = ['callout.graphics 1', 'navig.graphics 1', 'admon.textlabel 0', 'admon.graphics 1']
+        if self.icons_dir:
+            params += [('admon.graphics.path "%s/"' % self.icons_dir), ('callout.graphics.path "%s/callouts/"' % self.icons_dir), ('navig.graphics.path "%s/"' % self.icons_dir)]
+    else:
+        params = ['callout.graphics 0', 'navig.graphics 0', 'admon.textlabel 1', 'admon.graphics 0']
+    if self.stylesheet:
+        params += [('html.stylesheet "%s"' % self.stylesheet)]
+    if (self.format == 'htmlhelp'):
+        params += [('htmlhelp.chm "%s"' % self.basename('.chm')), ('htmlhelp.hhp "%s"' % self.basename('.hhp')), ('htmlhelp.hhk "%s"' % self.basename('.hhk')), ('htmlhelp.hhc "%s"' % self.basename('.hhc'))]
+    if (self.doctype == 'book'):
+        params += ['toc.section.depth 1']
+        params += ['chunk.section.depth 0']
+    for o in params:
+        if ((o.split()[0] + ' ') not in self.xsltproc_opts):
+            self.xsltproc_opts += (' --stringparam ' + o)
+    if self.fop_opts:
+        self.fop = True
+    if (os.path.splitext(self.asciidoc_file)[1].lower() == '.xml'):
+        self.skip_asciidoc = True
+    else:
+        self.skip_asciidoc = False

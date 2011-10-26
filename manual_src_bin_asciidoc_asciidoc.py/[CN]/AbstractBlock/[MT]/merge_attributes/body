@@ -1,0 +1,45 @@
+def merge_attributes(self, attrs, params=[]):
+    '\n        Use the current blocks attribute list (attrs dictionary) to build a\n        dictionary of block processing parameters (self.parameters) and tag\n        substitution attributes (self.attributes).\n\n        1. Copy the default parameters (self.*) to self.parameters.\n        self.parameters are used internally to render the current block.\n        Optional params array of additional parameters.\n\n        2. Copy attrs to self.attributes. self.attributes are used for template\n        and tag substitution in the current block.\n\n        3. If a style attribute was specified update self.parameters with the\n        corresponding style parameters; if there are any style parameters\n        remaining add them to self.attributes (existing attribute list entries\n        take precedence).\n\n        4. Set named positional attributes in self.attributes if self.posattrs\n        was specified.\n\n        5. Finally self.parameters is updated with any corresponding parameters\n        specified in attrs.\n\n        '
+
+    def check_array_parameter(param):
+        if (not is_array(self.parameters[param])):
+            message.error(('malformed presubs attribute: %s' % self.parameters[param]))
+            self.parameters[param] = getattr(self, param)
+    params = (list(self.PARAM_NAMES) + params)
+    self.attributes = {}
+    if self.style:
+        self.attributes['style'] = self.style
+    self.attributes.update(attrs)
+    self.parameters = AttrDict()
+    for name in params:
+        self.parameters[name] = getattr(self, name)
+    posattrs = self.posattrs
+    if (posattrs and (posattrs[0] == 'style')):
+        style = self.attributes.get('1')
+    else:
+        style = None
+    if (not style):
+        style = self.attributes.get('style', self.style)
+    if style:
+        if (not is_name(style)):
+            message.error(('illegal style name: %s' % style))
+            style = self.style
+        elif ((style not in self.styles) and (not isinstance(self, List))):
+            message.warning(('missing style: [%s]: %s' % (self.name, style)))
+            style = self.style
+        if (style in self.styles):
+            self.attributes['style'] = style
+            for (k, v) in self.styles[style].items():
+                if (k == 'posattrs'):
+                    posattrs = v
+                elif (k in params):
+                    self.parameters[k] = v
+                elif (not (k in self.attributes)):
+                    self.attributes[k] = v
+    for (i, v) in enumerate(posattrs):
+        if (str((i + 1)) in self.attributes):
+            self.attributes[v] = self.attributes[str((i + 1))]
+    self.update_parameters(attrs)
+    check_array_parameter('options')
+    check_array_parameter('presubs')
+    check_array_parameter('postsubs')
