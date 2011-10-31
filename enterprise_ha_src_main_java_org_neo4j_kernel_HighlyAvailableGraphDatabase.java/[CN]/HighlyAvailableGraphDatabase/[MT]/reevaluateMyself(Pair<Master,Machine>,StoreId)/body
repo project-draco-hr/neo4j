@@ -1,31 +1,33 @@
 {
-  if (master == null) {
-    master=broker.getMasterReally();
-  }
-  boolean restarted=false;
+  if (master == null)   master=broker.getMasterReally();
   boolean iAmCurrentlyMaster=masterServer != null;
   msgLog.logMessage("ReevaluateMyself: machineId=" + machineId + " with master["+ master+ "] (I am master="+ iAmCurrentlyMaster+ ", "+ localGraph+ ")");
-  if (master.other().getMachineId() == machineId) {
-    if (this.localGraph == null || !iAmCurrentlyMaster) {
-      internalShutdown(true);
-      startAsMaster(storeId);
-      restarted=true;
-    }
-    broker.rebindMaster();
-  }
- else {
-    broker.notifyMasterChange(master.other());
-    if (this.localGraph == null || iAmCurrentlyMaster) {
-      internalShutdown(true);
-      startAsSlave(storeId);
-      restarted=true;
+  EmbeddedGraphDbImpl newDb=null;
+  try {
+    if (master.other().getMachineId() == machineId) {
+      if (this.localGraph == null || !iAmCurrentlyMaster) {
+        internalShutdown(true);
+        newDb=startAsMaster(storeId);
+      }
+      broker.rebindMaster();
     }
  else {
-      ((SlaveIdGeneratorFactory)getConfig().getIdGeneratorFactory()).forgetIdAllocationsFromMaster();
+      broker.notifyMasterChange(master.other());
+      if (this.localGraph == null || iAmCurrentlyMaster) {
+        internalShutdown(true);
+        newDb=startAsSlave(storeId);
+      }
+ else {
+        ((SlaveIdGeneratorFactory)getConfig().getIdGeneratorFactory()).forgetIdAllocationsFromMaster();
+      }
+      ensureDataConsistencyWithMaster(newDb != null ? newDb : localGraph,master);
+      msgLog.logMessage("Data consistent with master");
     }
-    tryToEnsureIAmNotABrokenMachine(master);
+    if (newDb != null)     doAfterLocalGraphStarted(newDb);
+    this.localGraph=newDb;
   }
-  if (restarted) {
-    doAfterLocalGraphStarted();
+ catch (  Throwable t) {
+    safelyShutdownDb(newDb);
+    throw launderedException(t);
   }
 }

@@ -1,5 +1,6 @@
 {
   if (master.other().getMachineId() == machineId) {
+    msgLog.logMessage("I am master so cannot consistency check data with master");
     return;
   }
  else   if (master.first() == null) {
@@ -7,7 +8,7 @@
     shutdown(cause,false);
     throw cause;
   }
-  XaDataSource nioneoDataSource=getConfig().getTxModule().getXaDataSourceManager().getXaDataSource(Config.DEFAULT_DATA_SOURCE_NAME);
+  XaDataSource nioneoDataSource=newDb.getConfig().getTxModule().getXaDataSourceManager().getXaDataSource(Config.DEFAULT_DATA_SOURCE_NAME);
   long myLastCommittedTx=nioneoDataSource.getLastCommittedTxId();
   Pair<Integer,Long> masterForMyHighestCommonTxId;
   try {
@@ -18,6 +19,9 @@
     masterForMyHighestCommonTxId=Pair.of(-1,0L);
     return;
   }
+catch (  Exception e) {
+    throw new BranchedDataException("Maybe not branched data, but it could solve it",e);
+  }
   Pair<Integer,Long> masterForMastersHighestCommonTxId=master.first().getMasterIdForCommittedTx(myLastCommittedTx).response();
   if (masterForMyHighestCommonTxId.first() == XaLogicalLog.MASTER_ID_REPRESENTING_NO_MASTER || masterForMyHighestCommonTxId.equals(masterForMastersHighestCommonTxId)) {
     msgLog.logMessage("Master id for last committed tx ok with highestCommonTxId=" + myLastCommittedTx + " with masterId="+ masterForMyHighestCommonTxId,true);
@@ -27,6 +31,7 @@
     String msg="Branched data, I (machineId:" + machineId + ") think machineId for txId ("+ myLastCommittedTx+ ") is "+ masterForMyHighestCommonTxId+ ", but master (machineId:"+ master.other().getMachineId()+ ") says that it's "+ masterForMastersHighestCommonTxId;
     msgLog.logMessage(msg,true);
     RuntimeException exception=new BranchedDataException(msg);
+    safelyShutdownDb(newDb);
     shutdown(exception,false);
     throw exception;
   }
