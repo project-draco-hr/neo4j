@@ -1,0 +1,32 @@
+{
+  Triplet<Channel,ChannelBuffer,ByteBuffer> channelContext=null;
+  try {
+    channelContext=getChannel(type);
+    Channel channel=channelContext.first();
+    channelContext.second().clear();
+    ChunkingChannelBuffer chunkingBuffer=new ChunkingChannelBuffer(channelContext.second(),channel,frameLength,getInternalProtocolVersion(),applicationProtocolVersion);
+    chunkingBuffer.writeByte(type.id());
+    writeContext(type,context,chunkingBuffer);
+    serializer.write(chunkingBuffer,channelContext.third());
+    chunkingBuffer.done();
+    @SuppressWarnings("unchecked") BlockingReadHandler<ChannelBuffer> reader=(BlockingReadHandler<ChannelBuffer>)channel.getPipeline().get("blockingHandler");
+    DechunkingChannelBuffer dechunkingBuffer=new DechunkingChannelBuffer(reader,readTimeout,getInternalProtocolVersion(),applicationProtocolVersion);
+    R response=deserializer.read(dechunkingBuffer,channelContext.third());
+    StoreId storeId=readStoreId(dechunkingBuffer,channelContext.third());
+    if (shouldCheckStoreId(type)) {
+      if (specificStoreId != null)       assertCorrectStoreId(storeId,specificStoreId);
+ else       assertCorrectStoreId(storeId,getMyStoreId());
+    }
+    TransactionStream txStreams=readTransactionStreams(dechunkingBuffer);
+    return new Response<R>(response,storeId,txStreams);
+  }
+ catch (  Throwable e) {
+    if (channelContext != null) {
+      closeChannel(channelContext);
+    }
+    throw Exceptions.launderedException(ComException.class,e);
+  }
+ finally {
+    releaseChannel(type,channelContext);
+  }
+}
