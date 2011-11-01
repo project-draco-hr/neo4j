@@ -1,0 +1,38 @@
+{
+  boolean fail=false;
+  if (rel.getType() < 0)   fail|=report(rel,"invalid type id");
+ else {
+    RelationshipTypeRecord type=relTypes.forceGetRecord(rel.getType());
+    if (!type.inUse())     fail|=report(rel,type,"type not in use");
+  }
+  for (  RelationshipField field : relFields) {
+    long otherId=field.relOf(rel);
+    if (otherId == field.none) {
+      Long nodeId=field.nodeOf(rel);
+      if (nodeId != null) {
+        NodeRecord node=nodes.forceGetRecord(nodeId);
+        if (!node.inUse() || node.getNextRel() != rel.getId())         fail|=report(rel,node,"invalid " + field.name() + " reference");
+      }
+    }
+ else {
+      RelationshipRecord other=rels.forceGetRecord(otherId);
+      if (!other.inUse() || !field.invConsistent(rel,other))       fail|=report(rel,other,"invalid " + field.name() + " reference");
+    }
+  }
+  for (  NodeField field : nodeFields) {
+    long nodeId=field.get(rel);
+    if (nodeId < 0)     fail|=report(rel,"invalid " + field.name() + " node reference");
+ else {
+      NodeRecord node=nodes.forceGetRecord(nodeId);
+      if (!node.inUse())       fail|=report(rel,node,"invalid " + field.name() + " node reference");
+    }
+  }
+  if (props != null) {
+    long propId=rel.getNextProp();
+    if (!Record.NO_NEXT_PROPERTY.value(propId)) {
+      PropertyRecord prop=props.forceGetRecord(propId);
+      if (!prop.inUse() || !Record.NO_PREVIOUS_PROPERTY.value(prop.getPrevProp()))       fail|=report(rel,prop,"invalid property reference");
+    }
+  }
+  return fail;
+}

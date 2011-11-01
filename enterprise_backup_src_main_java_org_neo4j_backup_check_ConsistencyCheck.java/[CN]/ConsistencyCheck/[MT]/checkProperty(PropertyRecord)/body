@@ -1,0 +1,42 @@
+{
+  boolean fail=false;
+  long nextId=property.getNextProp();
+  if (!Record.NO_NEXT_PROPERTY.value(nextId)) {
+    PropertyRecord next=props.forceGetRecord(nextId);
+    if (!next.inUse() || next.getPrevProp() != property.getId())     fail|=report(property,next,"invalid next reference");
+  }
+  long prevId=property.getPrevProp();
+  if (!Record.NO_PREVIOUS_PROPERTY.value(prevId)) {
+    PropertyRecord prev=props.forceGetRecord(prevId);
+    if (!prev.inUse() || prev.getNextProp() != property.getId())     fail|=report(property,prev,"invalid previous reference");
+  }
+ else {
+    if (property.getNodeId() != -1)     fail|=checkPropertyOwnerReference(property,nodes);
+ else     if (property.getRelId() != -1)     fail|=checkPropertyOwnerReference(property,rels);
+  }
+  for (  PropertyBlock block : property.getPropertyBlocks()) {
+    if (block.getKeyIndexId() < 0)     fail|=report(property,"invalid key id of " + block);
+ else {
+      PropertyIndexRecord key=propIndexes.forceGetRecord(block.getKeyIndexId());
+      if (!key.inUse())       fail|=report(property,key,"key not in use for " + block);
+    }
+    RecordStore<DynamicRecord> dynStore=null;
+    PropertyType type=block.forceGetType();
+    if (type == null) {
+      fail|=report(property,"illegal property type");
+    }
+ else switch (block.getType()) {
+case STRING:
+      dynStore=strings;
+    break;
+case ARRAY:
+  dynStore=arrays;
+break;
+}
+if (dynStore != null) {
+DynamicRecord dynrec=dynStore.forceGetRecord(block.getSingleValueLong());
+if (!dynrec.inUse()) fail|=report(property,dynrec,"first dynamic record not in use");
+}
+}
+return fail;
+}
