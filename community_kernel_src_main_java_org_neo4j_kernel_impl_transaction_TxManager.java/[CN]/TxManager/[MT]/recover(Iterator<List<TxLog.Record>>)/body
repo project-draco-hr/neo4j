@@ -1,5 +1,7 @@
 {
-  msgLog.logMessage("TM non resolved transactions found in " + txLog.getName(),true);
+  if (danglingRecordList.hasNext()) {
+    msgLog.logMessage("TM non resolved transactions found in " + txLog.getName(),true);
+  }
   try {
     List<NonCompletedTransaction> commitList=new ArrayList<NonCompletedTransaction>();
     List<Xid> rollbackList=new LinkedList<Xid>();
@@ -7,8 +9,7 @@
     buildRecoveryInfo(commitList,rollbackList,resourceMap,danglingRecordList);
     Iterator<Resource> resourceItr=resourceMap.keySet().iterator();
     List<Xid> recoveredXidsList=new LinkedList<Xid>();
-    while (resourceItr.hasNext()) {
-      XAResource xaRes=resourceMap.get(resourceItr.next());
+    for (    XAResource xaRes : xaDsManager.getAllRegisteredXAResources()) {
       Xid xids[]=xaRes.recover(XAResource.TMNOFLAGS);
       for (int i=0; i < xids.length; i++) {
         if (XidImpl.isThisTm(xids[i].getGlobalTransactionId())) {
@@ -19,6 +20,10 @@
             xaRes.rollback(xids[i]);
           }
  else {
+            Resource resource=new Resource(xids[i].getBranchQualifier());
+            if (!resourceMap.containsKey(resource)) {
+              resourceMap.put(resource,xaRes);
+            }
             recoveredXidsList.add(xids[i]);
           }
         }
