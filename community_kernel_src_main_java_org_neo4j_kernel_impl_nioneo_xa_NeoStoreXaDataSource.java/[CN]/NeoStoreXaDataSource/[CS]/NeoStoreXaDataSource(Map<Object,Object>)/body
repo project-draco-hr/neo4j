@@ -16,6 +16,18 @@
     autoCreatePath(store);
     NeoStore.createStore(store,config);
   }
+  String deserializerProviderName=(String)config.get(Config.LOG_DESERIALIZER_IMPLEMENTATION);
+  LogDeserializerProvider deserializerProvider;
+  if (deserializerProviderName == null || deserializerProviderName.equals("native")) {
+    deserializerProvider=null;
+  }
+ else {
+    deserializerProvider=Service.load(LogDeserializerProvider.class,deserializerProviderName);
+    if (deserializerProvider == null) {
+      throw new IllegalStateException("Unknown log deserializer provide name " + deserializerProviderName);
+    }
+  }
+  config.put(LogDeserializerProvider.class,deserializerProvider);
   neoStore=new NeoStore(config);
   xaContainer=XaContainer.create(this,(String)config.get("logical_log"),new CommandFactory(neoStore),new TransactionFactory(),config);
   try {
