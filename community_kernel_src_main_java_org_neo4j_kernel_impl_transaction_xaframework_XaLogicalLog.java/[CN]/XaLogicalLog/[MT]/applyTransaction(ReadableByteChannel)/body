@@ -1,7 +1,12 @@
 {
   long logEntriesFound=0;
   scanIsComplete=false;
-  LogApplier logApplier=new LogApplier(byteChannel);
+  LogDeserializer logApplier=logApplierFactory.getLogApplier(byteChannel,writeBuffer,new LogApplier(){
+    @Override public void apply(    LogEntry entry) throws IOException {
+      applyEntry(entry);
+    }
+  }
+,cf);
   int xidIdent=getNextIdentifier();
   long startEntryPosition=writeBuffer.getFileChannelPosition();
   boolean successfullyApplied=false;
@@ -12,10 +17,10 @@
     successfullyApplied=true;
   }
   finally {
-    if (!successfullyApplied && logApplier.startEntry != null) {
+    if (!successfullyApplied && logApplier.getStartEntry() != null) {
       xidIdentMap.remove(xidIdent);
       try {
-        xaRm.forget(logApplier.startEntry.getXid());
+        xaRm.forget(logApplier.getStartEntry().getXid());
       }
  catch (      XAException e) {
         throw new IOException(e);
@@ -24,11 +29,11 @@
   }
   byteChannel.close();
   scanIsComplete=true;
-  LogEntry.Start startEntry=logApplier.startEntry;
+  LogEntry.Start startEntry=logApplier.getStartEntry();
   if (startEntry == null) {
     throw new IOException("Unable to find start entry");
   }
   startEntry.setStartPosition(startEntryPosition);
-  cacheTxStartPosition(logApplier.commitEntry.getTxId(),logApplier.commitEntry.getMasterId(),startEntry);
+  cacheTxStartPosition(logApplier.getCommitEntry().getTxId(),logApplier.getCommitEntry().getMasterId(),startEntry);
   checkLogRotation();
 }
