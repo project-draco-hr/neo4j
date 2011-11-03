@@ -1,10 +1,10 @@
 {
   ConsistencyCheck consistency=diffs.applyToAll(new ConsistencyCheck(diffs){
     @Override protected void report(    AbstractBaseRecord record,    AbstractBaseRecord referred,    String message){
-      logInconsistency(record + " " + referred+ " // "+ message);
+      logInconsistency("\n\t" + record + "\n\t"+ referred+ "\n\t"+ message);
     }
     @Override protected void report(    AbstractBaseRecord record,    String message){
-      logInconsistency(record + " // " + message);
+      logInconsistency("\n\t" + record + "\n\t"+ message);
     }
   }
 );
@@ -12,7 +12,13 @@
     consistency.checkResult();
   }
  catch (  AssertionError e) {
-    msgLog.logMessage("Cannot apply log " + startEntry + ", "+ e.getMessage());
-    throw e;
+    DataInconsistencyError error=new DataInconsistencyError("Cannot apply transaction\n\t" + startEntry + "\n\t"+ commitEntry+ "\n\t"+ e.getMessage());
+    msgLog.logMessage(error.getMessage());
+    if (rejectInconsistentTransactions) {
+      startEntry=null;
+      commitEntry=null;
+      logEntries.clear();
+      throw error;
+    }
   }
 }

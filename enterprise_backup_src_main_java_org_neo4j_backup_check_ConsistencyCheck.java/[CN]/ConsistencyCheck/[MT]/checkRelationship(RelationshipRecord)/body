@@ -11,12 +11,13 @@
       Long nodeId=field.nodeOf(rel);
       if (nodeId != null) {
         NodeRecord node=nodes.forceGetRecord(nodeId);
-        if (!node.inUse() || node.getNextRel() != rel.getId())         fail|=inconsistent(rel,node,"invalid " + field.name() + " reference");
+        if (!node.inUse() || node.getNextRel() != rel.getId())         fail|=inconsistent(rel,node,"invalid " + field.name() + " reference, node does not reference back");
       }
     }
  else {
       RelationshipRecord other=rels.forceGetRecord(otherId);
-      if (!other.inUse() || !field.invConsistent(rel,other))       fail|=inconsistent(rel,other,"invalid " + field.name() + " reference");
+      if (!other.inUse())       fail|=inconsistent(rel,other,field.name() + " reference to record not used");
+ else       if (!field.invConsistent(rel,other))       fail|=inconsistent(rel,other,"not part of the same chain, invalid " + field.name() + " reference");
     }
   }
   for (  NodeField field : nodeFields) {
@@ -24,14 +25,15 @@
     if (nodeId < 0)     fail|=inconsistent(rel,"invalid " + field.name() + " node reference");
  else {
       NodeRecord node=nodes.forceGetRecord(nodeId);
-      if (!node.inUse())       fail|=inconsistent(rel,node,"invalid " + field.name() + " node reference");
+      if (!node.inUse())       fail|=inconsistent(rel,node,"invalid " + field.name() + " node reference, not in use");
     }
   }
   if (props != null) {
     long propId=rel.getNextProp();
     if (!Record.NO_NEXT_PROPERTY.value(propId)) {
       PropertyRecord prop=props.forceGetRecord(propId);
-      if (!prop.inUse() || !Record.NO_PREVIOUS_PROPERTY.value(prop.getPrevProp()))       fail|=inconsistent(rel,prop,"invalid property reference");
+      if (!prop.inUse())       fail|=inconsistent(rel,prop,"reference to property not in use");
+ else       if (prop.getNodeId() != -1 || (prop.getRelId() != -1 && prop.getRelId() != rel.getId()))       fail|=inconsistent(rel,prop,"reference to property for other entity");
     }
   }
   return fail;

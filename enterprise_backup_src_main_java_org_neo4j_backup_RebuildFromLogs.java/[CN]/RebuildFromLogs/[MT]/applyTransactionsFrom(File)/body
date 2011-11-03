@@ -1,0 +1,15 @@
+{
+  AbstractGraphDatabase graphdb=new EmbeddedGraphDatabase(sourceDir.getAbsolutePath());
+  try {
+    XaDataSource nioneo=getDataSource(graphdb,Config.DEFAULT_DATA_SOURCE_NAME);
+    LogExtractor extractor=nioneo.getLogExtractor(2,nioneo.getLastCommittedTxId());
+    for (InMemoryLogBuffer buffer=new InMemoryLogBuffer(); ; buffer.reset()) {
+      long txId=extractor.extractNext(buffer);
+      if (txId == -1)       break;
+      applyTransaction(txId,buffer);
+    }
+  }
+  finally {
+    graphdb.shutdown();
+  }
+}
