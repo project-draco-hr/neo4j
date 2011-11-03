@@ -1,10 +1,24 @@
 {
   ConsistencyCheck consistency=diffs.applyToAll(new ConsistencyCheck(diffs){
-    @Override protected void report(    AbstractBaseRecord record,    AbstractBaseRecord referred,    String message){
-      logInconsistency("\n\t" + record + "\n\t"+ referred+ "\n\t"+ message);
+    @Override protected <R extends AbstractBaseRecord>void report(    RecordStore<R> recordStore,    R record,    String message){
+      StringBuilder log=messageHeader();
+      logRecord(log,recordStore,record);
+      log.append(message);
+      msgLog.logMessage(log.toString());
     }
-    @Override protected void report(    AbstractBaseRecord record,    String message){
-      logInconsistency("\n\t" + record + "\n\t"+ message);
+    @Override protected <R1 extends AbstractBaseRecord,R2 extends AbstractBaseRecord>void report(    RecordStore<R1> recordStore,    R1 record,    RecordStore<? extends R2> referredStore,    R2 referred,    String message){
+      StringBuilder log=messageHeader();
+      logRecord(log,recordStore,record);
+      logRecord(log,referredStore,referred);
+      log.append(message);
+      msgLog.logMessage(log.toString());
+    }
+    private <R extends AbstractBaseRecord>void logRecord(    StringBuilder log,    RecordStore<? extends R> store,    R record){
+      DiffRecordStore<? extends R> diff=(DiffRecordStore<? extends R>)store;
+      if (diff.isModified(record.getLongId())) {
+        log.append("- ").append(diff.forceGetRaw(record.getLongId())).append("\n\t+ ");
+      }
+      log.append(record).append("\n\t");
     }
   }
 );

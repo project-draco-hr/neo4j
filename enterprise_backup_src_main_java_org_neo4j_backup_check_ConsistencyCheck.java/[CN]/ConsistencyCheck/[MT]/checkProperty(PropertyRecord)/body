@@ -3,29 +3,29 @@
   long nextId=property.getNextProp();
   if (!Record.NO_NEXT_PROPERTY.value(nextId)) {
     PropertyRecord next=props.forceGetRecord(nextId);
-    if (!next.inUse())     fail|=inconsistent(property,next,"invalid next reference, next record not in use");
-    if (next.getPrevProp() != property.getId())     fail|=inconsistent(property,next,"invalid next reference, next record does not reference back");
+    if (!next.inUse())     fail|=inconsistent(props,property,next,"invalid next reference, next record not in use");
+    if (next.getPrevProp() != property.getId())     fail|=inconsistent(props,property,next,"invalid next reference, next record does not reference back");
   }
   long prevId=property.getPrevProp();
   if (!Record.NO_PREVIOUS_PROPERTY.value(prevId)) {
     PropertyRecord prev=props.forceGetRecord(prevId);
-    if (!prev.inUse())     fail|=inconsistent(property,prev,"invalid prev reference, prev record not in use");
-    if (prev.getPrevProp() != property.getId())     fail|=inconsistent(property,prev,"invalid prev reference, prev record does not reference back");
+    if (!prev.inUse())     fail|=inconsistent(props,property,prev,"invalid prev reference, prev record not in use");
+    if (prev.getPrevProp() != property.getId())     fail|=inconsistent(props,property,prev,"invalid prev reference, prev record does not reference back");
   }
  else {
     if (property.getNodeId() != -1)     fail|=checkPropertyOwnerReference(property,nodes);
  else     if (property.getRelId() != -1)     fail|=checkPropertyOwnerReference(property,rels);
   }
   for (  PropertyBlock block : property.getPropertyBlocks()) {
-    if (block.getKeyIndexId() < 0)     fail|=inconsistent(property,"invalid key id of " + block);
+    if (block.getKeyIndexId() < 0)     fail|=inconsistent(props,property,"invalid key id of " + block);
  else {
       PropertyIndexRecord key=propIndexes.forceGetRecord(block.getKeyIndexId());
-      if (!key.inUse())       fail|=inconsistent(property,key,"key not in use for " + block);
+      if (!key.inUse())       fail|=inconsistent(props,property,propIndexes,key,"key not in use for " + block);
     }
     RecordStore<DynamicRecord> dynStore=null;
     PropertyType type=block.forceGetType();
     if (type == null) {
-      fail|=inconsistent(property,"illegal property type");
+      fail|=inconsistent(props,property,"illegal property type");
     }
  else switch (block.getType()) {
 case STRING:
@@ -37,7 +37,7 @@ break;
 }
 if (dynStore != null) {
 DynamicRecord dynrec=dynStore.forceGetRecord(block.getSingleValueLong());
-if (!dynrec.inUse()) fail|=inconsistent(property,dynrec,"first dynamic record not in use");
+if (!dynrec.inUse()) fail|=inconsistent(props,property,dynStore,dynrec,"first dynamic record not in use");
 }
 }
 return fail;
