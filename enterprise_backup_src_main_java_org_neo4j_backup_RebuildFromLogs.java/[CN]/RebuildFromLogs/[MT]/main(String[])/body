@@ -1,0 +1,50 @@
+{
+  if (args.length != 2) {
+    System.err.println(RebuildFromLogs.class.getName() + " expects exactly two arguments: <source dir with logs> <target dir for graphdb>");
+    System.exit(-1);
+    return;
+  }
+  File source=new File(args[0]), target=new File(args[1]);
+  if (!source.isDirectory()) {
+    System.err.println(source + " is not a directory");
+    System.exit(-1);
+    return;
+  }
+  if (target.exists()) {
+    if (target.isDirectory()) {
+      if (OnlineBackup.directoryContainsDb(target.getAbsolutePath())) {
+        System.err.println("target graph database already exists");
+        System.exit(-1);
+        return;
+      }
+ else {
+        System.err.println("WARNING: the directory " + target + " already exists");
+      }
+    }
+ else {
+      System.err.println(target + " is a file");
+      System.exit(-1);
+      return;
+    }
+  }
+  if (findMaxLogFileId(source) < 0) {
+    System.err.println("Inconsistent number of log files found in " + source);
+    System.exit(-1);
+    return;
+  }
+  AbstractGraphDatabase graphdb=OnlineBackup.startTemporaryDb(target.getAbsolutePath(),VerificationLevel.LOGGING);
+  try {
+    try {
+      new RebuildFromLogs(graphdb).applyTransactionsFrom(source);
+    }
+  finally {
+      graphdb.shutdown();
+    }
+  }
+ catch (  IOException e) {
+    System.err.println();
+    e.printStackTrace(System.err);
+    System.exit(-1);
+    return;
+  }
+}

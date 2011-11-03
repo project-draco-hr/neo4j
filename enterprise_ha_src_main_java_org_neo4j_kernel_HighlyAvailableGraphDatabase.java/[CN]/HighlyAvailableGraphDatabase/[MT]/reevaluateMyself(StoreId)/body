@@ -1,0 +1,35 @@
+{
+  Pair<Master,Machine> master=broker.getMasterReally(true);
+  boolean iAmCurrentlyMaster=masterServer != null;
+  msgLog.logMessage("ReevaluateMyself: machineId=" + machineId + " with master["+ master+ "] (I am master="+ iAmCurrentlyMaster+ ", "+ localGraph+ ")");
+  EmbeddedGraphDbImpl newDb=null;
+  try {
+    if (master.other().getMachineId() == machineId) {
+      if (this.localGraph == null || !iAmCurrentlyMaster) {
+        internalShutdown(true);
+        newDb=startAsMaster(storeId);
+      }
+      broker.rebindMaster();
+    }
+ else {
+      broker.notifyMasterChange(master.other());
+      if (this.localGraph == null || iAmCurrentlyMaster) {
+        internalShutdown(true);
+        newDb=startAsSlave(storeId);
+      }
+ else {
+        ((SlaveIdGeneratorFactory)getConfig().getIdGeneratorFactory()).forgetIdAllocationsFromMaster();
+      }
+      ensureDataConsistencyWithMaster(newDb != null ? newDb : localGraph,master);
+      msgLog.logMessage("Data consistent with master");
+    }
+    if (newDb != null) {
+      doAfterLocalGraphStarted(newDb);
+      this.localGraph=newDb;
+    }
+  }
+ catch (  Throwable t) {
+    safelyShutdownDb(newDb);
+    throw launderedException(t);
+  }
+}

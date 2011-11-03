@@ -1,0 +1,18 @@
+{
+  boolean fail=false;
+  long nextId=record.getNextBlock();
+  if (!Record.NO_NEXT_BLOCK.value(nextId)) {
+    DynamicRecord next=store.forceGetRecord(nextId);
+    if (!next.inUse())     fail|=inconsistent(store,record,next,"next record not in use");
+    if (record.getLength() < store.getRecordSize() - store.getRecordHeaderSize())     fail|=inconsistent(store,record,"next record set, but length less than maximum");
+  }
+  if (record.getId() != 0 && record.getLength() > store.getRecordSize() - store.getRecordHeaderSize()) {
+    fail|=inconsistent(store,record,"length larger than maximum for store");
+  }
+  if (store instanceof DiffRecordStore<?>) {
+    DiffRecordStore<DynamicRecord> diffs=(DiffRecordStore<DynamicRecord>)store;
+    DynamicRecord prev=diffs.forceGetRaw(record.getId());
+    if (prev.inUse())     fail|=inconsistent(store,record,prev,"overwriting used dynamic record");
+  }
+  return fail;
+}

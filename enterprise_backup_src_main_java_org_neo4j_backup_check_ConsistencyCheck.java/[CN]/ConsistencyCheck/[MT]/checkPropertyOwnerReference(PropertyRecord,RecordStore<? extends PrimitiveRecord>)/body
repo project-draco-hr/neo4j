@@ -1,0 +1,12 @@
+{
+  boolean fail=false;
+  PrimitiveRecord entity=entityStore.forceGetRecord(property.getNodeId());
+  if (!entity.inUse())   fail|=inconsistent(props,property,entityStore,entity,"owning record not in use");
+ else   if (entity.getNextProp() != property.getId())   fail|=inconsistent(props,property,entityStore,entity,"owning record does not reference back");
+  if (entityStore instanceof DiffRecordStore<?>) {
+    DiffRecordStore<? extends PrimitiveRecord> diffs=(DiffRecordStore<? extends PrimitiveRecord>)entityStore;
+    PrimitiveRecord old=diffs.forceGetRaw(entity.getId());
+    if (old.inUse() && !Record.NO_NEXT_PROPERTY.value(old.getNextProp()))     if (old.getNextProp() != property.getId())     if (!((DiffRecordStore<?>)props).isModified(old.getNextProp()))     fail|=inconsistent(props,property,entityStore,entity,"overwriting used property record");
+  }
+  return fail;
+}

@@ -17,7 +17,7 @@
     }
  else     if (path == null && event.getState() == Watcher.Event.KeeperState.SyncConnected) {
       long newSessionId=zooKeeper.getSessionId();
-      Pair<Master,Machine> masterBeforeIWrite=getMasterFromZooKeeper(false);
+      Pair<Master,Machine> masterBeforeIWrite=getMasterFromZooKeeper(false,false);
       msgLog.logMessage("Get master before write:" + masterBeforeIWrite);
       boolean masterBeforeIWriteDiffers=masterBeforeIWrite.other().getMachineId() != getCachedMaster().other().getMachineId();
       if (newSessionId != sessionId || masterBeforeIWriteDiffers) {
@@ -25,14 +25,14 @@
           sequenceNr=setup();
           msgLog.logMessage("Did setup, seq=" + sequenceNr + " new sessionId="+ newSessionId);
           keeperState=KeeperState.SyncConnected;
-          Pair<Master,Machine> masterAfterIWrote=getMasterFromZooKeeper(false);
+          Pair<Master,Machine> masterAfterIWrote=getMasterFromZooKeeper(false,false);
           msgLog.logMessage("Get master after write:" + masterAfterIWrote);
           int masterId=masterAfterIWrote.other().getMachineId();
           msgLog.logMessage("Setting '" + MASTER_NOTIFY_CHILD + "' to "+ masterId);
           setDataChangeWatcher(MASTER_NOTIFY_CHILD,masterId);
           msgLog.logMessage("Did set '" + MASTER_NOTIFY_CHILD + "' to "+ masterId);
           if (sessionId != -1) {
-            receiver.newMaster(masterAfterIWrote,new Exception());
+            receiver.newMaster(new Exception());
           }
           sessionId=newSessionId;
         }
@@ -50,17 +50,17 @@
       keeperState=KeeperState.Disconnected;
     }
  else     if (event.getType() == Watcher.Event.EventType.NodeDataChanged) {
-      Pair<Master,Machine> currentMaster=getMasterFromZooKeeper(true);
+      Pair<Master,Machine> currentMaster=getCachedMaster();
       if (path.contains(MASTER_NOTIFY_CHILD)) {
         setDataChangeWatcher(MASTER_NOTIFY_CHILD,-1);
         if (currentMaster.other().getMachineId() == machineId) {
-          receiver.newMaster(currentMaster,new Exception());
+          receiver.newMaster(new Exception());
         }
       }
  else       if (path.contains(MASTER_REBOUND_CHILD)) {
         setDataChangeWatcher(MASTER_REBOUND_CHILD,-1);
         if (currentMaster.other().getMachineId() != machineId) {
-          receiver.newMaster(currentMaster,new Exception());
+          receiver.newMaster(new Exception());
         }
       }
  else {
