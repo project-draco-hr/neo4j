@@ -1,0 +1,14 @@
+def test_create_db_in_one_thread_read_index_in_another(self):
+    db = self.graphdb
+    with db.transaction:
+        node = db.node(name='Bob the node')
+        node_idx = db.node.indexes.create('my_nodes', type='fulltext')
+        node_idx['akey']['avalue'] = node
+
+    def read_method():
+        node_idx = db.node.indexes.get('my_nodes')
+        node = node_idx['akey']['avalue'][0]
+        self.assertEquals(node['name'], 'Bob the node')
+    thread = threading.Thread(target=read_method)
+    thread.start()
+    thread.join()
