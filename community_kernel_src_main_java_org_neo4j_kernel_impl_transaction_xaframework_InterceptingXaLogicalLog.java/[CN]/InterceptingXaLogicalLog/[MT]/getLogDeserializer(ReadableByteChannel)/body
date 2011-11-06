@@ -1,0 +1,18 @@
+{
+  final TransactionInterceptor first=TransactionInterceptorProvider.resolveChain(providers,ds);
+  LogDeserializer toReturn=new LogDeserializer(byteChannel){
+    @Override protected void intercept(    List<LogEntry> entries){
+      for (      LogEntry entry : entries) {
+        if (entry instanceof LogEntry.Command) {
+          LogEntry.Command commandEntry=(LogEntry.Command)entry;
+          if (commandEntry.getXaCommand() instanceof Command) {
+            ((Command)commandEntry.getXaCommand()).accept(first);
+          }
+        }
+      }
+      first.complete();
+    }
+  }
+;
+  return toReturn;
+}

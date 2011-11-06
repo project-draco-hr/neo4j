@@ -16,23 +16,16 @@
     autoCreatePath(store);
     NeoStore.createStore(store,config);
   }
-  String deserializerProviderName=(String)config.get(Config.LOG_DESERIALIZER_IMPLEMENTATION);
-  LogDeserializerProvider deserializerProvider;
-  if (deserializerProviderName == null || deserializerProviderName.equals("native")) {
-    deserializerProvider=null;
-  }
- else {
-    deserializerProvider=Service.load(LogDeserializerProvider.class,deserializerProviderName);
-    if (deserializerProvider == null) {
-      throw new IllegalStateException("Unknown log deserializer provide name " + deserializerProviderName);
-    }
- else {
-      msgLog.logMessage("Using " + deserializerProvider.getClass() + " as the log deserializer implementation, trigger by config option "+ deserializerProviderName);
+  providers=new ArrayList<Pair<TransactionInterceptorProvider,Object>>(2);
+  for (  TransactionInterceptorProvider provider : Service.load(TransactionInterceptorProvider.class)) {
+    Object conf=config.get(TransactionInterceptorProvider.class.getSimpleName() + "." + provider.name());
+    if (conf != null) {
+      providers.add(Pair.of(provider,conf));
     }
   }
   neoStore=new NeoStore(config);
   config.put(NeoStore.class,neoStore);
-  xaContainer=XaContainer.create(this,(String)config.get("logical_log"),new CommandFactory(neoStore),new TransactionFactory(),deserializerProvider,config);
+  xaContainer=XaContainer.create(this,(String)config.get("logical_log"),new CommandFactory(neoStore),providers.isEmpty() ? new TransactionFactory() : new InterceptingTransactionFactory(),providers,config);
   try {
     if (!readOnly) {
       neoStore.setRecoveredStatus(true);
