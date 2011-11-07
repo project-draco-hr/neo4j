@@ -18,14 +18,21 @@
   }
   providers=new ArrayList<Pair<TransactionInterceptorProvider,Object>>(2);
   for (  TransactionInterceptorProvider provider : Service.load(TransactionInterceptorProvider.class)) {
-    Object conf=config.get(TransactionInterceptorProvider.class.getSimpleName() + "." + provider.name());
+    Object conf=config.get(provider.getClass().getSimpleName() + "." + provider.name());
     if (conf != null) {
       providers.add(Pair.of(provider,conf));
     }
   }
+  TransactionFactory tf=null;
+  if ("true".equalsIgnoreCase((String)config.get(Config.INTERCEPT_COMMITTING_TRANSACTIONS)) && !providers.isEmpty()) {
+    tf=new InterceptingTransactionFactory();
+  }
+ else {
+    tf=new TransactionFactory();
+  }
   neoStore=new NeoStore(config);
   config.put(NeoStore.class,neoStore);
-  xaContainer=XaContainer.create(this,(String)config.get("logical_log"),new CommandFactory(neoStore),providers.isEmpty() ? new TransactionFactory() : new InterceptingTransactionFactory(),providers,config);
+  xaContainer=XaContainer.create(this,(String)config.get("logical_log"),new CommandFactory(neoStore),tf,providers.isEmpty() ? null : providers,config);
   try {
     if (!readOnly) {
       neoStore.setRecoveredStatus(true);
