@@ -1,0 +1,26 @@
+{
+  this.realMaster=realMaster;
+  this.frameLength=frameLength;
+  this.applicationProtocolVersion=applicationProtocolVersion;
+  this.msgLog=logger;
+  executor=Executors.newCachedThreadPool();
+  masterCallExecutor=Executors.newCachedThreadPool();
+  unfinishedTransactionExecutor=Executors.newScheduledThreadPool(2);
+  channelFactory=new NioServerSocketChannelFactory(executor,executor,maxNumberOfConcurrentTransactions);
+  silentChannelExecutor=Executors.newSingleThreadScheduledExecutor();
+  silentChannelExecutor.scheduleWithFixedDelay(silentChannelFinisher(),5,5,TimeUnit.SECONDS);
+  bootstrap=new ServerBootstrap(channelFactory);
+  bootstrap.setPipelineFactory(this);
+  Channel channel;
+  try {
+    channel=bootstrap.bind(new InetSocketAddress(port));
+  }
+ catch (  ChannelException e) {
+    msgLog.logMessage("Failed to bind master server to port " + port,e);
+    executor.shutdown();
+    throw e;
+  }
+  channelGroup=new DefaultChannelGroup();
+  channelGroup.add(channel);
+  msgLog.logMessage(getClass().getSimpleName() + " communication server started and bound to " + port,true);
+}

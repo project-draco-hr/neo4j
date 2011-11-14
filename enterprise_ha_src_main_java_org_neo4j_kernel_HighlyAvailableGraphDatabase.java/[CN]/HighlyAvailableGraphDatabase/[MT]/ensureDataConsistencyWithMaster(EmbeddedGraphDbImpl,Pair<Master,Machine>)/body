@@ -1,6 +1,6 @@
 {
   if (master.other().getMachineId() == machineId) {
-    msgLog.logMessage("I am master so cannot consistency check data with master");
+    getMessageLog().logMessage("I am master so cannot consistency check data with master");
     return;
   }
  else   if (master.first() == null) {
@@ -15,7 +15,7 @@
     masterForMyHighestCommonTxId=nioneoDataSource.getMasterForCommittedTx(myLastCommittedTx);
   }
  catch (  IOException e) {
-    msgLog.logMessage("Couldn't get master ID for txId " + myLastCommittedTx + ". It may be that a log file is missing due to the db being copied from master?",e);
+    getMessageLog().logMessage("Couldn't get master ID for txId " + myLastCommittedTx + ". It may be that a log file is missing due to the db being copied from master?",e);
     masterForMyHighestCommonTxId=Pair.of(-1,0L);
     return;
   }
@@ -24,12 +24,12 @@ catch (  Exception e) {
   }
   Pair<Integer,Long> masterForMastersHighestCommonTxId=master.first().getMasterIdForCommittedTx(myLastCommittedTx,getStoreId(newDb)).response();
   if (masterForMyHighestCommonTxId.first() == XaLogicalLog.MASTER_ID_REPRESENTING_NO_MASTER || masterForMyHighestCommonTxId.equals(masterForMastersHighestCommonTxId)) {
-    msgLog.logMessage("Master id for last committed tx ok with highestCommonTxId=" + myLastCommittedTx + " with masterId="+ masterForMyHighestCommonTxId,true);
+    getMessageLog().logMessage("Master id for last committed tx ok with highestCommonTxId=" + myLastCommittedTx + " with masterId="+ masterForMyHighestCommonTxId,true);
     return;
   }
  else {
     String msg="Branched data, I (machineId:" + machineId + ") think machineId for txId ("+ myLastCommittedTx+ ") is "+ masterForMyHighestCommonTxId+ ", but master (machineId:"+ master.other().getMachineId()+ ") says that it's "+ masterForMastersHighestCommonTxId;
-    msgLog.logMessage(msg,true);
+    getMessageLog().logMessage(msg,true);
     RuntimeException exception=new BranchedDataException(msg);
     safelyShutdownDb(newDb);
     shutdown(exception,false);
