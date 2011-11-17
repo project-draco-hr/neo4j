@@ -1,7 +1,7 @@
 {
   String activeFileName=fileName + ".active";
-  if (!new File(activeFileName).exists()) {
-    if (new File(fileName).exists()) {
+  if (!fileSystem.fileExists(activeFileName)) {
+    if (fileSystem.fileExists(fileName)) {
       open(fileName);
     }
  else {
@@ -10,7 +10,7 @@
     }
   }
  else {
-    FileChannel fc=new RandomAccessFile(activeFileName,"rw").getChannel();
+    FileChannel fc=fileSystem.open(activeFileName,"rw");
     byte bytes[]=new byte[256];
     ByteBuffer buf=ByteBuffer.wrap(bytes);
     int read=fc.read(buf);
@@ -22,24 +22,17 @@
     char c=buf.asCharBuffer().get();
     if (c == CLEAN) {
       String newLog=getLog1FileName();
-      File file=new File(newLog);
-      if (file.exists()) {
-        renameLogFileToRightVersion(getLog1FileName(),file.length());
-      }
-      file=new File(getLog2FileName());
-      if (file.exists()) {
-        renameLogFileToRightVersion(getLog2FileName(),file.length());
-      }
+      renameIfExists(newLog);
+      renameIfExists(getLog2FileName());
       open(newLog);
       setActiveLog(LOG1);
     }
  else     if (c == LOG1) {
       String newLog=getLog1FileName();
-      if (!new File(newLog).exists()) {
+      if (!fileSystem.fileExists(newLog)) {
         throw new IllegalStateException("Active marked as 1 but no " + newLog + " exist");
       }
-      File otherLog=new File(getLog2FileName());
-      if (otherLog.exists()) {
+      if (fileSystem.fileExists(getLog2FileName())) {
         fixDualLogFiles(getLog1FileName(),getLog2FileName());
       }
       currentLog=LOG1;
@@ -47,11 +40,10 @@
     }
  else     if (c == LOG2) {
       String newLog=getLog2FileName();
-      if (!new File(newLog).exists()) {
+      if (!fileSystem.fileExists(newLog)) {
         throw new IllegalStateException("Active marked as 2 but no " + newLog + " exist");
       }
-      File otherLog=new File(getLog1FileName());
-      if (otherLog.exists()) {
+      if (fileSystem.fileExists(getLog1FileName())) {
         fixDualLogFiles(getLog2FileName(),getLog1FileName());
       }
       currentLog=LOG2;

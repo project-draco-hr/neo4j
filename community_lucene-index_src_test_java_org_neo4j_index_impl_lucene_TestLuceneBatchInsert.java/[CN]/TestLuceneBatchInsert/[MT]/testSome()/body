@@ -2,14 +2,16 @@
   String path=new File(PATH,"1").getAbsolutePath();
   BatchInserter inserter=new BatchInserterImpl(path);
   BatchInserterIndexProvider provider=new LuceneBatchInserterIndexProvider(inserter);
-  BatchInserterIndex index=provider.nodeIndex("users",EXACT_CONFIG);
+  String indexName="users";
+  BatchInserterIndex index=provider.nodeIndex(indexName,EXACT_CONFIG);
   Map<Integer,Long> ids=new HashMap<Integer,Long>();
-  for (int i=0; i < 100; i++) {
+  int count=5;
+  for (int i=0; i < count; i++) {
     long id=inserter.createNode(null);
     index.add(id,map("name","Joe" + i,"other","Schmoe"));
     ids.put(i,id);
   }
-  for (int i=0; i < 100; i++) {
+  for (int i=0; i < count; i++) {
     assertContains(index.get("name","Joe" + i),ids.get(i));
   }
   assertContains(index.query("name:Joe0 AND other:Schmoe"),ids.get(0));
@@ -17,9 +19,12 @@
   provider.shutdown();
   inserter.shutdown();
   GraphDatabaseService db=new EmbeddedGraphDatabase(path);
-  assertTrue(db.index().existsForNodes("users"));
+  IndexManager indexManager=db.index();
+  assertFalse(indexManager.existsForRelationships(indexName));
+  assertTrue(indexManager.existsForNodes(indexName));
+  assertNotNull(indexManager.forNodes(indexName));
   Index<Node> dbIndex=db.index().forNodes("users");
-  for (int i=0; i < 100; i++) {
+  for (int i=0; i < count; i++) {
     assertContains(dbIndex.get("name","Joe" + i),db.getNodeById(ids.get(i)));
   }
   Collection<Node> nodes=new ArrayList<Node>();
