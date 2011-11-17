@@ -1,58 +1,42 @@
 {
-  String path="target/var/lazyloadrels";
-  FileUtils.deleteRecursively(new File(path));
-  GraphDatabaseService graphDB=new EmbeddedGraphDatabase(path);
   int num_edges=100;
   Node hub;
-  Transaction tx=graphDB.beginTx();
+  GraphDatabaseService graphDB=getGraphDb();
   Node[] nodes=new Node[256];
   for (int num_nodes=0; num_nodes < nodes.length; num_nodes+=1) {
     nodes[num_nodes]=graphDB.createNode();
   }
-  tx.success();
-  tx.finish();
+  newTransaction();
   hub=nodes[4];
   int nextID=7;
-  tx=graphDB.beginTx();
+  DynamicRelationshipType outtie=DynamicRelationshipType.withName("outtie");
+  DynamicRelationshipType innie=DynamicRelationshipType.withName("innie");
   for (int k=0; k < num_edges; k+=1) {
-    Node neighbor=graphDB.getNodeById(nextID);
+    Node neighbor=nodes[nextID];
     nextID+=7;
     nextID&=255;
-    if (nextID == 0) {
-      nextID=1;
-    }
-    hub.createRelationshipTo(neighbor,DynamicRelationshipType.withName("outtie"));
+    if (nextID == 0)     nextID=1;
+    hub.createRelationshipTo(neighbor,outtie);
   }
-  tx.success();
-  tx.finish();
-  tx=graphDB.beginTx();
+  newTransaction();
   for (int k=0; k < num_edges; k+=1) {
-    Node neighbor=graphDB.getNodeById(nextID);
+    Node neighbor=nodes[nextID];
     nextID+=7;
     nextID&=255;
-    if (nextID == 0) {
-      nextID=1;
-    }
-    neighbor.createRelationshipTo(hub,DynamicRelationshipType.withName("innie"));
+    if (nextID == 0)     nextID=1;
+    neighbor.createRelationshipTo(hub,innie);
   }
-  tx.success();
-  tx.finish();
-  graphDB.shutdown();
-  graphDB=new EmbeddedGraphDatabase(path);
+  commit();
+  clearCache();
   hub=graphDB.getNodeById(hub.getId());
   int count=0;
   for (  @SuppressWarnings("unused") Relationship r1 : hub.getRelationships()) {
-    for (    @SuppressWarnings("unused") Relationship r2 : hub.getRelationships()) {
-      count+=1;
-    }
+    count+=count(hub.getRelationships());
   }
   assertEquals(40000,count);
   count=0;
   for (  @SuppressWarnings("unused") Relationship r1 : hub.getRelationships()) {
-    for (    @SuppressWarnings("unused") Relationship r2 : hub.getRelationships()) {
-      count+=1;
-    }
+    count+=count(hub.getRelationships());
   }
   assertEquals(40000,count);
-  graphDB.shutdown();
 }
