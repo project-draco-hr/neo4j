@@ -1,15 +1,17 @@
 {
-  HashSet<RelationshipType> fakeRelationshipTypes=new HashSet<RelationshipType>();
-  fakeRelationshipTypes.add(DynamicRelationshipType.withName("a"));
-  fakeRelationshipTypes.add(DynamicRelationshipType.withName("b"));
-  fakeRelationshipTypes.add(DynamicRelationshipType.withName("c"));
-  Database database=mock(Database.class);
-  AbstractGraphDatabase graph=mock(AbstractGraphDatabase.class);
-  database.graph=graph;
-  when(database.graph.getRelationshipTypes()).thenReturn(fakeRelationshipTypes);
+  AbstractGraphDatabase db=new ImpermanentGraphDatabase();
+  Transaction tx=db.beginTx();
+  Node node=db.createNode();
+  node.createRelationshipTo(db.createNode(),withName("a"));
+  node.createRelationshipTo(db.createNode(),withName("b"));
+  node.createRelationshipTo(db.createNode(),withName("c"));
+  tx.success();
+  tx.finish();
+  Database database=new Database(db);
   DatabaseMetadataService service=new DatabaseMetadataService(database);
   Response response=service.getRelationshipTypes();
   assertEquals(200,response.getStatus());
   List<Map<String,Object>> jsonList=JsonHelper.jsonToList(response.getEntity().toString());
   assertEquals(3,jsonList.size());
+  database.shutdown();
 }
