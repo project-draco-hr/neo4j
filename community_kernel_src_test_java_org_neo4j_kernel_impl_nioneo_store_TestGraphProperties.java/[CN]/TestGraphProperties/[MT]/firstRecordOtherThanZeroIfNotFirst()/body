@@ -1,0 +1,20 @@
+{
+  EmbeddedGraphDatabase db=new EmbeddedGraphDatabase(forTest(getClass()).directory("zero",true).getAbsolutePath());
+  String storeDir=db.getStoreDir();
+  Transaction tx=db.beginTx();
+  Node node=db.createNode();
+  node.setProperty("name","Yo");
+  tx.success();
+  tx.finish();
+  db.shutdown();
+  db=new EmbeddedGraphDatabase(forTest(getClass()).directory("zero",false).getAbsolutePath());
+  tx=db.beginTx();
+  db.getConfig().getGraphDbModule().getNodeManager().getGraphProperties().setProperty("test","something");
+  tx.success();
+  tx.finish();
+  db.shutdown();
+  NeoStore neoStore=new NeoStore(genericMap(FileSystemAbstraction.class,defaultFileSystemAbstraction(),"neo_store",new File(storeDir,NeoStore.DEFAULT_NAME).getAbsolutePath(),IdGeneratorFactory.class,defaultIdGeneratorFactory()));
+  long prop=neoStore.getGraphNextProp();
+  assertTrue(prop != 0);
+  neoStore.close();
+}

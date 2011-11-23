@@ -1,0 +1,15 @@
+{
+  String storeDir=TargetDirectory.forTest(TestGraphProperties.class).directory("nonclean",true).getAbsolutePath();
+  assertEquals(0,Runtime.getRuntime().exec(new String[]{"java","-cp",System.getProperty("java.class.path"),ProduceUncleanStore.class.getName(),storeDir}).waitFor());
+  removeLastNeoStoreRecord(storeDir);
+  EmbeddedGraphDatabase db=new EmbeddedGraphDatabase(storeDir);
+  PropertyContainer properties=db.getConfig().getGraphDbModule().getNodeManager().getGraphProperties();
+  assertFalse(properties.getPropertyKeys().iterator().hasNext());
+  Transaction tx=db.beginTx();
+  properties.setProperty("a property","a value");
+  tx.success();
+  tx.finish();
+  db.getConfig().getGraphDbModule().getNodeManager().clearCache();
+  assertEquals("a value",properties.getProperty("a property"));
+  db.shutdown();
+}

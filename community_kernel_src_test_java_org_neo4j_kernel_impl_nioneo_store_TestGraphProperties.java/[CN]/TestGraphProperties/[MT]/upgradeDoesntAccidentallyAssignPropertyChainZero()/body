@@ -1,0 +1,25 @@
+{
+  EmbeddedGraphDatabase db=new EmbeddedGraphDatabase(TargetDirectory.forTest(TestGraphProperties.class).directory("upgrade",true).getAbsolutePath());
+  String storeDir=db.getStoreDir();
+  Transaction tx=db.beginTx();
+  Node node=db.createNode();
+  node.setProperty("name","Something");
+  tx.success();
+  tx.finish();
+  db.shutdown();
+  removeLastNeoStoreRecord(storeDir);
+  db=new EmbeddedGraphDatabase(storeDir);
+  PropertyContainer properties=db.getConfig().getGraphDbModule().getNodeManager().getGraphProperties();
+  assertFalse(properties.getPropertyKeys().iterator().hasNext());
+  tx=db.beginTx();
+  properties.setProperty("a property","a value");
+  tx.success();
+  tx.finish();
+  db.getConfig().getGraphDbModule().getNodeManager().clearCache();
+  assertEquals("a value",properties.getProperty("a property"));
+  db.shutdown();
+  db=new EmbeddedGraphDatabase(storeDir);
+  properties=db.getConfig().getGraphDbModule().getNodeManager().getGraphProperties();
+  assertEquals("a value",properties.getProperty("a property"));
+  db.shutdown();
+}

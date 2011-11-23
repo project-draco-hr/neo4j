@@ -1,0 +1,37 @@
+{
+  Worker worker1=new Worker(new State(db));
+  Worker worker2=new Worker(new State(db));
+  PropertyContainer properties=getGraphProperties(db);
+  worker1.beginTx();
+  worker2.beginTx();
+  String key1="name";
+  String value1="Value 1";
+  String key2="some other property";
+  String value2="Value 2";
+  String key3="say";
+  String value3="hello";
+  worker1.setProperty(key1,value1).get();
+  assertFalse(properties.hasProperty(key1));
+  assertFalse(worker2.hasProperty(key1));
+  Future<Void> blockedSetProperty=worker2.setProperty(key2,value2);
+  assertFalse(properties.hasProperty(key1));
+  assertFalse(properties.hasProperty(key2));
+  worker1.setProperty(key3,value3).get();
+  assertFalse(blockedSetProperty.isDone());
+  assertFalse(properties.hasProperty(key1));
+  assertFalse(properties.hasProperty(key2));
+  assertFalse(properties.hasProperty(key3));
+  worker1.commitTx();
+  assertTrue(properties.hasProperty(key1));
+  assertFalse(properties.hasProperty(key2));
+  assertTrue(properties.hasProperty(key3));
+  blockedSetProperty.get();
+  assertTrue(blockedSetProperty.isDone());
+  worker2.commitTx();
+  assertTrue(properties.hasProperty(key1));
+  assertTrue(properties.hasProperty(key2));
+  assertTrue(properties.hasProperty(key3));
+  assertEquals(value1,properties.getProperty(key1));
+  assertEquals(value3,properties.getProperty(key3));
+  assertEquals(value2,properties.getProperty(key2));
+}
