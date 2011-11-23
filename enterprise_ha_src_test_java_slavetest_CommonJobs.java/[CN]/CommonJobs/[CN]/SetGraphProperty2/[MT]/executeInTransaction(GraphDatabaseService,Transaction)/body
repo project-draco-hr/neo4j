@@ -1,0 +1,21 @@
+{
+  boolean success=false;
+  boolean deadlock=false;
+  try {
+    PropertyContainer properties=((AbstractGraphDatabase)db).getConfig().getGraphDbModule().getNodeManager().getGraphProperties();
+    DoubleLatch latch=fetcher.fetch();
+    properties.setProperty("2","T2 2");
+    latch.countDownFirst();
+    latch.awaitSecond();
+    db.getNodeById(node).setProperty("1","T2 2");
+    tx.success();
+    success=true;
+  }
+ catch (  DeadlockDetectedException e) {
+    deadlock=true;
+  }
+catch (  Exception e) {
+    throw new RuntimeException(e);
+  }
+  return new Boolean[]{success,deadlock};
+}

@@ -1,8 +1,10 @@
 {
+  LockGrabber grabber=null;
+  if (resource instanceof Node)   grabber=LockGrabber.NODE_READ;
+ else   if (resource instanceof Relationship)   grabber=LockGrabber.RELATIONSHIP_READ;
+ else   if (resource instanceof GraphProperties)   grabber=LockGrabber.GRAPH_READ;
   try {
-    Node node=resource instanceof Node ? (Node)resource : null;
-    Relationship relationship=resource instanceof Relationship ? (Relationship)resource : null;
-    if (node == null && relationship == null) {
+    if (grabber == null) {
       super.getReadLock(resource);
       return;
     }
@@ -10,7 +12,7 @@
     LockResult result=null;
     do {
       int eventIdentifier=getLocalTxId();
-      result=node != null ? receiver.receive(broker.getMaster().first().acquireNodeReadLock(receiver.getSlaveContext(eventIdentifier),node.getId())) : receiver.receive(broker.getMaster().first().acquireRelationshipReadLock(receiver.getSlaveContext(eventIdentifier),relationship.getId()));
+      result=receiver.receive(grabber.acquireLock(broker.getMaster().first(),receiver.getSlaveContext(eventIdentifier),resource));
 switch (result.getStatus()) {
 case OK_LOCKED:
         super.getReadLock(resource);
