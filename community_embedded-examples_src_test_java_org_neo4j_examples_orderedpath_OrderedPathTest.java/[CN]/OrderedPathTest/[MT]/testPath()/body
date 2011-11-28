@@ -8,24 +8,11 @@
       if (path.length() == 0) {
         return Evaluation.EXCLUDE_AND_CONTINUE;
       }
-      String currentName=path.lastRelationship().getType().name();
-      String relationshipType=orderedPathContext.get(path.length() - 1).name();
-      if (path.length() == orderedPathContext.size()) {
-        if (currentName.equals(relationshipType)) {
-          return Evaluation.INCLUDE_AND_PRUNE;
-        }
- else {
-          return Evaluation.EXCLUDE_AND_PRUNE;
-        }
-      }
- else {
-        if (currentName.equals(relationshipType)) {
-          return Evaluation.EXCLUDE_AND_CONTINUE;
-        }
- else {
-          return Evaluation.EXCLUDE_AND_PRUNE;
-        }
-      }
+      RelationshipType expectedType=orderedPathContext.get(path.length() - 1);
+      boolean isExpectedType=path.lastRelationship().isType(expectedType);
+      boolean included=path.length() == orderedPathContext.size() && isExpectedType;
+      boolean continued=path.length() < orderedPathContext.size() && isExpectedType;
+      return Evaluation.of(included,continued);
     }
   }
 );
@@ -33,4 +20,5 @@
   for (  Path path : t) {
     System.out.println(path);
   }
+  assertEquals(1,count(td.traverse(db.getNodeById(1))));
 }

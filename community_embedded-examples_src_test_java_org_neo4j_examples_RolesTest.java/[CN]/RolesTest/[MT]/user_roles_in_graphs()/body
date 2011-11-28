@@ -1,33 +1,30 @@
 {
-  gen.get().addSnippet("get-admins",createSourceSnippet("get-admins",this.getClass()));
+  gen.get().addSourceSnippets(this.getClass(),"get-admins","get-user-memberships","get-groups","get-members","read-traverser");
   System.out.println("All admins:");
   Node admins=getNodeByName("Admins");
   Traverser traverser=admins.traverse(Traverser.Order.BREADTH_FIRST,StopEvaluator.END_OF_GRAPH,ReturnableEvaluator.ALL_BUT_START_NODE,RoleRels.PART_OF,Direction.INCOMING,RoleRels.MEMBER_OF,Direction.INCOMING);
   gen.get().addSnippet("o-get-admins",createOutputSnippet(traverserToString(traverser)));
-  String query="start admins=node(" + admins.getId() + ") match admins<-[:PART_OF*0..]-subrole<-[:MEMBER_OF]-user return user, subrole";
+  String query="start admins=node(" + admins.getId() + ") match admins<-[:PART_OF*0..]-group<-[:MEMBER_OF]-user return user.name, group.name";
   gen.get().addSnippet("query-get-admins",createCypherSnippet(query));
   String result=engine.execute(parser.parse(query)).toString();
   assertTrue(result.contains("Engin"));
   gen.get().addSnippet("o-query-get-admins",createQueryResultSnippet(result));
-  gen.get().addSnippet("get-user-memberships",createSourceSnippet("get-user-memberships",this.getClass()));
   Node jale=getNodeByName("Jale");
   traverser=jale.traverse(Traverser.Order.DEPTH_FIRST,StopEvaluator.END_OF_GRAPH,ReturnableEvaluator.ALL_BUT_START_NODE,RoleRels.MEMBER_OF,Direction.OUTGOING,RoleRels.PART_OF,Direction.OUTGOING);
   gen.get().addSnippet("o-get-user-memberships",createOutputSnippet(traverserToString(traverser)));
-  query="start jale=node(" + jale.getId() + ") match jale-[:MEMBER_OF]->()-[:PART_OF*0..]->role return jale, role";
+  query="start jale=node(" + jale.getId() + ") match jale-[:MEMBER_OF]->()-[:PART_OF*0..]->group return group.name";
   gen.get().addSnippet("query-get-user-memberships",createCypherSnippet(query));
   result=engine.execute(parser.parse(query)).toString();
   assertTrue(result.contains("Users"));
   gen.get().addSnippet("o-query-get-user-memberships",createQueryResultSnippet(result));
-  gen.get().addSnippet("get-groups",createSourceSnippet("get-groups",this.getClass()));
   Node referenceNode=getNodeByName("Reference_Node");
   traverser=referenceNode.traverse(Traverser.Order.BREADTH_FIRST,StopEvaluator.END_OF_GRAPH,ReturnableEvaluator.ALL_BUT_START_NODE,RoleRels.ROOT,Direction.INCOMING,RoleRels.PART_OF,Direction.INCOMING);
   gen.get().addSnippet("o-get-groups",createOutputSnippet(traverserToString(traverser)));
-  query="start refNode=node(" + referenceNode.getId() + ") match refNode<-[:ROOT]->()<-[:PART_OF*0..]-group return group";
+  query="start refNode=node(" + referenceNode.getId() + ") match refNode<-[:ROOT]->()<-[:PART_OF*0..]-group return group.name";
   gen.get().addSnippet("query-get-groups",createCypherSnippet(query));
   result=engine.execute(parser.parse(query)).toString();
   assertTrue(result.contains("Users"));
   gen.get().addSnippet("o-query-get-groups",createQueryResultSnippet(result));
-  gen.get().addSnippet("get-members",createSourceSnippet("get-members",this.getClass()));
   traverser=referenceNode.traverse(Traverser.Order.BREADTH_FIRST,StopEvaluator.END_OF_GRAPH,new ReturnableEvaluator(){
     @Override public boolean isReturnableNode(    TraversalPosition currentPos){
       if (currentPos.isStartNode()) {
@@ -39,7 +36,7 @@
   }
 ,RoleRels.ROOT,Direction.INCOMING,RoleRels.PART_OF,Direction.INCOMING,RoleRels.MEMBER_OF,Direction.INCOMING);
   gen.get().addSnippet("o-get-members",createOutputSnippet(traverserToString(traverser)));
-  query="start refNode=node(" + referenceNode.getId() + ") "+ "match p=refNode<-[:ROOT]->parent<-[:PART_OF*0..]-group, group<-[:MEMBER_OF]-user return group.name, user.name, LENGTH(p) "+ "order by LENGTH(p)";
+  query="start refNode=node(" + referenceNode.getId() + ") "+ "match refNode<-[:ROOT]->root, p=root<-[PART_OF*0..]-()<-[:MEMBER_OF]-user "+ "return user.name, min(length(p)) "+ "order by min(length(p)), user.name";
   gen.get().addSnippet("query-get-members",createCypherSnippet(query));
   result=engine.execute(parser.parse(query)).toString();
   assertTrue(result.contains("Engin"));
