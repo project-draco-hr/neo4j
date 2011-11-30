@@ -1,5 +1,26 @@
 {
   boolean fail=false;
+  if (!rel.inUse()) {
+    RelationshipRecord old=rels.forceGetRaw(rel.getId());
+    if (old.inUse()) {
+      for (      RelationshipField field : relFields) {
+        long otherId=field.relOf(old);
+        if (otherId == field.none) {
+          Long nodeId=field.nodeOf(old);
+          if (nodeId != null) {
+            NodeRecord node=nodes.forceGetRecord(nodeId);
+            if (node.inUse() && node.getNextRel() == old.getId())             fail|=inconsistent(rels,rel,nodes,node,REMOVED_RELATIONSHIP_STILL_REFERENCED);
+          }
+        }
+ else {
+          RelationshipRecord other=rels.forceGetRecord(otherId);
+          if (other.inUse() && field.invConsistent(old,other))           fail|=inconsistent(rels,rel,other,REMOVED_RELATIONSHIP_STILL_REFERENCED);
+        }
+      }
+      fail|=checkPropertyReference(rel,rels,new OwningRelationship(rel.getId()));
+    }
+    return fail;
+  }
   if (rel.getType() < 0)   fail|=inconsistent(rels,rel,INVALID_TYPE_ID);
  else {
     RelationshipTypeRecord type=relTypes.forceGetRecord(rel.getType());
@@ -28,13 +49,6 @@
       if (!node.inUse())       fail|=inconsistent(rels,rel,nodes,node,field.notInUse);
     }
   }
-  if (props != null) {
-    long propId=rel.getNextProp();
-    if (!Record.NO_NEXT_PROPERTY.value(propId)) {
-      PropertyRecord prop=props.forceGetRecord(propId);
-      if (!prop.inUse())       fail|=inconsistent(rels,rel,props,prop,PROPERTY_NOT_IN_USE);
- else       if (prop.getNodeId() != -1 || (prop.getRelId() != -1 && prop.getRelId() != rel.getId()))       fail|=inconsistent(rels,rel,props,prop,PROPERTY_FOR_OTHER);
-    }
-  }
+  fail|=checkPropertyReference(rel,rels,new OwningRelationship(rel.getId()));
   return fail;
 }

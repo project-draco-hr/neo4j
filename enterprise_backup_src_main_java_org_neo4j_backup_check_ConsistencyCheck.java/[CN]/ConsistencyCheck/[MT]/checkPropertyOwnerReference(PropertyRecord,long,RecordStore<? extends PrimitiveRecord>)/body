@@ -1,0 +1,20 @@
+{
+  boolean fail=false;
+  PrimitiveRecord entity=entityStore.forceGetRecord(ownerId);
+  if (!property.inUse()) {
+    if (entity.inUse()) {
+      if (entity.getNextProp() == property.getId())       fail|=inconsistent(props,property,entityStore,entity,REMOVED_PROPERTY_STILL_REFERENCED);
+    }
+    return fail;
+  }
+  if (!entity.inUse())   fail|=inconsistent(props,property,entityStore,entity,OWNER_NOT_IN_USE);
+ else   if (entity.getNextProp() != property.getId())   fail|=inconsistent(props,property,entityStore,entity,OWNER_DOES_NOT_REFERENCE_BACK);
+  if (entityStore instanceof DiffRecordStore<?>) {
+    DiffRecordStore<? extends PrimitiveRecord> diffs=(DiffRecordStore<? extends PrimitiveRecord>)entityStore;
+    if (diffs.isModified(entity.getId())) {
+      PrimitiveRecord old=diffs.forceGetRaw(entity.getId());
+      if (old.inUse() && !Record.NO_NEXT_PROPERTY.value(old.getNextProp()))       if (old.getNextProp() != property.getId())       if (!((DiffRecordStore<?>)props).isModified(old.getNextProp()))       fail|=inconsistent(props,property,entityStore,entity,REPLACED_PROPERTY);
+    }
+  }
+  return fail;
+}

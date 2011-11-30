@@ -1,19 +1,26 @@
 {
+  if (args == null) {
+    printUsage();
+    return;
+  }
+  Args params=new Args(args);
+  boolean full=params.getBoolean("full",false,true);
+  args=params.orphans().toArray(new String[0]);
   if (args.length != 2) {
-    System.err.println(RebuildFromLogs.class.getName() + " expects exactly two arguments: <source dir with logs> <target dir for graphdb>");
+    printUsage("Exactly two positional arguments expected: <source dir with logs> <target dir for graphdb>");
     System.exit(-1);
     return;
   }
   File source=new File(args[0]), target=new File(args[1]);
   if (!source.isDirectory()) {
-    System.err.println(source + " is not a directory");
+    printUsage(source + " is not a directory");
     System.exit(-1);
     return;
   }
   if (target.exists()) {
     if (target.isDirectory()) {
       if (OnlineBackup.directoryContainsDb(target.getAbsolutePath())) {
-        System.err.println("target graph database already exists");
+        printUsage("target graph database already exists");
         System.exit(-1);
         return;
       }
@@ -22,20 +29,20 @@
       }
     }
  else {
-      System.err.println(target + " is a file");
+      printUsage(target + " is a file");
       System.exit(-1);
       return;
     }
   }
   if (findMaxLogFileId(source) < 0) {
-    System.err.println("Inconsistent number of log files found in " + source);
+    printUsage("Inconsistent number of log files found in " + source);
     System.exit(-1);
     return;
   }
-  AbstractGraphDatabase graphdb=OnlineBackup.startTemporaryDb(target.getAbsolutePath(),VerificationLevel.LOGGING);
+  AbstractGraphDatabase graphdb=OnlineBackup.startTemporaryDb(target.getAbsolutePath(),full ? VerificationLevel.FULL_WITH_LOGGING : VerificationLevel.LOGGING);
   try {
     try {
-      new RebuildFromLogs(graphdb).applyTransactionsFrom(source);
+      new RebuildFromLogs(graphdb).applyTransactionsFrom(source).fullCheck(!full);
     }
   finally {
       graphdb.shutdown();

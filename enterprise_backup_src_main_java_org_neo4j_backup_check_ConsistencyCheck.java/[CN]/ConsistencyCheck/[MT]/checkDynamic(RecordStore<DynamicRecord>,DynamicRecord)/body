@@ -1,5 +1,15 @@
 {
   boolean fail=false;
+  if (!record.inUse()) {
+    if (store instanceof DiffRecordStore<?>) {
+      DynamicRecord old=store.forceGetRaw(record.getId());
+      if (old.inUse() && !Record.NO_NEXT_BLOCK.value(old.getNextBlock())) {
+        DynamicRecord next=store.forceGetRecord(old.getNextBlock());
+        if (next.inUse())         fail|=inconsistent(store,record,next,NEXT_DYNAMIC_NOT_REMOVED);
+      }
+    }
+    return fail;
+  }
   long nextId=record.getNextBlock();
   if (!Record.NO_NEXT_BLOCK.value(nextId)) {
     DynamicRecord next=store.forceGetRecord(nextId);
@@ -11,8 +21,10 @@
   }
   if (store instanceof DiffRecordStore<?>) {
     DiffRecordStore<DynamicRecord> diffs=(DiffRecordStore<DynamicRecord>)store;
-    DynamicRecord prev=diffs.forceGetRaw(record.getId());
-    if (prev.inUse())     fail|=inconsistent(store,record,prev,OVERWRITE_USED_DYNAMIC);
+    if (diffs.isModified(record.getId())) {
+      DynamicRecord prev=diffs.forceGetRaw(record.getId());
+      if (prev.inUse())       fail|=inconsistent(store,record,prev,OVERWRITE_USED_DYNAMIC);
+    }
   }
   return fail;
 }

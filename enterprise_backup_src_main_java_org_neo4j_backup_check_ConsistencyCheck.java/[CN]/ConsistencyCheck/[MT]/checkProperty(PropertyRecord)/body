@@ -1,5 +1,25 @@
 {
   boolean fail=false;
+  if (!property.inUse()) {
+    PropertyRecord old=props.forceGetRaw(property.getId());
+    if (old.inUse()) {
+      if (!Record.NO_NEXT_PROPERTY.value(old.getNextProp())) {
+        PropertyRecord next=props.forceGetRecord(old.getNextProp());
+        if (next.inUse() && next.getPrevProp() == old.getId())         fail|=inconsistent(props,property,next,REMOVED_PROPERTY_STILL_REFERENCED);
+      }
+      if (!Record.NO_PREVIOUS_PROPERTY.value(old.getPrevProp())) {
+        PropertyRecord prev=props.forceGetRecord(old.getPrevProp());
+        if (prev.inUse() && prev.getNextProp() == old.getId())         fail|=inconsistent(props,property,prev,REMOVED_PROPERTY_STILL_REFERENCED);
+      }
+ else {
+        if (property.getNodeId() != -1)         fail|=checkPropertyOwnerReference(property,property.getNodeId(),nodes);
+ else         if (property.getRelId() != -1)         fail|=checkPropertyOwnerReference(property,property.getRelId(),rels);
+ else         if (((DiffRecordStore<PropertyRecord>)props).isModified(property.getId()))         fail|=inconsistent(props,property,PROPERTY_CHANGED_WITHOUT_OWNER);
+      }
+      fail|=checkOwnerChain(property);
+    }
+    return fail;
+  }
   long nextId=property.getNextProp();
   if (!Record.NO_NEXT_PROPERTY.value(nextId)) {
     PropertyRecord next=props.forceGetRecord(nextId);
@@ -13,9 +33,11 @@
     if (prev.getNextProp() != property.getId())     fail|=inconsistent(props,property,prev,PROPERTY_PREV_WRONG_BACKREFERENCE);
   }
  else {
-    if (property.getNodeId() != -1)     fail|=checkPropertyOwnerReference(property,nodes);
- else     if (property.getRelId() != -1)     fail|=checkPropertyOwnerReference(property,rels);
+    if (property.getNodeId() != -1)     fail|=checkPropertyOwnerReference(property,property.getNodeId(),nodes);
+ else     if (property.getRelId() != -1)     fail|=checkPropertyOwnerReference(property,property.getRelId(),rels);
+ else     if (props instanceof DiffRecordStore<?> && ((DiffRecordStore<PropertyRecord>)props).isModified(property.getId()))     fail|=inconsistent(props,property,PROPERTY_CHANGED_WITHOUT_OWNER);
   }
+  fail|=checkOwnerChain(property);
   for (  PropertyBlock block : property.getPropertyBlocks()) {
     if (block.getKeyIndexId() < 0)     fail|=inconsistent(props,property,INVALID_PROPERTY_KEY.forBlock(block));
  else {

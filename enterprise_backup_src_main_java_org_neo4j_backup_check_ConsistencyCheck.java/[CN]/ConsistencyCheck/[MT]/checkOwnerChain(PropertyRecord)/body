@@ -1,0 +1,28 @@
+{
+  boolean fail=false;
+  RecordStore<? extends PrimitiveRecord> store=null;
+  long ownerId=-1;
+  if (property.getNodeId() != -1) {
+    store=nodes;
+    ownerId=property.getNodeId();
+  }
+ else   if (property.getRelId() != -1) {
+    store=rels;
+    ownerId=property.getRelId();
+  }
+  if (store != null) {
+    PrimitiveRecord owner=property.inUse() ? store.forceGetRecord(ownerId) : store.forceGetRaw(ownerId);
+    List<PropertyRecord> chain=new ArrayList<PropertyRecord>(2);
+    PropertyRecord prop=null;
+    for (long propId=owner.getNextProp(), target=property.getId(); propId != target; propId=prop.getNextProp()) {
+      if (Record.NO_NEXT_PROPERTY.value(propId)) {
+        fail|=inconsistent(props,property,store,owner,PROPERTY_CHANGED_FOR_WRONG_OWNER.forProperties(chain));
+        break;
+      }
+      prop=property.inUse() ? props.forceGetRecord(propId) : props.forceGetRaw(propId);
+      chain.add(prop);
+    }
+  }
+ else   if (props instanceof DiffRecordStore<?> && ((DiffRecordStore<?>)props).isModified(property.getId()))   fail|=inconsistent(props,property,PROPERTY_CHANGED_WITHOUT_OWNER);
+  return fail;
+}
