@@ -1,0 +1,22 @@
+{
+  Index<Node> usersIndex=graphDb.index().forNodes("users");
+  Node userNode=usersIndex.get("name",username).getSingle();
+  if (userNode != null) {
+    return userNode;
+  }
+  Transaction tx=graphDb.beginTx();
+  try {
+    lockNode.removeProperty("__dummy__");
+    userNode=usersIndex.get("name",username).getSingle();
+    if (userNode == null) {
+      userNode=graphDb.createNode();
+      userNode.setProperty("name",username);
+      usersIndex.add(userNode,"name",username);
+    }
+    tx.success();
+    return userNode;
+  }
+  finally {
+    tx.finish();
+  }
+}
