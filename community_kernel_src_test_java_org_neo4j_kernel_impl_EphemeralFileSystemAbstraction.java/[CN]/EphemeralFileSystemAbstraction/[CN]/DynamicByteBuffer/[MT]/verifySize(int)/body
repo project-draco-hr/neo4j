@@ -2,9 +2,17 @@
   if (buf.remaining() >= amount) {
     return;
   }
-  int newSize=buf.capacity() + Math.max(Math.min(this.buf.capacity(),1024 * 1000),amount);
+  int newSize=buf.capacity();
+  int sizeIndex=newSize / SIZES[SIZES.length - 1];
+  if (sizeIndex == 0)   for (; sizeIndex < SIZES.length; sizeIndex++) {
+    if (newSize == SIZES[sizeIndex])     break;
+  }
+ else {
+    sizeIndex+=SIZES.length - 1;
+  }
+  for (int required=newSize + amount - buf.remaining(); newSize < required; newSize+=Math.min(newSize,1024 * 1024), sizeIndex++)   ;
   int oldPosition=this.buf.position();
-  ByteBuffer buf=ByteBuffer.allocate(newSize);
+  ByteBuffer buf=allocate(sizeIndex);
   this.buf.position(0);
   buf.put(this.buf);
   this.buf=buf;
