@@ -2,49 +2,51 @@
   if (properties == null) {
     return;
   }
-  PropertyData[] newArray=properties;
-  int extraLength=0;
-  if (cowPropertyAddMap != null) {
-    extraLength+=cowPropertyAddMap.size();
-  }
-  if (extraLength > 0) {
-    newArray=new PropertyData[properties.length + extraLength];
-    System.arraycopy(properties,0,newArray,0,properties.length);
-  }
-  int newArraySize=properties.length;
-  if (cowPropertyRemoveMap != null) {
-    for (    Integer keyIndex : cowPropertyRemoveMap.keySet()) {
-      for (int i=0; i < newArraySize; i++) {
-        PropertyData existingProperty=newArray[i];
-        if (existingProperty.getIndex() == keyIndex) {
-          int swapWith=--newArraySize;
-          newArray[i]=newArray[swapWith];
-          newArray[swapWith]=null;
-          break;
-        }
-      }
+synchronized (this) {
+    PropertyData[] newArray=properties;
+    int extraLength=0;
+    if (cowPropertyAddMap != null) {
+      extraLength+=cowPropertyAddMap.size();
     }
-  }
-  if (cowPropertyAddMap != null) {
-    for (    PropertyData addedProperty : cowPropertyAddMap.values()) {
-      for (int i=0; i < newArray.length; i++) {
-        PropertyData existingProperty=newArray[i];
-        if (existingProperty == null || addedProperty.getIndex() == existingProperty.getIndex()) {
-          newArray[i]=addedProperty;
-          if (existingProperty == null) {
-            newArraySize++;
+    if (extraLength > 0) {
+      newArray=new PropertyData[properties.length + extraLength];
+      System.arraycopy(properties,0,newArray,0,properties.length);
+    }
+    int newArraySize=properties.length;
+    if (cowPropertyRemoveMap != null) {
+      for (      Integer keyIndex : cowPropertyRemoveMap.keySet()) {
+        for (int i=0; i < newArraySize; i++) {
+          PropertyData existingProperty=newArray[i];
+          if (existingProperty.getIndex() == keyIndex) {
+            int swapWith=--newArraySize;
+            newArray[i]=newArray[swapWith];
+            newArray[swapWith]=null;
+            break;
           }
-          break;
         }
       }
     }
-  }
-  if (newArraySize < newArray.length) {
-    PropertyData[] compactedNewArray=new PropertyData[newArraySize];
-    System.arraycopy(newArray,0,compactedNewArray,0,newArraySize);
-    properties=compactedNewArray;
-  }
+    if (cowPropertyAddMap != null) {
+      for (      PropertyData addedProperty : cowPropertyAddMap.values()) {
+        for (int i=0; i < newArray.length; i++) {
+          PropertyData existingProperty=newArray[i];
+          if (existingProperty == null || addedProperty.getIndex() == existingProperty.getIndex()) {
+            newArray[i]=addedProperty;
+            if (existingProperty == null) {
+              newArraySize++;
+            }
+            break;
+          }
+        }
+      }
+    }
+    if (newArraySize < newArray.length) {
+      PropertyData[] compactedNewArray=new PropertyData[newArraySize];
+      System.arraycopy(newArray,0,compactedNewArray,0,newArraySize);
+      properties=compactedNewArray;
+    }
  else {
-    properties=newArray;
+      properties=newArray;
+    }
   }
 }
