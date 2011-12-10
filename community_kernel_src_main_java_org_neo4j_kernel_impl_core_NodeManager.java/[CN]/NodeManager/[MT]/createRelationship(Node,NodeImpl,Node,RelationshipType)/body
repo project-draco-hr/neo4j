@@ -1,0 +1,68 @@
+{
+  if (startNode == null || endNode == null || type == null) {
+    throw new IllegalArgumentException("Null parameter, startNode=" + startNode + ", endNode="+ endNode+ ", type="+ type);
+  }
+  if (!relTypeHolder.isValidRelationshipType(type)) {
+    relTypeHolder.addValidRelationshipType(type.name(),true);
+  }
+  long startNodeId=startNode.getId();
+  long endNodeId=endNode.getId();
+  NodeImpl secondNode=getLightNode(endNodeId);
+  if (secondNode == null) {
+    setRollbackOnly();
+    throw new NotFoundException("Second node[" + endNode.getId() + "] deleted");
+  }
+  long id=idGenerator.nextId(Relationship.class);
+  int typeId=getRelationshipTypeIdFor(type);
+  RelationshipImpl rel=newRelationshipImpl(id,startNodeId,endNodeId,type,typeId,true);
+  boolean firstNodeTaken=false;
+  boolean secondNodeTaken=false;
+  RelationshipProxy proxy=new RelationshipProxy(id,this);
+  acquireLock(proxy,LockType.WRITE);
+  boolean success=false;
+  try {
+    acquireLock(startNodeProxy,LockType.WRITE);
+    firstNodeTaken=true;
+    acquireLock(endNode,LockType.WRITE);
+    secondNodeTaken=true;
+    persistenceManager.relationshipCreate(id,typeId,startNodeId,endNodeId);
+    if (startNodeId == endNodeId) {
+      startNode.addRelationship(this,type,id,DirectionWrapper.BOTH);
+    }
+ else {
+      startNode.addRelationship(this,type,id,DirectionWrapper.OUTGOING);
+      secondNode.addRelationship(this,type,id,DirectionWrapper.INCOMING);
+    }
+    relCache.put(rel.getId(),rel);
+    success=true;
+    return proxy;
+  }
+  finally {
+    boolean releaseFailed=false;
+    if (firstNodeTaken) {
+      try {
+        releaseLock(startNodeProxy,LockType.WRITE);
+      }
+ catch (      Exception e) {
+        releaseFailed=true;
+        log.log(Level.SEVERE,"Failed to release lock",e);
+      }
+    }
+    if (secondNodeTaken) {
+      try {
+        releaseLock(endNode,LockType.WRITE);
+      }
+ catch (      Exception e) {
+        releaseFailed=true;
+        log.log(Level.SEVERE,"Failed to release lock",e);
+      }
+    }
+    releaseLock(proxy,LockType.WRITE);
+    if (!success) {
+      setRollbackOnly();
+    }
+    if (releaseFailed) {
+      throw new LockException("Unable to release locks [" + startNode + ","+ endNode+ "] in relationship create->"+ rel);
+    }
+  }
+}
