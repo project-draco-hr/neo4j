@@ -9,7 +9,12 @@
     int vRelPropCount=0;
     int vNodeIndexServicePropCount=0;
     int vNodeIndexProviderPropCount=0;
-    Set<Node> otherNodes=IteratorUtil.addToCollection(GlobalGraphOperations.at(otherDb).getAllNodes().iterator(),new HashSet<Node>());
+    Set<Long> others=IteratorUtil.addToCollection(new IterableWrapper<Long,Node>(GlobalGraphOperations.at(otherDb).getAllNodes()){
+      @Override protected Long underlyingObjectToObject(      Node node){
+        return node.getId();
+      }
+    }
+,new HashSet<Long>());
     for (    Node node : GlobalGraphOperations.at(refDb).getAllNodes()) {
       Node otherNode=otherDb.getNodeById(node.getId());
       int[] counts=verifyNode(node,otherNode,refDb,otherDb);
@@ -18,10 +23,10 @@
       vRelPropCount+=counts[2];
       vNodeIndexServicePropCount+=counts[3];
       vNodeIndexProviderPropCount+=counts[4];
-      otherNodes.remove(otherNode);
+      others.remove(otherNode.getId());
       vNodeCount++;
     }
-    assertTrue(otherNodes.isEmpty());
+    assertTrue(others.isEmpty());
     if (expectsResults) {
       assertEquals(nodeCount,vNodeCount);
       assertEquals(relCount,vRelCount);
