@@ -1,7 +1,7 @@
 {
   try {
     String path=event.getPath();
-    msgLog.logMessage(this + ", " + new Date()+ " Got event: "+ event+ "(path="+ path+ ")",true);
+    msgLog.logMessage(this + ", " + new Date()+ " Got event: "+ event+ " (path="+ path+ ")",true);
     if (path == null && event.getState() == Watcher.Event.KeeperState.Expired) {
       keeperState=KeeperState.Expired;
       if (zooKeeper != null) {
@@ -27,9 +27,8 @@
           Pair<Master,Machine> masterAfterIWrote=getMasterFromZooKeeper(false,false);
           msgLog.logMessage("Get master after write:" + masterAfterIWrote);
           int masterId=masterAfterIWrote.other().getMachineId();
-          msgLog.logMessage("Setting '" + MASTER_NOTIFY_CHILD + "' to "+ masterId);
           setDataChangeWatcher(MASTER_NOTIFY_CHILD,masterId);
-          msgLog.logMessage("Did set '" + MASTER_NOTIFY_CHILD + "' to "+ masterId);
+          msgLog.logMessage("Set '" + MASTER_NOTIFY_CHILD + "' to "+ masterId);
           if (sessionId != -1) {
             receiver.newMaster(new Exception());
           }
@@ -51,17 +50,14 @@
       keeperState=KeeperState.Disconnected;
     }
  else     if (event.getType() == Watcher.Event.EventType.NodeDataChanged) {
-      Pair<Master,Machine> currentMaster=getCachedMaster();
+      int newMasterMachineId=toInt(getZooKeeper().getData(path,true,null));
       if (path.contains(MASTER_NOTIFY_CHILD)) {
-        setDataChangeWatcher(MASTER_NOTIFY_CHILD,-1);
-        if (currentMaster.other().getMachineId() == machineId) {
+        if (newMasterMachineId == machineId) {
           receiver.newMaster(new Exception());
         }
       }
  else       if (path.contains(MASTER_REBOUND_CHILD)) {
-        if (writeLastCommittedTx)         setDataChangeWatcher(MASTER_REBOUND_CHILD,-1);
- else         subscribeToDataChangeWatcher(MASTER_REBOUND_CHILD);
-        if (currentMaster.other().getMachineId() != machineId) {
+        if (newMasterMachineId != machineId) {
           receiver.newMaster(new Exception());
         }
       }
@@ -70,10 +66,10 @@
       }
     }
   }
- catch (  RuntimeException e) {
+ catch (  Exception e) {
     msgLog.logMessage("Error in ZooClient.process",e,true);
     e.printStackTrace();
-    throw e;
+    throw Exceptions.launderedException(e);
   }
  finally {
     msgLog.flush();
