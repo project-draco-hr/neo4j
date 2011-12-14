@@ -1,0 +1,26 @@
+{
+  LogLoader loader=new LogLoader(){
+    private final FileSystemAbstraction FILE_SYSTEM=CommonFactories.defaultFileSystemAbstraction();
+    private final long highestLogVersion=XaLogicalLog.getHighestHistoryLogVersion(new File(storeDir),NeoStoreXaDataSource.LOGICAL_LOG_DEFAULT_NAME);
+    @Override public ReadableByteChannel getLogicalLogOrMyselfCommitted(    long version,    long position) throws IOException {
+      String name=new File(storeDir,NeoStoreXaDataSource.LOGICAL_LOG_DEFAULT_NAME + ".v" + version).getAbsolutePath();
+      if (!FILE_SYSTEM.fileExists(name)) {
+        throw new NoSuchLogVersionException(version);
+      }
+      FileChannel channel=FILE_SYSTEM.open(name,"r");
+      channel.position(position);
+      return new BufferedFileChannel(channel);
+    }
+    @Override public long getHighestLogVersion(){
+      return highestLogVersion;
+    }
+  }
+;
+  XaCommandFactory commandFactory=new XaCommandFactory(){
+    @Override public XaCommand readCommand(    ReadableByteChannel byteChannel,    ByteBuffer buffer) throws IOException {
+      return Command.readCommand(null,byteChannel,buffer);
+    }
+  }
+;
+  return new LogExtractor(new LogPositionCache(),loader,commandFactory,startTxId,Long.MAX_VALUE);
+}
