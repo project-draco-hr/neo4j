@@ -1,14 +1,22 @@
 {
-  Vagrant v=vagrant(Box.WINDOWS_2008_R2_AMD64,"windows-2008R2-amd64-plain");
+  Vagrant v=vagrant(Box.WINDOWS_2008_R2_AMD64,"windows-2008R2-amd64-jre6");
+  v.up();
   try {
-    v.up();
-    v.copyFromHost(System.getProperty("user.dir") + "/target/test-classes/test","/home/vagrant");
-    SSHShell vm=v.ssh();
-    Result r=vm.run("cat /home/vagrant/test");
-    System.out.println(r.getOutput());
+    v.copyFromHost(System.getProperty("user.dir") + "/target/classes/installer-windows-1.6-SNAPSHOT-windows-community.msi","/home/vagrant/installer.msi");
+    CygwinShell sh=new CygwinShell(v.ssh());
+    sh.run(":> install.log");
+    sh.runDOS("msiexec /quiet /L*v install.log /i installer.msi INSTALL_DIR=\"C:\\det ??r d??ligt. mycket mycket d??ligt. g??r inte s??h??r.\"");
+    sh.close();
+    try {
+      checkDataRest();
+      fail("Server is still listening to port 7474 even after uninstall");
+    }
+ catch (    ClientHandlerException e) {
+    }
   }
  catch (  ShellException e) {
     System.out.println(e.getResult().getOutput());
+    throw e;
   }
  finally {
   }
