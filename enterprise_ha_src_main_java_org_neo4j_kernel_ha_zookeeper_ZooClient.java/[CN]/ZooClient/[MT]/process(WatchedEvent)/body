@@ -27,10 +27,9 @@
           Pair<Master,Machine> masterAfterIWrote=getMasterFromZooKeeper(false,false);
           msgLog.logMessage("Get master after write:" + masterAfterIWrote);
           int masterId=masterAfterIWrote.other().getMachineId();
-          setDataChangeWatcher(MASTER_NOTIFY_CHILD,masterId);
           msgLog.logMessage("Set '" + MASTER_NOTIFY_CHILD + "' to "+ masterId);
           if (sessionId != -1) {
-            receiver.newMaster(new Exception());
+            receiver.newMaster(new Exception("Got SyncConnected event from ZK"));
           }
           sessionId=newSessionId;
         }
@@ -50,7 +49,8 @@
       keeperState=KeeperState.Disconnected;
     }
  else     if (event.getType() == Watcher.Event.EventType.NodeDataChanged) {
-      int newMasterMachineId=toInt(getZooKeeper().getData(path,true,null));
+      int newMasterMachineId=toInt(getZooKeeper(true).getData(path,true,null));
+      msgLog.logMessage("Got event data " + newMasterMachineId);
       if (path.contains(MASTER_NOTIFY_CHILD)) {
         if (newMasterMachineId == machineId) {
           receiver.newMaster(new Exception());

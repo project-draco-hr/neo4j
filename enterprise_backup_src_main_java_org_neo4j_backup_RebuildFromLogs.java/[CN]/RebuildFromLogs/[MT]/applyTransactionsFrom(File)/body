@@ -1,8 +1,7 @@
 {
-  AbstractGraphDatabase graphdb=new EmbeddedGraphDatabase(sourceDir.getAbsolutePath(),Collections.singletonMap(Config.KEEP_LOGICAL_LOGS,"true"));
+  LogExtractor extractor=null;
   try {
-    XaDataSource nioneo=getDataSource(graphdb,Config.DEFAULT_DATA_SOURCE_NAME);
-    LogExtractor extractor=nioneo.getLogExtractor(2,nioneo.getLastCommittedTxId());
+    extractor=LogExtractor.from(sourceDir.getAbsolutePath(),2);
     for (InMemoryLogBuffer buffer=new InMemoryLogBuffer(); ; buffer.reset()) {
       long txId=extractor.extractNext(buffer);
       if (txId == -1)       break;
@@ -10,7 +9,7 @@
     }
   }
   finally {
-    graphdb.shutdown();
+    if (extractor != null)     extractor.close();
   }
   return this;
 }
