@@ -1,0 +1,19 @@
+{
+  String sourceDir=forTest(getClass()).directory("source" + nr,true).getAbsolutePath();
+  Runtime.getRuntime().exec(new String[]{"java","-cp",System.getProperty("java.class.path"),CreateSomeTransactions.class.getName(),sourceDir,"" + cleanShutdown}).waitFor();
+  AbstractGraphDatabase newDb=new EmbeddedGraphDatabase(TargetDirectory.forTest(getClass()).directory("target" + nr,true).getAbsolutePath());
+  XaDataSource ds=newDb.getConfig().getTxModule().getXaDataSourceManager().getXaDataSource(Config.DEFAULT_DATA_SOURCE_NAME);
+  LogExtractor extractor=LogExtractor.from(sourceDir);
+  long expectedTxId=2;
+  while (true) {
+    InMemoryLogBuffer buffer=new InMemoryLogBuffer();
+    long txId=extractor.extractNext(buffer);
+    assertEquals(expectedTxId++,txId);
+    if (expectedTxId == 9)     expectedTxId=-1;
+    if (txId == -1)     break;
+    ds.applyCommittedTransaction(txId,buffer);
+  }
+  DbRepresentation newRep=DbRepresentation.of(newDb);
+  newDb.shutdown();
+  assertEquals(DbRepresentation.of(sourceDir),newRep);
+}

@@ -1,0 +1,26 @@
+{
+  try {
+    while (this.version <= logLoader.getHighestLogVersion()) {
+      long result=collectNextFromCurrentSource(target);
+      if (result != -1) {
+        if (previousCommitEntry != null && result == previousCommitEntry.getTxId())         continue;
+        if (result != nextExpectedTxId) {
+          throw new RuntimeException("Expected txId " + nextExpectedTxId + ", but got "+ result+ " (starting from "+ startTxId+ ")"+ " "+ counter+ ", "+ previousCommitEntry+ ", "+ lastCommitEntry);
+        }
+        nextExpectedTxId++;
+        counter++;
+        return result;
+      }
+      if (this.version < logLoader.getHighestLogVersion()) {
+        continueInNextLog();
+      }
+ else       break;
+    }
+    return -1;
+  }
+ catch (  Exception e) {
+    cache.clear();
+    if (e instanceof IOException)     throw (IOException)e;
+ else     throw Exceptions.launderedException(e);
+  }
+}

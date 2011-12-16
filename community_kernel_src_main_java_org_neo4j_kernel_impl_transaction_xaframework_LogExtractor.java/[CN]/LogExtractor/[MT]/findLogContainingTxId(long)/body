@@ -1,0 +1,30 @@
+{
+  long version=logLoader.getHighestLogVersion();
+  long committedTx=1;
+  while (version >= 0) {
+    Long cachedLastTx=cache.getHeader(version);
+    if (cachedLastTx != null) {
+      committedTx=cachedLastTx.longValue();
+    }
+ else {
+      ReadableByteChannel logChannel=logLoader.getLogicalLogOrMyselfCommitted(version,0);
+      try {
+        ByteBuffer buf=ByteBuffer.allocate(16);
+        long[] header=readAndAssertLogHeader(buf,logChannel,version);
+        committedTx=header[1];
+        cache.putHeader(version,committedTx);
+      }
+  finally {
+        logChannel.close();
+      }
+    }
+    if (committedTx < txId) {
+      break;
+    }
+    version--;
+  }
+  if (version == -1) {
+    throw new RuntimeException("txId:" + txId + " not found in any logical log "+ "(starting at "+ logLoader.getHighestLogVersion()+ " and searching backwards");
+  }
+  return new long[]{version,committedTx};
+}

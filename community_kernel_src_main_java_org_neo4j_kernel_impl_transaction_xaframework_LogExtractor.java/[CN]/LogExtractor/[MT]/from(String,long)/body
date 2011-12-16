@@ -1,0 +1,43 @@
+{
+  LogLoader loader=new LogLoader(){
+    private final FileSystemAbstraction fileSystem=CommonFactories.defaultFileSystemAbstraction();
+    private final Map<Long,String> activeLogFiles=getActiveLogs(storeDir);
+    private final long highestLogVersion=max(getHighestHistoryLogVersion(new File(storeDir),LOGICAL_LOG_DEFAULT_NAME),maxKey(activeLogFiles));
+    @Override public ReadableByteChannel getLogicalLogOrMyselfCommitted(    long version,    long position) throws IOException {
+      String name=new File(storeDir,LOGICAL_LOG_DEFAULT_NAME + ".v" + version).getAbsolutePath();
+      if (!fileSystem.fileExists(name)) {
+        name=activeLogFiles.get(version);
+        if (name == null)         throw new NoSuchLogVersionException(version);
+      }
+      FileChannel channel=fileSystem.open(name,"r");
+      channel.position(position);
+      return new BufferedFileChannel(channel);
+    }
+    private long maxKey(    Map<Long,String> activeLogFiles){
+      long max=0;
+      for (      Long key : activeLogFiles.keySet())       max=max(max,key);
+      return max;
+    }
+    private Map<Long,String> getActiveLogs(    String storeDir) throws IOException {
+      Map<Long,String> result=new HashMap<Long,String>();
+      for (      String postfix : ACTIVE_POSTFIXES) {
+        File candidateFile=new File(storeDir,LOGICAL_LOG_DEFAULT_NAME + postfix);
+        if (!candidateFile.exists())         continue;
+        long[] header=LogIoUtils.readLogHeader(fileSystem,candidateFile);
+        result.put(header[0],candidateFile.getAbsolutePath());
+      }
+      return result;
+    }
+    @Override public long getHighestLogVersion(){
+      return highestLogVersion;
+    }
+  }
+;
+  XaCommandFactory commandFactory=new XaCommandFactory(){
+    @Override public XaCommand readCommand(    ReadableByteChannel byteChannel,    ByteBuffer buffer) throws IOException {
+      return Command.readCommand(null,byteChannel,buffer);
+    }
+  }
+;
+  return new LogExtractor(new LogPositionCache(),loader,commandFactory,startTxId,Long.MAX_VALUE);
+}
