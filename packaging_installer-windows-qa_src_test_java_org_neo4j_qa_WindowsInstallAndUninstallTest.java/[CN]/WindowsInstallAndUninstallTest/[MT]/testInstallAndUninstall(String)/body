@@ -1,0 +1,18 @@
+{
+  vm.copyFromHost(installerPath,"/home/vagrant/installer.msi");
+  sh.run(":> install.log");
+  sh.runDOS("msiexec /quiet /L* install.log /i installer.msi INSTALL_DIR=\"C:\\neo4j install with spaces\"");
+  sh.run("net stop neo4j");
+  sh.run("echo org.neo4j.server.webserver.address=0.0.0.0 >> /cygdrive/c/neo4j\\ install\\ with\\ spaces/conf/neo4j-server.properties");
+  sh.run("net start neo4j");
+  checkDataRest();
+  sh.run("net stop neo4j");
+  sh.run(":> uninstall.log");
+  sh.runDOS("msiexec /quiet /L*v uninstall.log /x installer.msi");
+  try {
+    checkDataRest();
+    fail("Server is still listening to port 7474 even after uninstall");
+  }
+ catch (  ClientHandlerException e) {
+  }
+}
