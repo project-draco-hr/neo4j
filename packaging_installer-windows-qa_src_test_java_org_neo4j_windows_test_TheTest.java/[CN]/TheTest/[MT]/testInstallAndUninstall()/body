@@ -1,11 +1,18 @@
 {
-  Vagrant v=vagrant(Box.WINDOWS_2008_R2_AMD64,"windows-2008R2-amd64-jre6");
+  Vagrant v=vagrant(Box.WINDOWS_2008_R2_AMD64,"win2008","windows-2008R2-amd64-plain");
   v.up();
   try {
     v.copyFromHost(System.getProperty("user.dir") + "/target/classes/installer-windows-1.6-SNAPSHOT-windows-community.msi","/home/vagrant/installer.msi");
     CygwinShell sh=new CygwinShell(v.ssh());
     sh.run(":> install.log");
-    sh.runDOS("msiexec /quiet /L*v install.log /i installer.msi INSTALL_DIR=\"C:\\det ??r d??ligt. mycket mycket d??ligt. g??r inte s??h??r.\"");
+    sh.runDOS("msiexec /quiet /L* install.log /i installer.msi INSTALL_DIR=\"C:\\neo4j install with spaces\"");
+    sh.run("net stop neo4j");
+    sh.run("echo org.neo4j.server.webserver.address=0.0.0.0 >> /cygdrive/c/neo4j\\ install\\ with\\ spaces/conf/neo4j-server.properties");
+    sh.run("net start neo4j");
+    checkDataRest();
+    sh.run("net stop neo4j");
+    sh.run(":> uninstall.log");
+    sh.runDOS("msiexec /quiet /L*v uninstall.log /x installer.msi");
     sh.close();
     try {
       checkDataRest();
@@ -19,5 +26,6 @@
     throw e;
   }
  finally {
+    v.rollback();
   }
 }
