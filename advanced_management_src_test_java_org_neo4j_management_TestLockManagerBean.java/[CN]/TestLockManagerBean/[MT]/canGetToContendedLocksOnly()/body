@@ -1,0 +1,80 @@
+{
+  final Node root=graphDb.getReferenceNode();
+  Transaction tx=graphDb.beginTx();
+  try {
+    graphDb.createNode();
+    Lock lock=tx.acquireReadLock(root);
+    List<LockInfo> locks=lockManager.getLocks();
+    assertEquals("unexpected lock count",2,locks.size());
+    for (    LockInfo l : locks) {
+switch (l.getResourceType()) {
+case NODE:
+        if ("0".equals(l.getResourceId())) {
+          assertEquals("read count",1,l.getReadCount());
+          assertEquals("write count",0,l.getWriteCount());
+        }
+ else {
+          assertEquals("read count",0,l.getReadCount());
+          assertEquals("write count",1,l.getWriteCount());
+        }
+      break;
+default :
+    fail("Unexpected locked resource type: " + l.getResourceType());
+}
+}
+final CountDownLatch latch=new CountDownLatch(1);
+Thread t=new Thread(){
+@Override public void run(){
+  Transaction tx=graphDb.beginTx();
+  try {
+    root.setProperty("block","here");
+  }
+  finally {
+    tx.finish();
+  }
+  latch.countDown();
+}
+}
+;
+t.start();
+awaitWaitingStateIn(t);
+locks=lockManager.getLocks();
+assertEquals("unexpected lock count",2,locks.size());
+for (LockInfo l : locks) {
+switch (l.getResourceType()) {
+case NODE:
+  if ("0".equals(l.getResourceId())) {
+    assertEquals("read count",1,l.getReadCount());
+    assertEquals("write count",0,l.getWriteCount());
+    List<WaitingThread> waiters=l.getWaitingThreads();
+    assertEquals("unxpected number of waiting threads",1,waiters.size());
+    WaitingThread waiter=waiters.get(0);
+    assertNotNull(waiter);
+  }
+ else {
+    assertEquals("read count",0,l.getReadCount());
+    assertEquals("write count",1,l.getWriteCount());
+  }
+break;
+default :
+fail("Unexpected locked resource type: " + l.getResourceType());
+}
+}
+locks=lockManager.getContendedLocks(0);
+assertEquals("unexpected lock count",1,locks.size());
+LockInfo l=locks.get(0);
+assertEquals("resource type",ResourceType.NODE,l.getResourceType());
+assertEquals("resource id","0",l.getResourceId());
+assertEquals("read count",1,l.getReadCount());
+assertEquals("write count",0,l.getWriteCount());
+List<WaitingThread> waiters=l.getWaitingThreads();
+assertEquals("unxpected number of waiting threads",1,waiters.size());
+WaitingThread waiter=waiters.get(0);
+assertNotNull(waiter);
+lock.release();
+latch.await();
+}
+  finally {
+tx.finish();
+}
+}
