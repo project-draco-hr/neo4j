@@ -2,12 +2,24 @@
   String root=getRoot();
   String path=root + "/" + child;
   try {
-    zooKeeper.getData(path,true,null);
+    try {
+      zooKeeper.getData(path,true,null);
+    }
+ catch (    KeeperException e) {
+      if (e.code() == KeeperException.Code.NONODE) {
+        byte[] data=new byte[4];
+        ByteBuffer.wrap(data).putInt(-1);
+        try {
+          zooKeeper.create(path,data,ZooDefs.Ids.OPEN_ACL_UNSAFE,CreateMode.PERSISTENT);
+        }
+ catch (        KeeperException ce) {
+          if (e.code() != KeeperException.Code.NODEEXISTS)           throw new ZooKeeperException("Creation error",ce);
+        }
+      }
+ else       throw new ZooKeeperException("Couldn't get or create " + child,e);
+    }
   }
- catch (  KeeperException e) {
-    msgLog.logMessage("Couldn't get master notify node",e);
-  }
-catch (  InterruptedException e) {
+ catch (  InterruptedException e) {
     Thread.interrupted();
     throw new ZooKeeperException("Interrupted",e);
   }
