@@ -1,0 +1,23 @@
+{
+  EnterpriseDriver d;
+  List<String> coordinators=new ArrayList<String>();
+  for (int i=0; i < drivers.length; i++) {
+    d=drivers[i];
+    d.up();
+    d.runInstall();
+    d.stopService();
+    setupZookeeper(d,i + 1);
+    coordinators.add(d.getVM().definition().ip() + ":" + (zooClientPortBase + i + 1));
+  }
+  String coordinatorsConfigValue=StringUtils.join(coordinators,",");
+  for (int i=0; i < drivers.length; i++) {
+    d=drivers[i];
+    String neo4jConf=d.installDir() + "/conf/neo4j.properties";
+    String serverConf=d.installDir() + "/conf/neo4j-server.properties";
+    d.setConfig(neo4jConf,"ha.server_id","" + (i + 1));
+    d.setConfig(neo4jConf,"ha.server","0.0.0.0:6001");
+    d.setConfig(neo4jConf,"ha.coordinators",coordinatorsConfigValue);
+    d.setConfig(serverConf,"org.neo4j.server.database.mode","HA");
+    d.startService();
+  }
+}
