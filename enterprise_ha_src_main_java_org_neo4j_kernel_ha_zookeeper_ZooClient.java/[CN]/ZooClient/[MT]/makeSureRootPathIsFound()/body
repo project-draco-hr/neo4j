@@ -1,8 +1,24 @@
 {
   if (rootPath == null) {
-    Pair<String,Long> info=rootPathGetter.getRootPath(zooKeeper);
-    rootPath=info.first();
-    committedTx=info.other();
+    storeId=ClusterManager.getClusterStoreId(zooKeeper,clusterName);
+    if (storeId != null) {
+      rootPath=asRootPath(storeId);
+      if (NeoStoreUtil.storeExists(getGraphDb().getStoreDir())) {
+        NeoStoreUtil store=new NeoStoreUtil(getGraphDb().getStoreDir());
+        committedTx=store.getLastCommittedTx();
+        if (!storeId.equals(store.asStoreId()))         throw new ZooKeeperException("StoreId in database doesn't match that of the ZK cluster");
+      }
+ else {
+        committedTx=1;
+      }
+    }
+ else {
+      if (!allowCreateCluster)       throw new RuntimeException("Not allowed to create cluster");
+      storeId=new StoreId();
+      createCluster(storeId);
+      rootPath=asRootPath(storeId);
+      committedTx=1;
+    }
     masterForCommittedTx=getFirstMasterForTx(committedTx);
   }
 }
