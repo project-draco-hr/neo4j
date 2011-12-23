@@ -1,8 +1,15 @@
 {
   getMessageLog().logMessage("Internal shutdown of HA db[" + machineId + "] reference="+ this+ ", masterServer="+ masterServer,new Exception("Internal shutdown"),true);
+  pullUpdates=false;
   if (this.updatePuller != null) {
     getMessageLog().logMessage("Internal shutdown updatePuller",true);
-    this.updatePuller.shutdownNow();
+    try {
+      this.updatePuller.shutdown();
+      this.updatePuller.awaitTermination(5,TimeUnit.SECONDS);
+    }
+ catch (    InterruptedException e) {
+      getMessageLog().logMessage("Got exception while waiting for update puller termination",e,true);
+    }
     getMessageLog().logMessage("Internal shutdown updatePuller DONE",true);
     this.updatePuller=null;
   }

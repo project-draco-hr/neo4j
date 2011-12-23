@@ -2,6 +2,7 @@
   Pair<Master,Machine> master=broker.getMasterReally(true);
   boolean iAmCurrentlyMaster=masterServer != null;
   getMessageLog().logMessage("ReevaluateMyself: machineId=" + machineId + " with master["+ master+ "] (I am master="+ iAmCurrentlyMaster+ ", "+ localGraph+ ")");
+  pullUpdates=false;
   EmbeddedGraphDbImpl newDb=null;
   try {
     if (master.other().getMachineId() == machineId) {
@@ -26,6 +27,10 @@
     if (newDb != null) {
       doAfterLocalGraphStarted(newDb);
       this.localGraph=newDb;
+      if (masterServer == null) {
+        instantiateAutoUpdatePullerIfConfigSaysSo();
+        pullUpdates=true;
+      }
     }
   }
  catch (  Throwable t) {
