@@ -1,0 +1,22 @@
+{
+  final String key="name";
+  final String value="Mattias";
+  final String property="counter";
+  final Index<Node> index=nodeIndex(testname.getMethodName(),LuceneIndexImplementation.EXACT_CONFIG);
+  final AtomicInteger counter=new AtomicInteger();
+  UniqueFactory<Node> factory=new UniqueFactory.UniqueNodeFactory(index){
+    @Override protected void initialize(    Node node,    String k,    Object v){
+      assertEquals(key,k);
+      assertEquals(value,v);
+      node.setProperty(property,counter.getAndIncrement());
+    }
+  }
+;
+  Node unique=factory.getOrCreate(key,value);
+  assertNotNull(unique);
+  assertEquals("not initialized",0,unique.getProperty(property,null));
+  assertEquals(unique,index.get(key,value).getSingle());
+  assertEquals(unique,factory.getOrCreate(key,value));
+  assertEquals("initialized more than once",0,unique.getProperty(property));
+  assertEquals(unique,index.get(key,value).getSingle());
+}
