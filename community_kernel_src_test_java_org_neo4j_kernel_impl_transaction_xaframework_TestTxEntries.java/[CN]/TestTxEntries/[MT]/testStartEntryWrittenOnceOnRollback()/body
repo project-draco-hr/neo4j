@@ -3,8 +3,12 @@
   Process process=Runtime.getRuntime().exec(new String[]{"java","-cp",System.getProperty("java.class.path"),RollbackUnclean.class.getName(),storeDir});
   InputStream stdout=process.getInputStream();
   InputStream stderr=process.getErrorStream();
-  while (stdout.read() >= 0 || stderr.read() > 0) {
-  }
+  Thread out=new Thread(new StreamConsumer(stdout,System.out));
+  Thread err=new Thread(new StreamConsumer(stderr,System.err));
+  out.start();
+  err.start();
+  out.join();
+  err.join();
   int exit=process.waitFor();
   assertEquals(0,exit);
   new EmbeddedGraphDatabase(storeDir).shutdown();
