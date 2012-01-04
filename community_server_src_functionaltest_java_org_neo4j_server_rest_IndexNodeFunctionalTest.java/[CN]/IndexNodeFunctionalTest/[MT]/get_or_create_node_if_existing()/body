@@ -1,0 +1,21 @@
+{
+  final String index="people", key="name", value="Peter";
+  GraphDatabaseService graphdb=graphdb();
+  Transaction tx=graphdb.beginTx();
+  try {
+    Node peter=graphdb.createNode();
+    peter.setProperty(key,value);
+    peter.setProperty("sequence",1);
+    graphdb.index().forNodes(index).add(peter,key,value);
+    tx.success();
+  }
+  finally {
+    tx.finish();
+  }
+  helper.createNodeIndex(index);
+  ResponseEntity response=gen.get().expectedStatus(200).payloadType(MediaType.APPLICATION_JSON_TYPE).payload("{\"key\": \"" + key + "\", \"value\": \""+ value+ "\", \"properties\": {\""+ key+ "\": \""+ value+ "\", \"sequence\": 2}}").post(functionalTestHelper.nodeIndexUri() + index + "?unique");
+  Map<String,Object> result=JsonHelper.jsonToMap(response.entity());
+  Map<String,Object> data=assertCast(Map.class,result.get("data"));
+  assertEquals(value,data.get(key));
+  assertEquals(1,data.get("sequence"));
+}

@@ -1,0 +1,25 @@
+{
+  Transaction tx=beginTx();
+  try {
+    Node result;
+    boolean created;
+    if (nodeOrNull != null) {
+      if (properties != null) {
+        throw new BadInputException("Cannot specify properties for a new node, when a node to index is specified.");
+      }
+      Node node=node(nodeOrNull.longValue());
+      result=graphDb.index().forNodes(indexName).putIfAbsent(node,key,value);
+      if ((created=(result == null)) == true)       result=node;
+    }
+ else {
+      UniqueNodeFactory factory=new UniqueNodeFactory(indexName,properties);
+      result=factory.getOrCreate(key,value);
+      created=factory.created;
+    }
+    tx.success();
+    return Pair.of(new IndexedEntityRepresentation(result,key,value,new NodeIndexRepresentation(indexName,Collections.<String,String>emptyMap())),Boolean.valueOf(created));
+  }
+  finally {
+    tx.finish();
+  }
+}

@@ -1,27 +1,15 @@
 {
-  T result, created=null;
-  try {
-    do {
-      result=index.get(key,value).getSingle();
-      if (result != null)       return result;
-      if (created == null) {
-        created=create(key,value);
-        if (created == null)         throw new AssertionError("create() returned null");
-      }
-      result=created;
-      if (index.putIfAbsent(result,key,value)) {
-        initialize(result,key,value);
-        created=null;
-        return result;
-      }
- else {
-        result=null;
-      }
-    }
- while (result == null);
-    return result;
+  T result=index.get(key,value).getSingle();
+  if (result != null)   return result;
+  Map<String,Object> properties=Collections.singletonMap(key,value);
+  T created=create(properties);
+  result=index.putIfAbsent(created,key,value);
+  if (result == null) {
+    initialize(created,properties);
+    return created;
   }
-  finally {
-    if (created != null)     delete(created);
+ else {
+    delete(created);
+    return result;
   }
 }
