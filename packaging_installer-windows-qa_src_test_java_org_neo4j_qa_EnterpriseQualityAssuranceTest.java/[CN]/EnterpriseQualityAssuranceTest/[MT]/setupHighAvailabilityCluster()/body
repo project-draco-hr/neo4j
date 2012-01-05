@@ -1,0 +1,18 @@
+{
+  EnterpriseDriver driver;
+  for (int i=0; i < drivers.length; i++) {
+    driver=drivers[i];
+    String neo4jConf=driver.installDir() + "/conf/neo4j.properties";
+    String serverConf=driver.installDir() + "/conf/neo4j-server.properties";
+    driver.runInstall();
+    driver.stopService();
+    driver.setConfig(neo4jConf,"ha.cluster_name","mycluster");
+    driver.setConfig(neo4jConf,"ha.server_id","" + (i + 1));
+    driver.setConfig(neo4jConf,"ha.server",driver.vm().definition().ip() + ":6001");
+    driver.setConfig(neo4jConf,"ha.coordinators",coordinatorsConfigValue);
+    driver.setConfig(serverConf,"org.neo4j.server.database.mode","HA");
+    driver.setConfig(serverConf,"org.neo4j.server.webserver.address","0.0.0.0");
+    driver.destroyDatabase();
+    driver.startService();
+  }
+}
