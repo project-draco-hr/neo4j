@@ -1,3 +1,21 @@
 {
   EnterpriseDriver driver=drivers[0];
+  long nodeId=driver.api().createNode();
+  driver.performFullHABackup("neobackup",coordinatorAddresses);
+  driver.performIncrementalHABackup("neobackup",coordinatorAddresses);
+  for (  EnterpriseDriver d : drivers) {
+    d.stopService();
+    d.destroyDatabase();
+  }
+  driver.replaceGraphDataDirWithBackup("neobackup");
+  for (  EnterpriseDriver d : drivers)   d.startService();
+  for (  EnterpriseDriver d : drivers) {
+    try {
+      d.api().waitUntilNodeExists(nodeId);
+    }
+ catch (    Exception e) {
+      throw new RuntimeException("Restoring backup failed on server " + d.vm().definition().ip(),e);
+    }
+  }
+  assertClusterWorks();
 }
