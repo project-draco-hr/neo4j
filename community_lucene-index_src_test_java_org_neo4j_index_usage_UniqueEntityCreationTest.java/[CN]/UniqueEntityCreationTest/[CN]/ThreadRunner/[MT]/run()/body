@@ -1,0 +1,36 @@
+{
+  final List<List<Node>> results=new ArrayList<List<Node>>();
+  final List<Thread> threads=new ArrayList<Thread>();
+  for (int i=0; i < 10; i++) {
+    threads.add(new Thread(){
+      @Override public void run(){
+        List<Node> subresult=new ArrayList<Node>();
+        for (int j=0; j < NUM_USERS; j++) {
+          subresult.add(getOrCreateUserOptimistically(getUsername(j),graphDatabaseService));
+        }
+        results.add(subresult);
+      }
+    }
+);
+  }
+  for (  Thread thread : threads) {
+    thread.start();
+  }
+  for (  Thread thread : threads) {
+    try {
+      thread.join();
+    }
+ catch (    InterruptedException e) {
+      e.printStackTrace();
+    }
+  }
+  List<Node> first=results.remove(0);
+  for (  List<Node> subresult : results) {
+    assertEquals(first,subresult);
+  }
+  for (int i=0; i < NUM_USERS; i++) {
+    final String username=getUsername(i);
+    getOrCreateUserOptimistically(username,graphDatabaseService);
+    assertUserExistsUniquely(username);
+  }
+}
