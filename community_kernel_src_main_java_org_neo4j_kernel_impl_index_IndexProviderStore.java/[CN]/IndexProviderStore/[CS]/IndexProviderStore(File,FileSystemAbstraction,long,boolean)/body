@@ -1,0 +1,26 @@
+{
+  this.file=file;
+  if (!file.exists()) {
+    create(file,fileSystem,expectedVersion);
+  }
+  try {
+    fileChannel=fileSystem.open(file.getAbsolutePath(),"rw");
+    int bytesRead=fileChannel.read(buf);
+    if (bytesRead != FILE_LENGTH && bytesRead != FILE_LENGTH - 8 && !allowUpgrade) {
+      throw new RuntimeException("Expected to read " + FILE_LENGTH + " or "+ (FILE_LENGTH - 8)+ " bytes");
+    }
+    buf.flip();
+    creationTime=buf.getLong();
+    randomIdentifier=buf.getLong();
+    version=buf.getLong();
+    lastCommittedTx=bytesRead / 8 >= 4 ? buf.getLong() : 1;
+    Long readIndexVersion=bytesRead / 8 >= 5 ? buf.getLong() : null;
+    boolean versionDiffers=readIndexVersion == null || readIndexVersion.longValue() != expectedVersion;
+    if (versionDiffers && !allowUpgrade)     throw new UpgradeNotAllowedByConfigurationException();
+    indexVersion=expectedVersion;
+    if (versionDiffers)     writeOut();
+  }
+ catch (  IOException e) {
+    throw new RuntimeException(e);
+  }
+}
