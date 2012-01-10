@@ -1,4 +1,40 @@
 {
-  graphDatabaseService=new ImpermanentGraphDatabase();
-  new ThreadRunner().run();
+  database=new ImpermanentGraphDatabase();
+  final List<List<Node>> results=new ArrayList<List<Node>>();
+  final List<Thread> threads=new ArrayList<Thread>();
+  for (int i=0; i < NUM_THREADS; i++) {
+    final int threadNumber=i;
+    threads.add(new Thread(){
+      @Override public void run(){
+        List<Node> subResult=new ArrayList<Node>();
+        for (int j=0; j < NUM_KEYS; j++) {
+          String key="key" + j;
+          Index<Node> index=database.index().forNodes("users");
+          Node userNode=getFirstNode(threadNumber,key,database,index);
+          if (userNode == null) {
+            addNode(key,database,index);
+            userNode=getFirstNode(threadNumber,key,database,index);
+          }
+          subResult.add(userNode);
+        }
+        results.add(subResult);
+      }
+    }
+);
+  }
+  for (  Thread thread : threads) {
+    thread.start();
+  }
+  for (  Thread thread : threads) {
+    try {
+      thread.join();
+    }
+ catch (    InterruptedException e) {
+      e.printStackTrace();
+    }
+  }
+  List<Node> first=results.remove(0);
+  for (  List<Node> subresult : results) {
+    assertEquals(first,subresult);
+  }
 }
