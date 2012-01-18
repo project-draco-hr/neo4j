@@ -37,6 +37,14 @@
  else     if (path == null && event.getState() == Watcher.Event.KeeperState.Disconnected) {
       keeperState=KeeperState.Disconnected;
     }
+ else     if (event.getType() == Watcher.Event.EventType.NodeDeleted) {
+      msgLog.logMessage("Got a NodeDeleted event for " + path);
+      ZooKeeperMachine currentMaster=(ZooKeeperMachine)getCachedMaster().other();
+      if (path.contains(currentMaster.getZooKeeperPath())) {
+        msgLog.logMessage("Acting on it, calling newMaster()");
+        receiver.newMaster(new Exception());
+      }
+    }
  else     if (event.getType() == Watcher.Event.EventType.NodeDataChanged) {
       int newMasterMachineId=toInt(getZooKeeper(true).getData(path,true,null));
       msgLog.logMessage("Got event data " + newMasterMachineId);

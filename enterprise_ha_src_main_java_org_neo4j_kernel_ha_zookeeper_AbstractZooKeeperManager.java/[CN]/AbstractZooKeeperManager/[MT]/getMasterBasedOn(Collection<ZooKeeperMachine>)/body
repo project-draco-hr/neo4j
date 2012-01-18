@@ -1,0 +1,31 @@
+{
+  ZooKeeperMachine master=null;
+  int lowestSeq=Integer.MAX_VALUE;
+  long highestTxId=-1;
+  for (  ZooKeeperMachine info : machines) {
+    if (info.getLastCommittedTxId() != -1 && info.getLastCommittedTxId() >= highestTxId) {
+      if (info.getLastCommittedTxId() > highestTxId || info.wasCommittingMaster() || (!master.wasCommittingMaster() && info.getSequenceId() < lowestSeq)) {
+        master=info;
+        lowestSeq=info.getSequenceId();
+        highestTxId=info.getLastCommittedTxId();
+      }
+    }
+  }
+  log("getMaster " + (master != null ? master.getMachineId() : "none") + " based on "+ machines);
+  if (master != null) {
+    try {
+      getZooKeeper(false).getData(getRoot() + "/" + master.getZooKeeperPath(),true,null);
+    }
+ catch (    KeeperException e) {
+      throw new ZooKeeperException("Unable to get master data while setting watch",e);
+    }
+catch (    InterruptedException e) {
+      Thread.interrupted();
+      throw new ZooKeeperException("Interrupted while setting watch on master.",e);
+    }
+    return master;
+  }
+ else {
+    return ZooKeeperMachine.NO_MACHINE;
+  }
+}
