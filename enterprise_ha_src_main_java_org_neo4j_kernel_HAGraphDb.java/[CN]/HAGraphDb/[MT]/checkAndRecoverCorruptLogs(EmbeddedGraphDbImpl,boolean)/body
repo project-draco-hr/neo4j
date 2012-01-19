@@ -1,0 +1,53 @@
+{
+  getMessageLog().logMessage("Checking for log consistency");
+  Collection<XaDataSource> dataSources=localDb.getConfig().getTxModule().getXaDataSourceManager().getAllRegisteredDataSources();
+  for (  XaDataSource dataSource : dataSources) {
+    getMessageLog().logMessage("Checking dataSource " + dataSource.getName());
+    boolean corrupted=false;
+    long version=-1;
+    long myLastCommittedTx=dataSource.getLastCommittedTxId();
+    if (myLastCommittedTx == 1) {
+      return;
+    }
+    try {
+      int masterId=dataSource.getMasterForCommittedTx(myLastCommittedTx).first();
+      if (masterId == -1) {
+        corrupted=true;
+      }
+    }
+ catch (    NoSuchLogVersionException e) {
+      getMessageLog().logMessage("Missing log version " + e.getVersion() + " for transaction "+ myLastCommittedTx+ " and datasource "+ dataSource.getName());
+      corrupted=true;
+      version=e.getVersion();
+    }
+catch (    IOException e) {
+      getMessageLog().logMessage("IO exceptions while trying to retrieve the master for the latest txid (= " + myLastCommittedTx + " )",e);
+    }
+catch (    RuntimeException e) {
+      getMessageLog().logMessage("Runtime exception while getting master id for" + " for transaction " + myLastCommittedTx + " and datasource "+ dataSource.getName(),e);
+      corrupted=true;
+      version=dataSource.getCurrentLogVersion() - 1;
+    }
+    if (corrupted) {
+      if (version != -1) {
+        getMessageLog().logMessage("Logical log file for transaction " + myLastCommittedTx + " not found.");
+      }
+ else {
+        getMessageLog().logMessage("Tried to extract transaction " + myLastCommittedTx + " but it was not present in the log. Trying to retrieve it from master.");
+      }
+      if (copiedStore) {
+        getMessageLog().logMessage("A store copy might be in progress. Will not act on the apparent corruption");
+      }
+ else {
+        try {
+          copyLogFromMaster(broker.getMaster(),Config.DEFAULT_DATA_SOURCE_NAME,version,myLastCommittedTx,myLastCommittedTx);
+          dataSource.getMasterForCommittedTx(myLastCommittedTx);
+          getMessageLog().logMessage("Log copy finished without problems");
+        }
+ catch (        Exception e) {
+          getMessageLog().logMessage("Failed to retrieve log version " + version + " from master.",e);
+        }
+      }
+    }
+  }
+}
