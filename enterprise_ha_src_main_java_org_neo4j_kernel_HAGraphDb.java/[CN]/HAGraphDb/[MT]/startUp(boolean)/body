@@ -1,6 +1,7 @@
 {
   getMessageLog().logMessage("Starting up highly available graph database '" + getStoreDir() + "'");
   StoreId storeId=null;
+  boolean copiedStore=false;
   if (!new File(getStoreDir(),NeoStore.DEFAULT_NAME).exists()) {
     long endTime=System.currentTimeMillis() + 60000;
     Exception exception=null;
@@ -9,6 +10,7 @@
       if (master != null && !master.other().equals(Machine.NO_MACHINE) && master.other().getMachineId() != machineId) {
         try {
           getFreshDatabaseFromMaster(master,false);
+          copiedStore=true;
           getMessageLog().logMessage("copied store from master");
           exception=null;
           break;
@@ -30,5 +32,48 @@
     }
   }
   newMaster(storeId,new Exception("Starting up for the first time"));
-  localGraph();
+  EmbeddedGraphDbImpl localDb=localGraph();
+  Collection<XaDataSource> dataSources=localDb.getConfig().getTxModule().getXaDataSourceManager().getAllRegisteredDataSources();
+  for (  XaDataSource dataSource : dataSources) {
+    boolean corrupted=false;
+    long version=-1;
+    long myLastCommittedTx=dataSource.getLastCommittedTxId();
+    if (myLastCommittedTx == 1) {
+      return;
+    }
+    try {
+      int masterId=dataSource.getMasterForCommittedTx(myLastCommittedTx).first();
+      if (masterId == -1) {
+        corrupted=true;
+      }
+    }
+ catch (    NoSuchLogVersionException e) {
+      corrupted=true;
+      version=e.getVersion();
+    }
+catch (    IOException e) {
+      getMessageLog().logMessage("IO exceptions while trying to retrieve the master for the latest txid (= " + myLastCommittedTx + " )",e);
+    }
+    if (corrupted) {
+      if (version != -1) {
+        getMessageLog().logMessage("Logical log file for transaction " + myLastCommittedTx + " not found.");
+      }
+ else {
+        getMessageLog().logMessage("Tried to extract transaction " + myLastCommittedTx + " but it was not present in the log. Trying to retrieve it from master.");
+      }
+      if (copiedStore) {
+        getMessageLog().logMessage("A store copy might be in progress. Will not act on the apparent corruption");
+      }
+ else {
+        try {
+          copyLogFromMaster(broker.getMaster(),Config.DEFAULT_DATA_SOURCE_NAME,version,myLastCommittedTx,myLastCommittedTx);
+          dataSource.getMasterForCommittedTx(myLastCommittedTx);
+          getMessageLog().logMessage("Log copy finished without problems");
+        }
+ catch (        Exception e) {
+          getMessageLog().logMessage("Failed to retrieve log version " + version + " from master.",e);
+        }
+      }
+    }
+  }
 }
