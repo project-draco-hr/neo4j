@@ -6,24 +6,24 @@
   this.unfinishedTransactionsExecutor.scheduleWithFixedDelay(new Runnable(){
     @Override public void run(){
       try {
-        Map<SlaveContext,Pair<Transaction,AtomicLong>> safeTransactions=null;
+        Map<SlaveContext,MasterTransaction> safeTransactions=null;
 synchronized (transactions) {
-          safeTransactions=new HashMap<SlaveContext,Pair<Transaction,AtomicLong>>(transactions);
+          safeTransactions=new HashMap<SlaveContext,MasterTransaction>(transactions);
         }
-        for (        Map.Entry<SlaveContext,Pair<Transaction,AtomicLong>> entry : safeTransactions.entrySet()) {
-          long time=entry.getValue().other().get();
+        for (        Map.Entry<SlaveContext,MasterTransaction> entry : safeTransactions.entrySet()) {
+          long time=entry.getValue().timeLastSuspended.get();
           if (time != 0 && System.currentTimeMillis() - time >= unfinishedTransactionThreshold * 1000) {
             long displayableTime=(time == 0 ? 0 : (System.currentTimeMillis() - time));
-            msgLog.logMessage("Found old tx " + entry.getKey() + ", "+ entry.getValue().first()+ ", "+ displayableTime);
+            msgLog.logMessage("Found old tx " + entry.getKey() + ", "+ entry.getValue().transaction+ ", "+ displayableTime);
             try {
               Transaction otherTx=suspendOtherAndResumeThis(entry.getKey(),false);
               finishThisAndResumeOther(otherTx,entry.getKey(),false);
-              msgLog.logMessage("Rolled back old tx " + entry.getKey() + ", "+ entry.getValue().first()+ ", "+ displayableTime);
+              msgLog.logMessage("Rolled back old tx " + entry.getKey() + ", "+ entry.getValue().transaction+ ", "+ displayableTime);
             }
  catch (            IllegalStateException e) {
             }
 catch (            Throwable t) {
-              msgLog.logMessage("Unable to roll back old tx " + entry.getKey() + ", "+ entry.getValue().first()+ ", "+ displayableTime);
+              msgLog.logMessage("Unable to roll back old tx " + entry.getKey() + ", "+ entry.getValue().transaction+ ", "+ displayableTime);
             }
           }
         }
