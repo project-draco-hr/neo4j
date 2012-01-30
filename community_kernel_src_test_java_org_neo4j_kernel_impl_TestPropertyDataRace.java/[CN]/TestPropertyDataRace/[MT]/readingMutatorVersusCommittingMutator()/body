@@ -1,0 +1,71 @@
+{
+  final Node one, two;
+  Transaction tx=graphdb.beginTx();
+  try {
+    one=graphdb.createNode();
+    two=graphdb.createNode();
+    one.setProperty("node","one");
+    tx.success();
+  }
+  finally {
+    tx.finish();
+  }
+  clearCaches();
+  final CountDownLatch done=new CountDownLatch(2), prepare=new CountDownLatch(1);
+  new Thread("committing mutator"){
+    @Override public void run(){
+      Transaction txn=graphdb.beginTx();
+      try {
+        for (        String key : one.getPropertyKeys()) {
+          System.out.println(getName() + " removed " + key+ "="+ one.removeProperty(key));
+        }
+        clearCaches();
+        prepare.countDown();
+        txn.success();
+      }
+  finally {
+        txn.finish();
+      }
+      txn=graphdb.beginTx();
+      try {
+        two.setProperty("node","two");
+        txn.success();
+      }
+  finally {
+        txn.finish();
+      }
+      countDown(done);
+    }
+  }
+.start();
+  new Thread("reading mutator"){
+    @Override public void run(){
+      Transaction txn=graphdb.beginTx();
+      try {
+        while (true) {
+          try {
+            prepare.await();
+            break;
+          }
+ catch (          InterruptedException e) {
+            Thread.interrupted();
+          }
+        }
+        for (        String key : one.getPropertyKeys()) {
+          System.out.println(getName() + " removed " + key+ "="+ one.removeProperty(key));
+        }
+        txn.success();
+      }
+  finally {
+        txn.finish();
+      }
+      clearCaches();
+      done.countDown();
+    }
+  }
+.start();
+  done.await();
+  for (  String key : two.getPropertyKeys()) {
+    System.out.println("should be untouched: " + key + "="+ two.getProperty(key));
+  }
+}
