@@ -1,0 +1,22 @@
+{
+  Response<Void> response=master.first().copyTransactions(new SlaveContext(0,machineId,0,new Pair[0]),datasource,startTxId,endTxId);
+  if (logVersion == -1) {
+    receive(response);
+    return;
+  }
+  XaDataSource ds=localGraph().getConfig().getTxModule().getXaDataSourceManager().getXaDataSource(datasource);
+  FileChannel newLog=((FileSystemAbstraction)localGraph().getConfig().getParams().get(FileSystemAbstraction.class)).create(ds.getFileName(logVersion));
+  newLog.truncate(0);
+  ByteBuffer scratch=ByteBuffer.allocate(64);
+  LogIoUtils.writeLogHeader(scratch,logVersion,startTxId);
+  newLog.write(scratch);
+  ReadableByteChannel received=response.transactions().next().third().extract();
+  scratch.flip();
+  while (received.read(scratch) > 0) {
+    scratch.flip();
+    newLog.write(scratch);
+    scratch.flip();
+  }
+  newLog.force(false);
+  newLog.close();
+}
