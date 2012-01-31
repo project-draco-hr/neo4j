@@ -4,16 +4,16 @@
   XaDataSourceManager dsManager=((AbstractGraphDatabase)graphDb).getConfig().getTxModule().getXaDataSourceManager();
   final List<LogExtractor> logExtractors=new ArrayList<LogExtractor>();
   try {
-    for (    Pair<String,Long> txEntry : context.lastAppliedTransactions()) {
-      String resourceName=txEntry.first();
+    for (    Tx txEntry : context.lastAppliedTransactions()) {
+      String resourceName=txEntry.getDataSourceName();
       final XaDataSource dataSource=dsManager.getXaDataSource(resourceName);
       if (dataSource == null) {
         throw new RuntimeException("No data source '" + resourceName + "' found");
       }
       resourceNames.add(resourceName);
       final long masterLastTx=dataSource.getLastCommittedTxId();
-      if (txEntry.other() >= masterLastTx)       continue;
-      LogExtractor logExtractor=getTransactionStreamForDatasource(dataSource,txEntry.other() + 1,masterLastTx,stream,filter);
+      if (txEntry.getTxId() >= masterLastTx)       continue;
+      LogExtractor logExtractor=getTransactionStreamForDatasource(dataSource,txEntry.getTxId() + 1,masterLastTx,stream,filter);
       logExtractors.add(logExtractor);
     }
     StoreId storeId=((NeoStoreXaDataSource)dsManager.getXaDataSource(Config.DEFAULT_DATA_SOURCE_NAME)).getStoreId();

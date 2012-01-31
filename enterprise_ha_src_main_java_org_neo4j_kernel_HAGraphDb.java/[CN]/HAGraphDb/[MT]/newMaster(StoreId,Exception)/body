@@ -1,9 +1,19 @@
 {
-  try {
-    doNewMaster(storeId,e);
+  BranchedDataException bde=null;
+  if (e instanceof ComException && e.getCause() instanceof BranchedDataException) {
+    bde=(BranchedDataException)e.getCause();
+    getMessageLog().logMessage("Master says I've got branched data: " + bde);
   }
- catch (  BranchedDataException bde) {
-    getMessageLog().logMessage("Branched data occured, retrying");
+  if (bde == null) {
+    try {
+      doNewMaster(storeId,e);
+    }
+ catch (    BranchedDataException be) {
+      bde=be;
+      getMessageLog().logMessage("Branched data occured, retrying");
+    }
+  }
+  if (bde != null) {
     getFreshDatabaseFromMaster(true);
     doNewMaster(storeId,bde);
   }
