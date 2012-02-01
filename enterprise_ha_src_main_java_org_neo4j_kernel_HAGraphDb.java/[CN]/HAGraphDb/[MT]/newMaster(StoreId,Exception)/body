@@ -1,20 +1,45 @@
 {
-  BranchedDataException bde=null;
   if (e instanceof ComException && e.getCause() instanceof BranchedDataException) {
-    bde=(BranchedDataException)e.getCause();
+    BranchedDataException bde=(BranchedDataException)e.getCause();
     getMessageLog().logMessage("Master says I've got branched data: " + bde);
   }
-  if (bde == null) {
+  Throwable cause=null;
+  int i=0;
+  while (i++ < NEW_MASTER_STARTUP_RETRIES) {
     try {
-      doNewMaster(storeId,e);
+      getMessageLog().logMessage("newMaster called",e,true);
+      reevaluateMyself(storeId);
+      return;
     }
- catch (    BranchedDataException be) {
-      bde=be;
-      getMessageLog().logMessage("Branched data occured, retrying");
+ catch (    ZooKeeperException zke) {
+      getMessageLog().logMessage("ZooKeeper exception in newMaster, retry #" + i,zke);
+      e=zke;
+      cause=zke;
+      sleepWithoutInterruption(500,"");
+      continue;
+    }
+catch (    ComException ce) {
+      getMessageLog().logMessage("Communication exception in newMaster, retry #" + i,ce);
+      e=ce;
+      cause=ce;
+      sleepWithoutInterruption(500,"");
+      continue;
+    }
+catch (    BranchedDataException bde) {
+      getMessageLog().logMessage("Branched data occurred, during newMaster retry #" + i,bde);
+      getFreshDatabaseFromMaster(true);
+      e=bde;
+      cause=bde;
+      continue;
+    }
+catch (    Throwable t) {
+      cause=t;
+      break;
     }
   }
-  if (bde != null) {
-    getFreshDatabaseFromMaster(true);
-    doNewMaster(storeId,bde);
+  if (cause != null && i == NEW_MASTER_STARTUP_RETRIES) {
+    getMessageLog().logMessage("Reevaluation ended in unknown exception " + cause + " so shutting down",cause,true);
+    shutdown(cause,false);
   }
+  throw Exceptions.launderedException(cause);
 }
