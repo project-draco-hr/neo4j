@@ -1,10 +1,18 @@
 {
-  XaDataSourceManager localDataSourceManager=getConfig().getTxModule().getXaDataSourceManager();
-  Collection<XaDataSource> dataSources=localDataSourceManager.getAllRegisteredDataSources();
-  @SuppressWarnings("unchecked") Pair<String,Long>[] txs=new Pair[dataSources.size()];
-  int i=0;
-  for (  XaDataSource dataSource : dataSources) {
-    txs[i++]=Pair.of(dataSource.getName(),dataSource.getLastCommittedTxId());
+  try {
+    XaDataSourceManager localDataSourceManager=getConfig().getTxModule().getXaDataSourceManager();
+    Collection<XaDataSource> dataSources=localDataSourceManager.getAllRegisteredDataSources();
+    @SuppressWarnings("unchecked") Tx[] txs=new Tx[dataSources.size()];
+    int i=0;
+    Pair<Integer,Long> master=null;
+    for (    XaDataSource dataSource : dataSources) {
+      long txId=dataSource.getLastCommittedTxId();
+      if (dataSource.getName().equals(Config.DEFAULT_DATA_SOURCE_NAME))       master=dataSource.getMasterForCommittedTx(txId);
+      txs[i++]=lastAppliedTx(dataSource.getName(),txId);
+    }
+    return new SlaveContext(startupTime,machineId,eventIdentifier,txs,master.first(),master.other());
   }
-  return new SlaveContext(startupTime,machineId,eventIdentifier,txs);
+ catch (  IOException e) {
+    throw new RuntimeException(e);
+  }
 }

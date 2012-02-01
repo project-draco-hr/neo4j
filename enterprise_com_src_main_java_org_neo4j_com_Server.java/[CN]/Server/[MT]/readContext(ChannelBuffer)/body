@@ -3,9 +3,16 @@
   int machineId=buffer.readInt();
   int eventIdentifier=buffer.readInt();
   int txsSize=buffer.readByte();
-  @SuppressWarnings("unchecked") Pair<String,Long>[] lastAppliedTransactions=new Pair[txsSize];
+  Tx[] lastAppliedTransactions=new Tx[txsSize];
+  Tx neoTx=null;
   for (int i=0; i < txsSize; i++) {
-    lastAppliedTransactions[i]=Pair.of(readString(buffer),buffer.readLong());
+    String ds=readString(buffer);
+    Tx tx=lastAppliedTx(ds,buffer.readLong());
+    lastAppliedTransactions[i]=tx;
+    if (ds.equals(Config.DEFAULT_DATA_SOURCE_NAME))     neoTx=tx;
   }
-  return new SlaveContext(sessionId,machineId,eventIdentifier,lastAppliedTransactions);
+  int masterId=buffer.readInt();
+  long checksum=buffer.readLong();
+  if (neoTx != null)   txVerifier.assertMatch(neoTx.getTxId(),masterId,checksum);
+  return new SlaveContext(sessionId,machineId,eventIdentifier,lastAppliedTransactions,masterId,checksum);
 }
