@@ -4,10 +4,10 @@
     return;
   }
   Args params=new Args(args);
-  boolean full=params.getBoolean("full",false,true);
+  @SuppressWarnings("boxing") boolean full=params.getBoolean("full",false,true);
   args=params.orphans().toArray(new String[0]);
   if (args.length != 2) {
-    printUsage("Exactly two positional arguments expected: <source dir with logs> <target dir for graphdb>");
+    printUsage("Exactly two positional arguments expected: " + "<source dir with logs> <target dir for graphdb>, got " + args.length);
     System.exit(-1);
     return;
   }
@@ -39,7 +39,8 @@
     System.exit(-1);
     return;
   }
-  AbstractGraphDatabase graphdb=OnlineBackup.startTemporaryDb(target.getAbsolutePath(),full ? VerificationLevel.FULL_WITH_LOGGING : VerificationLevel.LOGGING);
+  String txdifflog=params.get("txdifflog",null,new File(target,"txdiff.log").getAbsolutePath());
+  AbstractGraphDatabase graphdb=OnlineBackup.startTemporaryDb(target.getAbsolutePath(),new TxDiffLogConfig(full ? VerificationLevel.FULL_WITH_LOGGING : VerificationLevel.LOGGING,txdifflog));
   try {
     try {
       new RebuildFromLogs(graphdb).applyTransactionsFrom(source).fullCheck(!full);

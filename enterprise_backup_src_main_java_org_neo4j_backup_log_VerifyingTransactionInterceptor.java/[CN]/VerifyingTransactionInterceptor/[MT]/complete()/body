@@ -2,10 +2,11 @@
   ConsistencyCheck consistency=mode.apply(diffs,new ConsistencyCheck(diffs,mode.checkProp){
     @Override protected <R extends AbstractBaseRecord>void report(    RecordStore<R> recordStore,    R record,    InconsistencyType inconsistency){
       if (inconsistency.isWarning())       return;
-      StringBuilder log=messageHeader("Inconsistencies");
+      StringBuilder log=messageHeader("Inconsistencies").append("\n\t");
       logRecord(log,recordStore,record);
       log.append(inconsistency.message());
       msgLog.logMessage(log.toString());
+      if (difflog != null && difflog != msgLog)       difflog.logMessage(log.toString());
     }
     @Override protected <R1 extends AbstractBaseRecord,R2 extends AbstractBaseRecord>void report(    RecordStore<R1> recordStore,    R1 record,    RecordStore<? extends R2> referredStore,    R2 referred,    InconsistencyType inconsistency){
       if (inconsistency.isWarning())       return;
@@ -13,43 +14,78 @@
         report(recordStore,record,inconsistency);
         return;
       }
-      StringBuilder log=messageHeader("Inconsistencies");
+      StringBuilder log=messageHeader("Inconsistencies").append("\n\t");
       logRecord(log,recordStore,record);
       logRecord(log,referredStore,referred);
       log.append(inconsistency.message());
       msgLog.logMessage(log.toString());
+      if (difflog != null && difflog != msgLog)       difflog.logMessage(log.toString());
     }
   }
 );
+  DataInconsistencyError error=null;
   try {
     consistency.checkResult();
   }
  catch (  AssertionError e) {
-    DataInconsistencyError error=new DataInconsistencyError("Cannot apply transaction\n\t" + (startEntry == null ? "NO START ENTRY" : startEntry.toString()) + "\n\t"+ (commitEntry == null ? "NO COMMIT ENTRY" : commitEntry.toString())+ "\n\t"+ e.getMessage());
+    error=new DataInconsistencyError("Inconsistencies in transaction\n\t" + (startEntry == null ? "NO START ENTRY" : startEntry.toString()) + "\n\t"+ (commitEntry == null ? "NO COMMIT ENTRY" : commitEntry.toString())+ "\n\t"+ e.getMessage());
     msgLog.logMessage(error.getMessage());
-    if (rejectInconsistentTransactions) {
-      throw error;
-    }
- else {
-      final StringBuilder changes=messageHeader("Changes");
-      diffs.applyToAll(new RecordStore.Processor(){
-        @Override protected <R extends AbstractBaseRecord>void processRecord(        Class<R> type,        RecordStore<R> store,        R record){
-          DiffRecordStore<R> diff=(DiffRecordStore<R>)store;
-          if (diff.isModified(record.getLongId())) {
-            logRecord(changes,store,record);
+    if (difflog != null && difflog != msgLog)     difflog.logMessage(error.getMessage());
+  }
+  if (difflog != null || error != null) {
+    final String header=messageHeader("Changes").toString();
+    StringLogger target=null;
+    Visitor<StringLogger.LineLogger> visitor=null;
+    if (error != null) {
+      target=msgLog;
+      if (difflog != null && difflog != msgLog) {
+        visitor=new Visitor<StringLogger.LineLogger>(){
+          @Override public boolean visit(          final LineLogger first){
+            difflog.logLongMessage(header,new Visitor<StringLogger.LineLogger>(){
+              @Override public boolean visit(              final LineLogger other){
+                other.logLine(startEntry == null ? "NO START ENTRY" : startEntry.toString());
+                other.logLine(commitEntry == null ? "NO COMMIT ENTRY" : commitEntry.toString());
+                logDiffLines(new LineLogger(){
+                  @Override public void logLine(                  String line){
+                    first.logLine(line);
+                    other.logLine(line);
+                  }
+                }
+);
+                return false;
+              }
+            }
+);
+            return false;
           }
         }
+;
       }
-);
-      for (      RecordStore<?> store : diffs.allStores()) {
-        changes.append(store).append(": highId(before) = ");
-        changes.append(((DiffRecordStore<?>)store).getRawHighId());
-        changes.append(", highId(after) = ").append(store.getHighId()).append("\n\t");
+ else {
+        visitor=new Visitor<StringLogger.LineLogger>(){
+          @Override public boolean visit(          LineLogger lines){
+            logDiffLines(lines);
+            return false;
+          }
+        }
+;
       }
-      msgLog.logMessage(changes.toString());
     }
+ else {
+      target=difflog;
+      visitor=new Visitor<StringLogger.LineLogger>(){
+        @Override public boolean visit(        LineLogger lines){
+          lines.logLine(startEntry == null ? "NO START ENTRY" : startEntry.toString());
+          lines.logLine(commitEntry == null ? "NO COMMIT ENTRY" : commitEntry.toString());
+          logDiffLines(lines);
+          return false;
+        }
+      }
+;
+    }
+    target.logLongMessage(header,visitor);
   }
-  if (next != null) {
-    next.complete();
-  }
+  if (difflog != null)   difflog.close();
+  if (error != null && rejectInconsistentTransactions)   throw error;
+  if (next != null)   next.complete();
 }
