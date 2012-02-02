@@ -34,16 +34,29 @@
       return;
     }
   }
-  if (findMaxLogFileId(source) < 0) {
+  long maxFileId=findMaxLogFileId(source);
+  if (maxFileId < 0) {
     printUsage("Inconsistent number of log files found in " + source);
     System.exit(-1);
     return;
   }
+  long txCount=findLastTransactionId(source,LOGICAL_LOG_DEFAULT_NAME + ".v" + maxFileId);
   String txdifflog=params.get("txdifflog",null,new File(target,"txdiff.log").getAbsolutePath());
   AbstractGraphDatabase graphdb=OnlineBackup.startTemporaryDb(target.getAbsolutePath(),new TxDiffLogConfig(full ? VerificationLevel.FULL_WITH_LOGGING : VerificationLevel.LOGGING,txdifflog));
+  ProgressIndicator progress;
+  if (txCount < 0) {
+    progress=null;
+    System.err.println("Unable to report progress, cannot find highest txId, attempting rebuild anyhow.");
+  }
+ else {
+    progress=textual(System.err,txCount);
+    System.err.printf("Rebuilding store from %s transactions %n",Long.valueOf(txCount));
+  }
   try {
     try {
-      new RebuildFromLogs(graphdb).applyTransactionsFrom(source).fullCheck(!full);
+      RebuildFromLogs rebuilder=new RebuildFromLogs(graphdb).applyTransactionsFrom(progress,source);
+      if (progress != null)       progress.done(txCount);
+      if (!full)       rebuilder.checkConsistency();
     }
   finally {
       graphdb.shutdown();

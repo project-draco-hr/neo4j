@@ -1,6 +1,7 @@
 {
   boolean fail=false;
   if (props != null) {
+    R old=store.forceGetRaw(primitive.getId());
     if (primitive.inUse()) {
       if (!Record.NO_NEXT_PROPERTY.value(primitive.getNextProp())) {
         PropertyRecord prop=props.forceGetRecord(primitive.getNextProp());
@@ -8,9 +9,14 @@
         if (!prop.inUse())         fail|=inconsistent(store,primitive,props,prop,PROPERTY_NOT_IN_USE);
  else         if (owner.otherOwnerOf(prop) != -1 || (owner.ownerOf(prop) != -1 && owner.ownerOf(prop) != primitive.getId()))         fail|=inconsistent(store,primitive,props,prop,PROPERTY_FOR_OTHER);
       }
+      if (old.inUse() && old.getNextProp() != primitive.getNextProp()) {
+        if (!Record.NO_NEXT_PROPERTY.value(old.getNextProp())) {
+          PropertyRecord oldProp=props.forceGetRecord(old.getNextProp());
+          if (owner.ownerOf(oldProp) != primitive.getId())           fail|=inconsistent(props,oldProp,store,primitive,ORPHANED_PROPERTY);
+        }
+      }
     }
  else {
-      R old=store.forceGetRaw(primitive.getId());
       if (!Record.NO_NEXT_PROPERTY.value(old.getNextProp())) {
         PropertyRecord prop=props.forceGetRecord(old.getNextProp());
         if (prop.inUse())         fail|=inconsistent(store,primitive,props,prop,owner.propertyNotRemoved());
