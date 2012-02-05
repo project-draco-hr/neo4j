@@ -1,31 +1,29 @@
 {
-  final long lockTimeout=2;
+  final long lockTimeout=1;
   initializeDbs(1,stringMap(CONFIG_KEY_LOCK_READ_TIMEOUT,String.valueOf(lockTimeout)));
+  final long id=executeJob(new CommonJobs.CreateNodeJob(true),0);
   final Fetcher<DoubleLatch> latchFetcher=getDoubleLatch();
-  final long[] id=new long[1];
   Thread lockHolder=new Thread(new Runnable(){
     @Override public void run(){
       DoubleLatch latch=latchFetcher.fetch();
       try {
         final GraphDatabaseService slaveDb=getSlave(0);
-        Node node;
-        Transaction tx=slaveDb.beginTx();
-        try {
-          node=slaveDb.createNode();
-          tx.success();
-        }
-  finally {
-          tx.finish();
-        }
+        Node node=slaveDb.getNodeById(id);
         final Config config=((AbstractGraphDatabase)slaveDb).getConfig();
         config.getLockManager().getReadLock(node);
         config.getLockReleaser().addLockToTransaction(node,LockType.READ);
-        id[0]=node.getId();
-        latch.countDownFirst();
-        latch.awaitSecond();
       }
  catch (      Exception e) {
         throw new RuntimeException(e);
+      }
+ finally {
+        try {
+          latch.countDownFirst();
+          latch.awaitSecond();
+        }
+ catch (        RemoteException e) {
+          e.printStackTrace();
+        }
       }
     }
   }
@@ -37,7 +35,7 @@
   final Transaction tx=masterDb.beginTx();
   try {
     long startTime=System.currentTimeMillis();
-    masterDb.getNodeById(id[0]).setProperty("name","David");
+    masterDb.getNodeById(id).setProperty("name","David");
     long duration=System.currentTimeMillis() - startTime;
     latch.countDownSecond();
     assertTrue("Read lock was acquired but not released.",duration < lockTimeout * 1000);
