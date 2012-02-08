@@ -1,0 +1,20 @@
+{
+  long timeout=80000;
+  HAGraphDb db=new HAGraphDb(dir.directory("zkTimeout").getAbsolutePath(),MapUtil.stringMap(HaConfig.CONFIG_KEY_SERVER_ID,"1",HaConfig.CONFIG_KEY_COORDINATORS,zoo.getConnectionString(),HaConfig.CONFIG_KEY_ZK_SESSION_TIMEOUT,timeout + "ms"));
+  ZooKeeperBroker broker=(ZooKeeperBroker)db.getBroker();
+  Field f=broker.getClass().getDeclaredField("zooClient");
+  f.setAccessible(true);
+  ZooClient zooClient=(ZooClient)f.get(broker);
+  Method m=zooClient.getClass().getSuperclass().getDeclaredMethod("getSessionTimeout");
+  m.setAccessible(true);
+  Integer timeoutParsed=(Integer)m.invoke(zooClient);
+  Assert.assertEquals(timeout,timeoutParsed.intValue());
+  f=db.getClass().getDeclaredField("clusterClient");
+  f.setAccessible(true);
+  ZooKeeperClusterClient clusterClient=(ZooKeeperClusterClient)f.get(db);
+  m=clusterClient.getClass().getSuperclass().getDeclaredMethod("getSessionTimeout");
+  m.setAccessible(true);
+  timeoutParsed=(Integer)m.invoke(clusterClient);
+  Assert.assertEquals(timeout,timeoutParsed.intValue());
+  db.shutdown();
+}
