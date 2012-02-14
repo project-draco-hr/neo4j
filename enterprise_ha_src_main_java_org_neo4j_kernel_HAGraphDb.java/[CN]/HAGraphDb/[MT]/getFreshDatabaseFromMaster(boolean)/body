@@ -1,22 +1,29 @@
 {
-  Pair<Master,Machine> master=clusterClient.getMasterClient();
-  internalShutdown(false);
-  if (branched) {
-    makeWayForNewDb();
-  }
-  Exception exception=null;
-  for (int i=0; i < STORE_COPY_RETRIES; i++) {
-    try {
-      copyStoreFromMaster(master);
-      return;
+  broker.shutdown();
+  try {
+    Pair<Master,Machine> master=clusterClient.getMasterClient();
+    internalShutdown(false);
+    if (branched) {
+      makeWayForNewDb();
     }
- catch (    Exception e) {
-      getMessageLog().logMessage("Problems copying store from master",e);
-      sleepWithoutInterruption(1000,"");
-      exception=e;
-      master=clusterClient.getMasterClient();
-      BranchedDataPolicy.keep_none.handle(this);
+    Exception exception=null;
+    for (int i=0; i < STORE_COPY_RETRIES; i++) {
+      try {
+        BranchedDataPolicy.keep_none.handle(this);
+        copyStoreFromMaster(master);
+        moveCopiedStoreIntoWorkingDir();
+        return;
+      }
+ catch (      Exception e) {
+        getMessageLog().logMessage("Problems copying store from master",e);
+        sleepWithoutInterruption(1000,"");
+        exception=e;
+        master=clusterClient.getMasterClient();
+      }
     }
+    throw new RuntimeException("Gave up trying to copy store from master",exception);
   }
-  throw new RuntimeException("Gave up trying to copy store from master",exception);
+  finally {
+    broker.start();
+  }
 }
