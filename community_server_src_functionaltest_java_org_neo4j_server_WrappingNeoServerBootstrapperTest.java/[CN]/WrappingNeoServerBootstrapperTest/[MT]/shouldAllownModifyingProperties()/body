@@ -1,0 +1,13 @@
+{
+  AbstractGraphDatabase graphdb=new EmbeddedGraphDatabase("target/configDb",MapUtil.stringMap(Config.ENABLE_REMOTE_SHELL,"true"));
+  EmbeddedServerConfigurator config;
+  config=new EmbeddedServerConfigurator(graphdb);
+  config.configuration().setProperty(Configurator.WEBSERVER_PORT_PROPERTY_KEY,7575);
+  WrappingNeoServerBootstrapper srv;
+  srv=new WrappingNeoServerBootstrapper(graphdb,config);
+  srv.start();
+  assertEquals(srv.getServer().baseUri().getPort(),7575);
+  String response=gen.get().payload("{\"command\" : \"ls\",\"engine\":\"shell\"}").expectedStatus(Status.OK.getStatusCode()).post("http://127.0.0.1:7575/db/manage/server/console/").entity();
+  assertTrue(response.contains("neo4j-sh (0)$"));
+  srv.stop();
+}
