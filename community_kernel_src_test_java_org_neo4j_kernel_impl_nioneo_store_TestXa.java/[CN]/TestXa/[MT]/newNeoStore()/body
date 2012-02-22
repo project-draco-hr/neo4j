@@ -1,6 +1,9 @@
 {
-  Map<Object,Object> config=new HashMap<Object,Object>();
+  Map<String,String> config=new HashMap<String,String>();
   config.putAll(Config.getDefaultParams());
-  MapUtil.genericMap(config,LockManager.class,lockManager,LockReleaser.class,lockReleaser,IdGeneratorFactory.class,ID_GENERATOR_FACTORY,FileSystemAbstraction.class,CommonFactories.defaultFileSystemAbstraction(),LogBufferFactory.class,CommonFactories.defaultLogBufferFactory(),TxIdGenerator.class,TxIdGenerator.DEFAULT,StringLogger.class,StringLogger.DEV_NULL,TransactionManager.class,new PlaceboTm(),"store_dir",path(),"neo_store",file("neo"),"logical_log",file("nioneo_logical.log"));
-  return new NeoStoreXaDataSource(config);
+  MapUtil.stringMap(config,"store_dir",path(),"neo_store",file("neo"),"logical_log",file("nioneo_logical.log"));
+  StoreFactory sf=new StoreFactory(config,CommonFactories.defaultIdGeneratorFactory(),CommonFactories.defaultFileSystemAbstraction(),null,StringLogger.DEV_NULL,null);
+  PlaceboTm txManager=new PlaceboTm();
+  LogBufferFactory logBufferFactory=CommonFactories.defaultLogBufferFactory();
+  return new NeoStoreXaDataSource(ConfigProxy.config(config,NeoStoreXaDataSource.Configuration.class),sf,lockManager,lockReleaser,StringLogger.DEV_NULL,new XaFactory(config,TxIdGenerator.DEFAULT,txManager,logBufferFactory,CommonFactories.defaultFileSystemAbstraction(),StringLogger.DEV_NULL),Collections.<Pair<TransactionInterceptorProvider,Object>>emptyList(),null);
 }
