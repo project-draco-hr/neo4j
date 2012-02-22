@@ -1,0 +1,22 @@
+{
+  Map<String,String> params=(Map<String,String>)dependencyResolver.resolveDependency(Map.class);
+  AbstractGraphDatabase gdb=dependencyResolver.resolveDependency(AbstractGraphDatabase.class);
+  TransactionManager txManager=dependencyResolver.resolveDependency(TransactionManager.class);
+  IndexStore indexStore=dependencyResolver.resolveDependency(IndexStore.class);
+  XaFactory xaFactory=dependencyResolver.resolveDependency(XaFactory.class);
+  FileSystemAbstraction fileSystemAbstraction=dependencyResolver.resolveDependency(FileSystemAbstraction.class);
+  XaDataSourceManager xaDataSourceManager=dependencyResolver.resolveDependency(XaDataSourceManager.class);
+  Configuration conf=ConfigProxy.config(params,Configuration.class);
+  LuceneDataSource luceneDataSource=new LuceneDataSource(ConfigProxy.config(params,LuceneDataSource.Configuration.class),indexStore,fileSystemAbstraction,xaFactory);
+  xaDataSourceManager.registerDataSource(luceneDataSource);
+  IndexConnectionBroker<LuceneXaConnection> broker=conf.read_only(false) ? new ReadOnlyIndexConnectionBroker<LuceneXaConnection>(txManager) : new ConnectionBroker(txManager,luceneDataSource);
+  for (Iterator<WeakReference<LuceneIndexImplementation>> iterator=previousProviders.iterator(); iterator.hasNext(); ) {
+    WeakReference<LuceneIndexImplementation> previousProvider=iterator.next();
+    LuceneIndexImplementation indexImplementation=previousProvider.get();
+    if (indexImplementation == null)     iterator.remove();
+ else     if (indexImplementation.matches(gdb))     indexImplementation.reset(luceneDataSource,broker);
+  }
+  LuceneIndexImplementation indexImplementation=new LuceneIndexImplementation(gdb,luceneDataSource,broker);
+  previousProviders.add(new WeakReference<LuceneIndexImplementation>(indexImplementation));
+  return indexImplementation;
+}

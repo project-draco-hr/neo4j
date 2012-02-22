@@ -1,7 +1,7 @@
 {
   rejectAutoUpgrade(stringParams);
   msgLog=StringLogger.logger(storeDir);
-  Map<Object,Object> params=getDefaultParams();
+  Map<String,String> params=getDefaultParams();
   params.put(Config.USE_MEMORY_MAPPED_BUFFERS,"false");
   boolean dump=Boolean.parseBoolean(stringParams.get(Config.DUMP_CONFIGURATION));
   new AutoConfigurator(storeDir,false,dump).configure(params);
@@ -10,16 +10,14 @@
   }
   this.storeDir=storeDir;
   this.idGeneratorFactory=CommonFactories.defaultIdGeneratorFactory();
-  params.put(IdGeneratorFactory.class,idGeneratorFactory);
-  FileSystemAbstraction fileSystem=CommonFactories.defaultFileSystemAbstraction();
-  params.put(FileSystemAbstraction.class,fileSystem);
-  String store=fixPath(storeDir,params);
-  params.put("neo_store",store);
+  final FileSystemAbstraction fileSystem=CommonFactories.defaultFileSystemAbstraction();
+  StoreFactory sf=new StoreFactory(params,idGeneratorFactory,fileSystem,null,StringLogger.DEV_NULL,null);
+  String store=fixPath(storeDir,sf);
   if (dump) {
-    Config.dumpConfiguration(params);
+    dumpConfiguration(params);
   }
   msgLog.logMessage(Thread.currentThread() + " Starting BatchInserter(" + this+ ")");
-  neoStore=new NeoStore(params);
+  neoStore=sf.newNeoStore(store);
   if (!neoStore.isStoreOk()) {
     throw new IllegalStateException(storeDir + " store is not cleanly shutdown.");
   }
