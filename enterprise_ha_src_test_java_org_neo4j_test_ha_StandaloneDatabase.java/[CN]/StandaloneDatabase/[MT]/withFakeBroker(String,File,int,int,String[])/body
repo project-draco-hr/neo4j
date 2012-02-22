@@ -1,19 +1,21 @@
 {
   StandaloneDatabase standalone=new StandaloneDatabase(testMethodName,new Bootstrap(path,machineId,extraArgs){
-    @Override HighlyAvailableGraphDatabase start(    String storeDir,    Map<String,String> config){
-      final PlaceHolderGraphDatabaseService placeHolderGraphDb=new PlaceHolderGraphDatabaseService(path.getAbsolutePath());
-      final Broker broker;
-      if (machineId == masterId) {
-        broker=new FakeMasterBroker(machineId,placeHolderGraphDb,config);
-      }
+    @Override HighlyAvailableGraphDatabase start(    String storeDir,    final Map<String,String> config){
+      HighlyAvailableGraphDatabase haGraphDb=new HighlyAvailableGraphDatabase(storeDir,config){
+        @Override protected Broker createBroker(){
+          if (getMachineId() == masterId) {
+            ZooClient.Configuration zooConfig=ConfigProxy.config(removeDashes(config),ZooClient.Configuration.class);
+            AbstractBroker.Configuration brokerConfig=ConfigProxy.config(removeDashes(config),AbstractBroker.Configuration.class);
+            return new FakeMasterBroker(brokerConfig,zooConfig);
+          }
  else {
-        broker=new FakeSlaveBroker(new MasterClient("localhost",Protocol.PORT,placeHolderGraphDb,null,Client.DEFAULT_READ_RESPONSE_TIMEOUT_SECONDS,Client.DEFAULT_READ_RESPONSE_TIMEOUT_SECONDS,Client.DEFAULT_MAX_NUMBER_OF_CONCURRENT_CHANNELS_PER_CLIENT),masterId,machineId,placeHolderGraphDb);
+            return new FakeSlaveBroker(new MasterClient("localhost",Protocol.PORT,getMessageLog(),storeIdGetter,Client.ConnectionLostHandler.NO_ACTION,Client.DEFAULT_READ_RESPONSE_TIMEOUT_SECONDS,Client.DEFAULT_READ_RESPONSE_TIMEOUT_SECONDS,Client.DEFAULT_MAX_NUMBER_OF_CONCURRENT_CHANNELS_PER_CLIENT),masterId,ConfigProxy.config(MapUtil.stringMap("ha.server_id",Integer.toString(getMachineId())),AbstractBroker.Configuration.class));
+          }
+        }
       }
-      config=removeDashes(config);
-      HighlyAvailableGraphDatabase db=new HighlyAvailableGraphDatabase(new HAGraphDb(storeDir,config,AbstractHaTest.wrapBrokerAndSetPlaceHolderDb(placeHolderGraphDb,broker),new FakeClusterClient(broker)));
-      placeHolderGraphDb.setDb(db);
+;
       System.out.println("Started HA db (w/o zoo keeper)");
-      return db;
+      return haGraphDb;
     }
   }
 );

@@ -1,0 +1,41 @@
+{
+  Pair<Master,Machine> master=broker.getMasterReally(true);
+  boolean iAmCurrentlyMaster=masterServer != null;
+  getMessageLog().logMessage("ReevaluateMyself: machineId=" + machineId + " with master["+ master+ "] (I am master="+ iAmCurrentlyMaster+ ", "+ internalGraphDatabase+ ")");
+  pullUpdates=false;
+  AbstractGraphDatabase newDb=null;
+  try {
+    if (master.other().getMachineId() == machineId) {
+      if (this.internalGraphDatabase == null || !iAmCurrentlyMaster) {
+        internalShutdown(true);
+        newDb=startAsMaster(storeId);
+      }
+      broker.rebindMaster();
+    }
+ else {
+      broker.notifyMasterChange(master.other());
+      if (this.internalGraphDatabase == null || iAmCurrentlyMaster) {
+        internalShutdown(true);
+        newDb=startAsSlave(storeId);
+      }
+ else {
+        ((SlaveGraphDatabase)internalGraphDatabase).forgetIdAllocationsFromMaster();
+      }
+    }
+    if (masterServer == null) {
+      instantiateAutoUpdatePullerIfConfigSaysSo();
+      checkAndRecoverCorruptLogs(newDb != null ? newDb : internalGraphDatabase,false);
+      ensureDataConsistencyWithMaster(newDb != null ? newDb : internalGraphDatabase,master);
+      getMessageLog().logMessage("Data consistent with master");
+    }
+    if (newDb != null) {
+      doAfterLocalGraphStarted(newDb);
+      this.internalGraphDatabase=newDb;
+    }
+    pullUpdates=true;
+  }
+ catch (  Throwable t) {
+    safelyShutdownDb(newDb);
+    throw launderedException(t);
+  }
+}

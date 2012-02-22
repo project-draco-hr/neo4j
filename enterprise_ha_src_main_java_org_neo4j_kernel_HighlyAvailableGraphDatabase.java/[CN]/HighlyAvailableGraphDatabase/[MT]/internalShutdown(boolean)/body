@@ -1,0 +1,32 @@
+{
+  messageLog.logMessage("Internal shutdown of HA db[" + machineId + "] reference="+ this+ ", masterServer="+ masterServer,new Exception("Internal shutdown"),true);
+  pullUpdates=false;
+  if (this.updatePuller != null) {
+    messageLog.logMessage("Internal shutdown updatePuller",true);
+    try {
+      this.updatePuller.shutdown();
+      this.updatePuller.awaitTermination(5,TimeUnit.SECONDS);
+    }
+ catch (    InterruptedException e) {
+      messageLog.logMessage("Got exception while waiting for update puller termination",e,true);
+    }
+    messageLog.logMessage("Internal shutdown updatePuller DONE",true);
+    this.updatePuller=null;
+  }
+  if (this.masterServer != null) {
+    messageLog.logMessage("Internal shutdown masterServer",true);
+    this.masterServer.shutdown();
+    messageLog.logMessage("Internal shutdown masterServer DONE",true);
+    this.masterServer=null;
+  }
+  if (this.internalGraphDatabase != null) {
+    if (rotateLogs) {
+      internalGraphDatabase.getXaDataSourceManager().rotateLogicalLogs();
+    }
+    messageLog.logMessage("Internal shutdown localGraph",true);
+    this.internalGraphDatabase.shutdown();
+    messageLog.logMessage("Internal shutdown localGraph DONE",true);
+    this.internalGraphDatabase=null;
+  }
+  messageLog.flush();
+}

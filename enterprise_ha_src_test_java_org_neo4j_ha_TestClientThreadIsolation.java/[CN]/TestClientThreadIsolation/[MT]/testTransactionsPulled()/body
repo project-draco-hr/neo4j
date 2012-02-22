@@ -1,6 +1,6 @@
 {
-  final HAGraphDb master=new HAGraphDb(TargetDirectory.forTest(TestClientThreadIsolation.class).directory("master",true).getAbsolutePath(),MapUtil.stringMap(HaConfig.CONFIG_KEY_COORDINATORS,zoo.getConnectionString(),HaConfig.CONFIG_KEY_SERVER_ID,"1"));
-  final HAGraphDb slave1=new HAGraphDb(TargetDirectory.forTest(TestClientThreadIsolation.class).directory("slave1",true).getAbsolutePath(),MapUtil.stringMap(HaConfig.CONFIG_KEY_COORDINATORS,zoo.getConnectionString(),HaConfig.CONFIG_KEY_SERVER_ID,"2",HaConfig.CONFIG_KEY_MAX_CONCURRENT_CHANNELS_PER_SLAVE,"2"));
+  final HighlyAvailableGraphDatabase master=new HighlyAvailableGraphDatabase(TargetDirectory.forTest(TestClientThreadIsolation.class).directory("master",true).getAbsolutePath(),MapUtil.stringMap(HaConfig.CONFIG_KEY_COORDINATORS,zoo.getConnectionString(),HaConfig.CONFIG_KEY_SERVER_ID,"1"));
+  final HighlyAvailableGraphDatabase slave1=new HighlyAvailableGraphDatabase(TargetDirectory.forTest(TestClientThreadIsolation.class).directory("slave1",true).getAbsolutePath(),MapUtil.stringMap(HaConfig.CONFIG_KEY_COORDINATORS,zoo.getConnectionString(),HaConfig.CONFIG_KEY_SERVER_ID,"2",HaConfig.CONFIG_KEY_MAX_CONCURRENT_CHANNELS_PER_SLAVE,"2"));
   Transaction masterTx=master.beginTx();
   master.createNode().createRelationshipTo(master.createNode(),DynamicRelationshipType.withName("master")).setProperty("largeArray",new int[20000]);
   masterTx.success();
@@ -9,33 +9,11 @@
   assertEquals(1,slave1.getBroker().getMaster().other().getMachineId());
   Thread thread1=new Thread(new Runnable(){
     public void run(){
-      Master masterClient=slave1.getBroker().getMaster().first();
-      Response<Integer> response=masterClient.createRelationshipType(slave1.getSlaveContext(10),"name");
-      slave1.receive(response);
-      response.close();
     }
   }
 ,"thread 1");
   Thread thread2=new Thread(new Runnable(){
     public void run(){
-      try {
-        waitTxCopyToStart();
-        Master masterClient=slave1.getBroker().getMaster().first();
-        SlaveContext ctx=slave1.getSlaveContext(11);
-        Response<Integer> response=masterClient.createRelationshipType(ctx,"name2");
-        slave1.receive(response);
-        response.close();
-        response=masterClient.createRelationshipType(slave1.getSlaveContext(12),"name3");
-        slave1.receive(response);
-        response.close();
-        Transaction masterTx=master.beginTx();
-        master.getReferenceNode().createRelationshipTo(master.createNode(),DynamicRelationshipType.withName("test"));
-        masterTx.success();
-        masterTx.finish();
-      }
-  finally {
-        finish();
-      }
     }
   }
 ,"thread 2");

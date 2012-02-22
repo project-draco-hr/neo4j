@@ -1,11 +1,16 @@
 {
-  int masterId=0;
-  Map<String,String> config=MapUtil.stringMap(extraConfig,HaConfig.CONFIG_KEY_SERVER_ID,String.valueOf(masterId));
+  final int masterId=0;
+  final Map<String,String> config=MapUtil.stringMap(extraConfig,HaConfig.CONFIG_KEY_SERVER_ID,String.valueOf(masterId));
   addDefaultReadTimeout(config);
   String path=dbPath(0).getAbsolutePath();
-  PlaceHolderGraphDatabaseService placeHolderDb=new PlaceHolderGraphDatabaseService(path);
-  Broker broker=makeMasterBroker(masterId,placeHolderDb,config);
-  HighlyAvailableGraphDatabase db=new HighlyAvailableGraphDatabase(new HAGraphDb(path,config,wrapBrokerAndSetPlaceHolderDb(placeHolderDb,broker),makeMasterClusterClientFromBroker(broker)));
-  placeHolderDb.setDb(db);
-  return placeHolderDb;
+  HighlyAvailableGraphDatabase haGraphDb=new HighlyAvailableGraphDatabase(path,config){
+    @Override protected Broker createBroker(){
+      return makeMasterBroker(masterId,this,config);
+    }
+    @Override protected ClusterClient createClusterClient(){
+      return makeMasterClusterClientFromBroker(getBroker());
+    }
+  }
+;
+  return haGraphDb;
 }

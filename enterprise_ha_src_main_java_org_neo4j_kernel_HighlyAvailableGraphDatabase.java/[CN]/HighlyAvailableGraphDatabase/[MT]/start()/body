@@ -1,0 +1,34 @@
+{
+  getMessageLog().logMessage("Starting up highly available graph database '" + getStoreDir() + "'");
+  StoreId storeId=null;
+  if (!new File(storeDir,NeoStore.DEFAULT_NAME).exists()) {
+    long endTime=System.currentTimeMillis() + 60000;
+    Exception exception=null;
+    while (System.currentTimeMillis() < endTime) {
+      Pair<Master,Machine> master=broker.getMasterReally(true);
+      if (master != null && !master.other().equals(Machine.NO_MACHINE) && master.other().getMachineId() != machineId) {
+        try {
+          getFreshDatabaseFromMaster(false);
+          messageLog.logMessage("copied store from master");
+          exception=null;
+          break;
+        }
+ catch (        Exception e) {
+          exception=e;
+          master=broker.getMasterReally(true);
+          messageLog.logMessage("Problems copying store from master",e);
+        }
+      }
+ else {
+        break;
+      }
+      sleepWithoutInterruption(300,"Startup interrupted");
+    }
+    if (exception != null) {
+      throw new RuntimeException("Tried to join the cluster, but was unable to",exception);
+    }
+  }
+  storeId=broker.getClusterStoreId();
+  newMaster(storeId,new Exception("Starting up for the first time"));
+  localGraph();
+}
