@@ -3,13 +3,16 @@
     msgLog.logMessage("XaResourceManager[" + name + "] checkRecoveryComplete "+ xidMap.size()+ " xids");
     tf.recoveryComplete();
     try {
-      for (      TransactionInfo recoveredTx : recoveredDoneRecords) {
+      for (      TransactionInfo recoveredTx : sortByTxId(recoveredTransactions)) {
+        if (recoveryVerifier != null && !recoveryVerifier.isValid(recoveredTx)) {
+          throw new RecoveryVerificationException(recoveredTx.getIdentifier(),recoveredTx.getTxId());
+        }
         if (!recoveredTx.isOnePhase()) {
           log.commitTwoPhase(recoveredTx.getIdentifier(),recoveredTx.getTxId(),ForceMode.forced);
         }
         log.doneInternal(recoveredTx.getIdentifier());
       }
-      recoveredDoneRecords.clear();
+      recoveredTransactions.clear();
     }
  catch (    IOException e) {
       e.printStackTrace();
