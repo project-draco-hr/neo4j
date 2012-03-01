@@ -1,16 +1,18 @@
 {
-  Pair<Map<String,String>,Boolean> result=findIndexConfig(cls,indexName,suppliedConfig,graphDbImpl.getConfig().getParams());
+  Pair<Map<String,String>,Boolean> result=findIndexConfig(cls,indexName,suppliedConfig,config.getParams());
   if (result.other()) {
-    IndexCreatorThread creator=new IndexCreatorThread(cls,indexName,result.first());
-    creator.start();
+    ExecutorService executorService=Executors.newSingleThreadExecutor();
     try {
-      creator.join();
-      if (creator.exception != null) {
-        throw new TransactionFailureException("Index creation failed for " + indexName + ", "+ result.first(),creator.exception);
-      }
+      executorService.submit(new IndexCreatorJob(cls,indexName,result.first())).get();
     }
- catch (    InterruptedException e) {
+ catch (    ExecutionException ex) {
+      throw new TransactionFailureException("Index creation failed for " + indexName + ", "+ result.first(),ex.getCause());
+    }
+catch (    InterruptedException ex) {
       Thread.interrupted();
+    }
+ finally {
+      executorService.shutdownNow();
     }
   }
   return result.first();
