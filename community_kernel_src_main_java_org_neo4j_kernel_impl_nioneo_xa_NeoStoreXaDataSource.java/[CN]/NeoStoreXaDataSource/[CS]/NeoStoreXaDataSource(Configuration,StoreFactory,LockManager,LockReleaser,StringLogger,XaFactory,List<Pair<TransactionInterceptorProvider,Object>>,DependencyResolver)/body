@@ -1,0 +1,63 @@
+{
+  super(BRANCH_ID,Config.DEFAULT_DATA_SOURCE_NAME);
+  this.providers=providers;
+  readOnly=conf.read_only(false);
+  this.lockManager=lockManager;
+  this.lockReleaser=lockReleaser;
+  msgLog=stringLogger;
+  storeDir=conf.store_dir();
+  String store=conf.neo_store();
+  File file=new File(store);
+  if (!readOnly && !file.exists()) {
+    msgLog.logMessage("Creating new db @ " + store,true);
+    autoCreatePath(store);
+    sf.createNeoStore(store).close();
+  }
+  final TransactionFactory tf;
+  if (conf.intercept_committing_transactions(false) && !providers.isEmpty()) {
+    tf=new InterceptingTransactionFactory(dependencyResolver);
+  }
+ else {
+    tf=new TransactionFactory();
+  }
+  neoStore=sf.newNeoStore(store);
+  TransactionInterceptor interceptors=null;
+  if (!providers.isEmpty()) {
+    interceptors=TransactionInterceptorProvider.resolveChain(providers,this,dependencyResolver);
+  }
+  xaContainer=xaFactory.newXaContainer(this,conf.logical_log(),new CommandFactory(neoStore),tf,interceptors);
+  try {
+    if (!readOnly) {
+      neoStore.setRecoveredStatus(true);
+      try {
+        xaContainer.openLogicalLog();
+      }
+  finally {
+        neoStore.setRecoveredStatus(false);
+      }
+    }
+    if (!xaContainer.getResourceManager().hasRecoveredTransactions()) {
+      neoStore.makeStoreOk();
+    }
+ else {
+      logger.fine("Waiting for TM to take care of recovered " + "transactions.");
+    }
+    idGenerators=new ArrayMap<Class<?>,Store>((byte)5,false,false);
+    this.idGenerators.put(Node.class,neoStore.getNodeStore());
+    this.idGenerators.put(Relationship.class,neoStore.getRelationshipStore());
+    this.idGenerators.put(RelationshipType.class,neoStore.getRelationshipTypeStore());
+    this.idGenerators.put(PropertyStore.class,neoStore.getPropertyStore());
+    this.idGenerators.put(PropertyIndex.class,neoStore.getPropertyStore().getIndexStore());
+    setKeepLogicalLogsIfSpecified(conf.online_backup_enabled(false) ? "true" : conf.keep_logical_logs(null),Config.DEFAULT_DATA_SOURCE_NAME);
+    setLogicalLogAtCreationTime(xaContainer.getLogicalLog());
+  }
+ catch (  Throwable e) {
+    try {
+      neoStore.close();
+    }
+ catch (    Exception closeException) {
+      msgLog.logMessage("Couldn't close neostore after startup failure");
+    }
+    throw Exceptions.launderedException(e);
+  }
+}

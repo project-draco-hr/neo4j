@@ -1,14 +1,15 @@
 {
-  jetty.addLifeCycleListener(new JettyLifeCylcleListenerAdapter(){
+  jetty.addLifeCycleListener(new JettyLifeCycleListenerAdapter(){
     @Override public void lifeCycleStarted(    LifeCycle arg0){
       for (      Handler handler : jetty.getHandlers()) {
         if (handler instanceof Context) {
           final Context context=(Context)handler;
           for (          SecurityRule rule : rules) {
-            if (context.getContextPath().equals(rule.forUriPath())) {
+            if (new UriPathWildcardMatcher(rule.forUriPath()).matches(context.getContextPath())) {
               final Filter jettyFilter=new SecurityFilter(rule);
               context.addFilter(new FilterHolder(jettyFilter),"/*",Handler.ALL);
               log.info("Security rule [%s] installed on server",rule.getClass().getCanonicalName());
+              System.out.println(String.format("Security rule [%s] installed on server",rule.getClass().getCanonicalName()));
             }
           }
         }

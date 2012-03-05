@@ -18,12 +18,9 @@
     long fileSize=fileChannel.size();
     int recordSize=getRecordSize();
     boolean fullRebuild=true;
-    if (getConfig() != null) {
-      String mode=(String)getConfig().get("rebuild_idgenerators_fast");
-      if (mode != null && mode.toLowerCase().equals("true")) {
-        fullRebuild=false;
-        highId=findHighIdBackwards();
-      }
+    if (conf.rebuild_idgenerators_fast(true)) {
+      fullRebuild=false;
+      highId=findHighIdBackwards();
     }
     ByteBuffer byteBuffer=ByteBuffer.wrap(new byte[1]);
     LinkedList<Long> freeIdList=new LinkedList<Long>();
@@ -52,10 +49,7 @@
     throw new UnderlyingStorageException("Unable to rebuild id generator " + getStorageFileName(),e);
   }
   setHighId(highId + 1);
-  if (getConfig() != null) {
-    StringLogger msgLog=(StringLogger)getConfig().get(StringLogger.class);
-    msgLog.logMessage(getStorageFileName() + " rebuild id generator, highId=" + getHighId()+ " defragged count="+ defraggedCount,true);
-  }
+  stringLogger.logMessage(getStorageFileName() + " rebuild id generator, highId=" + getHighId()+ " defragged count="+ defraggedCount,true);
   logger.fine("[" + getStorageFileName() + "] high id="+ getHighId()+ " (defragged="+ defraggedCount+ ")");
   closeIdGenerator();
   openIdGenerator(false);
