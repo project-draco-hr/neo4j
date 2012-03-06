@@ -1,0 +1,36 @@
+{
+  GraphDatabaseSPI db=null;
+  ServerInterface server=null;
+  try {
+    String serverDir=TargetDirectory.forTest(getClass()).directory("txinlog-server",true).getAbsolutePath();
+    String backupDir=TargetDirectory.forTest(getClass()).directory("txinlog-backup",true).getAbsolutePath();
+    createInitialDataSet(serverDir);
+    server=startServer(serverDir);
+    OnlineBackup backup=OnlineBackup.from("localhost");
+    backup.full(backupDir);
+    shutdownServer(server);
+    server=null;
+    db=new EmbeddedGraphDatabase(backupDir);
+    for (    XaDataSource ds : db.getXaDataSourceManager().getAllRegisteredDataSources()) {
+      ds.getMasterForCommittedTx(ds.getLastCommittedTxId());
+    }
+    db.shutdown();
+    addMoreData(serverDir);
+    server=startServer(serverDir);
+    backup.incremental(backupDir);
+    shutdownServer(server);
+    server=null;
+    db=new EmbeddedGraphDatabase(backupDir);
+    for (    XaDataSource ds : db.getXaDataSourceManager().getAllRegisteredDataSources()) {
+      ds.getMasterForCommittedTx(ds.getLastCommittedTxId());
+    }
+  }
+  finally {
+    if (db != null) {
+      db.shutdown();
+    }
+    if (server != null) {
+      shutdownServer(server);
+    }
+  }
+}
