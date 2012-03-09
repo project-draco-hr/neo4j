@@ -1,0 +1,24 @@
+{
+  RandomAccessFile file=new RandomAccessFile(new File(storeDir,"nioneo_logical.log.v0"),"r");
+  CommandFactory cf=new CommandFactory();
+  try {
+    FileChannel channel=file.getChannel();
+    ByteBuffer buffer=allocate(10000);
+    readLogHeader(buffer,channel,true);
+    long lastOne=-1;
+    int counted=0;
+    for (LogEntry entry=null; (entry=readEntry(buffer,channel,cf)) != null; ) {
+      if (entry instanceof TwoPhaseCommit) {
+        long txId=((TwoPhaseCommit)entry).getTxId();
+        if (lastOne == -1)         lastOne=txId;
+ else         assertEquals(lastOne + 1,txId);
+        lastOne=txId;
+        counted++;
+      }
+    }
+    assertEquals(expectedCount,counted);
+  }
+  finally {
+    file.close();
+  }
+}

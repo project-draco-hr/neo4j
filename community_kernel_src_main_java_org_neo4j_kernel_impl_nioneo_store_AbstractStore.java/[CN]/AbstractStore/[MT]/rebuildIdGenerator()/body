@@ -22,21 +22,20 @@
       fullRebuild=false;
       highId=findHighIdBackwards();
     }
-    ByteBuffer byteBuffer=ByteBuffer.wrap(new byte[1]);
+    ByteBuffer byteBuffer=ByteBuffer.allocate(recordSize);
     LinkedList<Long> freeIdList=new LinkedList<Long>();
     if (fullRebuild) {
       for (long i=0; i * recordSize < fileSize && recordSize > 0; i++) {
         fileChannel.position(i * recordSize);
+        byteBuffer.clear();
         fileChannel.read(byteBuffer);
         byteBuffer.flip();
-        byte inUse=byteBuffer.get();
-        byteBuffer.flip();
-        nextId();
-        if ((inUse & 0x1) == Record.NOT_IN_USE.byteValue()) {
+        if (!isRecordInUse(byteBuffer)) {
           freeIdList.add(i);
         }
  else {
           highId=i;
+          setHighId(highId + 1);
           while (!freeIdList.isEmpty()) {
             freeId(freeIdList.removeFirst());
             defraggedCount++;
