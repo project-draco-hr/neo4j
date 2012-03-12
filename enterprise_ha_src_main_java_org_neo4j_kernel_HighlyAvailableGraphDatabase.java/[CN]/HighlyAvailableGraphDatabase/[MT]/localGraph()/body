@@ -1,34 +1,16 @@
 {
-  try {
-    if (databaseLock.readLock().tryLock(localGraphWait,TimeUnit.SECONDS)) {
-      try {
-        if (internalGraphDatabase == null)         if (causeOfShutdown != null) {
-          throw new RuntimeException("Graph database not started",causeOfShutdown);
-        }
- else {
-          throw new RuntimeException("Graph database not assigned and no cause of shutdown, " + "maybe not started yet or in the middle of master/slave swap?");
-        }
-        return internalGraphDatabase;
-      }
-  finally {
-        databaseLock.readLock().unlock();
-      }
-    }
- else {
-      if (causeOfShutdown != null) {
-        throw new RuntimeException("Graph database not started",causeOfShutdown);
-      }
- else {
-        throw new RuntimeException("Graph database not assigned and no cause of shutdown, " + "maybe not started yet or in the middle of master/slave swap?");
-      }
-    }
+  AbstractGraphDatabase result=internalGraphDatabase;
+  if (result != null)   return result;
+  long endTime=System.currentTimeMillis() + SECONDS.toMillis(localGraphWait);
+  while (result == null && System.currentTimeMillis() < endTime) {
+    sleepWithoutInterruption(1,"Failed waiting for local graph to be available");
+    result=internalGraphDatabase;
   }
- catch (  InterruptedException e) {
-    if (causeOfShutdown != null) {
-      throw new RuntimeException("Graph database not started",causeOfShutdown);
-    }
+  if (result != null)   return result;
+  if (causeOfShutdown != null) {
+    throw new RuntimeException("Graph database not started",causeOfShutdown);
+  }
  else {
-      throw new RuntimeException("Graph database not assigned and no cause of shutdown, " + "maybe not started yet or in the middle of master/slave swap?");
-    }
+    throw new RuntimeException("Graph database not assigned and no cause of shutdown, " + "maybe not started yet or in the middle of master/slave swap?");
   }
 }
