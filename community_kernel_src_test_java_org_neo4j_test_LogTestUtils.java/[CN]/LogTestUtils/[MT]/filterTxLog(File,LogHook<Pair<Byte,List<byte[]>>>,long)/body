@@ -1,11 +1,12 @@
 {
-  File file=oneOrTwo(new File(storeDir,"tm_tx_log"));
   File tempFile=new File(file.getAbsolutePath() + ".tmp");
   FileChannel in=new RandomAccessFile(file,"r").getChannel();
+  in.position(startPosition);
   FileChannel out=new RandomAccessFile(tempFile,"rw").getChannel();
   LogBuffer outBuffer=new DirectMappedLogBuffer(out);
   ByteBuffer buffer=ByteBuffer.allocate(1024 * 1024);
   try {
+    filter.file(file);
     in.read(buffer);
     buffer.flip();
     while (buffer.hasRemaining()) {
@@ -15,7 +16,7 @@
  else       if (type == TxLog.BRANCH_ADD)       xids=readXids(buffer,2);
  else       if (type == TxLog.MARK_COMMIT)       xids=readXids(buffer,1);
  else       if (type == TxLog.TX_DONE)       xids=readXids(buffer,1);
- else       throw new IllegalArgumentException("Unknown type " + type);
+ else       throw new IllegalArgumentException("Unknown type:" + type + ", position:"+ (in.position() - buffer.remaining()));
       if (filter.accept(Pair.of(type,xids))) {
         outBuffer.put(type);
         writeXids(xids,outBuffer);
@@ -26,7 +27,7 @@
     safeClose(in);
     outBuffer.force();
     safeClose(out);
+    filter.done(file);
   }
-  file.delete();
-  tempFile.renameTo(file);
+  replace(tempFile,file);
 }
