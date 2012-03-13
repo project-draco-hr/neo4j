@@ -4,7 +4,7 @@
     msgLog.logMessage(this + ", " + new Date()+ " Got event: "+ event+ " (path="+ path+ ")",true);
     if (path == null && event.getState() == Watcher.Event.KeeperState.Expired) {
       keeperState=KeeperState.Expired;
-      receiver.reconnect(new Exception());
+      clusterReceiver.reconnect(new Exception());
     }
  else     if (path == null && event.getState() == Watcher.Event.KeeperState.SyncConnected) {
       long newSessionId=zooKeeper.getSessionId();
@@ -18,7 +18,7 @@
           Pair<Master,Machine> masterAfterIWrote=getMasterFromZooKeeper(false,false);
           msgLog.logMessage("Get master after write:" + masterAfterIWrote);
           if (sessionId != -1) {
-            receiver.newMaster(new Exception("Got SyncConnected event from ZK"));
+            clusterReceiver.newMaster(new Exception("Got SyncConnected event from ZK"));
           }
           sessionId=newSessionId;
         }
@@ -42,7 +42,7 @@
       ZooKeeperMachine currentMaster=(ZooKeeperMachine)getCachedMaster().other();
       if (path.contains(currentMaster.getZooKeeperPath())) {
         msgLog.logMessage("Acting on it, calling newMaster()");
-        receiver.newMaster(new Exception());
+        clusterReceiver.newMaster(new Exception());
       }
     }
  else     if (event.getType() == Watcher.Event.EventType.NodeDataChanged) {
@@ -50,12 +50,12 @@
       msgLog.logMessage("Got event data " + newMasterMachineId);
       if (path.contains(MASTER_NOTIFY_CHILD)) {
         if (newMasterMachineId == machineId) {
-          receiver.newMaster(new Exception());
+          clusterReceiver.newMaster(new Exception());
         }
       }
  else       if (path.contains(MASTER_REBOUND_CHILD)) {
         if (newMasterMachineId != machineId) {
-          receiver.newMaster(new Exception());
+          clusterReceiver.newMaster(new Exception());
         }
       }
  else {

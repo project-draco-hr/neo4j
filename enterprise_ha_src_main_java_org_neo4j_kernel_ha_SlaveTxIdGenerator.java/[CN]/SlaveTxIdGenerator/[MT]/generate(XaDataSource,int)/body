@@ -1,7 +1,7 @@
 {
   try {
     final int eventIdentifier=txManager.getEventIdentifier();
-    Response<Long> response=broker.getMaster().first().commitSingleResourceTransaction(onlyForThisDataSource(receiver.getSlaveContext(eventIdentifier),dataSource),dataSource.getName(),new TxExtractor(){
+    Response<Long> response=broker.getMaster().first().commitSingleResourceTransaction(onlyForThisDataSource(responseReceiver.getSlaveContext(eventIdentifier),dataSource),dataSource.getName(),new TxExtractor(){
       @Override public void extract(      LogBuffer buffer){
         try {
           dataSource.getPreparedTransaction(identifier,buffer);
@@ -20,14 +20,14 @@
       }
     }
 );
-    return receiver.receive(response);
+    return responseReceiver.receive(response);
   }
  catch (  ZooKeeperException e) {
-    receiver.newMaster(e);
+    clusterReceiver.newMaster(e);
     throw e;
   }
 catch (  ComException e) {
-    receiver.newMaster(e);
+    clusterReceiver.newMaster(e);
     throw e;
   }
 }
