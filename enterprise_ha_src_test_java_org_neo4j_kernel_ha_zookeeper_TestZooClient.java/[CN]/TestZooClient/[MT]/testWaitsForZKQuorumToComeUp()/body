@@ -1,0 +1,37 @@
+{
+  final long millisForSessionToExpire=1000;
+  Map<String,String> stringConfig=new HashMap<String,String>();
+  stringConfig.put(HaConfig.CONFIG_KEY_COORDINATORS,"127.0.0.1:2181");
+  stringConfig.put(HaConfig.CONFIG_KEY_SERVER_ID,"1");
+  stringConfig.put(HaConfig.CONFIG_KEY_ZK_SESSION_TIMEOUT,Long.toString(millisForSessionToExpire));
+  ZooClient.Configuration config=ConfigProxy.config(stringConfig,ZooClient.Configuration.class);
+  ZooClient client=new ZooClient("",StringLogger.SYSTEM,null,config,null,DummyClusterReceiver);
+  final AtomicBoolean stop=new AtomicBoolean(false);
+  Thread launchesZK=new Thread(new Runnable(){
+    @Override public void run(){
+      LocalhostZooKeeperCluster cluster=null;
+      try {
+        Thread.sleep((millisForSessionToExpire) * 2);
+        cluster=new LocalhostZooKeeperCluster(getClass(),2181);
+        while (!stop.get()) {
+          Thread.sleep(150);
+        }
+      }
+ catch (      Throwable e) {
+        e.printStackTrace();
+      }
+ finally {
+        if (cluster != null) {
+          cluster.shutdown();
+        }
+      }
+    }
+  }
+);
+  launchesZK.setDaemon(true);
+  launchesZK.start();
+  client.waitForSyncConnected(AbstractZooKeeperManager.WaitMode.STARTUP);
+  client.shutdown();
+  stop.set(true);
+  launchesZK.join();
+}
