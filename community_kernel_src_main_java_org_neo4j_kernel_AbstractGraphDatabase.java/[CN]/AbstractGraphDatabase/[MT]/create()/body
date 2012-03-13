@@ -6,14 +6,14 @@
   params.put("neo_store",store);
   String logicalLog=this.storeDir + separator + NeoStoreXaDataSource.LOGICAL_LOG_DEFAULT_NAME;
   params.put("logical_log",logicalLog);
-  config=new Config(msgLog,params);
+  fileSystem=life.add(createFileSystemAbstraction());
+  config=new Config(msgLog,fileSystem,params);
   boolean readOnly=config.getBoolean(Configuration.read_only);
   NodeManager.CacheType cacheType=config.getEnum(NodeManager.CacheType.class,Configuration.cache_type);
   kernelEventHandlers=new KernelEventHandlers();
   diagnosticsManager=life.add(new DiagnosticsManager(msgLog));
   kernelPanicEventGenerator=new KernelPanicEventGenerator(kernelEventHandlers);
   txHook=createTxHook();
-  fileSystem=life.add(createFileSystemAbstraction());
   xaDataSourceManager=life.add(new XaDataSourceManager(msgLog));
   if (readOnly) {
     txManager=new ReadOnlyTxManager(xaDataSourceManager);
@@ -76,7 +76,7 @@
     }
   }
   try {
-    neoDataSource=new NeoStoreXaDataSource(config,storeFactory,lockManager,lockReleaser,msgLog,xaFactory,providers,new DependencyResolverImpl());
+    neoDataSource=new NeoStoreXaDataSource(config,storeFactory,fileSystem,lockManager,lockReleaser,msgLog,xaFactory,providers,new DependencyResolverImpl());
     xaDataSourceManager.registerDataSource(neoDataSource);
   }
  catch (  IOException e) {
