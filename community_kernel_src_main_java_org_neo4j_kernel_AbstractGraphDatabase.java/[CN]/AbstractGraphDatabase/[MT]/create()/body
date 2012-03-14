@@ -1,5 +1,4 @@
 {
-  this.msgLog=createStringLogger();
   String separator=System.getProperty("file.separator");
   String store=this.storeDir + separator + NeoStore.DEFAULT_NAME;
   params.put(CommonAbstractStore.Configuration.store_dir.name(),this.storeDir);
@@ -7,21 +6,22 @@
   String logicalLog=this.storeDir + separator + NeoStoreXaDataSource.LOGICAL_LOG_DEFAULT_NAME;
   params.put("logical_log",logicalLog);
   fileSystem=life.add(createFileSystemAbstraction());
-  config=new Config(msgLog,fileSystem,params);
+  config=new Config(StringLogger.logger(StaticLoggerBinder.getSingleton().getLoggerFactory().getLogger("neo4j.config")),fileSystem,params);
+  this.msgLog=createStringLogger();
   boolean readOnly=config.getBoolean(Configuration.read_only);
   NodeManager.CacheType cacheType=config.getEnum(NodeManager.CacheType.class,Configuration.cache_type);
   kernelEventHandlers=new KernelEventHandlers();
-  diagnosticsManager=life.add(new DiagnosticsManager(msgLog));
+  diagnosticsManager=life.add(new DiagnosticsManager(StringLogger.logger(loggerContext.getLogger("neo4j.diagnostics"))));
   kernelPanicEventGenerator=new KernelPanicEventGenerator(kernelEventHandlers);
   txHook=createTxHook();
-  xaDataSourceManager=life.add(new XaDataSourceManager(msgLog));
+  xaDataSourceManager=life.add(new XaDataSourceManager(StringLogger.logger(loggerContext.getLogger("neo4j.datasource"))));
   if (readOnly) {
     txManager=new ReadOnlyTxManager(xaDataSourceManager);
   }
  else {
     String serviceName=config.get(GraphDatabaseSettings.tx_manager_impl);
     if (serviceName == null) {
-      txManager=new TxManager(this.storeDir,xaDataSourceManager,kernelPanicEventGenerator,txHook,msgLog,fileSystem);
+      txManager=new TxManager(this.storeDir,xaDataSourceManager,kernelPanicEventGenerator,txHook,StringLogger.logger(loggerContext.getLogger("neo4j.txmanager")),fileSystem);
     }
  else {
       TransactionManagerProvider provider;
@@ -29,7 +29,7 @@
       if (provider == null) {
         throw new IllegalStateException("Unknown transaction manager implementation: " + serviceName);
       }
-      txManager=provider.loadTransactionManager(this.storeDir,kernelPanicEventGenerator,txHook,msgLog,fileSystem);
+      txManager=provider.loadTransactionManager(this.storeDir,kernelPanicEventGenerator,txHook,StringLogger.logger(loggerContext.getLogger("neo4j.txmanager")),fileSystem);
     }
   }
   life.add(txManager);
@@ -67,7 +67,7 @@
   indexManager.setRelAutoIndexer(relAutoIndexer);
   recoveryVerifier=createRecoveryVerifier();
   storeFactory=createStoreFactory();
-  xaFactory=new XaFactory(config,txIdGenerator,txManager,logBufferFactory,fileSystem,msgLog,recoveryVerifier);
+  xaFactory=new XaFactory(config,txIdGenerator,txManager,logBufferFactory,fileSystem,StringLogger.logger(loggerContext.getLogger("neo4j.xafactory")),recoveryVerifier);
   List<Pair<TransactionInterceptorProvider,Object>> providers=new ArrayList<Pair<TransactionInterceptorProvider,Object>>(2);
   for (  TransactionInterceptorProvider provider : Service.load(TransactionInterceptorProvider.class)) {
     Object prov=params.get(TransactionInterceptorProvider.class.getSimpleName() + "." + provider.name());
@@ -76,7 +76,7 @@
     }
   }
   try {
-    neoDataSource=new NeoStoreXaDataSource(config,storeFactory,fileSystem,lockManager,lockReleaser,msgLog,xaFactory,providers,new DependencyResolverImpl());
+    neoDataSource=new NeoStoreXaDataSource(config,storeFactory,fileSystem,lockManager,lockReleaser,StringLogger.logger(loggerContext.getLogger("neo4j.datasource")),xaFactory,providers,new DependencyResolverImpl());
     xaDataSourceManager.registerDataSource(neoDataSource);
   }
  catch (  IOException e) {
