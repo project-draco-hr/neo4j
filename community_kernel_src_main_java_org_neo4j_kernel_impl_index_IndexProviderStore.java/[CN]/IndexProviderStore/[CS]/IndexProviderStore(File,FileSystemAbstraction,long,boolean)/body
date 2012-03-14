@@ -1,31 +1,16 @@
 {
   this.file=file;
-  if (!file.exists()) {
-    create(file,fileSystem,expectedVersion);
-  }
   try {
+    if (!file.exists())     create(file,fileSystem,expectedVersion);
     fileChannel=fileSystem.open(file.getAbsolutePath(),"rw");
-    int bytesRead=fileChannel.read(buf);
-    if (bytesRead != FILE_LENGTH && bytesRead != FILE_LENGTH - 8 && !allowUpgrade) {
-      throw new RuntimeException("Expected to read " + FILE_LENGTH + " or "+ (FILE_LENGTH - 8)+ " bytes");
-    }
-    buf.flip();
-    creationTime=buf.getLong();
-    randomIdentifier=buf.getLong();
-    version=buf.getLong();
-    lastCommittedTx=bytesRead / 8 >= 4 ? buf.getLong() : 1;
-    Long readIndexVersion=bytesRead / 8 >= 5 ? buf.getLong() : null;
-    boolean versionDiffers=readIndexVersion == null || readIndexVersion.longValue() != expectedVersion;
-    if (versionDiffers && !allowUpgrade) {
-      if (readIndexVersion != null && expectedVersion < readIndexVersion.longValue()) {
-        String expected=versionLongToString(expectedVersion);
-        String readVersion=versionLongToString(readIndexVersion.longValue());
-        throw new NotCurrentStoreVersionException(expected,readVersion,"Your index has been upgraded to " + readVersion + " and cannot run with an older version "+ expected,false);
-      }
- else       throw new UpgradeNotAllowedByConfigurationException();
-    }
+    Long[] records=readRecordsWithNullDefaults(fileChannel,RECORD_COUNT,allowUpgrade ? RECORD_COUNT - 1 : RECORD_COUNT);
+    creationTime=records[0].longValue();
+    randomIdentifier=records[1].longValue();
+    version=records[2].longValue();
+    lastCommittedTx=records[3].longValue();
+    Long readIndexVersion=records[4];
+    compareExpectedVersionWithStoreVersion(expectedVersion,allowUpgrade,readIndexVersion);
     indexVersion=expectedVersion;
-    if (versionDiffers)     writeOut();
   }
  catch (  IOException e) {
     throw new RuntimeException(e);
