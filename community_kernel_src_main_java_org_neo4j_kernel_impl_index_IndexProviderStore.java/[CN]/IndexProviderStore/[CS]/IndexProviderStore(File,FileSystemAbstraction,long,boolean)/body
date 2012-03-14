@@ -16,7 +16,14 @@
     lastCommittedTx=bytesRead / 8 >= 4 ? buf.getLong() : 1;
     Long readIndexVersion=bytesRead / 8 >= 5 ? buf.getLong() : null;
     boolean versionDiffers=readIndexVersion == null || readIndexVersion.longValue() != expectedVersion;
-    if (versionDiffers && !allowUpgrade)     throw new UpgradeNotAllowedByConfigurationException();
+    if (versionDiffers && !allowUpgrade) {
+      if (readIndexVersion != null && expectedVersion < readIndexVersion.longValue()) {
+        String expected=versionLongToString(expectedVersion);
+        String readVersion=versionLongToString(readIndexVersion.longValue());
+        throw new NotCurrentStoreVersionException(expected,readVersion,"Your index has been upgraded to " + readVersion + " and cannot run with an older version "+ expected,false);
+      }
+ else       throw new UpgradeNotAllowedByConfigurationException();
+    }
     indexVersion=expectedVersion;
     if (versionDiffers)     writeOut();
   }
