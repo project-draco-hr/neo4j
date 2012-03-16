@@ -1,17 +1,17 @@
 {
   EnterpriseDriver driver=drivers[0];
-  long nodeId=driver.api().createNode();
+  long nodeId=driver.neo4jClient().createNode();
   driver.performFullHABackup("neobackup",coordinatorAddresses);
   driver.performIncrementalHABackup("neobackup",coordinatorAddresses);
   for (  EnterpriseDriver d : drivers) {
-    d.stopService();
-    d.destroyDatabase();
+    d.stopNeo4j();
+    d.deleteDatabase();
   }
   driver.replaceGraphDataDirWithBackup("neobackup");
-  for (  EnterpriseDriver d : drivers)   d.startService();
+  for (  EnterpriseDriver d : drivers)   d.startNeo4j();
   for (  EnterpriseDriver d : drivers) {
     try {
-      d.api().waitUntilNodeExists(nodeId);
+      d.neo4jClient().waitUntilNodeExists(nodeId);
     }
  catch (    Exception e) {
       throw new RuntimeException("Restoring backup failed on server " + d.vm().definition().ip(),e);
