@@ -85,4 +85,23 @@
   life.add(new StuffToDoAfterRecovery());
   life.add(new DatabaseAvailability());
   life.add(kernelEventHandlers);
+  config.addConfigurationChangeListener(new Config.ConfigurationChangeListener(){
+    Executor executor=Executors.newSingleThreadExecutor(new DaemonThreadFactory("Database configuration restart"));
+    @Override public void notifyConfigurationChanges(    final Iterable<Config.ConfigurationChange> change){
+      executor.execute(new Runnable(){
+        @Override public void run(){
+          try {
+            life.stop();
+            life.start();
+            msgLog.logMessage("Database restarted with the following configuration changes:" + change);
+          }
+ catch (          LifecycleException e) {
+            msgLog.logMessage("Could not restart database",e);
+          }
+        }
+      }
+);
+    }
+  }
+);
 }
