@@ -32,7 +32,6 @@
   txIdGenerator=createTxIdGenerator();
   ragManager=new RagManager(txManager);
   lockManager=createLockManager();
-  cacheManager=life.add(new AdaptiveCacheManager(ConfigProxy.config(params,AdaptiveCacheManager.Configuration.class)));
   idGeneratorFactory=createIdGeneratorFactory();
   relationshipTypeCreator=new DefaultRelationshipTypeCreator();
   lastCommittedTxIdSetter=createLastCommittedTxIdSetter();
@@ -43,7 +42,7 @@
   lockReleaser=new LockReleaser(lockManager,txManager,nodeManager,propertyIndexManager);
   persistenceManager.setLockReleaser(lockReleaser);
   relationshipTypeHolder=new RelationshipTypeHolder(txManager,persistenceManager,persistenceSource,relationshipTypeCreator);
-  nodeManager=!readOnly ? new NodeManager(ConfigProxy.config(params,NodeManager.Configuration.class),this,cacheManager,lockManager,lockReleaser,txManager,persistenceManager,persistenceSource,relationshipTypeHolder,cacheType,propertyIndexManager,createNodeLookup(),createRelationshipLookups()) : new ReadOnlyNodeManager(ConfigProxy.config(params,NodeManager.Configuration.class),this,cacheManager,lockManager,lockReleaser,txManager,persistenceManager,persistenceSource,relationshipTypeHolder,cacheType,propertyIndexManager,createNodeLookup(),createRelationshipLookups());
+  nodeManager=!readOnly ? new NodeManager(ConfigProxy.config(params,NodeManager.Configuration.class),this,lockManager,lockReleaser,txManager,persistenceManager,persistenceSource,relationshipTypeHolder,cacheType,propertyIndexManager,createNodeLookup(),createRelationshipLookups(),msgLog,diagnosticsManager) : new ReadOnlyNodeManager(ConfigProxy.config(params,NodeManager.Configuration.class),this,lockManager,lockReleaser,txManager,persistenceManager,persistenceSource,relationshipTypeHolder,cacheType,propertyIndexManager,createNodeLookup(),createRelationshipLookups(),msgLog,diagnosticsManager);
   life.add(nodeManager);
   lockReleaser.setNodeManager(nodeManager);
   indexStore=new IndexStore(this.storeDir,fileSystem);
@@ -84,6 +83,7 @@
     throw new IllegalStateException("Could not create Neo XA datasource",e);
   }
   life.add(new StuffToDoAfterRecovery());
+  life.add(new MonitorGc(ConfigProxy.config(params,MonitorGc.Configuration.class),msgLog));
   life.add(new DatabaseAvailability());
   life.add(kernelEventHandlers);
 }
