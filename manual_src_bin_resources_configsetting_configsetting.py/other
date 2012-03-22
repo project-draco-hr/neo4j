@@ -1,0 +1,55 @@
+import sys
+data = sys.stdin.readlines()
+line = data.pop(0).split(':', 1)
+setting_key = line[0]
+default_value = None
+if (len(line) > 1):
+    default_value = line[1]
+description = data.pop(0)
+if (len(sys.argv) > 1):
+    title = sys.argv[1]
+setting_type = 'default'
+if (len(sys.argv) > 2):
+    setting_type = sys.argv[2]
+headings = ['Value']
+column_types = ['mono']
+body = []
+body.append('<tbody>')
+head = []
+has_value_descriptions = False
+rows = []
+for line in data:
+    parts = line.split(':', 1)
+    rows.append(parts)
+    if (len(parts) > 1):
+        has_value_descriptions = True
+if (len(rows) > 0):
+    if (setting_type in ['minmax', 'min', 'max']):
+        headings.insert(0, 'Limit')
+        column_types.insert(0, 'default')
+    if has_value_descriptions:
+        headings.append('Description')
+        column_types.append('default')
+    if (setting_type == 'minmax'):
+        rows[0].insert(0, 'min')
+        rows[1].insert(0, 'max')
+    elif (setting_type == 'min'):
+        rows[0].insert(0, 'min')
+    elif (setting_type == 'max'):
+        rows[0].insert(0, 'max')
+    column_count = len(headings)
+    head.extend(config_intro(setting_key, description, column_count))
+    head.extend(out_entries([headings], (['default'] * column_count)))
+    body.extend(out_entries(rows, column_types))
+else:
+    column_count = 1
+    body.extend(config_intro(setting_key, description, column_count))
+body.append('</tbody>')
+sys.stdout.write(''.join(table_start(title, setting_key, column_count)))
+if (len(head) > 0):
+    sys.stdout.write(''.join(table_head(head)))
+if (default_value is not None):
+    sys.stdout.write(''.join(table_footer(default_value, column_count)))
+sys.stdout.write(''.join(body))
+sys.stdout.write('</tgroup>')
+sys.stdout.write('</table>')
