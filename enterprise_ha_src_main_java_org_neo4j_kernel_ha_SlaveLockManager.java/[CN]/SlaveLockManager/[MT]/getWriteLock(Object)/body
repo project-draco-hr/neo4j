@@ -13,7 +13,7 @@
     LockResult result=null;
     do {
       int eventIdentifier=getLocalTxId();
-      result=receiver.receive(grabber.acquireLock(broker.getMaster().first(),receiver.getSlaveContext(eventIdentifier),resource));
+      result=databaseOperations.receive(grabber.acquireLock(broker.getMaster().first(),databaseOperations.getSlaveContext(eventIdentifier),resource));
 switch (result.getStatus()) {
 case OK_LOCKED:
         super.getWriteLock(resource);
@@ -24,12 +24,8 @@ case DEAD_LOCKED:
 }
  while (result.getStatus() == LockStatus.NOT_LOCKED);
 }
- catch (ZooKeeperException e) {
-clusterReceiver.newMaster(e);
-throw e;
-}
-catch (ComException e) {
-clusterReceiver.newMaster(e);
+ catch (RuntimeException e) {
+databaseOperations.exceptionHappened(e);
 throw e;
 }
 }
