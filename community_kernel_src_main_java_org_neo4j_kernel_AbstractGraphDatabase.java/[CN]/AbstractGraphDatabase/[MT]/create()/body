@@ -9,6 +9,7 @@
   kernelPanicEventGenerator=new KernelPanicEventGenerator(kernelEventHandlers);
   txHook=createTxHook();
   fileSystem=life.add(createFileSystemAbstraction());
+  guard=conf.insert_guard(false) ? new Guard(msgLog) : null;
   xaDataSourceManager=life.add(new XaDataSourceManager(msgLog));
   if (readOnly) {
     txManager=new ReadOnlyTxManager(xaDataSourceManager);
@@ -42,7 +43,7 @@
   lockReleaser=new LockReleaser(lockManager,txManager,nodeManager,propertyIndexManager);
   persistenceManager.setLockReleaser(lockReleaser);
   relationshipTypeHolder=new RelationshipTypeHolder(txManager,persistenceManager,persistenceSource,relationshipTypeCreator);
-  nodeManager=!readOnly ? new NodeManager(ConfigProxy.config(params,NodeManager.Configuration.class),this,lockManager,lockReleaser,txManager,persistenceManager,persistenceSource,relationshipTypeHolder,cacheType,propertyIndexManager,createNodeLookup(),createRelationshipLookups(),msgLog,diagnosticsManager) : new ReadOnlyNodeManager(ConfigProxy.config(params,NodeManager.Configuration.class),this,lockManager,lockReleaser,txManager,persistenceManager,persistenceSource,relationshipTypeHolder,cacheType,propertyIndexManager,createNodeLookup(),createRelationshipLookups(),msgLog,diagnosticsManager);
+  nodeManager=guard != null ? createGuardedNodeManager(readOnly,cacheType) : createNodeManager(readOnly,cacheType);
   life.add(nodeManager);
   lockReleaser.setNodeManager(nodeManager);
   indexStore=new IndexStore(this.storeDir,fileSystem);
