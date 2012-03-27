@@ -1,0 +1,29 @@
+{
+  RestCreateNode createNode=new RestCreateNode();
+  int rounds=4;
+  long nodeId=-1;
+  for (int i=0; i < machines.length * rounds; i++) {
+    MachineModel machine=machines[i % machines.length];
+    try {
+switch (i % 4) {
+case 0:
+        machine.forceApply(createNode);
+      nodeId=createNode.getCreatedNodeId();
+    break;
+case 1:
+  machine.verifyThat(new RestNodeExists(nodeId));
+break;
+case 2:
+machine.verifyThat(new RestNodeExists(nodeId));
+machine.forceApply(new RestDeleteNode(nodeId));
+break;
+case 3:
+machine.verifyThat(new RestNodeDoesntExist(nodeId));
+break;
+}
+}
+ catch (Exception e) {
+throw new RuntimeException("Ensuring HA cluster works failed while executing request on server " + machine.getVMDefinition().ip() + ". Was at stage "+ i+ " in loop, nodeId was "+ nodeId+ ". See nested exception.",e);
+}
+}
+}

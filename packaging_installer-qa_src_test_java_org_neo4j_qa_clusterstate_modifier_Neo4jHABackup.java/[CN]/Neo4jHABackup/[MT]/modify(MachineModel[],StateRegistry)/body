@@ -1,0 +1,20 @@
+{
+  RestCreateNode createNode=new RestCreateNode();
+  ZookeeperClusterDescription zkCluster=state.get(ZookeeperClusterDescription.class);
+  MachineModel backupMachine=machines[0];
+  backupMachine.apply(createNode);
+  long nodeId=createNode.getCreatedNodeId();
+  backupMachine.forceApply(new FullHABackup("test",zkCluster));
+  backupMachine.forceApply(new IncrementalHABackup("test",zkCluster));
+  for (  MachineModel machine : machines) {
+    machine.forceApply(neo4jStopCommand());
+    machine.forceApply(new DestroyNeo4jData());
+  }
+  backupMachine.forceApply(new ReplaceDataWithBackup("test"));
+  backupMachine.forceApply(neo4jStartCommand());
+  backupMachine.verifyThat(new RestNodeExists(nodeId));
+  for (  MachineModel machine : machines) {
+    machine.apply(neo4jStartCommand());
+    machine.verifyThat(new RestNodeExists(nodeId));
+  }
+}

@@ -1,0 +1,36 @@
+{
+  EachTestNotifier eachNotifier=new EachTestNotifier(notifier,description);
+  eachNotifier.fireTestStarted();
+  try {
+    try {
+      testPermutation.getMachineModel().forceApply(new RollbackMachine());
+      statement.evaluate();
+    }
+ catch (    AssumptionViolatedException e) {
+      throw e;
+    }
+catch (    Throwable e) {
+      if (vagrantIssue.potentiallyAVagrantIssue(e)) {
+        testPermutation.getMachineModel().forceApply(new RecreateMachine());
+        statement.evaluate();
+      }
+ else {
+        throw e;
+      }
+    }
+  }
+ catch (  AssumptionViolatedException e) {
+    eachNotifier.addFailedAssumption(e);
+  }
+catch (  Throwable e) {
+    eachNotifier.addFailure(e);
+  }
+ finally {
+    try {
+      testPermutation.getMachineModel().forceApply(new DownloadLogs(SharedConstants.TEST_LOGS_DIR + testName));
+    }
+ catch (    Throwable e) {
+    }
+    eachNotifier.fireTestFinished();
+  }
+}
