@@ -4,11 +4,12 @@
     HttpServletResponse response=(HttpServletResponse)res;
     int timeLimit=getTimeLimit(request);
     if (timeLimit <= 0) {
-      guard.clear();
       chain.doFilter(req,res);
     }
  else {
-      guard.start(currentTimeMillis() + timeLimit);
+      final long valid=currentTimeMillis() + timeLimit;
+      guard.startTimeout(valid);
+      timer.schedule(timerTask,valid + 5000);
       try {
         chain.doFilter(req,res);
       }
@@ -16,6 +17,7 @@
         response.setStatus(SC_REQUEST_TIMEOUT);
       }
  finally {
+        timerTask.cancel();
         guard.stop();
       }
     }
