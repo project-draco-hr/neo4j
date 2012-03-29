@@ -1,0 +1,33 @@
+{
+  if (relationships == null) {
+    return;
+  }
+synchronized (this) {
+    int sizeBefore=size();
+    if (cowRelationshipAddMap != null) {
+      for (      String type : cowRelationshipAddMap.keySet()) {
+        RelIdArray add=cowRelationshipAddMap.get(type);
+        Collection<Long> remove=null;
+        if (cowRelationshipRemoveMap != null) {
+          remove=cowRelationshipRemoveMap.get(type);
+        }
+        RelIdArray src=getRelIdArray(type);
+        putRelIdArray(RelIdArray.from(src,add,remove));
+      }
+    }
+    if (cowRelationshipRemoveMap != null) {
+      for (      String type : cowRelationshipRemoveMap.keySet()) {
+        if (cowRelationshipAddMap != null && cowRelationshipAddMap.get(type) != null) {
+          continue;
+        }
+        RelIdArray src=getRelIdArray(type);
+        if (src != null) {
+          Collection<Long> remove=cowRelationshipRemoveMap.get(type);
+          putRelIdArray(RelIdArray.from(src,null,remove));
+        }
+      }
+    }
+    int sizeAfter=size();
+    updateSize(sizeBefore,sizeAfter,nodeManager);
+  }
+}

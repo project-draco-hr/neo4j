@@ -15,6 +15,8 @@
   kernelPanicEventGenerator=new KernelPanicEventGenerator(kernelEventHandlers);
   txHook=createTxHook();
   xaDataSourceManager=life.add(new XaDataSourceManager(StringLogger.logger(loggerContext.getLogger("neo4j.datasource"))));
+  guard=conf.enable_execution_guard(false) ? new Guard(msgLog) : null;
+  xaDataSourceManager=life.add(new XaDataSourceManager(msgLog));
   if (readOnly) {
     txManager=new ReadOnlyTxManager(xaDataSourceManager);
   }
@@ -37,7 +39,6 @@
   txIdGenerator=createTxIdGenerator();
   ragManager=new RagManager(txManager);
   lockManager=createLockManager();
-  cacheManager=life.add(new AdaptiveCacheManager(config));
   idGeneratorFactory=createIdGeneratorFactory();
   relationshipTypeCreator=new DefaultRelationshipTypeCreator();
   lastCommittedTxIdSetter=createLastCommittedTxIdSetter();
@@ -48,7 +49,7 @@
   lockReleaser=new LockReleaser(lockManager,txManager,nodeManager,propertyIndexManager);
   persistenceManager.setLockReleaser(lockReleaser);
   relationshipTypeHolder=new RelationshipTypeHolder(txManager,persistenceManager,persistenceSource,relationshipTypeCreator);
-  nodeManager=!readOnly ? new NodeManager(config,this,cacheManager,lockManager,lockReleaser,txManager,persistenceManager,persistenceSource,relationshipTypeHolder,cacheType,propertyIndexManager,createNodeLookup(),createRelationshipLookups()) : new ReadOnlyNodeManager(config,this,cacheManager,lockManager,lockReleaser,txManager,persistenceManager,persistenceSource,relationshipTypeHolder,cacheType,propertyIndexManager,createNodeLookup(),createRelationshipLookups());
+  nodeManager=guard != null ? createGuardedNodeManager(readOnly,cacheType) : createNodeManager(readOnly,cacheType);
   life.add(nodeManager);
   lockReleaser.setNodeManager(nodeManager);
   indexStore=new IndexStore(this.storeDir,fileSystem);
@@ -83,6 +84,7 @@
     throw new IllegalStateException("Could not create Neo XA datasource",e);
   }
   life.add(new StuffToDoAfterRecovery());
+  life.add(new MonitorGc(ConfigProxy.config(params,MonitorGc.Configuration.class),msgLog));
   life.add(new DatabaseAvailability());
   life.add(kernelEventHandlers);
   config.addConfigurationChangeListener(new ConfigurationChangeListener(){

@@ -1,0 +1,24 @@
+{
+  filter.file(file);
+  File tempFile=new File(file.getAbsolutePath() + ".tmp");
+  FileChannel in=new RandomAccessFile(file,"r").getChannel();
+  FileChannel out=new RandomAccessFile(tempFile,"rw").getChannel();
+  LogBuffer outBuffer=new DirectMappedLogBuffer(out);
+  ByteBuffer buffer=ByteBuffer.allocate(1024 * 1024);
+  transferLogicalLogHeader(in,outBuffer,buffer);
+  CommandFactory cf=new CommandFactory();
+  try {
+    LogEntry entry=null;
+    while ((entry=readEntry(buffer,in,cf)) != null) {
+      if (!filter.accept(entry))       continue;
+      writeLogEntry(entry,outBuffer);
+    }
+  }
+  finally {
+    safeClose(in);
+    outBuffer.force();
+    safeClose(out);
+    filter.done(file);
+  }
+  replace(tempFile,file);
+}

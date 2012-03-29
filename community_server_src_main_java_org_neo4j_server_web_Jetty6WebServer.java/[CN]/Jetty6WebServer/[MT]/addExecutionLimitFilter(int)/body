@@ -1,0 +1,19 @@
+{
+  final Guard guard=server.getDatabase().graph.getGuard();
+  if (guard == null) {
+    throw new RuntimeException("unable to use guard, enable guard-insertion in neo4j.properties");
+  }
+  jetty.addLifeCycleListener(new JettyLifeCycleListenerAdapter(){
+    @Override public void lifeCycleStarted(    LifeCycle arg0){
+      for (      Handler handler : jetty.getHandlers()) {
+        if (handler instanceof Context) {
+          final Context context=(Context)handler;
+          final Filter jettyFilter=new GuardingRequestFilter(guard,timeout);
+          final FilterHolder holder=new FilterHolder(jettyFilter);
+          context.addFilter(holder,"/*",Handler.ALL);
+        }
+      }
+    }
+  }
+);
+}
