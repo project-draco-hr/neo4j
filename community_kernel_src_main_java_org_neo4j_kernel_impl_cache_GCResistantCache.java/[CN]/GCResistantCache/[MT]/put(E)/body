@@ -1,0 +1,28 @@
+{
+  long time=System.currentTimeMillis();
+  if (time - putTimeStamp > minLogInterval) {
+    putTimeStamp=time;
+    printStatistics();
+  }
+  int pos=getPosition(obj);
+  E oldObj=cache.get(pos);
+  if (oldObj != obj) {
+    int objectSize=obj.size();
+    if (cache.compareAndSet(pos,oldObj,obj)) {
+      setHighest(obj.getId());
+      int oldObjSize=0;
+      if (oldObj != null) {
+        oldObjSize=oldObj.getRegisteredSize();
+      }
+      long size=currentSize.addAndGet(objectSize - oldObjSize);
+      obj.setRegisteredSize(objectSize);
+      if (oldObj != null) {
+        collisions++;
+      }
+      totalPuts++;
+      if (size > maxSize) {
+        purgeFrom(pos);
+      }
+    }
+  }
+}
