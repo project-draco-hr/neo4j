@@ -1,5 +1,5 @@
 {
-  EmbeddedGraphDatabase db=new EmbeddedGraphDatabase(forTest(getClass()).directory("zero",true).getAbsolutePath());
+  GraphDatabaseAPI db=(GraphDatabaseAPI)new GraphDatabaseFactory().newEmbeddedDatabase(forTest(getClass()).directory("zero",true).getAbsolutePath());
   String storeDir=db.getStoreDir();
   Transaction tx=db.beginTx();
   Node node=db.createNode();
@@ -7,13 +7,14 @@
   tx.success();
   tx.finish();
   db.shutdown();
-  db=new EmbeddedGraphDatabase(forTest(getClass()).directory("zero",false).getAbsolutePath());
+  db=(GraphDatabaseAPI)new GraphDatabaseFactory().newEmbeddedDatabase(forTest(getClass()).directory("zero",false).getAbsolutePath());
   tx=db.beginTx();
   db.getNodeManager().getGraphProperties().setProperty("test","something");
   tx.success();
   tx.finish();
   db.shutdown();
-  NeoStore neoStore=new StoreFactory(Collections.<String,String>emptyMap(),defaultIdGeneratorFactory(),defaultFileSystemAbstraction(),null,StringLogger.DEV_NULL,null).newNeoStore(new File(storeDir,NeoStore.DEFAULT_NAME).getAbsolutePath());
+  FileSystemAbstraction fileSystem=new DefaultFileSystemAbstraction();
+  NeoStore neoStore=new StoreFactory(new Config(StringLogger.DEV_NULL,fileSystem,Collections.<String,String>emptyMap(),Collections.<Class<?>>singletonList(GraphDatabaseSettings.class)),new DefaultIdGeneratorFactory(),fileSystem,null,StringLogger.DEV_NULL,null).newNeoStore(new File(storeDir,NeoStore.DEFAULT_NAME).getAbsolutePath());
   long prop=neoStore.getGraphNextProp();
   assertTrue(prop != 0);
   neoStore.close();

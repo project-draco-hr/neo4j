@@ -1,9 +1,10 @@
 {
   LockManager lockManager=getEmbeddedGraphDb().getLockManager();
   LockReleaser lockReleaser=getEmbeddedGraphDb().getLockReleaser();
-  Map<String,String> config=MapUtil.stringMap("store_dir",path(),"neo_store",file("neo"),"logical_log",file("nioneo_logical.log"));
-  StoreFactory sf=new StoreFactory(config,CommonFactories.defaultIdGeneratorFactory(),CommonFactories.defaultFileSystemAbstraction(),null,StringLogger.DEV_NULL,null);
-  ds=new NeoStoreXaDataSource(ConfigProxy.config(config,NeoStoreXaDataSource.Configuration.class),CommonFactories.defaultFileSystemAbstraction(),sf,lockManager,lockReleaser,StringLogger.DEV_NULL,new XaFactory(Collections.<String,String>emptyMap(),TxIdGenerator.DEFAULT,new PlaceboTm(),CommonFactories.defaultLogBufferFactory(),CommonFactories.defaultFileSystemAbstraction(),StringLogger.DEV_NULL,CommonFactories.defaultRecoveryVerifier()),Collections.<Pair<TransactionInterceptorProvider,Object>>emptyList(),null);
+  FileSystemAbstraction fileSystem=new DefaultFileSystemAbstraction();
+  Config config=new Config(StringLogger.DEV_NULL,fileSystem,MapUtil.stringMap("store_dir",path(),"neo_store",file("neo"),"logical_log",file("nioneo_logical.log")),Collections.<Class<?>>singletonList(GraphDatabaseSettings.class));
+  StoreFactory sf=new StoreFactory(config,new DefaultIdGeneratorFactory(),fileSystem,null,StringLogger.DEV_NULL,null);
+  ds=new NeoStoreXaDataSource(config,sf,fileSystem,lockManager,lockReleaser,StringLogger.DEV_NULL,new XaFactory(config,TxIdGenerator.DEFAULT,new PlaceboTm(),new DefaultLogBufferFactory(),fileSystem,StringLogger.DEV_NULL,RecoveryVerifier.ALWAYS_VALID),Collections.<Pair<TransactionInterceptorProvider,Object>>emptyList(),null);
   xaCon=ds.getXaConnection();
   pStore=xaCon.getPropertyStore();
   rtStore=xaCon.getRelationshipTypeStore();

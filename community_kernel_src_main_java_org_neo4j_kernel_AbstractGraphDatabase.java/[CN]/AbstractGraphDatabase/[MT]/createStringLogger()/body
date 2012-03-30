@@ -1,10 +1,20 @@
 {
-  final StringLogger stringLogger=StringLogger.logger(this.storeDir);
-  life.add(new LifecycleAdapter(){
-    @Override public void shutdown() throws Throwable {
-      stringLogger.close();
-    }
+  File file=new File(storeDir).getAbsoluteFile();
+  if (!file.exists())   file.mkdirs();
+  loggerContext=(LoggerContext)StaticLoggerBinder.getSingleton().getLoggerFactory();
+  JoranConfigurator configurator=new JoranConfigurator();
+  configurator.setContext(loggerContext);
+  loggerContext.putProperty("neo_store",storeDir);
+  loggerContext.putProperty("remote_logging_enabled",config.get(GraphDatabaseSettings.remote_logging_enabled));
+  loggerContext.putProperty("remote_logging_host",config.get(GraphDatabaseSettings.remote_logging_host));
+  loggerContext.putProperty("remote_logging_port",config.get(GraphDatabaseSettings.remote_logging_port));
+  try {
+    configurator.doConfigure(getClass().getResource("/neo4j-logback.xml"));
   }
-);
+ catch (  JoranException e) {
+    throw new IllegalStateException("Failed to configure logging",e);
+  }
+  final org.slf4j.Logger neo4j=LoggerFactory.getLogger("neo4j");
+  final StringLogger stringLogger=StringLogger.logger(neo4j);
   return stringLogger;
 }

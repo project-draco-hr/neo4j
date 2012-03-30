@@ -1,0 +1,51 @@
+{
+  if (status == LifecycleStatus.STARTED) {
+    boolean foundRestartingInstance=false;
+    List<LifecycleInstance> restartingInstances=new ArrayList<LifecycleInstance>();
+    for (    LifecycleInstance lifecycleInstance : instances) {
+      if (lifecycleInstance.instance == instance) {
+        foundRestartingInstance=true;
+      }
+      if (foundRestartingInstance)       restartingInstances.add(lifecycleInstance);
+    }
+    if (!foundRestartingInstance)     throw new IllegalArgumentException("Instance is not registered");
+    status=changedStatus(this,status,LifecycleStatus.STOPPING);
+    LifecycleException ex=null;
+    for (int i=restartingInstances.size() - 1; i >= 0; i--) {
+      LifecycleInstance lifecycleInstance=restartingInstances.get(i);
+      try {
+        lifecycleInstance.stop();
+      }
+ catch (      LifecycleException e) {
+        ex=causedBy(e,ex);
+      }
+    }
+    if (ex != null) {
+      status=changedStatus(this,status,LifecycleStatus.STARTED);
+      try {
+        stop();
+        throw ex;
+      }
+ catch (      LifecycleException e) {
+        throw causedBy(e,ex);
+      }
+    }
+    try {
+      for (int i=0; i < restartingInstances.size(); i++) {
+        LifecycleInstance lifecycle=restartingInstances.get(i);
+        lifecycle.start();
+      }
+      status=changedStatus(this,status,LifecycleStatus.STARTED);
+    }
+ catch (    LifecycleException e) {
+      status=changedStatus(this,status,LifecycleStatus.STARTED);
+      try {
+        stop();
+        throw e;
+      }
+ catch (      LifecycleException e1) {
+        throw causedBy(e1,e);
+      }
+    }
+  }
+}

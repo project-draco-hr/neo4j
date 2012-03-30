@@ -2,16 +2,13 @@
   rejectAutoUpgrade(stringParams);
   msgLog=StringLogger.logger(storeDir);
   Map<String,String> params=getDefaultParams();
-  params.put(Config.USE_MEMORY_MAPPED_BUFFERS,"false");
-  boolean dump=Boolean.parseBoolean(stringParams.get(Config.DUMP_CONFIGURATION));
-  new AutoConfigurator(CommonFactories.defaultFileSystemAbstraction(),storeDir,false,dump).configure(params);
-  for (  Map.Entry<String,String> entry : stringParams.entrySet()) {
-    params.put(entry.getKey(),entry.getValue());
-  }
+  params.put(GraphDatabaseSettings.use_memory_mapped_buffers.name(),GraphDatabaseSetting.BooleanSetting.FALSE);
+  final FileSystemAbstraction fileSystem=new DefaultFileSystemAbstraction();
+  Config config=new Config(StringLogger.DEV_NULL,fileSystem,params,Collections.<Class<?>>singletonList(GraphDatabaseSettings.class));
+  boolean dump=config.getBoolean(GraphDatabaseSettings.dump_configuration);
   this.storeDir=storeDir;
-  this.idGeneratorFactory=CommonFactories.defaultIdGeneratorFactory();
-  final FileSystemAbstraction fileSystem=CommonFactories.defaultFileSystemAbstraction();
-  StoreFactory sf=new StoreFactory(params,idGeneratorFactory,fileSystem,null,StringLogger.DEV_NULL,null);
+  this.idGeneratorFactory=new DefaultIdGeneratorFactory();
+  StoreFactory sf=new StoreFactory(config,idGeneratorFactory,fileSystem,null,StringLogger.DEV_NULL,null);
   String store=fixPath(storeDir,sf);
   if (dump) {
     dumpConfiguration(params);

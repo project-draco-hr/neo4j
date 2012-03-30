@@ -1,0 +1,38 @@
+{
+  Set<String> keys=new LinkedHashSet<String>();
+  for (  Field field : GraphDatabaseSettings.class.getFields()) {
+    try {
+      GraphDatabaseSetting setting=(GraphDatabaseSetting)field.get(null);
+      if (field.getAnnotation(Description.class) != null) {
+        keys.add(setting.name() + ".description");
+        keys.add(setting.name() + ".title");
+        keys.add(setting.name() + ".validationmessage");
+        if (field.getAnnotation(Default.class) != null) {
+          keys.add(setting.name() + ".default");
+        }
+        if (setting instanceof GraphDatabaseSetting.OptionsSetting) {
+          keys.add(setting.name() + ".options");
+          try {
+            for (            String option : ((GraphDatabaseSetting.OptionsSetting)setting).options()) {
+              Field optionField=findOptionField(option,setting.getClass());
+              Description description=optionField.getAnnotation(Description.class);
+              if (description != null) {
+                keys.add(setting.name() + ".option." + option);
+              }
+            }
+          }
+ catch (          NoSuchFieldException e) {
+          }
+        }
+        if (setting instanceof GraphDatabaseSetting.NumberSetting) {
+          GraphDatabaseSetting.NumberSetting numberSetting=(GraphDatabaseSetting.NumberSetting)setting;
+          if (numberSetting.getMin() != null)           keys.add(setting.name() + ".min");
+          if (numberSetting.getMax() != null)           keys.add(setting.name() + ".max");
+        }
+      }
+    }
+ catch (    Exception e) {
+    }
+  }
+  return keys;
+}

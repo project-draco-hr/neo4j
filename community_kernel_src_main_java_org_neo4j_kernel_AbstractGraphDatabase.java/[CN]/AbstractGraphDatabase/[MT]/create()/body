@@ -1,23 +1,35 @@
 {
+  String separator=System.getProperty("file.separator");
+  String store=this.storeDir + separator + NeoStore.DEFAULT_NAME;
+  params.put(CommonAbstractStore.Configuration.store_dir.name(),this.storeDir);
+  params.put("neo_store",store);
+  String logicalLog=this.storeDir + separator + NeoStoreXaDataSource.LOGICAL_LOG_DEFAULT_NAME;
+  params.put("logical_log",logicalLog);
+  fileSystem=life.add(createFileSystemAbstraction());
+  List<Class<?>> settingsClasses=new ArrayList<Class<?>>();
+  settingsClasses.add(GraphDatabaseSettings.class);
+  for (  KernelExtension kernelExtension : kernelExtensions) {
+    Class settingsClass=kernelExtension.getSettingsClass();
+    if (settingsClass != null)     settingsClasses.add(settingsClass);
+  }
+  config=new Config(StringLogger.logger(StaticLoggerBinder.getSingleton().getLoggerFactory().getLogger("neo4j.config")),fileSystem,params,settingsClasses);
   this.msgLog=createStringLogger();
-  params=new ConfigurationMigrator(msgLog).migrateConfiguration(params);
-  Configuration conf=ConfigProxy.config(params,Configuration.class);
-  boolean readOnly=conf.read_only(false);
-  NodeManager.CacheType cacheType=conf.cache_type(DEFAULT_CACHE_TYPE);
+  boolean readOnly=config.getBoolean(Configuration.read_only);
+  NodeManager.CacheType cacheType=config.getEnum(NodeManager.CacheType.class,Configuration.cache_type);
   kernelEventHandlers=new KernelEventHandlers();
-  diagnosticsManager=life.add(new DiagnosticsManager(msgLog));
+  diagnosticsManager=life.add(new DiagnosticsManager(StringLogger.logger(loggerContext.getLogger("neo4j.diagnostics"))));
   kernelPanicEventGenerator=new KernelPanicEventGenerator(kernelEventHandlers);
   txHook=createTxHook();
-  fileSystem=life.add(createFileSystemAbstraction());
-  guard=conf.enable_execution_guard(false) ? new Guard(msgLog) : null;
+  xaDataSourceManager=life.add(new XaDataSourceManager(StringLogger.logger(loggerContext.getLogger("neo4j.datasource"))));
+  guard=config.getBoolean(Configuration.execution_guard_enabled) ? new Guard(msgLog) : null;
   xaDataSourceManager=life.add(new XaDataSourceManager(msgLog));
   if (readOnly) {
     txManager=new ReadOnlyTxManager(xaDataSourceManager);
   }
  else {
-    String serviceName=params.get(Config.TXMANAGER_IMPLEMENTATION);
+    String serviceName=config.get(GraphDatabaseSettings.tx_manager_impl);
     if (serviceName == null) {
-      txManager=new TxManager(this.storeDir,xaDataSourceManager,kernelPanicEventGenerator,txHook,msgLog,fileSystem);
+      txManager=new TxManager(this.storeDir,xaDataSourceManager,kernelPanicEventGenerator,txHook,StringLogger.logger(loggerContext.getLogger("neo4j.txmanager")),fileSystem);
     }
  else {
       TransactionManagerProvider provider;
@@ -25,7 +37,7 @@
       if (provider == null) {
         throw new IllegalStateException("Unknown transaction manager implementation: " + serviceName);
       }
-      txManager=provider.loadTransactionManager(this.storeDir,kernelPanicEventGenerator,txHook,msgLog,fileSystem);
+      txManager=provider.loadTransactionManager(this.storeDir,kernelPanicEventGenerator,txHook,StringLogger.logger(loggerContext.getLogger("neo4j.txmanager")),fileSystem);
     }
   }
   life.add(txManager);
@@ -47,28 +59,22 @@
   life.add(nodeManager);
   lockReleaser.setNodeManager(nodeManager);
   indexStore=new IndexStore(this.storeDir,fileSystem);
-  String separator=System.getProperty("file.separator");
-  String store=this.storeDir + separator + NeoStore.DEFAULT_NAME;
-  params.put("store_dir",this.storeDir);
-  params.put("neo_store",store);
-  String logicalLog=this.storeDir + separator + NeoStoreXaDataSource.LOGICAL_LOG_DEFAULT_NAME;
-  params.put("logical_log",logicalLog);
-  config=new Config(fileSystem,this.storeDir,params);
   diagnosticsManager.prependProvider(config);
   params=config.getParams();
   logBufferFactory=new DefaultLogBufferFactory();
   extensions=life.add(createKernelData());
-  if (conf.load_kernel_extensions(true)) {
+  if (config.getBoolean(Configuration.load_kernel_extensions)) {
     life.add(new DefaultKernelExtensionLoader(extensions));
   }
+  if (indexProviders == null)   indexProviders=new LegacyIndexIterable();
   indexManager=new IndexManagerImpl(config,indexStore,xaDataSourceManager,txManager,this);
-  nodeAutoIndexer=life.add(new NodeAutoIndexerImpl(ConfigProxy.config(params,NodeAutoIndexerImpl.Configuration.class),indexManager,nodeManager));
-  relAutoIndexer=life.add(new RelationshipAutoIndexerImpl(ConfigProxy.config(params,RelationshipAutoIndexerImpl.Configuration.class),indexManager,nodeManager));
+  nodeAutoIndexer=life.add(new NodeAutoIndexerImpl(config,indexManager,nodeManager));
+  relAutoIndexer=life.add(new RelationshipAutoIndexerImpl(config,indexManager,nodeManager));
   indexManager.setNodeAutoIndexer(nodeAutoIndexer);
   indexManager.setRelAutoIndexer(relAutoIndexer);
   recoveryVerifier=createRecoveryVerifier();
   storeFactory=createStoreFactory();
-  xaFactory=new XaFactory(params,txIdGenerator,txManager,logBufferFactory,fileSystem,msgLog,recoveryVerifier);
+  xaFactory=new XaFactory(config,txIdGenerator,txManager,logBufferFactory,fileSystem,StringLogger.logger(loggerContext.getLogger("neo4j.xafactory")),recoveryVerifier);
   List<Pair<TransactionInterceptorProvider,Object>> providers=new ArrayList<Pair<TransactionInterceptorProvider,Object>>(2);
   for (  TransactionInterceptorProvider provider : Service.load(TransactionInterceptorProvider.class)) {
     Object prov=params.get(TransactionInterceptorProvider.class.getSimpleName() + "." + provider.name());
@@ -77,14 +83,33 @@
     }
   }
   try {
-    neoDataSource=new NeoStoreXaDataSource(ConfigProxy.config(params,NeoStoreXaDataSource.Configuration.class),fileSystem,storeFactory,lockManager,lockReleaser,msgLog,xaFactory,providers,new DependencyResolverImpl());
+    neoDataSource=new NeoStoreXaDataSource(config,storeFactory,fileSystem,lockManager,lockReleaser,StringLogger.logger(loggerContext.getLogger("neo4j.datasource")),xaFactory,providers,new DependencyResolverImpl());
     xaDataSourceManager.registerDataSource(neoDataSource);
   }
  catch (  IOException e) {
     throw new IllegalStateException("Could not create Neo XA datasource",e);
   }
   life.add(new StuffToDoAfterRecovery());
-  life.add(new MonitorGc(ConfigProxy.config(params,MonitorGc.Configuration.class),msgLog));
+  life.add(new MonitorGc(config,msgLog));
   life.add(new DatabaseAvailability());
   life.add(kernelEventHandlers);
+  config.addConfigurationChangeListener(new ConfigurationChangeListener(){
+    Executor executor=Executors.newSingleThreadExecutor(new DaemonThreadFactory("Database configuration restart"));
+    @Override public void notifyConfigurationChanges(    final Iterable<ConfigurationChange> change){
+      executor.execute(new Runnable(){
+        @Override public void run(){
+          try {
+            life.stop();
+            life.start();
+            msgLog.logMessage("Database restarted with the following configuration changes:" + change);
+          }
+ catch (          LifecycleException e) {
+            msgLog.logMessage("Could not restart database",e);
+          }
+        }
+      }
+);
+    }
+  }
+);
 }
