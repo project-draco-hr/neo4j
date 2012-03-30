@@ -1,0 +1,25 @@
+{
+  final long lockTimeout=1;
+  initializeDbs(1,stringMap(CONFIG_KEY_LOCK_READ_TIMEOUT,String.valueOf(lockTimeout)));
+  final Long otherNodeId=executeJob(new CommonJobs.CreateNodeJob(true),0);
+  final Fetcher<DoubleLatch> latchFetcher=getDoubleLatch();
+  ExecutorService executor=newFixedThreadPool(1);
+  final long refNodeId=getMasterHaDb().getReferenceNode().getId();
+  Future<Void> lockHolder=executor.submit(new Callable<Void>(){
+    @Override public Void call() throws Exception {
+      executeJobOnMaster(new CommonJobs.HoldLongLock(refNodeId,latchFetcher));
+      return null;
+    }
+  }
+);
+  DoubleLatch latch=latchFetcher.fetch();
+  latch.countDownFirst();
+  try {
+    executeJob(new CommonJobs.SetNodePropertyWithThrowJob(otherNodeId.longValue(),refNodeId,"key","value"),0);
+    fail("Should've failed");
+  }
+ catch (  ComException e) {
+  }
+  latch.countDownSecond();
+  assertNull(lockHolder.get());
+}
