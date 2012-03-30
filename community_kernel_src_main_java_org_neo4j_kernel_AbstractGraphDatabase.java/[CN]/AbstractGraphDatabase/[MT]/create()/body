@@ -6,7 +6,13 @@
   String logicalLog=this.storeDir + separator + NeoStoreXaDataSource.LOGICAL_LOG_DEFAULT_NAME;
   params.put("logical_log",logicalLog);
   fileSystem=life.add(createFileSystemAbstraction());
-  config=new Config(StringLogger.logger(StaticLoggerBinder.getSingleton().getLoggerFactory().getLogger("neo4j.config")),fileSystem,params);
+  List<Class<?>> settingsClasses=new ArrayList<Class<?>>();
+  settingsClasses.add(GraphDatabaseSettings.class);
+  for (  KernelExtension kernelExtension : kernelExtensions) {
+    Class settingsClass=kernelExtension.getSettingsClass();
+    if (settingsClass != null)     settingsClasses.add(settingsClass);
+  }
+  config=new Config(StringLogger.logger(StaticLoggerBinder.getSingleton().getLoggerFactory().getLogger("neo4j.config")),fileSystem,params,settingsClasses);
   this.msgLog=createStringLogger();
   boolean readOnly=config.getBoolean(Configuration.read_only);
   NodeManager.CacheType cacheType=config.getEnum(NodeManager.CacheType.class,Configuration.cache_type);
@@ -15,7 +21,7 @@
   kernelPanicEventGenerator=new KernelPanicEventGenerator(kernelEventHandlers);
   txHook=createTxHook();
   xaDataSourceManager=life.add(new XaDataSourceManager(StringLogger.logger(loggerContext.getLogger("neo4j.datasource"))));
-  guard=conf.enable_execution_guard(false) ? new Guard(msgLog) : null;
+  guard=config.getBoolean(Configuration.execution_guard_enabled) ? new Guard(msgLog) : null;
   xaDataSourceManager=life.add(new XaDataSourceManager(msgLog));
   if (readOnly) {
     txManager=new ReadOnlyTxManager(xaDataSourceManager);
@@ -84,7 +90,7 @@
     throw new IllegalStateException("Could not create Neo XA datasource",e);
   }
   life.add(new StuffToDoAfterRecovery());
-  life.add(new MonitorGc(ConfigProxy.config(params,MonitorGc.Configuration.class),msgLog));
+  life.add(new MonitorGc(config,msgLog));
   life.add(new DatabaseAvailability());
   life.add(kernelEventHandlers);
   config.addConfigurationChangeListener(new ConfigurationChangeListener(){
