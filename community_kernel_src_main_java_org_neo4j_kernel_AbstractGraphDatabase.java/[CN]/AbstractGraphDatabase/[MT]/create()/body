@@ -15,9 +15,10 @@
   config=new Config(StringLogger.logger(StaticLoggerBinder.getSingleton().getLoggerFactory().getLogger("neo4j.config")),fileSystem,params,settingsClasses);
   this.msgLog=createStringLogger();
   boolean readOnly=config.getBoolean(Configuration.read_only);
-  NodeManager.CacheType cacheType=config.getEnum(NodeManager.CacheType.class,Configuration.cache_type);
+  CacheType cacheType=config.getEnum(CacheType.class,Configuration.cache_type);
   kernelEventHandlers=new KernelEventHandlers();
   diagnosticsManager=life.add(new DiagnosticsManager(StringLogger.logger(loggerContext.getLogger("neo4j.diagnostics"))));
+  caches=createCaches();
   kernelPanicEventGenerator=new KernelPanicEventGenerator(kernelEventHandlers);
   txHook=createTxHook();
   xaDataSourceManager=life.add(new XaDataSourceManager(StringLogger.logger(loggerContext.getLogger("neo4j.datasource"))));
@@ -55,7 +56,10 @@
   lockReleaser=new LockReleaser(lockManager,txManager,nodeManager,propertyIndexManager);
   persistenceManager.setLockReleaser(lockReleaser);
   relationshipTypeHolder=new RelationshipTypeHolder(txManager,persistenceManager,persistenceSource,relationshipTypeCreator);
-  nodeManager=guard != null ? createGuardedNodeManager(readOnly,cacheType) : createNodeManager(readOnly,cacheType);
+  caches.config(config);
+  Cache<NodeImpl> nodeCache=diagnosticsManager.tryAppendProvider(caches.node());
+  Cache<RelationshipImpl> relCache=diagnosticsManager.tryAppendProvider(caches.relationship());
+  nodeManager=guard != null ? createGuardedNodeManager(readOnly,cacheType,nodeCache,relCache) : createNodeManager(readOnly,cacheType,nodeCache,relCache);
   life.add(nodeManager);
   lockReleaser.setNodeManager(nodeManager);
   indexStore=new IndexStore(this.storeDir,fileSystem);
