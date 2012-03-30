@@ -1,14 +1,14 @@
 {
   slaveDir=TargetDirectory.forTest(TestStoreCopy.class).directory("slave-sandboxed",true);
   sandboxed=new File(slaveDir,HighlyAvailableGraphDatabase.COPY_FROM_MASTER_TEMP);
-  master=new HighlyAvailableGraphDatabase(TargetDirectory.forTest(TestStoreCopy.class).directory("master-sandboxed",true).getAbsolutePath(),MapUtil.stringMap(HaConfig.CONFIG_KEY_COORDINATORS,zoo.getConnectionString(),HaConfig.CONFIG_KEY_SERVER_ID,"1"));
+  master=(HighlyAvailableGraphDatabase)new EnterpriseGraphDatabaseFactory().newHighlyAvailableDatabaseBuilder(TargetDirectory.forTest(TestStoreCopy.class).directory("master-sandboxed",true).getAbsolutePath()).setConfig(HaSettings.coordinators,zoo.getConnectionString()).setConfig(HaSettings.server_id,"1").newGraphDatabase();
   Transaction masterTx=master.beginTx();
   Node n=master.createNode();
   n.setProperty("foo","bar");
   nodeId=n.getId();
   masterTx.success();
   masterTx.finish();
-  slave=new HighlyAvailableGraphDatabase(slaveDir.getAbsolutePath(),MapUtil.stringMap(HaConfig.CONFIG_KEY_COORDINATORS,zoo.getConnectionString(),HaConfig.CONFIG_KEY_SERVER_ID,"2"));
+  slave=(HighlyAvailableGraphDatabase)new EnterpriseGraphDatabaseFactory().newHighlyAvailableDatabaseBuilder(slaveDir.getAbsolutePath()).setConfig(HaSettings.coordinators,zoo.getConnectionString()).setConfig(HaSettings.server_id,"2").newGraphDatabase();
   Assert.assertEquals(1,master.getBroker().getMaster().other().getMachineId());
   Assert.assertEquals(1,slave.getBroker().getMaster().other().getMachineId());
   Assert.assertEquals("bar",slave.getNodeById(nodeId).getProperty("foo"));

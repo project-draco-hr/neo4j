@@ -1,27 +1,3 @@
 {
-  this.storeDir=storeDir;
-  messageLog=StringLogger.logger(this.storeDir);
-  this.config=new EnterpriseConfigurationMigrator(messageLog).migrateConfiguration(config);
-  slaveOperations=new LocalDatabaseOperations();
-  this.nodeLookup=new HANodeLookup();
-  this.relationshipLookups=new HARelationshipLookups();
-  this.config.put(Config.KEEP_LOGICAL_LOGS,"true");
-  configuration=ConfigProxy.config(config,Configuration.class);
-  this.startupTime=System.currentTimeMillis();
-  kernelEventHandlers.add(new TxManagerCheckKernelEventHandler());
-  this.slaveUpdateMode=configuration.slave_coordinator_update_mode(SlaveUpdateMode.async);
-  this.machineId=configuration.server_id();
-  this.branchedDataPolicy=configuration.branched_data_policy(HighlyAvailableGraphDatabase.BranchedDataPolicy.keep_all);
-  this.localGraphWait=Math.max(configuration.read_timeout(Client.DEFAULT_READ_RESPONSE_TIMEOUT_SECONDS),5);
-  storeIdGetter=new StoreIdGetter(){
-    @Override public StoreId get(){
-      if (storeId == null)       throw new IllegalStateException("No store ID");
-      return storeId;
-    }
-  }
-;
-  this.broker=createBroker();
-  this.pullUpdates=false;
-  this.clusterClient=createClusterClient();
-  start();
+  this(storeDir,config,Service.load(IndexProvider.class),Service.load(KernelExtension.class));
 }

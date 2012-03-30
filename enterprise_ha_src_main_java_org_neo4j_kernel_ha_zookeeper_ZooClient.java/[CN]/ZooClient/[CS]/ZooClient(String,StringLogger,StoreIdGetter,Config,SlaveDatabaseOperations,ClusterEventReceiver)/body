@@ -1,0 +1,20 @@
+{
+  super(conf.get(HaSettings.coordinators),storeIdGetter,stringLogger,conf.getInteger(read_timeout),conf.getInteger(lock_read_timeout),conf.getInteger(max_concurrent_channels_per_slave),conf.getInteger(zk_session_timeout));
+  this.storeDir=storeDir;
+  this.conf=conf;
+  this.localDatabase=localDatabase;
+  this.clusterReceiver=clusterReceiver;
+  machineId=conf.getInteger(server_id);
+  backupPort=conf.getInteger(OnlineBackupSettings.online_backup_port);
+  haServer=conf.isSet(server) ? conf.get(server) : defaultServer();
+  writeLastCommittedTx=conf.getEnum(SlaveUpdateMode.class,slave_coordinator_update_mode).syncWithZooKeeper;
+  clusterName=conf.get(cluster_name);
+  sequenceNr="not initialized yet";
+  allowCreateCluster=conf.getBoolean(allow_init_cluster);
+  try {
+    zooKeeper=new ZooKeeper(getServers(),getSessionTimeout(),new WatcherImpl());
+  }
+ catch (  IOException e) {
+    throw new ZooKeeperException("Unable to create zoo keeper client",e);
+  }
+}

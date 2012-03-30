@@ -4,12 +4,13 @@
       HighlyAvailableGraphDatabase haGraphDb=new HighlyAvailableGraphDatabase(storeDir,config){
         @Override protected Broker createBroker(){
           if (getMachineId() == masterId) {
-            ZooClient.Configuration zooConfig=ConfigProxy.config(removeDashes(config),ZooClient.Configuration.class);
-            AbstractBroker.Configuration brokerConfig=ConfigProxy.config(removeDashes(config),AbstractBroker.Configuration.class);
-            return new FakeMasterBroker(brokerConfig,zooConfig);
+            Config configuration=new Config(StringLogger.DEV_NULL,new DefaultFileSystemAbstraction(),removeDashes(config),Iterables.toList(Iterables.iterable(GraphDatabaseSettings.class,HaSettings.class)));
+            return new FakeMasterBroker(configuration);
           }
  else {
-            return new FakeSlaveBroker(new MasterClient("localhost",Protocol.PORT,getMessageLog(),storeIdGetter,Client.ConnectionLostHandler.NO_ACTION,Client.DEFAULT_READ_RESPONSE_TIMEOUT_SECONDS,Client.DEFAULT_READ_RESPONSE_TIMEOUT_SECONDS,Client.DEFAULT_MAX_NUMBER_OF_CONCURRENT_CHANNELS_PER_CLIENT),masterId,ConfigProxy.config(MapUtil.stringMap("ha.server_id",Integer.toString(getMachineId())),AbstractBroker.Configuration.class));
+            config.put(HaSettings.server_id.name(),Integer.toString(getMachineId()));
+            Config configuration=new Config(StringLogger.DEV_NULL,new DefaultFileSystemAbstraction(),removeDashes(config),Iterables.toList(Iterables.iterable(GraphDatabaseSettings.class,HaSettings.class)));
+            return new FakeSlaveBroker(new MasterClient("localhost",Protocol.PORT,getMessageLog(),storeIdGetter,Client.ConnectionLostHandler.NO_ACTION,Client.DEFAULT_READ_RESPONSE_TIMEOUT_SECONDS,Client.DEFAULT_READ_RESPONSE_TIMEOUT_SECONDS,Client.DEFAULT_MAX_NUMBER_OF_CONCURRENT_CHANNELS_PER_CLIENT),masterId,configuration);
           }
         }
       }
