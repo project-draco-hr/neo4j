@@ -1,53 +1,27 @@
 {
-  if (nextFreeId.get() == -1) {
+  if (highId.get() == -1) {
     return;
   }
   ByteBuffer writeBuffer=ByteBuffer.allocate(grabSize * 8);
-  if (releasedIdList.size() > 0) {
+  if (!releasedIdList.isEmpty()) {
     writeIdBatch(writeBuffer);
   }
-  if (defragedIdList.size() > 0) {
-    while (defragedIdList.size() > 0) {
+  if (!defragedIdList.isEmpty()) {
+    while (!defragedIdList.isEmpty()) {
       releasedIdList.add(defragedIdList.removeFirst());
     }
     writeIdBatch(writeBuffer);
   }
   try {
-    fileChannel.position(0);
     ByteBuffer buffer=ByteBuffer.allocate(HEADER_SIZE);
-    buffer.put(STICKY_GENERATOR).putLong(nextFreeId.get());
-    buffer.flip();
-    fileChannel.write(buffer);
-    if (totalBytesRead > HEADER_SIZE) {
-      long writePosition=HEADER_SIZE;
-      long readPosition=readBlocksTo;
-      if (totalBytesRead < readBlocksTo) {
-        readPosition=totalBytesRead;
-      }
-      int bytesRead=-1;
-      do {
-        writeBuffer.clear();
-        fileChannel.position(readPosition);
-        bytesRead=fileChannel.read(writeBuffer);
-        readPosition+=bytesRead;
-        writeBuffer.flip();
-        fileChannel.position(writePosition);
-        writePosition+=fileChannel.write(writeBuffer);
-      }
- while (bytesRead > 0);
-      fileChannel.truncate(writePosition);
-    }
+    writeHeader(buffer);
+    defragReusableIdsInFile(writeBuffer);
     fileChannel.force(false);
-    buffer.clear();
-    buffer.put(CLEAN_GENERATOR);
-    buffer.limit(1);
-    buffer.flip();
-    fileChannel.position(0);
-    fileChannel.write(buffer);
+    markAsCleanlyClosed(buffer);
     fileChannel.force(false);
     fileChannel.close();
     fileChannel=null;
-    nextFreeId.set(-1);
+    highId.set(-1);
   }
  catch (  IOException e) {
     throw new UnderlyingStorageException("Unable to close id generator " + fileName,e);
