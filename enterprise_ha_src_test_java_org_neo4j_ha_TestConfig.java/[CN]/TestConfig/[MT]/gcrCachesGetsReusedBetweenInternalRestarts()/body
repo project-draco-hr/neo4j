@@ -1,0 +1,18 @@
+{
+  List<HighlyAvailableGraphDatabase> dbs=new ArrayList<HighlyAvailableGraphDatabase>();
+  for (int i=0; i < 3; i++) {
+    HighlyAvailableGraphDatabase db=(HighlyAvailableGraphDatabase)new EnterpriseGraphDatabaseFactory().newHighlyAvailableDatabaseBuilder(dir.directory("gcr" + i,true).getAbsolutePath()).setConfig(HaSettings.server_id,"" + i).setConfig(HaSettings.coordinators,zoo.getConnectionString()).setConfig(GraphDatabaseSettings.cache_type,CacheType.gcr.name()).newGraphDatabase();
+    dbs.add(db);
+  }
+  doTransaction(dbs.get(0));
+  int master=getMaster(dbs);
+  Map<Integer,Cache<?>> cacheObjects=gatherCacheObjects(dbs);
+  dbs.get(master).shutdown();
+  int otherThanMaster=(master + 1) % dbs.size();
+  pullUpdates(dbs.get(otherThanMaster));
+  int newMaster=getMaster(dbs);
+  assertFalse(master == newMaster);
+  Cache<?> newCache=first(dbs.get(newMaster).getNodeManager().caches());
+  assertEquals("Expected the cache instance from when it was slave and now when it's master to be the same",cacheObjects.get(newMaster),newCache);
+  for (int i=0; i < dbs.size(); i++)   if (i != master)   dbs.get(i).shutdown();
+}
