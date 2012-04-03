@@ -29,8 +29,9 @@
   config.applyChanges(configParams);
   this.msgLog=logging.getLogger(Loggers.NEO4J);
   boolean readOnly=config.getBoolean(Configuration.read_only);
-  NodeManager.CacheType cacheType=config.getEnum(NodeManager.CacheType.class,Configuration.cache_type);
+  CacheType cacheType=config.getEnum(CacheType.class,Configuration.cache_type);
   kernelEventHandlers=new KernelEventHandlers();
+  caches=createCaches();
   diagnosticsManager=life.add(new DiagnosticsManager(logging.getLogger(Loggers.DIAGNOSTICS)));
   kernelPanicEventGenerator=new KernelPanicEventGenerator(kernelEventHandlers);
   txHook=createTxHook();
@@ -69,7 +70,10 @@
   lockReleaser=new LockReleaser(lockManager,txManager,nodeManager,propertyIndexManager);
   persistenceManager.setLockReleaser(lockReleaser);
   relationshipTypeHolder=new RelationshipTypeHolder(txManager,persistenceManager,persistenceSource,relationshipTypeCreator);
-  nodeManager=guard != null ? createGuardedNodeManager(readOnly,cacheType) : createNodeManager(readOnly,cacheType);
+  caches.config(config);
+  Cache<NodeImpl> nodeCache=diagnosticsManager.tryAppendProvider(caches.node());
+  Cache<RelationshipImpl> relCache=diagnosticsManager.tryAppendProvider(caches.relationship());
+  nodeManager=guard != null ? createGuardedNodeManager(readOnly,cacheType,nodeCache,relCache) : createNodeManager(readOnly,cacheType,nodeCache,relCache);
   life.add(nodeManager);
   lockReleaser.setNodeManager(nodeManager);
   indexStore=new IndexStore(this.storeDir,fileSystem);
