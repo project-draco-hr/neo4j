@@ -1,7 +1,9 @@
 {
   String dbMode=configProperties.getProperty(Configurator.DB_MODE_KEY,EnterpriseNeoServerBootstrapper.DatabaseMode.SINGLE.name());
   dbMode=dbMode.toUpperCase();
-  if (dbMode.equals(EnterpriseNeoServerBootstrapper.DatabaseMode.SINGLE.name()))   return true;
+  if (dbMode.equals(EnterpriseNeoServerBootstrapper.DatabaseMode.SINGLE.name())) {
+    return true;
+  }
   if (!dbMode.equals(EnterpriseNeoServerBootstrapper.DatabaseMode.HA.name())) {
     failureMessage=String.format("Illegal value for %s \"%s\" in %s",Configurator.DB_MODE_KEY,dbMode,Configurator.NEO_SERVER_CONFIG_FILE_KEY);
     return false;
@@ -34,11 +36,13 @@
       }
       String machineId=null;
       try {
-        machineId=getSinglePropertyFromCandidates(dbTuning,HaConfig.CONFIG_KEY_SERVER_ID,HaConfig.CONFIG_KEY_OLD_SERVER_ID,"<not set>");
-        if (Integer.parseInt(machineId) < 0)         throw new NumberFormatException();
+        machineId=getSinglePropertyFromCandidates(dbTuning,HaSettings.server_id.name(),HaConfig.CONFIG_KEY_OLD_SERVER_ID,"<not set>");
+        if (Integer.parseInt(machineId) < 0) {
+          throw new NumberFormatException();
+        }
       }
  catch (      NumberFormatException e) {
-        failureMessage=String.format("%s in %s needs to be a non-negative integer, not %s",HaConfig.CONFIG_KEY_SERVER_ID,dbTuningFilename,machineId);
+        failureMessage=String.format("%s in %s needs to be a non-negative integer, not %s",HaSettings.server_id.name(),dbTuningFilename,machineId);
         return false;
       }
 catch (      IllegalArgumentException e) {
@@ -47,19 +51,19 @@ catch (      IllegalArgumentException e) {
       }
       String[] zkServers=null;
       try {
-        zkServers=getSinglePropertyFromCandidates(dbTuning,HaConfig.CONFIG_KEY_COORDINATORS,HaConfig.CONFIG_KEY_OLD_COORDINATORS,"").split(",");
+        zkServers=getSinglePropertyFromCandidates(dbTuning,HaSettings.coordinators.name(),HaConfig.CONFIG_KEY_OLD_COORDINATORS,"").split(",");
       }
  catch (      IllegalArgumentException e) {
         failureMessage=String.format("%s in %s",e.getMessage(),dbTuningFilename);
         return false;
       }
       if (zkServers.length <= 0) {
-        failureMessage=String.format("%s in %s needs to specify at least one server",HaConfig.CONFIG_KEY_SERVER_ID,dbTuningFilename);
+        failureMessage=String.format("%s in %s needs to specify at least one server",HaSettings.server_id.name(),dbTuningFilename);
         return false;
       }
       for (      String zk : zkServers) {
         if (!zk.contains(":")) {
-          failureMessage=String.format("Invalid server config \"%s\" for %s in %s",zk,HaConfig.CONFIG_KEY_SERVER_ID,dbTuningFilename);
+          failureMessage=String.format("Invalid server config \"%s\" for %s in %s",zk,HaSettings.server_id.name(),dbTuningFilename);
           return false;
         }
       }
