@@ -1,0 +1,40 @@
+{
+  this.storeDir=storeDir;
+  this.indexProviders=indexProviders;
+  this.kernelExtensions=kernelExtensions;
+  this.cacheProviders=cacheProviders;
+  config.put(GraphDatabaseSettings.keep_logical_logs.name(),GraphDatabaseSetting.TRUE);
+  config.put(AbstractGraphDatabase.Configuration.store_dir.name(),storeDir);
+  if (!config.containsKey(GraphDatabaseSettings.cache_type.name()))   config.put(GraphDatabaseSettings.cache_type.name(),GCResistantCacheProvider.NAME);
+  ConfigurationDefaults configurationDefaults=new ConfigurationDefaults(GraphDatabaseSettings.class);
+  configuration=new Config(configurationDefaults.apply(config));
+  this.logging=createLogging();
+  EnterpriseConfigurationMigrator configurationMigrator=new EnterpriseConfigurationMigrator(logging.getLogger(Loggers.CONFIG));
+  config=new ConfigurationDefaults(GraphDatabaseSettings.class,HaSettings.class,OnlineBackupSettings.class).apply(configurationMigrator.migrateConfiguration(config));
+  configuration.applyChanges(config);
+  messageLog=logging.getLogger(Loggers.NEO4J);
+  fileSystemAbstraction=new DefaultFileSystemAbstraction();
+  caches=new HaCaches(messageLog);
+  slaveOperations=new LocalDatabaseOperations();
+  this.nodeLookup=new HANodeLookup();
+  this.relationshipLookups=new HARelationshipLookups();
+  this.startupTime=System.currentTimeMillis();
+  kernelEventHandlers.add(new TxManagerCheckKernelEventHandler());
+  this.slaveUpdateMode=configuration.getEnum(SlaveUpdateMode.class,HaSettings.slave_coordinator_update_mode);
+  this.machineId=configuration.getInteger(HaSettings.server_id);
+  this.branchedDataPolicy=configuration.getEnum(BranchedDataPolicy.class,HaSettings.branched_data_policy);
+  this.localGraphWait=configuration.getInteger(HaSettings.read_timeout);
+  storeIdGetter=new StoreIdGetter(){
+    @Override public StoreId get(){
+      if (storeId == null) {
+        throw new IllegalStateException("No store ID");
+      }
+      return storeId;
+    }
+  }
+;
+  this.broker=createBroker();
+  this.pullUpdates=false;
+  this.clusterClient=createClusterClient();
+  start();
+}
