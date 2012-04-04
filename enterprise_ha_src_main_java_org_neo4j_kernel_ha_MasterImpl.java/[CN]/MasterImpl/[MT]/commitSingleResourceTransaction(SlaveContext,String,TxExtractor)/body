@@ -2,8 +2,14 @@
   Transaction otherTx=suspendOtherAndResumeThis(context,false);
   try {
     XaDataSource dataSource=graphDb.getXaDataSourceManager().getXaDataSource(resource);
-    long txId=dataSource.applyPreparedTransaction(txGetter.extract());
-    return packResponse(context,txId,txId - 1);
+    final long txId=dataSource.applyPreparedTransaction(txGetter.extract());
+    Predicate<Long> upUntilThisTx=new Predicate<Long>(){
+      public boolean accept(      Long item){
+        return item < txId;
+      }
+    }
+;
+    return packResponse(context,txId,upUntilThisTx);
   }
  catch (  IOException e) {
     throw new RuntimeException(e);
