@@ -3,14 +3,11 @@
     throw new IllegalStateException("Tried to apply tx " + nextTxId + " but expected transaction "+ (xaTf.getCurrentVersion() + 1));
   }
   logRecoveryMessage("applyTxWithoutTxId log version: " + logVersion + ", committing tx="+ nextTxId+ ") @ pos "+ writeBuffer.getFileChannelPosition());
-  long logEntriesFound=0;
   scanIsComplete=false;
-  LogDeserializer logApplier=getLogDeserializer(byteChannel);
   int xidIdent=getNextIdentifier();
+  LogDeserializer logApplier=getLogDeserializer(byteChannel,xidIdent);
   long startEntryPosition=writeBuffer.getFileChannelPosition();
-  while (logApplier.readAndWriteAndApplyEntry(xidIdent)) {
-    logEntriesFound++;
-  }
+  logApplier.apply();
   byteChannel.close();
   LogEntry.Start startEntry=logApplier.getStartEntry();
   if (startEntry == null) {
