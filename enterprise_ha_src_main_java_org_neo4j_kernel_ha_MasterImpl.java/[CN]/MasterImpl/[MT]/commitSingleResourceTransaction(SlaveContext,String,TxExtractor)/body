@@ -2,15 +2,8 @@
   Transaction otherTx=suspendOtherAndResumeThis(context,false);
   try {
     XaDataSource dataSource=graphDb.getXaDataSourceManager().getXaDataSource(resource);
-    final long txId=dataSource.applyPreparedTransaction(txGetter.extract());
-    final int slaveMachineId=context.machineId();
-    Predicate<Pair<Integer,Long>> upUntilThisTx=new Predicate<Pair<Integer,Long>>(){
-      public boolean accept(      Pair<Integer,Long> item){
-        return item.other() < txId && slaveMachineId != item.first();
-      }
-    }
-;
-    return packResponse(context,txId,upUntilThisTx);
+    long txId=dataSource.applyPreparedTransaction(txGetter.extract());
+    return packResponse(context,txId,txId - 1);
   }
  catch (  IOException e) {
     throw new RuntimeException(e);
