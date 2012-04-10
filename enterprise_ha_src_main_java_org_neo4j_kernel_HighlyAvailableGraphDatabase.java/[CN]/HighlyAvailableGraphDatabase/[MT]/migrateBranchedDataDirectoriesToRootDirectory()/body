@@ -1,0 +1,28 @@
+{
+  File branchedDir=BranchedDataPolicy.getBranchedDataRootDirectory(storeDir);
+  branchedDir.mkdirs();
+  for (  File oldBranchedDir : new File(storeDir).listFiles()) {
+    if (!oldBranchedDir.isDirectory() || !oldBranchedDir.getName().startsWith("branched-"))     continue;
+    long timestamp=0;
+    try {
+      timestamp=Long.parseLong(oldBranchedDir.getName().substring(oldBranchedDir.getName().indexOf('-') + 1));
+    }
+ catch (    NumberFormatException e) {
+      continue;
+    }
+    File targetDir=BranchedDataPolicy.getBranchedDataDirectory(storeDir,timestamp);
+    boolean success=false;
+    try {
+      success=!fileSystemAbstraction.renameFile(oldBranchedDir.getAbsolutePath(),targetDir.getAbsolutePath());
+    }
+ catch (    IOException e) {
+    }
+    if (success)     continue;
+    try {
+      fileSystemAbstraction.copyFile(oldBranchedDir.getAbsolutePath(),targetDir.getAbsolutePath());
+    }
+ catch (    IOException e) {
+      throw new RuntimeException("Couldn't move branched directories to " + branchedDir,e);
+    }
+  }
+}
