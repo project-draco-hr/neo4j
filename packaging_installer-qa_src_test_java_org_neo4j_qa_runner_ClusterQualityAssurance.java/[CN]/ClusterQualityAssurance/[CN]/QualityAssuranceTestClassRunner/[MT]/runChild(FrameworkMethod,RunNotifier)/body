@@ -4,6 +4,39 @@
     notifier.fireTestIgnored(description);
   }
  else {
-    overriddenRunLeaf(methodBlock(method),description,notifier,testName(method));
+    Statement statement=methodBlock(method);
+    EachTestNotifier eachNotifier=new EachTestNotifier(notifier,description);
+    eachNotifier.fireTestStarted();
+    try {
+      try {
+        runTestCase(statement,testPermutation.getMachineClusterModel(),0);
+      }
+ catch (      AssumptionViolatedException e) {
+        throw e;
+      }
+catch (      Throwable e) {
+        if (vagrantIssue.potentiallyAVagrantIssue(e)) {
+          testPermutation.getMachineClusterModel().forceApply(new RecreateAllMachines());
+          runTestCase(statement,testPermutation.getMachineClusterModel(),0);
+        }
+ else {
+          throw e;
+        }
+      }
+    }
+ catch (    AssumptionViolatedException e) {
+      eachNotifier.addFailedAssumption(e);
+    }
+catch (    Throwable e) {
+      eachNotifier.addFailure(e);
+    }
+ finally {
+      try {
+        testPermutation.getMachineClusterModel().forceApply(new DownloadClusterLogs(SharedConstants.TEST_LOGS_DIR + testName(method)));
+      }
+ catch (      Throwable e) {
+      }
+      eachNotifier.fireTestFinished();
+    }
   }
 }
