@@ -1,0 +1,22 @@
+{
+  long[] timestamps=new long[3];
+  for (int i=0; i < timestamps.length; i++) {
+    startDbAndCreateNode();
+    timestamps[i]=moveAwayToLookLikeOldBranchedDirectory();
+    Thread.sleep(1);
+  }
+  HighlyAvailableGraphDatabase db=new HighlyAvailableGraphDatabase(dir.getAbsolutePath(),stringMap(HaSettings.server_id.name(),"1")){
+    @Override protected Broker createBroker(){
+      return new FakeMasterBroker(configuration);
+    }
+    @Override protected ClusterClient createClusterClient(){
+      return new FakeClusterClient(getBroker());
+    }
+  }
+;
+  db.shutdown();
+  for (  long timestamp : timestamps) {
+    assertFalse(new File(dir,"branched-" + timestamp).exists());
+    assertTrue(BranchedDataPolicy.getBranchedDataDirectory(dir.getAbsolutePath(),timestamp).exists());
+  }
+}
