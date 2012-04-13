@@ -1,6 +1,9 @@
 {
   try {
-    @SuppressWarnings("unchecked") Iterable<T> result=(Iterable<T>)Class.forName("java.util.ServiceLoader").getMethod("load",Class.class).invoke(null,type);
+    Class<?> serviceLoaderClass=Class.forName("java.util.ServiceLoader");
+    Iterable<T> contextClassLoaderServices=(Iterable<T>)serviceLoaderClass.getMethod("load",Class.class).invoke(null,type);
+    Iterable<T> currentClassLoaderServices=(Iterable<T>)serviceLoaderClass.getMethod("load",Class.class,ClassLoader.class).invoke(null,type,Service.class.getClassLoader());
+    Iterable<T> result=new CombiningIterable<T>(Arrays.asList(contextClassLoaderServices,currentClassLoaderServices));
     return filterExceptions(result);
   }
  catch (  Exception e) {
