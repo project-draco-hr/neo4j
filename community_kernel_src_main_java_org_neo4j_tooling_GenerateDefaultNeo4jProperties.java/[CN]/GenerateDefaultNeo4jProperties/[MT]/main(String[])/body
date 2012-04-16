@@ -1,35 +1,44 @@
 {
-  ResourceBundle bundle=ResourceBundle.getBundle(GraphDatabaseSettingsResourceBundle.class.getName());
-  Set<String> keys=bundle.keySet();
-  for (  String property : keys) {
-    if (property.endsWith(".description")) {
-      String name=property.substring(0,property.lastIndexOf("."));
-      System.out.println("# " + bundle.getString(property));
-      String optionsKey=name + ".options";
-      if (bundle.containsKey(optionsKey)) {
-        String[] options=bundle.getString(optionsKey).split(",");
-        if (bundle.containsKey(name + ".option." + options[0])) {
-          System.out.println("# Valid settings:");
-          for (          String option : options) {
-            String description=bundle.getString(name + ".option." + option);
-            char[] spaces=new char[option.length() + 3];
-            Arrays.fill(spaces,' ');
-            description=description.replace("\n","\n#" + new String(spaces));
-            System.out.println("# " + option + ": "+ description);
+  for (  String settingsClassName : args) {
+    Class settingsClass=GenerateDefaultNeo4jProperties.class.getClassLoader().loadClass(settingsClassName);
+    ResourceBundle bundle=new SettingsResourceBundle(settingsClass);
+    if (bundle.containsKey("description")) {
+      System.out.println("# ");
+      System.out.println("# " + bundle.getString("description"));
+      System.out.println("# ");
+      System.out.println();
+    }
+    Set<String> keys=bundle.keySet();
+    for (    String property : keys) {
+      if (property.endsWith(".description")) {
+        String name=property.substring(0,property.lastIndexOf("."));
+        System.out.println("# " + bundle.getString(property));
+        String optionsKey=name + ".options";
+        if (bundle.containsKey(optionsKey)) {
+          String[] options=bundle.getString(optionsKey).split(",");
+          if (bundle.containsKey(name + ".option." + options[0])) {
+            System.out.println("# Valid settings:");
+            for (            String option : options) {
+              String description=bundle.getString(name + ".option." + option);
+              char[] spaces=new char[option.length() + 3];
+              Arrays.fill(spaces,' ');
+              description=description.replace("\n","\n#" + new String(spaces));
+              System.out.println("# " + option + ": "+ description);
+            }
+          }
+ else {
+            System.out.println("# Valid settings:" + bundle.getString(optionsKey));
           }
         }
- else {
-          System.out.println("# Valid settings:" + bundle.getString(optionsKey));
+        String defaultKey=name + ".default";
+        if (bundle.containsKey(defaultKey)) {
+          System.out.println(name + "=" + bundle.getString(defaultKey));
         }
-      }
-      String defaultKey=name + ".default";
-      if (bundle.containsKey(defaultKey)) {
-        System.out.println(name + "=" + bundle.getString(defaultKey));
-      }
  else {
-        System.out.println("# " + name + "=");
+          System.out.println("# " + name + "=");
+        }
+        System.out.println();
       }
-      System.out.println();
     }
   }
 }
