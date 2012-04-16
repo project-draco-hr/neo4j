@@ -4,7 +4,7 @@
     msgLog.logMessage(this + ", " + new Date()+ " Got event: "+ event+ " (path="+ path+ ")",true);
     if (path == null && event.getState() == Watcher.Event.KeeperState.Expired) {
       keeperState=KeeperState.Expired;
-      clusterReceiver.reconnect(new Exception());
+      clusterReceiver.reconnect(new InformativeStackTrace("Reconnect due to session expired"));
     }
  else     if (path == null && event.getState() == Watcher.Event.KeeperState.SyncConnected) {
       long newSessionId=zooKeeper.getSessionId();
@@ -18,7 +18,7 @@
           Pair<Master,Machine> masterAfterIWrote=getMasterFromZooKeeper(false,false);
           msgLog.logMessage("Get master after write:" + masterAfterIWrote);
           if (sessionId != -1) {
-            clusterReceiver.newMaster(new Exception("Got SyncConnected event from ZK"));
+            clusterReceiver.newMaster(new InformativeStackTrace("Got SyncConnected event from ZK"));
           }
           sessionId=newSessionId;
         }
@@ -42,7 +42,7 @@
       ZooKeeperMachine currentMaster=(ZooKeeperMachine)getCachedMaster().other();
       if (path.contains(currentMaster.getZooKeeperPath())) {
         msgLog.logMessage("Acting on it, calling newMaster()");
-        clusterReceiver.newMaster(new Exception());
+        clusterReceiver.newMaster(new InformativeStackTrace("NodeDeleted event received (a machine left the cluster)"));
       }
     }
  else     if (event.getType() == Watcher.Event.EventType.NodeDataChanged) {
@@ -50,12 +50,12 @@
       msgLog.logMessage("Got event data " + newMasterMachineId);
       if (path.contains(MASTER_NOTIFY_CHILD)) {
         if (newMasterMachineId == machineId) {
-          clusterReceiver.newMaster(new Exception());
+          clusterReceiver.newMaster(new InformativeStackTrace("NodeDataChanged event received (someone though I should be the master)"));
         }
       }
  else       if (path.contains(MASTER_REBOUND_CHILD)) {
         if (newMasterMachineId != machineId) {
-          clusterReceiver.newMaster(new Exception());
+          clusterReceiver.newMaster(new InformativeStackTrace("NodeDataChanged event received (new master ensures I'm slave)"));
         }
       }
  else {
@@ -63,9 +63,10 @@
       }
     }
   }
- catch (  Exception e) {
+ catch (  BrokerShutDownException e) {
+  }
+catch (  Exception e) {
     msgLog.logMessage("Error in ZooClient.process",e,true);
-    e.printStackTrace();
     throw Exceptions.launderedException(e);
   }
  finally {
