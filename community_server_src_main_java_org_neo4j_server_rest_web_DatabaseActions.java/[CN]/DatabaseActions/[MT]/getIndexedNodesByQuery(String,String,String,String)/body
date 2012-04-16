@@ -2,14 +2,14 @@
   if (!graphDb.index().existsForNodes(indexName))   throw new NotFoundException();
   Index<Node> index=graphDb.index().forNodes(indexName);
   List<Representation> representations=new ArrayList<Representation>();
-  QueryContext queryCtx=new QueryContext(query);
-  queryCtx=setOrdering(queryCtx,sort);
+  IndexResultOrder order=getOrdering(sort);
+  QueryContext queryCtx=order.updateQueryContext(new QueryContext(query));
   Transaction tx=beginTx();
   try {
     if (query != null) {
       IndexHits<Node> result=index.query(key,queryCtx);
       for (      Node node : result) {
-        representations.add(new NodeRepresentation(node));
+        representations.add(order.getRepresentationFor(new NodeRepresentation(node),result.currentScore()));
       }
     }
     tx.success();
