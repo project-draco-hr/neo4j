@@ -1,12 +1,11 @@
 {
-  File file=new File(File.createTempFile("somewhere",""),"not/writable");
-  server=ServerBuilder.server().withDefaultDatabaseTuning().withStartupHealthCheckRules(new HTTPLoggingPreparednessRule()).withProperty(Configurator.HTTP_LOGGING,"true").withProperty(Configurator.HTTP_LOG_LOCATION,file.getAbsolutePath()).withProperty(Configurator.HTTP_LOG_CONFIG_LOCATION,getClass().getResource("/neo4j-server-test-logback.xml").getFile()).build();
+  final String unwritableLogDir=createUnwritableDirectory().getAbsolutePath();
+  server=ServerBuilder.server().withDefaultDatabaseTuning().withStartupHealthCheckRules(new HTTPLoggingPreparednessRule()).withProperty(Configurator.HTTP_LOGGING,"true").withProperty(Configurator.HTTP_LOG_LOCATION,unwritableLogDir).withProperty(Configurator.HTTP_LOG_CONFIG_LOCATION,getClass().getResource("/neo4j-server-test-logback.xml").getFile()).build();
   try {
     server.start();
     fail("should have thrown exception");
   }
  catch (  StartupHealthCheckFailedException e) {
-    assertThat(e.getMessage(),containsString("HTTP log directory ["));
-    assertThat(e.getMessage(),containsString(file.getAbsolutePath() + "] cannot be created"));
+    assertThat(e.getMessage(),containsString(String.format("HTTP log directory [%s] is not writable",unwritableLogDir)));
   }
 }
