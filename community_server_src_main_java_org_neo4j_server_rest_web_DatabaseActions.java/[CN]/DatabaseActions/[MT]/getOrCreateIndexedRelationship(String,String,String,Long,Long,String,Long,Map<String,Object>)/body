@@ -8,7 +8,7 @@
       if (startNode != null || type != null || endNode != null || properties != null) {
         throw new BadInputException("Either specify a relationship to index uniquely, or the means for creating it.");
       }
-      Relationship relationship=relationship(relationshipOrNull.longValue());
+      Relationship relationship=relationship(relationshipOrNull);
       result=graphDb.index().forRelationships(indexName).putIfAbsent(relationship,key,value);
       if ((created=(result == null)) == true)       result=relationship;
     }
@@ -16,12 +16,12 @@
       throw new BadInputException("Either specify a relationship to index uniquely, or the means for creating it.");
     }
  else {
-      UniqueRelationshipFactory factory=new UniqueRelationshipFactory(indexName,node(startNode.longValue()),node(endNode.longValue()),type,properties);
+      UniqueRelationshipFactory factory=new UniqueRelationshipFactory(indexName,node(startNode),node(endNode),type,properties);
       result=factory.getOrCreate(key,value);
       created=factory.created;
     }
     tx.success();
-    return Pair.of(new IndexedEntityRepresentation(result,key,value,new RelationshipIndexRepresentation(indexName,Collections.<String,String>emptyMap())),Boolean.valueOf(created));
+    return Pair.of(new IndexedEntityRepresentation(result,key,value,new RelationshipIndexRepresentation(indexName,Collections.<String,String>emptyMap())),created);
   }
   finally {
     tx.finish();

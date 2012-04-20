@@ -1,18 +1,13 @@
 {
   if (!graphDb.index().existsForNodes(indexName))   throw new NotFoundException();
   Index<Node> index=graphDb.index().forNodes(indexName);
-  List<IndexedEntityRepresentation> representations=new ArrayList<IndexedEntityRepresentation>();
-  Transaction tx=beginTx();
-  try {
-    IndexRepresentation indexRepresentation=new NodeIndexRepresentation(indexName);
-    IndexHits<Node> indexHits=index.get(key,value);
-    for (    Node node : indexHits) {
-      representations.add(new IndexedEntityRepresentation(node,key,value,indexRepresentation));
+  final IndexRepresentation indexRepresentation=new NodeIndexRepresentation(indexName);
+  final IndexHits<Node> indexHits=index.get(key,value);
+  final IterableWrapper<Representation,Node> results=new IterableWrapper<Representation,Node>(indexHits){
+    protected Representation underlyingObjectToObject(    Node node){
+      return new IndexedEntityRepresentation(node,key,value,indexRepresentation);
     }
-    tx.success();
-    return new ListRepresentation(RepresentationType.NODE,representations);
   }
-  finally {
-    tx.finish();
-  }
+;
+  return new ListRepresentation(RepresentationType.NODE,results);
 }
