@@ -1,10 +1,16 @@
 {
-  server=ServerBuilder.server().withDefaultDatabaseTuning().withProperty(Configurator.HTTP_LOGGING,"true").withProperty(Configurator.HTTP_LOG_LOCATION,logDirectory).withProperty(Configurator.HTTP_LOG_CONFIG_LOCATION,getClass().getResource("/neo4j-server-test-logback.xml").getFile()).build();
+  logDirectory=TargetDirectory.forTest(this.getClass()).directory("logdir");
+  FileUtils.forceMkdir(logDirectory);
+  final File confDir=TargetDirectory.forTest(this.getClass()).directory("confdir");
+  FileUtils.forceMkdir(confDir);
+  final File configFile=createConfigFile(createLogbackConfigFile(logDirectory),confDir);
+  server=ServerBuilder.server().withDefaultDatabaseTuning().withProperty(Configurator.HTTP_LOGGING,"true").withProperty(Configurator.HTTP_LOG_CONFIG_LOCATION,configFile.getPath()).build();
   server.start();
   FunctionalTestHelper functionalTestHelper=new FunctionalTestHelper(server);
   String query="?explicitlyEnabled=" + UUID.randomUUID().toString();
   JaxRsResponse response=new RestRequest().get(functionalTestHelper.webAdminUri() + query);
   assertEquals(200,response.getStatus());
   response.close();
-  assertTrue(occursIn(query,new File(logDirectory + File.separator + "http.log")));
+  final File outputLog=new File(logDirectory + File.separator + "http.log");
+  assertTrue(occursIn(query,outputLog));
 }
