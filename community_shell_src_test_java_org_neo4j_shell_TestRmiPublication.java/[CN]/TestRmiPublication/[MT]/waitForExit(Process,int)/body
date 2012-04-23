@@ -1,12 +1,19 @@
 {
   long endTime=System.currentTimeMillis() + maxSeconds * 1000;
-  while (System.currentTimeMillis() < endTime) {
-    try {
-      return process.exitValue();
+  ProcessStreamHandler streamHandler=new ProcessStreamHandler(process,false);
+  streamHandler.launch();
+  try {
+    while (System.currentTimeMillis() < endTime) {
+      try {
+        return process.exitValue();
+      }
+ catch (      IllegalThreadStateException e) {
+        Thread.sleep(100);
+      }
     }
- catch (    IllegalThreadStateException e) {
-      Thread.sleep(100);
-    }
+    throw new RuntimeException("Process didn't exit on its own");
   }
-  throw new RuntimeException("Process didn't exit on its own");
+  finally {
+    streamHandler.cancel();
+  }
 }

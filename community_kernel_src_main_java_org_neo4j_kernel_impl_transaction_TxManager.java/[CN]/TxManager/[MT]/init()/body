@@ -1,5 +1,5 @@
 {
-  txThreadMap=new ArrayMap<Thread,TransactionImpl>((byte)5,true,true);
+  txThreadMap=new ConcurrentHashMap<Thread,TransactionImpl>();
   logSwitcherFileName=txLogDir + separator + "active_tx_log";
   txLog1FileName="tm_tx_log.1";
   txLog2FileName="tm_tx_log.2";
@@ -14,7 +14,7 @@
       if (!fileSystem.fileExists(currentTxLog)) {
         throw logAndReturn("TM startup failure",new TransactionFailureException("Unable to start TM, " + "active tx log file[" + currentTxLog + "] not found."));
       }
-      txLog=new TxLog(currentTxLog,fileSystem);
+      txLog=new TxLog(currentTxLog,fileSystem,msgLog);
       msgLog.logMessage("TM opening log: " + currentTxLog,true);
     }
  else {
@@ -24,7 +24,7 @@
       ByteBuffer buf=ByteBuffer.wrap(txLog1FileName.getBytes("UTF-8"));
       FileChannel fc=fileSystem.open(logSwitcherFileName,"rw");
       fc.write(buf);
-      txLog=new TxLog(txLogDir + separator + txLog1FileName,fileSystem);
+      txLog=new TxLog(txLogDir + separator + txLog1FileName,fileSystem,msgLog);
       msgLog.logMessage("TM new log: " + txLog1FileName,true);
       fc.force(true);
       fc.close();

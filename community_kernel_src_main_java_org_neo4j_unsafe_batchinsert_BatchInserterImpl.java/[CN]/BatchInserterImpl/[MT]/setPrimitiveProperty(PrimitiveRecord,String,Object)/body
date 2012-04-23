@@ -1,0 +1,45 @@
+{
+  boolean result=false;
+  long nextProp=primitive.getNextProp();
+  int index=indexHolder.getKeyId(name);
+  if (index == -1) {
+    index=createNewPropertyIndex(name);
+  }
+  PropertyBlock block=new PropertyBlock();
+  getPropertyStore().encodeValue(block,index,value);
+  int size=block.getSize();
+  PropertyRecord current=null, thatFits=null, thatHas=null;
+  while (!(nextProp == Record.NO_NEXT_PROPERTY.intValue() || (thatHas != null && thatFits != null))) {
+    current=getPropertyStore().getRecord(nextProp);
+    if (thatHas == null && current.getPropertyBlock(index) != null) {
+      thatHas=current;
+      PropertyBlock removed=thatHas.removePropertyBlock(index);
+      if (removed.isLight()) {
+        getPropertyStore().makeHeavy(removed);
+        for (        DynamicRecord dynRec : removed.getValueRecords()) {
+          thatHas.addDeletedRecord(dynRec);
+        }
+      }
+      getPropertyStore().updateRecord(thatHas);
+    }
+    if (thatFits == null && (PropertyType.getPayloadSize() - current.size() >= size)) {
+      thatFits=current;
+    }
+    nextProp=current.getNextProp();
+  }
+  if (thatFits == null) {
+    thatFits=new PropertyRecord(getPropertyStore().nextId());
+    if (primitive.getNextProp() != Record.NO_NEXT_PROPERTY.intValue()) {
+      PropertyRecord first=getPropertyStore().getRecord(primitive.getNextProp());
+      thatFits.setNextProp(first.getId());
+      first.setPrevProp(thatFits.getId());
+      thatFits.setInUse(true);
+      getPropertyStore().updateRecord(first);
+      result=true;
+    }
+    primitive.setNextProp(thatFits.getId());
+  }
+  thatFits.addPropertyBlock(block);
+  getPropertyStore().updateRecord(thatFits);
+  return result;
+}

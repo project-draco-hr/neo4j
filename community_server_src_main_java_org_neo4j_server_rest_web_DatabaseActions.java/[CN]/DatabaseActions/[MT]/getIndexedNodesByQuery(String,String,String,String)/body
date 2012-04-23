@@ -1,21 +1,11 @@
 {
   if (!graphDb.index().existsForNodes(indexName))   throw new NotFoundException();
+  if (query == null) {
+    return toListNodeRepresentation();
+  }
   Index<Node> index=graphDb.index().forNodes(indexName);
-  List<Representation> representations=new ArrayList<Representation>();
-  QueryContext queryCtx=new QueryContext(query);
-  queryCtx=setOrdering(queryCtx,sort);
-  Transaction tx=beginTx();
-  try {
-    if (query != null) {
-      IndexHits<Node> result=index.query(key,queryCtx);
-      for (      Node node : result) {
-        representations.add(new NodeRepresentation(node));
-      }
-    }
-    tx.success();
-    return new ListRepresentation(RepresentationType.NODE,representations);
-  }
-  finally {
-    tx.finish();
-  }
+  IndexResultOrder order=getOrdering(sort);
+  QueryContext queryCtx=order.updateQueryContext(new QueryContext(query));
+  IndexHits<Node> result=index.query(key,queryCtx);
+  return toListNodeRepresentation(result,order);
 }

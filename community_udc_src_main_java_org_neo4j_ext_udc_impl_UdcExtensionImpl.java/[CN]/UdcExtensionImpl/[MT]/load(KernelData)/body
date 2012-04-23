@@ -1,46 +1,23 @@
 {
-  MyConfig configuration=new MyConfig(kernel.getConfig(),loadSystemProperties());
-  try {
-    if (configuration.getBool(UDC_DISABLE_KEY,"false"))     return null;
+  if (timer != null) {
+    timer.cancel();
   }
- catch (  Exception e) {
-  }
-  int firstDelay=DEFAULT_DELAY;
-  int interval=DEFAULT_INTERVAL;
-  String hostAddress=DEFAULT_HOST;
-  String source=null;
-  String registration=DEFAULT_REGISTRATION;
-  try {
-    firstDelay=configuration.getInt(FIRST_DELAY_CONFIG_KEY,Integer.toString(firstDelay));
-  }
- catch (  Exception e) {
-  }
-  try {
-    interval=configuration.getInt(INTERVAL_CONFIG_KEY,Integer.toString(interval));
-  }
- catch (  Exception e) {
-  }
-  try {
-    hostAddress=configuration.getString(UDC_HOST_ADDRESS_KEY,hostAddress);
-  }
- catch (  Exception e) {
-  }
-  try {
-    source=configuration.getString(UDC_SOURCE_KEY,source);
-  }
- catch (  Exception e) {
-  }
-  try {
-    registration=configuration.getString(UDC_REGISTRATION_KEY,registration);
-  }
- catch (  Exception e) {
-  }
+  Map<String,String> conf=loadSystemProperties();
+  conf.putAll(kernel.getConfigParams());
+  Config config=new Config(conf);
+  if (!config.getBoolean(UdcSettings.udc_enabled))   return null;
+  int firstDelay=config.getInteger(UdcSettings.first_delay);
+  int interval=config.getInteger(UdcSettings.interval);
+  String hostAddress=config.get(UdcSettings.udc_host);
+  String source=config.get(UdcSettings.udc_source);
+  String registration=config.get(UdcSettings.udc_registration_key);
   NeoStoreXaDataSource ds=kernel.graphDatabase().getXaDataSourceManager().getNeoStoreDataSource();
   boolean crashPing=ds.getXaContainer().getLogicalLog().wasNonClean();
   String storeId=Long.toHexString(ds.getRandomIdentifier());
   String version=kernel.version().getRevision();
   if (version.equals(""))   version=kernel.version().getVersion();
-  UdcTimerTask task=new UdcTimerTask(hostAddress,version,storeId,source,crashPing,registration,formattedMacAddy());
+  UdcTimerTask task=new UdcTimerTask(hostAddress,version,storeId,source,crashPing,registration,formattedMacAddy(),determineTags());
+  timer=new Timer("Neo4j UDC Timer",true);
   timer.scheduleAtFixedRate(task,firstDelay,interval);
   return task;
 }

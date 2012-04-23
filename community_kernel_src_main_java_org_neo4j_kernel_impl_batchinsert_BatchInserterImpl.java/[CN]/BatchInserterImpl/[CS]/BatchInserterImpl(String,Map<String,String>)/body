@@ -1,31 +1,3 @@
 {
-  rejectAutoUpgrade(stringParams);
-  msgLog=StringLogger.logger(storeDir);
-  Map<String,String> params=getDefaultParams();
-  params.put(Config.USE_MEMORY_MAPPED_BUFFERS,"false");
-  boolean dump=Boolean.parseBoolean(stringParams.get(Config.DUMP_CONFIGURATION));
-  new AutoConfigurator(storeDir,false,dump).configure(params);
-  for (  Map.Entry<String,String> entry : stringParams.entrySet()) {
-    params.put(entry.getKey(),entry.getValue());
-  }
-  this.storeDir=storeDir;
-  this.idGeneratorFactory=CommonFactories.defaultIdGeneratorFactory();
-  final FileSystemAbstraction fileSystem=CommonFactories.defaultFileSystemAbstraction();
-  StoreFactory sf=new StoreFactory(params,idGeneratorFactory,fileSystem,null,StringLogger.DEV_NULL,null);
-  String store=fixPath(storeDir,sf);
-  if (dump) {
-    dumpConfiguration(params);
-  }
-  msgLog.logMessage(Thread.currentThread() + " Starting BatchInserter(" + this+ ")");
-  neoStore=sf.newNeoStore(store);
-  if (!neoStore.isStoreOk()) {
-    throw new IllegalStateException(storeDir + " store is not cleanly shutdown.");
-  }
-  neoStore.makeStoreOk();
-  NameData[] indexes=getPropertyIndexStore().getNames(10000);
-  indexHolder=new PropertyIndexHolder(indexes);
-  NameData[] types=getRelationshipTypeStore().getNames(Integer.MAX_VALUE);
-  typeHolder=new RelationshipTypeHolder(types);
-  graphDbService=new BatchGraphDatabaseImpl(this);
-  indexStore=new IndexStore(storeDir,fileSystem);
+  batchInserter=(org.neo4j.unsafe.batchinsert.BatchInserterImpl)BatchInserters.inserter(storeDir,stringParams);
 }

@@ -1,17 +1,12 @@
 {
   if (!graphDb.index().existsForRelationships(indexName))   throw new NotFoundException();
-  List<IndexedEntityRepresentation> representations=new ArrayList<IndexedEntityRepresentation>();
   Index<Relationship> index=graphDb.index().forRelationships(indexName);
-  Transaction tx=beginTx();
-  try {
-    IndexRepresentation indexRepresentation=new RelationshipIndexRepresentation(indexName);
-    for (    Relationship node : index.get(key,value)) {
-      representations.add(new IndexedEntityRepresentation(node,key,value,indexRepresentation));
+  final IndexRepresentation indexRepresentation=new RelationshipIndexRepresentation(indexName);
+  IterableWrapper<Representation,Relationship> result=new IterableWrapper<Representation,Relationship>(index.get(key,value)){
+    @Override protected Representation underlyingObjectToObject(    Relationship relationship){
+      return new IndexedEntityRepresentation(relationship,key,value,indexRepresentation);
     }
-    tx.success();
-    return new ListRepresentation(RepresentationType.RELATIONSHIP,representations);
   }
-  finally {
-    tx.finish();
-  }
+;
+  return new ListRepresentation(RepresentationType.RELATIONSHIP,result);
 }

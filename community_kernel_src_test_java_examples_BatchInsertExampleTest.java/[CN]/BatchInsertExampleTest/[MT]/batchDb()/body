@@ -1,0 +1,17 @@
+{
+  FileUtils.deleteRecursively(new File("target/batchdb-example"));
+  GraphDatabaseService batchDb=BatchInserters.batchDatabase("target/batchdb-example");
+  Node mattiasNode=batchDb.createNode();
+  mattiasNode.setProperty("name","Mattias");
+  Node chrisNode=batchDb.createNode();
+  chrisNode.setProperty("name","Chris");
+  RelationshipType knows=DynamicRelationshipType.withName("KNOWS");
+  mattiasNode.createRelationshipTo(chrisNode,knows);
+  long mattiasNodeId=mattiasNode.getId();
+  batchDb.shutdown();
+  GraphDatabaseService db=new EmbeddedGraphDatabase("target/batchdb-example");
+  Node mNode=db.getNodeById(mattiasNodeId);
+  Node cNode=mNode.getSingleRelationship(knows,Direction.OUTGOING).getEndNode();
+  assertEquals("Chris",cNode.getProperty("name"));
+  db.shutdown();
+}

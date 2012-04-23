@@ -1,0 +1,33 @@
+{
+  long recordToFind=startRecord;
+  Map<Long,DynamicRecord> recordsMap=new HashMap<Long,DynamicRecord>();
+  for (  DynamicRecord record : records) {
+    recordsMap.put(record.getId(),record);
+  }
+  byte[] header=null;
+  List<byte[]> byteList=new LinkedList<byte[]>();
+  int totalSize=0;
+  while (recordToFind != Record.NO_NEXT_BLOCK.intValue()) {
+    DynamicRecord record=recordsMap.get(recordToFind);
+    if (record.isLight()) {
+      store.makeHeavy(record);
+    }
+    int offset=0;
+    if (recordToFind == startRecord) {
+      header=propertyType.readDynamicRecordHeader(record.getData());
+      offset=header.length;
+    }
+    byteList.add(record.getData());
+    totalSize+=(record.getData().length - offset);
+    recordToFind=record.getNextBlock();
+  }
+  byte[] bArray=new byte[totalSize];
+  int sourceOffset=header.length;
+  int offset=0;
+  for (  byte[] currentArray : byteList) {
+    System.arraycopy(currentArray,sourceOffset,bArray,offset,currentArray.length - sourceOffset);
+    offset+=(currentArray.length - sourceOffset);
+    sourceOffset=0;
+  }
+  return Pair.of(header,bArray);
+}
