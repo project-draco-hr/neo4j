@@ -1,7 +1,23 @@
 {
   if (keeper.length > 0 && keeper[0] == null)   return;
-  for (  ZooKeeper zk : keeper) {
-    if (zk != null)     SubProcess.stop(zk);
+  Thread[] stopperThreads=new Thread[keeper.length];
+  for (int i=0; i < keeper.length; i++) {
+    final ZooKeeperMember member=keeper[i];
+    stopperThreads[i]=new Thread(){
+      @Override public void run(){
+        if (member != null)         SubProcess.stop(member);
+      }
+    }
+;
+    stopperThreads[i].start();
+  }
+  for (  Thread thread : stopperThreads) {
+    try {
+      thread.join();
+    }
+ catch (    InterruptedException e) {
+      Thread.interrupted();
+    }
   }
   Arrays.fill(keeper,null);
 }

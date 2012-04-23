@@ -1,0 +1,24 @@
+{
+  try {
+    verify(new ZooKeeperJob(){
+      @Override public void run(      ZooKeeper client) throws Exception {
+        for (        String child : client.getChildren("/",false)) {
+          if (child.equals("zookeeper"))           continue;
+          deleteRecursively(client,"/" + child);
+        }
+      }
+      private void deleteRecursively(      ZooKeeper client,      String path) throws Exception {
+        List<String> children=client.getChildren(path,false);
+        if (children != null && !children.isEmpty())         for (        String child : children)         deleteRecursively(client,path + "/" + child);
+        client.delete(path,-1);
+      }
+    }
+);
+  }
+ catch (  Exception e) {
+    e.printStackTrace();
+    shutdown();
+    instantiateQuorumWithRetry();
+  }
+  return this;
+}
