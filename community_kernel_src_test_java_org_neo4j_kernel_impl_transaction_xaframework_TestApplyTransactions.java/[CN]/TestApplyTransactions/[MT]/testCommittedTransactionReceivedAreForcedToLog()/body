@@ -1,0 +1,13 @@
+{
+  File baseStoreDir=TargetDirectory.forTest(TestApplyTransactions.class).directory("testCommittedTransactionReceivedAreForcedToLog",true);
+  Process process=Runtime.getRuntime().exec(new String[]{"java","-cp",System.getProperty("java.class.path"),TestApplyTransactions.class.getName(),baseStoreDir.getAbsolutePath()});
+  int exit=new ProcessStreamHandler(process,false).waitForResult();
+  assertEquals(0,exit);
+  File destStoreDir=new File(baseStoreDir,"destination");
+  EmbeddedGraphDatabase dest=new EmbeddedGraphDatabase(destStoreDir.getAbsolutePath());
+  XaDataSource destNeoDataSource=dest.getXaDataSourceManager().getXaDataSource(Config.DEFAULT_DATA_SOURCE_NAME);
+  int latestTxId=(int)destNeoDataSource.getLastCommittedTxId();
+  InMemoryLogBuffer theTx=new InMemoryLogBuffer();
+  long extractedTxId=destNeoDataSource.getLogExtractor(latestTxId,latestTxId).extractNext(theTx);
+  assertEquals(latestTxId,extractedTxId);
+}

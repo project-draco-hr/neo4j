@@ -1,0 +1,19 @@
+{
+  File baseStoreDir=new File(args[0]);
+  File originStoreDir=new File(baseStoreDir,"origin");
+  File destStoreDir=new File(baseStoreDir,"destination");
+  EmbeddedGraphDatabase origin=new EmbeddedGraphDatabase(originStoreDir.getAbsolutePath());
+  Transaction tx=origin.beginTx();
+  origin.createNode();
+  tx.success();
+  tx.finish();
+  XaDataSource originNeoDataSource=origin.getXaDataSourceManager().getXaDataSource(Config.DEFAULT_DATA_SOURCE_NAME);
+  int latestTxId=(int)originNeoDataSource.getLastCommittedTxId();
+  System.out.println("Xtracted tx id " + latestTxId);
+  InMemoryLogBuffer theTx=new InMemoryLogBuffer();
+  originNeoDataSource.getLogExtractor(latestTxId,latestTxId).extractNext(theTx);
+  EmbeddedGraphDatabase dest=new EmbeddedGraphDatabase(destStoreDir.getAbsolutePath());
+  XaDataSource destNeoDataSource=dest.getXaDataSourceManager().getXaDataSource(Config.DEFAULT_DATA_SOURCE_NAME);
+  destNeoDataSource.applyCommittedTransaction(latestTxId,theTx);
+  origin.shutdown();
+}
