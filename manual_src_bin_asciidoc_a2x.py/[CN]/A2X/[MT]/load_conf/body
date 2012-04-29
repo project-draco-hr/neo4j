@@ -15,6 +15,20 @@ def load_conf(self):
     home_dir = os.environ.get('HOME')
     if (home_dir is not None):
         conf_files.append(os.path.join(home_dir, '.asciidoc', CONF_FILE))
+    if (not self.asciidoc):
+        self.asciidoc = find_executable(ASCIIDOC)
+        if (not self.asciidoc):
+            die(('unable to find asciidoc: %s' % ASCIIDOC))
+    if (self.backend is not None):
+        stdout = shell((self.asciidoc + ' --backend list'))[0]
+        backends = [(i, os.path.split(i)[1]) for i in stdout.splitlines()]
+        backend_dir = [i[0] for i in backends if (i[1] == self.backend)]
+        if (len(backend_dir) == 0):
+            die(('missing %s backend' % self.backend))
+        if (len(backend_dir) > 1):
+            die(('more than one %s backend' % self.backend))
+        verbose(('found %s backend directory: %s' % (self.backend, backend_dir[0])))
+        conf_files.append(os.path.join(backend_dir[0], 'a2x-backend.py'))
     if (self.conf_file is not None):
         if (not os.path.isfile(self.conf_file)):
             die(('missing configuration file: %s' % self.conf_file))
@@ -25,9 +39,5 @@ def load_conf(self):
         self.xsl_file = os.path.abspath(self.xsl_file)
     for f in conf_files:
         if os.path.isfile(f):
-            verbose(('loading conf file: %s' % f))
+            verbose(('loading configuration file: %s' % f))
             execfile(f, globals())
-    if (not self.asciidoc):
-        self.asciidoc = find_executable(ASCIIDOC)
-        if (not self.asciidoc):
-            die(('unable to find asciidoc: %s' % ASCIIDOC))

@@ -12,6 +12,7 @@ def asciidoc(backend, doctype, confiles, infile, outfile, options):
                 else:
                     raise EAsciiDoc, ('missing configuration file: %s' % f)
     try:
+        document.attributes['python'] = sys.executable
         for f in config.filters:
             if (not config.find_config_dir('filters', f)):
                 raise EAsciiDoc, ('missing filter: %s' % f)
@@ -48,8 +49,10 @@ def asciidoc(backend, doctype, confiles, infile, outfile, options):
         config.set_theme_attributes()
         if ('-e' not in options):
             f = (document.backend + '.conf')
-            if (not config.load_backend()):
+            conffile = config.load_backend()
+            if (not conffile):
                 raise EAsciiDoc, ('missing backend conf file: %s' % f)
+            document.attributes['backend-confdir'] = os.path.dirname(conffile)
         document.attributes[('backend-' + document.backend)] = ''
         document.attributes[((document.backend + '-') + document.doctype)] = ''
         doc_conffiles = []
@@ -88,6 +91,8 @@ def asciidoc(backend, doctype, confiles, infile, outfile, options):
         document.update_attributes()
         config.expand_all_templates()
         config.validate()
+        if document.attributes.get('blockname'):
+            AbstractBlock.blocknames.append(document.attributes['blockname'])
         paragraphs.initialize()
         lists.initialize()
         if config.dumping:

@@ -42,14 +42,21 @@ def system(name, args, is_macro=False, attrs=None):
         os.close(fd)
         try:
             cmd = args
-            cmd = (cmd + (' > %s' % tmp))
+            cmd = (cmd + (' > "%s"' % tmp))
             if (name == 'sys2'):
                 cmd = (cmd + ' 2>&1')
+            if (os.name == 'nt'):
+                cmd = re.sub('"([^ ]+?)"', '\\1', cmd)
+            message.verbose(('shelling: %s' % cmd))
             if os.system(cmd):
                 message.warning(('%s: non-zero exit status' % syntax))
             try:
                 if os.path.isfile(tmp):
-                    lines = [s.rstrip() for s in open(tmp)]
+                    f = open(tmp)
+                    try:
+                        lines = [s.rstrip() for s in f]
+                    finally:
+                        f.close()
                 else:
                     lines = []
             except Exception:
@@ -116,7 +123,11 @@ def system(name, args, is_macro=False, attrs=None):
         elif (not is_safe_file(args)):
             message.unsafe(syntax)
         else:
-            result = [s.rstrip() for s in open(args)]
+            f = open(args)
+            try:
+                result = [s.rstrip() for s in f]
+            finally:
+                f.close()
             if result:
                 result = subs_attrs(result)
                 result = separator.join(result)

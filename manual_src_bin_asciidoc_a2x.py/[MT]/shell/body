@@ -1,24 +1,24 @@
 def shell(cmd, raise_error=True):
-    '\n    Execute command cmd in shell and return resulting subprocess.Popen object.\n    If raise_error is True then a non-zero return terminates the application.\n    '
+    '\n    Execute command cmd in shell and return tuple\n    (stdoutdata, stderrdata, returncode).\n    If raise_error is True then a non-zero return terminates the application.\n    '
     if (os.name == 'nt'):
         mo = re.match('^\\s*"\\s*(?P<arg0>[^"]+)\\s*"', cmd)
         if (not mo):
             mo = re.match('^\\s*(?P<arg0>[^ ]+)', cmd)
         if mo.group('arg0').endswith('.py'):
             cmd = ('python ' + cmd)
-    cmd = re.sub('"([^ ]+?)"', '\\1', cmd)
+        cmd = re.sub('"([^ ]+?)"', '\\1', cmd)
     verbose(('executing: %s' % cmd))
     if OPTIONS.dry_run:
         return
-    if OPTIONS.verbose:
-        stdout = stderr = None
-    else:
-        stdout = stderr = subprocess.PIPE
+    stdout = stderr = subprocess.PIPE
     try:
         popen = subprocess.Popen(cmd, stdout=stdout, stderr=stderr, shell=True, env=ENV)
     except OSError as e:
         die(('failed: %s: %s' % (cmd, e)))
-    popen.wait()
+    (stdoutdata, stderrdata) = popen.communicate()
+    if OPTIONS.verbose:
+        print stdoutdata
+        print stderrdata
     if ((popen.returncode != 0) and raise_error):
         die(('%s returned non-zero exit status %d' % (cmd, popen.returncode)))
-    return popen
+    return (stdoutdata, stderrdata, popen.returncode)

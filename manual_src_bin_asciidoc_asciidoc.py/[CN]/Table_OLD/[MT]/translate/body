@@ -11,13 +11,13 @@ def translate(self):
     for (k, v) in attrs.items():
         if (k == 'format'):
             if (v not in self.FORMATS):
-                raise EAsciiDoc, ('illegal [%s] %s: %s' % (self.name, k, v))
+                raise EAsciiDoc, ('illegal [%s] %s: %s' % (self.defname, k, v))
             self.format = v
         elif (k == 'tablewidth'):
             try:
                 self.tablewidth = float(attrs['tablewidth'])
             except Exception:
-                raise EAsciiDoc, ('illegal [%s] %s: %s' % (self.name, k, v))
+                raise EAsciiDoc, ('illegal [%s] %s: %s' % (self.defname, k, v))
     self.merge_attributes(attrs)
     ruler = reader.read()
     assert re.match(self.delimiter, ruler)
@@ -29,12 +29,13 @@ def translate(self):
             if (line in ('', None)):
                 break
         if (line is None):
-            raise EAsciiDoc, ('closing [%s] underline expected' % self.name)
+            raise EAsciiDoc, ('closing [%s] underline expected' % self.defname)
         table.append(reader.read())
     self.attributes['rows'] = str(len(table))
     if self.check_msg:
-        message.warning(('skipping %s table: %s' % (self.name, self.check_msg)))
+        message.warning(('skipping [%s] table: %s' % (self.defname, self.check_msg)))
         return
+    self.push_blockname('table')
     self.build_colspecs()
     headrows = footrows = []
     (bodyrows, table) = self.split_rows(table)
@@ -62,3 +63,4 @@ def translate(self):
         table = table.replace('\x07footrows\x07', footrows, 1)
     table = table.replace('\x07bodyrows\x07', bodyrows, 1)
     writer.write(table, trace='table')
+    self.pop_blockname()

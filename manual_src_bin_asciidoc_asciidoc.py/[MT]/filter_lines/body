@@ -44,13 +44,14 @@ def filter_lines(filter_cmd, lines, attrs={}):
         message.warning(('filter not found: %s' % cmd))
     if found:
         filter_cmd = ((('"' + found) + '"') + mo.group('tail'))
-    if (sys.platform == 'win32'):
-        if found:
-            if cmd.endswith('.py'):
-                filter_cmd = ('python ' + filter_cmd)
-            elif cmd.endswith('.rb'):
-                filter_cmd = ('ruby ' + filter_cmd)
+    if found:
+        if cmd.endswith('.py'):
+            filter_cmd = ('"%s" %s' % (document.attributes['python'], filter_cmd))
+        elif cmd.endswith('.rb'):
+            filter_cmd = ('ruby ' + filter_cmd)
     message.verbose(('filtering: ' + filter_cmd))
+    if (os.name == 'nt'):
+        filter_cmd = re.sub('"([^ ]+?)"', '\\1', filter_cmd)
     try:
         p = subprocess.Popen(filter_cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
         output = p.communicate(os.linesep.join(lines))[0]

@@ -1,22 +1,46 @@
 '\nasciidoc - converts an AsciiDoc text file to HTML or DocBook\n\nCopyright (C) 2002-2010 Stuart Rackham. Free use of this software is granted\nunder the terms of the GNU General Public License (GPL).\n'
 import sys, os, re, time, traceback, tempfile, subprocess, codecs, locale, unicodedata, copy
-VERSION = '8.6.6'
-MIN_PYTHON_VERSION = 2.4
+VERSION = '8.6.7'
+MIN_PYTHON_VERSION = '2.4'
 DEFAULT_BACKEND = 'html'
 DEFAULT_DOCTYPE = 'article'
-SUBS_OPTIONS = ('specialcharacters', 'quotes', 'specialwords', 'replacements', 'attributes', 'macros', 'callouts', 'normal', 'verbatim', 'none', 'replacements2')
+SUBS_OPTIONS = ('specialcharacters', 'quotes', 'specialwords', 'replacements', 'attributes', 'macros', 'callouts', 'normal', 'verbatim', 'none', 'replacements2', 'replacements3')
 SUBS_NORMAL = ('specialcharacters', 'quotes', 'attributes', 'specialwords', 'replacements', 'macros', 'replacements2')
 SUBS_VERBATIM = ('specialcharacters', 'callouts')
 NAME_RE = '(?u)[^\\W\\d][-\\w]*'
 (OR, AND) = (',', '+')
-if (float(sys.version[:3]) < 2.4):
-    pass
-elif (float(sys.version[:3]) < 2.6):
+if ((float(sys.version[:3]) >= 2.6) or (sys.platform[:4] == 'java')):
+    import ast
+    from ast import literal_eval
+
+    def get_args(val):
+        d = {}
+        args = ast.parse((('d(' + val) + ')'), mode='eval').body.args
+        i = 1
+        for arg in args:
+            if isinstance(arg, ast.Name):
+                d[str(i)] = literal_eval(arg.id)
+            else:
+                d[str(i)] = literal_eval(arg)
+            i += 1
+        return d
+
+    def get_kwargs(val):
+        d = {}
+        args = ast.parse((('d(' + val) + ')'), mode='eval').body.keywords
+        for arg in args:
+            d[arg.arg] = literal_eval(arg.value)
+        return d
+
+    def parse_to_list(val):
+        values = ast.parse((('[' + val) + ']'), mode='eval').body.elts
+        return [literal_eval(v) for v in values]
+else:
     import compiler
     from compiler.ast import Const, Dict, Expression, Name, Tuple, UnarySub, Keyword
 
     def literal_eval(node_or_string):
-        ' \n        Safely evaluate an expression node or a string containing a Python\n        expression.  The string or node provided may only consist of the  \n        following Python literal structures: strings, numbers, tuples, \n        lists, dicts, booleans, and None.\n        '
+        '\n        Safely evaluate an expression node or a string containing a Python\n        expression.  The string or node provided may only consist of the\n        following Python literal structures: strings, numbers, tuples,\n        lists, dicts, booleans, and None.\n        '
         _safe_names = {'None': None, 'True': True, 'False': False, }
         if isinstance(node_or_string, basestring):
             node_or_string = compiler.parse(node_or_string, mode='eval')
@@ -66,32 +90,6 @@ elif (float(sys.version[:3]) < 2.6):
 
     def parse_to_list(val):
         values = compiler.parse((('[' + val) + ']'), mode='eval').node.asList()
-        return [literal_eval(v) for v in values]
-else:
-    import ast
-    from ast import literal_eval
-
-    def get_args(val):
-        d = {}
-        args = ast.parse((('d(' + val) + ')'), mode='eval').body.args
-        i = 1
-        for arg in args:
-            if isinstance(arg, ast.Name):
-                d[str(i)] = literal_eval(arg.id)
-            else:
-                d[str(i)] = literal_eval(arg)
-            i += 1
-        return d
-
-    def get_kwargs(val):
-        d = {}
-        args = ast.parse((('d(' + val) + ')'), mode='eval').body.keywords
-        for arg in args:
-            d[arg.arg] = literal_eval(arg.value)
-        return d
-
-    def parse_to_list(val):
-        values = ast.parse((('[' + val) + ']'), mode='eval').body.elts
         return [literal_eval(v) for v in values]
 east_asian_widths = {'W': 2, 'F': 2, 'Na': 1, 'H': 1, 'N': 1, 'A': 1, }
 'Mapping of result codes from `unicodedata.east_asian_width()` to character\ncolumn widths.'

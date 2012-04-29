@@ -1,20 +1,20 @@
 def translate(self):
     AbstractBlock.translate(self)
     reader.read()
-    attrs = {}
-    if (self.short_name() != 'comment'):
-        BlockTitle.consume(attrs)
-        AttributeList.consume(attrs)
-    self.merge_attributes(attrs)
+    self.merge_attributes(AttributeList.attrs)
+    if (not ('skip' in self.parameters.options)):
+        BlockTitle.consume(self.attributes)
+        AttributeList.consume()
+    self.push_blockname()
     options = self.parameters.options
     if ('skip' in options):
         reader.read_until(self.delimiter, same_file=True)
-    elif (safe() and (self.name == 'blockdef-backend')):
+    elif (safe() and (self.defname == 'blockdef-backend')):
         message.unsafe('Backend Block')
         reader.read_until(self.delimiter, same_file=True)
     else:
         template = self.parameters.template
-        template = subs_attrs(template, attrs)
+        template = subs_attrs(template, self.attributes)
         name = (self.short_name() + ' block')
         if ('sectionbody' in options):
             (stag, etag) = config.section2tags(template, self.attributes)
@@ -38,3 +38,4 @@ def translate(self):
     else:
         delimiter = reader.read()
         assert re.match(self.delimiter, delimiter)
+    self.pop_blockname()
