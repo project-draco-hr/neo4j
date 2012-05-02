@@ -1,0 +1,27 @@
+{
+  HighlyAvailableGraphDatabase master=start(dir.directory("master",true).getAbsolutePath(),1,zoo.getConnectionString());
+  Transaction tx=master.beginTx();
+  master.getReferenceNode().setProperty("foo","bar");
+  tx.success();
+  tx.finish();
+  master.shutdown();
+  master=start(dir.directory("master",false).getAbsolutePath(),1,zoo.getConnectionString());
+  tx=master.beginTx();
+  master.createNode();
+  tx.success();
+  tx.finish();
+  master.shutdown();
+  new File(dir.directory("master",false),"nioneo_logical.log.v0").delete();
+  new File(dir.directory("master",false),"nioneo_logical.log.v1").delete();
+  HighlyAvailableGraphDatabase slave=start(dir.directory("slave",true).getAbsolutePath(),2,zoo.getConnectionString());
+  tx=slave.beginTx();
+  slave.createNode();
+  tx.success();
+  tx.finish();
+  slave.shutdown();
+  master=start(dir.directory("master",false).getAbsolutePath(),1,zoo.getConnectionString());
+  slave=start(dir.directory("slave",false).getAbsolutePath(),2,zoo.getConnectionString());
+  assertEquals("store contents don't seem to be the same","bar",slave.getReferenceNode().getProperty("foo"));
+  slave.shutdown();
+  master.shutdown();
+}
