@@ -1,52 +1,8 @@
 {
-  GraphDatabaseAPI db=database.graph;
-  Transaction tx=db.beginTx();
-  try {
-    JsonParser jp=jsonFactory.createJsonParser(body);
-    ObjectMapper mapper=new ObjectMapper();
-    BatchOperationResults results=new BatchOperationResults();
-    JsonToken token;
-    String field;
-    String jobMethod, jobPath, jobBody;
-    Integer jobId;
-    while ((token=jp.nextToken()) != null) {
-      if (token == JsonToken.START_OBJECT) {
-        jobMethod=jobPath=jobBody="";
-        jobId=null;
-        while ((token=jp.nextToken()) != JsonToken.END_OBJECT && token != null) {
-          field=jp.getText();
-          token=jp.nextToken();
-          if (field.equals(METHOD_KEY)) {
-            jobMethod=jp.getText().toUpperCase();
-          }
- else           if (field.equals(TO_KEY)) {
-            jobPath=jp.getText();
-          }
- else           if (field.equals(ID_KEY)) {
-            jobId=jp.getIntValue();
-          }
- else           if (field.equals(BODY_KEY)) {
-            JsonNode node=mapper.readTree(jp);
-            StringWriter out=new StringWriter();
-            JsonGenerator gen=jsonFactory.createJsonGenerator(out);
-            mapper.writeTree(gen,node);
-            gen.flush();
-            gen.close();
-            jobBody=out.toString();
-          }
-        }
-        performJob(results,uriInfo,jobMethod,jobPath,jobBody,jobId,httpHeaders);
-      }
-    }
-    Response res=Response.ok().entity(results.toJSON()).header(HttpHeaders.CONTENT_ENCODING,"UTF-8").type(MediaType.APPLICATION_JSON).build();
-    tx.success();
-    return res;
+  if (isStreaming(httpHeaders)) {
+    return batchProcessAndStream(uriInfo,httpHeaders,body);
   }
- catch (  Exception e) {
-    tx.failure();
-    return output.serverError(e);
-  }
- finally {
-    tx.finish();
+ else {
+    return batchProcess(uriInfo,httpHeaders,body);
   }
 }
