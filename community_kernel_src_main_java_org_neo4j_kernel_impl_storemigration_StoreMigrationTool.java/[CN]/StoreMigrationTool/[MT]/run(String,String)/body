@@ -11,12 +11,14 @@
   }
   File targetStoreFile=new File(targetStoreDirectory,NeoStore.DEFAULT_NAME);
   config.put("neo_store",targetStoreFile.getPath());
-  NeoStore neoStore=new StoreFactory(config,CommonFactories.defaultIdGeneratorFactory(),CommonFactories.defaultFileSystemAbstraction(),null,StringLogger.SYSTEM,null).createNeoStore(targetStoreFile.getPath());
+  FileSystemAbstraction fileSystem=new DefaultFileSystemAbstraction();
+  config=new ConfigurationDefaults(GraphDatabaseSettings.class).apply(config);
+  NeoStore neoStore=new StoreFactory(new Config(config),new DefaultIdGeneratorFactory(),fileSystem,null,StringLogger.SYSTEM,null).createNeoStore(targetStoreFile.getPath());
   long startTime=System.currentTimeMillis();
   new StoreMigrator(new VisibleMigrationProgressMonitor(System.out)).migrate(legacyStore,neoStore);
   long duration=System.currentTimeMillis() - startTime;
   System.out.printf("Migration completed in %d s%n",duration / 1000);
   neoStore.close();
-  EmbeddedGraphDatabase database=new EmbeddedGraphDatabase(targetStoreDirectoryFile.getPath());
+  GraphDatabaseService database=new GraphDatabaseFactory().newEmbeddedDatabase(targetStoreDirectoryFile.getPath());
   database.shutdown();
 }

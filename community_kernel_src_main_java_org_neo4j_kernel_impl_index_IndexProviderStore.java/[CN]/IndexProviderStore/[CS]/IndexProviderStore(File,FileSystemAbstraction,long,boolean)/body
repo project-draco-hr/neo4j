@@ -1,26 +1,32 @@
 {
   this.file=file;
-  if (!file.exists()) {
-    create(file,fileSystem,expectedVersion);
-  }
+  FileChannel channel=null;
+  boolean success=false;
   try {
-    fileChannel=fileSystem.open(file.getAbsolutePath(),"rw");
-    int bytesRead=fileChannel.read(buf);
-    if (bytesRead != FILE_LENGTH && bytesRead != FILE_LENGTH - 8 && !allowUpgrade) {
-      throw new RuntimeException("Expected to read " + FILE_LENGTH + " or "+ (FILE_LENGTH - 8)+ " bytes");
-    }
-    buf.flip();
-    creationTime=buf.getLong();
-    randomIdentifier=buf.getLong();
-    version=buf.getLong();
-    lastCommittedTx=bytesRead / 8 >= 4 ? buf.getLong() : 1;
-    Long readIndexVersion=bytesRead / 8 >= 5 ? buf.getLong() : null;
-    boolean versionDiffers=readIndexVersion == null || readIndexVersion.longValue() != expectedVersion;
-    if (versionDiffers && !allowUpgrade)     throw new UpgradeNotAllowedByConfigurationException();
+    if (!fileSystem.fileExists(file.getAbsolutePath()))     create(file,fileSystem,expectedVersion);
+    channel=fileSystem.open(file.getAbsolutePath(),"rw");
+    Long[] records=readRecordsWithNullDefaults(channel,RECORD_COUNT,allowUpgrade);
+    creationTime=records[0].longValue();
+    randomIdentifier=records[1].longValue();
+    version=records[2].longValue();
+    lastCommittedTx=records[3].longValue();
+    Long readIndexVersion=records[4];
+    fileChannel=channel;
+    boolean versionDiffers=compareExpectedVersionWithStoreVersion(expectedVersion,allowUpgrade,readIndexVersion);
     indexVersion=expectedVersion;
     if (versionDiffers)     writeOut();
+    success=true;
   }
  catch (  IOException e) {
     throw new RuntimeException(e);
+  }
+ finally {
+    if (!success && channel != null) {
+      try {
+        channel.close();
+      }
+ catch (      IOException e) {
+      }
+    }
   }
 }

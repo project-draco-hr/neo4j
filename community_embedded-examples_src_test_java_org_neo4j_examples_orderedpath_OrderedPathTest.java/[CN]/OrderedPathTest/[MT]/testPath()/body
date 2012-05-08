@@ -1,24 +1,12 @@
 {
-  final ArrayList<RelationshipType> orderedPathContext=new ArrayList<RelationshipType>();
-  orderedPathContext.add(REL1);
-  orderedPathContext.add(withName("REL2"));
-  orderedPathContext.add(withName("REL3"));
-  TraversalDescription td=Traversal.description().evaluator(new Evaluator(){
-    @Override public Evaluation evaluate(    final Path path){
-      if (path.length() == 0) {
-        return Evaluation.EXCLUDE_AND_CONTINUE;
-      }
-      RelationshipType expectedType=orderedPathContext.get(path.length() - 1);
-      boolean isExpectedType=path.lastRelationship().isType(expectedType);
-      boolean included=path.length() == orderedPathContext.size() && isExpectedType;
-      boolean continued=path.length() < orderedPathContext.size() && isExpectedType;
-      return Evaluation.of(included,continued);
-    }
-  }
-);
-  Traverser t=td.traverse(db.getNodeById(1));
-  for (  Path path : t) {
-    System.out.println(path);
-  }
-  assertEquals(1,count(td.traverse(db.getNodeById(1))));
+  Node A=orderedPath.createTheGraph();
+  TraversalDescription traversalDescription=orderedPath.findPaths();
+  assertEquals(1,count(traversalDescription.traverse(A)));
+  String output=orderedPath.printPaths(traversalDescription,A);
+  System.out.println(output);
+  assertTrue(output.contains("(A)--[REL1]-->(B)--[REL2]-->(C)--[REL3]-->(D)"));
+  String graph=AsciidocHelper.createGraphVizDeletingReferenceNode("Ordered Path Graph",orderedPath.db,"java");
+  assertFalse(graph.isEmpty());
+  gen.saveToFile("graph",graph);
+  gen.saveToFile("output",createOutputSnippet(output));
 }

@@ -1,0 +1,35 @@
+{
+  byte[] header=data.first();
+  byte[] bArray=data.other();
+  byte typeId=header[0];
+  if (typeId == PropertyType.STRING.intValue()) {
+    ByteBuffer headerBuffer=ByteBuffer.wrap(header,1,header.length - 1);
+    int arrayLength=headerBuffer.getInt();
+    String[] result=new String[arrayLength];
+    ByteBuffer dataBuffer=ByteBuffer.wrap(bArray);
+    for (int i=0; i < arrayLength; i++) {
+      int byteLength=dataBuffer.getInt();
+      byte[] stringByteArray=new byte[byteLength];
+      dataBuffer.get(stringByteArray);
+      result[i]=(String)PropertyStore.getStringFor(stringByteArray);
+    }
+    return result;
+  }
+ else {
+    ShortArray type=ShortArray.typeOf(typeId);
+    int bitsUsedInLastByte=header[1];
+    int requiredBits=header[2];
+    if (requiredBits == 0)     return type.createArray(0);
+    Object result=null;
+    if (type == ShortArray.BYTE && requiredBits == Byte.SIZE) {
+      result=bArray;
+    }
+ else {
+      Bits bits=Bits.bitsFromBytes(bArray);
+      int length=(bArray.length * 8 - (8 - bitsUsedInLastByte)) / requiredBits;
+      result=type.createArray(length);
+      for (int i=0; i < length; i++)       type.get(result,i,bits,requiredBits);
+    }
+    return result;
+  }
+}

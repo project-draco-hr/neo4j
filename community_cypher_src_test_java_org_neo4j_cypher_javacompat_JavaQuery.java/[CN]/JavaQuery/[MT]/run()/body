@@ -1,15 +1,32 @@
 {
-  AbstractGraphDatabase db=new EmbeddedGraphDatabase(DB_PATH);
+  GraphDatabaseService db=new GraphDatabaseFactory().newEmbeddedDatabase(DB_PATH);
+  Transaction tx=db.beginTx();
+  try {
+    Node refNode=db.getReferenceNode();
+    refNode.setProperty("name","reference node");
+    tx.success();
+  }
+  finally {
+    tx.finish();
+  }
   ExecutionEngine engine=new ExecutionEngine(db);
-  ExecutionResult result=engine.execute("start n=node(0) where 1=1 return n");
+  ExecutionResult result=engine.execute("start n=node(0) return n, n.name");
   System.out.println(result);
   List<String> columns=result.columns();
   System.out.println(columns);
   Iterator<Node> n_column=result.columnAs("n");
-  for (  Node node : asIterable(n_column)) {
-    System.out.println(node);
-    resultNode=node;
+  for (  Node node : IteratorUtil.asIterable(n_column)) {
+    nodeResult=node + ": " + node.getProperty("name");
+    System.out.println(nodeResult);
   }
+  result=engine.execute("start n=node(0) return n, n.name");
+  for (  Map<String,Object> row : result) {
+    for (    Entry<String,Object> column : row.entrySet()) {
+      rows+=column.getKey() + ": " + column.getValue()+ "; ";
+    }
+    rows+="\n";
+  }
+  System.out.println(rows);
   resultString=result.toString();
   columnsString=columns.toString();
   db.shutdown();

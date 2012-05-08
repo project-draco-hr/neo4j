@@ -1,26 +1,10 @@
 {
   if (!graphDb.index().existsForRelationships(indexName))   throw new NotFoundException();
-  List<Representation> representations=new ArrayList<Representation>();
+  if (query == null) {
+    return toListRelationshipRepresentation();
+  }
   Index<Relationship> index=graphDb.index().forRelationships(indexName);
-  QueryContext queryCtx=new QueryContext(query);
-  if ("indexOrder".equalsIgnoreCase(sort)) {
-    queryCtx=queryCtx.sort(Sort.INDEXORDER);
-  }
- else   if ("relevance".equalsIgnoreCase(sort)) {
-    queryCtx=queryCtx.sort(Sort.RELEVANCE);
-  }
- else   if ("score".equalsIgnoreCase(sort)) {
-    queryCtx=queryCtx.sortByScore();
-  }
-  Transaction tx=beginTx();
-  try {
-    for (    Relationship rel : index.query(key,queryCtx)) {
-      representations.add(new RelationshipRepresentation(rel));
-    }
-    tx.success();
-    return new ListRepresentation(RepresentationType.RELATIONSHIP,representations);
-  }
-  finally {
-    tx.finish();
-  }
+  IndexResultOrder order=getOrdering(sort);
+  QueryContext queryCtx=order.updateQueryContext(new QueryContext(query));
+  return toListRelationshipRepresentation(index.query(key,queryCtx),order);
 }

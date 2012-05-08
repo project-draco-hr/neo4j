@@ -1,0 +1,22 @@
+{
+  String dir=TargetDirectory.forTest(getClass()).directory("holes",true).getAbsolutePath();
+  Process process=Runtime.getRuntime().exec(new String[]{"java","-cp",System.getProperty("java.class.path"),ProduceNonCleanDefraggedStringStore.class.getName(),dir});
+  int processResult=new ProcessStreamHandler(process,true).waitForResult();
+  assertEquals(0,processResult);
+  GraphDatabaseService db=new GraphDatabaseFactory().newEmbeddedDatabaseBuilder(dir).setConfig(GraphDatabaseSettings.rebuild_idgenerators_fast,GraphDatabaseSetting.FALSE).newGraphDatabase();
+  try {
+    int nameCount=0;
+    int relCount=0;
+    for (    Node node : GlobalGraphOperations.at(db).getAllNodes()) {
+      if (node.equals(db.getReferenceNode()))       continue;
+      nameCount++;
+      assertNotNull(node.getProperty("name"));
+      relCount+=count(node.getRelationships(Direction.OUTGOING));
+    }
+    assertEquals(16,nameCount);
+    assertEquals(12,relCount);
+  }
+  finally {
+    db.shutdown();
+  }
+}

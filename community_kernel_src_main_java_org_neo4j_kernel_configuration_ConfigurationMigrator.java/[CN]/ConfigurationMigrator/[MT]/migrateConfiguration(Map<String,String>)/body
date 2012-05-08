@@ -1,0 +1,40 @@
+{
+  Map<String,String> migratedConfiguration=new HashMap<String,String>();
+  for (  Map.Entry<String,String> configEntry : inputParams.entrySet()) {
+    String key=configEntry.getKey();
+    String value=configEntry.getValue();
+    if (key.equals("enable_online_backup")) {
+      Integer port=parseBackupPort(value);
+      if (port != null) {
+        migratedConfiguration.put("online_backup_enabled","true");
+        migratedConfiguration.put("online_backup_port",port.toString());
+      }
+      deprecationMessage("enable_online_backup has been replaced with online_backup_enabled and online_backup_port");
+      continue;
+    }
+    if (key.equals("neo4j.ext.udc.disable")) {
+      if ("true".equalsIgnoreCase(value)) {
+        migratedConfiguration.put("neo4j.ext.udc.enabled","false");
+      }
+ else {
+        migratedConfiguration.put("neo4j.ext.udc.enabled","true");
+      }
+      deprecationMessage("neo4j.ext.udc.disable has been replaced with neo4j.ext.udc.enabled");
+      continue;
+    }
+    if (key.equals("enable_remote_shell")) {
+      Map<String,Serializable> config=null;
+      boolean enable=false;
+      if (configValueContainsMultipleParameters(value)) {
+        migratedConfiguration.put("remote_shell_enabled",GraphDatabaseSetting.TRUE);
+        migratedConfiguration.putAll(parseShellConfigParameter(value));
+      }
+ else {
+        migratedConfiguration.put("remote_shell_enabled",Boolean.parseBoolean(value) ? GraphDatabaseSetting.TRUE : GraphDatabaseSetting.FALSE);
+      }
+      continue;
+    }
+    migratedConfiguration.put(key,value);
+  }
+  return migratedConfiguration;
+}
