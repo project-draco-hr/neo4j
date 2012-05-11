@@ -1,0 +1,31 @@
+{
+  try {
+    final StreamingOutput stream=new StreamingOutput(){
+      public void write(      final OutputStream output) throws IOException, WebApplicationException {
+        Transaction tx=database.graph.beginTx();
+        try {
+          final ServletOutputStream servletOutputStream=new ServletOutputStream(){
+            public void write(            int i) throws IOException {
+              output.write(i);
+            }
+          }
+;
+          new StreamingBatchOperations(webServer).readAndExecuteOperations(uriInfo,httpHeaders,body,servletOutputStream);
+          tx.success();
+        }
+ catch (        Exception e) {
+          Log.warn("Error executing batch request ",e);
+          tx.failure();
+        }
+ finally {
+          tx.finish();
+        }
+      }
+    }
+;
+    return Response.ok(stream).header(HttpHeaders.CONTENT_ENCODING,"UTF-8").type(MediaType.APPLICATION_JSON).build();
+  }
+ catch (  Exception e) {
+    return output.serverError(e);
+  }
+}

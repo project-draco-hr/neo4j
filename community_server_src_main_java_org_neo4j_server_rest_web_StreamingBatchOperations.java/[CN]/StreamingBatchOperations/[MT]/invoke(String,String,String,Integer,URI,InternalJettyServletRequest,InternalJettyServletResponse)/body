@@ -1,0 +1,21 @@
+{
+  results.startOperation(path,id);
+  try {
+    res=new BatchInternalJettyServletResponse(results.getServletOutputStream());
+    webServer.invokeDirectly(targetUri.getPath(),req,res);
+  }
+ catch (  Exception e) {
+    Log.warn(e);
+    results.writeError(500,e.getMessage());
+    throw new BatchOperationFailedException(500,e.getMessage(),e);
+  }
+  final int status=res.getStatus();
+  if (is2XXStatusCode(status)) {
+    results.addOperationResult(status,id,res.getHeader("Location"));
+  }
+ else {
+    final String message="Error " + status + " executing batch operation: "+ ((id != null) ? id + ". " : "")+ method+ " "+ path+ " "+ body;
+    results.writeError(status,null);
+    throw new BatchOperationFailedException(status,message,null);
+  }
+}
