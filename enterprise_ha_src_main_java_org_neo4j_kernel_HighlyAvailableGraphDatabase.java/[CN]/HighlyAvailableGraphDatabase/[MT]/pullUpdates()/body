@@ -8,7 +8,13 @@
  else       if (broker.getMaster().first() == null) {
         newMaster(storeId,new NullPointerException("master returned from broker"));
       }
-      slaveOperations.receive(broker.getMaster().first().pullUpdates(slaveOperations.getSlaveContext(-1)));
+      SlaveContext slaveContext=null;
+      if (!pullUpdates)       throw new NoMasterException();
+synchronized (this) {
+        if (!pullUpdates)         return;
+        slaveContext=slaveOperations.getSlaveContext(-1);
+      }
+      slaveOperations.receive(broker.getMaster().first().pullUpdates(slaveContext));
     }
   }
  catch (  ZooKeeperException e) {
