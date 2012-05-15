@@ -1,57 +1,33 @@
 {
-  String activeFileName=fileName + ".active";
-  if (!fileSystem.fileExists(activeFileName)) {
-    if (fileSystem.fileExists(fileName)) {
-      open(fileName);
-    }
- else {
-      open(getLog1FileName());
-      setActiveLog(LOG1);
-    }
-  }
- else {
-    FileChannel fc=fileSystem.open(activeFileName,"rw");
-    byte bytes[]=new byte[256];
-    ByteBuffer buf=ByteBuffer.wrap(bytes);
-    int read=fc.read(buf);
-    fc.close();
-    if (read != 4) {
-      throw new IllegalStateException("Read " + read + " bytes from "+ activeFileName+ " but expected 4");
-    }
-    buf.flip();
-    char c=buf.asCharBuffer().get();
-    if (c == CLEAN) {
-      String newLog=getLog1FileName();
-      renameIfExists(newLog);
-      renameIfExists(getLog2FileName());
-      open(newLog);
-      setActiveLog(LOG1);
-    }
- else     if (c == LOG1) {
-      String newLog=getLog1FileName();
-      if (!fileSystem.fileExists(newLog)) {
-        throw new IllegalStateException("Active marked as 1 but no " + newLog + " exist");
-      }
-      if (fileSystem.fileExists(getLog2FileName())) {
-        fixDualLogFiles(getLog1FileName(),getLog2FileName());
-      }
-      currentLog=LOG1;
-      open(newLog);
-    }
- else     if (c == LOG2) {
-      String newLog=getLog2FileName();
-      if (!fileSystem.fileExists(newLog)) {
-        throw new IllegalStateException("Active marked as 2 but no " + newLog + " exist");
-      }
-      if (fileSystem.fileExists(getLog1FileName())) {
-        fixDualLogFiles(getLog2FileName(),getLog1FileName());
-      }
-      currentLog=LOG2;
-      open(newLog);
-    }
- else {
-      throw new IllegalStateException("Unknown active log: " + c);
-    }
-  }
-  instantiateCorrectWriteBuffer();
+switch (logFiles.determineState()) {
+case LEGACY_WITHOUT_LOG_ROTATION:
+    open(fileName);
+  break;
+case NO_ACTIVE_FILE:
+open(logFiles.getLog1FileName());
+setActiveLog(LOG1);
+break;
+case CLEAN:
+String newLog=logFiles.getLog1FileName();
+renameIfExists(newLog);
+renameIfExists(logFiles.getLog2FileName());
+open(newLog);
+setActiveLog(LOG1);
+break;
+case DUAL_LOGS_LOG_1_ACTIVE:
+fixDualLogFiles(logFiles.getLog1FileName(),logFiles.getLog2FileName());
+case LOG_1_ACTIVE:
+currentLog=LOG1;
+open(logFiles.getLog1FileName());
+break;
+case DUAL_LOGS_LOG_2_ACTIVE:
+fixDualLogFiles(logFiles.getLog2FileName(),logFiles.getLog1FileName());
+case LOG_2_ACTIVE:
+currentLog=LOG2;
+open(logFiles.getLog2FileName());
+break;
+default :
+throw new IllegalStateException("FATAL: Unrecognized logical log state.");
+}
+instantiateCorrectWriteBuffer();
 }
