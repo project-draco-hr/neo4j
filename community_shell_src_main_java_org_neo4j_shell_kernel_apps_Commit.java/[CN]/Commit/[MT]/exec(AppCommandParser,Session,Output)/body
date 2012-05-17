@@ -1,0 +1,32 @@
+{
+  Integer txCount=(Integer)session.get(tx_count);
+  if (txCount == null || txCount.equals(0)) {
+    throw new ShellException("Not in a transaction");
+  }
+ else   if (txCount.equals(1)) {
+    Transaction tx;
+    try {
+      tx=((AbstractGraphDatabase)getServer().getDb()).getTxManager().getTransaction();
+      if (tx == null) {
+        throw fail(session,"Not in a transaction");
+      }
+    }
+ catch (    SystemException e) {
+      throw fail(session,"Not in a transaction");
+    }
+    try {
+      tx.commit();
+      session.remove(tx_count);
+      out.println("Transaction committed");
+      return null;
+    }
+ catch (    Exception e) {
+      throw fail(session,e.getMessage());
+    }
+  }
+ else {
+    session.set(tx_count,--txCount);
+    out.println("Transaction committed");
+    return null;
+  }
+}
