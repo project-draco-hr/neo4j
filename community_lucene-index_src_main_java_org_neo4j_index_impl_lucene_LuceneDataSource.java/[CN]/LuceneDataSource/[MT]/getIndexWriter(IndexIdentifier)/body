@@ -4,7 +4,21 @@
   if (writer != null) {
     return writer;
   }
- else {
-    return synchGetIndexWriter(identifier);
+  try {
+    Directory dir=directoryGetter.getDirectory(baseStorePath,identifier);
+    directoryExists(dir);
+    IndexType type=getType(identifier);
+    IndexWriterConfig writerConfig=new IndexWriterConfig(LUCENE_VERSION,type.analyzer);
+    writerConfig.setIndexDeletionPolicy(new MultipleBackupDeletionPolicy());
+    Similarity similarity=type.getSimilarity();
+    if (similarity != null) {
+      writerConfig.setSimilarity(similarity);
+    }
+    IndexWriter indexWriter=new IndexWriter(dir,writerConfig);
+    indexWriters.put(identifier,indexWriter);
+    return indexWriter;
+  }
+ catch (  IOException e) {
+    throw new RuntimeException(e);
   }
 }
