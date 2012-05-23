@@ -1,27 +1,24 @@
 {
-  try {
-    Pair<IndexSearcherRef,AtomicBoolean> searcher=indexSearchers.get(identifier);
-    IndexWriter writer=getIndexWriter(identifier);
-    if (searcher == null) {
-      IndexReader reader=IndexReader.open(writer,true);
-      IndexSearcher indexSearcher=new IndexSearcher(reader);
-      searcher=Pair.of(new IndexSearcherRef(identifier,indexSearcher),new AtomicBoolean());
-      indexSearchers.put(identifier,searcher);
-    }
+  Pair<IndexSearcherRef,AtomicBoolean> searcher=indexSearchers.get(identifier);
+  if (searcher == null) {
+    searcher=synchGetIndexSearcher(identifier,incRef);
+  }
  else {
-      if (searcher.other().compareAndSet(true,false)) {
-        searcher=refreshSearcher(searcher,writer);
-        if (searcher != null) {
-          indexSearchers.put(identifier,searcher);
+    if (searcher.other().get()) {
+synchronized (searcher) {
+        if (searcher.other().get()) {
+          IndexWriter writer=getIndexWriter(identifier);
+          searcher=refreshSearcher(searcher,writer);
+          if (searcher != null) {
+            indexSearchers.put(identifier,searcher);
+          }
+          searcher.other().set(false);
         }
       }
     }
-    if (incRef) {
-      searcher.first().incRef();
-    }
-    return searcher.first();
   }
- catch (  IOException e) {
-    throw new RuntimeException(e);
+  if (incRef) {
+    searcher.first().incRef();
   }
+  return searcher.first();
 }
