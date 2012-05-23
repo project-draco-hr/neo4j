@@ -1,5 +1,9 @@
 {
-  Integer txCount=(Integer)session.get(tx_count);
+  if (parser.getLineWithoutApp().trim().length() > 0) {
+    out.println("Error: COMMIT should  be run without trailing arguments");
+    return Continuation.INPUT_COMPLETE;
+  }
+  Integer txCount=(Integer)session.get(TX_COUNT);
   if (txCount == null || txCount.equals(0)) {
     throw new ShellException("Not in a transaction");
   }
@@ -16,7 +20,7 @@
     }
     try {
       tx.commit();
-      session.remove(tx_count);
+      session.remove(TX_COUNT);
       out.println("Transaction committed");
       return Continuation.INPUT_COMPLETE;
     }
@@ -25,8 +29,8 @@
     }
   }
  else {
-    session.set(tx_count,--txCount);
-    out.println("Transaction committed");
+    session.set(TX_COUNT,--txCount);
+    out.println(String.format("Nested transaction committed (Tx count: %d)",txCount));
     return Continuation.INPUT_COMPLETE;
   }
 }
