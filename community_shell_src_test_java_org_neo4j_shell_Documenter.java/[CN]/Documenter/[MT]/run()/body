@@ -6,13 +6,16 @@
   for (  Job job : stack) {
     try {
       DocOutput output=new DocOutput();
-      String prompt=client.getPrompt();
-      client.evaluate(job.query,output);
+      String prompt=client.getServer().interpretVariable("PS1",client.session().get("PS1"),client.session()).toString();
+      client.getServer().interpretLine(job.query,client.session(),output);
       String result=output.baos.toString();
       assertTrue(result + "did not contain " + job.assertion,result.contains(job.assertion));
       doc(job,out,result,prompt);
     }
- catch (    ShellException e) {
+ catch (    RemoteException e) {
+      throw new RuntimeException(e);
+    }
+catch (    ShellException e) {
       throw new RuntimeException(e);
     }
   }
