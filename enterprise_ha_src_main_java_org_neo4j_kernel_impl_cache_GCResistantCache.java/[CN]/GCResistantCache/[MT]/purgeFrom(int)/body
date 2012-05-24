@@ -1,43 +1,22 @@
 {
-  if (currentSize.get() <= (maxSize * 0.95f)) {
-    return;
-  }
-  purgeCount++;
-  long sizeBefore=currentSize.get();
-  try {
-    int index=1;
-    do {
-      if ((pos - index) >= 0) {
-        int minusPos=pos - index;
-        remove(minusPos);
-        if (currentSize.get() <= (maxSize * 0.9f)) {
-          return;
-        }
-      }
-      if ((pos + index) < cache.length()) {
-        int plusPos=pos + index;
-        remove(plusPos);
-        if (currentSize.get() <= (maxSize * 0.9f)) {
-          return;
-        }
-      }
-      index++;
+  long myCurrentSize=currentSize.get();
+  if (myCurrentSize <= closeToMaxSize)   return;
+  if (purging.compareAndSet(false,true)) {
+    try {
+      doPurge(pos);
     }
- while ((pos - index) >= 0 || (pos + index) < cache.length());
-    remove(pos);
-  }
   finally {
-    long timestamp=System.currentTimeMillis();
-    if (timestamp - lastPurgeLogTimestamp > minLogInterval) {
-      lastPurgeLogTimestamp=timestamp;
-      long sizeAfter=currentSize.get();
-      String sizeBeforeStr=getSize(sizeBefore);
-      String sizeAfterStr=getSize(sizeAfter);
-      String diffStr=getSize(sizeBefore - sizeAfter);
-      String missPercentage=((float)missCount / (float)(hitCount + missCount) * 100.0f) + "%";
-      String colPercentage=((float)collisions / (float)totalPuts * 100.0f) + "%";
-      logger.logMessage(name + " purge (nr " + purgeCount+ ") "+ sizeBeforeStr+ " -> "+ sizeAfterStr+ " ("+ diffStr+ ") "+ missPercentage+ " misses, "+ colPercentage+ " collisions ("+ collisions+ ").",true);
-      printAccurateStatistics();
+      purging.set(false);
+    }
+  }
+ else {
+    if (myCurrentSize < purgeHandoffSize) {
+      avertedPurgeWaits.incrementAndGet();
+      return;
+    }
+ else {
+      forcedPurgeWaits.incrementAndGet();
+      waitForCurrentPurgeToComplete();
     }
   }
 }
