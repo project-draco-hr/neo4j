@@ -4,18 +4,18 @@
     return Continuation.INPUT_COMPLETE;
   }
   Integer txCount=(Integer)session.get(TX_COUNT);
+  Transaction tx=getCurrectTransaction();
   if (txCount == null || txCount.equals(0)) {
-    throw new ShellException("Not in a transaction");
-  }
- else   if (txCount.equals(1)) {
-    Transaction tx;
-    try {
-      tx=getServer().getDb().getTxManager().getTransaction();
-      if (tx == null) {
-        throw fail(session,"Not in a transaction");
-      }
+    if (tx != null) {
+      out.println("Warning: committing a transaction not started by the shell");
+      txCount=1;
     }
- catch (    SystemException e) {
+ else {
+      throw new ShellException("Not in a transaction");
+    }
+  }
+  if (txCount.equals(1)) {
+    if (tx == null) {
       throw fail(session,"Not in a transaction");
     }
     try {
