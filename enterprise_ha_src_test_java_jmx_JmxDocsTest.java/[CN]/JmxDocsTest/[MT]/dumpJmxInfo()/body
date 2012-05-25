@@ -1,0 +1,53 @@
+{
+  StringBuilder beanList=new StringBuilder(4096);
+  StringBuilder altBeanList=new StringBuilder(2048);
+  altBeanList.append("ifdef::nonhtmloutput[]\n");
+  beanList.append("[[jmx-list]]\n" + ".MBeans exposed by Neo4j\n" + "ifndef::nonhtmloutput[]\n"+ "[options=\"header\", cols=\"m,\"]\n"+ "|===\n"+ "|Name|Description\n");
+  MBeanServer mBeanServer=ManagementFactory.getPlatformMBeanServer();
+  SortedMap<String,ObjectName> neo4jBeans=new TreeMap<String,ObjectName>();
+  for (  String query : QUERIES) {
+    Set<ObjectInstance> beans=mBeanServer.queryMBeans(new ObjectName(query),null);
+    for (    ObjectInstance bean : beans) {
+      ObjectName objectName=bean.getObjectName();
+      System.out.println(objectName);
+      String name=objectName.getKeyProperty(BEAN_NAME);
+      if (EXCLUDES.contains(name)) {
+        continue;
+      }
+      String name0=objectName.getKeyProperty(BEAN_NAME0);
+      if (name0 != null) {
+        name+='/' + name0;
+      }
+      neo4jBeans.put(name,bean.getObjectName());
+    }
+  }
+  assertEquals("Sanity checking the number of beans found;",EXPECTED_NUMBER_OF_BEANS,neo4jBeans.size());
+  for (  Map.Entry<String,ObjectName> beanEntry : neo4jBeans.entrySet()) {
+    ObjectName objectName=beanEntry.getValue();
+    String name=beanEntry.getKey();
+    Set<ObjectInstance> mBeans=mBeanServer.queryMBeans(objectName,null);
+    if (mBeans.size() != 1) {
+      throw new IllegalStateException("Unexpected size [" + mBeans.size() + "] of query result for ["+ objectName+ "].");
+    }
+    ObjectInstance bean=mBeans.iterator().next();
+    MBeanInfo info=mBeanServer.getMBeanInfo(objectName);
+    String description=info.getDescription().replace('\n',' ');
+    String id=getId(name);
+    beanList.append("|<<").append(id).append(',').append(name).append(">>|").append(description).append('\n');
+    altBeanList.append("* <<").append(id).append(',').append(name).append(">>: ").append(description).append('\n');
+    writeDetailsToFile(id,objectName,bean,info,description);
+  }
+  beanList.append("|===\n" + "endif::nonhtmloutput[]\n");
+  altBeanList.append("endif::nonhtmloutput[]\n\n");
+  beanList.append(altBeanList.toString());
+  Writer fw=null;
+  try {
+    fw=AsciiDocGenerator.getFW("target/docs/ops","JMX List");
+    fw.write(beanList.toString());
+  }
+  finally {
+    if (fw != null) {
+      fw.close();
+    }
+  }
+}

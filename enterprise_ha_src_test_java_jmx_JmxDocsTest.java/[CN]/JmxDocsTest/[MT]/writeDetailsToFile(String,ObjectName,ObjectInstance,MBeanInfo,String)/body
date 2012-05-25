@@ -1,0 +1,54 @@
+{
+  StringBuilder beanInfo=new StringBuilder(2048);
+  String name=objectName.getKeyProperty(BEAN_NAME);
+  String name0=objectName.getKeyProperty(BEAN_NAME0);
+  if (name0 != null) {
+    name+="/" + name0;
+  }
+  MBeanAttributeInfo[] attributes=info.getAttributes();
+  if (attributes.length > 0) {
+    beanInfo.append("[[").append(id).append("]]\n" + ".MBean ").append(name).append(" (").append(bean.getClassName()).append(") Attributes\n").append("[options=\"header\", cols=\"m,,m,,\"]\n" + "|===\n" + "|Name|Description|Type|Read|Write\n"+ "5.1+^e|").append(description).append('\n');
+    for (    MBeanAttributeInfo attrInfo : attributes) {
+      beanInfo.append('|').append(attrInfo.getName()).append('|').append(attrInfo.getDescription().replace('\n',' ')).append('|').append(getType(attrInfo.getType())).append('|').append(attrInfo.isReadable() ? "yes" : "no").append('|').append(attrInfo.isWritable() ? "yes" : "no").append('\n');
+    }
+    beanInfo.append("|===\n\n");
+  }
+  MBeanOperationInfo[] operations=info.getOperations();
+  if (operations.length > 0) {
+    beanInfo.append(".MBean ").append(name).append(" (").append(bean.getClassName()).append(") Operations");
+    beanInfo.append("\n" + "[options=\"header\", cols=\"m,,m,m\"]\n" + "|===\n"+ "|Name|Description|ReturnType|Signature\n");
+    for (    MBeanOperationInfo operInfo : operations) {
+      beanInfo.append('|');
+      beanInfo.append(operInfo.getName());
+      beanInfo.append('|');
+      beanInfo.append(operInfo.getDescription().replace('\n',' '));
+      beanInfo.append('|');
+      beanInfo.append(getType(operInfo.getReturnType()));
+      beanInfo.append('|');
+      MBeanParameterInfo[] params=operInfo.getSignature();
+      for (int i=0; i < params.length; i++) {
+        MBeanParameterInfo param=params[i];
+        beanInfo.append(param.getName());
+        beanInfo.append(':');
+        beanInfo.append(param.getType());
+        if (i != (params.length - 1)) {
+          beanInfo.append(',');
+        }
+      }
+      beanInfo.append('\n');
+    }
+    beanInfo.append("|===\n\n");
+  }
+  if (beanInfo.length() > 0) {
+    Writer fw=null;
+    try {
+      fw=AsciiDocGenerator.getFW("target/docs/ops",id);
+      fw.write(beanInfo.toString());
+    }
+  finally {
+      if (fw != null) {
+        fw.close();
+      }
+    }
+  }
+}
