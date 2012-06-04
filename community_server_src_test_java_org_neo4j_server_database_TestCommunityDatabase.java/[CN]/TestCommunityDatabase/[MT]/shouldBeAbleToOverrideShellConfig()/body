@@ -1,0 +1,15 @@
+{
+  int customPort=findFreeShellPortToUse(8881);
+  File tempDir=createTempDir();
+  File tuningProperties=new File(tempDir,"neo4j.properties");
+  tuningProperties.createNewFile();
+  ServerTestUtils.writePropertiesToFile(stringMap(ShellSettings.remote_shell_enabled.name(),GraphDatabaseSetting.TRUE,ShellSettings.remote_shell_port.name(),"" + customPort),tuningProperties);
+  Configuration conf=new MapConfiguration(new HashMap<String,String>());
+  conf.addProperty(Configurator.DATABASE_LOCATION_PROPERTY_KEY,tempDir.getAbsolutePath());
+  conf.addProperty(Configurator.DB_TUNING_PROPERTY_FILE_KEY,tuningProperties.getAbsolutePath());
+  Database otherDb=new CommunityDatabase(conf);
+  otherDb.start();
+  ShellLobby.newClient(customPort).shutdown();
+  otherDb.stop();
+  FileUtils.forceDelete(tempDir);
+}
