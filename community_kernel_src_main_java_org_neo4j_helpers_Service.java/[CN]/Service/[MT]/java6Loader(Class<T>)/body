@@ -1,7 +1,12 @@
 {
   try {
-    @SuppressWarnings("unchecked") Iterable<T> result=(Iterable<T>)Class.forName("java.util.ServiceLoader").getMethod("load",Class.class).invoke(null,type);
-    return filterExceptions(result);
+    Class<?> serviceLoaderClass=Class.forName("java.util.ServiceLoader");
+    Iterable<T> contextClassLoaderServices=(Iterable<T>)serviceLoaderClass.getMethod("load",Class.class).invoke(null,type);
+    Iterable<T> currentClassLoaderServices=(Iterable<T>)serviceLoaderClass.getMethod("load",Class.class,ClassLoader.class).invoke(null,type,Service.class.getClassLoader());
+    HashMap<String,T> services=new HashMap<String,T>();
+    putAllInstancesToMap(currentClassLoaderServices,services);
+    putAllInstancesToMap(contextClassLoaderServices,services);
+    return services.values();
   }
  catch (  Exception e) {
     return null;
