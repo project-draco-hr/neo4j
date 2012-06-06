@@ -1,11 +1,14 @@
 {
   commitTx();
+  graphDb=new EmbeddedGraphDatabase(TargetDirectory.forTest(getClass()).directory("filesClosedProperty",true).getAbsolutePath());
   final Index<Node> index=nodeIndex("open-files",LuceneIndexImplementation.EXACT_CONFIG);
   final long time=System.currentTimeMillis();
   final CountDownLatch latch=new CountDownLatch(30);
+  int coreCount=Runtime.getRuntime().availableProcessors();
+  ExecutorService pool=Executors.newFixedThreadPool(coreCount);
   for (int t=0; t < latch.getCount(); t++) {
     final int thread=t;
-    new Thread(){
+    pool.execute(new Runnable(){
       public void run(){
         for (int i=0; System.currentTimeMillis() - time < 60 * 1000 * 2; i++) {
           if (i % 10 == 0) {
@@ -53,10 +56,12 @@
             }
           }
         }
-        latch.countDown();
       }
     }
-.start();
+);
   }
-  latch.await();
+  pool.shutdown();
+  pool.awaitTermination(10,TimeUnit.DAYS);
+  graphDb.shutdown();
+  graphDb=new ImpermanentGraphDatabase();
 }
