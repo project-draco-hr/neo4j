@@ -2,14 +2,21 @@
   final Node lockNode=createNode();
   final List<List<Node>> results=new ArrayList<List<Node>>();
   final List<Thread> threads=new ArrayList<Thread>();
+  final AtomicReference<RuntimeException> failure=new AtomicReference<RuntimeException>();
   for (int i=0; i < 10; i++) {
     threads.add(new Thread(){
       @Override public void run(){
-        List<Node> subresult=new ArrayList<Node>();
-        for (int j=0; j < NUM_USERS; j++) {
-          subresult.add(impl.getOrCreateUser(getUsername(j),graphdb(),lockNode));
+        try {
+          List<Node> subresult=new ArrayList<Node>();
+          for (int j=0; j < NUM_USERS; j++) {
+            subresult.add(impl.getOrCreateUser(getUsername(j),graphdb(),lockNode));
+          }
+          results.add(subresult);
         }
-        results.add(subresult);
+ catch (        RuntimeException e) {
+          failure.compareAndSet(null,e);
+          throw e;
+        }
       }
     }
 );
@@ -25,6 +32,7 @@
       e.printStackTrace();
     }
   }
+  if (failure.get() != null)   throw failure.get();
   List<Node> first=results.remove(0);
   for (  List<Node> subresult : results) {
     assertEquals(first,subresult);
