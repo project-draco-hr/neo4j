@@ -1,60 +1,47 @@
 {
   LockableWindow window=null;
+  boolean readPos=false;
   if (brickMiss >= REFRESH_BRICK_COUNT) {
     refreshBricks();
   }
-  boolean readFullRow=false;
-  while (window == null) {
-    if (brickSize > 0) {
-      int brickIndex=positionToBrickIndex(position);
-      if (brickIndex < brickArray.length) {
-        BrickElement brick=brickArray[brickIndex];
-        window=brick.getWindow();
-        if (window != null && !window.markAsInUse())         window=null;
-        brick.setHit();
-      }
- else {
-        expandBricks(brickIndex + 1);
+  if (brickSize > 0) {
+    int brickIndex=(int)(position * blockSize / brickSize);
+    if (brickIndex < brickArray.length) {
+synchronized (this) {
         window=brickArray[brickIndex].getWindow();
+        if (window != null) {
+          window.mark();
+        }
       }
-    }
-    if (window == null) {
-      miss++;
-      brickMiss++;
-      if (operationType == OperationType.READ)       readFullRow=true;
-      PersistenceRow dpw=activeRowWindows.get((int)position);
-      if (dpw != null && dpw.markAsInUse()) {
-        window=dpw;
-        break;
-      }
-      dpw=new PersistenceRow(position,blockSize,fileChannel);
-      PersistenceRow existing=activeRowWindows.putIfAbsent((int)position,dpw);
-      if (existing == null && dpw.markAsInUse()) {
-        window=dpw;
-      }
- else {
-        dpw.close();
-        readFullRow=false;
-      }
+      brickArray[brickIndex].setHit();
     }
  else {
-      hit++;
+      expandBricks(brickIndex + 1);
+      window=brickArray[brickIndex].getWindow();
     }
   }
-  window.lock();
-  if (readFullRow) {
-    PersistenceRow dpw=(PersistenceRow)window;
-    boolean success=false;
-    try {
-      dpw.readFullWindow();
-      success=true;
-    }
-  finally {
-      if (!success) {
-        activeRowWindows.remove((int)dpw.position());
-        window.unLock();
+  if (window == null) {
+synchronized (this) {
+      miss++;
+      brickMiss++;
+      PersistenceRow dpw=activeRowWindows.get((int)position);
+      if (dpw == null) {
+        dpw=new PersistenceRow(position,blockSize,fileChannel);
       }
+      if (operationType == OperationType.READ) {
+        readPos=true;
+      }
+      window=dpw;
+      activeRowWindows.put((int)position,dpw);
+      window.mark();
     }
+  }
+ else {
+    hit++;
+  }
+  window.lock();
+  if (readPos) {
+    ((PersistenceRow)window).readPosition();
   }
   window.setOperationType(operationType);
   return window;

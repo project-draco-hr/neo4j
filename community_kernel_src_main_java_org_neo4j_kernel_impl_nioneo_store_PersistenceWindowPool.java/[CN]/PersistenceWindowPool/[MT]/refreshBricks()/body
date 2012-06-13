@@ -1,26 +1,68 @@
 {
-  if (brickMiss < REFRESH_BRICK_COUNT || brickSize <= 0)   return;
-synchronized (this) {
-    brickMiss=0;
-    Pair<List<BrickElement>,List<BrickElement>> currentMappings=gatherMappedVersusUnmappedWindows();
-    List<BrickElement> mappedBricks=currentMappings.first();
-    List<BrickElement> unmappedBricks=currentMappings.other();
-    int unmappedIndex=unmappedBricks.size() - 1;
-    while (memUsed + brickSize <= availableMem && unmappedIndex >= 0) {
-      BrickElement unmappedBrick=unmappedBricks.get(unmappedIndex--);
-      if (unmappedBrick.getHit() == 0)       return;
-      allocateNewWindow(unmappedBrick);
+  if (brickMiss < REFRESH_BRICK_COUNT) {
+    return;
+  }
+  brickMiss=0;
+  if (brickSize <= 0) {
+    return;
+  }
+  ArrayList<BrickElement> nonMappedBricks=new ArrayList<BrickElement>();
+  ArrayList<BrickElement> mappedBricks=new ArrayList<BrickElement>();
+  for (int i=0; i < brickCount; i++) {
+    BrickElement be=brickArray[i];
+    if (be.getWindow() != null) {
+      mappedBricks.add(be);
     }
-    int mappedIndex=0;
-    while (unmappedIndex >= 0 && mappedIndex < mappedBricks.size()) {
-      BrickElement mappedBrick=mappedBricks.get(mappedIndex++);
-      BrickElement unmappedBrick=unmappedBricks.get(unmappedIndex--);
-      if (mappedBrick.getHit() >= unmappedBrick.getHit())       break;
-      LockableWindow window=mappedBrick.getWindow();
-      if (window.writeOutAndCloseIfFree(readOnly)) {
-        mappedBrick.setWindow(null);
-        memUsed-=brickSize;
-        if (allocateNewWindow(unmappedBrick))         switches++;
+ else {
+      nonMappedBricks.add(be);
+    }
+    be.refresh();
+  }
+  Collections.sort(nonMappedBricks,new BrickSorter());
+  Collections.sort(mappedBricks,new BrickSorter());
+  int mappedIndex=0;
+  int nonMappedIndex=nonMappedBricks.size() - 1;
+  while (memUsed + brickSize <= availableMem && nonMappedIndex >= 0) {
+    BrickElement nonMappedBrick=nonMappedBricks.get(nonMappedIndex--);
+    if (nonMappedBrick.getHit() == 0) {
+      return;
+    }
+    try {
+      nonMappedBrick.setWindow(allocateNewWindow(nonMappedBrick.index()));
+      memUsed+=brickSize;
+    }
+ catch (    MappedMemException e) {
+      ooe++;
+      logWarn("Unable to memory map",e);
+    }
+catch (    OutOfMemoryError e) {
+      ooe++;
+      logWarn("Unable to allocate direct buffer",e);
+    }
+  }
+  while (nonMappedIndex >= 0 && mappedIndex < mappedBricks.size()) {
+    BrickElement mappedBrick=mappedBricks.get(mappedIndex++);
+    BrickElement nonMappedBrick=nonMappedBricks.get(nonMappedIndex--);
+    if (mappedBrick.getHit() >= nonMappedBrick.getHit()) {
+      break;
+    }
+    LockableWindow window=mappedBrick.getWindow();
+    if (window.getWaitingThreadsCount() == 0 && !window.isMarked()) {
+      if (!readOnly)       window.writeOut();
+      mappedBrick.setWindow(null);
+      memUsed-=brickSize;
+      try {
+        nonMappedBrick.setWindow(allocateNewWindow(nonMappedBrick.index()));
+        memUsed+=brickSize;
+        switches++;
+      }
+ catch (      MappedMemException e) {
+        ooe++;
+        logWarn("Unable to memory map");
+      }
+catch (      OutOfMemoryError e) {
+        ooe++;
+        logWarn("Unable to allocate direct buffer");
       }
     }
   }
