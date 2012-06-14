@@ -1,34 +1,19 @@
 {
-  String separator=System.getProperty("file.separator");
-  String store=this.storeDir + separator + NeoStore.DEFAULT_NAME;
-  params.put(Configuration.store_dir.name(),this.storeDir);
-  params.put(Configuration.neo_store.name(),store);
-  String logicalLog=this.storeDir + separator + NeoStoreXaDataSource.LOGICAL_LOG_DEFAULT_NAME;
-  params.put(Configuration.logical_log.name(),logicalLog);
   fileSystem=life.add(createFileSystemAbstraction());
-  List<Class<?>> settingsClasses=new ArrayList<Class<?>>();
-  settingsClasses.add(GraphDatabaseSettings.class);
-  for (  KernelExtension kernelExtension : kernelExtensions) {
-    Class settingsClass=kernelExtension.getSettingsClass();
-    if (settingsClass != null) {
-      settingsClasses.add(settingsClass);
-    }
-  }
-  ConfigurationDefaults configurationDefaults=new ConfigurationDefaults(settingsClasses);
-  config=new Config(configurationDefaults.apply(new SystemPropertiesConfiguration(settingsClasses).apply(params)));
   this.logging=createStringLogger();
-  ConfigurationMigrator configurationMigrator=new ConfigurationMigrator(logging.getLogger(Loggers.CONFIG));
-  Map<String,String> configParams=configurationDefaults.apply(configurationMigrator.migrateConfiguration(new SystemPropertiesConfiguration(settingsClasses).apply(params)));
-  AutoConfigurator autoConfigurator=new AutoConfigurator(fileSystem,config.get(NeoStoreXaDataSource.Configuration.store_dir),config.getBoolean(GraphDatabaseSettings.use_memory_mapped_buffers),config.getBoolean(GraphDatabaseSettings.dump_configuration));
+  AutoConfigurator autoConfigurator=new AutoConfigurator(fileSystem,config.get(NeoStoreXaDataSource.Configuration.store_dir),config.get(GraphDatabaseSettings.use_memory_mapped_buffers),config.get(GraphDatabaseSettings.dump_configuration));
+  Map<String,String> configParams=config.getParams();
   Map<String,String> autoConfiguration=autoConfigurator.configure();
   for (  Map.Entry<String,String> autoConfig : autoConfiguration.entrySet()) {
     if (!params.containsKey(autoConfig.getKey())) {
+      String key=autoConfig.getKey();
       configParams.put(autoConfig.getKey(),autoConfig.getValue());
     }
   }
   config.applyChanges(configParams);
   this.msgLog=logging.getLogger(Loggers.NEO4J);
-  boolean readOnly=config.getBoolean(Configuration.read_only);
+  config.setLogger(msgLog);
+  boolean readOnly=config.get(Configuration.read_only);
   String cacheTypeName=config.get(Configuration.cache_type);
   CacheProvider cacheProvider=cacheProviders.get(cacheTypeName);
   if (cacheProvider == null)   throw new IllegalArgumentException("No cache type '" + cacheTypeName + "'");
@@ -38,7 +23,7 @@
   kernelPanicEventGenerator=new KernelPanicEventGenerator(kernelEventHandlers);
   txHook=createTxHook();
   xaDataSourceManager=life.add(new XaDataSourceManager(logging.getLogger(Loggers.DATASOURCE)));
-  guard=config.getBoolean(Configuration.execution_guard_enabled) ? new Guard(msgLog) : null;
+  guard=config.get(Configuration.execution_guard_enabled) ? new Guard(msgLog) : null;
   xaDataSourceManager=life.add(new XaDataSourceManager(msgLog));
   if (readOnly) {
     txManager=new ReadOnlyTxManager(xaDataSourceManager);
@@ -83,7 +68,7 @@
   params=config.getParams();
   logBufferFactory=new DefaultLogBufferFactory();
   extensions=life.add(createKernelData());
-  if (config.getBoolean(Configuration.load_kernel_extensions)) {
+  if (config.get(Configuration.load_kernel_extensions)) {
     life.add(new DefaultKernelExtensionLoader(extensions));
   }
   if (indexProviders == null) {
