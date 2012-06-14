@@ -8,13 +8,19 @@
       IndexIdentifier identifier=entry.getKey();
       CommandList commandList=entry.getValue();
       IndexType type=identifier == LuceneCommand.CreateIndexCommand.FAKE_IDENTIFIER || !commandList.containsWrites() ? null : dataSource.getType(identifier);
-      CommitContext context=new CommitContext(dataSource,identifier,type,commandList);
-      for (      LuceneCommand command : commandList.commands) {
-        command.perform(context);
+      CommitContext context=null;
+      try {
+        context=new CommitContext(dataSource,identifier,type,commandList);
+        for (        LuceneCommand command : commandList.commands) {
+          command.perform(context);
+        }
+        applyDocuments(context.writer,type,context.documents);
+        if (context.writer != null) {
+          dataSource.invalidateIndexSearcher(identifier);
+        }
       }
-      applyDocuments(context.writer,type,context.documents);
-      if (context.writer != null) {
-        dataSource.invalidateIndexSearcher(identifier);
+  finally {
+        if (context != null)         context.close();
       }
     }
     dataSource.setLastCommittedTxId(getCommitTxId());
