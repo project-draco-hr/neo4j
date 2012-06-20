@@ -1,8 +1,9 @@
 {
   FileSystemAbstraction fileSystem=new DefaultFileSystemAbstraction();
-  Config config=new Config(new ConfigurationDefaults(GraphDatabaseSettings.class).apply(MapUtil.stringMap(AbstractGraphDatabase.Configuration.store_dir.name(),path(),AbstractGraphDatabase.Configuration.neo_store.name(),file("neo"),AbstractGraphDatabase.Configuration.logical_log.name(),file("nioneo_logical.log"))));
+  Config config=new Config(new ConfigurationDefaults(GraphDatabaseSettings.class).apply(MapUtil.stringMap(AbstractGraphDatabase.Configuration.store_dir.name(),path(),AbstractGraphDatabase.Configuration.neo_store.name(),file("neo"),AbstractGraphDatabase.Configuration.logical_log.name(),file(LOGICAL_LOG_DEFAULT_NAME))));
   StoreFactory sf=new StoreFactory(config,new DefaultIdGeneratorFactory(),fileSystem,null,StringLogger.DEV_NULL,null);
   PlaceboTm txManager=new PlaceboTm();
   LogBufferFactory logBufferFactory=new DefaultLogBufferFactory();
-  return new NeoStoreXaDataSource(config,sf,fileSystem,lockManager,lockReleaser,StringLogger.DEV_NULL,new XaFactory(config,TxIdGenerator.DEFAULT,txManager,logBufferFactory,fileSystem,StringLogger.DEV_NULL,RecoveryVerifier.ALWAYS_VALID),Collections.<Pair<TransactionInterceptorProvider,Object>>emptyList(),null);
+  for (  File file : new File(path()).listFiles())   if (file.isFile() && file.getName().startsWith(LOGICAL_LOG_DEFAULT_NAME + ".v"))   file.delete();
+  return new NeoStoreXaDataSource(config,sf,fileSystem,lockManager,lockReleaser,StringLogger.DEV_NULL,new XaFactory(config,TxIdGenerator.DEFAULT,txManager,logBufferFactory,fileSystem,StringLogger.DEV_NULL,RecoveryVerifier.ALWAYS_VALID,LogPruneStrategies.NO_PRUNING),Collections.<Pair<TransactionInterceptorProvider,Object>>emptyList(),null);
 }
