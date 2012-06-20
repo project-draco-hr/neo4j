@@ -1,25 +1,15 @@
 {
+  assertNotClosed();
   IndexSearcherRef searcher=indexSearchers.get(identifier);
   if (searcher == null) {
     return syncGetIndexSearcher(identifier);
   }
-  searcher.incRef();
-  if (!searcher.isClosed() && !searcher.isStale()) {
-    return searcher;
-  }
 synchronized (searcher) {
-    searcher.decRef();
     searcher=indexSearchers.get(identifier);
     if (searcher == null || searcher.isClosed()) {
       return syncGetIndexSearcher(identifier);
     }
-    if (searcher.isStale()) {
-      IndexWriter writer=getIndexWriter(identifier);
-      searcher=refreshSearcher(searcher,writer);
-      if (searcher != null) {
-        indexSearchers.put(identifier,searcher);
-      }
-    }
+    searcher=refreshSearcherIfNeeded(searcher);
     searcher.incRef();
     return searcher;
   }
