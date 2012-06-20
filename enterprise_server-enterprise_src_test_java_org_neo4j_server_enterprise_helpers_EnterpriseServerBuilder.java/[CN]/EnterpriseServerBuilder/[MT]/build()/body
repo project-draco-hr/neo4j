@@ -1,0 +1,26 @@
+{
+  if (dbDir == null) {
+    this.dbDir=createTempDir().getAbsolutePath();
+  }
+  File configFile=createPropertiesFiles();
+  if (startupHealthCheck == null) {
+    startupHealthCheck=new StartupHealthCheck(){
+      @Override public boolean run(){
+        return true;
+      }
+    }
+;
+  }
+  if (clock != null) {
+    LeaseManagerProvider.setClock(clock);
+  }
+  return new EnterpriseNeoServer(new PropertyFileConfigurator(new Validator(new DatabaseLocationMustBeSpecifiedRule()),configFile)){
+    @Override protected StartupHealthCheck createHealthCheck(){
+      return startupHealthCheck;
+    }
+    @Override protected Database createDatabase(){
+      return persistent ? super.createDatabase() : new EphemeralDatabase(configurator.configuration());
+    }
+  }
+;
+}
