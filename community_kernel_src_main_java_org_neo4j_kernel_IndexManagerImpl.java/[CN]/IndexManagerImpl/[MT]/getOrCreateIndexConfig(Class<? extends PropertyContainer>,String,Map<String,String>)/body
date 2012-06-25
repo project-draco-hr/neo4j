@@ -1,18 +1,26 @@
 {
   Pair<Map<String,String>,Boolean> result=findIndexConfig(cls,indexName,suppliedConfig,config.getParams());
   if (result.other()) {
-    ExecutorService executorService=Executors.newSingleThreadExecutor();
-    try {
-      executorService.submit(new IndexCreatorJob(cls,indexName,result.first())).get();
-    }
- catch (    ExecutionException ex) {
-      throw new TransactionFailureException("Index creation failed for " + indexName + ", "+ result.first(),ex.getCause());
-    }
-catch (    InterruptedException ex) {
-      Thread.interrupted();
-    }
+synchronized (this) {
+      Map<String,String> existing=indexStore.get(cls,indexName);
+      if (existing != null) {
+        assertConfigMatches(getIndexProvider(existing.get(PROVIDER)),indexName,existing,result.first());
+        return result.first();
+      }
+      ExecutorService executorService=Executors.newSingleThreadExecutor();
+      try {
+        executorService.submit(new IndexCreatorJob(cls,indexName,result.first())).get();
+        indexStore.set(cls,indexName,result.first());
+      }
+ catch (      ExecutionException ex) {
+        throw new TransactionFailureException("Index creation failed for " + indexName + ", "+ result.first(),ex.getCause());
+      }
+catch (      InterruptedException ex) {
+        Thread.interrupted();
+      }
  finally {
-      executorService.shutdownNow();
+        executorService.shutdownNow();
+      }
     }
   }
   return result.first();

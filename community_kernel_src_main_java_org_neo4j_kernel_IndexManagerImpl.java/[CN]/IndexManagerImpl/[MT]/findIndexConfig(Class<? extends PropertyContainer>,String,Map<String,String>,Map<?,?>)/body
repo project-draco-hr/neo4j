@@ -22,15 +22,13 @@
   configToUse=indexProvider.fillInDefaults(configToUse);
   configToUse=injectDefaultProviderIfMissing(cls,indexName,dbConfig,configToUse);
   if (storedConfig != null) {
-    if (suppliedConfig != null && !indexProvider.configMatches(storedConfig,suppliedConfig)) {
-      throw new IllegalArgumentException("Supplied index configuration:\n" + suppliedConfig + "\ndoesn't match stored config in a valid way:\n"+ storedConfig+ "\nfor '"+ indexName+ "'");
-    }
+    assertConfigMatches(indexProvider,indexName,storedConfig,suppliedConfig);
     Map<String,String> newConfig=injectDefaultProviderIfMissing(cls,indexName,dbConfig,storedConfig);
     if (newConfig != storedConfig) {
       indexStore.set(cls,indexName,newConfig);
     }
     configToUse=newConfig;
   }
-  boolean created=indexStore.setIfNecessary(cls,indexName,configToUse);
-  return Pair.of(Collections.unmodifiableMap(configToUse),created);
+  boolean needsToBeSet=!indexStore.has(cls,indexName);
+  return Pair.of(Collections.unmodifiableMap(configToUse),needsToBeSet);
 }
