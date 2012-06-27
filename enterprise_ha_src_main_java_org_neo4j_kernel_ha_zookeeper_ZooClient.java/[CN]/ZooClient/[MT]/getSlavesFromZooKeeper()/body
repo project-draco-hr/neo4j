@@ -1,0 +1,34 @@
+{
+synchronized (cachedSlaves) {
+    if (serversRefreshed || cachedSlaves.isEmpty()) {
+      Machine master=cachedMaster.other();
+      if (master.getMachineId() == this.machineId) {
+        Set<Integer> visitedSlaves=new HashSet<Integer>();
+        for (        Machine machine : getHaServers()) {
+          int id=machine.getMachineId();
+          visitedSlaves.add(id);
+          if (id == machineId)           continue;
+          boolean instantiate=true;
+          Pair<SlaveClient,Machine> existingSlave=cachedSlaves.get(id);
+          if (existingSlave != null) {
+            Machine existingMachine=existingSlave.other();
+            if (existingMachine.getServer().equals(machine.getServer()))             instantiate=false;
+ else             existingSlave.first().shutdown();
+          }
+          if (instantiate) {
+            cachedSlaves.put(id,Pair.of(new SlaveClient(machine.getMachineId(),machine.getServer().first(),machine.getServer().other().intValue(),msgLog,storeId,maxConcurrentChannelsPerSlave),machine));
+          }
+        }
+        for (        int id : cachedSlaves.keySet())         if (!visitedSlaves.contains(id))         cachedSlaves.remove(id).first().shutdown();
+      }
+ else {
+        shutdownSlaves();
+      }
+      serversRefreshed=true;
+    }
+    Slave[] slaves=new Slave[cachedSlaves.size()];
+    int i=0;
+    for (    Pair<SlaveClient,Machine> slave : cachedSlaves.values())     slaves[i++]=slave.first();
+    return slaves;
+  }
+}
