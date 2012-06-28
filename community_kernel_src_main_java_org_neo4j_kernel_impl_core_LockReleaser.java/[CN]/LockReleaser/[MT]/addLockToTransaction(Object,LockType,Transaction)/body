@@ -1,0 +1,26 @@
+{
+  tx=(tx == null ? getTransaction() : tx);
+  List<LockElement> lockElements=lockMap.get(tx);
+  if (lockElements != null) {
+    LockElement element=new LockElement(resource,type);
+    lockElements.add(element);
+    return element;
+  }
+ else {
+    if (tx == null) {
+      type.release(resource,lockManager);
+      return null;
+    }
+    lockElements=new ArrayList<LockElement>();
+    lockMap.put(tx,lockElements);
+    LockElement element=new LockElement(resource,type);
+    lockElements.add(element);
+    try {
+      tx.registerSynchronization(new ReadOnlyTxReleaser(tx));
+    }
+ catch (    Exception e) {
+      throw new TransactionFailureException("Failed to register lock release synchronization hook",e);
+    }
+    return element;
+  }
+}
