@@ -1,0 +1,24 @@
+{
+  Map<String,String> config=new HashMap<String,String>();
+  config.put(GraphDatabaseSettings.tx_manager_impl.name(),JOTMTransactionManager.NAME);
+  GraphDatabaseAPI db=null;
+  try {
+    db=new ImpermanentGraphDatabase(config);
+    assertThat(db.getTxManager(),is(JOTMTransactionManager.class));
+    Transaction tx=db.beginTx();
+    Node node=null;
+    try {
+      node=db.createNode();
+      tx.success();
+    }
+  finally {
+      tx.finish();
+    }
+    assertThat(db.getNodeById(node.getId()),is(node));
+  }
+  finally {
+    if (db != null) {
+      db.shutdown();
+    }
+  }
+}
