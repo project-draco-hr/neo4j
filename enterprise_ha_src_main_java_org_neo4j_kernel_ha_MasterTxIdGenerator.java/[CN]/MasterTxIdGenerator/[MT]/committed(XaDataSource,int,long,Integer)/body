@@ -1,0 +1,35 @@
+{
+  int replicationFactor=desiredReplicationFactor;
+  if (externalAuthorServerId != null)   replicationFactor--;
+  if (replicationFactor == 0)   return;
+  Collection<Future<Void>> committers=new HashSet<Future<Void>>();
+  try {
+    int successfulReplications=0;
+    Iterator<Slave> slaves=filter(replicationStrategy.prioritize(broker.getSlaves()),externalAuthorServerId);
+    CompletionNotifier notifier=new CompletionNotifier();
+    for (int i=0; i < replicationFactor && slaves.hasNext(); i++)     committers.add(slaveCommitters.submit(slaveCommitter(dataSource,identifier,slaves.next(),txId,notifier)));
+    Collection<Future<Void>> toAdd=new ArrayList<Future<Void>>();
+    Collection<Future<Void>> toRemove=new ArrayList<Future<Void>>();
+    while (!committers.isEmpty() && successfulReplications < replicationFactor) {
+      toAdd.clear();
+      toRemove.clear();
+      for (      Future<Void> committer : committers) {
+        if (!committer.isDone())         continue;
+        if (isSuccessfull(committer))         successfulReplications++;
+ else         if (slaves.hasNext())         toAdd.add(slaveCommitters.submit(slaveCommitter(dataSource,identifier,slaves.next(),txId,notifier)));
+        toRemove.add(committer);
+      }
+      if (!toAdd.isEmpty())       committers.addAll(toAdd);
+      if (!toRemove.isEmpty())       committers.removeAll(toRemove);
+      if (!committers.isEmpty())       notifier.waitForAnyCompletion();
+    }
+    if (!(successfulReplications >= replicationFactor))     log.logMessage("Transaction " + txId + " for "+ dataSource.getName()+ " couldn't commit on enough slaves, desired "+ replicationFactor+ ", but could only commit at "+ successfulReplications);
+  }
+ catch (  Throwable t) {
+    t.printStackTrace();
+    log.logMessage("Unknown error commit master transaction at slave",t);
+  }
+ finally {
+    for (    Future<Void> committer : committers)     committer.cancel(false);
+  }
+}

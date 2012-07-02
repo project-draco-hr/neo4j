@@ -1,6 +1,18 @@
 {
   byte[] header=new byte[2];
   buffer.readBytes(header);
-  assertSameProtocolVersion(header,getInternalProtocolVersion(),applicationProtocolVersion);
+  try {
+    assertSameProtocolVersion(header,getInternalProtocolVersion(),applicationProtocolVersion);
+  }
+ catch (  final IllegalProtocolVersionException e) {
+    final ChunkingChannelBuffer failureResponse=new ChunkingChannelBuffer(ChannelBuffers.dynamicBuffer(),channel,frameLength,getInternalProtocolVersion(),applicationProtocolVersion);
+    submitSilent(targetCallExecutor,new Runnable(){
+      @Override public void run(){
+        writeFailureResponse(e,failureResponse);
+      }
+    }
+);
+    return null;
+  }
   return (byte)(header[0] & 0x1);
 }

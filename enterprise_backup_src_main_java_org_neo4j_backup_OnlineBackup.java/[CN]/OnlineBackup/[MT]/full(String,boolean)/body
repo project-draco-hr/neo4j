@@ -8,7 +8,7 @@
     Response<Void> response=client.fullBackup(decorateWithProgressIndicator(new ToFileStoreWriter(targetDirectory)));
     GraphDatabaseAPI targetDb=startTemporaryDb(targetDirectory,VerificationLevel.NONE);
     try {
-      unpackResponse(response,targetDb,MasterUtil.txHandlerForFullCopy());
+      unpackResponse(response,targetDb,ServerUtil.txHandlerForFullCopy());
       Set<String> noTxPresent=new HashSet<String>();
       for (      XaDataSource ds : targetDb.getXaDataSourceManager().getAllRegisteredDataSources()) {
         long lastTx=ds.getLastCommittedTxId();
@@ -29,7 +29,7 @@ catch (        IOException e) {
         for (        String ds : noTxPresent) {
           recoveryDiff.put(ds,-1L);
         }
-        SlaveContext recoveryCtx=addDiffToSlaveContext(slaveContextOf(targetDb),recoveryDiff);
+        RequestContext recoveryCtx=addDiffToSlaveContext(slaveContextOf(targetDb),recoveryDiff);
         try {
           recoveryResponse=recoveryClient.incrementalBackup(recoveryCtx);
           TransactionStream txs=recoveryResponse.transactions();

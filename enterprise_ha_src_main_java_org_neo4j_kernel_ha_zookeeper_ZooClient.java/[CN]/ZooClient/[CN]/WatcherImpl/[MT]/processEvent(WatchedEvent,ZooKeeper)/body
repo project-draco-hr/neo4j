@@ -41,6 +41,17 @@
         clusterReceiver.newMaster(new InformativeStackTrace("NodeDeleted event received (a machine left the cluster)"));
       }
     }
+ else     if (event.getType() == Watcher.Event.EventType.NodeChildrenChanged) {
+      if (path.endsWith(HA_SERVERS_CHILD)) {
+        try {
+          refreshHaServers();
+          serversRefreshed=true;
+          subscribeToChildrenChangeWatcher(HA_SERVERS_CHILD);
+        }
+ catch (        ZooKeeperException e) {
+        }
+      }
+    }
  else     if (event.getType() == Watcher.Event.EventType.NodeDataChanged) {
       int updatedData=toInt(getZooKeeper(true).getData(path,true,null));
       msgLog.logMessage("Got event data " + updatedData);
@@ -49,6 +60,7 @@
           try {
             electionHappening=true;
             clusterReceiver.newMaster(new InformativeStackTrace("NodeDataChanged event received (someone though I should be the master)"));
+            serversRefreshed=true;
           }
   finally {
             electionHappening=false;
@@ -60,6 +72,7 @@
           try {
             electionHappening=true;
             clusterReceiver.newMaster(new InformativeStackTrace("NodeDataChanged event received (new master ensures I'm slave)"));
+            serversRefreshed=true;
           }
   finally {
             electionHappening=false;
