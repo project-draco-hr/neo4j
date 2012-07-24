@@ -1,0 +1,24 @@
+{
+  Transaction tx=baseDb.beginTx();
+  baseDb.getNodeById(nodeId).removeProperty("propName");
+  tx.success();
+  tx.finish();
+  Thread updatePuller=new Thread(new Runnable(){
+    public void run(){
+      try {
+        Pair<Long,ReadableByteChannel> lastTx=getLatestCommitedTx(baseDb);
+        NeoStoreXaDataSource targetNeoDatasource=targetDb.getXaDataSourceManager().getNeoStoreDataSource();
+        targetNeoDatasource.applyCommittedTransaction(lastTx.first(),lastTx.other());
+      }
+ catch (      Exception e) {
+        throw new RuntimeException(e);
+      }
+    }
+  }
+);
+  updatePuller.start();
+  waitForSuspend();
+  targetDb.getNodeById(nodeId).getProperty("propName");
+  resumeAll();
+  updatePuller.join();
+}

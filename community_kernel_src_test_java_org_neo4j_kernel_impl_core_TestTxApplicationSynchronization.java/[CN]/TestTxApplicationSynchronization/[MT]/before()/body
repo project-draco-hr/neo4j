@@ -1,0 +1,14 @@
+{
+  TargetDirectory dir=TargetDirectory.forTest(getClass());
+  baseDb=new EmbeddedGraphDatabase(dir.directory("base",true).getAbsolutePath());
+  Transaction tx=baseDb.beginTx();
+  Node node=baseDb.createNode();
+  nodeId=node.getId();
+  node.setProperty("propName","propValue");
+  tx.success();
+  tx.finish();
+  targetDb=new EmbeddedGraphDatabase(dir.directory("target",true).getAbsolutePath());
+  Pair<Long,ReadableByteChannel> lastTx=getLatestCommitedTx(baseDb);
+  NeoStoreXaDataSource targetNeoDatasource=targetDb.getXaDataSourceManager().getNeoStoreDataSource();
+  targetNeoDatasource.applyCommittedTransaction(lastTx.first(),lastTx.other());
+}
