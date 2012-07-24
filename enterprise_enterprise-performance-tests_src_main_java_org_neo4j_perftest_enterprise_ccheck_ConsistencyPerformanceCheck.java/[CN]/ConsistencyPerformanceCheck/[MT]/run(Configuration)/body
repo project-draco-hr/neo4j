@@ -1,0 +1,19 @@
+{
+  File reportFile=new File(configuration.get(report_file));
+  if (configuration.get(generate_graph)) {
+    File storeDir=new File(configuration.get(DataGenerator.store_dir));
+    if (storeDir.isDirectory()) {
+      FileUtils.deleteRecursively(storeDir);
+    }
+    DataGenerator.run(configuration);
+  }
+  new EmbeddedGraphDatabase(configuration.get(DataGenerator.store_dir)).shutdown();
+  ProgressIndicator.Factory progress;
+  if (configuration.get(DataGenerator.report_progress)) {
+    progress=new ProgressIndicator.Textual(System.out);
+  }
+ else {
+    progress=ProgressIndicator.Factory.NONE;
+  }
+  ConsistencyCheck.run(new TimingProgress(new JsonReportWriter(reportFile),progress),configuration.get(DataGenerator.store_dir),new Config(new ConfigurationDefaults(GraphDatabaseSettings.class).apply(stringMap())));
+}

@@ -1,0 +1,14 @@
+{
+  Configuration.Builder config=Configuration.builder();
+  config.setValue(DataGenerator.node_count,5);
+  config.setValue(DataGenerator.relationships,asList(new DataGenerator.RelationshipSpec("FOO",1),new DataGenerator.RelationshipSpec("BAR",2)));
+  config.setValue(DataGenerator.node_properties,asList(DataGenerator.PropertyGenerator.STRING,DataGenerator.PropertyGenerator.STRING));
+  config.setValue(DataGenerator.relationship_properties,asList(DataGenerator.PropertyGenerator.STRING));
+  DataGenerator generator=new DataGenerator(config.build());
+  BatchInserter batchInserter=mock(BatchInserter.class);
+  generator.generateData(batchInserter);
+  verify(batchInserter,times(5)).createNode(argThat(hasSize(2)));
+  verify(batchInserter,times(5)).createRelationship(anyLong(),anyLong(),argThat(hasName("FOO")),argThat(hasSize(1)));
+  verify(batchInserter,times(10)).createRelationship(anyLong(),anyLong(),argThat(hasName("BAR")),argThat(hasSize(1)));
+  verifyNoMoreInteractions(batchInserter);
+}
