@@ -3,39 +3,11 @@
     throw new XAException("Cannot commit non prepared transaction[" + getIdentifier() + "]");
   }
   if (isRecovered()) {
-    commitRecovered();
+    applyCommit(true);
     return;
   }
   if (!isRecovered() && getCommitTxId() != neoStore.getLastCommittedTx() + 1) {
     throw new RuntimeException("Tx id: " + getCommitTxId() + " not next transaction ("+ neoStore.getLastCommittedTx()+ ")");
   }
-  try {
-    committed=true;
-    CommandSorter sorter=new CommandSorter();
-    if (relTypeCommands != null) {
-      java.util.Collections.sort(relTypeCommands,sorter);
-      for (      Command.RelationshipTypeCommand command : relTypeCommands) {
-        command.execute();
-      }
-    }
-    if (propIndexCommands != null) {
-      java.util.Collections.sort(propIndexCommands,sorter);
-      for (      Command.PropertyIndexCommand command : propIndexCommands) {
-        command.execute();
-      }
-    }
-    java.util.Collections.sort(nodeCommands,sorter);
-    java.util.Collections.sort(relCommands,sorter);
-    java.util.Collections.sort(propCommands,sorter);
-    executeCreated(propCommands,relCommands,nodeCommands);
-    executeModified(propCommands,relCommands,nodeCommands);
-    if (neoStoreCommand != null)     neoStoreCommand.execute();
-    executeDeleted(propCommands,relCommands,nodeCommands);
-    updateFirstRelationships();
-    lockReleaser.commitCows();
-    neoStore.setLastCommittedTx(getCommitTxId());
-  }
-  finally {
-    clear();
-  }
+  applyCommit(false);
 }
