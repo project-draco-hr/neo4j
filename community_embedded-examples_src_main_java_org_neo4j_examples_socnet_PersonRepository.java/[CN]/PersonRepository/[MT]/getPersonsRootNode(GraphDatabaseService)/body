@@ -1,18 +1,18 @@
 {
-  Relationship rel=graphDb.getReferenceNode().getSingleRelationship(REF_PERSONS,Direction.OUTGOING);
-  if (rel != null) {
-    return rel.getEndNode();
+  Index<Node> referenceIndex=graphDb.index().forNodes("reference");
+  IndexHits<Node> result=referenceIndex.get("reference","person");
+  if (result.hasNext()) {
+    return result.next();
   }
- else {
-    Transaction tx=this.graphDb.beginTx();
-    try {
-      Node refNode=this.graphDb.createNode();
-      this.graphDb.getReferenceNode().createRelationshipTo(refNode,REF_PERSONS);
-      tx.success();
-      return refNode;
-    }
+  Transaction tx=this.graphDb.beginTx();
+  try {
+    Node refNode=this.graphDb.createNode();
+    refNode.setProperty("reference","persons");
+    referenceIndex.add(refNode,"reference","persons");
+    tx.success();
+    return refNode;
+  }
   finally {
-      tx.finish();
-    }
+    tx.finish();
   }
 }

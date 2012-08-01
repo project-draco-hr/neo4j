@@ -1,8 +1,10 @@
 {
   GraphDatabaseService db=new GraphDatabaseFactory().newEmbeddedDatabase(DB_PATH);
+  long id;
   Transaction tx=db.beginTx();
   try {
-    Node refNode=db.getReferenceNode();
+    Node refNode=db.createNode();
+    id=refNode.getId();
     refNode.setProperty("name","reference node");
     tx.success();
   }
@@ -10,7 +12,7 @@
     tx.finish();
   }
   ExecutionEngine engine=new ExecutionEngine(db);
-  ExecutionResult result=engine.execute("start n=node(0) return n, n.name");
+  ExecutionResult result=engine.execute("start n=node(" + id + ") return n, n.name");
   System.out.println(result);
   List<String> columns=result.columns();
   System.out.println(columns);
@@ -19,7 +21,7 @@
     nodeResult=node + ": " + node.getProperty("name");
     System.out.println(nodeResult);
   }
-  result=engine.execute("start n=node(0) return n, n.name");
+  result=engine.execute("start n=node(" + id + ") return n, n.name");
   for (  Map<String,Object> row : result) {
     for (    Entry<String,Object> column : row.entrySet()) {
       rows+=column.getKey() + ": " + column.getValue()+ "; ";

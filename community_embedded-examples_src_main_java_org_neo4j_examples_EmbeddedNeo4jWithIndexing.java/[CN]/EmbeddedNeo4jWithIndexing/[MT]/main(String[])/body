@@ -1,11 +1,13 @@
 {
   graphDb=new GraphDatabaseFactory().newEmbeddedDatabase(DB_PATH);
   nodeIndex=graphDb.index().forNodes("nodes");
+  referenceIndex=graphDb.index().forNodes("references");
   registerShutdownHook();
   Transaction tx=graphDb.beginTx();
   try {
     Node usersReferenceNode=graphDb.createNode();
-    graphDb.getReferenceNode().createRelationshipTo(usersReferenceNode,RelTypes.USERS_REFERENCE);
+    usersReferenceNode.setProperty("reference","users");
+    referenceIndex.add(usersReferenceNode,"reference","users");
     for (int id=0; id < 100; id++) {
       Node userNode=createAndIndexUser(idToUserName(id));
       usersReferenceNode.createRelationshipTo(userNode,RelTypes.USER);
@@ -20,7 +22,7 @@
       user.delete();
       relationship.delete();
     }
-    usersReferenceNode.getSingleRelationship(RelTypes.USERS_REFERENCE,Direction.INCOMING).delete();
+    referenceIndex.remove(usersReferenceNode);
     usersReferenceNode.delete();
     tx.success();
   }
