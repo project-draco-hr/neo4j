@@ -1,0 +1,11 @@
+{
+  LocalhostZooKeeperCluster zoo=LocalhostZooKeeperCluster.singleton().clearDataAndVerifyConnection();
+  File dir=TargetDirectory.forTest(getClass()).directory("dbs",true);
+  String masterDir=new File(dir,"0").getAbsolutePath();
+  GraphDatabaseService master=new EnterpriseGraphDatabaseFactory().newHighlyAvailableDatabaseBuilder(masterDir).setConfig(HaSettings.server,"localhost:6361").setConfig(HaSettings.server_id,"0").setConfig(HaSettings.coordinators,zoo.getConnectionString()).newGraphDatabase();
+  String slaveDir=new File(dir,"1").getAbsolutePath();
+  GraphDatabaseService slave=new EnterpriseGraphDatabaseFactory().newHighlyAvailableDatabaseBuilder(slaveDir).setConfig(HaSettings.server,"localhost:6362").setConfig(HaSettings.server_id,"1").setConfig(HaSettings.coordinators,zoo.getConnectionString()).newGraphDatabase();
+  slave.shutdown();
+  master.shutdown();
+  assertMessagesLogContains(slaveDir,"STARTUP diagnostics");
+}
