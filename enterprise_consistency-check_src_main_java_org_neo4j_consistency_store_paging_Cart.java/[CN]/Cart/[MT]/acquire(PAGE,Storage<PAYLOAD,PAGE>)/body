@@ -1,0 +1,33 @@
+{
+  if (page.currentList == recencyCache || page.currentList == frequencyCache) {
+    page.setReferenced();
+    page.hit();
+    return page.payload;
+  }
+  if (recencyCache.size() + frequencyCache.size() == capacity) {
+    replace();
+    if (page.currentList != recencyHistory && page.currentList != frequencyHistory && recencyHistory.size() + frequencyHistory.size() == capacity + 1) {
+      if (recencyHistory.size() > max(0,q) || frequencyHistory.size() == 0) {
+        recencyHistory.removeHead().setUtility(this,TemporalUtility.UNKNOWN);
+      }
+ else {
+        frequencyHistory.removeHead().setUtility(this,TemporalUtility.UNKNOWN);
+      }
+    }
+  }
+  if (page.currentList == recencyHistory) {
+    p=min(p + max(1,shortTermUtilityPageCount / recencyHistory.size()),capacity);
+    page.clearReference().moveToTailOf(recencyCache).setUtility(this,TemporalUtility.LONG_TERM);
+  }
+ else   if (page.currentList == frequencyHistory) {
+    p=max(p - max(1,longTermUtilityPageCount / frequencyHistory.size()),0);
+    page.clearReference().moveToTailOf(recencyCache).setUtility(this,TemporalUtility.LONG_TERM);
+    if (frequencyCache.size() + frequencyHistory.size() + recencyCache.size() - shortTermUtilityPageCount >= capacity) {
+      q=min(q + 1,2 * capacity - recencyCache.size());
+    }
+  }
+ else {
+    page.moveToTailOf(recencyCache).setUtility(this,TemporalUtility.SHORT_TERM);
+  }
+  return page.payload=storage.load(page);
+}

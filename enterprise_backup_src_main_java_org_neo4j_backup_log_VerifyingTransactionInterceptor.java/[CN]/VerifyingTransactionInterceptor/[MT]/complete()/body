@@ -1,6 +1,6 @@
 {
-  ConsistencyCheck consistency=mode.apply(diffs,new ConsistencyCheck(diffs,mode.checkProp){
-    @Override protected <R extends AbstractBaseRecord>void report(    RecordStore<R> recordStore,    R record,    InconsistencyType inconsistency){
+  MonitoringConsistencyReporter reporter=new MonitoringConsistencyReporter(new ConsistencyReporter(){
+    @Override public <R extends AbstractBaseRecord>void report(    RecordStore<R> recordStore,    R record,    InconsistencyType inconsistency){
       if (inconsistency.isWarning())       return;
       StringBuilder log=messageHeader("Inconsistencies").append("\n\t");
       logRecord(log,recordStore,record);
@@ -8,7 +8,7 @@
       msgLog.logMessage(log.toString());
       if (difflog != null && difflog != msgLog)       difflog.logMessage(log.toString());
     }
-    @Override protected <R1 extends AbstractBaseRecord,R2 extends AbstractBaseRecord>void report(    RecordStore<R1> recordStore,    R1 record,    RecordStore<? extends R2> referredStore,    R2 referred,    InconsistencyType inconsistency){
+    @Override public <R1 extends AbstractBaseRecord,R2 extends AbstractBaseRecord>void report(    RecordStore<R1> recordStore,    R1 record,    RecordStore<? extends R2> referredStore,    R2 referred,    InconsistencyType inconsistency){
       if (inconsistency.isWarning())       return;
       if (recordStore == referredStore && record.getLongId() == referred.getLongId()) {
         report(recordStore,record,inconsistency);
@@ -23,9 +23,10 @@
     }
   }
 );
+  mode.apply(diffs,new ConsistencyRecordProcessor(diffs,reporter));
   DataInconsistencyError error=null;
   try {
-    consistency.checkResult();
+    reporter.checkResult();
   }
  catch (  AssertionError e) {
     error=new DataInconsistencyError("Inconsistencies in transaction\n\t" + (startEntry == null ? "NO START ENTRY" : startEntry.toString()) + "\n\t"+ (commitEntry == null ? "NO COMMIT ENTRY" : commitEntry.toString())+ "\n\t"+ e.getMessage());

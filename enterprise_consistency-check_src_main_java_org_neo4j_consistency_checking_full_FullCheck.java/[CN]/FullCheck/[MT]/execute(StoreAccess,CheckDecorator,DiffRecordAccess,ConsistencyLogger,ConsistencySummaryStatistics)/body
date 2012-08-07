@@ -1,0 +1,16 @@
+{
+  FilteringStoreProcessor.Factory processorFactory=new FilteringStoreProcessor.Factory(decorator,logger,recordAccess,summary);
+  StoreProcessor processEverything=processorFactory.create(EVERYTHING);
+  ProgressMonitorFactory.MultiPartBuilder progress=progressFactory.multipleParts("Full consistency check");
+  List<StoreProcessorTask> tasks=new ArrayList<StoreProcessorTask>(9);
+  tasks.add(new StoreProcessorTask<NodeRecord>(store.getNodeStore(),progress,processorFactory.createAll(PROPERTIES_ONLY,RELATIONSHIPS_ONLY)));
+  tasks.add(new StoreProcessorTask<RelationshipRecord>(store.getRelationshipStore(),progress,processorFactory.createAll(NODES_ONLY,PROPERTIES_ONLY,RELATIONSHIPS_ONLY)));
+  tasks.add(new StoreProcessorTask<PropertyRecord>(store.getPropertyStore(),progress,processorFactory.createAll(PROPERTIES_ONLY,STRINGS_ONLY,ARRAYS_ONLY)));
+  tasks.add(new StoreProcessorTask<RelationshipTypeRecord>(store.getRelationshipTypeStore(),progress,processEverything));
+  tasks.add(new StoreProcessorTask<PropertyIndexRecord>(store.getPropertyIndexStore(),progress,processEverything));
+  tasks.add(new StoreProcessorTask<DynamicRecord>(store.getStringStore(),progress,processEverything));
+  tasks.add(new StoreProcessorTask<DynamicRecord>(store.getArrayStore(),progress,processEverything));
+  tasks.add(new StoreProcessorTask<DynamicRecord>(store.getTypeNameStore(),progress,processEverything));
+  tasks.add(new StoreProcessorTask<DynamicRecord>(store.getPropertyKeyStore(),progress,processEverything));
+  order.execute(processEverything,tasks,progress.build());
+}

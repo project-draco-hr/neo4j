@@ -1,0 +1,16 @@
+{
+  ConsistencySummaryStatistics summary=mock(ConsistencySummaryStatistics.class);
+  ConsistencyReporter.ReportHandler handler=new ConsistencyReporter.ReportHandler(mock(ConsistencyLogger.class),summary,RecordType.PROPERTY,new PropertyRecord(0));
+  ConsistencyReport.PropertyConsistencyReport report=(ConsistencyReport.PropertyConsistencyReport)Proxy.newProxyInstance(ConsistencyReport.PropertyConsistencyReport.class.getClassLoader(),new Class[]{ConsistencyReport.PropertyConsistencyReport.class},handler);
+  @SuppressWarnings("unchecked") RecordReference<PropertyRecord> reference=mock(RecordReference.class);
+  @SuppressWarnings("unchecked") ComparativeRecordChecker<PropertyRecord,PropertyRecord,ConsistencyReport.PropertyConsistencyReport> checker=mock(ComparativeRecordChecker.class);
+  handler.forReference(report,reference,checker);
+  @SuppressWarnings("unchecked") ArgumentCaptor<PendingReferenceCheck<PropertyRecord>> captor=(ArgumentCaptor)ArgumentCaptor.forClass(PendingReferenceCheck.class);
+  verify(reference).dispatch(captor.capture());
+  PendingReferenceCheck pendingRefCheck=captor.getValue();
+  handler.updateSummary();
+  verifyZeroInteractions(summary);
+  pendingRefCheck.skip();
+  verify(summary).update(RecordType.PROPERTY,0,0);
+  verifyNoMoreInteractions(summary);
+}
