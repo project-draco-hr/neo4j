@@ -1,0 +1,33 @@
+{
+  HighlyAvailableGraphDatabase master=null, slave1=null, slave2=null;
+  try {
+    zoo=LocalhostZooKeeperCluster.singleton().clearDataAndVerifyConnection();
+    master=new HighlyAvailableGraphDatabase(dir.directory("master",true).getAbsolutePath(),stringMap(HaSettings.server_id.name(),"0",HaSettings.server.name(),"localhost:" + 6666,HaSettings.coordinators.name(),zoo.getConnectionString(),HaSettings.pull_interval.name(),0 + "ms",HaSettings.tx_push_strategy.name(),HaSettings.TxPushStrategySetting.fixed,HaSettings.tx_push_factor.name(),"1"));
+    slave1=new HighlyAvailableGraphDatabase(dir.directory("slave1",true).getAbsolutePath(),stringMap(HaSettings.server_id.name(),"1",HaSettings.server.name(),"localhost:" + 6667,HaSettings.coordinators.name(),zoo.getConnectionString(),HaSettings.pull_interval.name(),0 + "ms",HaSettings.slave_coordinator_update_mode.name(),HaSettings.SlaveUpdateModeSetting.none));
+    slave2=new HighlyAvailableGraphDatabase(dir.directory("slave2",true).getAbsolutePath(),stringMap(HaSettings.server_id.name(),"2",HaSettings.server.name(),"localhost:" + 6668,HaSettings.coordinators.name(),zoo.getConnectionString(),HaSettings.pull_interval.name(),0 + "ms"));
+    Transaction tx=master.beginTx();
+    Node node=master.createNode();
+    long nodeId=node.getId();
+    node.setProperty("foo","bar");
+    tx.success();
+    tx.finish();
+    try {
+      slave1.getNodeById(nodeId);
+      fail("It shouldn't be in the slave only instance");
+    }
+ catch (    NotFoundException e) {
+    }
+    assertEquals("bar",slave2.getNodeById(nodeId).getProperty("foo"));
+  }
+  finally {
+    if (slave2 != null) {
+      slave2.shutdown();
+    }
+    if (slave1 != null) {
+      slave1.shutdown();
+    }
+    if (master != null) {
+      master.shutdown();
+    }
+  }
+}
