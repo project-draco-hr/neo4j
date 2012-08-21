@@ -3,7 +3,6 @@
   if (brickMiss >= REFRESH_BRICK_COUNT) {
     refreshBricks();
   }
-  boolean readFullRow=false;
   while (window == null) {
     if (brickSize > 0) {
       int brickIndex=positionToBrickIndex(position);
@@ -21,41 +20,24 @@
     if (window == null) {
       miss++;
       brickMiss++;
-      if (operationType == OperationType.READ)       readFullRow=true;
-      PersistenceRow dpw=activeRowWindows.get((int)position);
+      PersistenceRow dpw=activeRowWindows.get(position);
       if (dpw != null && dpw.markAsInUse()) {
         window=dpw;
         break;
       }
       dpw=new PersistenceRow(position,blockSize,fileChannel);
-      PersistenceRow existing=activeRowWindows.putIfAbsent((int)position,dpw);
-      if (existing == null && dpw.markAsInUse()) {
+      PersistenceRow existing=activeRowWindows.putIfAbsent(position,dpw);
+      if (existing == null) {
         window=dpw;
       }
  else {
         dpw.close();
-        readFullRow=false;
       }
     }
  else {
       hit++;
     }
   }
-  window.lock();
-  if (readFullRow) {
-    PersistenceRow dpw=(PersistenceRow)window;
-    boolean success=false;
-    try {
-      dpw.readFullWindow();
-      success=true;
-    }
-  finally {
-      if (!success) {
-        activeRowWindows.remove((int)dpw.position());
-        window.unLock();
-      }
-    }
-  }
-  window.setOperationType(operationType);
+  window.lock(operationType);
   return window;
 }
