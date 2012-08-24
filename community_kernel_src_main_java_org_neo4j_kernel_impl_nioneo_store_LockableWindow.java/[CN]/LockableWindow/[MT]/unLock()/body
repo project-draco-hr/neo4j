@@ -1,16 +1,15 @@
 {
   Thread currentThread=Thread.currentThread();
-  if (lockCount == 0) {
+  if (!locked) {
     throw new LockException("" + currentThread + " don't have window lock on "+ this);
   }
-  lockCount--;
-  if (lockCount == 0) {
-    lockingThread=null;
-    if (waitingThreadList.size() > 0) {
-      LockElement le=waitingThreadList.removeLast();
-      if (!le.movedOn) {
-        le.thread.interrupt();
-      }
+  locked=false;
+  lockingThread=null;
+  while (!waitingThreadList.isEmpty()) {
+    LockElement le=waitingThreadList.removeLast();
+    if (!le.movedOn) {
+      le.thread.interrupt();
+      break;
     }
   }
 }
