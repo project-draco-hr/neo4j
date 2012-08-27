@@ -25,34 +25,23 @@
     java.util.Collections.sort(propCommands,sorter);
     executeCreated(isRecovered,propCommands,relCommands,nodeCommands);
     executeModified(isRecovered,propCommands,relCommands,nodeCommands);
-    if (isRecovered) {
-      neoStore.setRecoveredStatus(true);
-    }
+    executeDeleted(isRecovered,propCommands,relCommands,nodeCommands);
+    if (isRecovered)     neoStore.setRecoveredStatus(true);
     try {
       if (neoStoreCommand != null) {
         neoStoreCommand.execute();
-        if (isRecovered) {
-          removeGraphPropertiesFromCache();
-        }
+        if (isRecovered)         removeGraphPropertiesFromCache();
       }
-      if (isRecovered) {
-        neoStore.setLastCommittedTx(getCommitTxId());
+      if (!isRecovered) {
+        updateFirstRelationships();
+        lockReleaser.commitCows();
       }
-    }
-  finally {
-      if (isRecovered) {
-        neoStore.setRecoveredStatus(false);
-      }
-    }
-    executeDeleted(isRecovered,propCommands,relCommands,nodeCommands);
-    if (isRecovered) {
-      neoStore.updateIdGenerators();
-    }
- else {
-      updateFirstRelationships();
-      lockReleaser.commitCows();
       neoStore.setLastCommittedTx(getCommitTxId());
     }
+  finally {
+      neoStore.setRecoveredStatus(false);
+    }
+    if (isRecovered)     neoStore.updateIdGenerators();
   }
   finally {
     clear();
