@@ -5,7 +5,7 @@
     msgLog.logMessage(this + ", " + new Date()+ " Got event: "+ event+ " (path="+ path+ ")",true);
     if (path == null && event.getState() == Watcher.Event.KeeperState.Expired) {
       keeperState=KeeperState.Expired;
-      clusterReceiver.reconnect(new InformativeStackTrace("Reconnect due to session expired"));
+      clusterReceiver.reconnect(KnownReevaluationCauses.ZK_SESSION_EXPIRED);
     }
  else     if (path == null && event.getState() == Watcher.Event.KeeperState.SyncConnected) {
       long newSessionId=zooKeeper.getSessionId();
@@ -15,7 +15,7 @@
           msgLog.logMessage("Did setup, seq=" + sequenceNr + " new sessionId="+ newSessionId);
           int previousMaster=getCurrentMasterNotify();
           if (sessionId != -1) {
-            clusterReceiver.newMaster(new InformativeStackTrace("Got SyncConnected event from ZK"));
+            clusterReceiver.newMaster(KnownReevaluationCauses.ZK_INITIAL_SYNC_CONNECTED);
             if (getCurrentMasterNotify() == getMyMachineId() && previousMaster == getMyMachineId()) {
               setDataChangeWatcher(MASTER_REBOUND_CHILD,getMyMachineId(),false);
             }
@@ -46,7 +46,7 @@
       ZooKeeperMachine currentMaster=(ZooKeeperMachine)getCachedMaster().other();
       if (path.contains(currentMaster.getZooKeeperPath())) {
         msgLog.logMessage("Acting on it, calling newMaster()");
-        clusterReceiver.newMaster(new InformativeStackTrace("NodeDeleted event received (a machine left the cluster)"));
+        clusterReceiver.newMaster(KnownReevaluationCauses.ZK_MACHINE_LEFT);
       }
     }
  else     if (event.getType() == Watcher.Event.EventType.NodeChildrenChanged) {
@@ -67,7 +67,7 @@
         if (updatedData == machineId && !electionHappening) {
           try {
             electionHappening=true;
-            clusterReceiver.newMaster(new InformativeStackTrace("NodeDataChanged event received (someone thought I should be the master)"));
+            clusterReceiver.newMaster(KnownReevaluationCauses.ZK_ELECTED_MASTER);
             serversRefreshed=true;
           }
   finally {
@@ -79,7 +79,7 @@
         if (updatedData != machineId && !electionHappening) {
           try {
             electionHappening=true;
-            clusterReceiver.newMaster(new InformativeStackTrace("NodeDataChanged event received (new master ensures I'm slave)"));
+            clusterReceiver.newMaster(KnownReevaluationCauses.ZK_MASTER_AVAILABLE);
             serversRefreshed=true;
           }
   finally {

@@ -1,54 +1,46 @@
 {
-  if (e instanceof ComException && e.getCause() instanceof BranchedDataException) {
-    BranchedDataException bde=(BranchedDataException)e.getCause();
-    getMessageLog().logMessage("Master says I've got branched data: " + bde);
-  }
-  Throwable cause=null;
+  Throwable causeOfFailure=null;
   int i=0;
   boolean unexpectedException=false;
   while (i++ < NEW_MASTER_STARTUP_RETRIES) {
     try {
-      getMessageLog().logMessage("newMaster called",e,true);
+      cause.log(messageLog,"newMaster called");
       reevaluateMyself();
       return;
     }
  catch (    ZooKeeperException zke) {
       getMessageLog().logMessage("ZooKeeper exception in newMaster, retry #" + i,zke);
-      e=zke;
-      cause=zke;
+      causeOfFailure=zke;
       sleepWithoutInterruption(500,"");
       continue;
     }
 catch (    IllegalProtocolVersionException pe) {
-      getMessageLog().logMessage("Got wrong protocol version during newMaster, expected " + pe.getExpected() + " but got "+ pe.getReceived(),e);
+      getMessageLog().logMessage("Got wrong protocol version during newMaster, expected " + pe.getExpected() + " but got "+ pe.getReceived(),pe);
       broker.restart();
-      e=pe;
-      cause=pe;
+      causeOfFailure=pe;
       continue;
     }
 catch (    ComException ce) {
       getMessageLog().logMessage("Communication exception in newMaster, retry #" + i,ce);
-      e=ce;
-      cause=ce;
+      causeOfFailure=ce;
       sleepWithoutInterruption(500,"");
       continue;
     }
 catch (    BranchedDataException bde) {
       getMessageLog().logMessage("Branched data occurred, during newMaster retry #" + i,bde);
       getFreshDatabaseFromMaster(true);
-      e=bde;
-      cause=bde;
+      causeOfFailure=bde;
       continue;
     }
 catch (    Throwable t) {
-      cause=t;
+      causeOfFailure=t;
       unexpectedException=true;
       break;
     }
   }
-  if (cause != null && unexpectedException) {
-    getMessageLog().logMessage("Reevaluation ended in unknown exception " + cause + " so shutting down",cause,true);
-    shutdown(cause,false);
+  if (causeOfFailure != null && unexpectedException) {
+    getMessageLog().logMessage("Reevaluation ended in unknown exception so shutting down",causeOfFailure,true);
+    shutdown(causeOfFailure,false);
   }
-  throw Exceptions.launderedException(cause);
+  throw Exceptions.launderedException(causeOfFailure);
 }

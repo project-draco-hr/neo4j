@@ -3,19 +3,20 @@
   boolean iAmCurrentlyMaster=masterServer != null;
   getMessageLog().logMessage("ReevaluateMyself: machineId=" + machineId + " with master["+ master+ "] (I am master="+ iAmCurrentlyMaster+ ", "+ internalGraphDatabase+ ")");
   pullUpdates=false;
+  boolean firstReevaluation=this.internalGraphDatabase == null;
   InternalAbstractGraphDatabase newDb=null;
   try {
     if (master.other().getMachineId() == machineId) {
-      if (this.internalGraphDatabase == null || !iAmCurrentlyMaster) {
-        internalShutdown(true);
+      if (firstReevaluation || !iAmCurrentlyMaster) {
+        internalShutdown(firstReevaluation ? KnownReevaluationCauses.STARTING_AS_MASTER : KnownReevaluationCauses.SWITCHING_FROM_SLAVE_TO_MASTER,true);
         newDb=startAsMaster();
       }
       broker.rebindMaster();
     }
  else {
       broker.notifyMasterChange(master.other());
-      if (this.internalGraphDatabase == null || iAmCurrentlyMaster) {
-        internalShutdown(true);
+      if (firstReevaluation || iAmCurrentlyMaster) {
+        internalShutdown(firstReevaluation ? KnownReevaluationCauses.STARTING_AS_SLAVE : KnownReevaluationCauses.SWITCHING_FROM_MASTER_TO_SLAVE,true);
         newDb=startAsSlave();
       }
  else {
