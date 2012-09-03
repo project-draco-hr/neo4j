@@ -1,0 +1,31 @@
+{
+  graph.makeEdgeChain("a,b,c,d");
+  setWeight("a","b",1);
+  setWeight("b","c",2);
+  setWeight("c","d",5);
+  InitialStateFactory<Integer> state=new InitialStateFactory<Integer>(){
+    @Override public Integer initialState(    Path path){
+      return 0;
+    }
+  }
+;
+  final Map<Node,Integer> encounteredState=new HashMap<Node,Integer>();
+  PathExpander<Integer> expander=new PathExpander<Integer>(){
+    @Override public Iterable<Relationship> expand(    Path path,    BranchState<Integer> state){
+      if (path.length() > 0) {
+        int newState=state.getState() + ((Number)path.lastRelationship().getProperty("weight")).intValue();
+        state.setState(newState);
+        encounteredState.put(path.endNode(),newState);
+      }
+      return path.endNode().getRelationships();
+    }
+    @Override public PathExpander<Integer> reverse(){
+      return this;
+    }
+  }
+;
+  assertPaths(dijkstra(expander,state,"weight").findAllPaths(graph.getNode("a"),graph.getNode("d")),"a,b,c,d");
+  assertEquals(1,encounteredState.get(graph.getNode("b")).intValue());
+  assertEquals(3,encounteredState.get(graph.getNode("c")).intValue());
+  assertEquals(8,encounteredState.get(graph.getNode("d")).intValue());
+}
