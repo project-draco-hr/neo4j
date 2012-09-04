@@ -1,0 +1,19 @@
+{
+  final HighlyAvailableGraphDatabase db=start(dir.directory("master",true).getAbsolutePath(),1,zoo.getConnectionString());
+  final LifeSupport masterDbLife=db.getDependencyResolver().resolveDependency(MasterGraphDatabase.class).life;
+  masterDbLife.addLifecycleListener(new LifecycleListener(){
+    @Override public void notifyStatusChanged(    Object instance,    LifecycleStatus from,    LifecycleStatus to){
+      if (instance instanceof XaDataSourceManager && to == LifecycleStatus.SHUTDOWN) {
+        try {
+          db.getNodeById(0);
+        }
+ catch (        DatabaseNotRunningException e) {
+          return;
+        }
+        fail("Expected db.getNodeById() to throw exception, since the database is shut down.");
+      }
+    }
+  }
+);
+  db.internalShutdown(false);
+}
