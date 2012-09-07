@@ -1,6 +1,8 @@
 {
+  InterruptThreadTimer interruptStartupTimer=createInterruptStartupTimer();
   try {
-    startupHealthCheck();
+    runPreflightTasks();
+    interruptStartupTimer.startCountdown();
     configureWebServer();
     database.start();
     cypherExecutor.start();
@@ -11,8 +13,12 @@
     startModules(logger);
     startWebServer(logger);
     logger.logMessage("--- SERVER STARTUP END ---",true);
+    interruptStartupTimer.stopCountdown();
   }
  catch (  Throwable t) {
+    if (interruptStartupTimer.wasTriggered()) {
+      throw new ServerStartupException("Startup took longer than " + interruptStartupTimer.getTimeoutMillis() + "ms, and was stopped. You can disable this behavior by setting '"+ Configurator.STARTUP_TIMEOUT+ "' to 0.",1);
+    }
     if (t instanceof RuntimeException) {
       throw (RuntimeException)t;
     }
