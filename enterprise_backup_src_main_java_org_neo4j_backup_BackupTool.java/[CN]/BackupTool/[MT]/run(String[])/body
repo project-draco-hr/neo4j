@@ -1,0 +1,29 @@
+{
+  Args arguments=new Args(args);
+  checkArguments(arguments);
+  boolean full=arguments.has(FULL);
+  String from=arguments.get(FROM,null);
+  String to=arguments.get(TO,null);
+  boolean verify=arguments.getBoolean(VERIFY,true,true);
+  URI backupURI=null;
+  try {
+    backupURI=new URI(from);
+  }
+ catch (  URISyntaxException e) {
+    runtime.exitAbnormally("Please properly specify a location to backup as a valid URI in the form " + "<scheme>://<host>[:port], where scheme is the target database's running mode, eg ha");
+  }
+  String module=backupURI.getScheme();
+  BackupExtensionService service=null;
+  if (module != null && !DEFAULT_SCHEME.equals(module)) {
+    try {
+      service=Service.load(BackupExtensionService.class,module);
+    }
+ catch (    NoSuchElementException e) {
+      runtime.exitAbnormally(String.format("%s was specified as a backup module but it was not found. " + "Please make sure that the implementing service is on the classpath.",module));
+    }
+  }
+  if (service != null) {
+    backupURI=service.resolve(backupURI,arguments);
+  }
+  doBackup(full,backupURI,to,verify);
+}

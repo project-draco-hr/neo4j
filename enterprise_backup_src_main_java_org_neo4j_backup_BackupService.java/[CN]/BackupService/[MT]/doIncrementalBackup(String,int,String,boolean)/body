@@ -1,0 +1,22 @@
+{
+  if (!directoryContainsDb(targetDirectory)) {
+    throw new RuntimeException(targetDirectory + " doesn't contain a database");
+  }
+  ConfigParam keepLogs=new ConfigParam(){
+    @Override public void configure(    Map<String,String> config){
+      config.put(GraphDatabaseSettings.keep_logical_logs.name(),GraphDatabaseSetting.TRUE);
+    }
+  }
+;
+  GraphDatabaseAPI targetDb=startTemporaryDb(targetDirectory,VerificationLevel.valueOf(verification),keepLogs);
+  long backupStartTime=System.currentTimeMillis();
+  BackupOutcome outcome=null;
+  try {
+    outcome=doIncrementalBackup(sourceHostNameOrIp,sourcePort,targetDb);
+  }
+  finally {
+    targetDb.shutdown();
+  }
+  bumpLogFile(targetDirectory,backupStartTime);
+  return outcome;
+}
