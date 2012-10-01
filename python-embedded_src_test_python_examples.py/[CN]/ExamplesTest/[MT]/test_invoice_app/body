@@ -21,20 +21,14 @@ def test_invoice_app(self):
             with db.transaction:
                 invoice = db.node(amount=amount)
                 invoice.INSTANCE_OF(invoices)
-                invoice.RECIPIENT(customer)
+                invoice.SENT_TO(customer)
             return customer
 
         def get_customer(name):
             return customer_idx['name'][name].single
 
         def get_invoices_with_amount_over(customer, min_sum):
-
-            def evaluator(path):
-                node = path.end
-                if (node.has_key('amount') and (node['amount'] > min_sum)):
-                    return Evaluation.INCLUDE_AND_CONTINUE
-                return Evaluation.EXCLUDE_AND_CONTINUE
-            return db.traversal().relationships('RECIPIENT', INCOMING).evaluator(evaluator).traverse(customer).nodes
+            return db.query('START customer=node({customer_id})\n                                   MATCH invoice-[:SENT_TO]->customer\n                                   WHERE has(invoice.amount) and invoice.amount >= {min_sum}\n                                   RETURN invoice', customer_id=customer.id, min_sum=min_sum)['invoice']
         for name in ['Acme Inc.', 'Example Ltd.']:
             create_customer(name)
         for relationship in customers.INSTANCE_OF:
@@ -42,9 +36,9 @@ def test_invoice_app(self):
             for i in range(1, 12):
                 create_invoice(customer, (100 * i))
         large_invoices = get_invoices_with_amount_over(get_customer('Acme Inc.'), 500)
-        for relationship in get_customer('Acme Inc.').RECIPIENT.incoming:
+        for relationship in get_customer('Acme Inc.').SENT_TO.incoming:
             invoice = relationship.start
-        self.assertEqual(len(large_invoices), 6)
+        self.assertEqual(len(large_invoices), 7)
         db.shutdown()
     finally:
         if os.path.exists(folder_to_put_db_in):
