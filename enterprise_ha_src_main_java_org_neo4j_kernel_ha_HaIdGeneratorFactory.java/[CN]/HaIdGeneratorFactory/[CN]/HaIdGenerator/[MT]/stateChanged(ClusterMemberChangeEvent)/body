@@ -1,0 +1,27 @@
+{
+  if (event.getNewState() == ClusterMemberState.PENDING || event.getNewState() == ClusterMemberState.MASTER) {
+    return;
+  }
+  long highId=delegate.getHighId();
+  if (event.getNewState() == ClusterMemberState.TO_MASTER) {
+    if (state == IdGeneratorState.SLAVE) {
+      delegate.close();
+      if (!fs.fileExists(fileName)) {
+        localFactory.create(fs,fileName,highId);
+      }
+      delegate=localFactory.open(fs,fileName,grabSize,idType);
+    }
+    state=IdGeneratorState.MASTER;
+  }
+ else   if (event.getNewState() == ClusterMemberState.TO_SLAVE || event.getNewState() == ClusterMemberState.SLAVE) {
+    if (state == IdGeneratorState.SLAVE) {
+      ((SlaveIdGenerator)delegate).forgetIdAllocationFromMaster(master);
+    }
+ else {
+      delegate.close();
+      delegate.delete();
+      delegate=new SlaveIdGenerator(idType,highId,master);
+    }
+    state=IdGeneratorState.SLAVE;
+  }
+}

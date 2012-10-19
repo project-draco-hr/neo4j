@@ -1,0 +1,51 @@
+{
+  final NetworkInstance node=new NetworkInstance(new NetworkInstance.Configuration(){
+    @Override public int[] getPorts(){
+      int[] port=ClusterSettings.cluster_server.getPorts(config.getParams());
+      if (port != null) {
+        return port;
+      }
+      return ClusterSettings.cluster_server.getPorts(MapUtil.stringMap(ClusterSettings.cluster_server.name(),ConfigurationDefaults.getDefault(ClusterSettings.cluster_server,ClusterSettings.class)));
+    }
+    @Override public String getAddress(){
+      return ClusterSettings.cluster_server.getAddress(config.getParams());
+    }
+  }
+,logging.getLogger(Loggers.CLUSTER));
+  final ProtocolServer protocolServer=protocolServerFactory.newProtocolServer(timeoutStrategy,node,node,acceptorInstanceStore,electionCredentialsProvider);
+  node.addNetworkChannelsListener(new NetworkInstance.NetworkChannelsListener(){
+    @Override public void listeningAt(    URI me){
+      protocolServer.listeningAt(me);
+      protocolServer.addStateTransitionListener(new StateTransitionLogger(logging));
+    }
+    @Override public void channelOpened(    URI to){
+    }
+    @Override public void channelClosed(    URI to){
+    }
+  }
+);
+  life.add(new Lifecycle(){
+    private ScheduledExecutorService scheduler;
+    @Override public void init() throws Throwable {
+      protocolServer.getTimeouts().tick(System.currentTimeMillis());
+    }
+    @Override public void start() throws Throwable {
+      scheduler=Executors.newSingleThreadScheduledExecutor(new DaemonThreadFactory("timeout"));
+      scheduler.scheduleWithFixedDelay(new Runnable(){
+        @Override public void run(){
+          long now=System.currentTimeMillis();
+          protocolServer.getTimeouts().tick(now);
+        }
+      }
+,0,10,TimeUnit.MILLISECONDS);
+    }
+    @Override public void stop() throws Throwable {
+      scheduler.shutdownNow();
+    }
+    @Override public void shutdown() throws Throwable {
+    }
+  }
+);
+  life.add(node);
+  return protocolServer;
+}

@@ -1,0 +1,28 @@
+{
+  try {
+    ClusterMemberState oldState=state;
+    URI previousElected=context.getElectedMasterId();
+    String msg="";
+    if (oldState.equals(ClusterMemberState.MASTER) && masterUri.equals(context.getMyId())) {
+      clusterEvents.memberIsAvailable(ClusterConfiguration.COORDINATOR);
+      msg="(Sent masterIsAvailable) ";
+    }
+ else {
+      state=state.masterIsElected(context,masterUri);
+      context.setElectedMasterId(masterUri);
+      final ClusterMemberChangeEvent event=new ClusterMemberChangeEvent(oldState,state,masterUri,null);
+      Listeners.notifyListeners(clusterMemberListeners,new Listeners.Notification<ClusterMemberListener>(){
+        @Override public void notify(        ClusterMemberListener listener){
+          listener.masterIsElected(event);
+        }
+      }
+);
+      context.setAvailableHaMasterId(null);
+      accessGuard.setState(state);
+    }
+    logger.debug(msg + "Got masterIsElected(" + masterUri+ "), moved to "+ state+ " from "+ oldState+ ". Previous elected master is "+ previousElected);
+  }
+ catch (  Throwable t) {
+    throw new RuntimeException(t);
+  }
+}

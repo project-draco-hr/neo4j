@@ -1,0 +1,42 @@
+{
+  long myLastCommittedTx=nioneoDataSource.getLastCommittedTxId();
+  Pair<Integer,Long> myMaster;
+  try {
+    myMaster=nioneoDataSource.getMasterForCommittedTx(myLastCommittedTx);
+  }
+ catch (  NoSuchLogVersionException e) {
+    msgLog.logMessage("Logical log file for txId " + myLastCommittedTx + " missing [version="+ e.getVersion()+ "]. If this is startup then it will be recovered later, "+ "otherwise it might be a problem.");
+    return;
+  }
+catch (  IOException e) {
+    msgLog.logMessage("Failed to get master ID for txId " + myLastCommittedTx + ".",e);
+    return;
+  }
+catch (  Exception e) {
+    throw new BranchedDataException("Exception while getting master ID for txId " + myLastCommittedTx + ".",e);
+  }
+  Response<Pair<Integer,Long>> response=null;
+  Pair<Integer,Long> mastersMaster;
+  try {
+    response=master.getMasterIdForCommittedTx(myLastCommittedTx,nioneoDataSource.getStoreId());
+    mastersMaster=response.response();
+  }
+ catch (  RuntimeException e) {
+    if (e.getCause() instanceof MissingLogDataException) {
+      throw new StoreOutOfDateException("The master is missing the log required to complete the " + "consistency check",e.getCause());
+    }
+ else {
+      throw e;
+    }
+  }
+ finally {
+    if (response != null) {
+      response.close();
+    }
+  }
+  if (myMaster.first() != XaLogicalLog.MASTER_ID_REPRESENTING_NO_MASTER && !myMaster.equals(mastersMaster)) {
+    String msg="Branched data, I (machineId:" + config.get(HaSettings.server_id) + ") think machineId for"+ " txId ("+ myLastCommittedTx+ ") is "+ myMaster+ ", but master (machineId:"+ getServerId(availableMasterId)+ ") says that it's "+ mastersMaster;
+    throw new BranchedDataException(msg);
+  }
+  msgLog.logMessage("Master id for last committed tx ok with highestTxId=" + myLastCommittedTx + " with masterId="+ myMaster,true);
+}

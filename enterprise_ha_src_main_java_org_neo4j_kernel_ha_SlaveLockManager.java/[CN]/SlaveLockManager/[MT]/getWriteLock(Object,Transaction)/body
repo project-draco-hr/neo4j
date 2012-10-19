@@ -1,31 +1,5 @@
 {
-  LockGrabber grabber=null;
-  if (resource instanceof Node)   grabber=LockGrabber.NODE_WRITE;
- else   if (resource instanceof Relationship)   grabber=LockGrabber.RELATIONSHIP_WRITE;
- else   if (resource instanceof GraphProperties)   grabber=LockGrabber.GRAPH_WRITE;
- else   if (resource instanceof IndexLock)   grabber=LockGrabber.INDEX_WRITE;
-  try {
-    if (grabber == null) {
-      super.getWriteLock(resource,tx);
-      return;
-    }
-    initializeTxIfFirst(tx);
-    LockResult result=null;
-    do {
-      int eventIdentifier=getLocalTxId();
-      result=databaseOperations.receive(grabber.acquireLock(broker.getMaster().first(),databaseOperations.getSlaveContext(eventIdentifier),resource));
-switch (result.getStatus()) {
-case OK_LOCKED:
-        super.getWriteLock(resource,tx);
-      return;
-case DEAD_LOCKED:
-    throw new DeadlockDetectedException(result.getDeadlockMessage());
-}
-}
- while (result.getStatus() == LockStatus.NOT_LOCKED);
-}
- catch (RuntimeException e) {
-databaseOperations.exceptionHappened(e);
-throw e;
-}
+  if (getWriteLockOnMaster(resource)) {
+    local.getWriteLock(resource,tx);
+  }
 }

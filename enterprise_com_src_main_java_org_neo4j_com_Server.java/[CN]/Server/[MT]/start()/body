@@ -1,0 +1,34 @@
+{
+  this.oldChannelThresholdMillis=config.getOldChannelThreshold();
+  chunkSize=config.getChunkSize();
+  assertChunkSizeIsWithinFrameSize(chunkSize,frameLength);
+  executor=Executors.newCachedThreadPool(new NamedThreadFactory("Server receiving"));
+  workerExecutor=Executors.newCachedThreadPool(new NamedThreadFactory("Server receiving"));
+  targetCallExecutor=Executors.newCachedThreadPool(new NamedThreadFactory(getClass().getSimpleName() + ":" + config.getPort()));
+  unfinishedTransactionExecutor=Executors.newScheduledThreadPool(2,new NamedThreadFactory("Unfinished transactions"));
+  channelFactory=new NioServerSocketChannelFactory(executor,workerExecutor,config.getMaxConcurrentTransactions());
+  silentChannelExecutor=Executors.newSingleThreadScheduledExecutor(new NamedThreadFactory("Silent channel " + "reaper"));
+  silentChannelExecutor.scheduleWithFixedDelay(silentChannelFinisher(),5,5,TimeUnit.SECONDS);
+  bootstrap=new ServerBootstrap(channelFactory);
+  bootstrap.setPipelineFactory(this);
+  Channel channel;
+  InetSocketAddress socketAddress;
+  if (config.getServerAddress() == null) {
+    socketAddress=new InetSocketAddress(config.getPort());
+  }
+ else {
+    socketAddress=new InetSocketAddress(config.getServerAddress(),config.getPort());
+  }
+  try {
+    channel=bootstrap.bind(socketAddress);
+  }
+ catch (  ChannelException e) {
+    msgLog.logMessage("Failed to bind server to " + socketAddress,e);
+    executor.shutdown();
+    workerExecutor.shutdown();
+    throw new IOException(e);
+  }
+  channelGroup=new DefaultChannelGroup();
+  channelGroup.add(channel);
+  msgLog.logMessage(getClass().getSimpleName() + " communication server started and bound to " + socketAddress,true);
+}

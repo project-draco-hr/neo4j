@@ -1,32 +1,10 @@
 {
   try {
-    final int eventIdentifier=txManager.getEventIdentifier();
-    Response<Long> response=broker.getMaster().first().commitSingleResourceTransaction(onlyIncludeResource(databaseOperations.getSlaveContext(eventIdentifier),dataSource),dataSource.getName(),new TxExtractor(){
-      @Override public void extract(      LogBuffer buffer){
-        try {
-          dataSource.getPreparedTransaction(identifier,buffer);
-        }
- catch (        IOException e) {
-          throw new RuntimeException(e);
-        }
-      }
-      @Override public ReadableByteChannel extract(){
-        try {
-          return dataSource.getPreparedTransaction(identifier);
-        }
- catch (        IOException e) {
-          throw new RuntimeException(e);
-        }
-      }
-    }
-);
-    return databaseOperations.receive(response);
+    Response<Long> response=master.commitSingleResourceTransaction(requestContextFactory.newRequestContext(dataSource),dataSource.getName(),myPreparedTransactionToCommit(dataSource,identifier));
+    xaDsm.applyTransactions(response);
+    return response.response().longValue();
   }
- catch (  ComException ex) {
-    throw Exceptions.withCause(new XAException(XAException.XA_HEURCOM),ex);
-  }
-catch (  RuntimeException e) {
-    databaseOperations.exceptionHappened(e);
-    throw e;
+ catch (  ComException e) {
+    throw Exceptions.withCause(new XAException(XAException.XA_HEURCOM),e);
   }
 }

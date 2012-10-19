@@ -1,31 +1,5 @@
 {
-  LockGrabber grabber=null;
-  if (resource instanceof Node)   grabber=LockGrabber.NODE_READ;
- else   if (resource instanceof Relationship)   grabber=LockGrabber.RELATIONSHIP_READ;
- else   if (resource instanceof GraphProperties)   grabber=LockGrabber.GRAPH_READ;
- else   if (resource instanceof IndexLock)   grabber=LockGrabber.INDEX_READ;
-  try {
-    if (grabber == null) {
-      super.getReadLock(resource,tx);
-      return;
-    }
-    initializeTxIfFirst(tx);
-    LockResult result=null;
-    do {
-      int eventIdentifier=getLocalTxId();
-      result=databaseOperations.receive(grabber.acquireLock(broker.getMaster().first(),databaseOperations.getSlaveContext(eventIdentifier),resource));
-switch (result.getStatus()) {
-case OK_LOCKED:
-        super.getReadLock(resource,tx);
-      return;
-case DEAD_LOCKED:
-    throw new DeadlockDetectedException(result.getDeadlockMessage());
-}
-}
- while (result.getStatus() == LockStatus.NOT_LOCKED);
-}
- catch (RuntimeException e) {
-databaseOperations.exceptionHappened(e);
-throw e;
-}
+  if (getReadLockOnMaster(resource)) {
+    local.getReadLock(resource,tx);
+  }
 }

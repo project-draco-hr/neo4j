@@ -1,5 +1,13 @@
 {
-  int newMaster=getCurrentMaster();
-  while ((newMaster=getCurrentMaster()) == master)   powerNap();
-  return newMaster;
+  masterElectedLatch=new CountDownLatch(1);
+  final ClusterEvents events=dbs[master].getDependencyResolver().resolveDependency(ClusterEvents.class);
+  events.addClusterEventListener(new ClusterEventListener.Adapter(){
+    @Override public void memberIsAvailable(    String role,    URI instanceClusterUri,    Iterable<URI> instanceUris){
+      if (role.equals(ClusterConfiguration.COORDINATOR)) {
+        masterElectedLatch.countDown();
+        events.removeClusterEventListener(this);
+      }
+    }
+  }
+);
 }

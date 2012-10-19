@@ -1,0 +1,59 @@
+{
+  logger.getLogger().info("Verify configurations");
+  List<URI> members=null;
+  Map<String,URI> roles=null;
+  List<URI> failed=null;
+  int foundConfiguration=0;
+  List<TestProtocolServer> protocolServers=network.getServers();
+  List<AssertionError> errors=new ArrayList<AssertionError>();
+  for (int j=0; j < protocolServers.size(); j++) {
+    ConnectedStateMachines connectedStateMachines=protocolServers.get(j).getServer().getConnectedStateMachines();
+    State<?,?> clusterState=connectedStateMachines.getStateMachine(ClusterMessage.class).getState();
+    if (!clusterState.equals(ClusterState.entered)) {
+      logger.getLogger().warn("Instance " + (j + 1) + " is not in the cluster ("+ clusterState+ ")");
+      continue;
+    }
+    ClusterContext context=(ClusterContext)connectedStateMachines.getStateMachine(ClusterMessage.class).getContext();
+    HeartbeatContext heartbeatContext=(HeartbeatContext)connectedStateMachines.getStateMachine(HeartbeatMessage.class).getContext();
+    ClusterConfiguration clusterConfiguration=context.getConfiguration();
+    if (!clusterConfiguration.getMembers().isEmpty()) {
+      logger.getLogger().info("   Server " + (j + 1) + ": Cluster:"+ clusterConfiguration.getMembers()+ ","+ " Roles:"+ clusterConfiguration.getRoles()+ ", Failed:"+ heartbeatContext.getFailed());
+      foundConfiguration++;
+      if (members == null) {
+        members=clusterConfiguration.getMembers();
+        roles=clusterConfiguration.getRoles();
+        failed=heartbeatContext.getFailed();
+      }
+ else {
+        try {
+          assertEquals("Config for server" + (j + 1) + " is wrong",new HashSet<URI>(members),new HashSet<URI>(clusterConfiguration.getMembers()));
+        }
+ catch (        AssertionError e) {
+          errors.add(e);
+        }
+        try {
+          assertEquals("Roles for server" + (j + 1) + " is wrong",roles,clusterConfiguration.getRoles());
+        }
+ catch (        AssertionError e) {
+          errors.add(e);
+        }
+        try {
+          assertEquals("Failed for server" + (j + 1) + " is wrong",failed,heartbeatContext.getFailed());
+        }
+ catch (        AssertionError e) {
+          errors.add(e);
+        }
+      }
+    }
+  }
+  if (!errors.isEmpty()) {
+    for (    AssertionError error : errors) {
+      logger.getLogger().error(error.toString());
+    }
+    throw errors.get(0);
+  }
+  if (foundConfiguration > 0) {
+    assertEquals("Nr of found active members does not match configuration size",members.size(),foundConfiguration);
+  }
+  assertEquals("In:" + in + ", Out:"+ out,protocolServers.size(),Iterables.count(Iterables.<Cluster,List<Cluster>>flatten(in,out)));
+}

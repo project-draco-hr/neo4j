@@ -1,0 +1,29 @@
+{
+  File storeDir=new File(config.get(InternalAbstractGraphDatabase.Configuration.store_dir));
+  File tempStore=new File(storeDir,COPY_FROM_MASTER_TEMP);
+  if (!tempStore.mkdir()) {
+    FileUtils.deleteRecursively(tempStore);
+    tempStore.mkdir();
+  }
+  Response response=master.copyStore(new RequestContext(0,config.get(HaSettings.server_id),0,new RequestContext.Tx[0],0,0),new ToFileStoreWriter(tempStore));
+  long highestLogVersion=XaLogicalLog.getHighestHistoryLogVersion(tempStore,LOGICAL_LOG_DEFAULT_NAME);
+  if (highestLogVersion > -1) {
+    NeoStore.setVersion(tempStore,highestLogVersion + 1);
+  }
+  GraphDatabaseAPI copiedDb=(GraphDatabaseAPI)new GraphDatabaseFactory().newEmbeddedDatabaseBuilder(tempStore.getAbsolutePath()).setConfig(GraphDatabaseSettings.keep_logical_logs,GraphDatabaseSetting.TRUE).setConfig(GraphDatabaseSettings.allow_store_upgrade,config.get(GraphDatabaseSettings.allow_store_upgrade).toString()).newGraphDatabase();
+  try {
+    ServerUtil.applyReceivedTransactions(response,copiedDb.getXaDataSourceManager(),ServerUtil.txHandlerForFullCopy());
+  }
+  finally {
+    copiedDb.shutdown();
+    response.close();
+  }
+  for (  File candidate : tempStore.listFiles(new FileFilter(){
+    @Override public boolean accept(    File file){
+      return !file.getName().equals(StringLogger.DEFAULT_NAME) && !("active_tx_log tm_tx_log.1 tm_tx_log" + ".2").contains(file.getName());
+    }
+  }
+)) {
+    FileUtils.moveFileToDirectory(candidate,storeDir);
+  }
+}

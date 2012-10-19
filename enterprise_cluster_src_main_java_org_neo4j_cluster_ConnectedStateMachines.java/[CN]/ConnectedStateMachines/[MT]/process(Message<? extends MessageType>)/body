@@ -1,0 +1,41 @@
+{
+synchronized (timeouts) {
+    StateMachine stateMachine=stateMachines.get(message.getMessageType().getClass());
+    if (stateMachine == null) {
+      return;
+    }
+    stateMachine.handle(message,outgoing);
+    Message<? extends MessageType> outgoingMessage;
+    try {
+      while ((outgoingMessage=outgoing.nextOutgoingMessage()) != null) {
+        message.copyHeadersTo(outgoingMessage,CONVERSATION_ID,CREATED_BY);
+        for (        MessageProcessor outgoingProcessor : outgoingProcessors) {
+          try {
+            outgoingProcessor.process(outgoingMessage);
+          }
+ catch (          Throwable e) {
+            logger.warn("Outgoing message processor threw exception",e);
+          }
+        }
+        if (outgoingMessage.hasHeader(Message.TO)) {
+          try {
+            sender.process(outgoingMessage);
+          }
+ catch (          Throwable e) {
+            logger.warn("Message sending threw exception",e);
+          }
+        }
+ else {
+          StateMachine internalStatemachine=stateMachines.get(outgoingMessage.getMessageType().getClass());
+          if (internalStatemachine != null) {
+            internalStatemachine.handle((Message)outgoingMessage,outgoing);
+          }
+        }
+      }
+    }
+ catch (    Exception e) {
+      logger.warn("Error processing message " + message,e);
+    }
+  }
+  executor.drain();
+}

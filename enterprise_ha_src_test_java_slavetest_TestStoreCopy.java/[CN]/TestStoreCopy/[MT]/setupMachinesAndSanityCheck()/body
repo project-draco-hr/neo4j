@@ -1,7 +1,7 @@
 {
   slaveDir=TargetDirectory.forTest(TestStoreCopy.class).directory("slave-sandboxed",true);
-  sandboxed=new File(slaveDir,HighlyAvailableGraphDatabase.COPY_FROM_MASTER_TEMP);
-  master=(HighlyAvailableGraphDatabase)new EnterpriseGraphDatabaseFactory().newHighlyAvailableDatabaseBuilder(TargetDirectory.forTest(TestStoreCopy.class).directory("master-sandboxed",true).getAbsolutePath()).setConfig(HaSettings.coordinators,zoo.getConnectionString()).setConfig(HaSettings.server_id,"1").setConfig(HaSettings.server,"localhost:6361").newGraphDatabase();
+  sandboxed=new File(slaveDir,SlaveStoreWriter.COPY_FROM_MASTER_TEMP);
+  master=(HighlyAvailableGraphDatabase)new HighlyAvailableGraphDatabaseFactory().newHighlyAvailableDatabaseBuilder(TargetDirectory.forTest(TestStoreCopy.class).directory("master-sandboxed",true).getAbsolutePath()).setConfig(HaSettings.server_id,"1").setConfig(HaSettings.cluster_server,"localhost").newGraphDatabase();
   Transaction masterTx=master.beginTx();
   Node n=master.createNode();
   n.setProperty("foo","bar");
@@ -9,7 +9,8 @@
   masterTx.success();
   masterTx.finish();
   startSlave();
-  Assert.assertEquals(1,master.getBroker().getMaster().other().getMachineId());
-  Assert.assertEquals(1,slave.getBroker().getMaster().other().getMachineId());
+  Transaction tx=slave.beginTx();
+  tx.success();
+  tx.finish();
   Assert.assertEquals("bar",slave.getNodeById(nodeId).getProperty("foo"));
 }

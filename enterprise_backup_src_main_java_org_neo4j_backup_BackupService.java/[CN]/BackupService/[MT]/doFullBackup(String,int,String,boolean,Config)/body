@@ -3,13 +3,14 @@
     throw new RuntimeException(targetDirectory + " already contains a database");
   }
   BackupClient client=new BackupClient(sourceHostNameOrIp,sourcePort,StringLogger.DEV_NULL,null);
+  client.start();
   long timestamp=System.currentTimeMillis();
   Map<String,Long> lastCommittedTxs=emptyMap();
   try {
-    Response<Void> response=client.fullBackup(decorateWithProgressIndicator(new ToFileStoreWriter(targetDirectory)));
+    Response<Void> response=client.fullBackup(decorateWithProgressIndicator(new ToFileStoreWriter(new File(targetDirectory))));
     GraphDatabaseAPI targetDb=startTemporaryDb(targetDirectory,VerificationLevel.NONE);
     try {
-      lastCommittedTxs=unpackResponse(response,targetDb,ServerUtil.txHandlerForFullCopy());
+      lastCommittedTxs=unpackResponse(response,targetDb.getDependencyResolver().resolveDependency(XaDataSourceManager.class),ServerUtil.txHandlerForFullCopy());
       Set<String> noTxPresent=new HashSet<String>();
       for (      XaDataSource ds : targetDb.getXaDataSourceManager().getAllRegisteredDataSources()) {
         long lastTx=ds.getLastCommittedTxId();
@@ -25,6 +26,7 @@ catch (        IOException e) {
       }
       if (!noTxPresent.isEmpty()) {
         BackupClient recoveryClient=new BackupClient(sourceHostNameOrIp,sourcePort,targetDb.getMessageLog(),targetDb.getStoreId());
+        recoveryClient.start();
         Response<Void> recoveryResponse=null;
         Map<String,Long> recoveryDiff=new HashMap<String,Long>();
         for (        String ds : noTxPresent) {
@@ -60,7 +62,12 @@ catch (        IOException e) {
           throw new RuntimeException(e);
         }
  finally {
-          recoveryClient.shutdown();
+          try {
+            recoveryClient.stop();
+          }
+ catch (          Throwable throwable) {
+            throw new RuntimeException(throwable);
+          }
           if (recoveryResponse != null) {
             recoveryResponse.close();
           }
@@ -82,7 +89,12 @@ catch (        IOException e) {
     }
   }
   finally {
-    client.shutdown();
+    try {
+      client.stop();
+    }
+ catch (    Throwable throwable) {
+      throw new RuntimeException(throwable);
+    }
   }
   return new BackupOutcome(lastCommittedTxs);
 }

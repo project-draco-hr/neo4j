@@ -1,0 +1,20 @@
+{
+  final Semaphore semaphore=new Semaphore(0);
+  cluster.addClusterListener(new ClusterListener.Adapter(){
+    @Override public void leftCluster(){
+      cluster.removeClusterListener(this);
+      semaphore.release();
+    }
+  }
+);
+  cluster.leave();
+  try {
+    if (!semaphore.tryAcquire(5,TimeUnit.SECONDS)) {
+      logger.logMessage("Unable to leave cluster, timeout");
+    }
+  }
+ catch (  InterruptedException e) {
+    Thread.interrupted();
+    logger.logMessage("Unable to leave cluster, interrupted",e);
+  }
+}

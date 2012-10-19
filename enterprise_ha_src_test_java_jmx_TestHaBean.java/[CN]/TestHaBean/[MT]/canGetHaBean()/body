@@ -1,6 +1,10 @@
 {
-  Neo4jManager neo4j=new Neo4jManager(db.getManagementBean(Kernel.class));
+  Neo4jManager neo4j=new Neo4jManager(database.getDependencyResolver().resolveDependency(JmxKernelExtension.class).getSingleManagementBean(Kernel.class));
   HighAvailability ha=neo4j.getHighAvailabilityBean();
   assertNotNull("could not get ha bean",ha);
-  assertTrue("single instance should be master",ha.isMaster());
+  assertEquals("single instance should be master",ClusterMemberState.MASTER.name(),ha.getInstanceState());
+  ClusterMemberInfo info=ha.getInstancesInCluster()[0];
+  assertEquals("single instance should be the returned instance id",info.getInstanceId(),"1");
+  assertTrue("single instance should have coordinator role",Arrays.equals(info.getRoles(),new String[]{ClusterConfiguration.COORDINATOR}));
+  assertEquals("single instance should be coordinator",ClusterConfiguration.COORDINATOR,info.getStatus());
 }

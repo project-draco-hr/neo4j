@@ -1,0 +1,48 @@
+{
+  if (time >= (rounds() - 100) * 10) {
+    return;
+  }
+  if (time == 0) {
+    logger.getLogger().info("Random seed:" + seed + "L");
+  }
+  if (random.nextDouble() >= 0.8) {
+    double inOrOut=(in.size() - out.size()) / ((double)servers.size());
+    double whatToDo=random.nextDouble() + inOrOut;
+    logger.getLogger().info("What to do:" + whatToDo);
+    if (whatToDo < 0.5 && !out.isEmpty()) {
+      int idx=random.nextInt(out.size());
+      final Cluster cluster=out.remove(idx);
+      if (in.isEmpty()) {
+        cluster.create("default");
+      }
+ else {
+        try {
+          final Future<ClusterConfiguration> result=cluster.join(new URI(in.get(0).toString()));
+          executor.submit(new Runnable(){
+            @Override public void run(){
+              try {
+                ClusterConfiguration clusterConfiguration=result.get();
+                logger.getLogger().info("**** Cluster configuration:" + clusterConfiguration);
+              }
+ catch (              Exception e) {
+                logger.getLogger().info("**** Node could not join cluster:" + e.getMessage());
+                out.add(cluster);
+              }
+            }
+          }
+);
+        }
+ catch (        URISyntaxException e) {
+          e.printStackTrace();
+        }
+      }
+      logger.getLogger().info("Enter cluster:" + cluster.toString());
+    }
+ else     if (!in.isEmpty()) {
+      int idx=random.nextInt(in.size());
+      Cluster cluster=in.remove(idx);
+      cluster.leave();
+      logger.getLogger().info("Leave cluster:" + cluster.toString());
+    }
+  }
+}

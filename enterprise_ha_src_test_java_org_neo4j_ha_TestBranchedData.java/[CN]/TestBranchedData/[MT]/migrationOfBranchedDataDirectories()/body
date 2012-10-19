@@ -5,18 +5,9 @@
     timestamps[i]=moveAwayToLookLikeOldBranchedDirectory();
     Thread.sleep(1);
   }
-  HighlyAvailableGraphDatabase db=new HighlyAvailableGraphDatabase(dir.getAbsolutePath(),stringMap(HaSettings.server_id.name(),"1")){
-    @Override protected Broker createBroker(){
-      return new FakeMasterBroker(configuration);
-    }
-    @Override protected ClusterClient createClusterClient(){
-      return new FakeClusterClient(getBroker());
-    }
-  }
-;
-  db.shutdown();
+  new HighlyAvailableGraphDatabaseFactory().newHighlyAvailableDatabaseBuilder(dir.getAbsolutePath()).setConfig(HaSettings.server_id,"1").newGraphDatabase().shutdown();
   for (  long timestamp : timestamps) {
     assertFalse("directory branched-" + timestamp + " still exists.",new File(dir,"branched-" + timestamp).exists());
-    assertTrue("directory " + timestamp + " is not there",BranchedDataPolicy.getBranchedDataDirectory(dir.getAbsolutePath(),timestamp).exists());
+    assertTrue("directory " + timestamp + " is not there",BranchedDataPolicy.getBranchedDataDirectory(dir,timestamp).exists());
   }
 }

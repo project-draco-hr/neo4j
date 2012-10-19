@@ -1,0 +1,15 @@
+{
+  life.add(new BranchedDataMigrator(new File(storeDir)));
+  delegateInvocationHandler=new DelegateInvocationHandler();
+  master=(Master)Proxy.newProxyInstance(Master.class.getClassLoader(),new Class[]{Master.class},delegateInvocationHandler);
+  accessGuard=new InstanceAccessGuard();
+  super.create();
+  kernelEventHandlers.registerKernelEventHandler(new TxManagerCheckKernelEventHandler(xaDataSourceManager,(TxManager)txManager));
+  transactionSupport.setLockReleaser(lockReleaser);
+  life.add(memberStateMachine);
+  life.add(updatePuller=new UpdatePuller((HaXaDataSourceManager)xaDataSourceManager,master,requestContextFactory,txManager,accessGuard,config,msgLog));
+  life.add(networkNodeTCP);
+  life.add(new ClusterJoin(config,server,logging.getLogger(Loggers.CLUSTER),slaves.getClusterListener()));
+  life.add(new StartupWaiter());
+  diagnosticsManager.appendProvider(new HighAvailabilityDiagnostics(memberStateMachine,server.getConnectedStateMachines()));
+}

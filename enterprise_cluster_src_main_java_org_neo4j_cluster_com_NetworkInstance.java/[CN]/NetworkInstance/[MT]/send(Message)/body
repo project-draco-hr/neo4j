@@ -1,0 +1,31 @@
+{
+  URI to=null;
+  try {
+    to=new URI(message.getHeader(Message.TO));
+  }
+ catch (  URISyntaxException e) {
+    msgLog.error("Not valid URI:" + message.getHeader(Message.TO));
+    return;
+  }
+  Channel channel=getChannel(to);
+  try {
+    if (channel == null) {
+      channel=openChannel(to);
+      openedChannel(to,channel);
+    }
+  }
+ catch (  Exception e) {
+    return;
+  }
+  try {
+    if (msgLog.isDebugEnabled()) {
+      msgLog.debug("Sending to " + to + ": "+ message);
+    }
+    channel.write(message);
+  }
+ catch (  Exception e) {
+    e.printStackTrace();
+    channel.close();
+    closedChannel(to);
+  }
+}
