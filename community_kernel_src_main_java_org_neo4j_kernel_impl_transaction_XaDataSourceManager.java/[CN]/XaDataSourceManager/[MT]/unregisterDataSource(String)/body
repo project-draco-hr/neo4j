@@ -1,8 +1,17 @@
 {
-  XaDataSource dataSource=dataSources.get(name);
+  final XaDataSource dataSource=dataSources.get(name);
+  if (dataSource == null) {
+    return;
+  }
   byte branchId[]=getBranchId(dataSource.getXaConnection().getXaResource());
   dataSources.remove(name);
   branchIdMapping.remove(UTF8.decode(branchId));
   sourceIdMapping.remove(name);
-  dataSource.close();
+  Listeners.notifyListeners(dsRegistrationListeners,new Listeners.Notification<DataSourceRegistrationListener>(){
+    @Override public void notify(    DataSourceRegistrationListener listener){
+      listener.unregisteredDataSource(dataSource);
+    }
+  }
+);
+  life.remove(dataSource);
 }

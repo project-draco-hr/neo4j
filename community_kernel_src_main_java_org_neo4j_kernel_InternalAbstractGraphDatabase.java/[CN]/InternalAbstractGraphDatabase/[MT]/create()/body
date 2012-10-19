@@ -24,9 +24,8 @@
   diagnosticsManager=life.add(new DiagnosticsManager(logging.getLogger(Loggers.DIAGNOSTICS)));
   kernelPanicEventGenerator=new KernelPanicEventGenerator(kernelEventHandlers);
   txHook=createTxHook();
-  xaDataSourceManager=life.add(new XaDataSourceManager(logging.getLogger(Loggers.DATASOURCE)));
+  xaDataSourceManager=life.add(createXaDataSourceManager());
   guard=config.get(Configuration.execution_guard_enabled) ? new Guard(msgLog) : null;
-  xaDataSourceManager=life.add(new XaDataSourceManager(msgLog));
   if (readOnly) {
     txManager=new ReadOnlyTxManager(xaDataSourceManager);
   }
@@ -47,11 +46,9 @@
   life.add(txManager);
   transactionEventHandlers=new TransactionEventHandlers(txManager);
   txIdGenerator=life.add(createTxIdGenerator());
-  ragManager=new RagManager(txManager);
   lockManager=createLockManager();
   idGeneratorFactory=createIdGeneratorFactory();
   relationshipTypeCreator=createRelationshipTypeCreator();
-  lastCommittedTxIdSetter=createLastCommittedTxIdSetter();
   persistenceSource=life.add(new NioNeoDbPersistenceSource(xaDataSourceManager));
   syncHook=new DefaultTxEventSyncHookFactory();
   persistenceManager=new PersistenceManager(txManager,persistenceSource,syncHook,lockReleaser);
@@ -71,7 +68,7 @@
   logBufferFactory=new DefaultLogBufferFactory();
   extensions=life.add(createKernelData());
   if (config.get(Configuration.load_kernel_extensions)) {
-    life.add(new DefaultKernelExtensionLoader(extensions));
+    life.add(kernelExtensions);
   }
   if (indexProviders == null) {
     indexProviders=new LegacyIndexIterable();
@@ -85,21 +82,7 @@
   storeFactory=createStoreFactory();
   String keepLogicalLogsConfig=config.get(GraphDatabaseSettings.keep_logical_logs);
   xaFactory=new XaFactory(config,txIdGenerator,txManager,logBufferFactory,fileSystem,logging.getLogger(Loggers.XAFACTORY),recoveryVerifier,LogPruneStrategies.fromConfigValue(fileSystem,keepLogicalLogsConfig));
-  List<Pair<TransactionInterceptorProvider,Object>> providers=new ArrayList<Pair<TransactionInterceptorProvider,Object>>(2);
-  for (  TransactionInterceptorProvider provider : Service.load(TransactionInterceptorProvider.class)) {
-    Object prov=params.get(TransactionInterceptorProvider.class.getSimpleName() + "." + provider.name());
-    if (prov != null) {
-      providers.add(Pair.of(provider,prov));
-    }
-  }
-  try {
-    neoDataSource=new NeoStoreXaDataSource(config,storeFactory,fileSystem,lockManager,lockReleaser,logging.getLogger(Loggers.DATASOURCE),xaFactory,providers,new DependencyResolverImpl());
-    xaDataSourceManager.registerDataSource(neoDataSource);
-  }
- catch (  IOException e) {
-    throw new IllegalStateException("Could not create Neo XA datasource",e);
-  }
-  life.add(new StuffToDoAfterRecovery());
+  createNeoDataSource();
   life.add(new MonitorGc(config,msgLog));
   life.add(new DatabaseAvailability());
   life.add(kernelEventHandlers);

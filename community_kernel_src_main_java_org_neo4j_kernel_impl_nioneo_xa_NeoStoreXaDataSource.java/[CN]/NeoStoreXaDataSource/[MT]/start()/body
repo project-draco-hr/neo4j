@@ -1,0 +1,48 @@
+{
+  readOnly=config.get(Configuration.read_only);
+  storeDir=config.get(Configuration.store_dir);
+  String store=config.get(Configuration.neo_store);
+  storeFactory.ensureStoreExists();
+  final TransactionFactory tf;
+  if (providers.shouldInterceptCommitting()) {
+    tf=new InterceptingTransactionFactory(dependencyResolver);
+  }
+ else {
+    tf=new TransactionFactory();
+  }
+  neoStore=storeFactory.newNeoStore(store);
+  xaContainer=xaFactory.newXaContainer(this,config.get(Configuration.logical_log),new CommandFactory(neoStore),tf,providers);
+  try {
+    if (!readOnly) {
+      neoStore.setRecoveredStatus(true);
+      try {
+        xaContainer.openLogicalLog();
+      }
+  finally {
+        neoStore.setRecoveredStatus(false);
+      }
+    }
+    if (!xaContainer.getResourceManager().hasRecoveredTransactions()) {
+      neoStore.makeStoreOk();
+    }
+ else {
+      logger.fine("Waiting for TM to take care of recovered " + "transactions.");
+    }
+    idGenerators=new ArrayMap<Class<?>,Store>((byte)5,false,false);
+    this.idGenerators.put(Node.class,neoStore.getNodeStore());
+    this.idGenerators.put(Relationship.class,neoStore.getRelationshipStore());
+    this.idGenerators.put(RelationshipType.class,neoStore.getRelationshipTypeStore());
+    this.idGenerators.put(PropertyStore.class,neoStore.getPropertyStore());
+    this.idGenerators.put(PropertyIndex.class,neoStore.getPropertyStore().getIndexStore());
+    setLogicalLogAtCreationTime(xaContainer.getLogicalLog());
+  }
+ catch (  Throwable e) {
+    try {
+      neoStore.close();
+    }
+ catch (    Exception closeException) {
+      msgLog.logMessage("Couldn't close neostore after startup failure");
+    }
+    throw Exceptions.launderedException(e);
+  }
+}

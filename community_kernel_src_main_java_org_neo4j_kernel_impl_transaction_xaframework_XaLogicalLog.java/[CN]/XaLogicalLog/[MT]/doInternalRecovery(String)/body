@@ -1,9 +1,8 @@
 {
-  log.info("Non clean shutdown detected on log [" + logFileName + "]. Recovery started ...");
-  msgLog.logMessage("Non clean shutdown detected on log [" + logFileName + "]. Recovery started ...",true);
+  msgLog.info("Non clean shutdown detected on log [" + logFileName + "]. Recovery started ...");
   long[] header=readLogHeader(fileChannel,"Tried to do recovery on log with illegal format version");
   if (header == null) {
-    log.info("Unable to read header information, " + "no records in logical log.");
+    msgLog.info("Unable to read header information, " + "no records in logical log.");
     msgLog.logMessage("No log version found for " + logFileName,true);
     fileChannel.close();
     boolean success=fileSystem.renameFile(logFileName,logFileName + "_unknown_timestamp_" + System.currentTimeMillis()+ ".log");
@@ -17,7 +16,6 @@
   long lastCommittedTx=header[1];
   previousLogLastCommittedTx=lastCommittedTx;
   positionCache.putHeader(logVersion,previousLogLastCommittedTx);
-  log.fine("Logical log version: " + logVersion + " with committed tx["+ lastCommittedTx+ "]");
   msgLog.logMessage("[" + logFileName + "] logVersion="+ logVersion+ " with committed tx="+ lastCommittedTx,true);
   long logEntriesFound=0;
   long lastEntryPos=fileChannel.position();
@@ -49,18 +47,15 @@
   fileChannel.position(lastEntryPos);
   scanIsComplete=true;
   String recoveryCompletedMessage=openedLogicalLogMessage(logFileName,lastRecoveredTx,false);
-  log.fine(recoveryCompletedMessage);
   msgLog.logMessage(recoveryCompletedMessage);
   xaRm.checkXids();
   if (xidIdentMap.size() == 0) {
-    log.fine("Recovery completed.");
     msgLog.logMessage("Recovery on log [" + logFileName + "] completed.");
   }
  else {
-    log.fine("[" + logFileName + "] Found "+ xidIdentMap.size()+ " prepared 2PC transactions.");
     msgLog.logMessage("Recovery on log [" + logFileName + "] completed with "+ xidIdentMap+ " prepared transactions found.");
     for (    LogEntry.Start startEntry : xidIdentMap.values()) {
-      log.fine("[" + logFileName + "] 2PC xid["+ startEntry.getXid()+ "]");
+      msgLog.debug("[" + logFileName + "] 2PC xid["+ startEntry.getXid()+ "]");
     }
   }
   recoveredTxMap.clear();

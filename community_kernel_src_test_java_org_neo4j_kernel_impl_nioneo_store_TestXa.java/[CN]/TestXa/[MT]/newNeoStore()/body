@@ -1,9 +1,20 @@
 {
   FileSystemAbstraction fileSystem=new DefaultFileSystemAbstraction();
-  Config config=new Config(new ConfigurationDefaults(GraphDatabaseSettings.class).apply(MapUtil.stringMap(InternalAbstractGraphDatabase.Configuration.store_dir.name(),path(),InternalAbstractGraphDatabase.Configuration.neo_store.name(),file("neo"),InternalAbstractGraphDatabase.Configuration.logical_log.name(),file(LOGICAL_LOG_DEFAULT_NAME))));
-  StoreFactory sf=new StoreFactory(config,new DefaultIdGeneratorFactory(),new DefaultWindowPoolFactory(),fileSystem,null,StringLogger.DEV_NULL,null);
+  final Config config=new Config(new ConfigurationDefaults(GraphDatabaseSettings.class).apply(MapUtil.stringMap(InternalAbstractGraphDatabase.Configuration.store_dir.name(),path(),InternalAbstractGraphDatabase.Configuration.neo_store.name(),file("neo"),InternalAbstractGraphDatabase.Configuration.logical_log.name(),file(LOGICAL_LOG_DEFAULT_NAME))));
+  StoreFactory sf=new StoreFactory(config,new DefaultIdGeneratorFactory(),new DefaultWindowPoolFactory(),fileSystem,StringLogger.DEV_NULL,null);
   PlaceboTm txManager=new PlaceboTm();
   LogBufferFactory logBufferFactory=new DefaultLogBufferFactory();
-  for (  File file : new File(path()).listFiles())   if (file.isFile() && file.getName().startsWith(LOGICAL_LOG_DEFAULT_NAME + ".v"))   file.delete();
-  return new NeoStoreXaDataSource(config,sf,fileSystem,lockManager,lockReleaser,StringLogger.DEV_NULL,new XaFactory(config,TxIdGenerator.DEFAULT,txManager,logBufferFactory,fileSystem,StringLogger.DEV_NULL,RecoveryVerifier.ALWAYS_VALID,LogPruneStrategies.NO_PRUNING),Collections.<Pair<TransactionInterceptorProvider,Object>>emptyList(),null);
+  for (  File file : new File(path()).listFiles()) {
+    if (file.isFile() && file.getName().startsWith(LOGICAL_LOG_DEFAULT_NAME + ".v")) {
+      file.delete();
+    }
+  }
+  NeoStoreXaDataSource neoStoreXaDataSource=new NeoStoreXaDataSource(config,sf,lockManager,lockReleaser,StringLogger.DEV_NULL,new XaFactory(config,TxIdGenerator.DEFAULT,txManager,logBufferFactory,fileSystem,StringLogger.DEV_NULL,RecoveryVerifier.ALWAYS_VALID,LogPruneStrategies.NO_PRUNING),new TransactionInterceptorProviders(Collections.<TransactionInterceptorProvider>emptyList(),new DependencyResolver(){
+    @Override public <T>T resolveDependency(    Class<T> type) throws IllegalArgumentException {
+      return (T)config;
+    }
+  }
+),null);
+  neoStoreXaDataSource.start();
+  return neoStoreXaDataSource;
 }

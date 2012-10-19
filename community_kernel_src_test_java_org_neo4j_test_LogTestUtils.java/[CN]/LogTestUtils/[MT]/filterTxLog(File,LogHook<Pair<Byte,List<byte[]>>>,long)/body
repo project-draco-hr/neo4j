@@ -5,6 +5,7 @@
   FileChannel out=new RandomAccessFile(tempFile,"rw").getChannel();
   LogBuffer outBuffer=new DirectMappedLogBuffer(out);
   ByteBuffer buffer=ByteBuffer.allocate(1024 * 1024);
+  boolean changed=false;
   try {
     filter.file(file);
     in.read(buffer);
@@ -21,6 +22,7 @@
         outBuffer.put(type);
         writeXids(xids,outBuffer);
       }
+ else       changed=true;
     }
   }
   finally {
@@ -29,5 +31,6 @@
     safeClose(out);
     filter.done(file);
   }
-  replace(tempFile,file);
+  if (changed)   replace(tempFile,file);
+ else   tempFile.delete();
 }
