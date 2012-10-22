@@ -1,8 +1,11 @@
 def test_aggregate_queries(self):
     db = self.graphdb
     with db.transaction:
-        node = db.query('CREATE node-[:Depends_on]->port<-[:Has]-parent1<-[:Has]-parent2 \n                                 RETURN node').single['node']
-    result = db.query('START node=node({id})\n                MATCH p=node-[:Depends_on]->port<-[:Has*1..]-parent\n                RETURN node, COLLECT(p) as end_points', id=node.id)
-    collected = result['end_points']
-    for val in collected:
+        result = db.query('CREATE p=node-[:Depends_on]->port<-[:Has]-parent1<-[:Has]-parent2,\n                                                                port<-[:Has]-parent3 \n                                   RETURN node,p')
+        for row in result:
+            node = row['node']
+    result = db.query('\n                START n=node({node})\n                MATCH p=n-[:Depends_on]->port<-[:Has]-parent\n                RETURN COLLECT(p) AS end_points', node=node)
+    end_points = result['end_points'].single
+    self.assertEqual(len(end_points), 2)
+    for path in end_points:
         pass
