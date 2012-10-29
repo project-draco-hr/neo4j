@@ -1,6 +1,4 @@
 {
-  cluster=server.newClient(Cluster.class);
-  broadcast=server.newClient(AtomicBroadcast.class);
   serializer=new AtomicBroadcastSerializer();
   cluster.addClusterListener(new ClusterListener.Adapter(){
     ClusterConfiguration clusterConfiguration;
@@ -8,7 +6,7 @@
       final URI coordinator=clusterConfiguration.getElected(ClusterConfiguration.COORDINATOR);
       if (coordinator.equals(serverClusterId)) {
         try {
-          broadcast.broadcast(serializer.broadcast(new MasterIsElected(serverClusterId)));
+          cluster.broadcast(serializer.broadcast(new MasterIsElected(serverClusterId)));
         }
  catch (        IOException e) {
           e.printStackTrace();
@@ -21,7 +19,7 @@
     @Override public void elected(    String role,    URI electedMember){
       try {
         if (electedMember.equals(serverClusterId)) {
-          broadcast.broadcast(serializer.broadcast(new MasterIsElected(serverClusterId)));
+          cluster.broadcast(serializer.broadcast(new MasterIsElected(serverClusterId)));
         }
       }
  catch (      IOException e) {
@@ -30,7 +28,7 @@
     }
   }
 );
-  broadcast.addAtomicBroadcastListener(new AtomicBroadcastListener(){
+  cluster.addAtomicBroadcastListener(new AtomicBroadcastListener(){
     @Override public void receive(    Payload payload){
       try {
         final Object value=serializer.receive(payload);

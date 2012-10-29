@@ -1,42 +1,13 @@
 {
   LifeSupport life=new LifeSupport();
-  Map<String,String> params=new HashMap<String,String>();
+  Map<String,String> params=new ConfigurationDefaults(ClusterSettings.class,OnlineBackupSettings.class).apply(new HashMap<String,String>());
   params.put(HaSettings.server_id.name(),"-1");
-  params.put(HaSettings.cluster_server.name(),from);
   params.put(ClusterSettings.cluster_name.name(),clusterName);
   params.put(HaSettings.initial_hosts.name(),from);
   params.put(HaSettings.cluster_discovery_enabled.name(),"false");
   final Config config=new Config(params);
-  MessageTimeoutStrategy timeoutStrategy=new MessageTimeoutStrategy(new FixedTimeoutStrategy(5000)).timeout(HeartbeatMessage.sendHeartbeat,10000).relativeTimeout(HeartbeatMessage.timed_out,HeartbeatMessage.sendHeartbeat,10000);
-  MultiPaxosServerFactory protocolServerFactory=new MultiPaxosServerFactory(new ClusterConfiguration(config.get(ClusterSettings.cluster_name)),logging);
-  InMemoryAcceptorInstanceStore acceptorInstanceStore=new InMemoryAcceptorInstanceStore();
-  ElectionCredentialsProvider electionCredentialsProvider=new BackupElectionCredentialsProvider();
-  NetworkInstance networkNodeTCP=new NetworkInstance(new NetworkInstance.Configuration(){
-    @Override public int[] getPorts(){
-      return HaSettings.cluster_server.getPorts(MapUtil.stringMap(HaSettings.cluster_server.name(),ConfigurationDefaults.getDefault(HaSettings.cluster_server,HaSettings.class)));
-    }
-    @Override public String getAddress(){
-      return HaSettings.cluster_server.getAddress(config.getParams());
-    }
-  }
-,StringLogger.SYSTEM);
-  final ProtocolServer server=life.add(protocolServerFactory.newProtocolServer(timeoutStrategy,networkNodeTCP,networkNodeTCP,acceptorInstanceStore,electionCredentialsProvider));
-  networkNodeTCP.addNetworkChannelsListener(new NetworkInstance.NetworkChannelsListener(){
-    @Override public void listeningAt(    URI me){
-      server.listeningAt(me);
-      server.addStateTransitionListener(new StateTransitionLogger(logging));
-    }
-    @Override public void channelOpened(    URI to){
-    }
-    @Override public void channelClosed(    URI to){
-    }
-  }
-);
-  life.add(networkNodeTCP);
-  life.add(new ClusterJoin(config,server,logging.getLogger("ha.backup"),new ClusterListener.Adapter(){
-  }
-));
-  ClusterEvents events=life.add(new PaxosClusterEvents(config,server,StringLogger.SYSTEM));
+  ClusterClient clusterClient=life.add(new ClusterClient(ClusterClient.adapt(config,new BackupElectionCredentialsProvider()),logging));
+  ClusterEvents events=life.add(new PaxosClusterEvents(PaxosClusterEvents.adapt(config),clusterClient,StringLogger.SYSTEM));
   final Semaphore infoReceivedLatch=new Semaphore(0);
   final ClusterInfoHolder addresses=new ClusterInfoHolder();
   events.addClusterEventListener(new ClusterEventListener(){
@@ -59,7 +30,9 @@
  catch (  InterruptedException e) {
     throw new RuntimeException(e);
   }
-  life.shutdown();
+ finally {
+    life.shutdown();
+  }
   String backupAddress=null;
   for (  URI uri : addresses.held) {
     if ("backup".equals(uri.getScheme())) {

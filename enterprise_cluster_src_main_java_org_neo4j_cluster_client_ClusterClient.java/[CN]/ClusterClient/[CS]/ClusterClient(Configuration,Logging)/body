@@ -1,0 +1,68 @@
+{
+  MessageTimeoutStrategy timeoutStrategy=new MessageTimeoutStrategy(new FixedTimeoutStrategy(config.getHeartbeatTimeout())).timeout(HeartbeatMessage.sendHeartbeat,config.getHeartbeatInterval()).relativeTimeout(HeartbeatMessage.timed_out,HeartbeatMessage.sendHeartbeat,config.getHeartbeatInterval());
+  MultiPaxosServerFactory protocolServerFactory=new MultiPaxosServerFactory(new ClusterConfiguration("neo4j.ha"),logging);
+  InMemoryAcceptorInstanceStore acceptorInstanceStore=new InMemoryAcceptorInstanceStore();
+  ElectionCredentialsProvider electionCredentialsProvider=config.getElectionCredentialsProvider();
+  NetworkInstance networkNodeTCP=new NetworkInstance(new NetworkInstance.Configuration(){
+    @Override public int[] getPorts(){
+      return config.getPorts();
+    }
+    @Override public String getAddress(){
+      return config.getAddress();
+    }
+  }
+,StringLogger.SYSTEM);
+  server=life.add(protocolServerFactory.newProtocolServer(timeoutStrategy,networkNodeTCP,networkNodeTCP,acceptorInstanceStore,electionCredentialsProvider));
+  networkNodeTCP.addNetworkChannelsListener(new NetworkInstance.NetworkChannelsListener(){
+    @Override public void listeningAt(    URI me){
+      server.listeningAt(me);
+      server.addStateTransitionListener(new StateTransitionLogger(logging));
+    }
+    @Override public void channelOpened(    URI to){
+    }
+    @Override public void channelClosed(    URI to){
+    }
+  }
+);
+  life.add(networkNodeTCP);
+  life.add(new Lifecycle(){
+    private ScheduledExecutorService scheduler;
+    @Override public void init() throws Throwable {
+      server.getTimeouts().tick(System.currentTimeMillis());
+    }
+    @Override public void start() throws Throwable {
+      scheduler=Executors.newSingleThreadScheduledExecutor(new DaemonThreadFactory("timeout"));
+      scheduler.scheduleWithFixedDelay(new Runnable(){
+        @Override public void run(){
+          long now=System.currentTimeMillis();
+          server.getTimeouts().tick(now);
+        }
+      }
+,0,10,TimeUnit.MILLISECONDS);
+    }
+    @Override public void stop() throws Throwable {
+      scheduler.shutdownNow();
+    }
+    @Override public void shutdown() throws Throwable {
+    }
+  }
+);
+  life.add(new ClusterJoin(new ClusterJoin.Configuration(){
+    @Override public boolean isDiscoveryEnabled(){
+      return config.isDiscoveryEnabled();
+    }
+    @Override public String[] getInitialHosts(){
+      return config.getInitialHosts();
+    }
+    @Override public String getDiscoveryUrl(){
+      return config.getDiscoveryUrl();
+    }
+    @Override public String getClusterName(){
+      return config.getClusterName();
+    }
+  }
+,server,logging));
+  cluster=server.newClient(Cluster.class);
+  broadcast=server.newClient(AtomicBroadcast.class);
+  heartbeat=server.newClient(Heartbeat.class);
+}
