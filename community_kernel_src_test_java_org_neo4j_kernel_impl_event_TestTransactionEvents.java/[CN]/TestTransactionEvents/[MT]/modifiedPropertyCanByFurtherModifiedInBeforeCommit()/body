@@ -5,7 +5,7 @@
   final Node node=getGraphDb().createNode();
   node.setProperty(key,"initial value");
   commit();
-  getGraphDb().registerTransactionEventHandler(new TransactionEventHandler.Adapter<Void>(){
+  TransactionEventHandler<Void> handler=new TransactionEventHandler.Adapter<Void>(){
     @Override public Void beforeCommit(    TransactionData data) throws Exception {
       Node modifiedNode=data.assignedNodeProperties().iterator().next().entity();
       assertEquals(node,modifiedNode);
@@ -13,9 +13,11 @@
       return null;
     }
   }
-);
+;
+  getGraphDb().registerTransactionEventHandler(handler);
   newTransaction();
   node.setProperty(key,value1);
   commit();
   assertEquals(value2,node.getProperty(key));
+  getGraphDb().unregisterTransactionEventHandler(handler);
 }
