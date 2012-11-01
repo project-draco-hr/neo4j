@@ -1,0 +1,40 @@
+{
+  if (initializationMode != null) {
+    if (initializationMode == requestedMode) {
+      return;
+    }
+ else {
+      throw new RuntimeException("Cannot initialize javascript context twice, " + "system is currently initialized as: '" + initializationMode.name() + "'.");
+    }
+  }
+  initializationMode=requestedMode;
+  ContextFactory contextFactory;
+switch (requestedMode) {
+case UNSAFE:
+    contextFactory=new ContextFactory(){
+      protected Context makeContext(){
+        Context cx=super.makeContext();
+        cx.setLanguageVersion(Context.VERSION_1_7);
+        cx.setOptimizationLevel(4);
+        return cx;
+      }
+    }
+;
+  break;
+default :
+contextFactory=new ContextFactory(){
+  protected Context makeContext(){
+    Context cx=super.makeContext();
+    ClassShutter shutter=new WhiteListClassShutter(UserScriptClassWhiteList.getWhiteList());
+    cx.setLanguageVersion(Context.VERSION_1_7);
+    cx.setOptimizationLevel(4);
+    cx.setClassShutter(shutter);
+    cx.setWrapFactory(new WhiteListJavaWrapper(shutter));
+    return cx;
+  }
+}
+;
+break;
+}
+ContextFactory.initGlobal(contextFactory);
+}
