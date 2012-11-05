@@ -1,20 +1,11 @@
 {
   serializer=new AtomicBroadcastSerializer();
   cluster.addClusterListener(new ClusterListener.Adapter(){
-    private volatile ClusterConfiguration clusterConfiguration;
     @Override public void joinedCluster(    URI member){
-      final URI coordinator=clusterConfiguration.getElected(ClusterConfiguration.COORDINATOR);
-      if (coordinator.equals(serverClusterId)) {
-        try {
-          cluster.broadcast(serializer.broadcast(new MasterIsElected(serverClusterId)));
-        }
- catch (        IOException e) {
-          e.printStackTrace();
-        }
-      }
+      broadcastOurself();
     }
     @Override public void enteredCluster(    ClusterConfiguration clusterConfiguration){
-      this.clusterConfiguration=clusterConfiguration;
+      PaxosHighAvailabilityEvents.this.clusterConfiguration=clusterConfiguration;
     }
     @Override public void elected(    String role,    URI electedMember){
       try {
@@ -25,6 +16,12 @@
  catch (      IOException e) {
         e.printStackTrace();
       }
+    }
+  }
+);
+  cluster.addHeartbeatListener(new HeartbeatListener.Adapter(){
+    @Override public void alive(    URI server){
+      broadcastOurself();
     }
   }
 );
