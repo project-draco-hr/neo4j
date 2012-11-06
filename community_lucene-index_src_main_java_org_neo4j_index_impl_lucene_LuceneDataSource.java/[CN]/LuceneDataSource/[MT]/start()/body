@@ -1,14 +1,14 @@
 {
+  this.filesystemFacade=config.get(Configuration.ephemeral) ? LuceneFilesystemFacade.MEMORY : LuceneFilesystemFacade.FS;
   indexSearchers=new IndexClockCache(config.get(Configuration.lucene_searcher_cache_size));
   caching=new Cache();
   String storeDir=config.get(Configuration.store_dir);
-  this.baseStorePath=getStoreDir(storeDir).first();
-  cleanWriteLocks(baseStorePath);
+  this.baseStorePath=this.filesystemFacade.ensureDirectoryExists(storeDir + File.separator + "index");
+  this.filesystemFacade.cleanWriteLocks(baseStorePath);
   boolean allowUpgrade=config.get(Configuration.allow_store_upgrade);
-  this.providerStore=newIndexStore(storeDir,fileSystemAbstraction,allowUpgrade);
+  this.providerStore=newIndexStore(baseStorePath,fileSystemAbstraction,allowUpgrade);
   this.typeCache=new IndexTypeCache(indexStore);
   boolean isReadOnly=config.get(Configuration.read_only);
-  this.directoryGetter=(boolean)config.get(Configuration.ephemeral) ? DirectoryGetter.MEMORY : DirectoryGetter.FS;
   nodeEntityType=new EntityType(){
     public Document newDocument(    Object entityId){
       return IndexType.newBaseDocument((Long)entityId);
