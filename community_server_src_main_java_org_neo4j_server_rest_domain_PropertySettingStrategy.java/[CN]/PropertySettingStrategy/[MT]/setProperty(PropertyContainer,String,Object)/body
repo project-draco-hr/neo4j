@@ -1,0 +1,32 @@
+{
+  if (value instanceof Collection) {
+    if (((Collection<?>)value).size() == 0) {
+      Object currentValue=entity.getProperty(key,null);
+      if (currentValue != null && currentValue.getClass().isArray()) {
+        if (Array.getLength(currentValue) == 0) {
+          return;
+        }
+ else {
+          value=emptyArrayOfType(currentValue.getClass().getComponentType());
+        }
+      }
+ else {
+        throw new PropertyValueException("Unable to set property '" + key + "' to an empty array, "+ "because, since there are no values of any type in it, "+ "and no pre-existing collection I can use to infer type from, I am "+ "unable to determine what type of array to store.");
+      }
+    }
+ else {
+      value=convertToNativeArray((Collection<?>)value);
+    }
+  }
+  Transaction tx=db.beginTx();
+  try {
+    entity.setProperty(key,value);
+    tx.success();
+  }
+ catch (  IllegalArgumentException e) {
+    throw new PropertyValueException(key,value);
+  }
+ finally {
+    tx.finish();
+  }
+}
