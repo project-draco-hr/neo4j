@@ -1,31 +1,12 @@
 {
-  DocumentBuilder documentBuilder=DocumentBuilderFactory.newInstance().newDocumentBuilder();
-  Document clustersXmlDoc=documentBuilder.parse(clustersXml.toURL().openStream());
-  Clusters clusters=new ClustersXMLSerializer(documentBuilder).read(clustersXmlDoc);
+  Clusters clusters=clustersProvider.clusters();
   life=new LifeSupport();
-  Logger logger=LoggerFactory.getLogger("clustermanager");
-  int serverCount=0;
+  logger=LoggerFactory.getLogger("clustermanager");
   for (int i=0; i < clusters.getClusters().size(); i++) {
     Clusters.Cluster cluster=clusters.getClusters().get(i);
-    List<HighlyAvailableGraphDatabase> clusterNodes=new ArrayList<HighlyAvailableGraphDatabase>();
-    clusterMap.put(cluster.getName(),clusterNodes);
-    for (int j=0; j < cluster.getMembers().size(); j++) {
-      Clusters.Member member=cluster.getMembers().get(j);
-      int haPort=new URI("cluster://" + member.getHost()).getPort() + 3000;
-      GraphDatabaseBuilder graphDatabaseBuilder=new HighlyAvailableGraphDatabaseFactory().newHighlyAvailableDatabaseBuilder(new File(root,"server" + (++serverCount)).getAbsolutePath()).setConfig(ClusterSettings.cluster_name,cluster.getName()).setConfig(HaSettings.initial_hosts,cluster.getMembers().get(0).getHost()).setConfig(HaSettings.server_id,j + 1 + "").setConfig(HaSettings.cluster_server,member.getHost()).setConfig(HaSettings.ha_server,"localhost:" + haPort).setConfig(commonConfig);
-      config(graphDatabaseBuilder,serverCount);
-      logger.info("Starting cluster node " + j);
-      final GraphDatabaseService graphDatabase=graphDatabaseBuilder.newGraphDatabase();
-      clusterNodes.add((HighlyAvailableGraphDatabase)graphDatabase);
-      life.add(new LifecycleAdapter(){
-        @Override public void stop() throws Throwable {
-          graphDatabase.shutdown();
-        }
-      }
-);
-      logger.info("Started cluster node " + j);
-    }
-    logger.info("Started cluster " + cluster.getName());
+    ManagedCluster managedCluster=new ManagedCluster(cluster);
+    clusterMap.put(cluster.getName(),managedCluster);
+    life.add(managedCluster);
   }
   life.start();
 }
