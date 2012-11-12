@@ -1,0 +1,23 @@
+{
+  return new SlavePriority(){
+    final AtomicInteger index=new AtomicInteger();
+    @Override public Iterable<Slave> prioritize(    final Iterable<Slave> slaves){
+      final List<Slave> slaveList=sortSlaves(slaves,true);
+      return new Iterable<Slave>(){
+        @Override public Iterator<Slave> iterator(){
+          return new PrefetchingIterator<Slave>(){
+            private int start=index.getAndIncrement() % slaveList.size();
+            private int count;
+            @Override protected Slave fetchNextOrNull(){
+              int id=count++;
+              return id <= slaveList.size() ? slaveList.get((start + id) % slaveList.size()) : null;
+            }
+          }
+;
+        }
+      }
+;
+    }
+  }
+;
+}

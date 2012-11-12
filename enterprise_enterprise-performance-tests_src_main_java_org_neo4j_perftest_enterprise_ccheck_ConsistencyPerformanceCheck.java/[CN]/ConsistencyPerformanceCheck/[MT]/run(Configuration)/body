@@ -1,0 +1,22 @@
+{
+  if (configuration.get(generate_graph)) {
+    DataGenerator.run(configuration);
+  }
+  new EmbeddedGraphDatabase(configuration.get(DataGenerator.store_dir)).shutdown();
+  ProgressMonitorFactory progress;
+  if (configuration.get(DataGenerator.report_progress)) {
+    progress=ProgressMonitorFactory.textual(System.out);
+  }
+ else {
+    progress=ProgressMonitorFactory.NONE;
+  }
+  if (configuration.get(wait_before_check)) {
+    System.out.println("Press return to start the checker...");
+    System.in.read();
+  }
+  Config tuningConfiguration=buildTuningConfiguration(configuration);
+  StoreAccess storeAccess=createStoreAccess(configuration.get(DataGenerator.store_dir),tuningConfiguration);
+  JsonReportWriter reportWriter=new JsonReportWriter(configuration,tuningConfiguration);
+  TimingProgress progressMonitor=new TimingProgress(new TimeLogger(reportWriter),progress);
+  configuration.get(checker_version).run(progressMonitor,storeAccess,tuningConfiguration);
+}

@@ -1,0 +1,39 @@
+{
+  return addAction(new ClusterAction(){
+    @Override public void run(){
+      Cluster joinCluster=servers.get(joinServer - 1).newClient(Cluster.class);
+      for (      final Cluster cluster : out) {
+        if (cluster.equals(joinCluster)) {
+          out.remove(cluster);
+          logger.getLogger().debug("Join:" + cluster.toString());
+          if (in.isEmpty()) {
+            cluster.create("default");
+          }
+ else {
+            try {
+              final Future<ClusterConfiguration> result=cluster.join(new URI(in.get(0).toString()));
+              executor.submit(new Runnable(){
+                @Override public void run(){
+                  try {
+                    ClusterConfiguration clusterConfiguration=result.get();
+                    logger.getLogger().debug("**** Cluster configuration:" + clusterConfiguration);
+                  }
+ catch (                  Exception e) {
+                    logger.getLogger().debug("**** Node could not join cluster:" + e.getMessage());
+                    out.add(cluster);
+                  }
+                }
+              }
+);
+            }
+ catch (            URISyntaxException e) {
+              e.printStackTrace();
+            }
+          }
+          break;
+        }
+      }
+    }
+  }
+,time);
+}

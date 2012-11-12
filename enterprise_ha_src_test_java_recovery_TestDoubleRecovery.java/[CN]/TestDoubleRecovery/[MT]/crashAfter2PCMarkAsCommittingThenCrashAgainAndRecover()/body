@@ -1,0 +1,21 @@
+{
+  String backupDirectory="target/var/backup-db";
+  FileUtils.deleteRecursively(new File(backupDirectory));
+  OnlineBackup.from("localhost").full(backupDirectory);
+  for (  BreakPoint bp : breakpoints(0))   bp.enable();
+  runInThread(new WriteTransaction());
+  afterWrite.await();
+  startSubprocesses();
+  runInThread(new Crash());
+  afterCrash.await();
+  startSubprocesses();
+  OnlineBackup.from("localhost").incremental(backupDirectory);
+  run(new Verification());
+  EmbeddedGraphDatabase db=new EmbeddedGraphDatabase(backupDirectory);
+  try {
+    new Verification().run(db);
+  }
+  finally {
+    db.shutdown();
+  }
+}

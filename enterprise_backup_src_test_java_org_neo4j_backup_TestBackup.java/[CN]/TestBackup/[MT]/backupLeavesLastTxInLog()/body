@@ -1,0 +1,34 @@
+{
+  GraphDatabaseAPI db=null;
+  ServerInterface server=null;
+  try {
+    createInitialDataSet(serverPath);
+    server=startServer(serverPath);
+    OnlineBackup backup=OnlineBackup.from("localhost");
+    backup.full(backupPath);
+    shutdownServer(server);
+    server=null;
+    db=new EmbeddedGraphDatabase(backupPath);
+    for (    XaDataSource ds : db.getXaDataSourceManager().getAllRegisteredDataSources()) {
+      ds.getMasterForCommittedTx(ds.getLastCommittedTxId());
+    }
+    db.shutdown();
+    addMoreData(serverPath);
+    server=startServer(serverPath);
+    backup.incremental(backupPath);
+    shutdownServer(server);
+    server=null;
+    db=new EmbeddedGraphDatabase(backupPath);
+    for (    XaDataSource ds : db.getXaDataSourceManager().getAllRegisteredDataSources()) {
+      ds.getMasterForCommittedTx(ds.getLastCommittedTxId());
+    }
+  }
+  finally {
+    if (db != null) {
+      db.shutdown();
+    }
+    if (server != null) {
+      shutdownServer(server);
+    }
+  }
+}

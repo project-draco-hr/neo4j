@@ -1,0 +1,23 @@
+{
+  IllegalArgumentException exception=new IllegalArgumentException("No state machine can handle the " + "interface:" + proxyInterface.getName());
+  statemachine:   for (  StateMachine stateMachine : stateMachines.getStateMachines()) {
+    boolean foundMatch=false;
+    for (    Method method : proxyInterface.getMethods()) {
+      if (!(method.getReturnType().equals(Void.TYPE) || method.getReturnType().equals(Future.class))) {
+        throw new IllegalArgumentException("Methods must return either void or Future");
+      }
+      try {
+        Enum.valueOf((Class<? extends Enum>)stateMachine.getMessageType(),method.getName());
+        foundMatch=true;
+      }
+ catch (      Exception e) {
+        if (foundMatch) {
+          exception=new IllegalArgumentException("State machine for " + stateMachine.getMessageType().getName() + " cannot handle method:"+ method.getName());
+        }
+        continue statemachine;
+      }
+    }
+    return stateMachine;
+  }
+  throw exception;
+}

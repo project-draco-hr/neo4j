@@ -1,0 +1,16 @@
+{
+  final Reference<Integer> inconsistentName=new Reference<Integer>();
+  fixture.apply(new GraphStoreFixture.Transaction(){
+    @Override protected void transactionData(    GraphStoreFixture.TransactionDataBuilder tx,    GraphStoreFixture.IdGenerator next){
+      inconsistentName.set(next.propertyKey());
+      tx.propertyKey(inconsistentName.get(),"FOO");
+    }
+  }
+);
+  StoreAccess access=fixture.storeAccess();
+  DynamicRecord record=access.getPropertyKeyStore().forceGetRecord(inconsistentName.get());
+  record.setNextBlock(record.getId());
+  access.getPropertyKeyStore().updateRecord(record);
+  ConsistencySummaryStatistics stats=check(access);
+  verifyInconsistency(RecordType.PROPERTY_KEY_NAME,stats);
+}

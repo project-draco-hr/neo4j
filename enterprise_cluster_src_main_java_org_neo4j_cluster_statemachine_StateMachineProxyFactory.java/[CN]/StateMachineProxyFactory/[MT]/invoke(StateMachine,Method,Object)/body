@@ -1,0 +1,29 @@
+{
+  if (method.getName().equals("toString")) {
+    return serverId == null ? "" : serverId.toString();
+  }
+  if (method.getName().equals("equals")) {
+    return ((StateMachineProxyHandler)Proxy.getInvocationHandler(arg)).getStateMachineProxyFactory().serverId.equals(serverId);
+  }
+  String conversationId=conversations.getNextConversationId();
+  try {
+    MessageType typeAsEnum=(MessageType)Enum.valueOf((Class<? extends Enum>)stateMachine.getMessageType(),method.getName());
+    Message<?> message=Message.internal(typeAsEnum,arg);
+    if (serverId != null) {
+      message.setHeader(Message.CONVERSATION_ID,conversationId).setHeader(Message.CREATED_BY,serverId.toString());
+    }
+    if (method.getReturnType().equals(Void.TYPE)) {
+      stateMachines.process(message);
+      return null;
+    }
+ else {
+      ResponseFuture future=new ResponseFuture(typeAsEnum);
+      responseFutureMap.put(conversationId,future);
+      stateMachines.process(message);
+      return future;
+    }
+  }
+ catch (  IllegalArgumentException e) {
+    throw new IllegalStateException("No state machine can handle the method " + method.getName());
+  }
+}

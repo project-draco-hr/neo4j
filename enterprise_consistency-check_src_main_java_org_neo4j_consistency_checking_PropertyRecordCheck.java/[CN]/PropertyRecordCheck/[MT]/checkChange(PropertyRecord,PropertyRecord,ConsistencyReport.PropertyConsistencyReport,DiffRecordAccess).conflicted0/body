@@ -1,0 +1,52 @@
+{
+  check(newRecord,report,records);
+  if (oldRecord.inUse()) {
+    for (    PropertyField field : PropertyField.values()) {
+      field.checkChange(oldRecord,newRecord,report,records);
+    }
+  }
+  if (oldRecord.inUse()) {
+    OwnerChain.OLD.check(newRecord,report,records);
+  }
+  if (newRecord.inUse()) {
+    OwnerChain.NEW.check(newRecord,report,records);
+  }
+  Map<Long,PropertyBlock> prevStrings=new HashMap<Long,PropertyBlock>();
+  Map<Long,PropertyBlock> prevArrays=new HashMap<Long,PropertyBlock>();
+  for (  PropertyBlock block : oldRecord.getPropertyBlocks()) {
+    PropertyType type=block.getType();
+    if (type != null) {
+switch (type) {
+case STRING:
+        prevStrings.put(block.getSingleValueLong(),block);
+      break;
+case ARRAY:
+    prevArrays.put(block.getSingleValueLong(),block);
+  break;
+}
+}
+}
+for (PropertyBlock block : newRecord.getPropertyBlocks()) {
+PropertyType type=block.getType();
+if (type != null) {
+switch (type) {
+case STRING:
+prevStrings.remove(block.getSingleValueLong());
+break;
+case ARRAY:
+prevArrays.remove(block.getSingleValueLong());
+break;
+}
+}
+}
+for (PropertyBlock block : prevStrings.values()) {
+if (records.changedString(block.getSingleValueLong()) == null) {
+report.stringUnreferencedButNotDeleted(block);
+}
+}
+for (PropertyBlock block : prevArrays.values()) {
+if (records.changedArray(block.getSingleValueLong()) == null) {
+report.arrayUnreferencedButNotDeleted(block);
+}
+}
+}

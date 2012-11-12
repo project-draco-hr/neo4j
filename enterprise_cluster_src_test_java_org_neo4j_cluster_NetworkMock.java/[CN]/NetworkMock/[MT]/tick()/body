@@ -1,0 +1,56 @@
+{
+  now+=tickDuration;
+  Iterator<MessageDelivery> iter=messageDeliveries.iterator();
+  while (iter.hasNext()) {
+    MessageDelivery messageDelivery=iter.next();
+    if (messageDelivery.getMessageDeliveryTime() <= now) {
+      long delay=strategy.messageDelay(messageDelivery.getMessage(),messageDelivery.getServer().toString());
+      if (delay != NetworkLatencyStrategy.LOST) {
+        messageDelivery.getServer().process(messageDelivery.getMessage());
+      }
+      iter.remove();
+    }
+  }
+  for (  TestProtocolServer testServer : participants.values()) {
+    testServer.tick(now);
+  }
+  List<Message> messages=new ArrayList<Message>();
+  for (  TestProtocolServer testServer : participants.values()) {
+    testServer.sendMessages(messages);
+  }
+  for (  Message message : messages) {
+    String to=message.getHeader(Message.TO);
+    if (to.equals(Message.BROADCAST)) {
+      for (      Map.Entry<String,TestProtocolServer> testServer : participants.entrySet()) {
+        if (!testServer.getKey().equals(message.getHeader(Message.FROM))) {
+          long delay=strategy.messageDelay(message,testServer.getKey());
+          if (delay == NetworkLatencyStrategy.LOST) {
+            logger.debug("Broadcasted message to " + testServer.getKey() + " was lost");
+          }
+ else {
+            logger.debug("Broadcast to " + testServer.getKey() + ": "+ message);
+            messageDeliveries.add(new MessageDelivery(now + delay,message,testServer.getValue()));
+          }
+        }
+      }
+    }
+ else {
+      long delay=0;
+      if (message.getHeader(Message.TO).equals(message.getHeader(Message.FROM))) {
+        logger.debug("Sending message to itself; zero latency");
+      }
+ else {
+        delay=strategy.messageDelay(message,to);
+      }
+      if (delay == NetworkLatencyStrategy.LOST) {
+        logger.debug("Send message to " + to + " was lost");
+      }
+ else {
+        TestProtocolServer server=participants.get(to);
+        logger.debug("Send to " + to + ": "+ message);
+        messageDeliveries.add(new MessageDelivery(now + delay,message,server));
+      }
+    }
+  }
+  return messageDeliveries.size();
+}

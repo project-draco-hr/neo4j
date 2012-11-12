@@ -1,0 +1,38 @@
+{
+  try {
+    if (role.equals(ClusterConfiguration.COORDINATOR)) {
+      URI masterHaUri=ServerUtil.getUriForScheme("ha",instanceUris);
+      if (!masterHaUri.equals(context.getAvailableHaMaster())) {
+        HighAvailabilityMemberState oldState=state;
+        context.setAvailableHaMasterId(masterHaUri);
+        state=state.masterIsAvailable(context,instanceClusterUri,masterHaUri);
+        logger.debug("Got masterIsAvailable(" + instanceClusterUri + ", moved to "+ state+ " from "+ oldState);
+        final HighAvailabilityMemberChangeEvent event=new HighAvailabilityMemberChangeEvent(oldState,state,instanceClusterUri,masterHaUri);
+        Listeners.notifyListeners(memberListeners,new Listeners.Notification<HighAvailabilityMemberListener>(){
+          @Override public void notify(          HighAvailabilityMemberListener listener){
+            listener.masterIsAvailable(event);
+          }
+        }
+);
+        accessGuard.setState(state);
+      }
+    }
+ else     if (role.equals(ClusterConfiguration.SLAVE)) {
+      URI slaveHaUri=ServerUtil.getUriForScheme("ha",instanceUris);
+      HighAvailabilityMemberState oldState=state;
+      state=state.slaveIsAvailable(context,instanceClusterUri);
+      logger.debug("Got slaveIsAvailable(" + instanceClusterUri + "), "+ "moved to "+ state+ " from "+ oldState);
+      final HighAvailabilityMemberChangeEvent event=new HighAvailabilityMemberChangeEvent(oldState,state,instanceClusterUri,slaveHaUri);
+      Listeners.notifyListeners(memberListeners,new Listeners.Notification<HighAvailabilityMemberListener>(){
+        @Override public void notify(        HighAvailabilityMemberListener listener){
+          listener.slaveIsAvailable(event);
+        }
+      }
+);
+      accessGuard.setState(state);
+    }
+  }
+ catch (  Throwable throwable) {
+    logger.warn("Exception while receiving member availability notification",throwable);
+  }
+}

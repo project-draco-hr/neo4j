@@ -1,0 +1,31 @@
+{
+  String processCommand="java " + MultiPaxosServer.class.getName();
+  System.out.println(processCommand);
+  for (int i=0; i < count; i++) {
+    Process server=Runtime.getRuntime().exec(processCommand,new String[]{"CLASSPATH=\"" + System.getProperty("java.class.path") + "\""});
+    sleep(500);
+    servers.add(new PaxosServer(server,"[" + (i + 1) + "] "));
+  }
+  sleep(3000);
+  send(1,"create default");
+  send(2,"join neo4j://localhost:5001");
+  send(3,"join neo4j://localhost:5001");
+  sleep(6000);
+  send(1,"broadcast hello");
+  sleep(10000);
+  send(1,"leave");
+  sleep(1000);
+  send(2,"leave");
+  sleep(1000);
+  send(1,"join neo4j://localhost:5003");
+  send(2,"join neo4j://localhost:5003");
+  sleep(6000);
+  send(3,"promote neo4j://127.0.0.1:5001 coordinator");
+  sleep(6000);
+  send(1,"broadcast hello2");
+  for (int i=0; i < servers.size(); i++) {
+    sleep(3000);
+    PaxosServer paxosServer=servers.get(i);
+    paxosServer.quit();
+  }
+}

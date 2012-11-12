@@ -1,0 +1,18 @@
+{
+  slave.shutdown();
+  Transaction secondMasterTx=master.beginTx();
+  Node n=master.getNodeById(nodeId);
+  n.setProperty("foo2","bar2");
+  secondMasterTx.success();
+  secondMasterTx.finish();
+  File sandboxed=new File(slaveDir,SlaveStoreWriter.COPY_FROM_MASTER_TEMP);
+  FileUtils.moveToDirectory(new File(slaveDir,"neostore"),sandboxed,false);
+  FileUtils.moveToDirectory(new File(slaveDir,"neostore.propertystore.db"),sandboxed,false);
+  Assert.assertEquals("Found these files:" + filesAsString(sandboxed),3,sandboxed.listFiles(DISREGARD_ACTIVE_LOG_FILES).length);
+  startSlave();
+  Transaction tx=slave.beginTx();
+  tx.success();
+  tx.finish();
+  Assert.assertEquals("bar",slave.getNodeById(nodeId).getProperty("foo"));
+  Assert.assertEquals("bar2",slave.getNodeById(nodeId).getProperty("foo2"));
+}

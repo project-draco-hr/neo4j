@@ -1,0 +1,40 @@
+{
+  if (owners == null && dynamics == null) {
+    return checker;
+  }
+  return new RecordCheck<PropertyRecord,ConsistencyReport.PropertyConsistencyReport>(){
+    @Override public void check(    PropertyRecord record,    ConsistencyReport.PropertyConsistencyReport report,    RecordAccess records){
+      if (record.inUse()) {
+        if (owners != null && Record.NO_PREVIOUS_PROPERTY.is(record.getPrevProp())) {
+          PropertyOwner.UnknownOwner owner=new PropertyOwner.UnknownOwner();
+          report.forReference(owner,ORPHAN_CHECKER);
+          if (null == owners.putIfAbsent(record.getId(),owner)) {
+            owner.markInCustody();
+          }
+        }
+        if (dynamics != null) {
+          List<PropertyBlock> blocks=record.getPropertyBlocks();
+          for (          PropertyBlock block : blocks) {
+            RecordType type=recordType(block.forceGetType());
+            if (type != null) {
+              ConcurrentMap<Long,DynamicOwner> dynamicOwners=dynamics.get(type);
+              if (dynamicOwners != null) {
+                long id=block.getSingleValueLong();
+                DynamicOwner.Property owner=new DynamicOwner.Property(type,record);
+                DynamicOwner prev=dynamicOwners.put(id,owner);
+                if (prev != null) {
+                  report.forReference(prev.record(records),owner);
+                }
+              }
+            }
+          }
+        }
+      }
+      checker.check(record,report,records);
+    }
+    @Override public void checkChange(    PropertyRecord oldRecord,    PropertyRecord newRecord,    ConsistencyReport.PropertyConsistencyReport report,    DiffRecordAccess records){
+      checker.checkChange(oldRecord,newRecord,report,records);
+    }
+  }
+;
+}

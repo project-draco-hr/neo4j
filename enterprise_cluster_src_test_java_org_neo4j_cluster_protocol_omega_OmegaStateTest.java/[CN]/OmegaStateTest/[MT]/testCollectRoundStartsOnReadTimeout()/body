@@ -1,0 +1,18 @@
+{
+  OmegaContext context=Mockito.mock(OmegaContext.class);
+  Message<OmegaMessage> message=Mockito.mock(Message.class);
+  MessageProcessor outgoing=Mockito.mock(MessageProcessor.class);
+  Set<URI> servers=new HashSet<URI>();
+  servers.add(new URI("localhost:80"));
+  servers.add(new URI("localhost:81"));
+  servers.add(new URI("localhost:82"));
+  Mockito.when(context.getServers()).thenReturn((Collection)servers);
+  Mockito.when(message.getMessageType()).thenReturn(OmegaMessage.read_timeout);
+  Mockito.when(context.getMyProcessId()).thenReturn(1);
+  OmegaState.omega.handle(context,message,outgoing);
+  Mockito.verify(context,Mockito.atLeastOnce()).getServers();
+  Mockito.verify(context).startCollectionRound();
+  for (  URI server : servers) {
+    Mockito.verify(outgoing).process(Matchers.argThat(new MessageArgumentMatcher<OmegaMessage>().to(server).onMessageType(OmegaMessage.collect).withPayload(new CollectPayload(0))));
+  }
+}

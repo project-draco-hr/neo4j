@@ -1,0 +1,95 @@
+{
+  final LifeSupport life=new LifeSupport();
+  Config config=new Config(new ConfigurationDefaults(GraphDatabaseSettings.class).apply(MapUtil.stringMap(GraphDatabaseSettings.store_dir.name(),"test")));
+  final LoggerContext loggerContext=new LoggerContext();
+  loggerContext.putProperty("host","none");
+  LogbackService logging=life.add(new LogbackService(config,loggerContext));
+  MessageTimeoutStrategy timeoutStrategy=new MessageTimeoutStrategy(new FixedTimeoutStrategy(10000)).timeout(AtomicBroadcastMessage.broadcastTimeout,30000).timeout(ClusterMessage.configurationTimeout,3000).timeout(HeartbeatMessage.sendHeartbeat,10000).relativeTimeout(HeartbeatMessage.timed_out,HeartbeatMessage.sendHeartbeat,10000);
+  NetworkedServerFactory serverFactory=new NetworkedServerFactory(life,new MultiPaxosServerFactory(new ClusterConfiguration("default","cluster://localhost:5001","cluster://localhost:5002","cluster://localhost:5003"),logging),timeoutStrategy,logging);
+  ServerIdElectionCredentialsProvider serverIdElectionCredentialsProvider=new ServerIdElectionCredentialsProvider();
+  final ProtocolServer server1=serverFactory.newNetworkedServer(new Config(new ConfigurationDefaults(NetworkInstance.Configuration.class).apply(MapUtil.stringMap(ClusterSettings.cluster_server.name(),":5001"))),new InMemoryAcceptorInstanceStore(),serverIdElectionCredentialsProvider);
+  server1.addBindingListener(serverIdElectionCredentialsProvider);
+  serverIdElectionCredentialsProvider=new ServerIdElectionCredentialsProvider();
+  final ProtocolServer server2=serverFactory.newNetworkedServer(new Config(new ConfigurationDefaults(NetworkInstance.Configuration.class).apply(MapUtil.stringMap(ClusterSettings.cluster_server.name(),":5002"))),new InMemoryAcceptorInstanceStore(),serverIdElectionCredentialsProvider);
+  server2.addBindingListener(serverIdElectionCredentialsProvider);
+  serverIdElectionCredentialsProvider=new ServerIdElectionCredentialsProvider();
+  final ProtocolServer server3=serverFactory.newNetworkedServer(new Config(new ConfigurationDefaults(NetworkInstance.Configuration.class).apply(MapUtil.stringMap(ClusterSettings.cluster_server.name(),":5003"))),new InMemoryAcceptorInstanceStore(),serverIdElectionCredentialsProvider);
+  server3.addBindingListener(serverIdElectionCredentialsProvider);
+  server1.addBindingListener(new BindingListener(){
+    @Override public void listeningAt(    URI me){
+      server1.newClient(Cluster.class).create("default");
+    }
+  }
+);
+  server2.addBindingListener(new BindingListener(){
+    @Override public void listeningAt(    URI me){
+      server2.newClient(Cluster.class).join(server1.getServerId());
+    }
+  }
+);
+  server3.addBindingListener(new BindingListener(){
+    @Override public void listeningAt(    URI me){
+      server3.newClient(Cluster.class).join(server1.getServerId());
+    }
+  }
+);
+  AtomicBroadcast atomicBroadcast1=server1.newClient(AtomicBroadcast.class);
+  AtomicBroadcast atomicBroadcast2=server2.newClient(AtomicBroadcast.class);
+  AtomicBroadcast atomicBroadcast3=server3.newClient(AtomicBroadcast.class);
+  Snapshot snapshot1=server1.newClient(Snapshot.class);
+  Snapshot snapshot2=server2.newClient(Snapshot.class);
+  Snapshot snapshot3=server3.newClient(Snapshot.class);
+  final AtomicBroadcastMap<String,String> map=new AtomicBroadcastMap<String,String>(atomicBroadcast1,snapshot1);
+  final AtomicBroadcastMap<String,String> map2=new AtomicBroadcastMap<String,String>(atomicBroadcast2,snapshot2);
+  final AtomicBroadcastMap<String,String> map3=new AtomicBroadcastMap<String,String>(atomicBroadcast3,snapshot3);
+  final Semaphore semaphore=new Semaphore(-2);
+  final Logger logger=loggerContext.getLogger(getClass());
+  server1.newClient(Cluster.class).addClusterListener(new ClusterListener.Adapter(){
+    @Override public void enteredCluster(    ClusterConfiguration clusterConfiguration){
+      semaphore.release();
+    }
+    @Override public void joinedCluster(    URI member){
+      logger.info("1 sees join by " + member);
+    }
+  }
+);
+  server2.newClient(Cluster.class).addClusterListener(new ClusterListener.Adapter(){
+    @Override public void enteredCluster(    ClusterConfiguration clusterConfiguration){
+      semaphore.release();
+    }
+    @Override public void joinedCluster(    URI member){
+      logger.info("2 sees join by " + member);
+    }
+  }
+);
+  server3.newClient(Cluster.class).addClusterListener(new ClusterListener.Adapter(){
+    @Override public void enteredCluster(    ClusterConfiguration clusterConfiguration){
+      semaphore.release();
+    }
+    @Override public void joinedCluster(    URI member){
+      logger.info("3 sees join by " + member);
+    }
+  }
+);
+  life.start();
+  semaphore.acquire();
+  logger.info("Joined cluster - set data");
+  for (int i=0; i < 10000; i++) {
+    map.put("foo" + i,"bar" + i);
+  }
+  logger.info("Set all values");
+  String value=map.get("foo1");
+  logger.info("Read value1");
+  Assert.assertThat(value,CoreMatchers.equalTo("bar1"));
+  map2.put("foo2","666");
+  logger.info("Read value2:" + map2.get("foo1"));
+  logger.info("Read value3:" + map2.get("foo2"));
+  logger.info("Read value4:" + map3.get("foo1"));
+  logger.info("Read value5:" + map3.get("foo99"));
+  Assert.assertThat(map3.get("foo1"),CoreMatchers.equalTo("bar1"));
+  Assert.assertThat(map3.get("foo99"),CoreMatchers.equalTo("bar99"));
+  map.close();
+  map2.close();
+  map3.close();
+  life.stop();
+}

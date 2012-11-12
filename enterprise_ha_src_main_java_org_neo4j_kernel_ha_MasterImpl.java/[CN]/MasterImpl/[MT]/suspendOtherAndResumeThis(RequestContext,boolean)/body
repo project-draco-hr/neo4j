@@ -1,0 +1,34 @@
+{
+  try {
+    Transaction otherTx=txManager.getTransaction();
+    Transaction transaction=getTx(txId);
+    if (otherTx != null && otherTx == transaction) {
+      return null;
+    }
+ else {
+      if (otherTx != null) {
+        txManager.suspend();
+      }
+      if (transaction == null) {
+        if (allowBegin) {
+          beginTx(txId);
+        }
+ else {
+          throw new IllegalStateException("Transaction " + txId + " has either timed out on the"+ " master or was not started on this master. There may have been a master switch"+ " between the time this transaction started and up to now. This transaction"+ " cannot continue since the state from the previous master isn't transferred.");
+        }
+      }
+ else {
+        try {
+          txManager.resume(transaction);
+        }
+ catch (        IllegalStateException e) {
+          throw new UnableToResumeTransactionException(e);
+        }
+      }
+      return otherTx;
+    }
+  }
+ catch (  Exception e) {
+    throw Exceptions.launderedException(e);
+  }
+}

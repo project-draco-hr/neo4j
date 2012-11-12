@@ -1,0 +1,22 @@
+{
+  StoreAccess store=fixture.storeAccess();
+  DiffRecordAccess access=FullCheck.recordAccess(store);
+  FullCheck singlePass=new FullCheck(config(TaskExecutionOrder.SINGLE_THREADED),ProgressMonitorFactory.NONE);
+  FullCheck multiPass=new FullCheck(config(TaskExecutionOrder.MULTI_PASS),ProgressMonitorFactory.NONE);
+  ConsistencySummaryStatistics multiPassSummary=new ConsistencySummaryStatistics();
+  ConsistencySummaryStatistics singlePassSummary=new ConsistencySummaryStatistics();
+  ConsistencyLogger logger=mock(ConsistencyLogger.class);
+  InvocationLog singlePassChecks=new InvocationLog();
+  InvocationLog multiPassChecks=new InvocationLog();
+  singlePass.execute(store,new LogDecorator(singlePassChecks),access,logger,singlePassSummary);
+  multiPass.execute(store,new LogDecorator(multiPassChecks),access,logger,multiPassSummary);
+  verifyZeroInteractions(logger);
+  assertEquals("Expected no inconsistencies in single pass.",0,singlePassSummary.getTotalInconsistencyCount());
+  assertEquals("Expected no inconsistencies in multiple passes.",0,multiPassSummary.getTotalInconsistencyCount());
+  assertSameChecks(singlePassChecks.data,multiPassChecks.data);
+  if (singlePassChecks.duplicates.size() != multiPassChecks.duplicates.size()) {
+    if (LOG_DUPLICATES) {
+      System.out.printf("Duplicate checks with single pass: %s, duplicate checks with multiple passes: %s%n",singlePassChecks.duplicates,multiPassChecks.duplicates);
+    }
+  }
+}

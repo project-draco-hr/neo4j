@@ -1,0 +1,43 @@
+{
+  Byte continuation=readContinuationHeader(buffer,channel);
+  if (continuation == null) {
+    return;
+  }
+  if (continuation == ChunkingChannelBuffer.CONTINUATION_MORE) {
+    PartialRequest partialRequest=partialRequests.get(channel);
+    if (partialRequest == null) {
+      RequestType<T> type=getRequestContext(buffer.readByte());
+      RequestContext context=readContext(buffer);
+      ChannelBuffer targetBuffer=mapSlave(channel,context,type);
+      partialRequest=new PartialRequest(type,context,targetBuffer);
+      partialRequests.put(channel,partialRequest);
+    }
+    partialRequest.add(buffer);
+  }
+ else {
+    PartialRequest partialRequest=partialRequests.remove(channel);
+    RequestType<T> type=null;
+    RequestContext context=null;
+    ChannelBuffer targetBuffer;
+    ChannelBuffer bufferToReadFrom=null;
+    ChannelBuffer bufferToWriteTo=null;
+    if (partialRequest == null) {
+      type=getRequestContext(buffer.readByte());
+      context=readContext(buffer);
+      targetBuffer=mapSlave(channel,context,type);
+      bufferToReadFrom=buffer;
+      bufferToWriteTo=targetBuffer;
+    }
+ else {
+      type=partialRequest.type;
+      context=partialRequest.context;
+      targetBuffer=partialRequest.buffer;
+      partialRequest.add(buffer);
+      bufferToReadFrom=targetBuffer;
+      bufferToWriteTo=ChannelBuffers.dynamicBuffer();
+    }
+    bufferToWriteTo.clear();
+    final ChunkingChannelBuffer chunkingBuffer=new ChunkingChannelBuffer(bufferToWriteTo,channel,chunkSize,getInternalProtocolVersion(),applicationProtocolVersion);
+    submitSilent(targetCallExecutor,targetCaller(type,channel,context,chunkingBuffer,bufferToReadFrom));
+  }
+}

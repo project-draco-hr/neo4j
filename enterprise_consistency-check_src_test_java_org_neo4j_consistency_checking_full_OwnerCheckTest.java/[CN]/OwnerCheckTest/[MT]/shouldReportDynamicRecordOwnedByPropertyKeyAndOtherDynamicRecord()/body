@@ -1,0 +1,16 @@
+{
+  RecordAccessStub records=new RecordAccessStub();
+  OwnerCheck decorator=new OwnerCheck(true,DynamicStore.PROPERTY_KEY);
+  RecordCheck<DynamicRecord,ConsistencyReport.DynamicConsistencyReport> dynChecker=decorator.decorateDynamicChecker(RecordType.PROPERTY_KEY_NAME,dummyDynamicCheck(configureDynamicStore(50),DynamicStore.PROPERTY_KEY));
+  RecordCheck<PropertyIndexRecord,ConsistencyReport.PropertyKeyConsistencyReport> keyCheck=decorator.decoratePropertyKeyChecker(dummyPropertyKeyCheck());
+  DynamicRecord owned=records.addKeyName(inUse(string(new DynamicRecord(42))));
+  DynamicRecord dynamic=records.addKeyName(inUse(string(new DynamicRecord(1))));
+  PropertyIndexRecord key=records.add(inUse(new PropertyIndexRecord(1)));
+  dynamic.setNextBlock(owned.getId());
+  key.setNameId((int)owned.getId());
+  ConsistencyReport.PropertyKeyConsistencyReport keyReport=check(ConsistencyReport.PropertyKeyConsistencyReport.class,keyCheck,key,records);
+  ConsistencyReport.DynamicConsistencyReport dynReport=check(ConsistencyReport.DynamicConsistencyReport.class,dynChecker,dynamic,records);
+  verifyOnlyReferenceDispatch(keyReport);
+  verify(dynReport).nextMultipleOwners(key);
+  verifyOnlyReferenceDispatch(dynReport);
+}

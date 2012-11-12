@@ -1,0 +1,18 @@
+{
+  DefaultElectionCredentialsProvider electionCredentialsProvider=new DefaultElectionCredentialsProvider(config.get(HaSettings.server_id),new OnDiskLastTxIdGetter(new File(getStoreDir())));
+  clusterClient=new ClusterClient(ClusterClient.adapt(config,electionCredentialsProvider),logging);
+  clusterEvents=life.add(new PaxosHighAvailabilityEvents(PaxosHighAvailabilityEvents.adapt(config),clusterClient,logging.getLogger(PaxosHighAvailabilityEvents.class)));
+  memberContext=new HighAvailabilityMemberContext(clusterClient);
+  life.add(memberContext);
+  memberStateMachine=new HighAvailabilityMemberStateMachine(memberContext,accessGuard,clusterEvents,logging.getLogger(HighAvailabilityMemberStateMachine.class));
+  life.add(new HighAvailabilityModeSwitcher(delegateInvocationHandler,clusterEvents,memberStateMachine,this,config,logging.getLogger(HighAvailabilityModeSwitcher.class)));
+  DelegateInvocationHandler<TxHook> txHookDelegate=new DelegateInvocationHandler<TxHook>();
+  TxHook txHook=(TxHook)Proxy.newProxyInstance(TxHook.class.getClassLoader(),new Class[]{TxHook.class},txHookDelegate);
+  new TxHookModeSwitcher(memberStateMachine,txHookDelegate,master,new TxHookModeSwitcher.RequestContextFactoryResolver(){
+    @Override public RequestContextFactory get(){
+      return requestContextFactory;
+    }
+  }
+,dependencyResolver);
+  return txHook;
+}

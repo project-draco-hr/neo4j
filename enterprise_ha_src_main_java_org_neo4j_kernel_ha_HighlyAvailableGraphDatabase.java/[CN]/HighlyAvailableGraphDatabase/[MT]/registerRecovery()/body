@@ -1,0 +1,40 @@
+{
+  memberStateMachine.addClusterMemberListener(new HighAvailabilityMemberListener(){
+    @Override public void masterIsElected(    HighAvailabilityMemberChangeEvent event){
+    }
+    @Override public void masterIsAvailable(    HighAvailabilityMemberChangeEvent event){
+      if (event.getOldState().equals(HighAvailabilityMemberState.TO_MASTER) && event.getNewState().equals(HighAvailabilityMemberState.MASTER)) {
+        doRecovery();
+      }
+    }
+    @Override public void slaveIsAvailable(    HighAvailabilityMemberChangeEvent event){
+      if (event.getOldState().equals(HighAvailabilityMemberState.TO_SLAVE) && event.getNewState().equals(HighAvailabilityMemberState.SLAVE)) {
+        doRecovery();
+      }
+    }
+    @Override public void instanceStops(    HighAvailabilityMemberChangeEvent event){
+    }
+    private void doRecovery(){
+      try {
+synchronized (xaDataSourceManager) {
+          HighlyAvailableGraphDatabase.this.doRecovery();
+        }
+      }
+ catch (      Throwable throwable) {
+        try {
+          memberStateMachine.stop();
+        }
+ catch (        Throwable throwable1) {
+          msgLog.warn("Could not stop",throwable1);
+        }
+        try {
+          memberStateMachine.start();
+        }
+ catch (        Throwable throwable1) {
+          msgLog.warn("Could not start",throwable1);
+        }
+      }
+    }
+  }
+);
+}

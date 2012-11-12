@@ -1,0 +1,57 @@
+{
+  toMasterTask=executor.submit(new Runnable(){
+    @Override public void run(){
+      try {
+        MasterImpl masterImpl=new MasterImpl(graphDb,graphDb.getMessageLog(),config);
+        Server.Configuration serverConfig=new Server.Configuration(){
+          @Override public long getOldChannelThreshold(){
+            return config.isSet(HaSettings.lock_read_timeout) ? config.get(HaSettings.lock_read_timeout) : config.get(ClusterSettings.read_timeout);
+          }
+          @Override public int getMaxConcurrentTransactions(){
+            return config.get(HaSettings.max_concurrent_channels_per_slave);
+          }
+          @Override public int getPort(){
+            int port=HaSettings.ha_server.getPort(config.getParams());
+            if (port > 0) {
+              return port;
+            }
+            return HaSettings.ha_server.getPort(MapUtil.stringMap(HaSettings.ha_server.name(),ConfigurationDefaults.getDefault(HaSettings.ha_server,HaSettings.class)));
+          }
+          @Override public int getChunkSize(){
+            return config.isSet(ComSettings.com_chunk_size) ? config.get(ComSettings.com_chunk_size) : ComSettings.com_chunk_size.valueOf(ConfigurationDefaults.getDefault(ComSettings.com_chunk_size,ComSettings.class),config);
+          }
+          @Override public String getServerAddress(){
+            return HaSettings.ha_server.getAddressWithLocalhostDefault(config.getParams());
+          }
+        }
+;
+        MasterServer masterServer=new MasterServer(masterImpl,msgLog,serverConfig,new BranchDetectingTxVerifier(graphDb));
+        life.add(masterImpl);
+        life.add(masterServer);
+        delegateHandler.setDelegate(masterImpl);
+        DependencyResolver resolver=graphDb.getDependencyResolver();
+        HaXaDataSourceManager xaDsm=resolver.resolveDependency(HaXaDataSourceManager.class);
+synchronized (xaDsm) {
+          XaDataSource nioneoDataSource=xaDsm.getXaDataSource(Config.DEFAULT_DATA_SOURCE_NAME);
+          if (nioneoDataSource == null) {
+            try {
+              nioneoDataSource=new NeoStoreXaDataSource(config,resolver.resolveDependency(StoreFactory.class),resolver.resolveDependency(LockManager.class),resolver.resolveDependency(LockReleaser.class),resolver.resolveDependency(StringLogger.class),resolver.resolveDependency(XaFactory.class),resolver.resolveDependency(TransactionInterceptorProviders.class),resolver);
+              xaDsm.registerDataSource(nioneoDataSource);
+            }
+ catch (            IOException e) {
+              msgLog.logMessage("Failed while trying to create datasource",e);
+              return;
+            }
+          }
+        }
+        life.start();
+      }
+ catch (      Throwable e) {
+        msgLog.logMessage("Failed to switch to master",e);
+        return;
+      }
+      clusterEvents.memberIsAvailable(ClusterConfiguration.COORDINATOR);
+    }
+  }
+);
+}

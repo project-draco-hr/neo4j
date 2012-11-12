@@ -1,0 +1,13 @@
+{
+  masterElectedLatch=new CountDownLatch(1);
+  final HighAvailabilityEvents events=db.getDependencyResolver().resolveDependency(HighAvailabilityEvents.class);
+  events.addClusterEventListener(new HighAvailabilityListener.Adapter(){
+    @Override public void memberIsAvailable(    String role,    URI instanceClusterUri,    Iterable<URI> instanceUris){
+      if (role.equals(ClusterConfiguration.COORDINATOR)) {
+        masterElectedLatch.countDown();
+        events.removeClusterEventListener(this);
+      }
+    }
+  }
+);
+}

@@ -1,0 +1,27 @@
+{
+  node=new NetworkInstance(new NetworkInstance.Configuration(){
+    @Override public int[] getPorts(){
+      int[] port=ClusterSettings.cluster_server.getPorts(config);
+      if (port != null) {
+        return port;
+      }
+      return ClusterSettings.cluster_server.getPorts(MapUtil.stringMap(ClusterSettings.cluster_server.name(),ConfigurationDefaults.getDefault(ClusterSettings.cluster_server,ClusterSettings.class)));
+    }
+    @Override public String getAddress(){
+      return ClusterSettings.cluster_server.getAddress(config);
+    }
+  }
+,StringLogger.SYSTEM);
+  life.add(node);
+  life.add(new LifecycleAdapter(){
+    @Override public void start() throws Throwable {
+      node.addMessageProcessor(new MessageProcessor(){
+        @Override public void process(        Message<? extends MessageType> message){
+          System.out.println(message);
+        }
+      }
+);
+    }
+  }
+);
+}

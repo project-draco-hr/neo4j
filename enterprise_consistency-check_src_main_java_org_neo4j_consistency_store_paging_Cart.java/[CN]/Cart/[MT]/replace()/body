@@ -1,0 +1,28 @@
+{
+  while (frequencyCache.size() > 0 && frequencyCache.head.referenced) {
+    frequencyCache.head.clearReference().moveToTailOf(recencyCache);
+    if (frequencyCache.size() + frequencyHistory.size() + recencyHistory.size() - shortTermUtilityPageCount >= capacity) {
+      q=min(q + 1,2 * capacity - recencyCache.size());
+    }
+  }
+  while (recencyCache.size() > 0 && (recencyCache.head.utility == TemporalUtility.LONG_TERM || recencyCache.head.referenced)) {
+    if (recencyCache.head.referenced) {
+      Page page=recencyCache.head.clearReference().moveToTailOf(recencyCache);
+      if (recencyCache.size() > min(p + 1,recencyHistory.size()) && page.utility == TemporalUtility.SHORT_TERM) {
+        page.setUtility(this,TemporalUtility.LONG_TERM);
+      }
+    }
+ else {
+      recencyCache.head.clearReference().moveToTailOf(frequencyCache);
+      q=max(q - 1,capacity - recencyCache.size());
+    }
+  }
+  if (recencyCache.size() >= max(1,p)) {
+    recencyCache.head.evict();
+    recencyCache.head.moveToTailOf(recencyHistory).setUtility(this,TemporalUtility.LONG_TERM);
+  }
+ else {
+    frequencyCache.head.evict();
+    frequencyCache.head.moveToTailOf(frequencyHistory).setUtility(this,TemporalUtility.SHORT_TERM);
+  }
+}

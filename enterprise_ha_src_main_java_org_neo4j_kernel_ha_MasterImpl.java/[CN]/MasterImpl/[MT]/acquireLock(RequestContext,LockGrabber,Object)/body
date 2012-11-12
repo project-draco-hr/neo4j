@@ -1,0 +1,18 @@
+{
+  Transaction otherTx=suspendOtherAndResumeThis(context,false);
+  try {
+    for (    Object entity : entities) {
+      lockGrabber.grab(lockManager,lockReleaser,entity);
+    }
+    return packResponse(context,new LockResult(LockStatus.OK_LOCKED));
+  }
+ catch (  DeadlockDetectedException e) {
+    return packResponse(context,new LockResult(e.getMessage()));
+  }
+catch (  IllegalResourceException e) {
+    return packResponse(context,new LockResult(LockStatus.NOT_LOCKED));
+  }
+ finally {
+    suspendThisAndResumeOther(otherTx,context);
+  }
+}

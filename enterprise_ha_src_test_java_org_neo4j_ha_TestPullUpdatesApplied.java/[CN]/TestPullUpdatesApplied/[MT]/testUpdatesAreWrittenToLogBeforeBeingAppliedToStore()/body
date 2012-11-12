@@ -1,0 +1,14 @@
+{
+  int master=getCurrentMaster();
+  addNode(master);
+  int toKill=(master + 1) % dbs.length;
+  HighlyAvailableGraphDatabase dbToKill=dbs[toKill];
+  dbToKill.shutdown();
+  Thread.sleep(5000);
+  addNode(master);
+  File targetDirectory=dir.directory("" + toKill,false);
+  runInOtherJvmToGetExitCode(new String[]{targetDirectory.getAbsolutePath(),"" + toKill});
+  start(toKill,false);
+  boolean hasBranchedData=new File(targetDirectory,"branched").listFiles().length > 0;
+  assertFalse(hasBranchedData);
+}
