@@ -1,0 +1,43 @@
+{
+  Description description=describeChild(method);
+  if (method.getAnnotation(Ignore.class) != null) {
+    notifier.fireTestIgnored(description);
+  }
+ else {
+    Statement statement=methodBlock(method);
+    EachTestNotifier eachNotifier=new EachTestNotifier(notifier,description);
+    eachNotifier.fireTestStarted();
+    try {
+      try {
+        runTestCase(statement,testPermutation.getMachineClusterModel(),0);
+      }
+ catch (      AssumptionViolatedException e) {
+        throw e;
+      }
+catch (      Throwable e) {
+        if (StandaloneDatabaseQualityAssurance.DESTROY_AND_RETRY_ON_ERROR) {
+          System.out.println("[Test Runner] Destroying VMs and trying again.");
+          testPermutation.getMachineClusterModel().forceApply(new RecreateAllMachines());
+          runTestCase(statement,testPermutation.getMachineClusterModel(),0);
+        }
+ else {
+          throw e;
+        }
+      }
+    }
+ catch (    AssumptionViolatedException e) {
+      eachNotifier.addFailedAssumption(e);
+    }
+catch (    Throwable e) {
+      eachNotifier.addFailure(e);
+    }
+ finally {
+      try {
+        testPermutation.getMachineClusterModel().forceApply(new DownloadClusterLogs(SharedConstants.TEST_LOGS_DIR + testName(method)));
+      }
+ catch (      Throwable e) {
+      }
+      eachNotifier.fireTestFinished();
+    }
+  }
+}
