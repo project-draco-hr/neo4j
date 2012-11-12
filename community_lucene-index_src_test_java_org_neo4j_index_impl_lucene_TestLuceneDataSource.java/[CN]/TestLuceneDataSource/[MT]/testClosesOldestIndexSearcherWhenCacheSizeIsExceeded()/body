@@ -1,0 +1,19 @@
+{
+  addIndex("bar");
+  addIndex("baz");
+  Map<String,String> config=config();
+  config.put(GraphDatabaseSettings.lucene_searcher_cache_size.name(),"2");
+  Config config1=new Config(new ConfigurationDefaults(GraphDatabaseSettings.class).apply(config));
+  dataSource=new LuceneDataSource(config1,indexStore,new DefaultFileSystemAbstraction(),new XaFactory(config1,TxIdGenerator.DEFAULT,new PlaceboTm(),new DefaultLogBufferFactory(),fileSystem,StringLogger.DEV_NULL,RecoveryVerifier.ALWAYS_VALID,LogPruneStrategies.NO_PRUNING));
+  dataSource.start();
+  IndexIdentifier fooIdentifier=identifier("foo");
+  IndexIdentifier barIdentifier=identifier("bar");
+  IndexIdentifier bazIdentifier=identifier("baz");
+  IndexReference fooSearcher=dataSource.getIndexSearcher(fooIdentifier);
+  IndexReference barSearcher=dataSource.getIndexSearcher(barIdentifier);
+  assertFalse(fooSearcher.isClosed());
+  IndexReference bazSearcher=dataSource.getIndexSearcher(bazIdentifier);
+  assertTrue(fooSearcher.isClosed());
+  barSearcher.close();
+  bazSearcher.close();
+}

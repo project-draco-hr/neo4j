@@ -1,0 +1,34 @@
+{
+  PatternPosition currentPos=callPos.getPatternPosition();
+  PatternRelationship pRel=callPos.getPatternRelationship();
+  pRel.mark();
+  visitedRels.remove(callPos.getLastVisitedRelationship());
+  Node currentNode=currentPos.getCurrentNode();
+  Iterator<Relationship> relItr=callPos.getRelationshipIterator();
+  while (relItr.hasNext()) {
+    Relationship rel=relItr.next();
+    if (visitedRels.contains(rel)) {
+      continue;
+    }
+    if (!checkProperties(pRel,rel)) {
+      continue;
+    }
+    Node otherNode=rel.getOtherNode(currentNode);
+    PatternNode otherPosition=pRel.getOtherNode(currentPos.getPatternNode());
+    pRel.mark();
+    visitedRels.add(rel);
+    if (traverse(new PatternPosition(otherNode,otherPosition,pRel,rel,optional),true)) {
+      callPos.setLastVisitedRelationship(rel);
+      return true;
+    }
+    visitedRels.remove(rel);
+    pRel.unMark();
+  }
+  pRel.unMark();
+  if (callPos.shouldPopUncompleted()) {
+    uncompletedPositions.pop();
+  }
+  callStack.pop();
+  foundElements.pop();
+  return false;
+}

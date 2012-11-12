@@ -1,0 +1,25 @@
+{
+  String indexName="favorites";
+  int expectedIndexes=helper.getRelationshipIndexes().length + 1;
+  Map<String,String> indexSpecification=new HashMap<String,String>();
+  indexSpecification.put("name",indexName);
+  JaxRsResponse response=httpPostIndexRelationshipRoot(JsonHelper.createJsonFrom(indexSpecification));
+  assertEquals(201,response.getStatus());
+  assertNotNull(response.getHeaders().get("Location").get(0));
+  assertEquals(expectedIndexes,helper.getRelationshipIndexes().length);
+  assertNotNull(helper.getRelationshipIndex(indexName));
+  String key="key";
+  String value="value";
+  String relationshipType="related-to";
+  long relationshipId=helper.createRelationship(relationshipType);
+  response=httpPostIndexRelationshipNameKeyValue(indexName,relationshipId,key,value);
+  assertEquals(Status.CREATED.getStatusCode(),response.getStatus());
+  String indexUri=response.getHeaders().get("Location").get(0);
+  assertNotNull(indexUri);
+  assertEquals(Arrays.asList((Long)relationshipId),helper.getIndexedRelationships(indexName,key,value));
+  response=httpGet(indexUri);
+  assertEquals(200,response.getStatus());
+  String discovredEntity=response.getEntity();
+  Map<String,Object> map=JsonHelper.jsonToMap(discovredEntity);
+  assertNotNull(map.get("self"));
+}

@@ -1,0 +1,39 @@
+{
+  final int numThreads=25;
+  final String uuid=UUID.randomUUID().toString();
+  ExecutorCompletionService<Node> ecs=new ExecutorCompletionService<Node>(Executors.newFixedThreadPool(numThreads));
+  for (int i=0; i < numThreads; i++) {
+    ecs.submit(new Callable<Node>(){
+      public Node call() throws Exception {
+        Transaction tx=graphDb.beginTx();
+        try {
+          final Node node=graphDb.createNode();
+          graphDb.getReferenceNode().removeProperty("NOT_EXISTING");
+          Index<Node> index=graphDb.index().forNodes("uuids");
+          final Node existing=index.get("uuid",uuid).getSingle();
+          if (existing != null) {
+            throw new RuntimeException("Node already exists");
+          }
+          node.setProperty("uuid",uuid);
+          index.add(node,"uuid",uuid);
+          tx.success();
+          return node;
+        }
+  finally {
+          tx.finish();
+        }
+      }
+    }
+);
+  }
+  int numSucceeded=0;
+  for (int i=0; i < numThreads; i++) {
+    try {
+      ecs.take().get();
+      ++numSucceeded;
+    }
+ catch (    ExecutionException e) {
+    }
+  }
+  assertEquals(1,numSucceeded);
+}

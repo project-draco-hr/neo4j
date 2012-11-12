@@ -1,0 +1,29 @@
+{
+  fileChannel=fileSystem.open(fileToOpen,"rw");
+  if (new XaLogicalLogRecoveryCheck(fileChannel).recoveryRequired()) {
+    nonCleanShutdown=true;
+    doingRecovery=true;
+    try {
+      doInternalRecovery(fileToOpen);
+    }
+  finally {
+      doingRecovery=false;
+    }
+  }
+ else {
+    logVersion=xaTf.getCurrentVersion();
+    boolean logVersionChanged=false;
+    while (fileSystem.fileExists(getFileName(logVersion))) {
+      logVersion++;
+      logVersionChanged=true;
+    }
+    if (logVersionChanged)     xaTf.setVersion(logVersion);
+    long lastTxId=xaTf.getLastCommittedTx();
+    LogIoUtils.writeLogHeader(sharedBuffer,logVersion,lastTxId);
+    previousLogLastCommittedTx=lastTxId;
+    positionCache.putHeader(logVersion,previousLogLastCommittedTx);
+    fileChannel.write(sharedBuffer);
+    scanIsComplete=true;
+    msgLog.logMessage(openedLogicalLogMessage(fileToOpen,lastTxId,true),true);
+  }
+}

@@ -1,0 +1,55 @@
+{
+  do {
+    if (currentTypeIterator.hasNext()) {
+      long nextId=currentTypeIterator.next();
+      try {
+        return nodeManager.newRelationshipProxyById(nextId);
+      }
+ catch (      NotFoundException e) {
+      }
+    }
+    LoadStatus status;
+    while (!currentTypeIterator.hasNext()) {
+      if (typeIterator.hasNext()) {
+        currentTypeIterator=typeIterator.next();
+      }
+ else       if ((status=fromNode.getMoreRelationships(nodeManager)).loaded() || lastTimeILookedThereWasMoreToLoad) {
+        lastTimeILookedThereWasMoreToLoad=status.hasMoreToLoad();
+        Map<String,RelIdIterator> newRels=new HashMap<String,RelIdIterator>();
+        for (        RelIdIterator itr : rels) {
+          String type=itr.getType();
+          RelIdArray newSrc=fromNode.getRelationshipIds(type);
+          if (newSrc != null) {
+            itr=itr.updateSource(newSrc);
+            itr.doAnotherRound();
+          }
+          newRels.put(type,itr);
+        }
+        if (types.length == 0) {
+          for (          RelIdArray ids : fromNode.getRelationshipIds()) {
+            String type=ids.getType();
+            RelIdIterator itr=newRels.get(type);
+            if (itr == null) {
+              Collection<Long> remove=nodeManager.getCowRelationshipRemoveMap(fromNode,type);
+              itr=remove == null ? ids.iterator(direction) : RelIdArray.from(ids,null,remove).iterator(direction);
+              newRels.put(type,itr);
+            }
+ else {
+              itr=itr.updateSource(ids);
+              newRels.put(type,itr);
+            }
+          }
+        }
+        rels.clear();
+        rels.addAll(newRels.values());
+        typeIterator=rels.iterator();
+        currentTypeIterator=typeIterator.hasNext() ? typeIterator.next() : RelIdArray.EMPTY.iterator(direction);
+      }
+ else {
+        break;
+      }
+    }
+  }
+ while (currentTypeIterator.hasNext());
+  return null;
+}

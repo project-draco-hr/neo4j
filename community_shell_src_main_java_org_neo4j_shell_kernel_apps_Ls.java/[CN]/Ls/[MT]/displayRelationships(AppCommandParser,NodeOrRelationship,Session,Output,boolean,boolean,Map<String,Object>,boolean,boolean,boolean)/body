@@ -1,0 +1,41 @@
+{
+  boolean sortByType=parser.options().containsKey("s");
+  Node node=thing.asNode();
+  Iterable<Relationship> relationships=getRelationships(node,filterMap,caseInsensitiveFilters,looseFilters,sortByType | brief);
+  if (brief) {
+    Iterator<Relationship> iterator=relationships.iterator();
+    if (!iterator.hasNext()) {
+      return;
+    }
+    Relationship sampleRelationship=iterator.next();
+    RelationshipType lastType=sampleRelationship.getType();
+    int currentCounter=1;
+    while (iterator.hasNext()) {
+      Relationship rel=iterator.next();
+      if (!rel.isType(lastType)) {
+        displayBriefRelationships(thing,session,out,sampleRelationship,currentCounter);
+        sampleRelationship=rel;
+        lastType=sampleRelationship.getType();
+        currentCounter=1;
+      }
+ else {
+        currentCounter++;
+      }
+    }
+    displayBriefRelationships(thing,session,out,sampleRelationship,currentCounter);
+  }
+ else {
+    Iterator<Relationship> iterator=relationships.iterator();
+    if (parser.options().containsKey("m")) {
+      iterator=wrapInLimitingIterator(parser,iterator,filterMap,caseInsensitiveFilters,looseFilters);
+    }
+    while (iterator.hasNext()) {
+      Relationship rel=iterator.next();
+      StringBuffer buf=new StringBuffer(getDisplayName(getServer(),session,thing,true));
+      String relDisplay=quiet ? "" : getDisplayName(getServer(),session,rel,verbose,true);
+      buf.append(withArrows(rel,relDisplay,thing.asNode()));
+      buf.append(getDisplayName(getServer(),session,rel.getOtherNode(node),true));
+      out.println(buf);
+    }
+  }
+}

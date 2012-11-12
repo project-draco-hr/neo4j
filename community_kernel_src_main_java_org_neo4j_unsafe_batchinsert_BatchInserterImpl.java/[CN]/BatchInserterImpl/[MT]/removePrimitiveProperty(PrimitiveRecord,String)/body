@@ -1,0 +1,29 @@
+{
+  PropertyRecord current=null;
+  PropertyBlock target=null;
+  long nextProp=primitive.getNextProp();
+  int propIndex=indexHolder.getKeyId(property);
+  if (nextProp == Record.NO_NEXT_PROPERTY.intValue() || propIndex == -1) {
+    return false;
+  }
+  while (nextProp != Record.NO_NEXT_PROPERTY.intValue()) {
+    current=getPropertyStore().getRecord(nextProp);
+    if ((target=current.removePropertyBlock(propIndex)) != null) {
+      if (target.isLight()) {
+        getPropertyStore().makeHeavy(target);
+      }
+      for (      DynamicRecord dynRec : target.getValueRecords()) {
+        current.addDeletedRecord(dynRec);
+      }
+      break;
+    }
+    nextProp=current.getNextProp();
+  }
+  if (current.size() > 0) {
+    getPropertyStore().updateRecord(current);
+    return false;
+  }
+ else {
+    return unlinkPropertyRecord(current,primitive);
+  }
+}

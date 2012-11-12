@@ -1,0 +1,19 @@
+{
+  File dir=TargetDirectory.forTest(getClass()).graphDbDir(true);
+  BatchInserter inserter=BatchInserters.inserter(dir.getAbsolutePath());
+  int count=3000;
+  long nodeId=inserter.createNode(mapWithManyProperties(count));
+  inserter.shutdown();
+  EmbeddedGraphDatabase db=new EmbeddedGraphDatabase(dir.getAbsolutePath());
+  Transaction tx=db.beginTx();
+  try {
+    db.createNode();
+    Node node=db.getNodeById(nodeId);
+    assertEquals(count,IteratorUtil.count(node.getPropertyKeys()));
+    tx.success();
+  }
+  finally {
+    tx.finish();
+    db.shutdown();
+  }
+}

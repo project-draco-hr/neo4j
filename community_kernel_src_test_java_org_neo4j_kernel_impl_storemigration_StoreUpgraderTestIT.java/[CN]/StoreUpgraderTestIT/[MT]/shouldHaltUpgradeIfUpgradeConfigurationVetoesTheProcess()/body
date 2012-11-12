@@ -1,0 +1,16 @@
+{
+  File workingDirectory=new File("target/" + StoreUpgraderTestIT.class.getSimpleName() + "shouldHaltUpgradeIfUpgradeConfigurationVetoesTheProcess");
+  MigrationTestUtils.prepareSampleLegacyDatabase(workingDirectory);
+  UpgradeConfiguration vetoingUpgradeConfiguration=new UpgradeConfiguration(){
+    public void checkConfigurationAllowsAutomaticUpgrade(){
+      throw new UpgradeNotAllowedByConfigurationException("vetoed");
+    }
+  }
+;
+  try {
+    newUpgrader(vetoingUpgradeConfiguration,new StoreMigrator(new SilentMigrationProgressMonitor()),new DatabaseFiles()).attemptUpgrade(new File(workingDirectory,NeoStore.DEFAULT_NAME).getPath());
+    fail("Should throw exception");
+  }
+ catch (  UpgradeNotAllowedByConfigurationException e) {
+  }
+}

@@ -1,0 +1,46 @@
+{
+  assertTmOk("tx rollback");
+  Thread thread=Thread.currentThread();
+  TransactionImpl tx=txThreadMap.get(thread);
+  if (tx == null) {
+    throw new IllegalStateException("Not in transaction");
+  }
+  boolean hasAnyLocks=false;
+  try {
+    hasAnyLocks=finishHook.hasAnyLocks(tx);
+    if (tx.getStatus() == Status.STATUS_ACTIVE || tx.getStatus() == Status.STATUS_MARKED_ROLLBACK || tx.getStatus() == Status.STATUS_PREPARING) {
+      tx.setStatus(Status.STATUS_MARKED_ROLLBACK);
+      tx.doBeforeCompletion();
+      try {
+        rolledBackTxCount.incrementAndGet();
+        tx.doRollback();
+      }
+ catch (      XAException e) {
+        log.logMessage("Unable to rollback marked or active transaction. " + "Some resources may be commited others not. " + "Neo4j kernel should be SHUTDOWN for "+ "resource maintance and transaction recovery ---->",e);
+        setTmNotOk(e);
+        throw logAndReturn("TM error tx rollback",Exceptions.withCause(new SystemException("Unable to rollback " + " ---> error code for rollback: " + e.errorCode),e));
+      }
+      tx.doAfterCompletion();
+      txThreadMap.remove(thread);
+      try {
+        if (tx.isGlobalStartRecordWritten()) {
+          getTxLog().txDone(tx.getGlobalId());
+        }
+      }
+ catch (      IOException e) {
+        log.logMessage("Error writing transaction log",e);
+        setTmNotOk(e);
+        throw logAndReturn("TM error tx rollback",Exceptions.withCause(new SystemException("TM encountered a problem, " + " error writing transaction log"),e));
+      }
+      tx.setStatus(Status.STATUS_NO_TRANSACTION);
+    }
+ else {
+      throw new IllegalStateException("Tx status is: " + getTxStatusAsString(tx.getStatus()));
+    }
+  }
+  finally {
+    if (hasAnyLocks) {
+      finishHook.finishTransaction(tx.getEventIdentifier(),false);
+    }
+  }
+}

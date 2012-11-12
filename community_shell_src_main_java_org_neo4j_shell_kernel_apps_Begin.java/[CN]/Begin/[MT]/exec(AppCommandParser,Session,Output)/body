@@ -1,0 +1,27 @@
+{
+  String lineWithoutApp=parser.getLineWithoutApp();
+  if (!acceptableText(lineWithoutApp)) {
+    out.println("Error: To open a transaction, write BEGIN TRANSACTION");
+    return Continuation.INPUT_COMPLETE;
+  }
+  Transaction tx=currentTransaction(getServer());
+  getServer().getDb().beginTx();
+  Integer txCount=(Integer)session.get(Commit.TX_COUNT);
+  int count;
+  if (txCount == null) {
+    if (tx == null) {
+      count=0;
+      out.println("Transaction started");
+    }
+ else {
+      count=1;
+      out.println("Warning: transaction found that was not started by the shell.");
+    }
+  }
+ else {
+    count=txCount;
+    out.println(String.format("Nested transaction started (Tx count: %d)",count + 1));
+  }
+  session.set(Commit.TX_COUNT,++count);
+  return Continuation.INPUT_COMPLETE;
+}

@@ -1,0 +1,25 @@
+{
+  if (upgradeDirectory.exists()) {
+    try {
+      FileUtils.deleteRecursively(upgradeDirectory);
+    }
+ catch (    IOException e) {
+      throw new UnableToUpgradeException(e);
+    }
+  }
+  upgradeDirectory.mkdir();
+  String upgradeFileName=new File(upgradeDirectory,NeoStore.DEFAULT_NAME).getPath();
+  Map<String,String> upgradeConfig=new HashMap<String,String>(originalConfig.getParams());
+  upgradeConfig.put("neo_store",upgradeFileName);
+  Config upgradeConfiguration=new Config(upgradeConfig);
+  NeoStore neoStore=new StoreFactory(upgradeConfiguration,idGeneratorFactory,new DefaultWindowPoolFactory(),fileSystemAbstraction,StringLogger.DEV_NULL,null).createNeoStore(upgradeFileName);
+  try {
+    storeMigrator.migrate(new LegacyStore(storageFileName,StringLogger.DEV_NULL),neoStore);
+  }
+ catch (  IOException e) {
+    throw new UnableToUpgradeException(e);
+  }
+ finally {
+    neoStore.close();
+  }
+}

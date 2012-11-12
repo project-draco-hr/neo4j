@@ -1,0 +1,15 @@
+{
+  long nodeId=node.getId();
+  long position=node.getRelChainPosition();
+  Pair<Map<DirectionWrapper,Iterable<RelationshipRecord>>,Long> rels=persistenceManager.getMoreRelationships(nodeId,position);
+  ArrayMap<String,RelIdArray> newRelationshipMap=new ArrayMap<String,RelIdArray>();
+  List<RelationshipImpl> relsList=new ArrayList<RelationshipImpl>(150);
+  Iterable<RelationshipRecord> loops=rels.first().get(DirectionWrapper.BOTH);
+  boolean hasLoops=loops != null;
+  if (hasLoops) {
+    receiveRelationships(loops,newRelationshipMap,relsList,DirectionWrapper.BOTH,true);
+  }
+  receiveRelationships(rels.first().get(DirectionWrapper.OUTGOING),newRelationshipMap,relsList,DirectionWrapper.OUTGOING,hasLoops);
+  receiveRelationships(rels.first().get(DirectionWrapper.INCOMING),newRelationshipMap,relsList,DirectionWrapper.INCOMING,hasLoops);
+  return Triplet.of(newRelationshipMap,relsList,rels.other());
+}

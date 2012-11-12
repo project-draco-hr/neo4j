@@ -1,0 +1,34 @@
+{
+  long referenceNodeId=setReferenceNodeIdToI();
+  String body=gen.get().expectedStatus(200).get(getDataUri()).entity();
+  Map<String,Object> map=JsonHelper.jsonToMap(body);
+  assertEquals(getDataUri() + "node",map.get("node"));
+  assertNotNull(map.get("reference_node"));
+  assertNotNull(map.get("node_index"));
+  assertNotNull(map.get("relationship_index"));
+  assertNotNull(map.get("extensions_info"));
+  assertNotNull(map.get("batch"));
+  assertNotNull(map.get("cypher"));
+  assertEquals(Version.getKernelRevision(),map.get("neo4j_version"));
+  JaxRsResponse response=RestRequest.req().get(getDataUri());
+  if (map.get("reference_node") != null) {
+    response=RestRequest.req().get((String)map.get("reference_node"));
+    assertEquals(200,response.getStatus());
+    response.close();
+  }
+  response=RestRequest.req().get((String)map.get("node_index"));
+  assertTrue(response.getStatus() == 200 || response.getStatus() == 204);
+  response.close();
+  response=RestRequest.req().get((String)map.get("relationship_index"));
+  assertTrue(response.getStatus() == 200 || response.getStatus() == 204);
+  response.close();
+  response=RestRequest.req().get((String)map.get("extensions_info"));
+  assertEquals(200,response.getStatus());
+  response.close();
+  response=RestRequest.req().post((String)map.get("batch"),"[]");
+  assertEquals(200,response.getStatus());
+  response.close();
+  response=RestRequest.req().post((String)map.get("cypher"),"{\"query\":\"START n=node(" + referenceNodeId + ") RETURN n\"}");
+  assertEquals(200,response.getStatus());
+  response.close();
+}

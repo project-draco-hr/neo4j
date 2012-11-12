@@ -1,0 +1,28 @@
+{
+  LegacyDynamicRecord record=new LegacyDynamicRecord(blockId);
+  Buffer buffer=window.getOffsettedBuffer(blockId);
+  long inUseByte=buffer.get();
+  boolean inUse=(inUseByte & 0x1) == Record.IN_USE.intValue();
+  if (!inUse) {
+    throw new InvalidRecordException("Not in use, blockId[" + blockId + "]");
+  }
+  long prevBlock=buffer.getUnsignedInt();
+  long prevModifier=(inUseByte & 0xF0L) << 28;
+  int dataSize=blockSize - BLOCK_HEADER_SIZE;
+  long nrOfBytesInt=buffer.getInt();
+  int nrOfBytes=(int)(nrOfBytesInt & 0xFFFFFF);
+  long nextBlock=buffer.getUnsignedInt();
+  long nextModifier=(nrOfBytesInt & 0xF000000L) << 8;
+  long longNextBlock=LegacyStore.longFromIntAndMod(nextBlock,nextModifier);
+  if (longNextBlock != Record.NO_NEXT_BLOCK.intValue() && nrOfBytes < dataSize || nrOfBytes > dataSize) {
+    throw new InvalidRecordException("Next block set[" + nextBlock + "] current block illegal size["+ nrOfBytes+ "/"+ dataSize+ "]");
+  }
+  record.setInUse(true);
+  record.setLength(nrOfBytes);
+  record.setPrevBlock(LegacyStore.longFromIntAndMod(prevBlock,prevModifier));
+  record.setNextBlock(longNextBlock);
+  byte byteArrayElement[]=new byte[nrOfBytes];
+  buffer.get(byteArrayElement);
+  record.setData(byteArrayElement);
+  return record;
+}

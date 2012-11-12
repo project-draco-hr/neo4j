@@ -1,0 +1,37 @@
+{
+  entity.setProperty("key","value");
+  final AtomicBoolean gotTheLock=new AtomicBoolean();
+  Thread thread=new Thread(){
+    @Override public void run(){
+      Transaction tx=getGraphDb().beginTx();
+      try {
+        getEmbeddedGraphDb().getLockManager().getWriteLock(entity);
+        gotTheLock.set(true);
+        tx.success();
+      }
+ catch (      RuntimeException e) {
+        e.printStackTrace();
+        throw e;
+      }
+ finally {
+        tx.failure();
+      }
+    }
+  }
+;
+  thread.start();
+  long endTime=System.currentTimeMillis() + 5000;
+  WAIT:   while (thread.getState() != State.TERMINATED) {
+    if (thread.getState() == Thread.State.WAITING) {
+      for (      StackTraceElement el : thread.getStackTrace()) {
+        if (el.getClassName().equals("org.neo4j.kernel.impl.transaction.RWLock"))         if (el.getMethodName().equals("acquireWriteLock"))         break WAIT;
+      }
+    }
+    Thread.sleep(1);
+    if (System.currentTimeMillis() > endTime)     break;
+  }
+  boolean gotLock=gotTheLock.get();
+  newTransaction();
+  assertFalse(gotLock);
+  thread.join();
+}

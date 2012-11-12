@@ -1,0 +1,22 @@
+{
+  TransactionFailureException errorCaught=null;
+  LimitedFileSystemGraphDatabase db=new LimitedFileSystemGraphDatabase(testDir.directory().getAbsolutePath());
+  db.runOutOfDiskSpaceNao();
+  Transaction tx=db.beginTx();
+  db.createNode();
+  tx.success();
+  try {
+    tx.finish();
+    fail("Expected tx finish to throw TransactionFailureException when filesystem is full.");
+  }
+ catch (  TransactionFailureException e) {
+  }
+  try {
+    db.beginTx();
+    fail("Expected tx begin to throw TransactionFailureException when tx manager breaks.");
+  }
+ catch (  TransactionFailureException e) {
+    errorCaught=e;
+  }
+  assertThat(errorCaught.getCause(),is(SystemException.class));
+}

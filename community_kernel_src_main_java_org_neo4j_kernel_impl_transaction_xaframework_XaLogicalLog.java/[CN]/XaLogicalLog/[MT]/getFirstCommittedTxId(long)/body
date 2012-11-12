@@ -1,0 +1,33 @@
+{
+  if (version == 0) {
+    return 1L;
+  }
+  Long header=positionCache.getHeader(version - 1);
+  if (header != null) {
+    return header + 1;
+  }
+synchronized (this) {
+    if (version > logVersion) {
+      throw new IllegalArgumentException("Too high version " + version + ", active is "+ logVersion);
+    }
+ else     if (version == logVersion) {
+      throw new IllegalArgumentException("Last committed tx for the active log isn't determined yet");
+    }
+ else     if (version == logVersion - 1) {
+      return previousLogLastCommittedTx;
+    }
+ else {
+      String file=getFileName(version);
+      if (fileSystem.fileExists(file)) {
+        try {
+          long[] headerLongs=LogIoUtils.readLogHeader(fileSystem,new File(file));
+          return headerLongs[1] + 1;
+        }
+ catch (        IOException e) {
+          throw new RuntimeException(e);
+        }
+      }
+    }
+  }
+  return null;
+}

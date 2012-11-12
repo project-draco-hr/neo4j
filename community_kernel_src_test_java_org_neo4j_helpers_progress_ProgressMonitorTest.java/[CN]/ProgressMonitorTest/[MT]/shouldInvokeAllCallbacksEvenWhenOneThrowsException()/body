@@ -1,0 +1,22 @@
+{
+  ProgressMonitorFactory.MultiPartBuilder builder=ProgressMonitorFactory.NONE.multipleParts(testName.getMethodName());
+  ProgressListener progressListener=builder.progressForPart("only part",1);
+  Completion completion=builder.build();
+  Runnable callback=mock(Runnable.class);
+  doThrow(RuntimeException.class).doNothing().when(callback).run();
+  completion.notify(callback);
+  completion.notify(callback);
+  ByteArrayOutputStream out=new ByteArrayOutputStream();
+  PrintStream sysErr=System.out;
+  try {
+    System.setErr(new PrintStream(out));
+    progressListener.done();
+  }
+  finally {
+    System.setOut(sysErr);
+  }
+  verify(callback,times(2)).run();
+  String printedOutput=out.toString(Charset.defaultCharset().name());
+  assertTrue(printedOutput,printedOutput.startsWith(RuntimeException.class.getName()));
+  assertTrue(printedOutput,printedOutput.contains("\n\tat " + getClass().getName() + "."+ testName.getMethodName()));
+}

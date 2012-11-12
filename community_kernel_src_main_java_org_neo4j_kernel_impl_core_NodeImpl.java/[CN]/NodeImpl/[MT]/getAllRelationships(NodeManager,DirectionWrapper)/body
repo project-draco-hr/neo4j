@@ -1,0 +1,37 @@
+{
+  ensureRelationshipMapNotNull(nodeManager);
+  boolean hasMore=hasMoreRelationshipsToLoad();
+  List<RelIdIterator> relTypeList=new LinkedList<RelIdIterator>();
+  boolean hasModifications=nodeManager.getLockReleaser().hasRelationshipModifications(this);
+  ArrayMap<String,RelIdArray> addMap=null;
+  if (hasModifications) {
+    addMap=nodeManager.getCowRelationshipAddMap(this);
+  }
+  for (  RelIdArray src : relationships) {
+    String type=src.getType();
+    Collection<Long> remove=null;
+    RelIdArray add=null;
+    RelIdIterator iterator=null;
+    if (hasModifications) {
+      remove=nodeManager.getCowRelationshipRemoveMap(this,type);
+      if (addMap != null) {
+        add=addMap.get(type);
+      }
+      iterator=new CombinedRelIdIterator(type,direction,src,add,remove);
+    }
+ else {
+      iterator=src.iterator(direction);
+    }
+    relTypeList.add(iterator);
+  }
+  if (addMap != null) {
+    for (    String type : addMap.keySet()) {
+      if (getRelIdArray(type) == null) {
+        Collection<Long> remove=nodeManager.getCowRelationshipRemoveMap(this,type);
+        RelIdArray add=addMap.get(type);
+        relTypeList.add(new CombinedRelIdIterator(type,direction,null,add,remove));
+      }
+    }
+  }
+  return new IntArrayIterator(relTypeList,this,direction,nodeManager,new RelationshipType[0],hasMore);
+}

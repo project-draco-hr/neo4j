@@ -1,0 +1,23 @@
+{
+  Triplet<ArrayMap<String,RelIdArray>,List<RelationshipImpl>,Long> rels=null;
+synchronized (this) {
+    if (relationships == null) {
+      try {
+        relChainPosition=nodeManager.getRelationshipChainPosition(this);
+      }
+ catch (      InvalidRecordException e) {
+        throw new NotFoundException(asProxy(nodeManager) + " concurrently deleted while loading its relationships?",e);
+      }
+      ArrayMap<String,RelIdArray> tmpRelMap=new ArrayMap<String,RelIdArray>();
+      rels=getMoreRelationships(nodeManager,tmpRelMap);
+      this.relationships=toRelIdArray(tmpRelMap);
+      if (rels != null) {
+        setRelChainPosition(rels.third());
+      }
+      updateSize(nodeManager);
+    }
+  }
+  if (rels != null) {
+    nodeManager.putAllInRelCache(rels.second());
+  }
+}

@@ -1,0 +1,20 @@
+def report_in_trello(trello, board_id, list_id, tag, deprecated, github_baseurl):
+    line_url = '{0}/blob/master'.format(github_baseurl)
+    card_title = 'Remove deprecated methods from before {tag}'.format(tag=tag)
+    deprecated_desc = ('* ' + '\n* '.join(['[{title}]({line_url}/{file}#L{line})'.format(title=create_line_title(file, line), line_url=line_url, file=file, line=line) for (file, line) in deprecated]))
+    desc = CARD_DESC_TEMPLATE.format(tag=tag, date=datetime.now(), deprecated_desc=deprecated_desc)
+    board = trello.get_board(board_id)
+    if (len(deprecated) > 0):
+        for card in board.open_cards():
+            if (card.name == card_title):
+                print 'Updating existing card..'
+                card.set_description(desc)
+                break
+        else:
+            trello.get_list(list_id).add_card(card_title, desc)
+    else:
+        for card in board.open_cards():
+            if (card.name == card_title):
+                print 'Archiving existing card (no deprecated things found)..'
+                card.set_closed(True)
+                break

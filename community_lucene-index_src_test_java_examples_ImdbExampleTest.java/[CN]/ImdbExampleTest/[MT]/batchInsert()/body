@@ -1,0 +1,18 @@
+{
+  Neo4jTestCase.deleteFileOrDirectory(new File("target/neo4jdb-batchinsert"));
+  BatchInserter inserter=BatchInserters.inserter("target/neo4jdb-batchinsert");
+  BatchInserterIndexProvider indexProvider=new LuceneBatchInserterIndexProvider(inserter);
+  BatchInserterIndex actors=indexProvider.nodeIndex("actors",MapUtil.stringMap("type","exact"));
+  actors.setCacheCapacity("name",100000);
+  Map<String,Object> properties=MapUtil.map("name","Keanu Reeves");
+  long node=inserter.createNode(properties);
+  actors.add(node,properties);
+  actors.flush();
+  indexProvider.shutdown();
+  inserter.shutdown();
+  GraphDatabaseService db=new GraphDatabaseFactory().newEmbeddedDatabase("target/neo4jdb-batchinsert");
+  Index<Node> index=db.index().forNodes("actors");
+  Node reeves=index.get("name","Keanu Reeves").next();
+  assertEquals(node,reeves.getId());
+  db.shutdown();
+}

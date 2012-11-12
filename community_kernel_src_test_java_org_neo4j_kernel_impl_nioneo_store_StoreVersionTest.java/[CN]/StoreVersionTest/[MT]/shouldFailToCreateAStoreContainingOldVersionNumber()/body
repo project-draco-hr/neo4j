@@ -1,0 +1,16 @@
+{
+  File outputDir=new File("target/var/" + StoreVersionTest.class.getSimpleName());
+  FileUtils.deleteRecursively(outputDir);
+  assertTrue(outputDir.mkdirs());
+  URL legacyStoreResource=StoreMigrator.class.getResource("legacystore/exampledb/neostore.nodestore.db");
+  File workingFile=new File(outputDir,"neostore.nodestore.db");
+  FileUtils.copyFile(new File(legacyStoreResource.getFile()),workingFile);
+  FileSystemAbstraction fileSystem=new DefaultFileSystemAbstraction();
+  Config config=new Config(new ConfigurationDefaults(GraphDatabaseSettings.class).apply(new HashMap<String,String>()));
+  try {
+    new NodeStore(workingFile.getPath(),config,new DefaultIdGeneratorFactory(),new DefaultWindowPoolFactory(),fileSystem,StringLogger.SYSTEM);
+    fail("Should have thrown exception");
+  }
+ catch (  NotCurrentStoreVersionException e) {
+  }
+}

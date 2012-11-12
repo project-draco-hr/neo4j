@@ -1,0 +1,90 @@
+{
+  fileSystem=life.add(createFileSystemAbstraction());
+  this.logging=createStringLogger();
+  AutoConfigurator autoConfigurator=new AutoConfigurator(fileSystem,config.get(NeoStoreXaDataSource.Configuration.store_dir),config.get(GraphDatabaseSettings.use_memory_mapped_buffers),config.get(GraphDatabaseSettings.dump_configuration));
+  Map<String,String> configParams=config.getParams();
+  Map<String,String> autoConfiguration=autoConfigurator.configure();
+  for (  Map.Entry<String,String> autoConfig : autoConfiguration.entrySet()) {
+    String key=autoConfig.getKey();
+    if (!params.containsKey(key)) {
+      configParams.put(key,autoConfig.getValue());
+    }
+  }
+  config.applyChanges(configParams);
+  this.msgLog=logging.getLogger(getClass());
+  config.setLogger(msgLog);
+  boolean readOnly=config.get(Configuration.read_only);
+  String cacheTypeName=config.get(Configuration.cache_type);
+  CacheProvider cacheProvider=cacheProviders.get(cacheTypeName);
+  if (cacheProvider == null) {
+    throw new IllegalArgumentException("No cache type '" + cacheTypeName + "'");
+  }
+  kernelEventHandlers=new KernelEventHandlers();
+  caches=createCaches();
+  diagnosticsManager=life.add(new DiagnosticsManager(logging.getLogger(DiagnosticsManager.class)));
+  kernelPanicEventGenerator=new KernelPanicEventGenerator(kernelEventHandlers);
+  txHook=createTxHook();
+  xaDataSourceManager=life.add(createXaDataSourceManager());
+  guard=config.get(Configuration.execution_guard_enabled) ? new Guard(msgLog) : null;
+  if (readOnly) {
+    txManager=new ReadOnlyTxManager(xaDataSourceManager);
+  }
+ else {
+    String serviceName=config.get(GraphDatabaseSettings.tx_manager_impl);
+    if (serviceName == null) {
+      txManager=new TxManager(this.storeDir,xaDataSourceManager,kernelPanicEventGenerator,txHook,logging.getLogger(TxManager.class),fileSystem);
+    }
+ else {
+      TransactionManagerProvider provider;
+      provider=Service.load(TransactionManagerProvider.class,serviceName);
+      if (provider == null) {
+        throw new IllegalStateException("Unknown transaction manager implementation: " + serviceName);
+      }
+      txManager=provider.loadTransactionManager(this.storeDir,xaDataSourceManager,kernelPanicEventGenerator,txHook,logging.getLogger(AbstractTransactionManager.class),fileSystem);
+    }
+  }
+  life.add(txManager);
+  transactionEventHandlers=new TransactionEventHandlers(txManager);
+  txIdGenerator=life.add(createTxIdGenerator());
+  lockManager=createLockManager();
+  idGeneratorFactory=createIdGeneratorFactory();
+  relationshipTypeCreator=createRelationshipTypeCreator();
+  persistenceSource=life.add(new NioNeoDbPersistenceSource(xaDataSourceManager));
+  syncHook=new DefaultTxEventSyncHookFactory();
+  persistenceManager=new PersistenceManager(txManager,persistenceSource,syncHook,lockReleaser);
+  propertyIndexManager=life.add(new PropertyIndexManager(txManager,persistenceManager,persistenceSource));
+  lockReleaser=new LockReleaser(lockManager,txManager,nodeManager,propertyIndexManager);
+  persistenceManager.setLockReleaser(lockReleaser);
+  relationshipTypeHolder=new RelationshipTypeHolder(txManager,persistenceManager,persistenceSource,relationshipTypeCreator);
+  caches.configure(cacheProvider,config);
+  Cache<NodeImpl> nodeCache=diagnosticsManager.tryAppendProvider(caches.node());
+  Cache<RelationshipImpl> relCache=diagnosticsManager.tryAppendProvider(caches.relationship());
+  nodeManager=guard != null ? createGuardedNodeManager(readOnly,cacheProvider,nodeCache,relCache) : createNodeManager(readOnly,cacheProvider,nodeCache,relCache);
+  life.add(nodeManager);
+  lockReleaser.setNodeManager(nodeManager);
+  indexStore=new IndexStore(this.storeDir,fileSystem);
+  diagnosticsManager.prependProvider(config);
+  params=config.getParams();
+  logBufferFactory=new DefaultLogBufferFactory();
+  extensions=life.add(createKernelData());
+  if (config.get(Configuration.load_kernel_extensions)) {
+    life.add(kernelExtensions);
+  }
+  if (indexProviders == null) {
+    indexProviders=new LegacyIndexIterable();
+  }
+  indexManager=new IndexManagerImpl(config,indexStore,xaDataSourceManager,txManager,this);
+  nodeAutoIndexer=life.add(new NodeAutoIndexerImpl(config,indexManager,nodeManager));
+  relAutoIndexer=life.add(new RelationshipAutoIndexerImpl(config,indexManager,nodeManager));
+  indexManager.setNodeAutoIndexer(nodeAutoIndexer);
+  indexManager.setRelAutoIndexer(relAutoIndexer);
+  recoveryVerifier=createRecoveryVerifier();
+  storeFactory=createStoreFactory();
+  String keepLogicalLogsConfig=config.get(GraphDatabaseSettings.keep_logical_logs);
+  xaFactory=new XaFactory(config,txIdGenerator,txManager,logBufferFactory,fileSystem,logging.getLogger(XaFactory.class),recoveryVerifier,LogPruneStrategies.fromConfigValue(fileSystem,keepLogicalLogsConfig));
+  createNeoDataSource();
+  life.add(new MonitorGc(config,msgLog));
+  life.add(new DatabaseAvailability());
+  life.add(kernelEventHandlers);
+  life.add(new ConfigurationChangedRestarter());
+}

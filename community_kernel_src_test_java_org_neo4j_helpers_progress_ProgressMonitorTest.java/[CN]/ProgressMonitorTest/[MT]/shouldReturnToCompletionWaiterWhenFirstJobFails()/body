@@ -1,0 +1,16 @@
+{
+  ProgressMonitorFactory.MultiPartBuilder builder=ProgressMonitorFactory.NONE.multipleParts(testName.getMethodName());
+  ProgressListener part1=builder.progressForPart("part1",1);
+  ProgressListener part2=builder.progressForPart("part2",1);
+  final Completion completion=builder.build();
+  part1.started();
+  part2.started();
+  part2.failed(new RuntimeException("failure in one of the jobs"));
+  try {
+    completion.await(1,TimeUnit.MILLISECONDS);
+    fail("should have thrown exception");
+  }
+ catch (  ProcessFailureException expected) {
+    assertEquals("failure in one of the jobs",expected.getCause().getMessage());
+  }
+}

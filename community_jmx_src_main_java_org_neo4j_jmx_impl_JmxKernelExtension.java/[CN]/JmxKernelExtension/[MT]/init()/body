@@ -1,0 +1,33 @@
+{
+  support=ManagementSupport.load();
+  url=support.getJMXServiceURL(kernelData);
+  mbs=support.getMBeanServer();
+  beans=new LinkedList<Neo4jMBean>();
+  try {
+    Neo4jMBean bean=new KernelBean(kernelData,support);
+    mbs.registerMBean(bean,bean.objectName);
+    beans.add(bean);
+  }
+ catch (  Exception e) {
+    logger.info("Failed to register Kernel JMX Bean");
+  }
+  for (  ManagementBeanProvider provider : Service.load(ManagementBeanProvider.class)) {
+    try {
+      for (      Neo4jMBean bean : provider.loadBeans(kernelData,support)) {
+        mbs.registerMBean(bean,bean.objectName);
+        beans.add(bean);
+      }
+    }
+ catch (    Exception e) {
+      logger.info("Failed to register JMX Bean " + provider + " ("+ e+ ")");
+    }
+  }
+  try {
+    Neo4jMBean bean=new ConfigurationBean(kernelData,support);
+    mbs.registerMBean(bean,bean.objectName);
+    beans.add(bean);
+  }
+ catch (  Exception e) {
+    logger.info("Failed to register Configuration JMX Bean");
+  }
+}

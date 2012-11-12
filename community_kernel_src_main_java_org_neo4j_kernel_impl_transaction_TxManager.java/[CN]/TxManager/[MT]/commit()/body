@@ -1,0 +1,34 @@
+{
+  assertTmOk("tx commit");
+  Thread thread=Thread.currentThread();
+  TransactionImpl tx=txThreadMap.get(thread);
+  if (tx == null) {
+    throw logAndReturn("TM error tx commit",new IllegalStateException("Not in transaction"));
+  }
+  boolean hasAnyLocks=false;
+  boolean successful=false;
+  try {
+    hasAnyLocks=finishHook.hasAnyLocks(tx);
+    if (tx.getStatus() != Status.STATUS_ACTIVE && tx.getStatus() != Status.STATUS_MARKED_ROLLBACK) {
+      throw logAndReturn("TM error tx commit",new IllegalStateException("Tx status is: " + getTxStatusAsString(tx.getStatus())));
+    }
+    tx.doBeforeCompletion();
+    if (tx.getStatus() == Status.STATUS_ACTIVE) {
+      comittedTxCount.incrementAndGet();
+      commit(thread,tx);
+    }
+ else     if (tx.getStatus() == Status.STATUS_MARKED_ROLLBACK) {
+      rolledBackTxCount.incrementAndGet();
+      rollbackCommit(thread,tx);
+    }
+ else {
+      throw logAndReturn("TM error tx commit",new IllegalStateException("Tx status is: " + getTxStatusAsString(tx.getStatus())));
+    }
+    successful=true;
+  }
+  finally {
+    if (hasAnyLocks) {
+      finishHook.finishTransaction(tx.getEventIdentifier(),successful);
+    }
+  }
+}

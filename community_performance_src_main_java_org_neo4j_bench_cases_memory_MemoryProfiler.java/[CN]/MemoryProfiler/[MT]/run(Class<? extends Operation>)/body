@@ -1,0 +1,28 @@
+{
+  String memoryAgentJar=memoryAgentJar();
+  Process proc=start("java","-javaagent:" + memoryAgentJar,"-Xmx1G","-cp",createClasspath(),MemoryProfiler.class.getName(),memoryTestCase.getName());
+  InputStream source=proc.getInputStream();
+  InputStream err=proc.getErrorStream();
+  StringBuilder out=new StringBuilder();
+  try {
+    outerloop:     while (true) {
+      StringBuilder errOut=new StringBuilder();
+      pipeAvailableChars(err,errOut);
+      String errors=errOut.toString();
+      if (errors.length() > 0) {
+        System.err.print(errors);
+      }
+      if (pipeAvailableChars(source,out)) {
+        break outerloop;
+      }
+      Thread.sleep(10);
+    }
+  }
+ catch (  IOException e) {
+    e.printStackTrace();
+  }
+catch (  InterruptedException e) {
+    throw new RuntimeException(e);
+  }
+  return MemoryProfilingReport.deserialize(out.toString());
+}

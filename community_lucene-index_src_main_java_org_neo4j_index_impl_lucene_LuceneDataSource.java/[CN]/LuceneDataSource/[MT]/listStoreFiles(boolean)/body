@@ -1,0 +1,35 @@
+{
+  final Collection<File> files=new ArrayList<File>();
+  final Collection<SnapshotDeletionPolicy> snapshots=new ArrayList<SnapshotDeletionPolicy>();
+  makeSureAllIndexesAreInstantiated();
+  for (  IndexReference writer : getAllIndexes()) {
+    SnapshotDeletionPolicy deletionPolicy=(SnapshotDeletionPolicy)writer.getWriter().getConfig().getIndexDeletionPolicy();
+    File indexDirectory=getFileDirectory(baseStorePath,writer.getIdentifier());
+    try {
+      IndexCommit commit=deletionPolicy.snapshot(SNAPSHOT_ID);
+      for (      String fileName : commit.getFileNames()) {
+        files.add(new File(indexDirectory,fileName));
+      }
+      snapshots.add(deletionPolicy);
+    }
+ catch (    IllegalStateException e) {
+    }
+  }
+  files.add(providerStore.getFile());
+  return new ClosableIterable<File>(){
+    public Iterator<File> iterator(){
+      return files.iterator();
+    }
+    public void close(){
+      for (      SnapshotDeletionPolicy deletionPolicy : snapshots) {
+        try {
+          deletionPolicy.release(SNAPSHOT_ID);
+        }
+ catch (        IOException e) {
+          e.printStackTrace();
+        }
+      }
+    }
+  }
+;
+}

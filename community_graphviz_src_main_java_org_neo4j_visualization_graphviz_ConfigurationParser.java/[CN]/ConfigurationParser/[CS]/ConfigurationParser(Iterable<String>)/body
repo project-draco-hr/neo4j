@@ -1,0 +1,50 @@
+{
+  Class<? extends ConfigurationParser> type=getClass();
+  for (  String spec : format) {
+    String[] parts=spec.split("=",2);
+    String name=parts[0];
+    String[] args=null;
+    Method method;
+    Throwable error=null;
+    try {
+      if (parts.length == 1) {
+        method=type.getMethod(name,String[].class);
+      }
+ else {
+        try {
+          method=type.getMethod(name,String.class);
+          args=new String[]{parts[1]};
+        }
+ catch (        NoSuchMethodException nsm) {
+          error=nsm;
+          method=type.getMethod(name,String[].class);
+          args=parts[1].split(",");
+        }
+      }
+      try {
+        if (error == null) {
+          method.invoke(this,(Object[])args);
+        }
+ else {
+          error=null;
+          method.invoke(this,(Object)args);
+        }
+      }
+ catch (      InvocationTargetException ex) {
+        error=ex.getTargetException();
+        if (error instanceof RuntimeException) {
+          throw (RuntimeException)error;
+        }
+      }
+catch (      Exception ex) {
+        error=ex;
+      }
+    }
+ catch (    NoSuchMethodException nsm) {
+      error=nsm;
+    }
+    if (error != null) {
+      throw new IllegalArgumentException("Unknown parameter \"" + name + "\"",error);
+    }
+  }
+}

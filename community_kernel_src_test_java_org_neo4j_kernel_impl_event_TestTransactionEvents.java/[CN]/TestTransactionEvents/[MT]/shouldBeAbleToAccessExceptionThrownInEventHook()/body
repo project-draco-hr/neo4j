@@ -1,0 +1,34 @@
+{
+  commit();
+class MyFancyException extends Exception {
+  }
+  List<TransactionEventHandler<Object>> handlers=new ArrayList<TransactionEventHandler<Object>>();
+  handlers.add(new ExceptionThrowingEventHandler(new MyFancyException(),null,null));
+  for (  TransactionEventHandler<Object> handler : handlers) {
+    getGraphDb().registerTransactionEventHandler(handler);
+  }
+  try {
+    newTransaction();
+    getGraphDb().createNode().delete();
+    try {
+      commit();
+      fail("Should fail commit");
+    }
+ catch (    TransactionFailureException e) {
+      Throwable currentEx=e;
+      do {
+        currentEx=currentEx.getCause();
+        if (currentEx instanceof MyFancyException) {
+          return;
+        }
+      }
+ while (currentEx.getCause() != null);
+      fail("Expected to find the exception thrown in the event hook as the cause of transaction failure.");
+    }
+  }
+  finally {
+    for (    TransactionEventHandler<Object> handler : handlers) {
+      getGraphDb().unregisterTransactionEventHandler(handler);
+    }
+  }
+}

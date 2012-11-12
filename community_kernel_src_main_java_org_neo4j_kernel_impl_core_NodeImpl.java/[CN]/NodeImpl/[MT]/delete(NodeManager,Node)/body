@@ -1,0 +1,20 @@
+{
+  nodeManager.acquireLock(proxy,LockType.WRITE);
+  boolean success=false;
+  try {
+    ArrayMap<Integer,PropertyData> skipMap=nodeManager.getOrCreateCowPropertyRemoveMap(this);
+    ArrayMap<Integer,PropertyData> removedProps=nodeManager.deleteNode(this);
+    if (removedProps.size() > 0) {
+      for (      Integer index : removedProps.keySet()) {
+        skipMap.put(index,removedProps.get(index));
+      }
+    }
+    success=true;
+  }
+  finally {
+    nodeManager.releaseLock(proxy,LockType.WRITE);
+    if (!success) {
+      nodeManager.setRollbackOnly();
+    }
+  }
+}

@@ -1,0 +1,50 @@
+{
+  if (fileChannel == null) {
+    return;
+  }
+  closeStorage();
+  if (windowPool != null) {
+    windowPool.close();
+    windowPool=null;
+  }
+  if ((isReadOnly() && !isBackupSlave()) || idGenerator == null || !storeOk) {
+    closeChannel();
+    return;
+  }
+  long highId=idGenerator.getHighId();
+  int recordSize=-1;
+  if (this instanceof AbstractDynamicStore) {
+    recordSize=((AbstractDynamicStore)this).getBlockSize();
+  }
+ else   if (this instanceof AbstractStore) {
+    recordSize=((AbstractStore)this).getRecordSize();
+  }
+  idGenerator.close();
+  boolean success=false;
+  IOException storedIoe=null;
+  if (!readOnly || backupSlave) {
+    for (int i=0; i < 10; i++) {
+      try {
+        fileChannel.position(highId * recordSize);
+        ByteBuffer buffer=ByteBuffer.wrap(UTF8.encode(getTypeAndVersionDescriptor()));
+        fileChannel.write(buffer);
+        fileChannel.truncate(fileChannel.position());
+        fileChannel.force(false);
+        releaseFileLockAndCloseFileChannel();
+        success=true;
+        break;
+      }
+ catch (      IOException e) {
+        storedIoe=e;
+        System.gc();
+      }
+    }
+  }
+ else {
+    releaseFileLockAndCloseFileChannel();
+    success=true;
+  }
+  if (!success) {
+    throw new UnderlyingStorageException("Unable to close store " + getStorageFileName(),storedIoe);
+  }
+}

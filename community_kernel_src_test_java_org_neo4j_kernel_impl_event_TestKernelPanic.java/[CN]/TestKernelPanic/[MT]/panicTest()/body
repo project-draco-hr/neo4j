@@ -1,0 +1,31 @@
+{
+  String path="target/var/testdb";
+  AbstractNeo4jTestCase.deleteFileOrDirectory(new File(path));
+  GraphDatabaseService graphDb=new GraphDatabaseFactory().newEmbeddedDatabase(path);
+  XaDataSourceManager xaDs=((GraphDatabaseAPI)graphDb).getXaDataSourceManager();
+  IllBehavingXaDataSource noob=new IllBehavingXaDataSource(UTF8.encode("554342"),"noob");
+  xaDs.registerDataSource(noob);
+  Panic panic=new Panic();
+  graphDb.registerKernelEventHandler(panic);
+  org.neo4j.graphdb.Transaction gdbTx=graphDb.beginTx();
+  TransactionManager txMgr=((GraphDatabaseAPI)graphDb).getTxManager();
+  Transaction tx=txMgr.getTransaction();
+  graphDb.createNode();
+  noob.getXaConnection().enlistResource(tx);
+  try {
+    gdbTx.success();
+    gdbTx.finish();
+    fail("Should fail");
+  }
+ catch (  Throwable t) {
+    for (int i=0; i < 10 && !panic.panic; i++) {
+      Thread.sleep(1000);
+    }
+  }
+ finally {
+    graphDb.unregisterKernelEventHandler(panic);
+  }
+  assertTrue(panic.panic);
+  assertMessageLogContains(path,"at org.neo4j.kernel.impl.event.TestKernelPanic.panicTest");
+  graphDb.shutdown();
+}

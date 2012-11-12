@@ -1,0 +1,19 @@
+{
+  long id=idGenerator.nextId(Node.class);
+  NodeImpl node=new NodeImpl(id,Record.NO_NEXT_RELATIONSHIP.intValue(),Record.NO_NEXT_PROPERTY.intValue(),true);
+  NodeProxy proxy=new NodeProxy(id,nodeLookup);
+  acquireLock(proxy,LockType.WRITE);
+  boolean success=false;
+  try {
+    persistenceManager.nodeCreate(id);
+    nodeCache.put(node);
+    success=true;
+    return proxy;
+  }
+  finally {
+    releaseLock(proxy,LockType.WRITE);
+    if (!success) {
+      setRollbackOnly();
+    }
+  }
+}

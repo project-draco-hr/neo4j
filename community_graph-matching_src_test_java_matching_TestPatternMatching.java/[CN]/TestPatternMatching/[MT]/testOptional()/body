@@ -1,0 +1,77 @@
+{
+  Node a=createInstance("A");
+  Node b1=createInstance("B1");
+  Node b2=createInstance("B2");
+  Node c=createInstance("C");
+  Node d1=createInstance("D1");
+  Node d2=createInstance("D2");
+  Node e1=createInstance("E1");
+  Node e2=createInstance("E2");
+  Node f1=createInstance("F1");
+  Node f2=createInstance("F2");
+  Node f3=createInstance("F3");
+  final RelationshipType R1=MyRelTypes.R1;
+  final RelationshipType R2=MyRelTypes.R2;
+  final RelationshipType R3=MyRelTypes.R3;
+  a.createRelationshipTo(b1,R1);
+  a.createRelationshipTo(b2,R1);
+  a.createRelationshipTo(c,R2);
+  a.createRelationshipTo(f1,R3);
+  a.createRelationshipTo(f2,R3);
+  a.createRelationshipTo(f3,R3);
+  c.createRelationshipTo(d1,R1);
+  c.createRelationshipTo(d2,R1);
+  d1.createRelationshipTo(e1,R2);
+  d1.createRelationshipTo(e2,R2);
+  PatternNode pA=new PatternNode("pA");
+  PatternNode pC=new PatternNode("pC");
+  pA.createRelationshipTo(pC,R2);
+  PatternNode oA1=new PatternNode("pA");
+  PatternNode oB1=new PatternNode("pB");
+  oA1.createOptionalRelationshipTo(oB1,R1);
+  PatternNode oA2=new PatternNode("pA");
+  PatternNode oF2=new PatternNode("pF");
+  oA2.createOptionalRelationshipTo(oF2,R3);
+  PatternNode oC3=new PatternNode("pC");
+  PatternNode oD3=new PatternNode("pD");
+  PatternNode oE3=new PatternNode("pE");
+  oC3.createOptionalRelationshipTo(oD3,R1);
+  oD3.createOptionalRelationshipTo(oE3,R2);
+  int count=0;
+  for (  PatternMatch match : doMatch(pA,a,oA1,oA2,oC3)) {
+    assertEquals(match.getNodeFor(pA),a);
+    Node bMatch=match.getNodeFor(oB1);
+    if (!bMatch.equals(b1) && !bMatch.equals(b2)) {
+      fail("either b1 or b2");
+    }
+    Node fMatch=match.getNodeFor(oF2);
+    if (!fMatch.equals(f1) && !fMatch.equals(f2) && !fMatch.equals(f3)) {
+      fail("either f1, f2 or f3");
+    }
+    assertEquals(match.getNodeFor(pC),c);
+    assertEquals(match.getNodeFor(oD3),d1);
+    Node eMatch=match.getNodeFor(oE3);
+    assertTrue(eMatch.equals(e1) || eMatch.equals(e2));
+    count++;
+  }
+  assertEquals(count,12);
+  PatternNode pI=new PatternNode("pI");
+  PatternNode pJ=new PatternNode("pJ");
+  PatternNode pK=new PatternNode("pK");
+  PatternNode pL=new PatternNode("pL");
+  pI.createOptionalRelationshipTo(pJ,R1);
+  pI.createRelationshipTo(pK,R2);
+  pK.createOptionalRelationshipTo(pL,R2);
+  count=0;
+  for (  PatternMatch match : doMatch(pI,a,pI,pK)) {
+    assertEquals(match.getNodeFor(pI),a);
+    Node jMatch=match.getNodeFor(pJ);
+    if (!jMatch.equals(b1) && !jMatch.equals(b2)) {
+      fail("either b1 or b2");
+    }
+    assertEquals(match.getNodeFor(pK),c);
+    assertEquals(match.getNodeFor(pL),null);
+    count++;
+  }
+  assertEquals(count,2);
+}

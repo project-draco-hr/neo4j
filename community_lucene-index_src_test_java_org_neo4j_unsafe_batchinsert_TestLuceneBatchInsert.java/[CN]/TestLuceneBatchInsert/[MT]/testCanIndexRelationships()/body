@@ -1,0 +1,13 @@
+{
+  BatchInserter inserter=new BatchInserterImpl(new File(PATH,"5").getAbsolutePath());
+  BatchInserterIndexProvider indexProvider=new LuceneBatchInserterIndexProviderNewImpl(inserter);
+  BatchInserterIndex edgesIndex=indexProvider.relationshipIndex("edgeIndex",stringMap(IndexManager.PROVIDER,"lucene","type","exact"));
+  long nodeId1=inserter.createNode(map("ID","1"));
+  long nodeId2=inserter.createNode(map("ID","2"));
+  long relationshipId=inserter.createRelationship(nodeId1,nodeId2,EdgeType.KNOWS,null);
+  edgesIndex.add(relationshipId,map("EDGE_TYPE",EdgeType.KNOWS.name()));
+  edgesIndex.flush();
+  assertEquals(String.format("Should return relationship id"),new Long(relationshipId),edgesIndex.query("EDGE_TYPE",EdgeType.KNOWS.name()).getSingle());
+  indexProvider.shutdown();
+  inserter.shutdown();
+}

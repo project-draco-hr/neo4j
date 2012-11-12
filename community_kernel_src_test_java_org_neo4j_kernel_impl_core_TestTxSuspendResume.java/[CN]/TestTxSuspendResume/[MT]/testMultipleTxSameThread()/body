@@ -1,0 +1,17 @@
+{
+  ImpermanentGraphDatabase graphdb=new ImpermanentGraphDatabase();
+  TransactionManager tm=graphdb.getTxManager();
+  tm.begin();
+  Node refNode=graphdb.getReferenceNode();
+  Transaction tx1=tm.suspend();
+  tm.begin();
+  refNode.setProperty("test2","test");
+  Transaction tx2=tm.suspend();
+  tm.resume(tx1);
+  CommitThread thread=new CommitThread(tm,tx2,Thread.currentThread());
+  thread.start();
+  refNode.removeProperty("test2");
+  assertTrue(thread.success());
+  tm.commit();
+  graphdb.shutdown();
+}

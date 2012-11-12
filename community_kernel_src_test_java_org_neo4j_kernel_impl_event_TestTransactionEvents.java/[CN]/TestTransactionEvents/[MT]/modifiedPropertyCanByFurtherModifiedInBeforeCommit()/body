@@ -1,0 +1,23 @@
+{
+  final String key="key";
+  final Object value1="the old value";
+  final Object value2="the new value";
+  final Node node=getGraphDb().createNode();
+  node.setProperty(key,"initial value");
+  commit();
+  TransactionEventHandler<Void> handler=new TransactionEventHandler.Adapter<Void>(){
+    @Override public Void beforeCommit(    TransactionData data) throws Exception {
+      Node modifiedNode=data.assignedNodeProperties().iterator().next().entity();
+      assertEquals(node,modifiedNode);
+      modifiedNode.setProperty(key,value2);
+      return null;
+    }
+  }
+;
+  getGraphDb().registerTransactionEventHandler(handler);
+  newTransaction();
+  node.setProperty(key,value1);
+  commit();
+  assertEquals(value2,node.getProperty(key));
+  getGraphDb().unregisterTransactionEventHandler(handler);
+}

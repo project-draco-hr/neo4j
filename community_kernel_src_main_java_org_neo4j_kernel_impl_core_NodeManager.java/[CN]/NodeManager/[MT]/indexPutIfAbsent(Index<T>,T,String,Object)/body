@@ -1,0 +1,22 @@
+{
+  T existing=index.get(key,value).getSingle();
+  if (existing != null) {
+    return existing;
+  }
+  IndexLock lock=new IndexLock(index.getName(),key);
+  LockType.WRITE.acquire(lock,lockManager);
+  try {
+    existing=index.get(key,value).getSingle();
+    if (existing != null) {
+      LockType.WRITE.release(lock,lockManager);
+      return existing;
+    }
+    index.add(entity,key,value);
+    return null;
+  }
+  finally {
+    if (existing == null) {
+      LockType.WRITE.unacquire(lock,lockManager,lockReleaser);
+    }
+  }
+}

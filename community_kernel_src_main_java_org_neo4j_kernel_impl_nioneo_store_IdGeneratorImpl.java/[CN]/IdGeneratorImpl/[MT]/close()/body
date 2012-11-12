@@ -1,0 +1,29 @@
+{
+  if (highId.get() == -1) {
+    return;
+  }
+  ByteBuffer writeBuffer=ByteBuffer.allocate(grabSize * 8);
+  if (!releasedIdList.isEmpty()) {
+    writeIdBatch(writeBuffer);
+  }
+  if (!idsReadFromFile.isEmpty()) {
+    while (!idsReadFromFile.isEmpty()) {
+      releasedIdList.add(idsReadFromFile.removeFirst());
+    }
+    writeIdBatch(writeBuffer);
+  }
+  try {
+    ByteBuffer buffer=ByteBuffer.allocate(HEADER_SIZE);
+    writeHeader(buffer);
+    defragReusableIdsInFile(writeBuffer);
+    fileChannel.force(false);
+    markAsCleanlyClosed(buffer);
+    fileChannel.force(false);
+    fileChannel.close();
+    fileChannel=null;
+    highId.set(-1);
+  }
+ catch (  IOException e) {
+    throw new UnderlyingStorageException("Unable to close id generator " + fileName,e);
+  }
+}

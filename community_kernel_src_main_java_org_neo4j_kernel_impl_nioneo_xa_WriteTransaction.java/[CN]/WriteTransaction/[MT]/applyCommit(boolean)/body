@@ -1,0 +1,49 @@
+{
+  try {
+    committed=true;
+    CommandSorter sorter=new CommandSorter();
+    if (relTypeCommands != null) {
+      java.util.Collections.sort(relTypeCommands,sorter);
+      for (      Command.RelationshipTypeCommand command : relTypeCommands) {
+        command.execute();
+        if (isRecovered) {
+          addRelationshipType((int)command.getKey());
+        }
+      }
+    }
+    if (propIndexCommands != null) {
+      java.util.Collections.sort(propIndexCommands,sorter);
+      for (      Command.PropertyIndexCommand command : propIndexCommands) {
+        command.execute();
+        if (isRecovered) {
+          addPropertyIndexCommand((int)command.getKey());
+        }
+      }
+    }
+    java.util.Collections.sort(nodeCommands,sorter);
+    java.util.Collections.sort(relCommands,sorter);
+    java.util.Collections.sort(propCommands,sorter);
+    executeCreated(isRecovered,propCommands,relCommands,nodeCommands);
+    executeModified(isRecovered,propCommands,relCommands,nodeCommands);
+    executeDeleted(isRecovered,propCommands,relCommands,nodeCommands);
+    if (isRecovered)     neoStore.setRecoveredStatus(true);
+    try {
+      if (neoStoreCommand != null) {
+        neoStoreCommand.execute();
+        if (isRecovered)         removeGraphPropertiesFromCache();
+      }
+      if (!isRecovered) {
+        updateFirstRelationships();
+        lockReleaser.commitCows();
+      }
+      neoStore.setLastCommittedTx(getCommitTxId());
+    }
+  finally {
+      neoStore.setRecoveredStatus(false);
+    }
+    if (isRecovered)     neoStore.updateIdGenerators();
+  }
+  finally {
+    clear();
+  }
+}

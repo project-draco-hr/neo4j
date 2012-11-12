@@ -1,0 +1,19 @@
+{
+  assumeTrue(!osIsWindows());
+  int NUMBER_OF_RECORDS=1000000;
+  File storeDir=TargetDirectory.forTest(getClass()).graphDbDir(true);
+  Config config=new Config(new ConfigurationDefaults(NodeStore.Configuration.class).apply(stringMap(nodestore_mapped_memory_size.name(),mmapSize(NUMBER_OF_RECORDS,NodeStore.RECORD_SIZE),NodeStore.Configuration.use_memory_mapped_buffers.name(),"true",NodeStore.Configuration.store_dir.name(),storeDir.getPath(),NodeStore.Configuration.neo_store.name(),new File(storeDir,NeoStore.DEFAULT_NAME).getPath())));
+  DefaultIdGeneratorFactory idGeneratorFactory=new DefaultIdGeneratorFactory();
+  StoreFactory storeFactory=new StoreFactory(config,idGeneratorFactory,new DefaultWindowPoolFactory(),new DefaultFileSystemAbstraction(),StringLogger.SYSTEM,new DefaultTxHook());
+  String fileName=new File(storeDir,NeoStore.DEFAULT_NAME + ".nodestore.db").getPath();
+  storeFactory.createEmptyStore(fileName,storeFactory.buildTypeDescriptorAndVersion(NodeStore.TYPE_DESCRIPTOR));
+  NodeStore nodeStore=new NodeStore(fileName,config,idGeneratorFactory,new DefaultWindowPoolFactory(),new DefaultFileSystemAbstraction(),StringLogger.SYSTEM);
+  for (int i=0; i < 2 * NUMBER_OF_RECORDS; i++) {
+    NodeRecord record=new NodeRecord(nodeStore.nextId(),0,0);
+    record.setInUse(true);
+    nodeStore.updateRecord(record);
+  }
+  WindowPoolStats stats=nodeStore.getWindowPoolStats();
+  nodeStore.close();
+  assertEquals(stats.toString(),0,stats.getMissCount());
+}
