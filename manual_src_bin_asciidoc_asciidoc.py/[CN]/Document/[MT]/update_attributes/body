@@ -1,0 +1,52 @@
+def update_attributes(self, attrs=None):
+    "\n        Set implicit attributes and attributes in 'attrs'.\n        "
+    t = time.time()
+    self.attributes['localtime'] = time_str(t)
+    self.attributes['localdate'] = date_str(t)
+    self.attributes['asciidoc-version'] = VERSION
+    self.attributes['asciidoc-file'] = APP_FILE
+    self.attributes['asciidoc-dir'] = APP_DIR
+    if localapp():
+        self.attributes['asciidoc-confdir'] = APP_DIR
+    else:
+        self.attributes['asciidoc-confdir'] = CONF_DIR
+    self.attributes['user-dir'] = USER_DIR
+    if config.verbose:
+        self.attributes['verbose'] = ''
+    if attrs:
+        self.attributes.update(attrs)
+    self.attributes.update(config.cmd_attrs)
+    if attrs:
+        config.load_miscellaneous(attrs)
+    config.load_miscellaneous(config.cmd_attrs)
+    self.attributes['newline'] = config.newline
+    if (self.infile is not None):
+        if (self.infile and os.path.exists(self.infile)):
+            t = os.path.getmtime(self.infile)
+        elif (self.infile == '<stdin>'):
+            t = time.time()
+        else:
+            t = None
+        if t:
+            self.attributes['doctime'] = time_str(t)
+            self.attributes['docdate'] = date_str(t)
+        if (self.infile != '<stdin>'):
+            self.attributes['infile'] = self.infile
+            self.attributes['indir'] = os.path.dirname(self.infile)
+            self.attributes['docfile'] = self.infile
+            self.attributes['docdir'] = os.path.dirname(self.infile)
+            self.attributes['docname'] = os.path.splitext(os.path.basename(self.infile))[0]
+    if self.outfile:
+        if (self.outfile != '<stdout>'):
+            self.attributes['outfile'] = self.outfile
+            self.attributes['outdir'] = os.path.dirname(self.outfile)
+            if (self.infile == '<stdin>'):
+                self.attributes['docname'] = os.path.splitext(os.path.basename(self.outfile))[0]
+            ext = os.path.splitext(self.outfile)[1][1:]
+        elif config.outfilesuffix:
+            ext = config.outfilesuffix[1:]
+        else:
+            ext = ''
+        if ext:
+            self.attributes['filetype'] = ext
+            self.attributes[('filetype-' + ext)] = ''

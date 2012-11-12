@@ -1,0 +1,192 @@
+def subs_attrs(lines, dictionary=None):
+    "Substitute 'lines' of text with attributes from the global\n    document.attributes dictionary and from 'dictionary' ('dictionary'\n    entries take precedence). Return a tuple of the substituted lines.  'lines'\n    containing undefined attributes are deleted. If 'lines' is a string then\n    return a string.\n\n    - Attribute references are substituted in the following order: simple,\n      conditional, system.\n    - Attribute references inside 'dictionary' entry values are substituted.\n    "
+
+    def end_brace(text, start):
+        'Return index following end brace that matches brace at start in\n        text.'
+        assert (text[start] == '{')
+        n = 0
+        result = start
+        for c in text[start:]:
+            if ((result == (len(text) - 1)) or (text[(result + 1)] != '\\')):
+                if (c == '{'):
+                    n = (n + 1)
+                elif (c == '}'):
+                    n = (n - 1)
+            result = (result + 1)
+            if (n == 0):
+                break
+        return result
+    if (type(lines) == str):
+        string_result = True
+        lines = [lines]
+    else:
+        string_result = False
+    if (dictionary is None):
+        attrs = document.attributes
+    else:
+        attrs = {}
+        for (k, v) in document.attributes.items():
+            if (not re.match('^\\d+$', k)):
+                attrs[k] = v
+        for (k, v) in dictionary.items():
+            if (v is None):
+                del dictionary[k]
+            else:
+                v = subs_attrs(str(v))
+                if (v is None):
+                    del dictionary[k]
+                else:
+                    dictionary[k] = v
+        attrs.update(dictionary)
+    result = []
+    for line in lines:
+        line = line.replace('\\{', '{\\')
+        line = line.replace('\\}', '}\\')
+        reo = re.compile('(?su)\\{(?P<name>[^\\\\\\W][-\\w]*?)\\}(?!\\\\)')
+        pos = 0
+        while True:
+            mo = reo.search(line, pos)
+            if (not mo):
+                break
+            s = attrs.get(mo.group('name'))
+            if (s is None):
+                pos = mo.end()
+            else:
+                s = str(s)
+                line = ((line[:mo.start()] + s) + line[mo.end():])
+                pos = (mo.start() + len(s))
+        reo1 = re.compile('(?su)\\{(?P<name>[^\\\\\\W][-\\w]*?)(?P<op>\\=|\\?|!|#|%|@|\\$)(?P<value>.*?)\\}(?!\\\\)')
+        reo2 = re.compile(((('(?su)\\{(?P<name>[^\\\\\\W][-\\w' + OR) + AND) + ']*?)(?P<op>\\=|\\?|!|#|%|@|\\$)(?P<value>.*?)\\}(?!\\\\)'))
+        for reo in [reo1, reo2]:
+            pos = 0
+            while True:
+                mo = reo.search(line, pos)
+                if (not mo):
+                    break
+                attr = mo.group()
+                name = mo.group('name')
+                if (reo == reo2):
+                    if (OR in name):
+                        sep = OR
+                    else:
+                        sep = AND
+                    names = [s.strip() for s in name.split(sep) if s.strip()]
+                    for n in names:
+                        if (not re.match('^[^\\\\\\W][-\\w]*$', n)):
+                            message.error(('illegal attribute syntax: %s' % attr))
+                    if (sep == OR):
+                        for n in names:
+                            if (attrs.get(n) is not None):
+                                lval = ''
+                                break
+                        else:
+                            lval = None
+                    else:
+                        for n in names:
+                            if (attrs.get(n) is None):
+                                lval = None
+                                break
+                        else:
+                            lval = ''
+                else:
+                    lval = attrs.get(name)
+                op = mo.group('op')
+                end = end_brace(line, mo.start())
+                rval = line[mo.start('value'):(end - 1)]
+                UNDEFINED = '{zzzzz}'
+                if (lval is None):
+                    if (op == '='):
+                        s = rval
+                    elif (op == '?'):
+                        s = ''
+                    elif (op == '!'):
+                        s = rval
+                    elif (op == '#'):
+                        s = UNDEFINED
+                    elif (op == '%'):
+                        s = rval
+                    elif (op in ('@', '$')):
+                        s = UNDEFINED
+                    else:
+                        assert False, ('illegal attribute: %s' % attr)
+                elif (op == '='):
+                    s = lval
+                elif (op == '?'):
+                    s = rval
+                elif (op == '!'):
+                    s = ''
+                elif (op == '#'):
+                    s = rval
+                elif (op == '%'):
+                    s = UNDEFINED
+                elif (op in ('@', '$')):
+                    v = re.split('(?<!\\\\):', rval)
+                    if (len(v) not in (2, 3)):
+                        message.error(('illegal attribute syntax: %s' % attr))
+                        s = ''
+                    elif (not is_re((('^' + v[0]) + '$'))):
+                        message.error(('illegal attribute regexp: %s' % attr))
+                        s = ''
+                    else:
+                        v = [s.replace('\\:', ':') for s in v]
+                        re_mo = re.match((('^' + v[0]) + '$'), lval)
+                        if (op == '@'):
+                            if re_mo:
+                                s = v[1]
+                            elif (len(v) == 3):
+                                s = v[2]
+                            else:
+                                s = ''
+                        elif re_mo:
+                            if (len(v) == 2):
+                                s = v[1]
+                            elif (v[1] == ''):
+                                s = UNDEFINED
+                            else:
+                                s = v[1]
+                        elif (len(v) == 2):
+                            s = UNDEFINED
+                        else:
+                            s = v[2]
+                else:
+                    assert False, ('illegal attribute: %s' % attr)
+                s = str(s)
+                line = ((line[:mo.start()] + s) + line[end:])
+                pos = (mo.start() + len(s))
+        skipped = re.search('(?su)\\{[^\\\\\\W][-\\w]*?\\}(?!\\\\)', line)
+        if skipped:
+            trace('dropped line', line)
+            continue
+        reos = [re.compile('(?su)\\{(?P<action>eval):(?P<expr>.*?)\\}(?!\\\\)'), re.compile('(?su)\\{(?P<action>[^\\\\\\W][-\\w]*?):(?P<expr>.*?)\\}(?!\\\\)')]
+        skipped = False
+        for reo in reos:
+            pos = 0
+            while True:
+                mo = reo.search(line, pos)
+                if (not mo):
+                    break
+                expr = mo.group('expr')
+                action = mo.group('action')
+                expr = expr.replace('{\\', '{')
+                expr = expr.replace('}\\', '}')
+                s = system(action, expr, attrs=dictionary)
+                if ((dictionary is not None) and (action in ('counter', 'counter2', 'set', 'set2'))):
+                    attrs.update(dictionary)
+                if (s is None):
+                    skipped = True
+                    break
+                line = ((line[:mo.start()] + s) + line[mo.end():])
+                pos = (mo.start() + len(s))
+            if skipped:
+                break
+        if (not skipped):
+            line = line.replace('{\\', '{')
+            line = line.replace('}\\', '}')
+            result.append(line)
+    if string_result:
+        if result:
+            return '\n'.join(result)
+        else:
+            return None
+    else:
+        return tuple(result)

@@ -1,0 +1,31 @@
+def create_zip(zip_file, src, skip_hidden=False):
+    '\n    Create Zip file. If src is a directory archive all contained files and\n    subdirectories, if src is a file archive the src file.\n    Files and directories names starting with . are skipped\n    if skip_hidden is True.\n    Throws exception if error occurs.\n    '
+    zipo = zipfile.ZipFile(zip_file, 'w')
+    try:
+        if os.path.isfile(src):
+            arcname = os.path.basename(src)
+            message.verbose(('archiving: %s' % arcname))
+            zipo.write(src, arcname, zipfile.ZIP_DEFLATED)
+        elif os.path.isdir(src):
+            srcdir = os.path.abspath(src)
+            if (srcdir[(-1)] != os.path.sep):
+                srcdir += os.path.sep
+            for (root, dirs, files) in os.walk(srcdir):
+                arcroot = os.path.abspath(root)[len(srcdir):]
+                if skip_hidden:
+                    for d in dirs[:]:
+                        if d.startswith('.'):
+                            message.verbose(('skipping: %s' % os.path.join(arcroot, d)))
+                            del dirs[dirs.index(d)]
+                for f in files:
+                    filename = os.path.join(root, f)
+                    arcname = os.path.join(arcroot, f)
+                    if (skip_hidden and f.startswith('.')):
+                        message.verbose(('skipping: %s' % arcname))
+                        continue
+                    message.verbose(('archiving: %s' % arcname))
+                    zipo.write(filename, arcname, zipfile.ZIP_DEFLATED)
+        else:
+            raise ValueError, ('src must specify directory or file: %s' % src)
+    finally:
+        zipo.close()

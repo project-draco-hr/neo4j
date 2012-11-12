@@ -1,0 +1,38 @@
+def process_author_names(self):
+    ' Calculate any missing author related attributes.'
+    attrs = self.attributes
+    firstname = attrs.get('firstname', '')
+    middlename = attrs.get('middlename', '')
+    lastname = attrs.get('lastname', '')
+    author = attrs.get('author')
+    initials = attrs.get('authorinitials')
+    if (author and (not (firstname or middlename or lastname))):
+        self.parse_author(author)
+        attrs['author'] = author.replace('_', ' ')
+        self.process_author_names()
+        return
+    if (not author):
+        author = ('%s %s %s' % (firstname, middlename, lastname))
+        author = author.strip()
+        author = re.sub('\\s+', ' ', author)
+    if (not initials):
+        initials = ((char_decode(firstname)[:1] + char_decode(middlename)[:1]) + char_decode(lastname)[:1])
+        initials = char_encode(initials).upper()
+    names = [firstname, middlename, lastname, author, initials]
+    for (i, v) in enumerate(names):
+        v = config.subs_specialchars(v)
+        v = subs_attrs(v)
+        names[i] = v
+    (firstname, middlename, lastname, author, initials) = names
+    if firstname:
+        attrs['firstname'] = firstname
+    if middlename:
+        attrs['middlename'] = middlename
+    if lastname:
+        attrs['lastname'] = lastname
+    if author:
+        attrs['author'] = author
+    if initials:
+        attrs['authorinitials'] = initials
+    if author:
+        attrs['authored'] = ''

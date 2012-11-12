@@ -1,0 +1,47 @@
+def parse_ruler(self, ruler):
+    'Parse ruler calculating underline and ruler column widths.'
+    fc = re.escape(self.fillchar)
+    mo = re.match((('^(.*' + fc) + '+)([\\d\\.]+)$'), ruler)
+    if mo:
+        ruler = mo.group(1)
+        self.tablewidth = float(mo.group(2))
+        self.attributes['tablewidth'] = str(float(self.tablewidth))
+    else:
+        self.tablewidth = None
+        self.attributes['tablewidth'] = '100.0'
+    if (ruler[1] != self.fillchar):
+        self.isnumeric = True
+    elif (ruler[1:] == (self.fillchar * len(ruler[1:]))):
+        self.isnumeric = True
+    else:
+        self.isnumeric = False
+    self.underline = (('^' + fc) + '{3,}$')
+    splits = re.split(self.COL_STOP, ruler)[1:]
+    for i in range(0, len(splits), 2):
+        c = Column_OLD()
+        c.colalign = self.ALIGNMENTS[splits[i]]
+        s = splits[(i + 1)]
+        if self.isnumeric:
+            s = re.sub((fc + '+$'), '', s)
+            if (s == ''):
+                c.rulerwidth = None
+            else:
+                try:
+                    val = int(s)
+                    if (not (val > 0)):
+                        raise ValueError, 'not > 0'
+                    c.rulerwidth = val
+                except ValueError:
+                    raise EAsciiDoc, 'malformed ruler: bad width'
+        else:
+            if (not re.match((('^' + fc) + '+$'), s)):
+                raise EAsciiDoc, 'malformed ruler: illegal fillchars'
+            c.rulerwidth = (len(s) + 1)
+        self.columns.append(c)
+    if self.isnumeric:
+        if (self.columns[0].rulerwidth is None):
+            prevwidth = 1
+        for c in self.columns:
+            if (c.rulerwidth is None):
+                c.rulerwidth = prevwidth
+            prevwidth = c.rulerwidth

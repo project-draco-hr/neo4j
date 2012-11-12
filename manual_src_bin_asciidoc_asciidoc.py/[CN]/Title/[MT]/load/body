@@ -1,0 +1,37 @@
+@staticmethod
+def load(entries):
+    'Load and validate [titles] section entries dictionary.'
+    if ('underlines' in entries):
+        errmsg = 'malformed [titles] underlines entry'
+        try:
+            underlines = parse_list(entries['underlines'])
+        except Exception:
+            raise EAsciiDoc, errmsg
+        if (len(underlines) != len(Title.underlines)):
+            raise EAsciiDoc, errmsg
+        for s in underlines:
+            if (len(s) != 2):
+                raise EAsciiDoc, errmsg
+        Title.underlines = tuple(underlines)
+        Title.dump_dict['underlines'] = entries['underlines']
+    if ('subs' in entries):
+        Title.subs = parse_options(entries['subs'], SUBS_OPTIONS, 'illegal [titles] subs entry')
+        Title.dump_dict['subs'] = entries['subs']
+    if ('sectiontitle' in entries):
+        pat = entries['sectiontitle']
+        if ((not pat) or (not is_re(pat))):
+            raise EAsciiDoc, 'malformed [titles] sectiontitle entry'
+        Title.pattern = pat
+        Title.dump_dict['sectiontitle'] = pat
+    if ('blocktitle' in entries):
+        pat = entries['blocktitle']
+        if ((not pat) or (not is_re(pat))):
+            raise EAsciiDoc, 'malformed [titles] blocktitle entry'
+        BlockTitle.pattern = pat
+        Title.dump_dict['blocktitle'] = pat
+    for k in ('sect0', 'sect1', 'sect2', 'sect3', 'sect4'):
+        if (k in entries):
+            pat = entries[k]
+            if ((not pat) or (not is_re(pat))):
+                raise EAsciiDoc, ('malformed [titles] %s entry' % k)
+            Title.dump_dict[k] = pat

@@ -1,0 +1,32 @@
+def translate_item(self):
+    if (self.type == 'callout'):
+        self.attributes['coids'] = calloutmap.calloutids(self.ordinal)
+    itemtag = subs_tag(self.tag.item, self.attributes)
+    writer.write(itemtag[0], trace='list item open')
+    text = reader.read_until(lists.terminators)
+    if self.text:
+        text = ([self.text] + list(text))
+    if text:
+        writer.write_tag(self.tag.text, text, self.presubs, self.attributes, trace='list text')
+    while True:
+        continuation = (reader.read_next() == '+')
+        if continuation:
+            reader.read()
+        while (Lex.next() in (BlockTitle, AttributeList)):
+            Lex.next().translate()
+        if ((not continuation) and BlockTitle.title):
+            break
+        next = Lex.next()
+        if (next in lists.open):
+            break
+        elif isinstance(next, List):
+            next.translate()
+        elif (isinstance(next, Paragraph) and ('listelement' in next.options)):
+            next.translate()
+        elif continuation:
+            if (next is Title):
+                message.error('section title not allowed in list item', halt=True)
+            next.translate()
+        else:
+            break
+    writer.write(itemtag[1], trace='list item close')

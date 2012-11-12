@@ -1,0 +1,38 @@
+def copy_resources(self, html_files, src_dir, dst_dir, resources=[]):
+    '\n        Search html_files for images and CSS resource URIs (html_files can be a\n        list of file names or a single file name).\n        Copy them from the src_dir to the dst_dir.\n        If not found in src_dir then recursively search all specified\n        resource directories.\n        Optional additional resources files can be passed in the resources list.\n        '
+    resources = resources[:]
+    resources += find_resources(html_files, 'link', 'href', (lambda attrs: (attrs.get('type') == 'text/css')))
+    resources += find_resources(html_files, 'img', 'src')
+    resources += self.resource_files
+    resources = list(set(resources))
+    resources.sort()
+    for f in resources:
+        if ('=' in f):
+            (src, dst) = f.split('=')
+            if (not dst):
+                dst = src
+        else:
+            src = dst = f
+        src = os.path.normpath(src)
+        dst = os.path.normpath(dst)
+        if os.path.isabs(dst):
+            die(('absolute resource file name: %s' % dst))
+        if dst.startswith(os.pardir):
+            die(('resource file outside destination directory: %s' % dst))
+        src = os.path.join(src_dir, src)
+        dst = os.path.join(dst_dir, dst)
+        if (not os.path.isfile(src)):
+            for d in self.resource_dirs:
+                d = os.path.join(src_dir, d)
+                found = find_files(d, os.path.basename(src))
+                if found:
+                    src = found[0]
+                    break
+            else:
+                if (not os.path.isfile(dst)):
+                    die(('missing resource: %s' % src))
+                continue
+        if (os.path.normpath(src) != os.path.normpath(dst)):
+            dstdir = os.path.dirname(dst)
+            shell_makedirs(dstdir)
+            shell_copy(src, dst)

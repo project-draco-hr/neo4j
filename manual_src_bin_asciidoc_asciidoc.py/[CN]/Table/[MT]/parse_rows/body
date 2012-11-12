@@ -1,0 +1,54 @@
+def parse_rows(self, text):
+    '\n        Parse the table source text into self.rows (a list of rows, each row\n        is a list of Cells.\n        '
+    reserved = {}
+    if (self.parameters.format in ('psv', 'dsv')):
+        colcount = len(self.columns)
+        parsed_cells = self.parse_psv_dsv(text)
+        ri = 0
+        ci = 0
+        row = []
+        i = 0
+        while True:
+            resv = (reserved.get(ri) and reserved[ri].get(ci))
+            if resv:
+                cell = resv
+            else:
+                if (i >= len(parsed_cells)):
+                    break
+                cell = parsed_cells[i]
+                i += 1
+                if (cell.vspan > 1):
+                    for j in range(1, cell.vspan):
+                        if (not ((ri + j) in reserved)):
+                            reserved[(ri + j)] = {}
+                        reserved[(ri + j)][ci] = cell.clone_reserve()
+            ci += cell.span
+            if (ci <= colcount):
+                row.append(cell)
+            if (ci >= colcount):
+                self.rows.append(row)
+                ri += 1
+                row = []
+                ci = 0
+    elif (self.parameters.format == 'csv'):
+        self.rows = self.parse_csv(text)
+    else:
+        assert True, 'illegal table format'
+    for (ri, row) in enumerate(self.rows):
+        empty = True
+        for cell in row:
+            if (not cell.reserved):
+                empty = False
+                break
+        if empty:
+            message.warning(('table row %d: empty spanned row' % (ri + 1)))
+    for (ri, row) in enumerate(self.rows):
+        row_span = 0
+        for cell in row:
+            row_span += cell.span
+        if (ri == 0):
+            header_span = row_span
+        if (row_span < header_span):
+            message.warning(('table row %d: does not span all columns' % (ri + 1)))
+        if (row_span > header_span):
+            message.warning(('table row %d: exceeds columns span' % (ri + 1)))

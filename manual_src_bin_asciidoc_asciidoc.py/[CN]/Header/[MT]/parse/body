@@ -1,0 +1,62 @@
+@staticmethod
+def parse():
+    assert ((Lex.next() is Title) and (Title.level == 0))
+    attrs = document.attributes
+    Title.translate(skipsubs=True)
+    attrs['doctitle'] = Title.attributes['title']
+    document.consume_attributes_and_comments(noblanks=True)
+    s = reader.read_next()
+    mo = None
+    if s:
+        s = reader.read()
+        mo = re.match(Header.RCS_ID_RE, s)
+        if (not mo):
+            document.parse_author(s)
+            document.consume_attributes_and_comments(noblanks=True)
+            if reader.read_next():
+                s = reader.read()
+                s = subs_attrs(s)
+                if s:
+                    mo = re.match(Header.RCS_ID_RE, s)
+                    if (not mo):
+                        mo = re.match(Header.REV_LINE_RE, s)
+        document.consume_attributes_and_comments(noblanks=True)
+    s = attrs.get('revnumber')
+    if s:
+        mo = re.match(Header.RCS_ID_RE, s)
+    if mo:
+        revnumber = mo.group('revnumber')
+        if revnumber:
+            attrs['revnumber'] = revnumber.strip()
+        author = mo.groupdict().get('author')
+        if (author and ('firstname' not in attrs)):
+            document.parse_author(author)
+        revremark = mo.groupdict().get('revremark')
+        if (revremark is not None):
+            revremark = [revremark]
+            while reader.read_next():
+                if document.consume_attributes_and_comments(noblanks=True):
+                    break
+                revremark.append(reader.read())
+            revremark = Lex.subs(revremark, ['normal'])
+            revremark = '\n'.join(revremark).strip()
+            attrs['revremark'] = revremark
+        revdate = mo.group('revdate')
+        if revdate:
+            attrs['revdate'] = revdate.strip()
+        elif (revnumber or revremark):
+            attrs['revdate'] = attrs['docdate']
+    document.process_author_names()
+    if (document.doctype == 'manpage'):
+        mo = re.match('^(?P<mantitle>.*)\\((?P<manvolnum>.*)\\)$', attrs['doctitle'])
+        if (not mo):
+            message.error('malformed manpage title')
+        else:
+            mantitle = mo.group('mantitle').strip()
+            mantitle = subs_attrs(mantitle)
+            if (mantitle is None):
+                message.error('undefined attribute in manpage title')
+            if (mantitle == mantitle.upper()):
+                mantitle = mantitle.lower()
+            attrs['mantitle'] = mantitle
+            attrs['manvolnum'] = mo.group('manvolnum').strip()

@@ -1,0 +1,45 @@
+def parse_psv_dsv(self, text):
+    '\n        Parse list of PSV or DSV table source text lines and return a list of\n        Cells.\n        '
+
+    def append_cell(data, span_spec, op, align_spec, style):
+        op = (op or '+')
+        if (op == '*'):
+            span = Table.parse_span_spec(span_spec)[0]
+            for i in range(span):
+                cells.append(Cell(data, '1', align_spec, style))
+        elif (op == '+'):
+            cells.append(Cell(data, span_spec, align_spec, style))
+        else:
+            self.error('illegal table cell operator')
+    text = '\n'.join(text)
+    separator = ('(?msu)' + self.parameters.separator)
+    format = self.parameters.format
+    start = 0
+    span = None
+    op = None
+    align = None
+    style = None
+    cells = []
+    data = ''
+    for mo in re.finditer(separator, text):
+        data += text[start:mo.start()]
+        if data.endswith('\\'):
+            data = (data[:(-1)] + mo.group())
+        else:
+            append_cell(data, span, op, align, style)
+            span = mo.groupdict().get('span')
+            op = mo.groupdict().get('op')
+            align = mo.groupdict().get('align')
+            style = mo.groupdict().get('style')
+            if style:
+                style = self.get_style(style)
+            data = ''
+        start = mo.end()
+    data += text[start:]
+    append_cell(data, span, op, align, style)
+    if (format == 'psv'):
+        if (cells[0].data.strip() != ''):
+            self.error(('missing leading separator: %s' % separator), self.start)
+        else:
+            cells.pop(0)
+    return cells

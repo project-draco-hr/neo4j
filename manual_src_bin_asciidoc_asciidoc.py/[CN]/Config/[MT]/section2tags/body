@@ -1,0 +1,36 @@
+def section2tags(self, section, d={}, skipstart=False, skipend=False):
+    "Perform attribute substitution on 'section' using document\n        attributes plus 'd' attributes. Return tuple (stag,etag) containing\n        pre and post | placeholder tags. 'skipstart' and 'skipend' are\n        used to suppress substitution."
+    assert (section is not None)
+    if (section in self.sections):
+        body = self.sections[section]
+    else:
+        message.warning(('missing section: [%s]' % section))
+        body = ()
+    stag = []
+    etag = []
+    in_stag = True
+    for s in body:
+        if in_stag:
+            mo = re.match('(?P<stag>.*)\\|(?P<etag>.*)', s)
+            if mo:
+                if mo.group('stag'):
+                    stag.append(mo.group('stag'))
+                if mo.group('etag'):
+                    etag.append(mo.group('etag'))
+                in_stag = False
+            else:
+                stag.append(s)
+        else:
+            etag.append(s)
+    title = d.get('title')
+    if title:
+        d['title'] = chr(0)
+    if (not skipstart):
+        stag = subs_attrs(stag, d)
+    if (not skipend):
+        etag = subs_attrs(etag, d)
+    if title:
+        stag = map((lambda x: x.replace(chr(0), title)), stag)
+        etag = map((lambda x: x.replace(chr(0), title)), etag)
+        d['title'] = title
+    return (stag, etag)

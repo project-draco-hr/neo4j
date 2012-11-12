@@ -1,0 +1,19 @@
+"\nNAME\n    code-filter - AsciiDoc filter to highlight language keywords\n\nSYNOPSIS\n    code-filter -b backend -l language [ -t tabsize ]\n                [ --help | -h ] [ --version | -v ]\n\nDESCRIPTION\n    This filter reads source code from the standard input, highlights language\n    keywords and comments and writes to the standard output.\n\n    The purpose of this program is to demonstrate how to write an AsciiDoc\n    filter -- it's much to simplistic to be passed off as a code syntax\n    highlighter. Use the 'source-highlight-filter' instead.\n\n\nOPTIONS\n    --help, -h\n        Print this documentation.\n\n    -b\n        Backend output file format: 'docbook', 'linuxdoc', 'html', 'css'.\n\n    -l\n        The name of the source code language: 'python', 'ruby', 'c++', 'c'.\n\n    -t tabsize\n        Expand source tabs to tabsize spaces.\n\n    --version, -v\n        Print program version number.\n\nBUGS\n    - Code on the same line as a block comment is treated as comment.\n      Keywords inside literal strings are highlighted.\n    - There doesn't appear to be an easy way to accomodate linuxdoc so\n      just pass it through without markup.\n\nAUTHOR\n    Written by Stuart Rackham, <srackham@gmail.com>\n\nURLS\n    http://sourceforge.net/projects/asciidoc/\n    http://www.methods.co.nz/asciidoc/\n\nCOPYING\n    Copyright (C) 2002-2006 Stuart Rackham. Free use of this software is\n    granted under the terms of the GNU General Public License (GPL).\n"
+import os, sys, re, string
+VERSION = '1.1.2'
+language = None
+backend = None
+tabsize = 8
+keywordtags = {'html': ('<strong>', '</strong>'), 'css': ('<strong>', '</strong>'), 'docbook': ('<emphasis role="strong">', '</emphasis>'), 'linuxdoc': ('', ''), }
+commenttags = {'html': ('<i>', '</i>'), 'css': ('<i>', '</i>'), 'docbook': ('<emphasis>', '</emphasis>'), 'linuxdoc': ('', ''), }
+keywords = {'python': ('and', 'del', 'for', 'is', 'raise', 'assert', 'elif', 'from', 'lambda', 'return', 'break', 'else', 'global', 'not', 'try', 'class', 'except', 'if', 'or', 'while', 'continue', 'exec', 'import', 'pass', 'yield', 'def', 'finally', 'in', 'print'), 'ruby': ('__FILE__', 'and', 'def', 'end', 'in', 'or', 'self', 'unless', '__LINE__', 'begin', 'defined?ensure', 'module', 'redo', 'super', 'until', 'BEGIN', 'break', 'do', 'false', 'next', 'rescue', 'then', 'when', 'END', 'case', 'else', 'for', 'nil', 'retry', 'true', 'while', 'alias', 'class', 'elsif', 'if', 'not', 'return', 'undef', 'yield'), 'c++': ('asm', 'auto', 'bool', 'break', 'case', 'catch', 'char', 'class', 'const', 'const_cast', 'continue', 'default', 'delete', 'do', 'double', 'dynamic_cast', 'else', 'enum', 'explicit', 'export', 'extern', 'false', 'float', 'for', 'friend', 'goto', 'if', 'inline', 'int', 'long', 'mutable', 'namespace', 'new', 'operator', 'private', 'protected', 'public', 'register', 'reinterpret_cast', 'return', 'short', 'signed', 'sizeof', 'static', 'static_cast', 'struct', 'switch', 'template', 'this', 'throw', 'true', 'try', 'typedef', 'typeid', 'typename', 'union', 'unsigned', 'using', 'virtual', 'void', 'volatile', 'wchar_t', 'while'), }
+block_comments = {'python': ("'''", "'''"), 'ruby': None, 'c++': ('/*', '*/'), }
+inline_comments = {'python': '#', 'ruby': '#', 'c++': '//', }
+if (__name__ == '__main__'):
+    try:
+        main()
+    except (KeyboardInterrupt, SystemExit):
+        pass
+    except:
+        print_stderr(('%s: unexpected exit status: %s' % (os.path.basename(sys.argv[0]), sys.exc_info()[1])))
+    sys.exit(sys.exc_info()[1])

@@ -1,0 +1,38 @@
+def parse_entry(entry, dict=None, unquote=False, unique_values=False, allow_name_only=False, escape_delimiter=True):
+    "Parse name=value entry to dictionary 'dict'. Return tuple (name,value)\n    or None if illegal entry.\n    If name= then value is set to ''.\n    If name and allow_name_only=True then value is set to ''.\n    If name! and allow_name_only=True then value is set to None.\n    Leading and trailing white space is striped from 'name' and 'value'.\n    'name' can contain any printable characters.\n    If the '=' delimiter character is allowed in  the 'name' then\n    it must be escaped with a backslash and escape_delimiter must be True.\n    If 'unquote' is True leading and trailing double-quotes are stripped from\n    'name' and 'value'.\n    If unique_values' is True then dictionary entries with the same value are\n    removed before the parsed entry is added."
+    if escape_delimiter:
+        mo = re.search('(?:[^\\\\](=))', entry)
+    else:
+        mo = re.search('(=)', entry)
+    if mo:
+        if mo.group(1):
+            name = entry[:mo.start(1)]
+            if escape_delimiter:
+                name = name.replace('\\=', '=')
+            value = entry[mo.end(1):]
+    elif (allow_name_only and entry):
+        name = entry
+        if (name[(-1)] == '!'):
+            name = name[:(-1)]
+            value = None
+        else:
+            value = ''
+    else:
+        return None
+    if unquote:
+        name = strip_quotes(name)
+        if (value is not None):
+            value = strip_quotes(value)
+    else:
+        name = name.strip()
+        if (value is not None):
+            value = value.strip()
+    if (not name):
+        return None
+    if (dict is not None):
+        if unique_values:
+            for (k, v) in dict.items():
+                if (v == value):
+                    del dict[k]
+        dict[name] = value
+    return (name, value)

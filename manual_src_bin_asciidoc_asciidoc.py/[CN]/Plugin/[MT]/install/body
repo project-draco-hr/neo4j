@@ -1,0 +1,33 @@
+@staticmethod
+def install(args):
+    '\n        Install plugin Zip file.\n        args[0] is plugin zip file path.\n        args[1] is optional destination plugins directory.\n        '
+    if (len(args) not in (1, 2)):
+        die(('invalid number of arguments: --%s install %s' % (Plugin.type, ' '.join(args))))
+    zip_file = args[0]
+    if (not os.path.isfile(zip_file)):
+        die(('file not found: %s' % zip_file))
+    reo = re.match('^\\w+', os.path.split(zip_file)[1])
+    if (not reo):
+        die(('file name does not start with legal %s name: %s' % (Plugin.type, zip_file)))
+    plugin_name = reo.group()
+    if (len(args) == 2):
+        plugins_dir = args[1]
+        if (not os.path.isdir(plugins_dir)):
+            die(('directory not found: %s' % plugins_dir))
+    else:
+        plugins_dir = Plugin.get_dir()
+        if (not plugins_dir):
+            die('user home directory is not defined')
+    plugin_dir = os.path.join(plugins_dir, plugin_name)
+    if os.path.exists(plugin_dir):
+        die(('%s is already installed: %s' % (Plugin.type, plugin_dir)))
+    try:
+        os.makedirs(plugin_dir)
+    except Exception as e:
+        die(('failed to create %s directory: %s' % (Plugin.type, str(e))))
+    try:
+        extract_zip(zip_file, plugin_dir)
+    except Exception as e:
+        if os.path.isdir(plugin_dir):
+            shutil.rmtree(plugin_dir)
+        die(('failed to extract %s: %s' % (Plugin.type, str(e))))

@@ -1,0 +1,60 @@
+def load_file(self, fname, dir=None, include=[], exclude=[]):
+    "\n        Loads sections dictionary with sections from file fname.\n        Existing sections are overlaid.\n        The 'include' list contains the section names to be loaded.\n        The 'exclude' list contains section names not to be loaded.\n        Return False if no file was found in any of the locations.\n        "
+
+    def update_section(section):
+        ' Update section in sections with contents. '
+        if (section and contents):
+            if ((section in sections) and self.entries_section(section)):
+                if ''.join(contents):
+                    sections[section] += contents
+                else:
+                    del sections[section]
+            elif section.startswith('+'):
+                if (section in sections):
+                    sections[section] += contents
+                else:
+                    sections[section] = contents
+            else:
+                sections[section] = contents
+    if dir:
+        fname = os.path.join(dir, fname)
+    if (not os.path.isfile(fname)):
+        return False
+    if (os.path.realpath(fname) in self.loaded):
+        return True
+    rdr = Reader()
+    message.linenos = False
+    rdr.open(fname)
+    message.linenos = None
+    self.fname = fname
+    reo = re.compile('(?u)^\\[(?P<section>\\+?[^\\W\\d][\\w-]*)\\]\\s*$')
+    sections = OrderedDict()
+    (section, contents) = ('', [])
+    while (not rdr.eof()):
+        s = rdr.read()
+        if (s and (s[0] == '#')):
+            continue
+        if (s[:2] == '\\#'):
+            s = s[1:]
+        s = s.rstrip()
+        found = reo.findall(s)
+        if found:
+            update_section(section)
+            section = found[0].lower()
+            contents = []
+        else:
+            contents.append(s)
+    update_section(section)
+    rdr.close()
+    if include:
+        for s in (set(sections) - set(include)):
+            del sections[s]
+    if exclude:
+        for s in (set(sections) & set(exclude)):
+            del sections[s]
+    attrs = {}
+    self.load_sections(sections, attrs)
+    if (not include):
+        self.loaded.append(os.path.realpath(fname))
+    document.update_attributes(attrs)
+    return True
