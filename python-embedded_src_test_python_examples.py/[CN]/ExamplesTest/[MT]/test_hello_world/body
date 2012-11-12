@@ -1,0 +1,21 @@
+def test_hello_world(self):
+    folder_to_put_db_in = tempfile.mkdtemp()
+    try:
+        from neo4j import GraphDatabase
+        db = GraphDatabase(folder_to_put_db_in)
+        with db.transaction:
+            firstNode = db.node(name='Hello')
+            secondNode = db.node(name='world!')
+            relationship = firstNode.knows(secondNode, name='graphy')
+        message = ' '.join([firstNode['name'], relationship['name'], secondNode['name']])
+        print message
+        with db.transaction:
+            firstNode.knows.single.delete()
+            firstNode.delete()
+            secondNode.delete()
+        db.shutdown()
+    finally:
+        if os.path.exists(folder_to_put_db_in):
+            import shutil
+            shutil.rmtree(folder_to_put_db_in)
+    self.assertEqual(message, 'Hello graphy world!')

@@ -1,0 +1,46 @@
+def test_invoice_app(self):
+    folder_to_put_db_in = tempfile.mkdtemp()
+    try:
+        from neo4j import GraphDatabase, INCOMING, Evaluation
+        db = GraphDatabase(folder_to_put_db_in)
+        with db.transaction:
+            customers = db.node()
+            invoices = db.node()
+            db.reference_node.CUSTOMERS(customers)
+            db.reference_node.INVOICES(invoices)
+            customer_idx = db.node.indexes.create('customers')
+
+        def create_customer(name):
+            with db.transaction:
+                customer = db.node(name=name)
+                customer.INSTANCE_OF(customers)
+                customer_idx['name'][name] = customer
+            return customer
+
+        def create_invoice(customer, amount):
+            with db.transaction:
+                invoice = db.node(amount=amount)
+                invoice.INSTANCE_OF(invoices)
+                invoice.SENT_TO(customer)
+            return customer
+
+        def get_customer(name):
+            return customer_idx['name'][name].single
+
+        def get_invoices_with_amount_over(customer, min_sum):
+            return db.query('START customer=node({customer_id})\n                                   MATCH invoice-[:SENT_TO]->customer\n                                   WHERE has(invoice.amount) and invoice.amount >= {min_sum}\n                                   RETURN invoice', customer_id=customer.id, min_sum=min_sum)['invoice']
+        for name in ['Acme Inc.', 'Example Ltd.']:
+            create_customer(name)
+        for relationship in customers.INSTANCE_OF:
+            customer = relationship.start
+            for i in range(1, 12):
+                create_invoice(customer, (100 * i))
+        large_invoices = get_invoices_with_amount_over(get_customer('Acme Inc.'), 500)
+        for relationship in get_customer('Acme Inc.').SENT_TO.incoming:
+            invoice = relationship.start
+        self.assertEqual(len(list(large_invoices)), 7)
+        db.shutdown()
+    finally:
+        if os.path.exists(folder_to_put_db_in):
+            import shutil
+            shutil.rmtree(folder_to_put_db_in)
