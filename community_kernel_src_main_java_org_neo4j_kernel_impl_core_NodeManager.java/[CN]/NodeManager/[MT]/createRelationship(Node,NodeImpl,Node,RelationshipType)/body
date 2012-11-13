@@ -20,6 +20,7 @@
   RelationshipProxy proxy=new RelationshipProxy(id,relationshipLookups);
   acquireLock(proxy,LockType.WRITE);
   boolean success=false;
+  TransactionState tx=getTransactionState();
   try {
     acquireLock(startNodeProxy,LockType.WRITE);
     firstNodeTaken=true;
@@ -27,11 +28,11 @@
     secondNodeTaken=true;
     persistenceManager.relationshipCreate(id,typeId,startNodeId,endNodeId);
     if (startNodeId == endNodeId) {
-      startNode.addRelationship(this,type,id,DirectionWrapper.BOTH);
+      tx.getOrCreateCowRelationshipAddMap(startNode,typeId).add(id,DirectionWrapper.BOTH);
     }
  else {
-      startNode.addRelationship(this,type,id,DirectionWrapper.OUTGOING);
-      secondNode.addRelationship(this,type,id,DirectionWrapper.INCOMING);
+      tx.getOrCreateCowRelationshipAddMap(startNode,typeId).add(id,DirectionWrapper.OUTGOING);
+      tx.getOrCreateCowRelationshipAddMap(secondNode,typeId).add(id,DirectionWrapper.INCOMING);
     }
     relCache.put(rel);
     success=true;
@@ -41,7 +42,7 @@
     boolean releaseFailed=false;
     if (firstNodeTaken) {
       try {
-        releaseLock(startNodeProxy,LockType.WRITE);
+        releaseLock(startNodeProxy,LockType.WRITE,tx);
       }
  catch (      Exception e) {
         releaseFailed=true;
@@ -50,14 +51,14 @@
     }
     if (secondNodeTaken) {
       try {
-        releaseLock(endNode,LockType.WRITE);
+        releaseLock(endNode,LockType.WRITE,tx);
       }
  catch (      Exception e) {
         releaseFailed=true;
         log.log(Level.SEVERE,"Failed to release lock",e);
       }
     }
-    releaseLock(proxy,LockType.WRITE);
+    releaseLock(proxy,LockType.WRITE,tx);
     if (!success) {
       setRollbackOnly();
     }

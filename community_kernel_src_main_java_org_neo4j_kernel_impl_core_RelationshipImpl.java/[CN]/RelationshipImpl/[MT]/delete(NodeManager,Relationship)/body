@@ -5,6 +5,7 @@
   boolean endNodeLocked=false;
   boolean thisLocked=false;
   boolean success=false;
+  TransactionState tx=null;
   try {
     startNode=nodeManager.getLightNode(getStartNodeId());
     if (startNode != null) {
@@ -18,21 +19,22 @@
     }
     nodeManager.acquireLock(proxy,LockType.WRITE);
     thisLocked=true;
-    ArrayMap<Integer,PropertyData> skipMap=nodeManager.getOrCreateCowPropertyRemoveMap(this);
-    ArrayMap<Integer,PropertyData> removedProps=nodeManager.deleteRelationship(this);
+    tx=nodeManager.getTransactionState();
+    ArrayMap<Integer,PropertyData> skipMap=tx.getOrCreateCowPropertyRemoveMap(this);
+    ArrayMap<Integer,PropertyData> removedProps=nodeManager.deleteRelationship(this,tx);
     if (removedProps.size() > 0) {
       for (      int index : removedProps.keySet()) {
         skipMap.put(index,removedProps.get(index));
       }
     }
     success=true;
-    RelationshipType type=nodeManager.getRelationshipTypeById(getTypeId());
+    int typeId=getTypeId();
     long id=getId();
     if (startNode != null) {
-      startNode.removeRelationship(nodeManager,type,id);
+      tx.getOrCreateCowRelationshipRemoveMap(startNode,typeId).add(id);
     }
     if (endNode != null) {
-      endNode.removeRelationship(nodeManager,type,id);
+      tx.getOrCreateCowRelationshipRemoveMap(endNode,typeId).add(id);
     }
     success=true;
   }
@@ -40,7 +42,7 @@
     boolean releaseFailed=false;
     try {
       if (thisLocked) {
-        nodeManager.releaseLock(proxy,LockType.WRITE);
+        nodeManager.releaseLock(proxy,LockType.WRITE,tx);
       }
     }
  catch (    Exception e) {
@@ -49,7 +51,7 @@
     }
     try {
       if (startNodeLocked) {
-        nodeManager.releaseLock(startNode,LockType.WRITE);
+        nodeManager.releaseLock(startNode,LockType.WRITE,tx);
       }
     }
  catch (    Exception e) {
@@ -58,7 +60,7 @@
     }
     try {
       if (endNodeLocked) {
-        nodeManager.releaseLock(endNode,LockType.WRITE);
+        nodeManager.releaseLock(endNode,LockType.WRITE,tx);
       }
     }
  catch (    Exception e) {

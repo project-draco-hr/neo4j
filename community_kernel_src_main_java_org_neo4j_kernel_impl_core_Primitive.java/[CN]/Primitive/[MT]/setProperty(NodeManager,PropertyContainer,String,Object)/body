@@ -3,15 +3,16 @@
     throw new IllegalArgumentException("Null parameter, " + "key=" + key + ", "+ "value="+ value);
   }
   nodeManager.acquireLock(proxy,LockType.WRITE);
+  TransactionState tx=nodeManager.getTransactionState();
   boolean success=false;
   try {
     ensureFullProperties(nodeManager);
-    ArrayMap<Integer,PropertyData> addMap=nodeManager.getOrCreateCowPropertyAddMap(this);
-    ArrayMap<Integer,PropertyData> skipMap=nodeManager.getCowPropertyRemoveMap(this);
+    ArrayMap<Integer,PropertyData> addMap=tx.getOrCreateCowPropertyAddMap(this);
+    ArrayMap<Integer,PropertyData> skipMap=tx.getCowPropertyRemoveMap(this);
     PropertyIndex index=null;
     PropertyData property=null;
     boolean foundInSkipMap=false;
-    for (    PropertyIndex cachedIndex : nodeManager.index(key)) {
+    for (    PropertyIndex cachedIndex : nodeManager.index(key,tx)) {
       if (skipMap != null) {
         if (skipMap.remove(cachedIndex.getKeyId()) != null) {
           foundInSkipMap=true;
@@ -30,7 +31,7 @@
     if (property == null && !nodeManager.hasAllPropertyIndexes()) {
       for (      int keyId : addMap.keySet()) {
         if (!nodeManager.hasIndexFor(keyId)) {
-          PropertyIndex indexToCheck=nodeManager.getIndexFor(keyId);
+          PropertyIndex indexToCheck=nodeManager.getIndexFor(keyId,tx);
           if (indexToCheck.getKey().equals(key)) {
             if (skipMap != null) {
               skipMap.remove(indexToCheck.getKeyId());
@@ -47,7 +48,7 @@
         for (        PropertyData aProperty : allProperties()) {
           int keyId=aProperty.getIndex();
           if (!nodeManager.hasIndexFor(keyId)) {
-            PropertyIndex indexToCheck=nodeManager.getIndexFor(keyId);
+            PropertyIndex indexToCheck=nodeManager.getIndexFor(keyId,tx);
             if (indexToCheck.getKey().equals(key)) {
               if (skipMap != null) {
                 skipMap.remove(indexToCheck.getKeyId());
@@ -66,7 +67,7 @@
       index=nodeManager.createPropertyIndex(key);
     }
     if (property != null && !foundInSkipMap) {
-      property=changeProperty(nodeManager,property,value);
+      property=changeProperty(nodeManager,property,value,tx);
     }
  else {
       property=addProperty(nodeManager,index,value);
@@ -77,7 +78,7 @@
     success=true;
   }
   finally {
-    nodeManager.releaseLock(proxy,LockType.WRITE);
+    nodeManager.releaseLock(proxy,LockType.WRITE,tx);
     if (!success) {
       nodeManager.setRollbackOnly();
     }
