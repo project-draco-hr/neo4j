@@ -4,31 +4,38 @@
   assertChunkSizeIsWithinFrameSize(chunkSize,frameLength);
   executor=Executors.newCachedThreadPool(new NamedThreadFactory("Server receiving"));
   workerExecutor=Executors.newCachedThreadPool(new NamedThreadFactory("Server receiving"));
-  targetCallExecutor=Executors.newCachedThreadPool(new NamedThreadFactory(getClass().getSimpleName() + ":" + config.getPort()));
-  unfinishedTransactionExecutor=Executors.newScheduledThreadPool(2,new NamedThreadFactory("Unfinished transactions"));
+  targetCallExecutor=Executors.newCachedThreadPool(new NamedThreadFactory(getClass().getSimpleName() + ":" + config.getServerAddress().getPort()));
+  unfinishedTransactionExecutor=Executors.newScheduledThreadPool(2,new NamedThreadFactory("Unfinished " + "transactions"));
   channelFactory=new NioServerSocketChannelFactory(executor,workerExecutor,config.getMaxConcurrentTransactions());
   silentChannelExecutor=Executors.newSingleThreadScheduledExecutor(new NamedThreadFactory("Silent channel " + "reaper"));
   silentChannelExecutor.scheduleWithFixedDelay(silentChannelFinisher(),5,5,TimeUnit.SECONDS);
   bootstrap=new ServerBootstrap(channelFactory);
   bootstrap.setPipelineFactory(this);
-  Channel channel;
-  InetSocketAddress socketAddress;
-  if (config.getServerAddress() == null) {
-    socketAddress=new InetSocketAddress(config.getPort());
-  }
+  Channel channel=null;
+  InetSocketAddress socketAddress=null;
+  int[] ports=config.getServerAddress().getPorts();
+  ChannelException ex=null;
+  for (int port=ports[0]; port <= ports[1]; port++) {
+    if (config.getServerAddress().getHost() == null) {
+      socketAddress=new InetSocketAddress(port);
+    }
  else {
-    socketAddress=new InetSocketAddress(config.getServerAddress(),config.getPort());
+      socketAddress=new InetSocketAddress(config.getServerAddress().getHost(),port);
+    }
+    try {
+      channel=bootstrap.bind(socketAddress);
+    }
+ catch (    ChannelException e) {
+      ex=e;
+    }
   }
-  try {
-    channel=bootstrap.bind(socketAddress);
-  }
- catch (  ChannelException e) {
-    msgLog.logMessage("Failed to bind server to " + socketAddress,e);
+  if (ex != null) {
+    msgLog.logMessage("Failed to bind server to " + socketAddress,ex);
     executor.shutdown();
     workerExecutor.shutdown();
-    throw new IOException(e);
+    throw new IOException(ex);
   }
   channelGroup=new DefaultChannelGroup();
   channelGroup.add(channel);
-  msgLog.logMessage(getClass().getSimpleName() + " communication server started and bound to " + socketAddress,true);
+  msgLog.logMessage(getClass().getSimpleName() + " communication server started and bound to " + socketAddress);
 }

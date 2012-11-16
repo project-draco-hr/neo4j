@@ -27,19 +27,24 @@ catch (          ExecutionException e) {
         }
       }
     }
-    if (clusterConfig == null) {
-      clusterConfig=new Clusters.Cluster(config.getClusterName());
-      clusters.getClusters().add(clusterConfig);
+    if (config.isAllowedToCreateCluster()) {
+      if (clusterConfig == null) {
+        clusterConfig=new Clusters.Cluster(config.getClusterName());
+        clusters.getClusters().add(clusterConfig);
+      }
+      cluster.create(clusterConfig.getName());
+      if (clusterConfig.getByUri(serverId) == null) {
+        clusterConfig.getMembers().add(new Clusters.Member(serverId.toString()));
+        try {
+          updateMyInfo();
+        }
+ catch (        TransformerException e) {
+          logger.logMessage("Could not update cluster discovery file:" + clustersUri,e);
+        }
+      }
     }
-    cluster.create(clusterConfig.getName());
-    if (clusterConfig.getByUri(serverId) == null) {
-      clusterConfig.getMembers().add(new Clusters.Member(serverId.toString()));
-      try {
-        updateMyInfo();
-      }
- catch (      TransformerException e) {
-        logger.logMessage("Could not update cluster discovery file:" + clustersUri,e);
-      }
+ else {
+      logger.warn("Could not join cluster, and is not allowed to create one");
     }
   }
 }

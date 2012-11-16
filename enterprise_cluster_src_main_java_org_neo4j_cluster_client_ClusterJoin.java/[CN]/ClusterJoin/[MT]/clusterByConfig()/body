@@ -1,18 +1,18 @@
 {
-  String[] hosts=config.getInitialHosts();
-  if (hosts.length == 0) {
+  List<HostnamePort> hosts=config.getInitialHosts();
+  if (hosts == null || hosts.size() == 0) {
     logger.logMessage("Creating cluster " + config.getClusterName());
     cluster.create(config.getClusterName());
   }
  else {
     try {
-      for (      String host : hosts) {
-        if (serverId.toString().endsWith(host)) {
+      for (      HostnamePort host : hosts) {
+        if (serverId.toString().endsWith(host.toString())) {
           continue;
         }
-        host=resolvePortOnlyHost(host);
-        logger.info("Attempting to join " + host);
-        Future<ClusterConfiguration> clusterConfig=cluster.join(new URI("cluster://" + host));
+        String hostString=resolvePortOnlyHost(host);
+        logger.info("Attempting to join " + hostString);
+        Future<ClusterConfiguration> clusterConfig=cluster.join(new URI("cluster://" + hostString));
         try {
           logger.info("Joined cluster:" + clusterConfig.get());
           return;
@@ -21,7 +21,7 @@
           e.printStackTrace();
         }
 catch (        ExecutionException e) {
-          logger.error("Could not join cluster member " + host);
+          logger.error("Could not join cluster member " + hostString);
         }
       }
       cluster.create(config.getClusterName());

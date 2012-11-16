@@ -1,0 +1,21 @@
+{
+  if (GraphDatabaseSetting.osIsWindows()) {
+    if (fileName.getName().equals(NeoStore.DEFAULT_NAME)) {
+      return getLockFileBasedFileLock(fileName.getParentFile());
+    }
+    return new PlaceboFileLock();
+  }
+ else   if (fileName.getName().equals(NeoStore.DEFAULT_NAME)) {
+    FileLock regular=wrapOrNull(channel.tryLock());
+    if (regular == null)     return null;
+    FileLock extra=getLockFileBasedFileLock(fileName.getParentFile());
+    if (extra == null) {
+      regular.release();
+      return null;
+    }
+    return new DoubleFileLock(regular,extra);
+  }
+ else {
+    return wrapOrNull(channel.tryLock());
+  }
+}
