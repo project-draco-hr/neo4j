@@ -1,7 +1,8 @@
 {
   DelegateInvocationHandler<TxIdGenerator> txIdGeneratorDelegate=new DelegateInvocationHandler<TxIdGenerator>();
   TxIdGenerator txIdGenerator=(TxIdGenerator)Proxy.newProxyInstance(TxIdGenerator.class.getClassLoader(),new Class[]{TxIdGenerator.class},txIdGeneratorDelegate);
-  highAvailabilityMembers=life.add(new HighAvailabilityMembers(clusterClient,memberStateMachine,msgLog,config,xaDataSourceManager));
-  new TxIdGeneratorModeSwitcher(memberStateMachine,txIdGeneratorDelegate,(HaXaDataSourceManager)xaDataSourceManager,master,requestContextFactory,msgLog,config,highAvailabilityMembers);
+  slaves=life.add(new HighAvailabilitySlaves(clusterClient,memberStateMachine,new DefaultSlaveFactory(xaDataSourceManager,msgLog,config.get(HaSettings.max_concurrent_channels_per_slave),config.get(HaSettings.com_chunk_size).intValue()),logging));
+  members=new HighAvailabilityMembers(clusterClient,memberStateMachine);
+  new TxIdGeneratorModeSwitcher(memberStateMachine,txIdGeneratorDelegate,(HaXaDataSourceManager)xaDataSourceManager,master,requestContextFactory,msgLog,config,slaves);
   return txIdGenerator;
 }
