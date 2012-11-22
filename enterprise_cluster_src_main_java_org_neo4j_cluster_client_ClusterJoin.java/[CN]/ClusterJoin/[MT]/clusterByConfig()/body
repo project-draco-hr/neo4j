@@ -12,9 +12,10 @@
         }
         host=resolvePortOnlyHost(host);
         logger.info("Attempting to join " + host);
-        Future<ClusterConfiguration> clusterConfig=cluster.join(new URI("cluster://" + host));
+        Future<ClusterConfiguration> config=cluster.join(new URI("cluster://" + host));
         try {
-          logger.info("Joined cluster:" + clusterConfig.get());
+          ClusterConfiguration configuration=config.get(10,SECONDS);
+          logger.info("Joined cluster:" + configuration);
           return;
         }
  catch (        InterruptedException e) {
@@ -22,6 +23,9 @@
         }
 catch (        ExecutionException e) {
           logger.error("Could not join cluster member " + host);
+        }
+catch (        TimeoutException e) {
+          logger.error("Could not join cluster member (timed out)" + host);
         }
       }
       cluster.create(config.getClusterName());
