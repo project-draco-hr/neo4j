@@ -1,37 +1,41 @@
 {
   ensureRelationshipMapNotNull(nodeManager);
   boolean hasMore=hasMoreRelationshipsToLoad();
-  List<RelIdIterator> relTypeList=new LinkedList<RelIdIterator>();
-  boolean hasModifications=nodeManager.getLockReleaser().hasRelationshipModifications(this);
-  ArrayMap<String,RelIdArray> addMap=null;
-  if (hasModifications) {
-    addMap=nodeManager.getCowRelationshipAddMap(this);
+  RelIdArray[] localRelationships=relationships;
+  RelIdIterator[] result=new RelIdIterator[localRelationships.length];
+  TransactionState tx=nodeManager.getTransactionState();
+  ArrayMap<Integer,RelIdArray> addMap=null;
+  ArrayMap<Integer,Collection<Long>> skipMap=null;
+  if (tx.hasChanges()) {
+    addMap=tx.getCowRelationshipAddMap(this);
+    skipMap=tx.getCowRelationshipRemoveMap(this);
   }
-  for (  RelIdArray src : relationships) {
-    String type=src.getType();
-    Collection<Long> remove=null;
-    RelIdArray add=null;
+  for (int i=0; i < localRelationships.length; i++) {
+    RelIdArray src=localRelationships[i];
+    int type=src.getType();
     RelIdIterator iterator=null;
-    if (hasModifications) {
-      remove=nodeManager.getCowRelationshipRemoveMap(this,type);
-      if (addMap != null) {
-        add=addMap.get(type);
-      }
-      iterator=new CombinedRelIdIterator(type,direction,src,add,remove);
+    if (addMap != null || skipMap != null) {
+      iterator=new CombinedRelIdIterator(type,direction,src,addMap != null ? addMap.get(type) : null,skipMap != null ? skipMap.get(type) : null);
     }
  else {
       iterator=src.iterator(direction);
     }
-    relTypeList.add(iterator);
+    result[i]=iterator;
   }
   if (addMap != null) {
-    for (    String type : addMap.keySet()) {
+    RelIdIterator[] additional=new RelIdIterator[addMap.size()];
+    int additionalSize=0;
+    for (    int type : addMap.keySet()) {
       if (getRelIdArray(type) == null) {
-        Collection<Long> remove=nodeManager.getCowRelationshipRemoveMap(this,type);
         RelIdArray add=addMap.get(type);
-        relTypeList.add(new CombinedRelIdIterator(type,direction,null,add,remove));
+        additional[additionalSize++]=new CombinedRelIdIterator(type,direction,null,add,skipMap != null ? skipMap.get(type) : null);
       }
     }
+    RelIdIterator[] newResult=new RelIdIterator[result.length + additionalSize];
+    arraycopy(result,0,newResult,0,result.length);
+    arraycopy(additional,0,newResult,result.length,additionalSize);
+    result=newResult;
   }
-  return new IntArrayIterator(relTypeList,this,direction,nodeManager,new RelationshipType[0],hasMore);
+  if (result.length == 0)   return Collections.emptyList();
+  return new RelationshipIterator(result,this,direction,nodeManager,hasMore,true);
 }

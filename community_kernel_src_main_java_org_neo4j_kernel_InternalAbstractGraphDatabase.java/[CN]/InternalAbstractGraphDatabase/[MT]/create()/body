@@ -1,6 +1,6 @@
 {
   fileSystem=life.add(createFileSystemAbstraction());
-  this.logging=createStringLogger();
+  this.logging=createLogging();
   AutoConfigurator autoConfigurator=new AutoConfigurator(fileSystem,config.get(NeoStoreXaDataSource.Configuration.store_dir),GraphDatabaseSettings.UseMemoryMappedBuffers.shouldMemoryMap(config.get(Configuration.use_memory_mapped_buffers)),config.get(GraphDatabaseSettings.dump_configuration));
   Map<String,String> configParams=config.getParams();
   Map<String,String> autoConfiguration=autoConfigurator.configure();
@@ -13,6 +13,7 @@
   config.applyChanges(configParams);
   this.msgLog=logging.getLogger(getClass());
   config.setLogger(msgLog);
+  new JvmChecker(msgLog,new JvmMetadataRepository()).checkJvmCompatibilityAndIssueWarning();
   boolean readOnly=config.get(Configuration.read_only);
   String cacheTypeName=config.get(Configuration.cache_type);
   CacheProvider cacheProvider=cacheProviders.get(cacheTypeName);
@@ -26,13 +27,14 @@
   txHook=createTxHook();
   xaDataSourceManager=life.add(createXaDataSourceManager());
   guard=config.get(Configuration.execution_guard_enabled) ? new Guard(msgLog) : null;
+  stateFactory=new TransactionStateFactory();
   if (readOnly) {
     txManager=new ReadOnlyTxManager(xaDataSourceManager);
   }
  else {
     String serviceName=config.get(GraphDatabaseSettings.tx_manager_impl);
     if (serviceName == null) {
-      txManager=new TxManager(this.storeDir,xaDataSourceManager,kernelPanicEventGenerator,txHook,logging.getLogger(TxManager.class),fileSystem);
+      txManager=new TxManager(this.storeDir,xaDataSourceManager,kernelPanicEventGenerator,txHook,logging.getLogger(TxManager.class),fileSystem,stateFactory);
     }
  else {
       TransactionManagerProvider provider;
@@ -40,7 +42,7 @@
       if (provider == null) {
         throw new IllegalStateException("Unknown transaction manager implementation: " + serviceName);
       }
-      txManager=provider.loadTransactionManager(this.storeDir.getPath(),xaDataSourceManager,kernelPanicEventGenerator,txHook,logging.getLogger(AbstractTransactionManager.class),fileSystem);
+      txManager=provider.loadTransactionManager(this.storeDir.getPath(),xaDataSourceManager,kernelPanicEventGenerator,txHook,logging.getLogger(AbstractTransactionManager.class),fileSystem,stateFactory);
     }
   }
   life.add(txManager);
@@ -51,17 +53,15 @@
   relationshipTypeCreator=createRelationshipTypeCreator();
   persistenceSource=life.add(new NioNeoDbPersistenceSource(xaDataSourceManager));
   syncHook=new DefaultTxEventSyncHookFactory();
-  persistenceManager=new PersistenceManager(txManager,persistenceSource,syncHook,lockReleaser);
-  propertyIndexManager=life.add(new PropertyIndexManager(txManager,persistenceManager,persistenceSource));
-  lockReleaser=new LockReleaser(lockManager,txManager,nodeManager,propertyIndexManager);
-  persistenceManager.setLockReleaser(lockReleaser);
+  persistenceManager=new PersistenceManager(txManager,persistenceSource,syncHook);
+  propertyIndexManager=life.add(new PropertyIndexManager(persistenceManager,persistenceSource));
   relationshipTypeHolder=new RelationshipTypeHolder(txManager,persistenceManager,persistenceSource,relationshipTypeCreator);
   caches.configure(cacheProvider,config);
   Cache<NodeImpl> nodeCache=diagnosticsManager.tryAppendProvider(caches.node());
   Cache<RelationshipImpl> relCache=diagnosticsManager.tryAppendProvider(caches.relationship());
   nodeManager=guard != null ? createGuardedNodeManager(readOnly,cacheProvider,nodeCache,relCache) : createNodeManager(readOnly,cacheProvider,nodeCache,relCache);
   life.add(nodeManager);
-  lockReleaser.setNodeManager(nodeManager);
+  stateFactory.setDependencies(lockManager,propertyIndexManager,nodeManager,txManager);
   indexStore=new IndexStore(this.storeDir,fileSystem);
   diagnosticsManager.prependProvider(config);
   params=config.getParams();

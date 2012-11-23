@@ -1,9 +1,10 @@
 {
   nodeManager.acquireLock(proxy,LockType.WRITE);
   boolean success=false;
+  TransactionState tx=nodeManager.getTransactionState();
   try {
-    ArrayMap<Integer,PropertyData> skipMap=nodeManager.getOrCreateCowPropertyRemoveMap(this);
-    ArrayMap<Integer,PropertyData> removedProps=nodeManager.deleteNode(this);
+    ArrayMap<Integer,PropertyData> skipMap=tx.getOrCreateCowPropertyRemoveMap(this);
+    ArrayMap<Integer,PropertyData> removedProps=nodeManager.deleteNode(this,tx);
     if (removedProps.size() > 0) {
       for (      Integer index : removedProps.keySet()) {
         skipMap.put(index,removedProps.get(index));
@@ -12,7 +13,7 @@
     success=true;
   }
   finally {
-    nodeManager.releaseLock(proxy,LockType.WRITE);
+    nodeManager.releaseLock(proxy,LockType.WRITE,tx);
     if (!success) {
       nodeManager.setRollbackOnly();
     }
