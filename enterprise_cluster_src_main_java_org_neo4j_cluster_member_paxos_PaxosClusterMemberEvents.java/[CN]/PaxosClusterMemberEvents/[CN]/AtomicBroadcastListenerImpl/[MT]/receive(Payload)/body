@@ -1,0 +1,28 @@
+{
+  try {
+    final Object value=serializer.receive(payload);
+    if (value instanceof MemberIsAvailable) {
+      final MemberIsAvailable memberIsAvailable=(MemberIsAvailable)value;
+      clusterMembersSnapshot.availableMember(memberIsAvailable);
+      Listeners.notifyListeners(listeners,new Listeners.Notification<ClusterMemberListener>(){
+        @Override public void notify(        ClusterMemberListener listener){
+          listener.memberIsAvailable(memberIsAvailable.getRole(),memberIsAvailable.getClusterUri(),memberIsAvailable.getRoleUri());
+        }
+      }
+);
+    }
+ else     if (value instanceof MemberIsUnavailable) {
+      final MemberIsUnavailable memberIsUnavailable=(MemberIsUnavailable)value;
+      clusterMembersSnapshot.unavailableMember(memberIsUnavailable.getClusterUri(),memberIsUnavailable.getRole());
+      Listeners.notifyListeners(listeners,new Listeners.Notification<ClusterMemberListener>(){
+        @Override public void notify(        ClusterMemberListener listener){
+          listener.memberIsUnavailable(memberIsUnavailable.getRole(),memberIsUnavailable.getClusterUri());
+        }
+      }
+);
+    }
+  }
+ catch (  Throwable t) {
+    logger.error("Could not handle cluster member available message",t);
+  }
+}
