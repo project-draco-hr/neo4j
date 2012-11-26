@@ -1,0 +1,39 @@
+{
+  try {
+    String memoryAgentJar=memoryAgentJar();
+    Process proc=start("java","-javaagent:" + memoryAgentJar,"-Xmx2G","-cp",createClasspath(memoryAgentJar),SubprocessMemoryProfiler.class.getName(),benchmark.getClass().getName());
+    InputStream source=proc.getInputStream();
+    InputStream err=proc.getErrorStream();
+    ByteOutputStream outBytes=new ByteOutputStream(500000);
+    BufferedOutputStream out=new BufferedOutputStream(outBytes,128);
+    outerloop:     while (true) {
+      pipeAvailableChars(err,System.err);
+      if (pipeAvailableChars(source,out)) {
+        break outerloop;
+      }
+      try {
+        int exitCode=proc.exitValue();
+        if (exitCode != 0) {
+          pipeAvailableChars(err,System.err);
+          throw new RuntimeException("Memory profiler failed, memory profiling JVM exited with " + exitCode + " exit code. See system err output (probably console) for details.");
+        }
+ else {
+          pipeAvailableChars(err,System.err);
+          pipeAvailableChars(source,out);
+          break outerloop;
+        }
+      }
+ catch (      IllegalThreadStateException e) {
+      }
+      Thread.sleep(10);
+    }
+    out.flush();
+    return new MemoryBenchmarkResult(benchmark.getName(),MemoryProfilingReport.deserialize(outBytes.getBytes()));
+  }
+ catch (  RuntimeException e) {
+    throw e;
+  }
+catch (  Throwable e) {
+    throw new RuntimeException(e);
+  }
+}
