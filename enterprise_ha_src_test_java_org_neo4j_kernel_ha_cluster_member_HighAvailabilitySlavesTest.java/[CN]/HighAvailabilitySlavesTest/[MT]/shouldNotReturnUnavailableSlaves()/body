@@ -1,12 +1,10 @@
 {
-  MockedClusterMonitor clusterMonitor=new MockedClusterMonitor();
-  MockedHighAvailability highAvailability=new MockedHighAvailability();
+  Cluster cluster=mock(Cluster.class);
+  ClusterMembers clusterMembers=mock(ClusterMembers.class);
+  when(clusterMembers.getMembers()).thenReturn(iterable(new ClusterMember(clusterUri1)));
   SlaveFactory slaveFactory=mock(SlaveFactory.class);
-  HighAvailabilitySlaves slaves=new HighAvailabilitySlaves(clusterMonitor,highAvailability,slaveFactory,new DevNullLoggingService());
-  clusterMonitor.listeningAt(clusterUri1);
-  highAvailability.masterIsElectedAndAvailable(clusterUri1,haUri1);
-  highAvailability.slaveIsAvailable(clusterUri2,haUri2);
-  clusterMonitor.failed(clusterUri2);
-  verify(slaveFactory).newSlave(haUri2);
-  assertEquals(0,asCollection(slaves.getSlaves()).size());
+  HighAvailabilitySlaves slaves=new HighAvailabilitySlaves(clusterMembers,cluster,slaveFactory);
+  slaves.init();
+  Iterable<Slave> memberSlaves=slaves.getSlaves();
+  Assert.assertThat(count(memberSlaves),CoreMatchers.equalTo(0L));
 }

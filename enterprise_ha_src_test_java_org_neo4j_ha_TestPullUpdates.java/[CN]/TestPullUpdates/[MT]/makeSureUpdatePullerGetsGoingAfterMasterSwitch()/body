@@ -3,12 +3,12 @@
   int master=getCurrentMaster();
   setProperty(master,1);
   awaitPropagation(1);
-  awaitNewMaster((master + 1) % dbs.length);
+  CountDownLatch masterAvailable=awaitMemberIsAvailable((master + 1) % dbs.length,HighAvailabilityModeSwitcher.MASTER);
   kill(master);
-  masterElectedLatch.await();
+  masterAvailable.await();
   setProperty(getCurrentMaster(),2);
-  awaitNewMaster((master + 1) % dbs.length);
+  CountDownLatch slaveAvailable=awaitMemberIsAvailable(getCurrentMaster(),HighAvailabilityModeSwitcher.SLAVE);
   start(master,PULL_INTERVAL);
-  masterElectedLatch.await();
+  slaveAvailable.await();
   awaitPropagation(2);
 }

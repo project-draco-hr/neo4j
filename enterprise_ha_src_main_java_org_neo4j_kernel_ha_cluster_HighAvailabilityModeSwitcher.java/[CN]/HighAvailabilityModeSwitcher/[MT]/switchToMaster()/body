@@ -5,23 +5,16 @@
         MasterImpl masterImpl=new MasterImpl(graphDb,graphDb.getMessageLog(),config);
         Server.Configuration serverConfig=new Server.Configuration(){
           @Override public long getOldChannelThreshold(){
-            return config.isSet(HaSettings.lock_read_timeout) ? config.get(HaSettings.lock_read_timeout) : config.get(ClusterSettings.read_timeout);
+            return config.get(HaSettings.lock_read_timeout);
           }
           @Override public int getMaxConcurrentTransactions(){
             return config.get(HaSettings.max_concurrent_channels_per_slave);
           }
-          @Override public int getPort(){
-            int port=HaSettings.ha_server.getPort(config.getParams());
-            if (port > 0) {
-              return port;
-            }
-            return HaSettings.ha_server.getPort(MapUtil.stringMap(HaSettings.ha_server.name(),ConfigurationDefaults.getDefault(HaSettings.ha_server,HaSettings.class)));
-          }
           @Override public int getChunkSize(){
-            return config.isSet(ComSettings.com_chunk_size) ? config.get(ComSettings.com_chunk_size) : ComSettings.com_chunk_size.valueOf(ConfigurationDefaults.getDefault(ComSettings.com_chunk_size,ComSettings.class),config);
+            return config.get(HaSettings.com_chunk_size).intValue();
           }
-          @Override public String getServerAddress(){
-            return HaSettings.ha_server.getAddressWithLocalhostDefault(config.getParams());
+          @Override public HostnamePort getServerAddress(){
+            return config.get(HaSettings.ha_server);
           }
         }
 ;
@@ -45,12 +38,13 @@ synchronized (xaDsm) {
           }
         }
         life.start();
+        URI haUri=URI.create("ha://" + masterServer.getSocketAddress().getHostName() + ":"+ masterServer.getSocketAddress().getPort()+ "?serverId="+ config.get(HaSettings.server_id));
+        clusterMemberAvailability.memberIsAvailable(MASTER,haUri);
       }
  catch (      Throwable e) {
         msgLog.logMessage("Failed to switch to master",e);
         return;
       }
-      clusterEvents.memberIsAvailable(ClusterConfiguration.COORDINATOR);
     }
   }
 );

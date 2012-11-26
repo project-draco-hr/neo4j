@@ -4,15 +4,14 @@
     if (new CurrentDatabase().storeFilesAtCurrentVersion(new File(dbLocation))) {
       return true;
     }
-    String separator=System.getProperty("file.separator");
-    String store=dbLocation + separator + NeoStore.DEFAULT_NAME;
+    File store=new File(dbLocation,NeoStore.DEFAULT_NAME);
     dbConfig.put("store_dir",dbLocation);
-    dbConfig.put("neo_store",store);
-    if (!new UpgradableDatabase().storeFilesUpgradeable(new File(store))) {
+    dbConfig.put("neo_store",store.getPath());
+    if (!new UpgradableDatabase().storeFilesUpgradeable(store)) {
       return true;
     }
     FileSystemAbstraction fileSystem=new DefaultFileSystemAbstraction();
-    Config conf=new Config(new ConfigurationDefaults(GraphDatabaseSettings.class).apply(dbConfig));
+    Config conf=new Config(dbConfig,GraphDatabaseSettings.class);
     StoreUpgrader storeUpgrader=new StoreUpgrader(conf,StringLogger.SYSTEM,new ConfigMapUpgradeConfiguration(conf),new UpgradableDatabase(),new StoreMigrator(new VisibleMigrationProgressMonitor(out)),new DatabaseFiles(),new DefaultIdGeneratorFactory(),fileSystem);
     try {
       storeUpgrader.attemptUpgrade(store);
