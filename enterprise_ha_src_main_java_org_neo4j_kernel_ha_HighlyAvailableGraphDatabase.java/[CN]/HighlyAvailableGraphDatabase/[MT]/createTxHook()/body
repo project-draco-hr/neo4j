@@ -1,10 +1,10 @@
 {
   DefaultElectionCredentialsProvider electionCredentialsProvider=new DefaultElectionCredentialsProvider(config.get(HaSettings.server_id),new OnDiskLastTxIdGetter(new File(getStoreDir())));
-  clusterClient=new ClusterClient(ClusterClient.adapt(config),logging,electionCredentialsProvider);
-  clusterEvents=life.add(new PaxosClusterMemberEvents(clusterClient,clusterClient,clusterClient,logging.getLogger(PaxosClusterMemberEvents.class)));
+  clusterClient=life.add(new ClusterClient(ClusterClient.adapt(config),logging,electionCredentialsProvider));
   clusterMemberAvailability=life.add(new PaxosClusterMemberAvailability(clusterClient,clusterClient,logging.getLogger(PaxosClusterMemberEvents.class)));
+  clusterEvents=life.add(new PaxosClusterMemberEvents(clusterClient,clusterClient,clusterClient,logging.getLogger(PaxosClusterMemberEvents.class)));
   memberContext=new SimpleHighAvailabilityMemberContext(clusterClient);
-  memberStateMachine=new HighAvailabilityMemberStateMachine(memberContext,accessGuard,clusterEvents,logging.getLogger(HighAvailabilityMemberStateMachine.class));
+  memberStateMachine=life.add(new HighAvailabilityMemberStateMachine(memberContext,accessGuard,clusterEvents,logging.getLogger(HighAvailabilityMemberStateMachine.class)));
   life.add(new HighAvailabilityModeSwitcher(delegateInvocationHandler,clusterMemberAvailability,memberStateMachine,this,config,logging.getLogger(HighAvailabilityModeSwitcher.class)));
   DelegateInvocationHandler<TxHook> txHookDelegate=new DelegateInvocationHandler<TxHook>();
   TxHook txHook=(TxHook)Proxy.newProxyInstance(TxHook.class.getClassLoader(),new Class[]{TxHook.class},txHookDelegate);
