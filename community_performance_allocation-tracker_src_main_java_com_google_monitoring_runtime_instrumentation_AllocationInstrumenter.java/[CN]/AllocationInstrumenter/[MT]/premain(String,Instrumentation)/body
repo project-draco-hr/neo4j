@@ -1,0 +1,22 @@
+{
+  AllocationRecorder.setInstrumentation(inst);
+  try {
+    Class.forName("sun.security.provider.PolicyFile");
+  }
+ catch (  Throwable t) {
+  }
+  if (!inst.isRetransformClassesSupported()) {
+    System.err.println("Some JDK classes are already loaded and " + "will not be instrumented.");
+  }
+  if (AllocationRecorder.class.getClassLoader() != null) {
+    canRewriteBootstrap=false;
+    System.err.println("Class loading breakage: " + "Will not be able to instrument JDK classes");
+    return;
+  }
+  canRewriteBootstrap=true;
+  inst.addTransformer(new ConstructorInstrumenter(),inst.isRetransformClassesSupported());
+  List<String> args=Arrays.asList(agentArgs == null ? new String[0] : agentArgs.split(","));
+  if (!args.contains("manualOnly")) {
+    bootstrap(inst);
+  }
+}

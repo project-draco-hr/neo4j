@@ -1,0 +1,101 @@
+{
+  if (opcode == Opcodes.INVOKESTATIC && owner.equals("java/lang/reflect/Array") && name.equals("newInstance")) {
+    if (signature.equals("(Ljava/lang/Class;I)Ljava/lang/Object;")) {
+      Label beginScopeLabel=new Label();
+      Label endScopeLabel=new Label();
+      super.visitLabel(beginScopeLabel);
+      int countIndex=newLocal("I",beginScopeLabel,endScopeLabel);
+      super.visitVarInsn(Opcodes.ISTORE,countIndex);
+      pushClassNameOnStack();
+      int typeNameIndex=newLocal("Ljava/lang/String;",beginScopeLabel,endScopeLabel);
+      super.visitVarInsn(Opcodes.ASTORE,typeNameIndex);
+      super.visitVarInsn(Opcodes.ILOAD,countIndex);
+      super.visitMethodInsn(opcode,owner,name,signature);
+      super.visitInsn(Opcodes.DUP);
+      super.visitVarInsn(Opcodes.ILOAD,countIndex);
+      super.visitInsn(Opcodes.SWAP);
+      super.visitVarInsn(Opcodes.ALOAD,typeNameIndex);
+      super.visitLabel(endScopeLabel);
+      super.visitInsn(Opcodes.SWAP);
+      super.visitMethodInsn(Opcodes.INVOKESTATIC,recorderClass,recorderMethod,RECORDER_SIGNATURE);
+      return;
+    }
+ else     if (signature.equals("(Ljava/lang/Class;[I)Ljava/lang/Object;")) {
+      Label beginScopeLabel=new Label();
+      Label endScopeLabel=new Label();
+      super.visitLabel(beginScopeLabel);
+      int dimsArrayIndex=newLocal("[I",beginScopeLabel,endScopeLabel);
+      pushProductOfIntArrayOnStack();
+      int productIndex=newLocal("I",beginScopeLabel,endScopeLabel);
+      super.visitVarInsn(Opcodes.ISTORE,productIndex);
+      super.visitVarInsn(Opcodes.ASTORE,dimsArrayIndex);
+      pushClassNameOnStack();
+      int typeNameIndex=newLocal("Ljava/lang/String;",beginScopeLabel,endScopeLabel);
+      super.visitVarInsn(Opcodes.ASTORE,typeNameIndex);
+      super.visitVarInsn(Opcodes.ALOAD,dimsArrayIndex);
+      super.visitMethodInsn(opcode,owner,name,signature);
+      super.visitInsn(Opcodes.DUP);
+      super.visitVarInsn(Opcodes.ILOAD,productIndex);
+      super.visitInsn(Opcodes.SWAP);
+      super.visitVarInsn(Opcodes.ALOAD,typeNameIndex);
+      super.visitLabel(endScopeLabel);
+      super.visitInsn(Opcodes.SWAP);
+      super.visitMethodInsn(Opcodes.INVOKESTATIC,recorderClass,recorderMethod,RECORDER_SIGNATURE);
+      return;
+    }
+  }
+  if (opcode == Opcodes.INVOKEVIRTUAL) {
+    if ("clone".equals(name) && owner.startsWith("[")) {
+      super.visitMethodInsn(opcode,owner,name,signature);
+      int i=0;
+      while (i < owner.length()) {
+        if (owner.charAt(i) != '[') {
+          break;
+        }
+        i++;
+      }
+      if (i > 1) {
+        super.visitTypeInsn(Opcodes.CHECKCAST,owner);
+        calculateArrayLengthAndDispatch(owner.substring(i),i);
+      }
+ else {
+        super.visitInsn(Opcodes.DUP);
+        super.visitTypeInsn(Opcodes.CHECKCAST,owner);
+        super.visitInsn(Opcodes.ARRAYLENGTH);
+        super.visitInsn(Opcodes.SWAP);
+        invokeRecordAllocation(owner.substring(i));
+      }
+      return;
+    }
+ else     if ("newInstance".equals(name)) {
+      if ("java/lang/Class".equals(owner) && "()Ljava/lang/Object;".equals(signature)) {
+        super.visitInsn(Opcodes.DUP);
+        super.visitMethodInsn(opcode,owner,name,signature);
+        super.visitInsn(Opcodes.DUP_X1);
+        super.visitMethodInsn(Opcodes.INVOKESTATIC,recorderClass,recorderMethod,CLASS_RECORDER_SIG);
+        return;
+      }
+ else       if ("java/lang/reflect/Constructor".equals(owner) && "([Ljava/lang/Object;)Ljava/lang/Object;".equals(signature)) {
+        buildRecorderFromObject(opcode,owner,name,signature);
+        return;
+      }
+    }
+  }
+  if (opcode == Opcodes.INVOKESPECIAL) {
+    if ("clone".equals(name) && "java/lang/Object".equals(owner)) {
+      buildRecorderFromObject(opcode,owner,name,signature);
+      return;
+    }
+ else     if ("<init>".equals(name) && outstandingAllocs > 0) {
+      --outstandingAllocs;
+      dupStackElementBeforeSignatureArgs(signature);
+      super.visitMethodInsn(opcode,owner,name,signature);
+      super.visitLdcInsn(-1);
+      super.visitInsn(Opcodes.SWAP);
+      invokeRecordAllocation(owner);
+      super.visitInsn(Opcodes.POP);
+      return;
+    }
+  }
+  super.visitMethodInsn(opcode,owner,name,signature);
+}

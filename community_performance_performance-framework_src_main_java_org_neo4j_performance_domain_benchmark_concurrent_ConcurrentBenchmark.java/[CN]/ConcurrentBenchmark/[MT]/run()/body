@@ -1,0 +1,31 @@
+{
+  ExecutorService executorService=Executors.newFixedThreadPool(numberOfWorkers);
+  try {
+    Collection<CallableBenchWorker> workers=new ArrayList<CallableBenchWorker>();
+    Map<String,WorkerMetric> aggregatedResults=new HashMap<String,WorkerMetric>();
+    for (int i=0; i < numberOfWorkers; i++) {
+      workers.add(new CallableBenchWorker(createWorker()));
+    }
+    for (    Future<Collection<WorkerMetric>> future : executorService.invokeAll(workers)) {
+      for (      WorkerMetric workerMetric : future.get()) {
+        if (!aggregatedResults.containsKey(workerMetric.getName())) {
+          aggregatedResults.put(workerMetric.getName(),workerMetric);
+        }
+ else {
+          aggregatedResults.put(workerMetric.getName(),aggregatedResults.get(workerMetric.getName()).aggregateWith(workerMetric));
+        }
+      }
+    }
+    BenchmarkResult.Metric[] metrics=aggregatedResults.values().toArray(new BenchmarkResult.Metric[aggregatedResults.size()]);
+    return new BenchmarkResult(getClass().getName(),metrics);
+  }
+ catch (  InterruptedException e) {
+    throw new RuntimeException(e);
+  }
+catch (  ExecutionException e) {
+    throw new RuntimeException(e);
+  }
+ finally {
+    executorService.shutdown();
+  }
+}
