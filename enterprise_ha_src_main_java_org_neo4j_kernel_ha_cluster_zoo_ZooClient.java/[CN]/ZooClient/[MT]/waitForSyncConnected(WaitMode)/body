@@ -1,0 +1,32 @@
+{
+  if (keeperState == KeeperState.SyncConnected) {
+    return;
+  }
+  if (shutdown == true) {
+    throw new ZooKeeperException("ZooKeeper client has been shutdown");
+  }
+  WaitStrategy strategy=mode.getStrategy(this);
+  long startTime=System.currentTimeMillis();
+  long currentTime=startTime;
+synchronized (keeperStateMonitor) {
+    do {
+      try {
+        keeperStateMonitor.wait(250);
+      }
+ catch (      InterruptedException e) {
+        Thread.interrupted();
+      }
+      if (keeperState == KeeperState.SyncConnected) {
+        return;
+      }
+      if (shutdown == true) {
+        throw new ZooKeeperException("ZooKeeper client has been shutdown");
+      }
+      currentTime=System.currentTimeMillis();
+    }
+ while (strategy.waitMore((currentTime - startTime)));
+    if (keeperState != KeeperState.SyncConnected) {
+      throw new ZooKeeperException("Connection to ZooKeeper server timed out, keeper state=" + keeperState);
+    }
+  }
+}

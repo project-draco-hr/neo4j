@@ -1,0 +1,24 @@
+{
+  debug("Downloading 1.8 package");
+  File oneEightPackage=downloadAndUnpack("http://download.neo4j.org/artifact?edition=enterprise&version=1.8&distribution=zip",DIR.directory("download"),"1.8-enterprise");
+  String classpath=assembleClassPathFromPackage(oneEightPackage);
+  debug("Starting zoo");
+  zoo=startZoo(classpath);
+  debug("Starting 1.8 cluster in separate jvms");
+  legacyDbs=new LegacyDatabase[3];
+  for (int i=0; i < legacyDbs.length; i++) {
+    legacyDbs[i]=LegacyDatabaseImpl.start(classpath,new File(DBS_DIR,"" + i),config(i,true));
+    debug("  Started " + i);
+  }
+  for (  LegacyDatabase db : legacyDbs) {
+    debug("  Awaiting " + db.getStoreDir() + " to start");
+    db.awaitStarted(10,TimeUnit.SECONDS);
+    debug("  " + db.getStoreDir() + " fully started");
+  }
+  for (int i=0; i < legacyDbs.length; i++) {
+    String name="initial-" + i;
+    long node=legacyDbs[i].createNode(name);
+    for (    LegacyDatabase db : legacyDbs)     db.verifyNodeExists(node,name);
+  }
+  debug("1.8 cluster fully operational");
+}
