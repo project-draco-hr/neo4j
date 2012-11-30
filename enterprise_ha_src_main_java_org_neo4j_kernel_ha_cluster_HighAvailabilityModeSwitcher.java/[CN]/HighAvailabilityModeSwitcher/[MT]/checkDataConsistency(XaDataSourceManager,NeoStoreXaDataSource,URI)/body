@@ -11,10 +11,20 @@
     msgLog.warn("Current store is unable to participate in the cluster",upe);
     try {
       xaDataSourceManager.unregisterDataSource(Config.DEFAULT_DATA_SOURCE_NAME);
-      stopServicesAndHandleBranchedStore(config.get(HaSettings.branched_data_policy),false);
+      stopServicesAndHandleBranchedStore(config.get(HaSettings.branched_data_policy));
     }
  catch (    IOException e) {
       msgLog.warn("Failed while trying to handle branched data",e);
+    }
+  }
+catch (  MismatchingStoreIdException e) {
+    if (nioneoDataSource.getNeoStore().getLastCommittedTx() == 1) {
+      msgLog.warn("Found and deleting empty store with mismatching store id " + e.getMessage());
+      stopServicesAndHandleBranchedStore(BranchedDataPolicy.keep_none);
+    }
+ else {
+      msgLog.error("Store cannot participate in cluster due to mismatching store IDs");
+      throw e;
     }
   }
 catch (  Throwable throwable) {
