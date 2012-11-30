@@ -1,0 +1,27 @@
+{
+  LifeSupport checkConsistencyLife=new LifeSupport();
+  try {
+    MasterClient18 checkConsistencyMaster=new MasterClient18(masterUri,graphDb.getMessageLog(),nioneoDataSource.getStoreId(),config);
+    checkConsistencyLife.add(checkConsistencyMaster);
+    checkConsistencyLife.start();
+    checkDataConsistencyWithMaster(checkConsistencyMaster,nioneoDataSource);
+    return true;
+  }
+ catch (  StoreUnableToParticipateInClusterException upe) {
+    msgLog.warn("Current store is unable to participate in the cluster",upe);
+    try {
+      xaDataSourceManager.unregisterDataSource(Config.DEFAULT_DATA_SOURCE_NAME);
+      stopServicesAndHandleBranchedStore(config.get(HaSettings.branched_data_policy),false);
+    }
+ catch (    IOException e) {
+      msgLog.warn("Failed while trying to handle branched data",e);
+    }
+  }
+catch (  Throwable throwable) {
+    msgLog.warn("Consistency checker failed",throwable);
+  }
+ finally {
+    checkConsistencyLife.shutdown();
+  }
+  return false;
+}
