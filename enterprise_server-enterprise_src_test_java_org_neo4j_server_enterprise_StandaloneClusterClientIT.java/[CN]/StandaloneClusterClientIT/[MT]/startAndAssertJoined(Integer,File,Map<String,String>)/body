@@ -1,0 +1,31 @@
+{
+  final CountDownLatch latch=new CountDownLatch(1);
+  final AtomicInteger port=new AtomicInteger();
+  clients[0].addClusterListener(new ClusterListener.Adapter(){
+    @Override public void joinedCluster(    URI member){
+      port.set(member.getPort());
+      latch.countDown();
+      clients[0].removeClusterListener(this);
+    }
+  }
+);
+  List<String> args=new ArrayList<String>(asList("java","-cp",getProperty("java.class.path")));
+  args.add("-Dneo4j.home=" + directory.getAbsolutePath());
+  if (configFile != null)   args.add("-D" + Configurator.NEO_SERVER_CONFIG_FILE_KEY + "="+ configFile.getAbsolutePath());
+  args.add(StandaloneClusterClient.class.getName());
+  for (  Map.Entry<String,String> entry : config.entrySet())   args.add("-" + entry.getKey() + "="+ entry.getValue());
+  Process process=getRuntime().exec(args.toArray(new String[0]));
+  ProcessStreamHandler handler=new ProcessStreamHandler(process,false);
+  handler.launch();
+  try {
+    boolean awaitOutcome=latch.await(5,SECONDS);
+    if (expectedPort == null)     assertFalse(awaitOutcome);
+ else {
+      assertTrue(awaitOutcome);
+      assertEquals(expectedPort.intValue(),port.get());
+    }
+  }
+  finally {
+    process.destroy();
+  }
+}

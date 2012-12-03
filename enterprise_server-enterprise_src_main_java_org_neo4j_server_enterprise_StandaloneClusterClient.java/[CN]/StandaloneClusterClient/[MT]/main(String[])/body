@@ -1,0 +1,22 @@
+{
+  String propertiesFile=System.getProperty(NEO_SERVER_CONFIG_FILE_KEY);
+  File dbProperties=extractDbTuningProperties(propertiesFile);
+  Map<String,String> config=stringMap();
+  if (dbProperties != null) {
+    if (!dbProperties.exists())     throw new IllegalArgumentException(dbProperties + " doesn't exist");
+    config=readFromConfigConfig(config,dbProperties);
+  }
+  config.putAll(new Args(args).asMap());
+  verifyConfig(config);
+  try {
+    new StandaloneClusterClient(new ClusterClient(adapt(new Config(config)),logging(),new CoordinatorIncapableCredentialsProvider()));
+  }
+ catch (  LifecycleException e) {
+    Throwable cause=peel(e,exceptionsOfType(LifecycleException.class));
+    if (cause instanceof ChannelException)     System.err.println("ERROR: " + cause.getMessage() + (cause.getCause() != null ? ", caused by:" + cause.getCause().getMessage() : ""));
+ else {
+      System.err.println("ERROR: Uknown error");
+      throw e;
+    }
+  }
+}

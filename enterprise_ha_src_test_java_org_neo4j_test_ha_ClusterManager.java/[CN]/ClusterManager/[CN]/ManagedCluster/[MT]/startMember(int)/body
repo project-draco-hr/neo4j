@@ -1,18 +1,29 @@
 {
   Clusters.Member member=spec.getMembers().get(serverId - 1);
-  int haPort=new URI("cluster://" + member.getHost()).getPort() + 3000;
   StringBuilder initialHosts=new StringBuilder(spec.getMembers().get(0).getHost());
-  for (int i=1; i < spec.getMembers().size(); i++) {
-    initialHosts.append(",").append(spec.getMembers().get(i).getHost());
-  }
-  GraphDatabaseBuilder graphDatabaseBuilder=new HighlyAvailableGraphDatabaseFactory().newHighlyAvailableDatabaseBuilder(new File(new File(root,name),"server" + serverId).getAbsolutePath()).setConfig(ClusterSettings.cluster_name,name).setConfig(ClusterSettings.initial_hosts,initialHosts.toString()).setConfig(ClusterSettings.cluster_server,member.getHost()).setConfig(HaSettings.server_id,serverId + "").setConfig(HaSettings.ha_server,":" + haPort).setConfig(commonConfig);
-  config(graphDatabaseBuilder,name,serverId);
-  final GraphDatabaseService graphDatabase=graphDatabaseBuilder.newGraphDatabase();
-  members.put(serverId,(HighlyAvailableGraphDatabase)graphDatabase);
-  life.add(new LifecycleAdapter(){
-    @Override public void stop() throws Throwable {
-      graphDatabase.shutdown();
+  for (int i=1; i < spec.getMembers().size(); i++)   initialHosts.append(",").append(spec.getMembers().get(i).getHost());
+  if (member.isFullHaMember()) {
+    int haPort=new URI("cluster://" + member.getHost()).getPort() + 3000;
+    GraphDatabaseBuilder graphDatabaseBuilder=new HighlyAvailableGraphDatabaseFactory().newHighlyAvailableDatabaseBuilder(new File(new File(root,name),"server" + serverId).getAbsolutePath()).setConfig(ClusterSettings.cluster_name,name).setConfig(ClusterSettings.initial_hosts,initialHosts.toString()).setConfig(HaSettings.server_id,serverId + "").setConfig(ClusterSettings.cluster_server,member.getHost()).setConfig(HaSettings.ha_server,":" + haPort).setConfig(commonConfig);
+    config(graphDatabaseBuilder,name,serverId);
+    logger.info("Starting cluster node " + serverId + " in cluster "+ name);
+    final GraphDatabaseService graphDatabase=graphDatabaseBuilder.newGraphDatabase();
+    members.put(serverId,(HighlyAvailableGraphDatabase)graphDatabase);
+    life.add(new LifecycleAdapter(){
+      @Override public void stop() throws Throwable {
+        graphDatabase.shutdown();
+      }
     }
-  }
 );
+  }
+ else {
+    Map<String,String> config=MapUtil.stringMap(ClusterSettings.cluster_name.name(),name,ClusterSettings.initial_hosts.name(),initialHosts.toString(),ClusterSettings.cluster_server.name(),member.getHost());
+    Logging clientLogging=new Logging(){
+      @Override public StringLogger getLogger(      Class loggingClass){
+        return new Slf4jStringLogger(logger);
+      }
+    }
+;
+    life.add(new ClusterClient(ClusterClient.adapt(new Config(config)),clientLogging,new CoordinatorIncapableCredentialsProvider()));
+  }
 }
