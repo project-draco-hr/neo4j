@@ -1,9 +1,20 @@
 {
   super(branchId,name);
   try {
+    TransactionStateFactory stateFactory=new TransactionStateFactory(new DevNullLoggingService()){
+      @Override public TransactionState create(      Transaction tx){
+        return new NoTransactionState(){
+          @Override public TxIdGenerator getTxIdGenerator(){
+            return getEmbeddedGraphDb().getTxIdGenerator();
+          }
+        }
+;
+      }
+    }
+;
     map.put("store_dir",path().getPath());
-    xaContainer=xaFactory.newXaContainer(this,resourceFile(),new DummyCommandFactory(),new DummyTransactionFactory(),TransactionStateFactory.noStateFactory(new DevNullLoggingService()),new TransactionInterceptorProviders(Iterables.<TransactionInterceptorProvider>empty(),new DependencyResolver(){
-      @Override public <T>T resolveDependency(      Class<T> type) throws IllegalArgumentException {
+    xaContainer=xaFactory.newXaContainer(this,resourceFile(),new DummyCommandFactory(),new DummyTransactionFactory(),stateFactory,new TransactionInterceptorProviders(Iterables.<TransactionInterceptorProvider>empty(),new DependencyResolver(){
+      @Override public <T>T resolveDependency(      Class<T> type){
         return (T)new Config(MapUtil.stringMap(GraphDatabaseSettings.intercept_committing_transactions.name(),GraphDatabaseSetting.FALSE,GraphDatabaseSettings.intercept_deserialized_transactions.name(),GraphDatabaseSetting.FALSE));
       }
     }

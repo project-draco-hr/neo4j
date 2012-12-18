@@ -1,16 +1,13 @@
 {
   msgLog.logMessage("I am " + config.get(HaSettings.server_id) + ", moving to master");
   try {
-    MasterImpl masterImpl=new MasterImpl(graphDb,graphDb.getMessageLog(),config);
+    MasterImpl masterImpl=new MasterImpl(graphDb,logging,config);
     MasterServer masterServer=new MasterServer(masterImpl,msgLog,serverConfig(),new BranchDetectingTxVerifier(graphDb));
     life.add(masterImpl);
     life.add(masterServer);
     delegateHandler.setDelegate(masterImpl);
     DependencyResolver resolver=graphDb.getDependencyResolver();
     HaXaDataSourceManager xaDsm=resolver.resolveDependency(HaXaDataSourceManager.class);
-    TxManager txManager=resolver.resolveDependency(TxManager.class);
-    txManager.stop();
-    txManager.start();
     idGeneratorFactory.switchToMaster();
 synchronized (xaDsm) {
       ensureDataSourceStarted(xaDsm,resolver);

@@ -27,14 +27,14 @@
   xaDataSourceManager=life.add(createXaDataSourceManager());
   txHook=createTxHook();
   guard=config.get(Configuration.execution_guard_enabled) ? new Guard(msgLog) : null;
-  stateFactory=new TransactionStateFactory(logging);
+  stateFactory=createTransactionStateFactory();
   if (readOnly) {
     txManager=new ReadOnlyTxManager(xaDataSourceManager);
   }
  else {
     String serviceName=config.get(GraphDatabaseSettings.tx_manager_impl);
     if (serviceName == null) {
-      txManager=new TxManager(this.storeDir,xaDataSourceManager,kernelPanicEventGenerator,txHook,logging.getLogger(TxManager.class),fileSystem,stateFactory);
+      txManager=new TxManager(this.storeDir,xaDataSourceManager,kernelPanicEventGenerator,logging.getLogger(TxManager.class),fileSystem,stateFactory);
     }
  else {
       TransactionManagerProvider provider;
@@ -61,7 +61,7 @@
   Cache<RelationshipImpl> relCache=diagnosticsManager.tryAppendProvider(caches.relationship());
   nodeManager=guard != null ? createGuardedNodeManager(readOnly,cacheProvider,nodeCache,relCache) : createNodeManager(readOnly,cacheProvider,nodeCache,relCache);
   life.add(nodeManager);
-  stateFactory.setDependencies(lockManager,propertyIndexManager,nodeManager);
+  stateFactory.setDependencies(lockManager,propertyIndexManager,nodeManager,txHook,txIdGenerator);
   indexStore=new IndexStore(this.storeDir,fileSystem);
   diagnosticsManager.prependProvider(config);
   params=config.getParams();
