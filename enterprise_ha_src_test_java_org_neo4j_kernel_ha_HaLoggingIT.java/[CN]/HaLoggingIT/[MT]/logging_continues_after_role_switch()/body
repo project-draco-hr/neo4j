@@ -1,0 +1,12 @@
+{
+  String logMessage="Just a test for that logging continues as expected";
+  HighlyAvailableGraphDatabase db=cluster.getAnySlave();
+  StringLogger logger=db.getDependencyResolver().resolveDependency(StringLogger.class);
+  logger.logMessage(logMessage,true);
+  HighlyAvailableGraphDatabase master=cluster.getMaster();
+  cluster.shutdown(master);
+  cluster.await(masterAvailable(master));
+  logger.logMessage(logMessage,true);
+  int count=findLoggingLines(db,logMessage);
+  assertEquals(2,count);
+}
