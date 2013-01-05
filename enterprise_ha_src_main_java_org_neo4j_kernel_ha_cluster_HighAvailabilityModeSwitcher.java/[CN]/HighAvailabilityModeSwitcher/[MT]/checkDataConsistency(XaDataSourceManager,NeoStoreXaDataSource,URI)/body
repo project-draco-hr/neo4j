@@ -1,0 +1,37 @@
+{
+  LifeSupport checkConsistencyLife=new LifeSupport();
+  try {
+    MasterClient18 checkConsistencyMaster=new MasterClient18(masterUri,logging,nioneoDataSource.getStoreId(),config);
+    checkConsistencyLife.add(checkConsistencyMaster);
+    checkConsistencyLife.start();
+    checkDataConsistencyWithMaster(checkConsistencyMaster,nioneoDataSource);
+    return true;
+  }
+ catch (  StoreUnableToParticipateInClusterException upe) {
+    msgLog.warn("Current store is unable to participate in the cluster; fetching new store from master",upe);
+    try {
+      xaDataSourceManager.unregisterDataSource(Config.DEFAULT_DATA_SOURCE_NAME);
+      stopServicesAndHandleBranchedStore(config.get(HaSettings.branched_data_policy));
+    }
+ catch (    IOException e) {
+      msgLog.warn("Failed while trying to handle branched data",e);
+    }
+  }
+catch (  MismatchingStoreIdException e) {
+    if (nioneoDataSource.getNeoStore().getLastCommittedTx() == 1) {
+      msgLog.warn("Found and deleting empty store with mismatching store id " + e.getMessage());
+      stopServicesAndHandleBranchedStore(BranchedDataPolicy.keep_none);
+    }
+ else {
+      msgLog.error("Store cannot participate in cluster due to mismatching store IDs");
+      throw e;
+    }
+  }
+catch (  Throwable throwable) {
+    msgLog.warn("Consistency checker failed",throwable);
+  }
+ finally {
+    checkConsistencyLife.shutdown();
+  }
+  return false;
+}

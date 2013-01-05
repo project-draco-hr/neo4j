@@ -2,13 +2,11 @@
   if (config.<Boolean>get(OnlineBackupSettings.online_backup_enabled)) {
     TheBackupInterface backup=new BackupImpl(graphDatabaseAPI);
     try {
-      server=new BackupServer(backup,config.get(OnlineBackupSettings.online_backup_port),graphDatabaseAPI.getDependencyResolver().resolveDependency(Logging.class).getLogger(OnlineBackupKernelExtension.class));
+      server=new BackupServer(backup,config.get(OnlineBackupSettings.online_backup_port),graphDatabaseAPI.getDependencyResolver().resolveDependency(Logging.class));
       server.init();
       server.start();
       try {
-        ClusterMemberAvailability ha=graphDatabaseAPI.getDependencyResolver().resolveDependency(ClusterMemberAvailability.class);
-        backupUri=URI.create("backup://" + server.getSocketAddress().getHostName() + ":"+ server.getSocketAddress().getPort());
-        ha.memberIsAvailable(BACKUP,backupUri);
+        graphDatabaseAPI.getDependencyResolver().resolveDependency(ClusterMemberEvents.class).addClusterMemberListener(new StartBindingListener());
       }
  catch (      NoClassDefFoundError e) {
       }

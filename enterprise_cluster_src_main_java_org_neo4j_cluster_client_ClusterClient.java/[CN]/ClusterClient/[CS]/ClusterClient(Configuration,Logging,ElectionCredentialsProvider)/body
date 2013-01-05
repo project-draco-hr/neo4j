@@ -7,7 +7,7 @@
       return config.getAddress();
     }
   }
-,StringLogger.SYSTEM);
+,logging);
   server=protocolServerFactory.newProtocolServer(timeoutStrategy,networkNodeTCP,networkNodeTCP,acceptorInstanceStore,electionCredentialsProvider);
   networkNodeTCP.addNetworkChannelsListener(new NetworkInstance.NetworkChannelsListener(){
     @Override public void listeningAt(    URI me){
@@ -23,12 +23,13 @@
   life.add(networkNodeTCP);
   life.add(new Lifecycle(){
     private ScheduledExecutorService scheduler;
+    private ScheduledFuture<?> tickFuture;
     @Override public void init() throws Throwable {
       server.getTimeouts().tick(System.currentTimeMillis());
     }
     @Override public void start() throws Throwable {
-      scheduler=Executors.newSingleThreadScheduledExecutor(new DaemonThreadFactory("timeout"));
-      scheduler.scheduleWithFixedDelay(new Runnable(){
+      scheduler=Executors.newSingleThreadScheduledExecutor(new DaemonThreadFactory("timeout-clusterClient"));
+      tickFuture=scheduler.scheduleWithFixedDelay(new Runnable(){
         @Override public void run(){
           long now=System.currentTimeMillis();
           server.getTimeouts().tick(now);
@@ -37,6 +38,7 @@
 ,0,10,TimeUnit.MILLISECONDS);
     }
     @Override public void stop() throws Throwable {
+      tickFuture.cancel(true);
       scheduler.shutdownNow();
     }
     @Override public void shutdown() throws Throwable {

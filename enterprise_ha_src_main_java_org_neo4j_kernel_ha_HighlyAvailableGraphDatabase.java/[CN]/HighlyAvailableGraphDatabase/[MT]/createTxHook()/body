@@ -1,11 +1,42 @@
 {
+  clusterEventsDelegateInvocationHandler=new DelegateInvocationHandler();
+  memberContextDelegateInvocationHandler=new DelegateInvocationHandler();
+  clusterMemberAvailabilityDelegateInvocationHandler=new DelegateInvocationHandler();
+  clusterEvents=(ClusterMemberEvents)Proxy.newProxyInstance(ClusterMemberEvents.class.getClassLoader(),new Class[]{ClusterMemberEvents.class,Lifecycle.class},clusterEventsDelegateInvocationHandler);
+  memberContext=(HighAvailabilityMemberContext)Proxy.newProxyInstance(HighAvailabilityMemberContext.class.getClassLoader(),new Class[]{HighAvailabilityMemberContext.class},memberContextDelegateInvocationHandler);
+  clusterMemberAvailability=(ClusterMemberAvailability)Proxy.newProxyInstance(ClusterMemberAvailability.class.getClassLoader(),new Class[]{ClusterMemberAvailability.class},clusterMemberAvailabilityDelegateInvocationHandler);
   DefaultElectionCredentialsProvider electionCredentialsProvider=new DefaultElectionCredentialsProvider(config.get(HaSettings.server_id),new OnDiskLastTxIdGetter(new File(getStoreDir())));
   clusterClient=new ClusterClient(ClusterClient.adapt(config),logging,electionCredentialsProvider);
-  clusterEvents=life.add(new PaxosClusterMemberEvents(clusterClient,clusterClient,clusterClient,logging.getLogger(PaxosClusterMemberEvents.class)));
-  clusterMemberAvailability=life.add(new PaxosClusterMemberAvailability(clusterClient,clusterClient,logging.getLogger(PaxosClusterMemberEvents.class)));
-  memberContext=new HighAvailabilityMemberContext(clusterClient);
+  PaxosClusterMemberEvents localClusterEvents=new PaxosClusterMemberEvents(clusterClient,clusterClient,clusterClient,logging);
+  HighAvailabilityMemberContext localMemberContext=new SimpleHighAvailabilityMemberContext(clusterClient);
+  PaxosClusterMemberAvailability localClusterMemberAvailability=new PaxosClusterMemberAvailability(clusterClient,clusterClient,logging);
+  if (!config.get(HaSettings.coordinators).isEmpty() && !config.get(HaSettings.coordinators).get(0).toString().trim().equals("")) {
+    compatibilityMode=true;
+    compatibilityLifecycle=new LinkedList<Lifecycle>();
+    Switchover switchover=new ZooToPaxosSwitchover(life,paxosLife,compatibilityLifecycle,clusterEventsDelegateInvocationHandler,memberContextDelegateInvocationHandler,clusterMemberAvailabilityDelegateInvocationHandler,localClusterEvents,localMemberContext,localClusterMemberAvailability);
+    ZooKeeperHighAvailabilityEvents zkEvents=new ZooKeeperHighAvailabilityEvents(logging,config,switchover);
+    compatibilityLifecycle.add(zkEvents);
+    memberContextDelegateInvocationHandler.setDelegate(new SimpleHighAvailabilityMemberContext(zkEvents));
+    clusterEventsDelegateInvocationHandler.setDelegate(zkEvents);
+    clusterMemberAvailabilityDelegateInvocationHandler.setDelegate(zkEvents);
+    paxosLife.add(localClusterEvents);
+  }
+ else {
+    memberContextDelegateInvocationHandler.setDelegate(localMemberContext);
+    clusterEventsDelegateInvocationHandler.setDelegate(localClusterEvents);
+    clusterMemberAvailabilityDelegateInvocationHandler.setDelegate(localClusterMemberAvailability);
+  }
   memberStateMachine=new HighAvailabilityMemberStateMachine(memberContext,accessGuard,clusterEvents,logging.getLogger(HighAvailabilityMemberStateMachine.class));
-  life.add(new HighAvailabilityModeSwitcher(delegateInvocationHandler,clusterMemberAvailability,memberStateMachine,this,config,logging.getLogger(HighAvailabilityModeSwitcher.class)));
+  if (compatibilityMode) {
+    compatibilityLifecycle.add(memberStateMachine);
+    compatibilityLifecycle.add((Lifecycle)clusterEvents);
+    life.add(memberStateMachine);
+    life.add(clusterEvents);
+  }
+  paxosLife.add(memberStateMachine);
+  paxosLife.add(clusterEvents);
+  paxosLife.add(clusterClient);
+  paxosLife.add(localClusterMemberAvailability);
   DelegateInvocationHandler<TxHook> txHookDelegate=new DelegateInvocationHandler<TxHook>();
   TxHook txHook=(TxHook)Proxy.newProxyInstance(TxHook.class.getClassLoader(),new Class[]{TxHook.class},txHookDelegate);
   new TxHookModeSwitcher(memberStateMachine,txHookDelegate,master,new TxHookModeSwitcher.RequestContextFactoryResolver(){

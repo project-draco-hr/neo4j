@@ -1,10 +1,17 @@
 {
-  ClusterManager clusterManager=new ClusterManager(fromXml(getClass().getResource("/fourinstances.xml").toURI()),folder.getRoot(),MapUtil.stringMap());
+  ClusterManager clusterManager=new ClusterManager(fromXml(getClass().getResource("/fourinstances.xml").toURI()),TargetDirectory.forTest(getClass()).directory("4instances",true),MapUtil.stringMap());
   clusterManager.start();
   logging.getLogger().info("STOPPING MASTER");
   clusterManager.getDefaultCluster().getMaster().stop();
   logging.getLogger().info("STOPPED MASTER");
-  Thread.sleep(60000);
+  Thread.sleep(30000);
+  GraphDatabaseService master=clusterManager.getCluster("neo4j.ha").getMaster();
+  logging.getLogger().info("CREATE NODE");
+  Transaction tx=master.beginTx();
+  master.createNode();
+  logging.getLogger().info("CREATED NODE");
+  tx.success();
+  tx.finish();
   logging.getLogger().info("STOPPING CLUSTER");
   clusterManager.stop();
 }

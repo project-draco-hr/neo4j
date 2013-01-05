@@ -8,6 +8,7 @@ synchronized (timeouts) {
       }
       stateMachine.handle(message,outgoing);
       Message<? extends MessageType> outgoingMessage;
+      List<Message<? extends MessageType>> toSend=new LinkedList<Message<? extends MessageType>>();
       try {
         while ((outgoingMessage=outgoing.nextOutgoingMessage()) != null) {
           message.copyHeadersTo(outgoingMessage,CONVERSATION_ID,CREATED_BY);
@@ -20,12 +21,7 @@ synchronized (timeouts) {
             }
           }
           if (outgoingMessage.hasHeader(Message.TO)) {
-            try {
-              sender.process(outgoingMessage);
-            }
- catch (            Throwable e) {
-              logger.warn("Message sending threw exception",e);
-            }
+            toSend.add(outgoingMessage);
           }
  else {
             StateMachine internalStatemachine=stateMachines.get(outgoingMessage.getMessageType().getClass());
@@ -33,6 +29,9 @@ synchronized (timeouts) {
               internalStatemachine.handle((Message)outgoingMessage,outgoing);
             }
           }
+        }
+        if (!toSend.isEmpty()) {
+          sender.process(toSend);
         }
       }
  catch (      Exception e) {

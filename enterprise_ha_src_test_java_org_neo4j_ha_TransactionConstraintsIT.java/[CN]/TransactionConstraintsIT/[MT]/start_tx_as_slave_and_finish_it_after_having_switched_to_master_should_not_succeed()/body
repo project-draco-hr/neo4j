@@ -1,0 +1,14 @@
+{
+  GraphDatabaseService db=cluster.getAnySlave();
+  takeTheLeadInAnEventualMasterSwitch(db);
+  Transaction tx=db.beginTx();
+  try {
+    db.getReferenceNode().setProperty("name","slave");
+    tx.success();
+  }
+  finally {
+    cluster.shutdown(cluster.getMaster());
+    assertFinishGetsTransactionFailure(tx);
+  }
+  assertEquals(db,cluster.getMaster());
+}

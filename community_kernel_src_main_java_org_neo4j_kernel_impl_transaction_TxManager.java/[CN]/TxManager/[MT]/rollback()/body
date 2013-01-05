@@ -1,12 +1,12 @@
 {
-  assertTmOk("tx rollback");
   TransactionImpl tx=txThreadMap.get();
   if (tx == null) {
-    throw new IllegalStateException("Not in transaction");
+    throw logAndReturn("TM error tx commit",new IllegalStateException("Not in transaction"));
   }
   boolean hasAnyLocks=false;
   try {
-    hasAnyLocks=finishHook.hasAnyLocks(tx);
+    assertTmOk("tx rollback");
+    hasAnyLocks=tx.hasAnyLocks();
     if (tx.getStatus() == Status.STATUS_ACTIVE || tx.getStatus() == Status.STATUS_MARKED_ROLLBACK || tx.getStatus() == Status.STATUS_PREPARING) {
       tx.setStatus(Status.STATUS_MARKED_ROLLBACK);
       tx.doBeforeCompletion();
@@ -20,7 +20,6 @@
         throw logAndReturn("TM error tx rollback",Exceptions.withCause(new SystemException("Unable to rollback " + " ---> error code for rollback: " + e.errorCode),e));
       }
       tx.doAfterCompletion();
-      txThreadMap.remove();
       try {
         if (tx.isGlobalStartRecordWritten()) {
           getTxLog().txDone(tx.getGlobalId());
@@ -38,8 +37,9 @@
     }
   }
   finally {
+    txThreadMap.remove();
     if (hasAnyLocks) {
-      finishHook.finishTransaction(tx.getEventIdentifier(),false);
+      tx.finish(false);
     }
   }
 }

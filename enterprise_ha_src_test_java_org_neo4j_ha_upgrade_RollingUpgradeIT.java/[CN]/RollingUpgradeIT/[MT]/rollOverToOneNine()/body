@@ -1,0 +1,25 @@
+{
+  debug("Starting to roll over to 1.9");
+  newDbs=new GraphDatabaseAPI[legacyDbs.length];
+  for (int i=legacyDbs.length - 1; i >= 0; i--) {
+    LegacyDatabase legacyDb=legacyDbs[i];
+    String storeDir=legacyDb.getStoreDir();
+    stop(legacyDb);
+    Thread.sleep(5000);
+    debug("Starting it as 1.9");
+    newDbs[i]=(GraphDatabaseAPI)new HighlyAvailableGraphDatabaseFactory().newHighlyAvailableDatabaseBuilder(storeDir).setConfig(config(i,false)).newGraphDatabase();
+    debug("Started as 1.9");
+    Thread.sleep(5000);
+    String name="upgraded-" + i;
+    long node=createNodeWithRetry(newDbs[i],name);
+    System.out.println("===> Created on " + i);
+    for (int j=0; j < i; j++) {
+      legacyDbs[j].verifyNodeExists(node,name);
+      debug("Verified on legacy db " + j);
+    }
+    for (int j=i; j < newDbs.length; j++) {
+      verifyNodeExists(newDbs[j],node,name);
+      debug("==> Verified on new db " + j);
+    }
+  }
+}

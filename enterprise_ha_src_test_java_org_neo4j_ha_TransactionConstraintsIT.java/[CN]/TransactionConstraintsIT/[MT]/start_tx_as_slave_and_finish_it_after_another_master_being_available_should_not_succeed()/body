@@ -1,0 +1,15 @@
+{
+  HighlyAvailableGraphDatabase db=cluster.getAnySlave();
+  Transaction tx=db.beginTx();
+  try {
+    db.getReferenceNode().setProperty("name","slave");
+    tx.success();
+  }
+  finally {
+    HighlyAvailableGraphDatabase theOtherSlave=cluster.getAnySlave(db);
+    takeTheLeadInAnEventualMasterSwitch(theOtherSlave);
+    cluster.shutdown(cluster.getMaster());
+    assertFinishGetsTransactionFailure(tx);
+  }
+  assertFalse(db.isMaster());
+}

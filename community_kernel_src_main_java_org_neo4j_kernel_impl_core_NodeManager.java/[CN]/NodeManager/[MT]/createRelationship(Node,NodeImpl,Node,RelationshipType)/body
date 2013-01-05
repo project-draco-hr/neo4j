@@ -15,17 +15,14 @@
   long id=idGenerator.nextId(Relationship.class);
   int typeId=getRelationshipTypeIdFor(type);
   RelationshipImpl rel=newRelationshipImpl(id,startNodeId,endNodeId,type,typeId,true);
-  boolean firstNodeTaken=false;
-  boolean secondNodeTaken=false;
   RelationshipProxy proxy=new RelationshipProxy(id,relationshipLookups);
-  acquireLock(proxy,LockType.WRITE);
+  TransactionState transactionState=getTransactionState();
+  transactionState.acquireWriteLock(proxy);
   boolean success=false;
-  TransactionState tx=getTransactionState();
+  TransactionState tx=transactionState;
   try {
-    acquireLock(startNodeProxy,LockType.WRITE);
-    firstNodeTaken=true;
-    acquireLock(endNode,LockType.WRITE);
-    secondNodeTaken=true;
+    transactionState.acquireWriteLock(startNodeProxy);
+    transactionState.acquireWriteLock(endNode);
     persistenceManager.relationshipCreate(id,typeId,startNodeId,endNodeId);
     if (startNodeId == endNodeId) {
       tx.getOrCreateCowRelationshipAddMap(startNode,typeId).add(id,DirectionWrapper.BOTH);
@@ -39,31 +36,8 @@
     return proxy;
   }
   finally {
-    boolean releaseFailed=false;
-    if (firstNodeTaken) {
-      try {
-        releaseLock(startNodeProxy,LockType.WRITE,tx);
-      }
- catch (      Exception e) {
-        releaseFailed=true;
-        log.log(Level.SEVERE,"Failed to release lock",e);
-      }
-    }
-    if (secondNodeTaken) {
-      try {
-        releaseLock(endNode,LockType.WRITE,tx);
-      }
- catch (      Exception e) {
-        releaseFailed=true;
-        log.log(Level.SEVERE,"Failed to release lock",e);
-      }
-    }
-    releaseLock(proxy,LockType.WRITE,tx);
     if (!success) {
       setRollbackOnly();
-    }
-    if (releaseFailed) {
-      throw new LockException("Unable to release locks [" + startNode + ","+ endNode+ "] in relationship create->"+ rel);
     }
   }
 }

@@ -2,7 +2,8 @@
   long id=idGenerator.nextId(Node.class);
   NodeImpl node=new NodeImpl(id,Record.NO_NEXT_RELATIONSHIP.intValue(),Record.NO_NEXT_PROPERTY.intValue(),true);
   NodeProxy proxy=new NodeProxy(id,nodeLookup);
-  acquireLock(proxy,LockType.WRITE);
+  TransactionState transactionState=getTransactionState();
+  transactionState.acquireWriteLock(proxy);
   boolean success=false;
   try {
     persistenceManager.nodeCreate(id);
@@ -11,7 +12,6 @@
     return proxy;
   }
   finally {
-    releaseLock(proxy,LockType.WRITE,getTransactionState());
     if (!success) {
       setRollbackOnly();
     }
