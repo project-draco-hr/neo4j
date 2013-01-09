@@ -24,7 +24,23 @@
     }
   }
   if (service != null) {
-    backupURI=service.resolve(backupURI,arguments,new SystemOutLogging());
+    Logging logging;
+    try {
+      getClass().getClassLoader().loadClass("ch.qos.logback.classic.LoggerContext");
+      LifeSupport life=new LifeSupport();
+      LogbackService logbackService=life.add(new LogbackService(tuningConfiguration,(LoggerContext)getSingleton().getLoggerFactory(),"neo4j-backup-logback.xml"));
+      life.start();
+      logging=logbackService;
+    }
+ catch (    Throwable e) {
+      logging=new SystemOutLogging();
+    }
+    try {
+      backupURI=service.resolve(backupURI,arguments,logging);
+    }
+ catch (    Throwable e) {
+      throw new ToolFailureException(e.getMessage());
+    }
   }
   doBackup(full,backupURI,to,verify,tuningConfiguration);
 }
