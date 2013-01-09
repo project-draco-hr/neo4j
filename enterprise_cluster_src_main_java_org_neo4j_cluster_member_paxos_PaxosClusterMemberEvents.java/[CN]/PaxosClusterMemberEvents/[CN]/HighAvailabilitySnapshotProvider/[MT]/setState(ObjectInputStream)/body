@@ -1,11 +1,21 @@
 {
   clusterMembersSnapshot=ClusterMembersSnapshot.class.cast(input.readObject());
-  Listeners.notifyListeners(listeners,executor,new Listeners.Notification<ClusterMemberListener>(){
-    @Override public void notify(    ClusterMemberListener listener){
-      for (      MemberIsAvailable memberIsAvailable : clusterMembersSnapshot.getCurrentAvailableMembers()) {
-        listener.memberIsAvailable(memberIsAvailable.getRole(),memberIsAvailable.getClusterUri(),memberIsAvailable.getRoleUri());
+  if (!snapshotValidator.accept(clusterMembersSnapshot)) {
+    executor.submit(new Runnable(){
+      @Override public void run(){
+        cluster.leave();
       }
     }
-  }
 );
+  }
+ else {
+    Listeners.notifyListeners(listeners,executor,new Listeners.Notification<ClusterMemberListener>(){
+      @Override public void notify(      ClusterMemberListener listener){
+        for (        MemberIsAvailable memberIsAvailable : clusterMembersSnapshot.getCurrentAvailableMembers()) {
+          listener.memberIsAvailable(memberIsAvailable.getRole(),memberIsAvailable.getClusterUri(),memberIsAvailable.getRoleUri());
+        }
+      }
+    }
+);
+  }
 }

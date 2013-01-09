@@ -7,7 +7,18 @@
   clusterMemberAvailability=(ClusterMemberAvailability)Proxy.newProxyInstance(ClusterMemberAvailability.class.getClassLoader(),new Class[]{ClusterMemberAvailability.class},clusterMemberAvailabilityDelegateInvocationHandler);
   DefaultElectionCredentialsProvider electionCredentialsProvider=new DefaultElectionCredentialsProvider(config.get(HaSettings.server_id),new OnDiskLastTxIdGetter(new File(getStoreDir())));
   clusterClient=new ClusterClient(ClusterClient.adapt(config),logging,electionCredentialsProvider);
-  PaxosClusterMemberEvents localClusterEvents=new PaxosClusterMemberEvents(clusterClient,clusterClient,clusterClient,logging);
+  PaxosClusterMemberEvents localClusterEvents=new PaxosClusterMemberEvents(clusterClient,clusterClient,clusterClient,logging,new Predicate<PaxosClusterMemberEvents.ClusterMembersSnapshot>(){
+    @Override public boolean accept(    PaxosClusterMemberEvents.ClusterMembersSnapshot item){
+      for (      MemberIsAvailable member : item.getCurrentAvailableMembers()) {
+        if (HighAvailabilityModeSwitcher.getServerId(member.getRoleUri()) == config.get(HaSettings.server_id)) {
+          msgLog.error(String.format("Instance %s has the same serverId as ours (%d) - will not join this cluster",member.getRoleUri(),config.get(HaSettings.server_id)));
+          return false;
+        }
+      }
+      return true;
+    }
+  }
+);
   HighAvailabilityMemberContext localMemberContext=new SimpleHighAvailabilityMemberContext(clusterClient);
   PaxosClusterMemberAvailability localClusterMemberAvailability=new PaxosClusterMemberAvailability(clusterClient,clusterClient,logging);
   if (!config.get(HaSettings.coordinators).isEmpty() && !config.get(HaSettings.coordinators).get(0).toString().trim().equals("")) {
