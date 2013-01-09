@@ -10,41 +10,41 @@
   assertExists(dbs[1],nodes,rels);
   dbs[2]=startDb(2);
   assertExists(dbs[2],nodes,rels);
-  System.out.println("============== Case simple master switch test ================");
-  System.out.println("Start master test");
+  debug("============== Case simple master switch test ================");
+  debug("Start master test");
   dbs[0].shutdown();
-  System.out.println("0 is now dead");
+  debug("0 is now dead");
   Thread.sleep(3000);
   assertTrue(dbs[1].isMaster() || dbs[2].isMaster());
   dbs[0]=startDb(0);
-  System.out.println("0 is now back on");
+  debug("0 is now back on");
   assertTrue(dbs[1].isMaster());
   assertFalse(dbs[0].isMaster());
-  System.out.println("============== Case brutal master switch test with create ================");
+  debug("============== Case brutal master switch test with create ================");
   for (int i=0; i < 6; i++) {
     int j=findMaster();
     HighlyAvailableGraphDatabase db1=dbs[(j + 1) % dbs.length];
     HighlyAvailableGraphDatabase db2=dbs[(j + 2) % dbs.length];
     db1.getDependencyResolver().resolveDependency(UpdatePuller.class).pullUpdates();
     db2.getDependencyResolver().resolveDependency(UpdatePuller.class).pullUpdates();
-    System.out.println("Starting kill of " + j);
+    debug("Starting kill of " + j);
     dbs[j].shutdown();
-    System.out.println("========> killed " + j);
+    debug("========> killed " + j);
     for (int k=0; k < 10; k++) {
       createNodeAndRelationship(db1,nodes,rels);
       createNodeAndRelationship(db2,nodes,rels);
     }
     Thread.sleep(3000);
-    System.out.println("Starting " + dbs[j]);
+    debug("Starting " + dbs[j]);
     dbs[j]=startDb(j);
-    System.out.println("Done starting " + j);
+    debug("Done starting " + j);
     Thread.sleep(3000);
     for (int k=0; k < 10; k++) {
-      System.out.println("Creating on " + ((j + 1) % dbs.length));
+      debug("Creating on " + ((j + 1) % dbs.length));
       createNodeAndRelationship(db1,nodes,rels);
-      System.out.println("Creating on " + ((j + 2) % dbs.length));
+      debug("Creating on " + ((j + 2) % dbs.length));
       createNodeAndRelationship(db2,nodes,rels);
-      System.out.println("Creating on " + ((j + 3) % dbs.length));
+      debug("Creating on " + ((j + 3) % dbs.length));
       createNodeAndRelationship(dbs[(j + 3) % dbs.length],nodes,rels);
     }
   }
@@ -63,7 +63,7 @@
     ConsistencyCheckTool.main(new String[]{db.getStoreDir(),"-recovery"});
   }
   dbs=startCluster(3);
-  System.out.println("============== Case switch master, create on slave simple ================");
+  debug("============== Case switch master, create on slave simple ================");
   dbs[0].shutdown();
   for (int i=0; i < 1; i++) {
     for (int db=1; db < dbs.length; db++) {
@@ -73,16 +73,16 @@
   dbs[2].getDependencyResolver().resolveDependency(UpdatePuller.class).pullUpdates();
   assertExists(dbs[1],nodes,rels);
   assertExists(dbs[2],nodes,rels);
-  System.out.println("============== Case remove master, slave alone still works ================");
+  debug("============== Case remove master, slave alone still works ================");
   dbs[1].shutdown();
   createNodeAndRelationship(dbs[2],nodes,rels);
   assertExists(dbs[2],nodes,rels);
-  System.out.println("============== Case instance joins single machine cluster ================");
+  debug("============== Case instance joins single machine cluster ================");
   dbs[1]=startDb(1);
   createNodeAndRelationship(dbs[1],nodes,rels);
   assertExists(dbs[1],nodes,rels);
   assertExists(dbs[2],nodes,rels);
-  System.out.println("============== Case remove slave, master still working ================");
+  debug("============== Case remove slave, master still working ================");
   dbs[1].shutdown();
   while (true) {
     try {
@@ -95,10 +95,10 @@
     }
   }
   assertExists(dbs[2],nodes,rels);
-  System.out.println("============== Done ================");
+  debug("============== Done ================");
   dbs[2].shutdown();
   for (  HighlyAvailableGraphDatabase db : dbs) {
     Thread.sleep(3000);
-    System.out.println("Checking " + db);
+    debug("Checking " + db);
   }
 }
