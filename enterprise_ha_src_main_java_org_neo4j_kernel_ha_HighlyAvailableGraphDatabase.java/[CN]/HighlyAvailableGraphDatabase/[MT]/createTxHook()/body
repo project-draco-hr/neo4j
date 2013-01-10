@@ -10,9 +10,11 @@
   PaxosClusterMemberEvents localClusterEvents=new PaxosClusterMemberEvents(clusterClient,clusterClient,clusterClient,logging,new Predicate<PaxosClusterMemberEvents.ClusterMembersSnapshot>(){
     @Override public boolean accept(    PaxosClusterMemberEvents.ClusterMembersSnapshot item){
       for (      MemberIsAvailable member : item.getCurrentAvailableMembers()) {
-        if (HighAvailabilityModeSwitcher.getServerId(member.getRoleUri()) == config.get(HaSettings.server_id)) {
-          msgLog.error(String.format("Instance %s has the same serverId as ours (%d) - will not join this cluster",member.getRoleUri(),config.get(HaSettings.server_id)));
-          return false;
+        if (member.getRole().equals(HighAvailabilityModeSwitcher.MASTER) || member.getRole().equals(HighAvailabilityModeSwitcher.SLAVE)) {
+          if (HighAvailabilityModeSwitcher.getServerId(member.getRoleUri()) == config.get(HaSettings.server_id)) {
+            msgLog.error(String.format("Instance %s has the same serverId as ours (%d) - will not join this cluster",member.getRoleUri(),config.get(HaSettings.server_id)));
+            return false;
+          }
         }
       }
       return true;
