@@ -1,0 +1,15 @@
+{
+  GraphDatabaseAPI db=new ImpermanentGraphDatabase();
+  OtherThreadExecutor<WorkerState> worker1=new OtherThreadExecutor<WorkerState>("w1",new WorkerState(db));
+  OtherThreadExecutor<WorkerState> worker2=new OtherThreadExecutor<WorkerState>("w2",new WorkerState(db));
+  worker1.execute(new BeginTx());
+  worker2.execute(new BeginTx());
+  String key="mykey";
+  worker1.execute(new CreateNodeAndSetProperty(key));
+  worker2.execute(new CreateNodeAndSetProperty(key));
+  worker1.execute(new FinishTx());
+  worker2.execute(new FinishTx());
+  worker1.shutdown();
+  worker2.shutdown();
+  assertEquals(1,propertyKeyCount(db));
+}

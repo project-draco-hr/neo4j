@@ -1,2 +1,28 @@
 {
+  for (  RelationshipRecord rel : rels) {
+    long relId=rel.getId();
+    RelationshipImpl relImpl=relCache.get(relId);
+    RelationshipType type=null;
+    int typeId;
+    if (relImpl == null) {
+      typeId=rel.getType();
+      try {
+        type=getRelationshipTypeById(typeId);
+      }
+ catch (      KeyNotFoundException e) {
+        throw new AssertionError("Type of loaded relationships unknown");
+      }
+      relImpl=newRelationshipImpl(relId,rel.getFirstNode(),rel.getSecondNode(),type,typeId,false);
+      relsList.add(relImpl);
+    }
+ else {
+      typeId=relImpl.getTypeId();
+    }
+    RelIdArray relationshipSet=newRelationshipMap.get(typeId);
+    if (relationshipSet == null) {
+      relationshipSet=hasLoops ? new RelIdArrayWithLoops(typeId) : new RelIdArray(typeId);
+      newRelationshipMap.put(typeId,relationshipSet);
+    }
+    relationshipSet.add(relId,dir);
+  }
 }
