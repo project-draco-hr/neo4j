@@ -2,33 +2,5 @@
   if (lock != null) {
     lock.acquire(getTransactionState(),new RelationshipProxy(relId,relationshipLookups));
   }
-  RelationshipImpl relationship=relCache.get(relId);
-  if (relationship != null) {
-    return relationship;
-  }
-  ReentrantLock loadLock=lockId(relId);
-  try {
-    relationship=relCache.get(relId);
-    if (relationship != null) {
-      return relationship;
-    }
-    RelationshipRecord data=persistenceManager.loadLightRelationship(relId);
-    if (data == null) {
-      throw new NotFoundException("Relationship[" + relId + "] not found.");
-    }
-    int typeId=data.getType();
-    RelationshipType type;
-    try {
-      type=getRelationshipTypeById(typeId);
-    }
- catch (    KeyNotFoundException e) {
-      throw new NotFoundException("Relationship[" + data.getId() + "] exist but relationship type["+ typeId+ "] not found.");
-    }
-    relationship=newRelationshipImpl(relId,data.getFirstNode(),data.getSecondNode(),type,typeId,false);
-    relCache.put(relationship);
-    return relationship;
-  }
-  finally {
-    loadLock.unlock();
-  }
+  return relCache.get(relId);
 }
