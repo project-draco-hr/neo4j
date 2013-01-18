@@ -1,13 +1,14 @@
 {
-  KernelAPI kernel=db.getDependencyResolver().resolveDependency(KernelAPI.class);
-  TransactionContext tx=kernel.newTransactionContext();
-  StatementContext statement=tx.newStatementContext();
+  ThreadToStatementContextBridge statementContextProvider=db.getDependencyResolver().resolveDependency(ThreadToStatementContextBridge.class);
+  Transaction beansAPITx=db.beginTx();
+  StatementContext statement=statementContextProvider.getCtxForWriting();
   Node node=db.createNode();
   long labelId=statement.getOrCreateLabelId("labello");
   statement.addLabelToNode(labelId,node.getId());
-  tx.success();
-  tx.finish();
-  tx=kernel.newTransactionContext();
-  statement=tx.newStatementContext();
+  beansAPITx.success();
+  beansAPITx.finish();
+  KernelAPI kernel=db.getDependencyResolver().resolveDependency(KernelAPI.class);
+  TransactionContext kernelAPITx=kernel.newTransactionContext();
+  statement=kernelAPITx.newStatementContext();
   assertTrue(statement.isLabelSetOnNode(labelId,node.getId()));
 }
