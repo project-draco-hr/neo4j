@@ -1,8 +1,15 @@
 {
-  boolean transactionRunning=transactionRunning();
-  TransactionContext txCtx=kernelAPI.newTransactionContext();
-  if (!transactionRunning) {
-    statementContextProvider.setTransactionContextForThread(txCtx);
+  try {
+    if (transactionRunning()) {
+      return new PlaceboTransaction(txManager,txManager.getTransactionState());
+    }
+    txManager.begin();
+    return new TopLevelTransaction(txManager,txManager.getTransactionState());
   }
-  return new BeansAPITransaction(txCtx,txManager.getTransactionState(),statementContextProvider,transactionRunning);
+ catch (  SystemException e) {
+    throw new TransactionFailureException("Couldn't get transaction",e);
+  }
+catch (  NotSupportedException e) {
+    throw new TransactionFailureException("Couldn't begin transaction",e);
+  }
 }
