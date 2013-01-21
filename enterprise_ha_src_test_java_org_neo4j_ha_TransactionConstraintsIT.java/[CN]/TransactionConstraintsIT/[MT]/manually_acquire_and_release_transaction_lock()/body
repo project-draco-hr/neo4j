@@ -1,0 +1,18 @@
+{
+  HighlyAvailableGraphDatabase master=cluster.getMaster();
+  OtherThreadExecutor<HighlyAvailableGraphDatabase> masterWorker=new OtherThreadExecutor<HighlyAvailableGraphDatabase>("master worker",master);
+  Node node=createNode(master);
+  cluster.sync();
+  HighlyAvailableGraphDatabase slave=cluster.getAnySlave();
+  Transaction slaveTx=slave.beginTx();
+  try {
+    Lock lock=slaveTx.acquireWriteLock(slave.getNodeById(node.getId()));
+    lock.release();
+    Transaction masterTx=masterWorker.execute(new BeginTx());
+    masterWorker.execute(new AcquireWriteLock(masterTx,node),1,SECONDS);
+  }
+  finally {
+    slaveTx.finish();
+    masterWorker.shutdown();
+  }
+}
