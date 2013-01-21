@@ -1,5 +1,6 @@
 {
   final AtomicInteger result=new AtomicInteger(-1);
+  final ExceptionContainer exceptionContainer=new ExceptionContainer();
   Thread isolatedCreator=new Thread(){
     @Override public void run(){
       try {
@@ -9,6 +10,7 @@
         result.set(id);
       }
  catch (      Throwable t) {
+        exceptionContainer.setException(t);
         logger.error("Unable to create key '" + name + "'",t);
         try {
           txManager.rollback();
@@ -31,6 +33,6 @@
     }
   }
   int id=result.get();
-  if (id == -1)   throw new TransactionFailureException("Unable to create key '" + name + "'");
+  if (id == -1)   throw new TransactionFailureException("Unable to create key '" + name + "'",exceptionContainer.getException());
   return id;
 }
