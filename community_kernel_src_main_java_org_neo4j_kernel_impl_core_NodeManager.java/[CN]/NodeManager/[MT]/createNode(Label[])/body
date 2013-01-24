@@ -1,0 +1,24 @@
+{
+  long id=idGenerator.nextId(Node.class);
+  NodeImpl node=new NodeImpl(id,Record.NO_NEXT_RELATIONSHIP.intValue(),Record.NO_NEXT_PROPERTY.intValue(),true);
+  NodeProxy proxy=new NodeProxy(id,nodeLookup,statementCtxProvider);
+  TransactionState transactionState=getTransactionState();
+  transactionState.acquireWriteLock(proxy);
+  boolean success=false;
+  try {
+    persistenceManager.nodeCreate(id);
+    if (labels != null) {
+      for (int i=0; i < labels.length; i++) {
+        proxy.addLabel(labels[i]);
+      }
+    }
+    nodeCache.put(node);
+    success=true;
+    return proxy;
+  }
+  finally {
+    if (!success) {
+      setRollbackOnly();
+    }
+  }
+}
