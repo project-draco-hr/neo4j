@@ -6,34 +6,39 @@
     cluster.create(config.getClusterName());
   }
  else {
-    try {
-      while (true) {
-        for (        HostnamePort host : hosts) {
-          if (serverId.toString().endsWith(host.toString())) {
-            continue;
-          }
-          String hostString=resolvePortOnlyHost(host);
-          logger.debug("Attempting to join " + hostString);
-          Future<ClusterConfiguration> clusterConfig=cluster.join(new URI("cluster://" + hostString));
-          try {
-            logger.debug("Joined cluster:" + clusterConfig.get());
-            return;
-          }
- catch (          InterruptedException e) {
-            e.printStackTrace();
-          }
-catch (          ExecutionException e) {
-            logger.debug("Could not join cluster member " + hostString);
-          }
-        }
-        if (config.isAllowedToCreateCluster()) {
-          cluster.create(config.getClusterName());
-          break;
-        }
+    URI[] memberURIs=Iterables.toArray(URI.class,Iterables.filter(new Predicate<URI>(){
+      @Override public boolean accept(      URI uri){
+        return !serverId.equals(uri);
       }
     }
- catch (    URISyntaxException e) {
-      e.printStackTrace();
+,Iterables.map(new Function<HostnamePort,URI>(){
+      @Override public URI apply(      HostnamePort member){
+        return URI.create("cluster://" + resolvePortOnlyHost(member));
+      }
+    }
+,hosts)));
+    while (true) {
+      for (      HostnamePort host : hosts) {
+        if (serverId.toString().endsWith(host.toString())) {
+          continue;
+        }
+        logger.debug("Attempting to join " + hosts.toString());
+        Future<ClusterConfiguration> clusterConfig=cluster.join(this.config.getClusterName(),memberURIs);
+        try {
+          logger.debug("Joined cluster:" + clusterConfig.get());
+          return;
+        }
+ catch (        InterruptedException e) {
+          e.printStackTrace();
+        }
+catch (        ExecutionException e) {
+          logger.debug("Could not join cluster " + this.config.getClusterName());
+        }
+      }
+      if (config.isAllowedToCreateCluster()) {
+        cluster.create(config.getClusterName());
+        break;
+      }
     }
   }
 }

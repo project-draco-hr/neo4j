@@ -1,0 +1,15 @@
+{
+  XaDataSourceManager mockXaManager=mock(XaDataSourceManager.class);
+  TxManager txm=new TxManager(new File("/dev/null"),mockXaManager,new KernelPanicEventGenerator(new KernelEventHandlers()),StringLogger.DEV_NULL,new EphemeralFileSystemAbstraction(),null);
+  txm.doRecovery();
+  String msg="These kinds of throwables, breaking our transaction managers, are why we can't have nice things.";
+  txm.setTmNotOk(new Throwable(msg));
+  try {
+    txm.begin();
+    fail("Should have thrown SystemException.");
+  }
+ catch (  SystemException topLevelException) {
+    assertThat("TM should forward a cause.",topLevelException.getCause(),is(Throwable.class));
+    assertThat("Cause should be the original cause",topLevelException.getCause().getMessage(),is(msg));
+  }
+}

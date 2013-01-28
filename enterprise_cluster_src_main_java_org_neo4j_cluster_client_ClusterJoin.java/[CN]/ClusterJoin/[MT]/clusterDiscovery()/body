@@ -4,27 +4,33 @@
   if (clusters != null) {
     Clusters.Cluster clusterConfig=clusters.getCluster(config.getClusterName());
     if (clusterConfig != null) {
-      for (      Clusters.Member member : clusterConfig.getMembers()) {
-        URI joinUri=new URI("cluster://" + member.getHost());
-        if (!joinUri.equals(serverId)) {
-          Future<ClusterConfiguration> config=cluster.join(joinUri);
-          try {
-            logger.debug("Joined cluster:" + config.get());
-            try {
-              updateMyInfo();
-            }
- catch (            TransformerException e) {
-              throw new RuntimeException(e);
-            }
-            return;
-          }
- catch (          InterruptedException e) {
-            e.printStackTrace();
-          }
-catch (          ExecutionException e) {
-            logger.debug("Could not join cluster member " + member.getHost());
-          }
+      URI[] memberURIs=Iterables.toArray(URI.class,Iterables.filter(new Predicate<URI>(){
+        @Override public boolean accept(        URI uri){
+          return !uri.equals(serverId);
         }
+      }
+,Iterables.map(new Function<Clusters.Member,URI>(){
+        @Override public URI apply(        Clusters.Member member){
+          return URI.create("cluster://" + member.getHost());
+        }
+      }
+,clusterConfig.getMembers())));
+      Future<ClusterConfiguration> config=cluster.join(this.config.getClusterName(),memberURIs);
+      try {
+        logger.debug("Joined cluster:" + config.get());
+        try {
+          updateMyInfo();
+        }
+ catch (        TransformerException e) {
+          throw new RuntimeException(e);
+        }
+        return;
+      }
+ catch (      InterruptedException e) {
+        e.printStackTrace();
+      }
+catch (      ExecutionException e) {
+        logger.debug("Could not join cluster " + this.config.getClusterName());
       }
     }
     if (config.isAllowedToCreateCluster()) {
