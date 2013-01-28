@@ -1,0 +1,31 @@
+{
+  StatementContext context=statementCtxProvider.getCtxForReading();
+  try {
+    long labelId=context.getLabelId(label.name());
+    final Iterable<Long> nodeIds=context.getNodesWithLabel(labelId);
+    return new Iterable<Node>(){
+      @Override public Iterator<Node> iterator(){
+        final Iterator<Long> nodeIdIterator=nodeIds.iterator();
+        return new PrefetchingIterator<Node>(){
+          @Override protected Node fetchNextOrNull(){
+            while (nodeIdIterator.hasNext()) {
+              long nodeId=nodeIdIterator.next();
+              try {
+                Node node=nodeManager.getNodeByIdOrNull(nodeId);
+                if (node != null)                 return node;
+              }
+ catch (              NotFoundException e) {
+              }
+            }
+            return null;
+          }
+        }
+;
+      }
+    }
+;
+  }
+ catch (  LabelNotFoundKernelException e) {
+    return Collections.emptyList();
+  }
+}
