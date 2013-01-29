@@ -1,0 +1,27 @@
+{
+  final long highestId=propertyStore.getHighestPossibleIdInUse();
+  return new Iterable<Long>(){
+    @Override public Iterator<Long> iterator(){
+      return new PrefetchingIterator<Long>(){
+        private long id=0L;
+        private Iterator<Long> blockNodes=Collections.<Long>emptyList().iterator();
+        @Override protected Long fetchNextOrNull(){
+          if (!blockNodes.hasNext()) {
+            while (id <= highestId) {
+              PropertyRecord record=propertyStore.forceGetRecord(id++);
+              if (!record.inUse())               continue;
+              blockNodes=new LabelPropertyBlockToNodeIterator(record.getPropertyBlocks().iterator(),labelId);
+              if (blockNodes.hasNext())               return blockNodes.next();
+            }
+            return null;
+          }
+ else {
+            return blockNodes.next();
+          }
+        }
+      }
+;
+    }
+  }
+;
+}
