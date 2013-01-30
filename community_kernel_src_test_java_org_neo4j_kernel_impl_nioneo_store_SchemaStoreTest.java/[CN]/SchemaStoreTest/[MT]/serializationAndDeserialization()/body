@@ -1,0 +1,19 @@
+{
+  String propertyKey="hello world";
+  byte[] encodedPropertyKey=encode(propertyKey);
+  int labelId=0;
+  ByteBuffer expected=wrap(new byte[4 + 1 + 2+ encodedPropertyKey.length]);
+  expected.putInt(labelId);
+  expected.put(Kind.INDEX_RULE.id());
+  expected.putShort((short)encodedPropertyKey.length);
+  expected.put(encodedPropertyKey);
+  long blockId=store.nextId();
+  SchemaRule indexRule=new IndexRule(blockId,labelId,propertyKey);
+  Collection<DynamicRecord> records=store.allocateFrom(blockId,indexRule);
+  for (  DynamicRecord record : records)   store.updateRecord(record);
+  assertEquals(1,records.size());
+  assertTrue(Arrays.equals(expected.array(),records.iterator().next().getData()));
+  Collection<DynamicRecord> readRecords=store.getRecords(blockId);
+  assertEquals(1,readRecords.size());
+  assertTrue(Arrays.equals(expected.array(),readRecords.iterator().next().getData()));
+}
