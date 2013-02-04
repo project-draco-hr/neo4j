@@ -8,22 +8,9 @@
  else {
       sizeIndex+=SIZES.length - 1;
     }
-    AtomicReferenceArray<Queue<Reference<ByteBuffer>>> pool=POOL;
+    AtomicReferenceArray<Queue<Reference<ByteBuffer>>> pools=POOLS;
     SoftReference<ByteBuffer> ref=new SoftReference<ByteBuffer>(buf);
-    Queue<Reference<ByteBuffer>> references=null;
-    if (sizeIndex < pool.length()) {
-      references=pool.get(sizeIndex);
-      if (references == null) {
-        throw new RuntimeException("Expected a queue to put references in, got null.");
-      }
-    }
- else {
-      references=growPool(sizeIndex);
-      if (references == null) {
-        throw new RuntimeException("Expected a queue to put references in, got null.");
-      }
-    }
-    references.add(ref);
+    (sizeIndex < pools.length() ? pools.get(sizeIndex) : getOrCreatePoolForSize(sizeIndex)).add(ref);
   }
   finally {
     buf=null;
