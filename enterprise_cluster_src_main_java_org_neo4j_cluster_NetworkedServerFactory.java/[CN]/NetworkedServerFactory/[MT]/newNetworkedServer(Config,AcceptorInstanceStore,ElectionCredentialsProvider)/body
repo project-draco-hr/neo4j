@@ -5,7 +5,13 @@
     }
   }
 ,logging);
-  final ProtocolServer protocolServer=protocolServerFactory.newProtocolServer(timeoutStrategy,node,node,acceptorInstanceStore,electionCredentialsProvider);
+  ExecutorLifecycleAdapter stateMachineExecutor=new ExecutorLifecycleAdapter(new Factory<ExecutorService>(){
+    @Override public ExecutorService newInstance(){
+      return Executors.newSingleThreadExecutor(new NamedThreadFactory("State machine"));
+    }
+  }
+);
+  final ProtocolServer protocolServer=protocolServerFactory.newProtocolServer(timeoutStrategy,node,node,acceptorInstanceStore,electionCredentialsProvider,stateMachineExecutor);
   node.addNetworkChannelsListener(new NetworkInstance.NetworkChannelsListener(){
     @Override public void listeningAt(    URI me){
       protocolServer.listeningAt(me);
@@ -17,6 +23,7 @@
     }
   }
 );
+  life.add(stateMachineExecutor);
   life.add(new Lifecycle(){
     private ScheduledExecutorService scheduler;
     @Override public void init() throws Throwable {
