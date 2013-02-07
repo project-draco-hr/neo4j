@@ -1,0 +1,22 @@
+{
+  long existingLabelsField=node.getLabelField();
+  byte header=getHeader(existingLabelsField);
+  long existingLabelsBits=parseLabelsBody(existingLabelsField);
+  Collection<DynamicRecord> changedDynamicRecords=Collections.emptyList();
+  if (!highHeaderBitSet(header)) {
+    long[] newLabelIds=header == 0 ? new long[]{labelId} : concatAndSort(parseInlined(existingLabelsBits,header),labelId);
+    if (!tryInline(newLabelIds,changedDynamicRecords)) {
+      changedDynamicRecords=nodeStore.allocateRecordsForDynamicLabels(newLabelIds);
+      node.setLabelField(dynamicPointer(changedDynamicRecords),changedDynamicRecords);
+    }
+  }
+ else {
+    nodeStore.makeHeavy(node,existingLabelsBits);
+    Collection<DynamicRecord> existingRecords=node.getDynamicLabelRecords();
+    long[] existingLabelIds=nodeStore.getDynamicLabelsArray(existingRecords);
+    long[] newLabelIds=concatAndSort(existingLabelIds,labelId);
+    changedDynamicRecords=nodeStore.allocateRecordsForDynamicLabels(newLabelIds,existingRecords.iterator());
+    node.setLabelField(dynamicPointer(changedDynamicRecords),changedDynamicRecords);
+  }
+  return changedDynamicRecords;
+}
