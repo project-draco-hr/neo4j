@@ -3,4 +3,26 @@
   this.config=new HashMap<String,String>(kernel.getConfig().getParams());
   this.configuration=kernel.getConfig();
   configuration.addConfigurationChangeListener(new UpdatedConfigurationListener());
+  Map<String,String> descriptions=new HashMap<String,String>();
+  for (  Class<?> settingsClass : configuration.getSettingsClasses()) {
+    for (    final Field field : settingsClass.getFields()) {
+      if (Modifier.isStatic(field.getModifiers()) && Modifier.isFinal(field.getModifiers())) {
+        final org.neo4j.graphdb.factory.Description documentation=field.getAnnotation(org.neo4j.graphdb.factory.Description.class);
+        if (documentation == null || !Setting.class.isAssignableFrom(field.getType()))         continue;
+        try {
+          if (!field.isAccessible())           field.setAccessible(true);
+          String description=documentation.value();
+          Setting setting=(Setting)field.get(null);
+          descriptions.put(setting.name(),description);
+          String value=configuration.getParams().get(setting.name());
+          if (value == null)           value=setting.getDefaultValue();
+          config.put(setting.name(),value);
+        }
+ catch (        Exception e) {
+          continue;
+        }
+      }
+    }
+  }
+  parameterDescriptions=Collections.unmodifiableMap(descriptions);
 }
