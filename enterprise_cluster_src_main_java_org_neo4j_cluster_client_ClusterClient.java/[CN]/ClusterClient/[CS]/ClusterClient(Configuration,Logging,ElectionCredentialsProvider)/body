@@ -8,7 +8,13 @@
     }
   }
 ,logging);
-  server=protocolServerFactory.newProtocolServer(timeoutStrategy,networkNodeTCP,networkNodeTCP,acceptorInstanceStore,electionCredentialsProvider);
+  ExecutorLifecycleAdapter stateMachineExecutor=new ExecutorLifecycleAdapter(new Factory<ExecutorService>(){
+    @Override public ExecutorService newInstance(){
+      return Executors.newSingleThreadExecutor(new NamedThreadFactory("State machine"));
+    }
+  }
+);
+  server=protocolServerFactory.newProtocolServer(timeoutStrategy,networkNodeTCP,networkNodeTCP,acceptorInstanceStore,electionCredentialsProvider,stateMachineExecutor);
   networkNodeTCP.addNetworkChannelsListener(new NetworkInstance.NetworkChannelsListener(){
     @Override public void listeningAt(    URI me){
       server.listeningAt(me);
@@ -20,6 +26,7 @@
     }
   }
 );
+  life.add(stateMachineExecutor);
   life.add(networkNodeTCP);
   life.add(new Lifecycle(){
     private ScheduledExecutorService scheduler;
@@ -67,4 +74,5 @@
   broadcast=server.newClient(AtomicBroadcast.class);
   heartbeat=server.newClient(Heartbeat.class);
   snapshot=server.newClient(Snapshot.class);
+  election=server.newClient(Election.class);
 }

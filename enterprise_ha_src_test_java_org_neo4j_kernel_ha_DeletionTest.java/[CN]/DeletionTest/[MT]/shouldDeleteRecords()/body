@@ -1,0 +1,37 @@
+{
+  HighlyAvailableGraphDatabase db1=start(testDirectory.directory().getPath() + "/db1",0,stringMap());
+  HighlyAvailableGraphDatabase db2=start(testDirectory.directory().getPath() + "/db2",1,stringMap());
+  HighlyAvailableGraphDatabase master, slave;
+  if (db1.isMaster()) {
+    master=db1;
+    slave=db2;
+  }
+ else   if (db2.isMaster()) {
+    master=db2;
+    slave=db1;
+  }
+ else {
+    throw new AssertionError("NO MASTER");
+  }
+  assertFalse("Two masters",slave.isMaster());
+  Relationship rel;
+  Transaction tx=slave.beginTx();
+  try {
+    rel=slave.createNode().createRelationshipTo(slave.createNode(),withName("FOO"));
+    tx.success();
+  }
+  finally {
+    tx.finish();
+  }
+  assertNotNull(master.getRelationshipById(rel.getId()));
+  tx=slave.beginTx();
+  try {
+    rel.delete();
+    tx.success();
+  }
+  finally {
+    tx.finish();
+  }
+  slave.shutdown();
+  master.shutdown();
+}

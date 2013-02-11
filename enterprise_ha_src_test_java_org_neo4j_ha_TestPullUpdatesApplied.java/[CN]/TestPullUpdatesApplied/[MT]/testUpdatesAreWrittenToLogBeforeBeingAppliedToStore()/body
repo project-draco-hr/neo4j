@@ -3,11 +3,30 @@
   addNode(master);
   int toKill=(master + 1) % dbs.length;
   HighlyAvailableGraphDatabase dbToKill=dbs[toKill];
+  final CountDownLatch latch1=new CountDownLatch(1);
+  final HighlyAvailableGraphDatabase masterDb=dbs[master];
+  masterDb.getDependencyResolver().resolveDependency(ClusterClient.class).addClusterListener(new ClusterListener.Adapter(){
+    @Override public void leftCluster(    URI member){
+      latch1.countDown();
+      masterDb.getDependencyResolver().resolveDependency(ClusterClient.class).removeClusterListener(this);
+    }
+  }
+);
   dbToKill.shutdown();
-  Thread.sleep(5000);
+  latch1.await();
   addNode(master);
   File targetDirectory=dir.directory("" + toKill,false);
+  dbToKill.shutdown();
+  final CountDownLatch latch2=new CountDownLatch(1);
+  masterDb.getDependencyResolver().resolveDependency(ClusterClient.class).addHeartbeatListener(new HeartbeatListener.Adapter(){
+    @Override public void failed(    URI server){
+      latch2.countDown();
+      masterDb.getDependencyResolver().resolveDependency(ClusterClient.class).removeHeartbeatListener(this);
+    }
+  }
+);
   runInOtherJvmToGetExitCode(new String[]{targetDirectory.getAbsolutePath(),"" + toKill});
+  latch2.await();
   start(toKill,false);
   boolean hasBranchedData=new File(targetDirectory,"branched").listFiles().length > 0;
   assertFalse(hasBranchedData);
