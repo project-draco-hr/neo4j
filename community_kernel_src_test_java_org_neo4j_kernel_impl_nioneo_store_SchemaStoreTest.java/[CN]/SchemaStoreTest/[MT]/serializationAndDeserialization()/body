@@ -1,17 +1,19 @@
 {
   long propertyKey=4;
   int labelId=0;
-  ByteBuffer expected=wrap(new byte[4 + 1 + 2+ 8]);
+  ByteBuffer expected=wrap(new byte[4 + 1 + 1+ 2+ 8]);
   expected.putInt(labelId);
   expected.put(Kind.INDEX_RULE.id());
+  expected.put(POPULATING.toByte());
   expected.putShort((short)1);
   expected.putLong(propertyKey);
-  SchemaRule indexRule=new IndexRule(store.nextId(),labelId,new long[]{propertyKey});
+  SchemaRule indexRule=new IndexRule(store.nextId(),labelId,POPULATING,new long[]{propertyKey});
   Collection<DynamicRecord> records=store.allocateFrom(indexRule);
   long blockId=first(records).getId();
   for (  DynamicRecord record : records)   store.updateRecord(record);
+  byte[] actual=records.iterator().next().getData();
   assertEquals(1,records.size());
-  assertTrue(Arrays.equals(expected.array(),records.iterator().next().getData()));
+  assertTrue("\nExpected: " + hex(expected) + "\n     Got: "+ hex(actual),Arrays.equals(expected.array(),actual));
   Collection<DynamicRecord> readRecords=store.getRecords(blockId);
   assertEquals(1,readRecords.size());
   assertTrue(Arrays.equals(expected.array(),readRecords.iterator().next().getData()));

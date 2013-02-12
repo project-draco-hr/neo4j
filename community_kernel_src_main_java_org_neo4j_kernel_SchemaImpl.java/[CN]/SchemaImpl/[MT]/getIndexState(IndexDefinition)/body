@@ -1,0 +1,27 @@
+{
+  StatementContext context=ctxProvider.getCtxForReading();
+  long labelId=0, propertyKeyId=0;
+  String propertyKey=single(index.getPropertyKeys());
+  try {
+    labelId=context.getLabelId(index.getLabel().name());
+    propertyKeyId=context.getPropertyKeyId(propertyKey);
+    IndexRule.State indexState=context.getIndexState(labelId,propertyKeyId);
+switch (indexState) {
+case POPULATING:
+      return IndexState.POPULATING;
+case ONLINE:
+    return IndexState.ONLINE;
+default :
+  throw new IllegalArgumentException(String.format("Illegal value %s",indexState));
+}
+}
+ catch (LabelNotFoundKernelException e) {
+throw new NotFoundException(format("Label %s not found",index.getLabel().name()));
+}
+catch (PropertyKeyNotFoundException e) {
+throw new NotFoundException(format("Property key %s not found",propertyKey));
+}
+catch (SchemaRuleNotFoundException e) {
+throw new NotFoundException(format("No index for label %s on property %s",index.getLabel().name(),propertyKey));
+}
+}
