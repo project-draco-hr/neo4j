@@ -4,7 +4,7 @@
   for (int i=1; i < spec.getMembers().size(); i++)   initialHosts.append(",").append(spec.getMembers().get(i).getHost());
   if (member.isFullHaMember()) {
     int haPort=new URI("cluster://" + member.getHost()).getPort() + 3000;
-    GraphDatabaseBuilder graphDatabaseBuilder=new HighlyAvailableGraphDatabaseFactory().newHighlyAvailableDatabaseBuilder(new File(new File(root,name),"server" + serverId).getAbsolutePath()).setConfig(ClusterSettings.cluster_name,name).setConfig(ClusterSettings.initial_hosts,initialHosts.toString()).setConfig(HaSettings.server_id,serverId + "").setConfig(ClusterSettings.cluster_server,member.getHost()).setConfig(HaSettings.ha_server,":" + haPort).setConfig(OnlineBackupSettings.online_backup_enabled,GraphDatabaseSetting.FALSE).setConfig(commonConfig);
+    GraphDatabaseBuilder graphDatabaseBuilder=new HighlyAvailableGraphDatabaseFactory().newHighlyAvailableDatabaseBuilder(new File(new File(root,name),"server" + serverId).getAbsolutePath()).setConfig(ClusterSettings.cluster_name,name).setConfig(ClusterSettings.initial_hosts,initialHosts.toString()).setConfig(HaSettings.server_id,serverId + "").setConfig(ClusterSettings.cluster_server,member.getHost()).setConfig(HaSettings.ha_server,":" + haPort).setConfig(OnlineBackupSettings.online_backup_enabled,Settings.FALSE).setConfig(commonConfig);
     if (instanceConfig.containsKey(serverId)) {
       graphDatabaseBuilder.setConfig(instanceConfig.get(serverId));
     }
@@ -22,12 +22,8 @@
   }
  else {
     Map<String,String> config=MapUtil.stringMap(ClusterSettings.cluster_name.name(),name,ClusterSettings.initial_hosts.name(),initialHosts.toString(),ClusterSettings.cluster_server.name(),member.getHost());
-    Logging clientLogging=new Logging(){
-      @Override public StringLogger getLogger(      Class loggingClass){
-        return new Slf4jStringLogger(logger);
-      }
-    }
-;
-    life.add(new ClusterClient(ClusterClient.adapt(new Config(config)),clientLogging,new CoordinatorIncapableCredentialsProvider()));
+    Config config1=new Config(config);
+    Logging clientLogging=life.add(new LogbackService(config1,(LoggerContext)StaticLoggerBinder.getSingleton().getLoggerFactory()));
+    life.add(new ClusterClient(ClusterClient.adapt(config1),clientLogging,new NotElectableElectionCredentialsProvider()));
   }
 }
