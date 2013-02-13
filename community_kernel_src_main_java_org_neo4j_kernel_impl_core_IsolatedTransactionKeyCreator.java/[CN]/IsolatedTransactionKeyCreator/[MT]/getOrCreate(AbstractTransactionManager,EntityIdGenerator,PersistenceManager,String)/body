@@ -1,38 +1,30 @@
 {
-  final AtomicInteger result=new AtomicInteger(-1);
-  final ExceptionContainer exceptionContainer=new ExceptionContainer();
-  Thread isolatedCreator=new Thread(){
-    @Override public void run(){
-      try {
-        txManager.begin(ForceMode.unforced);
-        int id=createKey(idGenerator,persistence,name);
-        txManager.commit();
-        result.set(id);
-      }
- catch (      Throwable t) {
-        exceptionContainer.setException(t);
-        logger.error("Unable to create key '" + name + "'",t);
-        try {
-          txManager.rollback();
-        }
- catch (        Throwable tt) {
-          logger.error("Unable to rollback after failure to create key '" + name + "'",t);
-        }
-      }
-    }
-  }
-;
-  isolatedCreator.start();
-  while (true) {
+  try {
+    Transaction runningTransaction=txManager.suspend();
     try {
-      isolatedCreator.join();
-      break;
+      txManager.begin(ForceMode.unforced);
+      int id=createKey(idGenerator,persistence,name);
+      txManager.commit();
+      return id;
     }
- catch (    InterruptedException e) {
-      logger.debug("Got interrupted awaiting key creator for '" + name + "'");
+ catch (    Throwable t) {
+      logger.error("Unable to create key '" + name + "'",t);
+      try {
+        txManager.rollback();
+      }
+ catch (      Throwable tt) {
+        logger.error("Unable to rollback after failure to create key '" + name + "'",t);
+      }
+      throw new TransactionFailureException("Unable to create key '" + name + "'",t);
+    }
+ finally {
+      if (runningTransaction != null)       txManager.resume(runningTransaction);
     }
   }
-  int id=result.get();
-  if (id == -1)   throw new TransactionFailureException("Unable to create key '" + name + "'",exceptionContainer.getException());
-  return id;
+ catch (  SystemException e) {
+    throw new TransactionFailureException("Unable to resume or suspend running transaction",e);
+  }
+catch (  InvalidTransactionException e) {
+    throw new TransactionFailureException("Unable to resume or suspend running transaction",e);
+  }
 }
