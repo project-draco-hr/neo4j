@@ -4,11 +4,11 @@
   File logFile=new File(path,StringLogger.DEFAULT_NAME);
   File oldFile=new File(path,StringLogger.DEFAULT_NAME + ".1");
   File oldestFile=new File(path,StringLogger.DEFAULT_NAME + ".2");
-  StringLogger logger=StringLogger.loggerDirectory(new File(path),200 * 1024);
-  assertFalse(oldFile.exists());
+  StringLogger logger=StringLogger.loggerDirectory(fileSystem,new File(path),200 * 1024);
+  assertFalse(fileSystem.fileExists(oldFile));
   int counter=0;
   String prefix="Bogus message ";
-  while (!oldFile.exists()) {
+  while (!fileSystem.fileExists(oldFile)) {
     logger.logMessage(prefix + counter++,true);
   }
   int mark1=counter - 1;
@@ -16,7 +16,7 @@
   assertTrue(firstLineOfFile(oldFile).contains(prefix + "0"));
   assertTrue(lastLineOfFile(oldFile).first().contains(prefix + mark1));
   assertTrue(firstLineOfFile(logFile).contains(prefix + (counter - 1)));
-  while (!oldestFile.exists()) {
+  while (!fileSystem.fileExists(oldestFile)) {
     logger.logMessage(prefix + counter++,true);
   }
   int mark2=counter - 1;
@@ -29,10 +29,10 @@
   long previousSize=0;
   while (true) {
     logger.logMessage(prefix + counter++,true);
-    if (logFile.length() < previousSize)     break;
-    previousSize=logFile.length();
+    if (fileSystem.getFileSize(logFile) < previousSize)     break;
+    previousSize=fileSystem.getFileSize(logFile);
   }
-  assertFalse(new File(path,StringLogger.DEFAULT_NAME + ".3").exists());
+  assertFalse(fileSystem.fileExists(new File(path,StringLogger.DEFAULT_NAME + ".3")));
   assertTrue(firstLineOfFile(oldestFile).contains(prefix + (mark1 + 1)));
   assertTrue(lastLineOfFile(oldestFile).first().contains(prefix + mark2));
 }

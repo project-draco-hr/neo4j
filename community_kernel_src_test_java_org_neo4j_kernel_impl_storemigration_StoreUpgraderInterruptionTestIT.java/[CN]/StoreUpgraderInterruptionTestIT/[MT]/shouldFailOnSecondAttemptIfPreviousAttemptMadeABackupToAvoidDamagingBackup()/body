@@ -1,14 +1,14 @@
 {
   File workingDirectory=new File("target/" + StoreUpgraderInterruptionTestIT.class.getSimpleName());
-  MigrationTestUtils.prepareSampleLegacyDatabase(workingDirectory);
+  MigrationTestUtils.prepareSampleLegacyDatabase(fileSystem,workingDirectory);
   DatabaseFiles failsOnBackup=new DatabaseFiles(){
-    public void moveToBackupDirectory(    File workingDirectory,    File backupDirectory){
+    @Override public void moveToBackupDirectory(    File workingDirectory,    File backupDirectory){
       backupDirectory.mkdir();
       throw new RuntimeException("Failing to backup working directory");
     }
   }
 ;
-  assertTrue(allStoreFilesHaveVersion(workingDirectory,"v0.9.9"));
+  assertTrue(allStoreFilesHaveVersion(fileSystem,workingDirectory,"v0.9.9"));
   try {
     newUpgrader(new StoreMigrator(new SilentMigrationProgressMonitor()),failsOnBackup).attemptUpgrade(new File(workingDirectory,NeoStore.DEFAULT_NAME));
     fail("Should throw exception");

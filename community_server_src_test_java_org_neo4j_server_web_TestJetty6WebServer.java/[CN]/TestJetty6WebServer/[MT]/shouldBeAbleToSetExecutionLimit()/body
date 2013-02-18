@@ -1,0 +1,17 @@
+{
+  InMemoryAppender appender=new InMemoryAppender(AbstractNeoServer.log);
+  final Guard dummyGuard=new Guard(StringLogger.SYSTEM);
+  ImpermanentGraphDatabase db=new ImpermanentGraphDatabase(){
+    @Override public Guard getGuard(){
+      return dummyGuard;
+    }
+  }
+;
+  ServerConfigurator config=new ServerConfigurator(db);
+  config.configuration().setProperty(Configurator.WEBSERVER_PORT_PROPERTY_KEY,7476);
+  config.configuration().setProperty(Configurator.WEBSERVER_LIMIT_EXECUTION_TIME_PROPERTY_KEY,1000);
+  WrappingNeoServerBootstrapper testBootstrapper=new WrappingNeoServerBootstrapper(db,config);
+  testBootstrapper.start();
+  assertThat(appender.toString(),containsString("Server started on"));
+  testBootstrapper.stop();
+}

@@ -1,12 +1,11 @@
 {
-  FileSystemAbstraction fileSystem=new DefaultFileSystemAbstraction();
   final Config config=new Config(MapUtil.stringMap(InternalAbstractGraphDatabase.Configuration.store_dir.name(),path().getPath(),InternalAbstractGraphDatabase.Configuration.neo_store.name(),file("neo").getPath(),InternalAbstractGraphDatabase.Configuration.logical_log.name(),file(LOGICAL_LOG_DEFAULT_NAME).getPath()),GraphDatabaseSettings.class);
   StoreFactory sf=new StoreFactory(config,new DefaultIdGeneratorFactory(),new DefaultWindowPoolFactory(),fileSystem,StringLogger.DEV_NULL,null);
-  PlaceboTm txManager=new PlaceboTm(lockManager,getEmbeddedGraphDb().getTxIdGenerator());
+  PlaceboTm txManager=new PlaceboTm(lockManager,TxIdGenerator.DEFAULT);
   LogBufferFactory logBufferFactory=new DefaultLogBufferFactory();
-  for (  File file : path().listFiles()) {
+  for (  File file : fileSystem.listFiles(path())) {
     if (file.isFile() && file.getName().startsWith(LOGICAL_LOG_DEFAULT_NAME + ".v")) {
-      file.delete();
+      fileSystem.deleteFile(file);
     }
   }
   NeoStoreXaDataSource neoStoreXaDataSource=new NeoStoreXaDataSource(config,sf,lockManager,StringLogger.DEV_NULL,new XaFactory(config,TxIdGenerator.DEFAULT,txManager,logBufferFactory,fileSystem,new DevNullLoggingService(),RecoveryVerifier.ALWAYS_VALID,LogPruneStrategies.NO_PRUNING),TransactionStateFactory.noStateFactory(new DevNullLoggingService()),noCacheAccess(),new TransactionInterceptorProviders(Collections.<TransactionInterceptorProvider>emptyList(),new DependencyResolver(){

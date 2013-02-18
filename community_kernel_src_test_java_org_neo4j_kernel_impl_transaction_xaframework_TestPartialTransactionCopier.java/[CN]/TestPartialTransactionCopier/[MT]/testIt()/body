@@ -1,0 +1,15 @@
+{
+  int masterId=-1;
+  int meId=-1;
+  String storeDir="dir";
+  Pair<File,Integer> broken=createBrokenLogFile(storeDir);
+  File brokenLogFile=broken.first();
+  Integer brokenTxIdentifier=broken.other();
+  FileChannel brokenLog=fileSystem.open(brokenLogFile,"rw");
+  ByteBuffer buffer=allocate(9 + Xid.MAXGTRIDSIZE + Xid.MAXBQUALSIZE * 10);
+  readLogHeader(buffer,brokenLog,true);
+  PartialTransactionCopier copier=new PartialTransactionCopier(buffer,new CommandFactory(),StringLogger.DEV_NULL,new LogExtractor.LogPositionCache(),null,createXidMapWithOneStartEntry(masterId,brokenTxIdentifier));
+  File newLogFile=new File("new.log");
+  copier.copy(brokenLog,createNewLogWithHeader(newLogFile),1);
+  assertThat(logEntries(fileSystem,newLogFile),containsExactly(startEntry(brokenTxIdentifier,masterId,meId),nodeCommandEntry(brokenTxIdentifier,2),onePhaseCommitEntry(brokenTxIdentifier,brokenTxIdentifier),startEntry(4,masterId,meId),nodeCommandEntry(4,3),onePhaseCommitEntry(4,4),doneEntry(4),startEntry(5,masterId,meId),nodeCommandEntry(5,4),onePhaseCommitEntry(5,5),doneEntry(5)));
+}
