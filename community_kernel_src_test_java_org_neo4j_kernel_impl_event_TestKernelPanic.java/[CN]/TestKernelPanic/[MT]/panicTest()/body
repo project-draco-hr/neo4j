@@ -1,7 +1,13 @@
 {
   String path="target/var/testdb";
-  AbstractNeo4jTestCase.deleteFileOrDirectory(new File(path));
-  GraphDatabaseService graphDb=new GraphDatabaseFactory().newEmbeddedDatabase(path);
+  final AtomicReference<BufferingLogger> logger=new AtomicReference<BufferingLogger>();
+  GraphDatabaseService graphDb=new ImpermanentGraphDatabase(){
+    @Override protected Logging createLogging(){
+      logger.set(new BufferingLogger());
+      return new SingleLoggingService(logger.get());
+    }
+  }
+;
   XaDataSourceManager xaDs=((GraphDatabaseAPI)graphDb).getXaDataSourceManager();
   IllBehavingXaDataSource noob=new IllBehavingXaDataSource(UTF8.encode("554342"),"noob");
   xaDs.registerDataSource(noob);
@@ -26,6 +32,6 @@
     graphDb.unregisterKernelEventHandler(panic);
   }
   assertTrue(panic.panic);
-  assertMessageLogContains(path,"at org.neo4j.kernel.impl.event.TestKernelPanic.panicTest");
+  assertTrue("Log didn't contain expected string",logger.get().toString().contains("at org.neo4j.kernel.impl.event.TestKernelPanic.panicTest"));
   graphDb.shutdown();
 }

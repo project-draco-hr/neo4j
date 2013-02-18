@@ -1,14 +1,16 @@
 {
-  GraphDatabaseAPI db=(GraphDatabaseAPI)new GraphDatabaseFactory().newEmbeddedDatabase(TargetDirectory.forTest(TestGraphProperties.class).directory("upgrade",true).getAbsolutePath());
-  String storeDir=db.getStoreDir();
+  EphemeralFileSystemAbstraction fileSystem=new EphemeralFileSystemAbstraction();
+  TestGraphDatabaseFactory factory=new TestGraphDatabaseFactory().setFileSystem(fileSystem);
+  String storeDir=new File("test").getAbsolutePath();
+  GraphDatabaseAPI db=(GraphDatabaseAPI)factory.newImpermanentDatabase(storeDir);
   Transaction tx=db.beginTx();
   Node node=db.createNode();
   node.setProperty("name","Something");
   tx.success();
   tx.finish();
   db.shutdown();
-  removeLastNeoStoreRecord(storeDir);
-  db=(GraphDatabaseAPI)new GraphDatabaseFactory().newEmbeddedDatabase(storeDir);
+  removeLastNeoStoreRecord(fileSystem,storeDir);
+  db=(GraphDatabaseAPI)factory.newImpermanentDatabase(storeDir);
   PropertyContainer properties=db.getNodeManager().getGraphProperties();
   assertFalse(properties.getPropertyKeys().iterator().hasNext());
   tx=db.beginTx();
@@ -18,7 +20,7 @@
   db.getNodeManager().clearCache();
   assertEquals("a value",properties.getProperty("a property"));
   db.shutdown();
-  db=(GraphDatabaseAPI)new GraphDatabaseFactory().newEmbeddedDatabase(storeDir);
+  db=(GraphDatabaseAPI)factory.newImpermanentDatabase(storeDir);
   properties=db.getNodeManager().getGraphProperties();
   assertEquals("a value",properties.getProperty("a property"));
   db.shutdown();

@@ -1,0 +1,22 @@
+{
+  for (  File originalFile : fileSystem.listFiles(original)) {
+    File otherFile=new File(other,originalFile.getName());
+    if (!fileSystem.isDirectory(originalFile)) {
+      FileChannel originalChannel=fileSystem.open(originalFile,"r");
+      FileChannel otherChannel=fileSystem.open(otherFile,"r");
+      try {
+        ByteBuffer buffer=ByteBuffer.allocate(1);
+        while (true) {
+          if (!readAndFlip(originalChannel,buffer,1))           break;
+          int originalByte=buffer.get();
+          if (!readAndFlip(otherChannel,buffer,1))           fail("Files have different sizes");
+          assertEquals("Different content in " + originalFile.getName(),originalByte,buffer.get());
+        }
+      }
+  finally {
+        originalChannel.close();
+        otherChannel.close();
+      }
+    }
+  }
+}

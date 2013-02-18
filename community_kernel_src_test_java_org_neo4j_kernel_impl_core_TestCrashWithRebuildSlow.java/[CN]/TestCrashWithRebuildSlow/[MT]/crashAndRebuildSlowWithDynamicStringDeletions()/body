@@ -1,9 +1,13 @@
 {
-  String dir=TargetDirectory.forTest(getClass()).directory("holes",true).getAbsolutePath();
-  Process process=Runtime.getRuntime().exec(new String[]{"java","-cp",System.getProperty("java.class.path"),ProduceNonCleanDefraggedStringStore.class.getName(),dir});
-  int processResult=new ProcessStreamHandler(process,true).waitForResult();
-  assertEquals(0,processResult);
-  GraphDatabaseService db=new GraphDatabaseFactory().newEmbeddedDatabaseBuilder(dir).setConfig(GraphDatabaseSettings.rebuild_idgenerators_fast,GraphDatabaseSetting.FALSE).newGraphDatabase();
+  EphemeralFileSystemAbstraction fileSystem=new EphemeralFileSystemAbstraction();
+  String storeDir="dir";
+  GraphDatabaseAPI db=(GraphDatabaseAPI)new TestGraphDatabaseFactory().setFileSystem(fileSystem).newImpermanentDatabase(storeDir);
+  produceNonCleanDefraggedStringStore(db);
+  EphemeralFileSystemAbstraction snapshot=fileSystem.snapshot();
+  db.shutdown();
+  assertNumberOfFreeIdsEquals(storeDir,snapshot,0);
+  db=(GraphDatabaseAPI)new TestGraphDatabaseFactory().setFileSystem(snapshot).newImpermanentDatabaseBuilder(storeDir).setConfig(GraphDatabaseSettings.rebuild_idgenerators_fast,GraphDatabaseSetting.FALSE).newGraphDatabase();
+  assertNumberOfFreeIdsEquals(storeDir,snapshot,4);
   try {
     int nameCount=0;
     int relCount=0;

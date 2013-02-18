@@ -1,0 +1,29 @@
+{
+  this.fileSystem=fileSystem;
+  this.storeDir=new File(FileUtils.fixSeparatorsInPath(storeDir));
+  rejectAutoUpgrade(stringParams);
+  msgLog=StringLogger.loggerDirectory(fileSystem,this.storeDir);
+  Map<String,String> params=getDefaultParams();
+  params.put(GraphDatabaseSettings.use_memory_mapped_buffers.name(),Settings.FALSE);
+  params.put(InternalAbstractGraphDatabase.Configuration.store_dir.name(),storeDir);
+  params.putAll(stringParams);
+  Config config=new Config(params,GraphDatabaseSettings.class);
+  boolean dump=config.get(GraphDatabaseSettings.dump_configuration);
+  this.idGeneratorFactory=new DefaultIdGeneratorFactory();
+  StoreFactory sf=new StoreFactory(config,idGeneratorFactory,new DefaultWindowPoolFactory(),fileSystem,StringLogger.DEV_NULL,null);
+  File store=fixPath(this.storeDir,sf);
+  if (dump) {
+    dumpConfiguration(params);
+  }
+  msgLog.logMessage(Thread.currentThread() + " Starting BatchInserter(" + this+ ")");
+  neoStore=sf.newNeoStore(store);
+  if (!neoStore.isStoreOk()) {
+    throw new IllegalStateException(storeDir + " store is not cleanly shutdown.");
+  }
+  neoStore.makeStoreOk();
+  NameData[] indexes=getPropertyIndexStore().getNames(10000);
+  indexHolder=new PropertyIndexHolder(indexes);
+  NameData[] types=getRelationshipTypeStore().getNames(Integer.MAX_VALUE);
+  typeHolder=new RelationshipTypeHolder(types);
+  indexStore=new IndexStore(this.storeDir,fileSystem);
+}

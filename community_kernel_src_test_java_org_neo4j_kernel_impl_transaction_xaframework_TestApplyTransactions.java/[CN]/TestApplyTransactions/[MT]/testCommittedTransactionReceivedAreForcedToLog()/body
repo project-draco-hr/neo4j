@@ -1,13 +1,27 @@
 {
-  File baseStoreDir=TargetDirectory.forTest(TestApplyTransactions.class).directory("testCommittedTransactionReceivedAreForcedToLog",true);
-  Process process=Runtime.getRuntime().exec(new String[]{"java","-cp",System.getProperty("java.class.path"),TestApplyTransactions.class.getName(),baseStoreDir.getAbsolutePath()});
-  int exit=new ProcessStreamHandler(process,false).waitForResult();
-  assertEquals(0,exit);
+  EphemeralFileSystemAbstraction fileSystem=new EphemeralFileSystemAbstraction();
+  File baseStoreDir=new File("base");
+  File originStoreDir=new File(baseStoreDir,"origin");
   File destStoreDir=new File(baseStoreDir,"destination");
-  EmbeddedGraphDatabase dest=new EmbeddedGraphDatabase(destStoreDir.getAbsolutePath());
-  XaDataSource destNeoDataSource=dest.getXaDataSourceManager().getXaDataSource(Config.DEFAULT_DATA_SOURCE_NAME);
-  int latestTxId=(int)destNeoDataSource.getLastCommittedTxId();
+  GraphDatabaseAPI origin=(GraphDatabaseAPI)new TestGraphDatabaseFactory().setFileSystem(fileSystem).newImpermanentDatabase(originStoreDir.getPath());
+  Transaction tx=origin.beginTx();
+  origin.createNode();
+  tx.success();
+  tx.finish();
+  XaDataSource originNeoDataSource=origin.getXaDataSourceManager().getXaDataSource(Config.DEFAULT_DATA_SOURCE_NAME);
+  int latestTxId=(int)originNeoDataSource.getLastCommittedTxId();
   InMemoryLogBuffer theTx=new InMemoryLogBuffer();
+  originNeoDataSource.getLogExtractor(latestTxId,latestTxId).extractNext(theTx);
+  GraphDatabaseAPI dest=(GraphDatabaseAPI)new TestGraphDatabaseFactory().setFileSystem(fileSystem).newImpermanentDatabase(destStoreDir.getPath());
+  XaDataSource destNeoDataSource=dest.getXaDataSourceManager().getXaDataSource(Config.DEFAULT_DATA_SOURCE_NAME);
+  destNeoDataSource.applyCommittedTransaction(latestTxId,theTx);
+  origin.shutdown();
+  EphemeralFileSystemAbstraction snapshot=fileSystem.snapshot();
+  dest.shutdown();
+  dest=(GraphDatabaseAPI)new TestGraphDatabaseFactory().setFileSystem(snapshot).newImpermanentDatabase(destStoreDir.getPath());
+  destNeoDataSource=dest.getXaDataSourceManager().getXaDataSource(Config.DEFAULT_DATA_SOURCE_NAME);
+  latestTxId=(int)destNeoDataSource.getLastCommittedTxId();
+  theTx=new InMemoryLogBuffer();
   long extractedTxId=destNeoDataSource.getLogExtractor(latestTxId,latestTxId).extractNext(theTx);
   assertEquals(latestTxId,extractedTxId);
 }
