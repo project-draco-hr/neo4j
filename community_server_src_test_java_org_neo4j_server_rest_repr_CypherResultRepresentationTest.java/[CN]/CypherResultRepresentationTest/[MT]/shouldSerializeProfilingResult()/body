@@ -1,0 +1,24 @@
+{
+  String name="Kalle";
+  PlanDescription plan=getMockDescription(name);
+  PlanDescription childPlan=getMockDescription("child");
+  when(plan.getChildren()).thenReturn(asList(childPlan));
+  when(plan.hasProfilerStatistics()).thenReturn(true);
+  ProfilerStatistics stats=mock(ProfilerStatistics.class);
+  when(stats.getDbHits()).thenReturn(13l);
+  when(stats.getRows()).thenReturn(25l);
+  when(plan.getProfilerStatistics()).thenReturn(stats);
+  ExecutionResult result=mock(ExecutionResult.class);
+  when(result.iterator()).thenReturn(IteratorUtils.emptyIterator());
+  when(result.columns()).thenReturn(new ArrayList<String>());
+  when(result.executionPlanDescription()).thenReturn(plan);
+  Map<String,Object> serialized=serialize(new CypherResultRepresentation(result,true));
+  Map<String,Object> serializedPlan=(Map<String,Object>)serialized.get("plan");
+  assertThat((String)serializedPlan.get("name"),equalTo(name));
+  assertThat((Integer)serializedPlan.get("rows"),is(25));
+  assertThat((Integer)serializedPlan.get("dbHits"),is(13));
+  List<Map<String,Object>> children=(List<Map<String,Object>>)serializedPlan.get("children");
+  assertThat(children.size(),is(1));
+  Map<String,Object> args=(Map<String,Object>)serializedPlan.get("args");
+  assertThat((String)args.get("argumentKey"),is("argumentValue"));
+}
