@@ -1,12 +1,10 @@
 {
-  RelationshipRecord relRecord=getRelationshipRecord(relId);
-  if (relRecord != null && relRecord.isCreated())   return null;
-  if (relRecord != null) {
-    if (!relRecord.inUse() && !light) {
-      throw new IllegalStateException("Relationship[" + relId + "] has been deleted in this tx");
-    }
+  RecordChange<Long,RelationshipRecord,Void> rel=relRecords.getIfLoaded(relId);
+  if (rel != null) {
+    if (rel.isCreated())     return ArrayMap.empty();
+    if (!rel.forReadingLinkage().inUse() && !light)     throw new IllegalStateException("Relationship[" + relId + "] has been deleted in this tx");
   }
-  relRecord=getRelationshipStore().getRecord(relId);
+  RelationshipRecord relRecord=relRecords.getOrLoad(relId,null).forReadingLinkage();
   if (!relRecord.inUse()) {
     throw new InvalidRecordException("Relationship[" + relId + "] not in use");
   }

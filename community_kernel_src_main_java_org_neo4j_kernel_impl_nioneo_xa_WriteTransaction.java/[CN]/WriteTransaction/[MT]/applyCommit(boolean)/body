@@ -22,35 +22,33 @@
     }
     for (    SchemaRuleCommand command : schemaRuleCommands) {
       command.execute();
-      if (command.isDeleted())       cacheAccess.removeSchemaRuleFromCache(command.getKey());
- else       cacheAccess.addSchemaRule(command.getSchemaRule());
-    }
-    java.util.Collections.sort(nodeCommands,sorter);
-    java.util.Collections.sort(relCommands,sorter);
-    java.util.Collections.sort(propCommands,sorter);
-    executeCreated(isRecovered,propCommands,relCommands,nodeCommands);
-    executeModified(isRecovered,propCommands,relCommands,nodeCommands);
-    executeDeleted(propCommands,relCommands,nodeCommands);
-    Iterable<NodePropertyUpdate> updates=convertIntoLogicalPropertyUpdates(propCommands);
-    schemaIndexing.indexUpdates(updates);
-    if (isRecovered)     neoStore.setRecoveredStatus(true);
-    try {
-      if (neoStoreCommand != null) {
-        neoStoreCommand.execute();
-        if (isRecovered)         removeGraphPropertiesFromCache();
-      }
-      if (!isRecovered) {
-        updateFirstRelationships();
-        state.commitCows();
-      }
-      neoStore.setLastCommittedTx(getCommitTxId());
-    }
+switch (command.getMode()) {
+case DELETE:
+        cacheAccess.removeSchemaRuleFromCache(command.getKey());
+      break;
+default :
+    cacheAccess.addSchemaRule(command.getSchemaRule());
+}
+}
+java.util.Collections.sort(relCommands,sorter);
+java.util.Collections.sort(propCommands,sorter);
+executeCreated(isRecovered,propCommands,relCommands,nodeCommands.values());
+executeModified(isRecovered,propCommands,relCommands,nodeCommands.values());
+executeDeleted(propCommands,relCommands,nodeCommands.values());
+Iterable<NodePropertyUpdate> updates=convertIntoLogicalPropertyUpdates();
+indexes.update(updates);
+if (neoStoreCommand != null) {
+neoStoreCommand.execute();
+if (isRecovered) removeGraphPropertiesFromCache();
+}
+if (!isRecovered) {
+updateFirstRelationships();
+state.commitCows();
+}
+neoStore.setLastCommittedTx(getCommitTxId());
+if (isRecovered) neoStore.updateIdGenerators();
+}
   finally {
-      neoStore.setRecoveredStatus(false);
-    }
-    if (isRecovered)     neoStore.updateIdGenerators();
-  }
-  finally {
-    clear();
-  }
+clear();
+}
 }

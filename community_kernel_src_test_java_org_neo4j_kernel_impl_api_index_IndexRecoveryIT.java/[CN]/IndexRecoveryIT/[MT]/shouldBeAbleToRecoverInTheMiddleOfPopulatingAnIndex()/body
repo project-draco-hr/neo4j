@@ -1,0 +1,20 @@
+{
+  startDb();
+  Label myLabel=label("MyLabel");
+  CountDownLatch latch=new CountDownLatch(1);
+  when(mockedIndexProvider.getPopulator(anyLong())).thenReturn(indexPopulatorWithControlledCompletionTiming(latch));
+  createIndex(myLabel);
+  killDb();
+  latch.countDown();
+  when(mockedIndexProvider.getInitialState(anyLong())).thenReturn(InternalIndexState.POPULATING);
+  latch=new CountDownLatch(1);
+  when(mockedIndexProvider.getPopulator(anyLong())).thenReturn(indexPopulatorWithControlledCompletionTiming(latch));
+  startDb();
+  Collection<IndexDefinition> indexes=asCollection(db.schema().getIndexes(myLabel));
+  assertThat(indexes.size(),equalTo(1));
+  IndexDefinition index=single(indexes);
+  assertThat(db.schema().getIndexState(index),equalTo(Schema.IndexState.POPULATING));
+  verify(mockedIndexProvider,times(2)).getPopulator(anyLong());
+  verify(mockedIndexProvider,times(0)).getWriter(anyLong());
+  latch.countDown();
+}

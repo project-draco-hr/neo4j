@@ -1,0 +1,14 @@
+{
+  startDb();
+  Label myLabel=label("MyLabel");
+  createIndex(myLabel);
+  killDb();
+  when(mockedIndexProvider.getInitialState(anyLong())).thenReturn(InternalIndexState.FAILED);
+  when(mockedIndexProvider.getPopulator(anyLong())).thenReturn(mock(IndexPopulator.class));
+  startDb();
+  Collection<IndexDefinition> indexes=asCollection(db.schema().getIndexes(myLabel));
+  assertThat(indexes.size(),equalTo(1));
+  IndexDefinition index=single(indexes);
+  assertThat(db.schema().getIndexState(index),equalTo(Schema.IndexState.FAILED));
+  verify(mockedIndexProvider,times(2)).getPopulator(anyLong());
+}

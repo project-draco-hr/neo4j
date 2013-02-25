@@ -1,0 +1,22 @@
+{
+  WriteTransaction writeTransaction=newWriteTransaction(NO_INDEXING);
+  int nodeId=1;
+  writeTransaction.setCommitTxId(nodeId);
+  writeTransaction.nodeCreate(nodeId);
+  PropertyIndex propertyIndex=new PropertyIndex("key",1);
+  Object value=5;
+  writeTransaction.nodeAddProperty(nodeId,propertyIndex,value);
+  writeTransaction.doPrepare();
+  PropertyCommand propertyCommand=(PropertyCommand)single(filter(new Predicate<XaCommand>(){
+    @Override public boolean accept(    XaCommand item){
+      return item instanceof PropertyCommand;
+    }
+  }
+,log.commands));
+  PropertyRecord before=propertyCommand.getBefore();
+  assertFalse(before.inUse());
+  assertEquals(Collections.emptyList(),before.getPropertyBlocks());
+  PropertyRecord after=propertyCommand.getAfter();
+  assertTrue(after.inUse());
+  assertEquals(1,count(after.getPropertyBlocks()));
+}

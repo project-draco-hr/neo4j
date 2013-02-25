@@ -2,12 +2,13 @@
   LockManager lockManager=new LockManagerImpl(new RagManager());
   final Config config=new Config(MapUtil.stringMap(InternalAbstractGraphDatabase.Configuration.store_dir.name(),path,InternalAbstractGraphDatabase.Configuration.neo_store.name(),"neo",InternalAbstractGraphDatabase.Configuration.logical_log.name(),file("nioneo_logical.log").getPath()),GraphDatabaseSettings.class);
   StoreFactory sf=new StoreFactory(config,new DefaultIdGeneratorFactory(),new DefaultWindowPoolFactory(),fileSystem,StringLogger.DEV_NULL,null);
-  ds=new NeoStoreXaDataSource(config,sf,lockManager,StringLogger.DEV_NULL,new XaFactory(config,TxIdGenerator.DEFAULT,new PlaceboTm(lockManager,TxIdGenerator.DEFAULT),new DefaultLogBufferFactory(),fileSystem,new DevNullLoggingService(),RecoveryVerifier.ALWAYS_VALID,LogPruneStrategies.NO_PRUNING),TransactionStateFactory.noStateFactory(new DevNullLoggingService()),noCacheAccess(),NO_INDEXING,new TransactionInterceptorProviders(Collections.<TransactionInterceptorProvider>emptyList(),new DependencyResolver(){
+  ds=new NeoStoreXaDataSource(config,sf,lockManager,StringLogger.DEV_NULL,new XaFactory(config,TxIdGenerator.DEFAULT,new PlaceboTm(lockManager,TxIdGenerator.DEFAULT),new DefaultLogBufferFactory(),fileSystem,new DevNullLoggingService(),RecoveryVerifier.ALWAYS_VALID,LogPruneStrategies.NO_PRUNING),TransactionStateFactory.noStateFactory(new DevNullLoggingService()),noCacheAccess(),mock(SchemaIndexProvider.class),new TransactionInterceptorProviders(Collections.<TransactionInterceptorProvider>emptyList(),new DependencyResolver(){
     @Override public <T>T resolveDependency(    Class<T> type) throws IllegalArgumentException {
       return (T)config;
     }
   }
-),null);
+),null,new SingleLoggingService(DEV_NULL));
+  ds.init();
   ds.start();
   xaCon=ds.getXaConnection();
   pStore=xaCon.getPropertyStore();

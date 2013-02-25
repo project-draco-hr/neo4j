@@ -1,0 +1,15 @@
+{
+  final long ruleId=rule.getId();
+  FlippableIndexContext flippableContext=new FlippableIndexContext();
+  flippableContext.setFlipTarget(singleContext(new PopulatingIndexContext(scheduler,rule,provider.getPopulator(ruleId),flippableContext,storeView,logging)));
+  flippableContext.flip();
+  flippableContext.setFlipTarget(new IndexContextFactory(){
+    @Override public IndexContext create(){
+      return new OnlineIndexContext(provider.getWriter(ruleId));
+    }
+  }
+);
+  IndexContext result=new RuleUpdateFilterIndexContext(flippableContext,rule);
+  result=new ServiceStateUpdatingIndexContext(rule,result);
+  return result;
+}

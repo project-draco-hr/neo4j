@@ -1,0 +1,42 @@
+{
+  final IndexContext actual=mock(IndexContext.class);
+  final IndexContext other=mock(IndexContext.class);
+  final FlippableIndexContext flippable=new FlippableIndexContext(actual);
+  flippable.setFlipTarget(eager(other));
+  final AtomicReference<IndexContext> result=new AtomicReference<IndexContext>();
+  final CountDownLatch actualLatch=new CountDownLatch(1);
+  doAnswer(new Answer(){
+    @Override public Object answer(    InvocationOnMock invocation) throws Throwable {
+      actualLatch.await();
+      result.set(flippable.getDelegate());
+      return null;
+    }
+  }
+).when(actual).drop();
+  Runnable triggerActual=new Runnable(){
+    @Override public void run(){
+      flippable.drop();
+    }
+  }
+;
+  final CountDownLatch delegateChangeLatch=new CountDownLatch(1);
+  Runnable triggerDelegateChange=new Runnable(){
+    @Override public void run(){
+      try {
+        delegateChangeLatch.await();
+      }
+ catch (      InterruptedException e) {
+        throw new RuntimeException(e);
+      }
+      flippable.flip();
+    }
+  }
+;
+  new Thread(triggerActual).start();
+  new Thread(triggerDelegateChange).start();
+  delegateChangeLatch.countDown();
+  actualLatch.countDown();
+  while (result.get() == null) {
+  }
+  assertEquals(actual,result.get());
+}

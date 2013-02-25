@@ -1,0 +1,27 @@
+{
+  WriteTransaction tx=newWriteTransaction(NO_INDEXING);
+  int nodeId=5, relId=10, relationshipType=3, propertyIndexId=4, ruleId=8;
+  PropertyIndex propertyIndex=new PropertyIndex("key",propertyIndexId);
+  tx.setRecovered();
+  tx.nodeCreate(nodeId);
+  tx.createRelationshipType(relationshipType,"type");
+  tx.relationshipCreate(relId,0,nodeId,nodeId);
+  tx.relAddProperty(relId,propertyIndex,new long[]{1 << 60,1 << 60,1 << 60,1 << 60,1 << 60,1 << 60,1 << 60,1 << 60,1 << 60,1 << 60});
+  tx.createPropertyIndex(propertyIndex.getKey(),propertyIndex.getKeyId());
+  tx.nodeAddProperty(nodeId,propertyIndex,"something long and nasty that requires dynamic records for sure I would think and hope. Ok then ??????%!=");
+  for (int i=0; i < 10; i++)   tx.addLabelToNode(10000 + i,nodeId);
+  tx.createSchemaRule(new IndexRule(ruleId,100,propertyIndexId));
+  tx.doPrepare();
+  tx.doCommit();
+  assertEquals("NodeStore",nodeId + 1,neoStore.getNodeStore().getHighId());
+  assertEquals("DynamicNodeLabelStore",2,neoStore.getNodeStore().getDynamicLabelStore().getHighId());
+  assertEquals("RelationshipStore",relId + 1,neoStore.getRelationshipStore().getHighId());
+  assertEquals("RelationshipTypeStore",relationshipType + 1,neoStore.getRelationshipTypeStore().getHighId());
+  assertEquals("RelationshipType NameStore",2,neoStore.getRelationshipTypeStore().getNameStore().getHighId());
+  assertEquals("PropertyStore",2,neoStore.getPropertyStore().getHighId());
+  assertEquals("PropertyStore DynamicStringStore",2,neoStore.getPropertyStore().getStringStore().getHighId());
+  assertEquals("PropertyStore DynamicArrayStore",2,neoStore.getPropertyStore().getArrayStore().getHighId());
+  assertEquals("PropertyIndexStore",propertyIndexId + 1,neoStore.getPropertyStore().getIndexStore().getHighId());
+  assertEquals("PropertyIndex NameStore",2,neoStore.getPropertyStore().getIndexStore().getNameStore().getHighId());
+  assertEquals("SchemaStore",ruleId + 1,neoStore.getSchemaStore().getHighId());
+}

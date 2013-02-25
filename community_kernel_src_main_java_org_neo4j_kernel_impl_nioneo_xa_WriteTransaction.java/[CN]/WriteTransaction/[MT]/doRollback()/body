@@ -15,18 +15,21 @@
       }
       removeRelationshipTypeFromCache(record.getId());
     }
-    for (    NodeRecord record : nodeRecords.values()) {
+    for (    RecordChange<Long,NodeRecord,Void> change : nodeRecords.changes()) {
+      NodeRecord record=change.forReadingLinkage();
       if (freeIds && record.isCreated()) {
         getNodeStore().freeId(record.getId());
       }
       removeNodeFromCache(record.getId());
     }
-    for (    RelationshipRecord record : relRecords.values()) {
-      if (freeIds && record.isCreated()) {
-        getRelationshipStore().freeId(record.getId());
+    for (    RecordChange<Long,RelationshipRecord,Void> change : relRecords.changes()) {
+      long id=change.getKey();
+      RelationshipRecord record=change.forReadingLinkage();
+      if (freeIds && change.isCreated()) {
+        getRelationshipStore().freeId(id);
       }
-      removeRelationshipFromCache(record.getId());
-      patchDeletedRelationshipNodes(record.getId(),record.getFirstNode(),record.getFirstNextRel(),record.getSecondNode(),record.getSecondNextRel());
+      removeRelationshipFromCache(id);
+      patchDeletedRelationshipNodes(id,record.getFirstNode(),record.getFirstNextRel(),record.getSecondNode(),record.getSecondNextRel());
     }
     if (neoStoreRecord != null) {
       removeGraphPropertiesFromCache();
@@ -41,8 +44,8 @@
         }
       }
     }
-    for (    Pair<PropertyRecord,PropertyRecord> change : propertyRecords.values()) {
-      PropertyRecord record=change.other();
+    for (    RecordChange<Long,PropertyRecord,PrimitiveRecord> change : propertyRecords.changes()) {
+      PropertyRecord record=change.forReadingLinkage();
       if (record.getNodeId() != -1) {
         removeNodeFromCache(record.getNodeId());
       }

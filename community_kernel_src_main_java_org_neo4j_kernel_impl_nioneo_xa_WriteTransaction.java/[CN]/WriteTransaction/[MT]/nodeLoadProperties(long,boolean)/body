@@ -1,16 +1,12 @@
 {
-  NodeRecord nodeRecord=getNodeRecord(nodeId);
-  if (nodeRecord != null && nodeRecord.isCreated()) {
-    return null;
+  RecordChange<Long,NodeRecord,Void> node=nodeRecords.getIfLoaded(nodeId);
+  if (node != null) {
+    if (node.isCreated())     return ArrayMap.empty();
+    if (!node.forReadingLinkage().inUse() && !light)     throw new IllegalStateException("Node[" + nodeId + "] has been deleted in this tx");
   }
-  if (nodeRecord != null) {
-    if (!nodeRecord.inUse() && !light) {
-      throw new IllegalStateException("Node[" + nodeId + "] has been deleted in this tx");
-    }
-  }
-  nodeRecord=getNodeStore().getRecord(nodeId);
+  NodeRecord nodeRecord=nodeRecords.getOrLoad(nodeId,null).forReadingLinkage();
   if (!nodeRecord.inUse()) {
-    throw new InvalidRecordException("Node[" + nodeId + "] not in use");
+    throw new IllegalStateException("Node[" + nodeId + "] has been deleted in this tx");
   }
   return ReadTransaction.loadProperties(getPropertyStore(),nodeRecord.getNextProp());
 }

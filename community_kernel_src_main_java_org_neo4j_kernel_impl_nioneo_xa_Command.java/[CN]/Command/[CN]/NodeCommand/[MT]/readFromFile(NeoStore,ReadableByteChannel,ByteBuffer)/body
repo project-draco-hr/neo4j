@@ -1,24 +1,10 @@
 {
-  if (!readAndFlip(byteChannel,buffer,9))   return null;
+  if (!readAndFlip(byteChannel,buffer,8))   return null;
   long id=buffer.getLong();
-  byte inUseFlag=buffer.get();
-  boolean inUse=false;
-  if (inUseFlag == Record.IN_USE.byteValue()) {
-    inUse=true;
+  NodeRecord before=readNodeRecord(id,byteChannel,buffer);
+  NodeRecord after=readNodeRecord(id,byteChannel,buffer);
+  if (!before.inUse() && after.inUse()) {
+    after.setCreated();
   }
- else   if (inUseFlag != Record.NOT_IN_USE.byteValue()) {
-    throw new IOException("Illegal in use flag: " + inUseFlag);
-  }
-  NodeRecord record;
-  if (inUse) {
-    if (!readAndFlip(byteChannel,buffer,8 * 3))     return null;
-    record=new NodeRecord(id,buffer.getLong(),buffer.getLong());
-    long labelField=buffer.getLong();
-    Collection<DynamicRecord> dynamicLabelRecords=new ArrayList<DynamicRecord>();
-    readDynamicRecords(byteChannel,buffer,dynamicLabelRecords,COLLECTION_DYNAMIC_RECORD_ADDER);
-    record.setLabelField(labelField,dynamicLabelRecords);
-  }
- else   record=new NodeRecord(id,Record.NO_NEXT_RELATIONSHIP.intValue(),Record.NO_NEXT_PROPERTY.intValue());
-  record.setInUse(inUse);
-  return new NodeCommand(neoStore == null ? null : neoStore.getNodeStore(),record);
+  return new NodeCommand(neoStore == null ? null : neoStore.getNodeStore(),before,after);
 }

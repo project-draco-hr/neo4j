@@ -11,11 +11,13 @@
     tf=new TransactionFactory();
   }
   neoStore=storeFactory.newNeoStore(store);
-  xaContainer=xaFactory.newXaContainer(this,config.get(Configuration.logical_log),new CommandFactory(neoStore),tf,stateFactory,providers);
+  indexingService=life.add(new IndexingService(scheduler,indexProvider,new NeoStoreIndexStoreView(neoStore),logging));
+  xaContainer=xaFactory.newXaContainer(this,config.get(Configuration.logical_log),new CommandFactory(neoStore,indexingService),tf,stateFactory,providers);
   try {
     if (!readOnly) {
       neoStore.setRecoveredStatus(true);
       try {
+        indexingService.initIndexes(loadIndexRules());
         xaContainer.openLogicalLog();
       }
   finally {
@@ -35,6 +37,7 @@
     this.idGenerators.put(PropertyStore.class,neoStore.getPropertyStore());
     this.idGenerators.put(PropertyIndex.class,neoStore.getPropertyStore().getIndexStore());
     setLogicalLogAtCreationTime(xaContainer.getLogicalLog());
+    life.start();
   }
  catch (  Throwable e) {
     try {
