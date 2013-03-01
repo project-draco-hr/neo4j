@@ -7,12 +7,13 @@
     File store=new File(dbLocation,NeoStore.DEFAULT_NAME);
     dbConfig.put("store_dir",dbLocation);
     dbConfig.put("neo_store",store.getPath());
-    if (!new UpgradableDatabase().storeFilesUpgradeable(store)) {
+    FileSystemAbstraction fileSystem=new DefaultFileSystemAbstraction();
+    UpgradableDatabase upgradableDatabase=new UpgradableDatabase(fileSystem);
+    if (!upgradableDatabase.storeFilesUpgradeable(store)) {
       return true;
     }
-    FileSystemAbstraction fileSystem=new DefaultFileSystemAbstraction();
     Config conf=new Config(dbConfig,GraphDatabaseSettings.class);
-    StoreUpgrader storeUpgrader=new StoreUpgrader(conf,StringLogger.SYSTEM,new ConfigMapUpgradeConfiguration(conf),new UpgradableDatabase(),new StoreMigrator(new VisibleMigrationProgressMonitor(StringLogger.SYSTEM,out)),new DatabaseFiles(),new DefaultIdGeneratorFactory(),fileSystem);
+    StoreUpgrader storeUpgrader=new StoreUpgrader(conf,StringLogger.SYSTEM,new ConfigMapUpgradeConfiguration(conf),upgradableDatabase,new StoreMigrator(new VisibleMigrationProgressMonitor(StringLogger.SYSTEM,out)),new DatabaseFiles(fileSystem),new DefaultIdGeneratorFactory(),fileSystem);
     try {
       storeUpgrader.attemptUpgrade(store);
     }
