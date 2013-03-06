@@ -1,0 +1,19 @@
+{
+  final IndexContext contextBeforeFlip=mock(IndexContext.class);
+  final IndexContext contextAfterFlip=mock(IndexContext.class);
+  final FlippableIndexContext flippable=new FlippableIndexContext(contextBeforeFlip);
+  flippable.setFlipTarget(IndexingService.singleContext(contextAfterFlip));
+  final CountDownLatch triggerFinishFlip=new CountDownLatch(1);
+  final CountDownLatch triggerExternalAccess=new CountDownLatch(1);
+  OtherThreadExecutor<Void> flippingThread=new OtherThreadExecutor<Void>("Flipping thread",null);
+  OtherThreadExecutor<Void> dropIndexThread=new OtherThreadExecutor<Void>("Drop index thread",null);
+  Future<Void> flipContextFuture=flippingThread.executeDontWait(startFlipAndWaitForLatchBeforeFinishing(flippable,triggerFinishFlip,triggerExternalAccess));
+  triggerExternalAccess.await(10,SECONDS);
+  Future<Void> dropIndexFuture=dropIndexThread.executeDontWait(dropTheIndex(flippable));
+  dropIndexThread.waitUntilWaiting();
+  triggerFinishFlip.countDown();
+  dropIndexFuture.get(10,SECONDS);
+  flipContextFuture.get(10,SECONDS);
+  verifyNoMoreInteractions(contextBeforeFlip);
+  verify(contextAfterFlip).drop();
+}
