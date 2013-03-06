@@ -1,6 +1,6 @@
 {
   final long highId=getHighestPossibleIdInUse(Relationship.class);
-  return new PrefetchingIterator<Relationship>(){
+  Iterator<Relationship> committedRelationships=new PrefetchingIterator<Relationship>(){
     private long currentId;
     @Override protected Relationship fetchNextOrNull(){
       while (currentId <= highId) {
@@ -18,4 +18,27 @@
     }
   }
 ;
+  final TransactionState txState=getTransactionState();
+  if (!txState.hasChanges())   return committedRelationships;
+  final Set<Long> createdRelationships=new HashSet<Long>(txState.getCreatedRelationships());
+  if (!createdRelationships.isEmpty()) {
+    committedRelationships=new FilteringIterator<Relationship>(committedRelationships,new Predicate<Relationship>(){
+      @Override public boolean accept(      Relationship relationship){
+        return !createdRelationships.contains(relationship.getId());
+      }
+    }
+);
+  }
+  Iterator<Relationship> filteredRemovedRelationships=new FilteringIterator<Relationship>(committedRelationships,new Predicate<Relationship>(){
+    @Override public boolean accept(    Relationship relationship){
+      return !txState.relationshipIsDeleted(relationship.getId());
+    }
+  }
+);
+  return new CombiningIterator<Relationship>(asList(filteredRemovedRelationships,new IteratorWrapper<Relationship,Long>(createdRelationships.iterator()){
+    @Override protected Relationship underlyingObjectToObject(    Long id){
+      return getRelationshipById(id);
+    }
+  }
+));
 }
