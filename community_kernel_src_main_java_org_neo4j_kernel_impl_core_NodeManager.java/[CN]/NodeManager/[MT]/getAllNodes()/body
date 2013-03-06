@@ -1,6 +1,6 @@
 {
   final long highId=getHighestPossibleIdInUse(Node.class);
-  return new PrefetchingIterator<Node>(){
+  Iterator<Node> committedNodes=new PrefetchingIterator<Node>(){
     private long currentId;
     @Override protected Node fetchNextOrNull(){
       while (currentId <= highId) {
@@ -18,4 +18,27 @@
     }
   }
 ;
+  final TransactionState txState=getTransactionState();
+  if (!txState.hasChanges())   return committedNodes;
+  final Set<Long> createdNodes=new HashSet<Long>(txState.getCreatedNodes());
+  if (!createdNodes.isEmpty()) {
+    committedNodes=new FilteringIterator<Node>(committedNodes,new Predicate<Node>(){
+      @Override public boolean accept(      Node node){
+        return !createdNodes.contains(node.getId());
+      }
+    }
+);
+  }
+  Iterator<Node> filteredRemovedNodes=new FilteringIterator<Node>(committedNodes,new Predicate<Node>(){
+    @Override public boolean accept(    Node node){
+      return !txState.nodeIsDeleted(node.getId());
+    }
+  }
+);
+  return new CombiningIterator<Node>(asList(filteredRemovedNodes,new IteratorWrapper<Node,Long>(createdNodes.iterator()){
+    @Override protected Node underlyingObjectToObject(    Long id){
+      return getNodeById(id);
+    }
+  }
+));
 }

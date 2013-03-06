@@ -1,12 +1,10 @@
 {
-  File workingDirectory=new File("target/" + StoreUpgraderTestIT.class.getSimpleName() + "shouldLeaveAllFilesUntouchedIfWrongVersionNumberFound");
   File comparisonDirectory=new File("target/" + StoreUpgraderTestIT.class.getSimpleName() + "shouldLeaveAllFilesUntouchedIfWrongVersionNumberFound-comparison");
-  MigrationTestUtils.prepareSampleLegacyDatabase(fileSystem,workingDirectory);
   changeVersionNumber(fileSystem,new File(workingDirectory,"neostore.nodestore.db"),"v0.9.5");
-  deleteRecursively(comparisonDirectory);
-  copyRecursively(workingDirectory,comparisonDirectory);
+  fileSystem.deleteRecursively(comparisonDirectory);
+  fileSystem.copyRecursively(workingDirectory,comparisonDirectory);
   try {
-    newUpgrader(alwaysAllowed(),new StoreMigrator(new SilentMigrationProgressMonitor()),new DatabaseFiles()).attemptUpgrade(new File(workingDirectory,NeoStore.DEFAULT_NAME));
+    newUpgrader(alwaysAllowed(),new StoreMigrator(new SilentMigrationProgressMonitor()),new DatabaseFiles(fileSystem)).attemptUpgrade(new File(workingDirectory,NeoStore.DEFAULT_NAME));
     fail("Should throw exception");
   }
  catch (  StoreUpgrader.UnableToUpgradeException e) {
