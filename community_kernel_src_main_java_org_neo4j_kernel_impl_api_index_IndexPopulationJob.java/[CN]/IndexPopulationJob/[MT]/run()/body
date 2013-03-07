@@ -1,14 +1,17 @@
 {
+  boolean success=false;
   try {
     writer.createIndex();
     indexAllNodes();
+    if (cancelled)     return;
     flipper.flip(new Runnable(){
       @Override public void run(){
         populateFromQueueIfAvailable(Long.MAX_VALUE);
-        writer.populationCompleted();
+        writer.close(true);
       }
     }
 ,new FailedIndexContext(writer));
+    success=true;
   }
  catch (  RuntimeException e) {
     log.error("Failed to create index.",e);
@@ -19,5 +22,13 @@ catch (  FlippableIndexContext.FlipFailedKernelException e) {
     log.error("Failed to create index.",e);
     flipper.setFlipTarget(singleContext(new FailedIndexContext(writer,e)));
     flipper.flip();
+  }
+ finally {
+    try {
+      if (!success)       writer.close(false);
+    }
+  finally {
+      doneSignal.countDown();
+    }
   }
 }

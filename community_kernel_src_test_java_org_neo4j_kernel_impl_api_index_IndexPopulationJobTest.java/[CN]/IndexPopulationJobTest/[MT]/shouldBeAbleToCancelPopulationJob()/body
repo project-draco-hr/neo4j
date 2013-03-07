@@ -1,0 +1,25 @@
+{
+  createNode(map(name,"Mattias"),FIRST);
+  IndexPopulator populator=mock(IndexPopulator.class);
+  FlippableIndexContext index=mock(FlippableIndexContext.class);
+  IndexStoreView storeView=mock(IndexStoreView.class);
+  ControlledStoreScan storeScan=new ControlledStoreScan();
+  when(storeView.visitNodesWithPropertyAndLabel(anyLong(),anyLong(),Matchers.<Visitor<Pair<Long,Object>>>any())).thenReturn(storeScan);
+  final IndexPopulationJob job=newIndexPopulationJob(FIRST,name,populator,index,storeView);
+  OtherThreadExecutor<Void> populationJobRunner=new OtherThreadExecutor<Void>("Population job test runner",null);
+  Future<Void> runFuture=populationJobRunner.executeDontWait(new WorkerCommand<Void,Void>(){
+    @Override public Void doWork(    Void state){
+      job.run();
+      return null;
+    }
+  }
+);
+  storeScan.latch.awaitStart();
+  job.cancel().get();
+  storeScan.latch.awaitFinish();
+  runFuture.get();
+  verify(populator,times(1)).close(false);
+  verify(index,times(0)).flip();
+  verify(index,times(0)).flip(Matchers.<Runnable>any());
+  verify(index,times(0)).flip(Matchers.<Runnable>any(),Matchers.<IndexContext>any());
+}

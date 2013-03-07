@@ -1,17 +1,10 @@
 {
-  when(mockedIndexProvider.getPopulator(anyLong())).thenReturn(mock(IndexPopulator.class));
   startDb();
-  Label myLabel=label("MyLabel");
-  Transaction tx=db.beginTx();
-  db.schema().indexCreator(myLabel).on("number_of_bananas_owned").create();
-  tx.success();
-  tx.finish();
+  createIndex();
   stopDb();
-  when(mockedIndexProvider.getInitialState(anyLong())).thenReturn(InternalIndexState.POPULATING);
+  provider.setInitialIndexState(POPULATING);
   startDb();
-  Collection<IndexDefinition> indexes=asCollection(db.schema().getIndexes(myLabel));
-  assertThat(indexes.size(),equalTo(1));
-  IndexDefinition index=single(indexes);
+  IndexDefinition index=getSingleIndex();
   assertThat(db.schema().getIndexState(index),not(equalTo(Schema.IndexState.FAILED)));
-  verify(mockedIndexProvider,times(2)).getPopulator(anyLong());
+  assertEquals(2,provider.populatorCallCount.get());
 }
