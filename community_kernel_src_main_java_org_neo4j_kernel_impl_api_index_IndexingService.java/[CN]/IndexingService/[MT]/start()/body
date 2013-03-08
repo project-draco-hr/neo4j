@@ -1,15 +1,27 @@
 {
-  for (  IndexContext indexContext : indexes.values()) {
+  Set<IndexContext> rebuildingIndexes=new HashSet<IndexContext>();
+  Map<Long,IndexDescriptor> rebuildingIndexDescriptors=new HashMap<Long,IndexDescriptor>();
+  for (  Map.Entry<Long,IndexContext> entry : indexes.entrySet()) {
+    long ruleId=entry.getKey();
+    IndexContext indexContext=entry.getValue();
 switch (indexContext.getState()) {
 case ONLINE:
       break;
 case POPULATING:
-case NON_EXISTENT:
-    indexContext.create();
-  break;
+    rebuildingIndexes.add(indexContext);
+  rebuildingIndexDescriptors.put(ruleId,indexContext.getDescriptor());
+break;
 case FAILED:
 break;
 }
+}
+dropAllContexts(rebuildingIndexes);
+for (Map.Entry<Long,IndexDescriptor> entry : rebuildingIndexDescriptors.entrySet()) {
+long ruleId=entry.getKey();
+IndexDescriptor descriptor=entry.getValue();
+IndexContext indexContext=createPopulatingIndexContext(ruleId,descriptor);
+indexContext.create();
+indexes.put(ruleId,indexContext);
 }
 serviceRunning=true;
 }

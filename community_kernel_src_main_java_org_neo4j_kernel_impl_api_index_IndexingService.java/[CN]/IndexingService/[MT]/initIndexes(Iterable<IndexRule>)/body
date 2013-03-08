@@ -1,17 +1,19 @@
 {
   for (  IndexRule indexRule : indexRules) {
-    long id=indexRule.getId();
-switch (provider.getInitialState(id,providerDependencies)) {
+    long ruleId=indexRule.getId();
+    IndexDescriptor descriptor=createDescriptor(indexRule);
+    IndexContext indexContext=null;
+switch (provider.getInitialState(ruleId,providerDependencies)) {
 case ONLINE:
-      indexes.put(id,createOnlineIndexContext(indexRule));
+      indexContext=createOnlineIndexContext(ruleId,descriptor);
     break;
 case POPULATING:
-case NON_EXISTENT:
-  indexes.put(id,createPopulatingIndexContext(indexRule));
+  indexContext=createRecoveringIndexContext(ruleId,descriptor);
 break;
 case FAILED:
-indexes.put(id,new FailedIndexContext(provider.getPopulator(indexRule.getId(),providerDependencies)));
+indexContext=createFailedIndexContext(ruleId,descriptor);
 break;
 }
+indexes.put(ruleId,indexContext);
 }
 }
