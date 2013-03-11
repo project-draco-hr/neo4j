@@ -4,21 +4,23 @@
     populator.create();
     indexAllNodes();
     if (cancelled)     return;
-    flipper.flip(new Runnable(){
+    Runnable duringFlip=new Runnable(){
       @Override public void run(){
         populateFromQueueIfAvailable(Long.MAX_VALUE);
         populator.close(true);
       }
     }
-,new FailedIndexContext(descriptor,populator));
+;
+    FailedIndexContext failureTarget=new FailedIndexContext(descriptor,populator);
+    flipper.flip(duringFlip,failureTarget);
     success=true;
   }
- catch (  RuntimeException e) {
+ catch (  FlippableIndexContext.FlipFailedKernelException e) {
     log.error("Failed to create index.",e);
     flipper.setFlipTarget(singleContext(new FailedIndexContext(descriptor,populator,e)));
     flipper.flip();
   }
-catch (  FlippableIndexContext.FlipFailedKernelException e) {
+catch (  RuntimeException e) {
     log.error("Failed to create index.",e);
     flipper.setFlipTarget(singleContext(new FailedIndexContext(descriptor,populator,e)));
     flipper.flip();
