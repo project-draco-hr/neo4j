@@ -1,22 +1,16 @@
 {
-  IndexReader reader=upToDateReader();
-  IndexSearcher searcher=new IndexSearcher(reader);
-  try {
-    for (    NodePropertyUpdate update : this.updates) {
+  for (  NodePropertyUpdate update : this.updates) {
+    long nodeId=update.getNodeId();
 switch (update.getUpdateMode()) {
 case ADDED:
-        addFromUpdate(reader,update.getNodeId(),update.getValueAfter());
-      break;
+      writer.addDocument(documentLogic.newDocument(nodeId,update.getValueAfter()));
+    break;
 case CHANGED:
-    changeFromUpdate(reader,update.getNodeId(),update.getValueBefore(),update.getValueAfter());
-  break;
+  writer.updateDocument(documentLogic.newQueryForChangeOrRemove(nodeId,update.getValueBefore()),documentLogic.newDocument(nodeId,update.getValueAfter()));
+break;
 case REMOVED:
-removeFromUpdate(reader,update.getNodeId(),update.getValueBefore());
+writer.deleteDocuments(documentLogic.newQueryForChangeOrRemove(nodeId,update.getValueBefore()));
 break;
 }
-}
-}
-  finally {
-searcher.close();
 }
 }
