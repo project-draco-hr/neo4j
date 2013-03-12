@@ -1,0 +1,24 @@
+{
+  final DoubleLatch latch=new DoubleLatch();
+  final IndexProxy inner=new IndexProxy.Adapter(){
+    @Override public void update(    Iterable<NodePropertyUpdate> updates){
+      latch.startAndAwaitFinish();
+    }
+  }
+;
+  final IndexProxy outer=new ContractCheckingIndexProxy(inner);
+  outer.create();
+  new Thread(new Runnable(){
+    @Override public void run(){
+      outer.update(null);
+    }
+  }
+).start();
+  try {
+    latch.awaitStart();
+    outer.close();
+  }
+  finally {
+    latch.finish();
+  }
+}
