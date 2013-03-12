@@ -1,22 +1,7 @@
 {
   GraphDatabaseService beansAPI=dbRule.getGraphDatabaseService();
-  Node myNode;
-  Transaction tx=beansAPI.beginTx();
-  IndexDefinition indexDef;
-  try {
-    myNode=beansAPI.createNode();
-    myNode.addLabel(Labels.MY_LABEL);
-    myNode.setProperty("name","Hawking");
-    indexDef=beansAPI.schema().indexCreator(Labels.MY_LABEL).on("name").create();
-    tx.success();
-  }
-  finally {
-    tx.finish();
-  }
-  while (beansAPI.schema().getIndexState(indexDef) == Schema.IndexState.POPULATING) {
-    Thread.sleep(10);
-  }
-  assertThat(beansAPI.schema().getIndexState(indexDef),is(Schema.IndexState.ONLINE));
+  Node myNode=createNode(beansAPI,map("name","Hawking"),Labels.MY_LABEL);
+  createIndex(beansAPI,Labels.MY_LABEL,"name");
   Node result=single(beansAPI.findNodesByLabelAndProperty(Labels.MY_LABEL,"name","Hawking"));
-  assertThat(result,is(myNode));
+  assertEquals(result,myNode);
 }

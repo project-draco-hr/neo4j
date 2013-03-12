@@ -1,0 +1,15 @@
+{
+  FlippableIndexProxy flippableIndex=new FlippableIndexProxy();
+  IndexPopulator populator=getPopulator(ruleId);
+  PopulatingIndexProxy populatingIndex=new PopulatingIndexProxy(scheduler,descriptor,populator,flippableIndex,storeView,logging);
+  flippableIndex.setFlipTarget(singleProxy(populatingIndex));
+  flippableIndex.flip();
+  flippableIndex.setFlipTarget(new IndexProxyFactory(){
+    @Override public IndexProxy create(){
+      return new OnlineIndexProxy(descriptor,getOnlineAccessor(ruleId));
+    }
+  }
+);
+  IndexProxy result=contractCheckedProxy(false,flippableIndex);
+  return serviceDecoratedProxy(ruleId,result);
+}
