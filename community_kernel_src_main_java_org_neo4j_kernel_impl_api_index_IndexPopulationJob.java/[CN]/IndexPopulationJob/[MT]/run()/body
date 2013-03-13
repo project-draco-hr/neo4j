@@ -4,10 +4,11 @@
     populator.create();
     indexAllNodes();
     if (cancelled)     return;
-    Runnable duringFlip=new Runnable(){
-      @Override public void run(){
+    Callable<Void> duringFlip=new Callable<Void>(){
+      @Override public Void call() throws IOException {
         populateFromQueueIfAvailable(Long.MAX_VALUE);
         populator.close(true);
+        return null;
       }
     }
 ;
@@ -15,21 +16,19 @@
     flipper.flip(duringFlip,failureTarget);
     success=true;
   }
- catch (  FlippableIndexProxy.FlipFailedKernelException e) {
-    log.error("Failed to create index.",e);
-    flipper.setFlipTarget(singleProxy(new FailedIndexProxy(descriptor,populator,e)));
-    flipper.flip();
-  }
-catch (  RuntimeException e) {
-    log.error("Failed to create index.",e);
-    flipper.setFlipTarget(singleProxy(new FailedIndexProxy(descriptor,populator,e)));
+ catch (  Throwable t) {
+    log.error("Failed to populate index.",t);
+    flipper.setFlipTarget(singleProxy(new FailedIndexProxy(descriptor,populator,t)));
     flipper.flip();
   }
  finally {
     try {
       if (!success)       populator.close(false);
     }
-  finally {
+ catch (    Throwable e) {
+      log.warn("Unable to close failed populator",e);
+    }
+ finally {
       doneSignal.countDown();
     }
   }
