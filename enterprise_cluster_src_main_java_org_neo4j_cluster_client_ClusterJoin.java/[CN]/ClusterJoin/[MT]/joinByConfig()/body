@@ -1,0 +1,39 @@
+{
+  List<HostnamePort> hosts=config.getInitialHosts();
+  cluster.addClusterListener(new UnknownJoiningMemberWarning(hosts));
+  if (hosts == null || hosts.size() == 0) {
+    logger.info("No cluster hosts specified. Creating cluster " + config.getClusterName());
+    cluster.create(config.getClusterName());
+  }
+ else {
+    URI[] memberURIs=Iterables.toArray(URI.class,Iterables.filter(new Predicate<URI>(){
+      @Override public boolean accept(      URI uri){
+        return !serverUri.equals(uri);
+      }
+    }
+,Iterables.map(new Function<HostnamePort,URI>(){
+      @Override public URI apply(      HostnamePort member){
+        return URI.create("cluster://" + resolvePortOnlyHost(member));
+      }
+    }
+,hosts)));
+    while (true) {
+      logger.debug("Attempting to join " + hosts.toString());
+      Future<ClusterConfiguration> clusterConfig=cluster.join(this.config.getClusterName(),memberURIs);
+      try {
+        logger.debug("Joined cluster:" + clusterConfig.get());
+        return;
+      }
+ catch (      InterruptedException e) {
+        e.printStackTrace();
+      }
+catch (      ExecutionException e) {
+        logger.debug("Could not join cluster " + this.config.getClusterName());
+      }
+      if (config.isAllowedToCreateCluster()) {
+        cluster.create(config.getClusterName());
+        break;
+      }
+    }
+  }
+}
