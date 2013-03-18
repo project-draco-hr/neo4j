@@ -1,0 +1,38 @@
+{
+  return new KernelExtensionFactory<LuceneSchemaIndexProviderFactory.Dependencies>("my-index"){
+    @Override public Lifecycle newKernelExtension(    LuceneSchemaIndexProviderFactory.Dependencies dependencies) throws Throwable {
+      final LuceneSchemaIndexProvider delegate=new LuceneSchemaIndexProvider(ignoreCloseDirectoryFactory,dependencies.getConfig());
+      return new SchemaIndexProvider(0){
+        @Override public IndexPopulator getPopulator(        long indexId){
+          final IndexPopulator populator=delegate.getPopulator(indexId);
+          return new IndexPopulator(){
+            @Override public void create() throws IOException {
+              populator.create();
+            }
+            @Override public void drop() throws IOException {
+              populator.drop();
+            }
+            @Override public void add(            long nodeId,            Object propertyValue){
+              populator.add(nodeId,propertyValue);
+            }
+            @Override public void update(            Iterable<NodePropertyUpdate> updates){
+              populator.update(updates);
+            }
+            @Override public void close(            boolean populationCompletedSuccessfully) throws IOException {
+              populator.close(false);
+            }
+          }
+;
+        }
+        @Override public IndexAccessor getOnlineAccessor(        long indexId){
+          return delegate.getOnlineAccessor(indexId);
+        }
+        @Override public InternalIndexState getInitialState(        long indexId){
+          return delegate.getInitialState(indexId);
+        }
+      }
+;
+    }
+  }
+;
+}
