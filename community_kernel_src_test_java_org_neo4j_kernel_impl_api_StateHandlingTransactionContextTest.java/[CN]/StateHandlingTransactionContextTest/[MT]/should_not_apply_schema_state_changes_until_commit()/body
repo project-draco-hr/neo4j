@@ -1,0 +1,17 @@
+{
+  final Function<Object,String> valueCreator=constant("created_value");
+  KernelSchemaStateStore schemaStateStore=mock(KernelSchemaStateStore.class);
+  when(schemaStateStore.get("key")).thenReturn(null);
+  TransactionContext inner=mock(TransactionContext.class);
+  PersistenceCache persistenceCache=mock(PersistenceCache.class);
+  TransactionState oldState=null;
+  TxState txState=null;
+  SchemaCache schemaCache=null;
+  StateHandlingTransactionContext transactionContext=new StateHandlingTransactionContext(inner,txState,persistenceCache,oldState,schemaCache,schemaStateStore);
+  StatementContext statementContext=transactionContext.newStatementContext();
+  statementContext.getOrCreateFromSchemaState("key",valueCreator);
+  verify(schemaStateStore).get("key");
+  verifyNoMoreInteractions(schemaStateStore);
+  transactionContext.commit();
+  verify(schemaStateStore).apply(eq(MapUtil.stringMap("key","created_value")));
+}

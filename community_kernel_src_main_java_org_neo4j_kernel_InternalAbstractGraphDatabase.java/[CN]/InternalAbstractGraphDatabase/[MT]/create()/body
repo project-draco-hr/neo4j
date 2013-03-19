@@ -30,8 +30,11 @@
   txHook=createTxHook();
   guard=config.get(Configuration.execution_guard_enabled) ? new Guard(msgLog) : null;
   stateFactory=createTransactionStateFactory();
+  int queryCacheSize=config.get(GraphDatabaseSettings.query_cache_size);
+  updateableSchemaState=new KernelSchemaStateStore(new LruMap<Object,Object>(queryCacheSize));
   if (readOnly) {
-    txManager=new ReadOnlyTxManager(xaDataSourceManager,logging.getLogger(ReadOnlyTxManager.class));
+    StringLogger roTxManagerLogging=logging.getLogger(ReadOnlyTxManager.class);
+    txManager=new ReadOnlyTxManager(xaDataSourceManager,updateableSchemaState,roTxManagerLogging);
   }
  else {
     String serviceName=config.get(GraphDatabaseSettings.tx_manager_impl);
@@ -63,7 +66,7 @@
   Cache<NodeImpl> nodeCache=diagnosticsManager.tryAppendProvider(caches.node());
   Cache<RelationshipImpl> relCache=diagnosticsManager.tryAppendProvider(caches.relationship());
   SchemaCache schemaCache=new SchemaCache(Collections.<SchemaRule>emptyList());
-  kernelAPI=life.add(new Kernel(txManager,propertyIndexManager,persistenceManager,xaDataSourceManager,lockManager,schemaCache,dependencyResolver));
+  kernelAPI=life.add(new Kernel(txManager,propertyIndexManager,persistenceManager,xaDataSourceManager,lockManager,schemaCache,updateableSchemaState,dependencyResolver));
   txManager.setKernel(kernelAPI);
   statementContextProvider=life.add(new ThreadToStatementContextBridge(kernelAPI,txManager,xaDataSourceManager));
   nodeManager=guard != null ? createGuardedNodeManager(readOnly,cacheProvider,nodeCache,relCache) : createNodeManager(readOnly,cacheProvider,nodeCache,relCache);
