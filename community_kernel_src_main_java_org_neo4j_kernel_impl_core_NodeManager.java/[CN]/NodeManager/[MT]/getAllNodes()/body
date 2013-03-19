@@ -1,18 +1,23 @@
 {
-  final long highId=getHighestPossibleIdInUse(Node.class);
   Iterator<Node> committedNodes=new PrefetchingIterator<Node>(){
+    private long highId=getHighestPossibleIdInUse(Node.class);
     private long currentId;
     @Override protected Node fetchNextOrNull(){
-      while (currentId <= highId) {
-        try {
-          Node node=getNodeByIdOrNull(currentId);
-          if (node != null) {
-            return node;
+      while (true) {
+        while (currentId <= highId) {
+          try {
+            Node node=getNodeByIdOrNull(currentId);
+            if (node != null) {
+              return node;
+            }
+          }
+  finally {
+            currentId++;
           }
         }
-  finally {
-          currentId++;
-        }
+        long newHighId=getHighestPossibleIdInUse(Node.class);
+        if (newHighId > highId)         highId=newHighId;
+ else         break;
       }
       return null;
     }
