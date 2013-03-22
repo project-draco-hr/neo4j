@@ -1,0 +1,32 @@
+{
+  GraphDatabaseService beansAPI=dbRule.getGraphDatabaseAPI();
+  long smallValue=10L, bigValue=1L << 62;
+  Node myNode=null;
+{
+    Transaction tx=beansAPI.beginTx();
+    IndexDefinition indexDefinition;
+    try {
+      myNode=beansAPI.createNode(Labels.MY_LABEL);
+      myNode.setProperty("pad0",true);
+      myNode.setProperty("pad1",true);
+      myNode.setProperty("pad2",true);
+      myNode.setProperty("key",smallValue);
+      indexDefinition=beansAPI.schema().indexCreator(Labels.MY_LABEL).on("key").create();
+      tx.success();
+    }
+  finally {
+      tx.finish();
+    }
+    beansAPI.schema().awaitIndexOnline(indexDefinition,10,SECONDS);
+  }
+  Transaction tx=beansAPI.beginTx();
+  try {
+    myNode.setProperty("key",bigValue);
+    tx.success();
+  }
+  finally {
+    tx.finish();
+  }
+  assertEquals(asSet(myNode),asUniqueSet(beansAPI.findNodesByLabelAndProperty(Labels.MY_LABEL,"key",bigValue)));
+  assertEquals(asSet(),asUniqueSet(beansAPI.findNodesByLabelAndProperty(Labels.MY_LABEL,"key",smallValue)));
+}
