@@ -1,12 +1,12 @@
 {
   LifeSupport life=new LifeSupport();
   Map<String,String> params=new HashMap<String,String>();
-  params.put(HaSettings.server_id.name(),"-1");
+  params.put(ClusterSettings.server_id.name(),"-1");
   params.put(ClusterSettings.cluster_name.name(),clusterName);
   params.put(ClusterSettings.initial_hosts.name(),from);
   final Config config=new Config(params,ClusterSettings.class,OnlineBackupSettings.class);
   final ClusterClient clusterClient=life.add(new ClusterClient(ClusterClient.adapt(config),logging,new NotElectableElectionCredentialsProvider()));
-  ClusterMemberEvents events=life.add(new PaxosClusterMemberEvents(clusterClient,clusterClient,clusterClient,new SystemOutLogging(),Predicates.<PaxosClusterMemberEvents.ClusterMembersSnapshot>TRUE()));
+  ClusterMemberEvents events=life.add(new PaxosClusterMemberEvents(clusterClient,clusterClient,clusterClient,clusterClient,new SystemOutLogging(),Predicates.<PaxosClusterMemberEvents.ClusterMembersSnapshot>TRUE()));
   clusterClient.addClusterListener(new ClusterListener.Adapter(){
     @Override public void enteredCluster(    ClusterConfiguration clusterConfiguration){
       clusterClient.refreshSnapshot();
@@ -17,9 +17,9 @@
   final Semaphore infoReceivedLatch=new Semaphore(0);
   final AtomicReference<URI> backupUri=new AtomicReference<URI>();
   events.addClusterMemberListener(new ClusterMemberListener.Adapter(){
-    Map<URI,URI> backupUris=new HashMap<URI,URI>();
-    URI master=null;
-    @Override public void memberIsAvailable(    String role,    URI clusterUri,    URI roleUri){
+    Map<InstanceId,URI> backupUris=new HashMap<InstanceId,URI>();
+    InstanceId master=null;
+    @Override public void memberIsAvailable(    String role,    InstanceId clusterUri,    URI roleUri){
       if (OnlineBackupKernelExtension.BACKUP.equals(role)) {
         backupUris.put(clusterUri,roleUri);
       }
@@ -30,6 +30,14 @@
         backupUri.set(backupUris.get(master));
         infoReceivedLatch.release();
       }
+    }
+    /** 
+ * Called when new master has been elected. The new master may not be available a.t.m.
+ * A call to {@link #memberIsAvailable} will confirm that the master given in
+ * the most recent {@link #coordinatorIsElected(org.neo4j.cluster.InstanceId)} call is up and running as master.
+ * @param coordinatorId the connection information to the master.
+ */
+    @Override public void coordinatorIsElected(    InstanceId coordinatorId){
     }
   }
 );

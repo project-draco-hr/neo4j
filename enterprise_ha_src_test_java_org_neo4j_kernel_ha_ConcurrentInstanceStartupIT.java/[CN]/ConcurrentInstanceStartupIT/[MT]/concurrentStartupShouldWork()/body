@@ -1,14 +1,19 @@
 {
-  final CyclicBarrier barrier=new CyclicBarrier(3);
-  final List<Thread> daThreads=new ArrayList<Thread>(3);
-  final HighlyAvailableGraphDatabase[] dbs=new HighlyAvailableGraphDatabase[3];
-  for (int i=1; i <= 3; i++) {
+  StringBuffer initialHostsBuffer=new StringBuffer("127.0.0.1:5001");
+  for (int i=2; i <= INSTANCE_COUNT; i++) {
+    initialHostsBuffer.append(",127.0.0.1:500" + i);
+  }
+  final String initialHosts=initialHostsBuffer.toString();
+  final CyclicBarrier barrier=new CyclicBarrier(INSTANCE_COUNT);
+  final List<Thread> daThreads=new ArrayList<Thread>(INSTANCE_COUNT);
+  final HighlyAvailableGraphDatabase[] dbs=new HighlyAvailableGraphDatabase[INSTANCE_COUNT];
+  for (int i=1; i <= INSTANCE_COUNT; i++) {
     final int finalI=i;
     Thread t=new Thread(new Runnable(){
       @Override public void run(){
         try {
           barrier.await();
-          dbs[finalI - 1]=startDbAtBase(finalI);
+          dbs[finalI - 1]=startDbAtBase(finalI,initialHosts);
         }
  catch (        InterruptedException e) {
           throw new RuntimeException(e);
@@ -25,12 +30,20 @@ catch (        BrokenBarrierException e) {
   for (  Thread daThread : daThreads) {
     daThread.join();
   }
+  boolean masterDone=false;
   for (  HighlyAvailableGraphDatabase db : dbs) {
+    if (db.isMaster()) {
+      if (masterDone) {
+        throw new Exception("Two masters discovered");
+      }
+      masterDone=true;
+    }
     Transaction tx=db.beginTx();
     db.createNode();
     tx.success();
     tx.finish();
   }
+  assertTrue(masterDone);
   for (  HighlyAvailableGraphDatabase db : dbs) {
     db.shutdown();
   }

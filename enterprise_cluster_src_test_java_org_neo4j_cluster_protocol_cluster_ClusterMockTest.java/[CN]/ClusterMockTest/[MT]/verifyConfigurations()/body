@@ -1,11 +1,10 @@
 {
   logger.getLogger().debug("Verify configurations");
   List<URI> members=null;
-  Map<String,URI> roles=null;
-  List<URI> failed=null;
-  int foundConfiguration=0;
+  Map<String,InstanceId> roles=null;
+  Set<InstanceId> failed=null;
+  List<AssertionError> errors=new LinkedList<AssertionError>();
   List<TestProtocolServer> protocolServers=network.getServers();
-  List<AssertionError> errors=new ArrayList<AssertionError>();
   for (int j=0; j < protocolServers.size(); j++) {
     StateMachines stateMachines=protocolServers.get(j).getServer().getStateMachines();
     State<?,?> clusterState=stateMachines.getStateMachine(ClusterMessage.class).getState();
@@ -16,44 +15,23 @@
     ClusterContext context=(ClusterContext)stateMachines.getStateMachine(ClusterMessage.class).getContext();
     HeartbeatContext heartbeatContext=(HeartbeatContext)stateMachines.getStateMachine(HeartbeatMessage.class).getContext();
     ClusterConfiguration clusterConfiguration=context.getConfiguration();
-    if (!clusterConfiguration.getMembers().isEmpty()) {
-      logger.getLogger().debug("   Server " + (j + 1) + ": Cluster:"+ clusterConfiguration.getMembers()+ ","+ " Roles:"+ clusterConfiguration.getRoles()+ ", Failed:"+ heartbeatContext.getFailed());
-      foundConfiguration++;
+    if (!clusterConfiguration.getMemberURIs().isEmpty()) {
+      logger.getLogger().debug("   Server " + (j + 1) + ": Cluster:"+ clusterConfiguration.getMemberURIs()+ ", Roles:"+ clusterConfiguration.getRoles()+ ", Failed:"+ heartbeatContext.getFailed());
       if (members == null) {
-        members=clusterConfiguration.getMembers();
+        members=clusterConfiguration.getMemberURIs();
         roles=clusterConfiguration.getRoles();
         failed=heartbeatContext.getFailed();
       }
  else {
-        try {
-          assertEquals("Config for server" + (j + 1) + " is wrong",new HashSet<URI>(members),new HashSet<URI>(clusterConfiguration.getMembers()));
-        }
- catch (        AssertionError e) {
-          errors.add(e);
-        }
-        try {
-          assertEquals("Roles for server" + (j + 1) + " is wrong",roles,clusterConfiguration.getRoles());
-        }
- catch (        AssertionError e) {
-          errors.add(e);
-        }
-        try {
-          assertEquals("Failed for server" + (j + 1) + " is wrong",failed,heartbeatContext.getFailed());
-        }
- catch (        AssertionError e) {
-          errors.add(e);
-        }
+        verifyConfigurations(stateMachines,members,roles,failed,errors);
       }
     }
   }
+  assertEquals("In:" + in + ", Out:"+ out,protocolServers.size(),Iterables.count(Iterables.<Cluster,List<Cluster>>flatten(in,out)));
   if (!errors.isEmpty()) {
     for (    AssertionError error : errors) {
       logger.getLogger().error(error.toString());
     }
     throw errors.get(0);
   }
-  if (foundConfiguration > 0) {
-    assertEquals("Nr of found active members does not match configuration size",members.size(),foundConfiguration);
-  }
-  assertEquals("In:" + in + ", Out:"+ out,protocolServers.size(),Iterables.count(Iterables.<Cluster,List<Cluster>>flatten(in,out)));
 }
