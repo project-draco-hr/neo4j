@@ -1,0 +1,18 @@
+{
+  KernelSchemaStateStore schemaState=mock(KernelSchemaStateStore.class);
+  IndexRule rule=new IndexRule(0L,0L,1L);
+  StatementContext innerStatementContext=mock(StatementContext.class);
+  TransactionContext inner=mock(TransactionContext.class);
+  when(inner.newStatementContext()).thenReturn(innerStatementContext);
+  PersistenceCache persistenceCache=mock(PersistenceCache.class);
+  TransactionState oldState=null;
+  TxState txState=mock(TxState.class);
+  when(txState.haveIndexesBeenDropped()).thenReturn(true);
+  SchemaCache schemaCache=null;
+  StateHandlingTransactionContext transactionContext=new StateHandlingTransactionContext(inner,txState,persistenceCache,oldState,schemaCache,schemaState);
+  StatementContext statementContext=transactionContext.newStatementContext();
+  statementContext.dropIndexRule(rule);
+  verifyZeroInteractions(schemaState);
+  transactionContext.commit();
+  verify(schemaState).flush();
+}
