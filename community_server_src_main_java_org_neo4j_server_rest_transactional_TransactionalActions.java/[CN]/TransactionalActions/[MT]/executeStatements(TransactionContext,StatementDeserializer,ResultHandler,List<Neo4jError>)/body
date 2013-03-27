@@ -1,0 +1,34 @@
+{
+  try {
+    while (statements.hasNext()) {
+      Statement statement=statements.next();
+      StatementContext ctx=tx.newStatementContext();
+      try {
+        ExecutionResult result=engine.execute(statement.statement(),statement.parameters());
+        results.visitStatementResult(result);
+      }
+ catch (      ParameterNotFoundException e) {
+        errors.add(new MissingParameterError(e.getMessage(),e));
+        break;
+      }
+catch (      RuntimeException e) {
+        errors.add(new UnknownStatementError(statement.statement(),e));
+        break;
+      }
+catch (      Neo4jError e) {
+        errors.add(e);
+        break;
+      }
+ finally {
+        ctx.close();
+      }
+    }
+    Iterator<Neo4jError> deserializationErrors=statements.errors();
+    while (deserializationErrors.hasNext()) {
+      errors.add(deserializationErrors.next());
+    }
+  }
+ catch (  RuntimeException e) {
+    errors.add(new UnknownDatabaseError(e));
+  }
+}

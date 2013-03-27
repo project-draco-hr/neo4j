@@ -1,0 +1,14 @@
+{
+  Throwable exc=new RuntimeException("HA");
+  when(mess.newTransactionContext()).thenThrow(exc);
+  TransactionalActions actions=new TransactionalActions(mess,engine,registry,logger);
+  Map<String,Object> parameters=map();
+  TestResultHandler results=new TestResultHandler();
+  actions.commit(request(new Statement("My Cypher Query",parameters)),results);
+  assertThat(results.results.size(),equalTo(0));
+  assertThat(results.txId,equalTo(-1l));
+  assertThat(results.errors.get(0).getErrorCode(),equalTo(Neo4jError.Code.UNABLE_TO_START_TRANSACTION));
+  verify(mess).newTransactionContext();
+  verifyNoMoreInteractions(mess,registry,engine,ctx,stmtCtx);
+  logger.assertExactly(error("Failed to start transaction.",exc));
+}

@@ -1,0 +1,32 @@
+{
+  ExecutionResult stmtResult=mock(ExecutionResult.class);
+  List<String> expectedColumns=asList("Number","String","Boolean","PropContainer","Path");
+  when(stmtResult.columns()).thenReturn(expectedColumns);
+  int theNumber=1337;
+  String theString="Stuff";
+  boolean theBoolean=true;
+  PropertyContainer thePropContainer=mockPropertyContainer();
+  Path thePath=mockPath();
+  when(stmtResult.iterator()).thenReturn(iterator(map("Number",theNumber,"String",theString,"Boolean",theBoolean,"PropContainer",thePropContainer,"Path",thePath)));
+  ByteArrayOutputStream baos=new ByteArrayOutputStream();
+  ExecutionResultSerializer serializer=new ExecutionResultSerializer(baos);
+  serializer.begin(1337l);
+  serializer.visitStatementResult(stmtResult);
+  serializer.finish(NO_ERRORS);
+  Map<String,Object> result=deserialize(baos);
+  assertThat(result.keySet(),equalTo(asSet("results","errors","txId")));
+  assertThat(((List)result.get("errors")).size(),equalTo(0));
+  assertThat(((Integer)result.get("txId")),equalTo(1337));
+  List<Map<String,Object>> results=(List<Map<String,Object>>)result.get("results");
+  assertThat(results.size(),equalTo(1));
+  List<String> columns=(List<String>)results.get(0).get("columns");
+  assertThat(asSet(columns),equalTo(asSet(expectedColumns)));
+  List<List<Object>> data=(List<List<Object>>)results.get(0).get("data");
+  assertThat(data.size(),is(1));
+  List<Object> row=data.get(0);
+  assertThat((Integer)row.get(0),equalTo(theNumber));
+  assertThat((String)row.get(1),equalTo(theString));
+  assertThat((Boolean)row.get(2),equalTo(theBoolean));
+  assertThat((Map<String,Object>)row.get(3),equalTo(map("a",12,"b",true,"c",asList(1,0,1,2),"d",asList(1,0,1,2),"e",asList("a","b","??????"))));
+  assertThat((List<Map<String,Object>>)row.get(4),equalTo(asList(map(),map("a",12),map())));
+}

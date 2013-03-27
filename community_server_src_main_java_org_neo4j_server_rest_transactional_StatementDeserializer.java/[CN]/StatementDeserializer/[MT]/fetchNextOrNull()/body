@@ -1,0 +1,49 @@
+{
+  try {
+    if (errors != null) {
+      return null;
+    }
+switch (state) {
+case BEFORE_OUTER_ARRAY:
+      parseAndDiscard(START_ARRAY);
+    state=State.IN_BODY;
+case IN_BODY:
+  String statement=null;
+Map<String,Object> parameters=null;
+JsonToken tok;
+while ((tok=input.nextToken()) != null && tok != END_OBJECT) {
+if (tok == END_ARRAY) {
+state=State.FINISHED;
+return null;
+}
+input.nextToken();
+String currentName=input.getCurrentName();
+if (currentName == "statement") {
+statement=input.nextTextValue();
+}
+ else if (currentName == "parameters") {
+parameters=input.readValueAs(Map.class);
+}
+}
+if (statement == null) {
+throw new InvalidRequestError("No statement provided.");
+}
+return new Statement(statement,parameters == null ? NO_PARAMETERS : parameters);
+case FINISHED:
+return null;
+}
+return null;
+}
+ catch (JsonParseException e) {
+addError(new InvalidRequestError("Unable to deserialize request: " + e.getMessage()));
+return null;
+}
+catch (IOException e) {
+addError(new ClientCommunicationError("Input error while deserializing request.",e));
+return null;
+}
+catch (Neo4jError error) {
+addError(error);
+return null;
+}
+}

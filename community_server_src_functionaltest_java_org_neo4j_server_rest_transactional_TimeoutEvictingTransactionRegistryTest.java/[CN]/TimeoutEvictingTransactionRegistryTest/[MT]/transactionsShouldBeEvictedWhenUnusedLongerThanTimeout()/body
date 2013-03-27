@@ -1,0 +1,19 @@
+{
+  FakeClock clock=new FakeClock();
+  TestLogger log=new TestLogger();
+  TimeoutEvictingTransactionRegistry registry=new TimeoutEvictingTransactionRegistry(clock,log);
+  TransactionContext oldTx=mock(TransitionalTxManagementTransactionContext.class);
+  TransactionContext newTx=mock(TransitionalTxManagementTransactionContext.class);
+  registry.put(1l,oldTx);
+  clock.forwardMinutes(1);
+  registry.put(2l,newTx);
+  registry.evictAllIdleSince(clock.currentTimeInMilliseconds() - 1000);
+  assertThat(registry.pop(2l),equalTo(newTx));
+  try {
+    registry.pop(1l);
+    fail("Should have thrown exception");
+  }
+ catch (  InvalidTransactionIdError exc) {
+  }
+  log.assertExactly(info("Transaction with id 1 has been idle for 60 seconds, and has been automatically rolled back."));
+}

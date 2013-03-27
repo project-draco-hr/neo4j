@@ -1,0 +1,17 @@
+{
+  Throwable exception=new RuntimeException("HA!");
+  when(engine.execute(anyString(),anyMap())).thenThrow(exception);
+  TransactionalActions actions=new TransactionalActions(mess,engine,registry,logger);
+  Map<String,Object> parameters=map();
+  TestResultHandler results=new TestResultHandler();
+  actions.commit(request(new Statement("My Cypher Query",parameters)),txId,results);
+  assertThat(results.results.size(),equalTo(0));
+  assertThat(results.txId,equalTo(txId));
+  assertThat(results.errors.get(0).getErrorCode(),equalTo(UNKNOWN_STATEMENT_ERROR));
+  verify(engine).execute("My Cypher Query",parameters);
+  verify(ctx).newStatementContext();
+  verify(ctx).rollback();
+  verify(stmtCtx).close();
+  verify(registry).pop(txId);
+  verifyNoMoreInteractions(mess,registry,engine,ctx,stmtCtx);
+}
