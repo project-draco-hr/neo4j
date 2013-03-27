@@ -1,0 +1,26 @@
+{
+  clusterManager=new ClusterManager(clusterOfSize(3),dir.directory("propagation",true),stringMap(tx_push_factor.name(),"2"));
+  clusterManager.start();
+  ClusterManager.ManagedCluster cluster=clusterManager.getDefaultCluster();
+  long nodeId=0;
+  Transaction tx=null;
+  HighlyAvailableGraphDatabase slave=cluster.getAnySlave();
+  try {
+    tx=slave.beginTx();
+    Node node=slave.createNode();
+    node.setProperty("Hello","World");
+    nodeId=node.getId();
+    tx.success();
+  }
+ catch (  Throwable ex) {
+    ex.printStackTrace();
+    Assert.fail();
+  }
+ finally {
+    tx.finish();
+  }
+  HighlyAvailableGraphDatabase master=cluster.getMaster();
+  String value=master.getNodeById(nodeId).getProperty("Hello").toString();
+  logger.getLogger().info("Hello=" + value);
+  assertEquals("World",value);
+}
