@@ -1,0 +1,13 @@
+{
+  TestLogger logger=new TestLogger();
+  SchemaIndexProvider provider=mock(SchemaIndexProvider.class);
+  IndexingService indexingService=new IndexingService(mock(JobScheduler.class),provider,mock(IndexingService.IndexStoreView.class),mock(UpdateableSchemaState.class),mockLogging(logger));
+  IndexRule onlineIndex=new IndexRule(1,1,1);
+  IndexRule populatingIndex=new IndexRule(2,2,2);
+  IndexRule failedIndex=new IndexRule(3,3,3);
+  when(provider.getInitialState(onlineIndex.getId())).thenReturn(InternalIndexState.ONLINE);
+  when(provider.getInitialState(populatingIndex.getId())).thenReturn(InternalIndexState.POPULATING);
+  when(provider.getInitialState(failedIndex.getId())).thenReturn(InternalIndexState.FAILED);
+  indexingService.initIndexes(asList(onlineIndex,populatingIndex,failedIndex).iterator());
+  logger.assertExactly(info("IndexingService.initIndexes: IndexDescriptor[label:1, property:1] is ONLINE"),info("IndexingService.initIndexes: IndexDescriptor[label:2, property:2] is POPULATING"),info("IndexingService.initIndexes: IndexDescriptor[label:3, property:3] is FAILED"));
+}
