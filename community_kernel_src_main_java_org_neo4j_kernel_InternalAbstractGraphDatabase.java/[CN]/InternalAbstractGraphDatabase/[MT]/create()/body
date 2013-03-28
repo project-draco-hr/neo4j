@@ -22,6 +22,7 @@
     throw new IllegalArgumentException("No cache type '" + cacheTypeName + "'");
   }
   jobScheduler=life.add(new Neo4jJobScheduler());
+  cleanupService=life.add(CleanupService.create(jobScheduler,logging));
   kernelEventHandlers=new KernelEventHandlers();
   caches=createCaches();
   diagnosticsManager=life.add(new DiagnosticsManager(logging.getLogger(DiagnosticsManager.class)));
@@ -79,7 +80,7 @@
   if (config.get(Configuration.load_kernel_extensions)) {
     life.add(kernelExtensions);
   }
-  schema=new SchemaImpl(statementContextProvider,propertyIndexManager);
+  schema=new SchemaImpl(statementContextProvider,cleanupService,propertyIndexManager);
   indexManager=new IndexManagerImpl(config,indexStore,xaDataSourceManager,txManager,this);
   nodeAutoIndexer=life.add(new NodeAutoIndexerImpl(config,indexManager,nodeManager));
   relAutoIndexer=life.add(new RelationshipAutoIndexerImpl(config,indexManager,nodeManager));
