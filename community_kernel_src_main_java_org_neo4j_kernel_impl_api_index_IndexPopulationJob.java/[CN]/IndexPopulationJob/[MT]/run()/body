@@ -2,6 +2,7 @@
   boolean success=false;
   try {
     log.info(format("Index population started for label id %d on property id %d",descriptor.getLabelId(),descriptor.getPropertyKeyId()));
+    log.flush();
     populator.create();
     indexAllNodes();
     if (cancelled)     return;
@@ -18,9 +19,11 @@
     flipper.flip(duringFlip,failureTarget);
     success=true;
     log.info(format("Index population completed for label id %d on property id %d, index is now online.",descriptor.getLabelId(),descriptor.getPropertyKeyId()));
+    log.flush();
   }
  catch (  Throwable t) {
     log.error("Failed to populate index.",t);
+    log.flush();
     flipper.setFlipTarget(singleProxy(new FailedIndexProxy(descriptor,populator,t)));
     flipper.flip();
   }
@@ -30,6 +33,7 @@
     }
  catch (    Throwable e) {
       log.warn("Unable to close failed populator",e);
+      log.flush();
     }
  finally {
       doneSignal.countDown();
