@@ -1,6 +1,6 @@
 {
   Set<IndexProxy> rebuildingIndexes=new HashSet<IndexProxy>();
-  Map<Long,IndexDescriptor> rebuildingIndexDescriptors=new HashMap<Long,IndexDescriptor>();
+  Map<Long,Pair<IndexDescriptor,SchemaIndexProvider.Descriptor>> rebuildingIndexDescriptors=new HashMap<Long,Pair<IndexDescriptor,SchemaIndexProvider.Descriptor>>();
   for (  Map.Entry<Long,IndexProxy> entry : indexes.entrySet()) {
     long ruleId=entry.getKey();
     IndexProxy indexProxy=entry.getValue();
@@ -11,17 +11,20 @@ case ONLINE:
       break;
 case POPULATING:
     rebuildingIndexes.add(indexProxy);
-  rebuildingIndexDescriptors.put(ruleId,indexProxy.getDescriptor());
+  Pair<IndexDescriptor,SchemaIndexProvider.Descriptor> descriptors=Pair.of(indexProxy.getDescriptor(),indexProxy.getProviderDescriptor());
+rebuildingIndexDescriptors.put(ruleId,descriptors);
 break;
 case FAILED:
 break;
 }
 }
 dropIndexes(rebuildingIndexes);
-for (Map.Entry<Long,IndexDescriptor> entry : rebuildingIndexDescriptors.entrySet()) {
+for (Map.Entry<Long,Pair<IndexDescriptor,SchemaIndexProvider.Descriptor>> entry : rebuildingIndexDescriptors.entrySet()) {
 long ruleId=entry.getKey();
-IndexDescriptor descriptor=entry.getValue();
-IndexProxy indexProxy=createPopulatingIndexProxy(ruleId,descriptor);
+Pair<IndexDescriptor,SchemaIndexProvider.Descriptor> descriptors=entry.getValue();
+IndexDescriptor indexDescriptor=descriptors.first();
+SchemaIndexProvider.Descriptor providerDescriptor=descriptors.other();
+IndexProxy indexProxy=createPopulatingIndexProxy(ruleId,indexDescriptor,providerDescriptor);
 indexProxy.start();
 indexes.put(ruleId,indexProxy);
 }

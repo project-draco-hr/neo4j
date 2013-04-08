@@ -1,19 +1,12 @@
 {
   long propertyKey=4;
-  int labelId=0;
-  ByteBuffer expected=wrap(new byte[4 + 1 + 2+ 8]);
-  expected.putInt(labelId);
-  expected.put(Kind.INDEX_RULE.id());
-  expected.putShort((short)1);
-  expected.putLong(propertyKey);
-  SchemaRule indexRule=new IndexRule(store.nextId(),labelId,propertyKey);
-  Collection<DynamicRecord> records=store.allocateFrom(indexRule);
-  long blockId=first(records).getId();
-  for (  DynamicRecord record : records)   store.updateRecord(record);
-  byte[] actual=records.iterator().next().getData();
-  assertEquals(1,records.size());
-  assertTrue("\nExpected: " + hex(expected) + "\n     Got: "+ hex(actual),Arrays.equals(expected.array(),actual));
-  Collection<DynamicRecord> readRecords=store.getRecords(blockId);
-  assertEquals(1,readRecords.size());
-  assertTrue(Arrays.equals(expected.array(),readRecords.iterator().next().getData()));
+  int labelId=1;
+  IndexRule indexRule=new IndexRule(store.nextId(),labelId,PROVIDER_DESCRIPTOR,propertyKey);
+  byte[] serialized=new RecordSerializer().append(indexRule).serialize();
+  IndexRule readIndexRule=(IndexRule)SchemaRule.Kind.deserialize(indexRule.getId(),wrap(serialized));
+  assertEquals(indexRule.getId(),readIndexRule.getId());
+  assertEquals(indexRule.getKind(),readIndexRule.getKind());
+  assertEquals(indexRule.getLabel(),readIndexRule.getLabel());
+  assertEquals(indexRule.getPropertyKey(),readIndexRule.getPropertyKey());
+  assertEquals(indexRule.getProviderDescriptor(),readIndexRule.getProviderDescriptor());
 }

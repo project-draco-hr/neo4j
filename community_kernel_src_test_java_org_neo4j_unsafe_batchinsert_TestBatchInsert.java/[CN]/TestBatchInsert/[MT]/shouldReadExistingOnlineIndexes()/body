@@ -1,0 +1,21 @@
+{
+  Label hackerLabel=label("Hacker");
+  InMemoryIndexProvider provider=new InMemoryIndexProvider();
+  InMemoryIndexProviderFactory providerFactory=new InMemoryIndexProviderFactory(provider);
+  List<KernelExtensionFactory<?>> extensions=Arrays.<KernelExtensionFactory<?>>asList(providerFactory);
+  GraphDatabaseService gdb=newGraphDatabase(extensions);
+  Transaction tx=gdb.beginTx();
+  IndexDefinition definition=createIndex(gdb,hackerLabel,"handle");
+  tx.success();
+  tx.finish();
+  tx=gdb.beginTx();
+  gdb.schema().awaitIndexOnline(definition,10L,TimeUnit.SECONDS);
+  Node node=gdb.createNode(hackerLabel);
+  node.setProperty("handle","count0");
+  tx.success();
+  tx.finish();
+  gdb.shutdown();
+  BatchInserter inserter=BatchInserters.inserter("neo-batch-db",fs.get(),stringMap(),extensions);
+  ResourceIterable<Long> result=inserter.findNodesByLabelAndProperty(label("Hacker"),"handle","count0");
+  assertEquals(asSet(node.getId()),asSet(result));
+}

@@ -1,0 +1,38 @@
+{
+  life=new LifeSupport();
+  this.fileSystem=fileSystem;
+  this.storeDir=new File(FileUtils.fixSeparatorsInPath(storeDir));
+  rejectAutoUpgrade(stringParams);
+  msgLog=StringLogger.loggerDirectory(fileSystem,this.storeDir);
+  Map<String,String> params=getDefaultParams();
+  params.put(GraphDatabaseSettings.use_memory_mapped_buffers.name(),Settings.FALSE);
+  params.put(InternalAbstractGraphDatabase.Configuration.store_dir.name(),storeDir);
+  params.putAll(stringParams);
+  Config config=new Config(params,GraphDatabaseSettings.class);
+  boolean dump=config.get(GraphDatabaseSettings.dump_configuration);
+  this.idGeneratorFactory=new DefaultIdGeneratorFactory();
+  StoreFactory sf=new StoreFactory(config,idGeneratorFactory,new DefaultWindowPoolFactory(),fileSystem,StringLogger.DEV_NULL,null);
+  File store=fixPath(this.storeDir,sf);
+  if (dump) {
+    dumpConfiguration(params);
+  }
+  msgLog.logMessage(Thread.currentThread() + " Starting BatchInserter(" + this+ ")");
+  neoStore=sf.newNeoStore(store);
+  if (!neoStore.isStoreOk()) {
+    throw new IllegalStateException(storeDir + " store is not cleanly shutdown.");
+  }
+  neoStore.makeStoreOk();
+  NameData[] indexes=getPropertyIndexStore().getNames(10000);
+  indexHolder=new PropertyIndexHolder(indexes);
+  labelHolder=new LabelHolder(indexHolder);
+  NameData[] types=getRelationshipTypeStore().getNames(Integer.MAX_VALUE);
+  typeHolder=new RelationshipTypeHolder(types);
+  indexStore=life.add(new IndexStore(this.storeDir,fileSystem));
+  schemaCache=new SchemaCache(neoStore.getSchemaStore());
+  ClassicLoggingService logging=new ClassicLoggingService(new Config());
+  cleanupService=life.add(CleanupService.create(life.add(new Neo4jJobScheduler(msgLog)),logging));
+  KernelExtensions extensions=life.add(new KernelExtensions(kernelExtensions,config,new DependencyResolverImpl(),UnsatisfiedDependencyStrategies.ignore()));
+  life.start();
+  SchemaIndexProvider provider=extensions.resolveDependency(SchemaIndexProvider.class,HIGHEST_PRIORITIZED_OR_NONE);
+  schemaIndexProviders=new DefaultSchemaIndexProviderMap(provider);
+}
