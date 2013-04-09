@@ -1,0 +1,36 @@
+{
+  try {
+    if (role.equals(HighAvailabilityModeSwitcher.MASTER)) {
+      if (!roleUri.equals(context.getAvailableHaMaster())) {
+        HighAvailabilityMemberState oldState=state;
+        context.setAvailableHaMasterId(roleUri);
+        state=state.masterIsAvailable(context,instanceId,roleUri);
+        logger.debug("Got masterIsAvailable(" + instanceId + "), moved to "+ state+ " from "+ oldState);
+        final HighAvailabilityMemberChangeEvent event=new HighAvailabilityMemberChangeEvent(oldState,state,instanceId,roleUri);
+        Listeners.notifyListeners(memberListeners,new Listeners.Notification<HighAvailabilityMemberListener>(){
+          @Override public void notify(          HighAvailabilityMemberListener listener){
+            listener.masterIsAvailable(event);
+          }
+        }
+);
+        accessGuard.setState(state);
+      }
+    }
+ else     if (role.equals(HighAvailabilityModeSwitcher.SLAVE)) {
+      HighAvailabilityMemberState oldState=state;
+      state=state.slaveIsAvailable(context,instanceId,roleUri);
+      logger.debug("Got slaveIsAvailable(" + instanceId + "), "+ "moved to "+ state+ " from "+ oldState);
+      final HighAvailabilityMemberChangeEvent event=new HighAvailabilityMemberChangeEvent(oldState,state,instanceId,roleUri);
+      Listeners.notifyListeners(memberListeners,new Listeners.Notification<HighAvailabilityMemberListener>(){
+        @Override public void notify(        HighAvailabilityMemberListener listener){
+          listener.slaveIsAvailable(event);
+        }
+      }
+);
+      accessGuard.setState(state);
+    }
+  }
+ catch (  Throwable throwable) {
+    logger.warn("Exception while receiving member availability notification",throwable);
+  }
+}

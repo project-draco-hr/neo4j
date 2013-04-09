@@ -1,0 +1,18 @@
+{
+  clusterManager=new ClusterManager(clusterOfSize(3),dir.directory("failover",true),stringMap());
+  clusterManager.start();
+  ClusterManager.ManagedCluster cluster=clusterManager.getDefaultCluster();
+  HighlyAvailableGraphDatabase master=cluster.getMaster();
+  HighlyAvailableGraphDatabase slave1=cluster.getAnySlave();
+  HighlyAvailableGraphDatabase slave2=cluster.getAnySlave(slave1);
+  cluster.shutdown(master);
+  cluster.await(ClusterManager.masterAvailable());
+  boolean slave1Master=slave1.isMaster();
+  boolean slave2Master=slave2.isMaster();
+  if (slave1Master) {
+    assertFalse(slave2Master);
+  }
+ else {
+    assertTrue(slave2Master);
+  }
+}

@@ -1,54 +1,7 @@
 {
-  this.script=script;
-  network=mock;
-  servers.clear();
-  out.clear();
-  in.clear();
-  for (int i=0; i < nrOfServers; i++) {
-    final URI uri=new URI("server" + (i + 1));
-    TestProtocolServer server=network.addServer(uri);
-    final Cluster cluster=server.newClient(Cluster.class);
-    clusterStateListener(uri,cluster);
-    server.newClient(Heartbeat.class).addHeartbeatListener(new HeartbeatListener(){
-      @Override public void failed(      URI server){
-        logger.getLogger().warn(uri + ": Failed:" + server);
-      }
-      @Override public void alive(      URI server){
-        logger.getLogger().debug(uri + ": Alive:" + server);
-      }
-    }
-);
-    server.newClient(AtomicBroadcast.class).addAtomicBroadcastListener(new AtomicBroadcastListener(){
-      AtomicBroadcastSerializer serializer=new AtomicBroadcastSerializer();
-      @Override public void receive(      Payload value){
-        try {
-          logger.getLogger().debug(uri + " received: " + serializer.receive(value));
-        }
- catch (        IOException e) {
-          e.printStackTrace();
-        }
-catch (        ClassNotFoundException e) {
-          e.printStackTrace();
-        }
-      }
-    }
-);
-    servers.add(server);
-    out.add(cluster);
+  int[] serverIds=new int[nrOfServers];
+  for (int i=1; i <= nrOfServers; i++) {
+    serverIds[i - 1]=i;
   }
-  for (int i=0; i < script.rounds(); i++) {
-    logger.getLogger().debug("Round " + i + ", time:"+ network.getTime());
-    script.tick(network.getTime());
-    network.tick();
-  }
-  network.tick(100);
-  verifyConfigurations();
-  logger.getLogger().debug("All nodes leave");
-  for (  Cluster cluster : new ArrayList<Cluster>(in)) {
-    logger.getLogger().debug("Leaving:" + cluster);
-    cluster.leave();
-    in.remove(cluster);
-    network.tick(400);
-  }
-  verifyConfigurations();
+  testCluster(serverIds,null,mock,script);
 }

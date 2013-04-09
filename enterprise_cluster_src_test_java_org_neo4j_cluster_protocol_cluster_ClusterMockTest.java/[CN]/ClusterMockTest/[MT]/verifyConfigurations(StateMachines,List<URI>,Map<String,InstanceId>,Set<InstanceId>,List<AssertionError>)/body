@@ -1,0 +1,29 @@
+{
+  ClusterContext context=(ClusterContext)stateMachines.getStateMachine(ClusterMessage.class).getContext();
+  int myId=context.getMyId().toIntegerIndex();
+  State<?,?> clusterState=stateMachines.getStateMachine(ClusterMessage.class).getState();
+  if (!clusterState.equals(ClusterState.entered)) {
+    logger.getLogger().warn("Instance " + myId + " is not in the cluster ("+ clusterState+ ")");
+    return;
+  }
+  HeartbeatContext heartbeatContext=(HeartbeatContext)stateMachines.getStateMachine(HeartbeatMessage.class).getContext();
+  ClusterConfiguration clusterConfiguration=context.getConfiguration();
+  try {
+    assertEquals("Config for server" + myId + " is wrong",new HashSet<URI>(members),new HashSet<URI>(clusterConfiguration.getMemberURIs()));
+  }
+ catch (  AssertionError e) {
+    errors.add(e);
+  }
+  try {
+    assertEquals("Roles for server" + myId + " is wrong",roles,clusterConfiguration.getRoles());
+  }
+ catch (  AssertionError e) {
+    errors.add(e);
+  }
+  try {
+    assertEquals("Failed for server" + myId + " is wrong",failed,heartbeatContext.getFailed());
+  }
+ catch (  AssertionError e) {
+    errors.add(e);
+  }
+}

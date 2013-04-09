@@ -3,7 +3,8 @@
   when(xaTf.getAndSetNewVersion()).thenAnswer(new TxVersion(TxVersion.UPDATE_AND_GET));
   when(xaTf.getCurrentVersion()).thenAnswer(new TxVersion(TxVersion.GET));
   FileSystemAbstraction fs=spy(new EphemeralFileSystemAbstraction());
-  when(fs.open(new File(dir.directory(),"logical.log.1"),"rw")).thenAnswer(new Answer<FileChannel>(){
+  File dir=TargetDirectory.forTest(fs,XaLogicalLogTest.class).directory("log",true);
+  when(fs.open(new File(dir,"logical.log.1"),"rw")).thenAnswer(new Answer<FileChannel>(){
     @Override public FileChannel answer(    InvocationOnMock invocation) throws Throwable {
       FileChannel channel=(FileChannel)invocation.callRealMethod();
       return mock(channel.getClass(),withSettings().spiedInstance(channel).name("channel").defaultAnswer(CALLS_REAL_METHODS).invocationListeners(new InvocationListener(){
@@ -17,7 +18,7 @@
     }
   }
 );
-  XaLogicalLog xaLogicalLog=new XaLogicalLog(new File(dir.directory(),"logical.log"),mock(XaResourceManager.class),mock(XaCommandFactory.class),xaTf,new DefaultLogBufferFactory(),fs,new SingleLoggingService(StringLogger.wrap(output.writer())),LogPruneStrategies.NO_PRUNING,mock(TransactionStateFactory.class));
+  XaLogicalLog xaLogicalLog=new XaLogicalLog(new File(dir,"logical.log"),mock(XaResourceManager.class),mock(XaCommandFactory.class),xaTf,new DefaultLogBufferFactory(),fs,new SingleLoggingService(StringLogger.wrap(output.writer())),LogPruneStrategies.NO_PRUNING,mock(TransactionStateFactory.class));
   xaLogicalLog.open();
   for (int txId=1; txId <= 10; txId++) {
     int identifier=xaLogicalLog.start(new XidImpl(XidImpl.getNewGlobalId(),RESOURCE_ID),-1,0);

@@ -11,7 +11,11 @@
               cluster.create("default");
             }
  else {
-              final Future<ClusterConfiguration> result=cluster.join("default",URI.create(in.get(0).toString()));
+              URI[] toJoin=new URI[servers.size()];
+              for (int i=0; i < servers.size(); i++) {
+                toJoin[i]=servers.get(i).getServer().boundAt();
+              }
+              final Future<ClusterConfiguration> result=cluster.join("default",toJoin);
               executor.submit(new Runnable(){
                 @Override public void run(){
                   try {
@@ -42,7 +46,12 @@
                 }
  catch (                Exception e) {
                   logger.getLogger().debug("**** Node " + joinServer + " could not join cluster:"+ e.getMessage());
-                  cluster.create("default");
+                  if (!(e.getCause() instanceof IllegalStateException)) {
+                    cluster.create("default");
+                  }
+ else {
+                    logger.getLogger().debug("*** Incorrectly configured cluster? " + e.getCause().getMessage());
+                  }
                 }
               }
             }

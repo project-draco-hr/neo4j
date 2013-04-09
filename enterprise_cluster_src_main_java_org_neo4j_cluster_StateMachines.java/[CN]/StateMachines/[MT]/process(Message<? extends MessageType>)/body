@@ -1,0 +1,54 @@
+{
+  stateMachineExecutor.execute(new Runnable(){
+    @Override public void run(){
+      lock.writeLock().lock();
+      try {
+synchronized (timeouts) {
+          StateMachine stateMachine=stateMachines.get(message.getMessageType().getClass());
+          if (stateMachine == null) {
+            return;
+          }
+          stateMachine.handle(message,outgoing);
+          Message<? extends MessageType> outgoingMessage;
+          List<Message<? extends MessageType>> toSend=new LinkedList<Message<? extends MessageType>>();
+          try {
+            while ((outgoingMessage=outgoing.nextOutgoingMessage()) != null) {
+              message.copyHeadersTo(outgoingMessage,CONVERSATION_ID,CREATED_BY);
+              for (              MessageProcessor outgoingProcessor : outgoingProcessors) {
+                try {
+                  if (!outgoingProcessor.process(outgoingMessage)) {
+                    break;
+                  }
+                }
+ catch (                Throwable e) {
+                  logger.warn("Outgoing message processor threw exception",e);
+                }
+              }
+              if (outgoingMessage.hasHeader(Message.TO)) {
+                toSend.add(outgoingMessage);
+              }
+ else {
+                StateMachine internalStatemachine=stateMachines.get(outgoingMessage.getMessageType().getClass());
+                if (internalStatemachine != null) {
+                  internalStatemachine.handle((Message)outgoingMessage,outgoing);
+                }
+              }
+            }
+            if (!toSend.isEmpty()) {
+              sender.process(toSend);
+            }
+          }
+ catch (          Exception e) {
+            logger.warn("Error processing message " + message,e);
+          }
+        }
+      }
+  finally {
+        lock.writeLock().unlock();
+      }
+      executor.drain();
+    }
+  }
+);
+  return true;
+}

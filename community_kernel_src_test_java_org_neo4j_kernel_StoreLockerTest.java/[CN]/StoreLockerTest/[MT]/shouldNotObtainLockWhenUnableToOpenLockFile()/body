@@ -1,6 +1,13 @@
 {
   FileSystemAbstraction fileSystemAbstraction=new CannedFileSystemAbstraction(true,null,new IOException("cannot open lock file"),true);
-  StoreLocker storeLocker=new StoreLocker(new Config(),fileSystemAbstraction,DEV_NULL);
-  boolean locked=storeLocker.lock(SOME_DIRECTORY);
-  assertThat(locked,is(false));
+  StoreLocker storeLocker=new StoreLocker(new Config(),fileSystemAbstraction);
+  File storeDir=target.directory("unused",true);
+  try {
+    storeLocker.checkLock(storeDir);
+    fail();
+  }
+ catch (  StoreLockException e) {
+    String msg=format("Unable to obtain lock on store lock file: %s",new File(storeDir,STORE_LOCK_FILENAME));
+    assertThat(e.getMessage(),is(msg));
+  }
 }
