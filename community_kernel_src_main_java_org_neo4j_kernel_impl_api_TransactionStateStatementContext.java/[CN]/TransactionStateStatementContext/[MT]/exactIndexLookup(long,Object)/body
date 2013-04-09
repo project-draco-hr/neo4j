@@ -1,12 +1,11 @@
 {
   IndexDescriptor idx=delegate.getIndexDescriptor(indexId);
   DiffSets<Long> diff=state.getNodesWithChangedProperty(idx.getPropertyKeyId(),value);
-  diff.removeAll(state.getDeletedNodes());
   diff=diff.filterAdded(new HasLabelFilter(idx.getLabelId()));
   HasPropertyFilter hasPropertyFilter=new HasPropertyFilter(idx.getPropertyKeyId(),value);
-  Iterable<Long> addedNodesWithLabel=state.getNodesWithLabelAdded(idx.getLabelId());
+  Iterator<Long> addedNodesWithLabel=state.getNodesWithLabelAdded(idx.getLabelId()).iterator();
   diff.addAll(Iterables.filter(hasPropertyFilter,addedNodesWithLabel));
-  Iterable<Long> removedNodesWithLabel=state.getNodesWithLabelRemoved(idx.getLabelId());
-  diff.removeAll(Iterables.filter(hasPropertyFilter,removedNodesWithLabel));
-  return diff.apply(delegate.exactIndexLookup(indexId,value));
+  Set<Long> removedNodesWithLabel=state.getNodesWithLabelChanged(idx.getLabelId()).getRemoved();
+  diff.removeAll(Iterables.filter(hasPropertyFilter,removedNodesWithLabel.iterator()));
+  return state.getDeletedNodes().apply(diff.apply(delegate.exactIndexLookup(indexId,value)));
 }
