@@ -1,0 +1,34 @@
+{
+  IndexRule[] rules=getIndexesNeedingPopulation();
+  final IndexPopulator[] populators=new IndexPopulator[rules.length];
+  IndexStoreView storeView=new NeoStoreIndexStoreView(neoStore);
+  final long[] labelIds=new long[rules.length];
+  final long[] propertyKeyIds=new long[rules.length];
+  for (int i=0; i < labelIds.length; i++) {
+    IndexRule rule=rules[i];
+    labelIds[i]=rule.getLabel();
+    propertyKeyIds[i]=rule.getPropertyKey();
+    populators[i]=schemaIndexProviders.apply(rule.getProviderDescriptor()).getPopulator(rule.getId());
+    populators[i].create();
+  }
+  StoreScan storeScan=storeView.visitNodes(labelIds,propertyKeyIds,new Visitor<NodePropertyUpdate>(){
+    @Override public boolean visit(    NodePropertyUpdate update){
+      int i=indexOf(propertyKeyIds,update.getPropertyKeyId());
+      if (i == -1) {
+        throw new ThisShouldNotHappenError("Mattias","The store view scan gave back a node property " + "update that I didn't care about. I care about these properties:" + Arrays.toString(propertyKeyIds) + ", but got:"+ update.getPropertyKeyId());
+      }
+      if (update.forLabel(labelIds[i])) {
+        populators[i].add(update.getNodeId(),update.getValueAfter());
+        return true;
+      }
+      return false;
+    }
+    private int indexOf(    long[] ids,    long idToFind){
+      for (int i=0; i < ids.length; i++)       if (ids[i] == idToFind)       return i;
+      return -1;
+    }
+  }
+);
+  storeScan.run();
+  for (  IndexPopulator populator : populators)   populator.close(true);
+}
