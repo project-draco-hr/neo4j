@@ -1,7 +1,14 @@
 {
+  final TransactionalActions.Transaction transaction;
+  try {
+    transaction=actions.findTransaction(id);
+  }
+ catch (  Neo4jError neo4jError) {
+    return invalidTransaction(neo4jError);
+  }
   return Response.ok().header(HttpHeaders.CONTENT_ENCODING,"UTF-8").entity(new StreamingOutput(){
     @Override public void write(    OutputStream output) throws IOException, WebApplicationException {
-      actions.commit(new StatementDeserializer(input),id,new ExecutionResultSerializer(output));
+      transaction.commit(new StatementDeserializer(input),new ExecutionResultSerializer(output,uriScheme));
     }
   }
 ).build();

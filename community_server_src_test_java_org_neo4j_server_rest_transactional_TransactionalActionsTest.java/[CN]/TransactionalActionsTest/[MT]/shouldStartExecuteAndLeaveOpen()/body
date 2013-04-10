@@ -2,13 +2,12 @@
   TransactionalActions actions=new TransactionalActions(mess,engine,registry,logger);
   Map<String,Object> parameters=map();
   TestResultHandler results=new TestResultHandler();
-  actions.executeInNewTransaction(request(new Statement("My Cypher Query",parameters)),txId,results);
+  actions.newTransaction().execute(request(new Statement("My Cypher Query",parameters)),results);
   assertThat(results.results.get(0),equalTo(result));
   assertThat(results.txId,equalTo(txId));
   verify(mess).newTransactionContext();
   verify(engine).execute("My Cypher Query",parameters);
-  verify(ctx).newStatementContext();
-  verify(stmtCtx).close();
-  verify(registry).put(txId,ctx);
-  verifyNoMoreInteractions(mess,registry,engine,ctx,stmtCtx);
+  verify(registry).begin();
+  verify(registry).suspend(txId,ctx);
+  verifyNoMoreInteractions(mess,registry,engine,ctx);
 }

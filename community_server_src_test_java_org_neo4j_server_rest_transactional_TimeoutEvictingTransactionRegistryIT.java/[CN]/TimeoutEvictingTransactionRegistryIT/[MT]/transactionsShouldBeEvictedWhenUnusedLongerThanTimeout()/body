@@ -4,13 +4,15 @@
   TimeoutEvictingTransactionRegistry registry=new TimeoutEvictingTransactionRegistry(clock,log);
   TransactionContext oldTx=mock(TransitionalTxManagementTransactionContext.class);
   TransactionContext newTx=mock(TransitionalTxManagementTransactionContext.class);
-  registry.put(1l,oldTx);
+  long txId1=registry.begin();
+  long txId2=registry.begin();
+  registry.suspend(txId1,oldTx);
   clock.forwardMinutes(1);
-  registry.put(2l,newTx);
-  registry.evictAllIdleSince(clock.currentTimeInMilliseconds() - 1000);
-  assertThat(registry.pop(2l),equalTo(newTx));
+  registry.suspend(txId2,newTx);
+  registry.rollbackSuspendedTransactionsIdleSince(clock.currentTimeInMilliseconds() - 1000);
+  assertThat(registry.resume(txId2),equalTo(newTx));
   try {
-    registry.pop(1l);
+    registry.resume(txId1);
     fail("Should have thrown exception");
   }
  catch (  InvalidTransactionIdError exc) {

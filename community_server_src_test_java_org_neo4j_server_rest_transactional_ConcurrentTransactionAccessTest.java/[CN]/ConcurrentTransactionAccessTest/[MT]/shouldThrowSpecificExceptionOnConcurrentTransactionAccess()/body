@@ -1,0 +1,30 @@
+{
+  TransactionRegistry registry=new TimeoutEvictingTransactionRegistry(mock(Clock.class),StringLogger.DEV_NULL);
+  TransactionalActions actions=new TransactionalActions(mock(TransitionalPeriodTransactionMessContainer.class),null,registry,null);
+  final TransactionalActions.Transaction transaction=actions.newTransaction();
+  final DoubleLatch latch=new DoubleLatch();
+  final StatementDeserializer statements=mock(StatementDeserializer.class);
+  when(statements.hasNext()).thenAnswer(new Answer<Boolean>(){
+    @Override public Boolean answer(    InvocationOnMock invocation) throws Throwable {
+      latch.startAndAwaitFinish();
+      return false;
+    }
+  }
+);
+  new Thread(new Runnable(){
+    @Override public void run(){
+      transaction.execute(statements,mock(ResultHandler.class));
+    }
+  }
+).start();
+  latch.awaitStart();
+  try {
+    actions.findTransaction(transaction.getId());
+    fail("should have thrown exception");
+  }
+ catch (  ConcurrentTransactionAccessError neo4jError) {
+  }
+ finally {
+    latch.finish();
+  }
+}
