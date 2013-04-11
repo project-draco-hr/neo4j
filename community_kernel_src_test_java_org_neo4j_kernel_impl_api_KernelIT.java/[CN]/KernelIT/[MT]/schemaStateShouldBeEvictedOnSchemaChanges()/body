@@ -1,0 +1,22 @@
+{
+  Transaction tx=db.beginTx();
+  StatementContext statement=statementContextProvider.getCtxForWriting();
+  statement.getOrCreateFromSchemaState("my key",new Function<String,String>(){
+    @Override public String apply(    String s){
+      return "my state";
+    }
+  }
+);
+  IndexRule idx=statement.addIndexRule(statement.getOrCreateLabelId("hello"),statement.getOrCreatePropertyKeyId("hepp"));
+  tx.success();
+  tx.finish();
+  String state=getSchemaState("my key","state that should not be set");
+  assertThat(state,equalTo("my state"));
+  tx=db.beginTx();
+  statement=statementContextProvider.getCtxForWriting();
+  statement.dropIndexRule(idx);
+  tx.success();
+  tx.finish();
+  state=getSchemaState("my key","state that should be set");
+  assertThat(state,equalTo("state that should be set"));
+}
