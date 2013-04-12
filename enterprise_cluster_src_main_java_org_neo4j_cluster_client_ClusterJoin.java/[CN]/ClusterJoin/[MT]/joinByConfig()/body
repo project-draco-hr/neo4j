@@ -25,19 +25,22 @@
         return;
       }
  catch (      InterruptedException e) {
-        e.printStackTrace();
+        console.log("Could not join cluster, interrupted. Retrying...");
+        continue;
       }
 catch (      ExecutionException e) {
         logger.debug("Could not join cluster " + this.config.getClusterName());
         if (e.getCause() instanceof IllegalStateException) {
           throw ((IllegalStateException)e.getCause());
         }
+        if (config.isAllowedToCreateCluster()) {
+          console.log("Could not join cluster of " + hosts.toString());
+          console.log(format("Creating new cluster with name [%s]...",config.getClusterName()));
+          cluster.create(config.getClusterName());
+          break;
+        }
+        console.log("Could not join cluster, timed out. Retrying...");
       }
-      if (config.isAllowedToCreateCluster()) {
-        cluster.create(config.getClusterName());
-        break;
-      }
-      console.log("Could not join cluster, timeout happened.");
     }
   }
 }

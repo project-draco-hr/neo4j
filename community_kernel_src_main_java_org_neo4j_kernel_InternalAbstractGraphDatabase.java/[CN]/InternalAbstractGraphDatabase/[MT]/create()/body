@@ -11,7 +11,7 @@
     }
   }
   config.applyChanges(configParams);
-  this.msgLog=logging.getLogger(getClass());
+  this.msgLog=logging.getMessagesLog(getClass());
   config.setLogger(msgLog);
   this.storeLocker=life.add(new StoreLockerLifecycleAdapter(new StoreLocker(config,fileSystem),storeDir));
   new JvmChecker(msgLog,new JvmMetadataRepository()).checkJvmCompatibilityAndIssueWarning();
@@ -23,19 +23,19 @@
   }
   kernelEventHandlers=new KernelEventHandlers();
   caches=createCaches();
-  diagnosticsManager=life.add(new DiagnosticsManager(logging.getLogger(DiagnosticsManager.class)));
+  diagnosticsManager=life.add(new DiagnosticsManager(logging.getMessagesLog(DiagnosticsManager.class)));
   kernelPanicEventGenerator=new KernelPanicEventGenerator(kernelEventHandlers);
   xaDataSourceManager=life.add(createXaDataSourceManager());
   txHook=createTxHook();
   guard=config.get(Configuration.execution_guard_enabled) ? new Guard(msgLog) : null;
   stateFactory=createTransactionStateFactory();
   if (readOnly) {
-    txManager=new ReadOnlyTxManager(xaDataSourceManager,logging.getLogger(ReadOnlyTxManager.class));
+    txManager=new ReadOnlyTxManager(xaDataSourceManager,logging.getMessagesLog(ReadOnlyTxManager.class));
   }
  else {
     String serviceName=config.get(GraphDatabaseSettings.tx_manager_impl);
     if (GraphDatabaseSettings.tx_manager_impl.getDefaultValue().equals(serviceName)) {
-      txManager=new TxManager(this.storeDir,xaDataSourceManager,kernelPanicEventGenerator,logging.getLogger(TxManager.class),fileSystem,stateFactory);
+      txManager=new TxManager(this.storeDir,xaDataSourceManager,kernelPanicEventGenerator,logging.getMessagesLog(TxManager.class),fileSystem,stateFactory);
     }
  else {
       TransactionManagerProvider provider;
@@ -43,7 +43,7 @@
       if (provider == null) {
         throw new IllegalStateException("Unknown transaction manager implementation: " + serviceName);
       }
-      txManager=provider.loadTransactionManager(this.storeDir.getPath(),xaDataSourceManager,kernelPanicEventGenerator,txHook,logging.getLogger(AbstractTransactionManager.class),fileSystem,stateFactory);
+      txManager=provider.loadTransactionManager(this.storeDir.getPath(),xaDataSourceManager,kernelPanicEventGenerator,txHook,logging.getMessagesLog(AbstractTransactionManager.class),fileSystem,stateFactory);
     }
   }
   life.add(txManager);
@@ -54,7 +54,7 @@
   relationshipTypeCreator=createRelationshipTypeCreator();
   persistenceSource=life.add(new NioNeoDbPersistenceSource(xaDataSourceManager));
   syncHook=new DefaultTxEventSyncHookFactory();
-  persistenceManager=new PersistenceManager(logging.getLogger(PersistenceManager.class),txManager,persistenceSource,syncHook);
+  persistenceManager=new PersistenceManager(logging.getMessagesLog(PersistenceManager.class),txManager,persistenceSource,syncHook);
   propertyIndexManager=life.add(new PropertyIndexManager(persistenceManager,persistenceSource));
   relationshipTypeHolder=new RelationshipTypeHolder(txManager,persistenceManager,persistenceSource,relationshipTypeCreator);
   caches.configure(cacheProvider,config);
