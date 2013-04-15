@@ -1,0 +1,16 @@
+{
+  KernelAPI kernel=mockKernel();
+  TransitionalTxManagementTransactionContext transactionContext=(TransitionalTxManagementTransactionContext)kernel.newTransactionContext();
+  TransactionRegistry registry=mock(TransactionRegistry.class);
+  when(registry.begin()).thenReturn(1337l);
+  ExecutionEngine executionEngine=mock(ExecutionEngine.class);
+  TransactionHandle handle=new TransactionHandle(kernel,executionEngine,registry,StringLogger.DEV_NULL);
+  handle.execute(statements(new Statement("query",map())),new ValidatingResultHandler());
+  reset(transactionContext,registry,executionEngine);
+  handle.execute(statements(new Statement("query",map())),new ValidatingResultHandler());
+  InOrder order=inOrder(transactionContext,registry,executionEngine);
+  order.verify(transactionContext).resumeSinceTransactionsAreStillThreadBound();
+  order.verify(executionEngine).execute("query",map());
+  order.verify(transactionContext).suspendSinceTransactionsAreStillThreadBound();
+  order.verify(registry).release(1337l,handle);
+}

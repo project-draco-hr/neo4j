@@ -1,0 +1,12 @@
+{
+  KernelAPI kernel=mockKernel();
+  TransitionalTxManagementTransactionContext transactionContext=(TransitionalTxManagementTransactionContext)kernel.newTransactionContext();
+  TransactionRegistry registry=mock(TransactionRegistry.class);
+  when(registry.begin()).thenReturn(1337l);
+  ExecutionEngine executionEngine=mock(ExecutionEngine.class);
+  when(executionEngine.execute("query",map())).thenThrow(new NullPointerException());
+  TransactionHandle handle=new TransactionHandle(kernel,executionEngine,registry,StringLogger.DEV_NULL);
+  handle.execute(statements(new Statement("query",map())),new ValidatingResultHandler());
+  verify(transactionContext).rollback();
+  verify(registry).forget(1337l);
+}

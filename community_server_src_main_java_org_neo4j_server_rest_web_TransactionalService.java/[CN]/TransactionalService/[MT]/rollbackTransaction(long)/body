@@ -1,15 +1,10 @@
 {
-  final TransactionalActions.Transaction transaction;
+  final TransactionHandle transactionHandle;
   try {
-    transaction=actions.findTransaction(id);
+    transactionHandle=actions.findTransactionHandle(id);
   }
  catch (  Neo4jError neo4jError) {
     return invalidTransaction(neo4jError);
   }
-  return Response.ok().header(HttpHeaders.CONTENT_ENCODING,"UTF-8").entity(new StreamingOutput(){
-    @Override public void write(    OutputStream output) throws IOException, WebApplicationException {
-      transaction.rollback(new ExecutionResultSerializer(output,uriScheme));
-    }
-  }
-).build();
+  return okResponse(rollback(transactionHandle));
 }

@@ -1,7 +1,7 @@
 {
-  TransactionRegistry registry=new TimeoutEvictingTransactionRegistry(mock(Clock.class),StringLogger.DEV_NULL);
-  TransactionalActions actions=new TransactionalActions(mock(TransitionalPeriodTransactionMessContainer.class),null,registry,null);
-  final TransactionalActions.Transaction transaction=actions.newTransaction();
+  TransactionRegistry registry=new TransactionHandleRegistry(mock(Clock.class),StringLogger.DEV_NULL);
+  TransactionFacade actions=new TransactionFacade(mock(TransitionalPeriodTransactionMessContainer.class),null,registry,null);
+  final TransactionHandle transactionHandle=actions.newTransactionHandle();
   final DoubleLatch latch=new DoubleLatch();
   final StatementDeserializer statements=mock(StatementDeserializer.class);
   when(statements.hasNext()).thenAnswer(new Answer<Boolean>(){
@@ -13,13 +13,13 @@
 );
   new Thread(new Runnable(){
     @Override public void run(){
-      transaction.execute(statements,mock(ResultHandler.class));
+      transactionHandle.execute(statements,mock(ResultHandler.class));
     }
   }
 ).start();
   latch.awaitStart();
   try {
-    actions.findTransaction(transaction.getId());
+    actions.findTransactionHandle(transactionHandle.getId());
     fail("should have thrown exception");
   }
  catch (  ConcurrentTransactionAccessError neo4jError) {
