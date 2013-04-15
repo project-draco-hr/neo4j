@@ -1,0 +1,18 @@
+{
+  Iterator<Map.Entry<Long,TransactionMarker>> entries=registry.entrySet().iterator();
+  while (entries.hasNext()) {
+    Map.Entry<Long,TransactionMarker> entry=entries.next();
+    TransactionMarker marker=entry.getValue();
+    try {
+      if (predicate.accept(marker) && marker.isSuspended()) {
+        TransactionHandle transactionHandle=marker.getTransaction().transactionHandle;
+        transactionHandle.forceRollback();
+        entries.remove();
+        long idleSeconds=MILLISECONDS.toSeconds(clock.currentTimeInMilliseconds() - marker.getTransaction().lastActiveTimestamp);
+        log.info(format("Transaction with id %d has been idle for %d seconds, and has been " + "automatically rolled back.",entry.getKey(),idleSeconds));
+      }
+    }
+ catch (    ConcurrentTransactionAccessError concurrentTransactionAccessError) {
+    }
+  }
+}
