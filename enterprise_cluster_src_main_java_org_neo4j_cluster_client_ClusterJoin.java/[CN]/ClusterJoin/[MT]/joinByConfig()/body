@@ -2,7 +2,7 @@
   List<HostnamePort> hosts=config.getInitialHosts();
   cluster.addClusterListener(new UnknownJoiningMemberWarning(hosts));
   if (hosts == null || hosts.size() == 0) {
-    logger.info("No cluster hosts specified. Creating cluster " + config.getClusterName());
+    console.log("No cluster hosts specified. Creating cluster " + config.getClusterName());
     cluster.create(config.getClusterName());
   }
  else {
@@ -18,24 +18,28 @@
     }
 ,hosts)));
     while (true) {
-      logger.debug("Attempting to join " + hosts.toString());
+      console.log("Attempting to join cluster of " + hosts.toString());
       Future<ClusterConfiguration> clusterConfig=cluster.join(this.config.getClusterName(),memberURIs);
       try {
-        logger.debug("Joined cluster:" + clusterConfig.get());
+        console.log("Joined cluster:" + clusterConfig.get());
         return;
       }
  catch (      InterruptedException e) {
-        e.printStackTrace();
+        console.log("Could not join cluster, interrupted. Retrying...");
+        continue;
       }
 catch (      ExecutionException e) {
         logger.debug("Could not join cluster " + this.config.getClusterName());
         if (e.getCause() instanceof IllegalStateException) {
           throw ((IllegalStateException)e.getCause());
         }
-      }
-      if (config.isAllowedToCreateCluster()) {
-        cluster.create(config.getClusterName());
-        break;
+        if (config.isAllowedToCreateCluster()) {
+          console.log("Could not join cluster of " + hosts.toString());
+          console.log(format("Creating new cluster with name [%s]...",config.getClusterName()));
+          cluster.create(config.getClusterName());
+          break;
+        }
+        console.log("Could not join cluster, timed out. Retrying...");
       }
     }
   }

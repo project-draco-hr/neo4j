@@ -4,10 +4,13 @@
     MasterClient20 checkConsistencyMaster=new MasterClient20(masterUri,logging,nioneoDataSource.getStoreId(),config);
     checkConsistencyLife.add(checkConsistencyMaster);
     checkConsistencyLife.start();
+    console.log("Checking store consistency with master");
     checkDataConsistencyWithMaster(checkConsistencyMaster,nioneoDataSource);
+    console.log("Store is consistent");
     return true;
   }
  catch (  StoreUnableToParticipateInClusterException upe) {
+    console.log("The store is inconsistent. Will treat it as branched and fetch a new one from the master");
     msgLog.warn("Current store is unable to participate in the cluster; fetching new store from master",upe);
     try {
       xaDataSourceManager.unregisterDataSource(Config.DEFAULT_DATA_SOURCE_NAME);
@@ -18,6 +21,7 @@
     }
   }
 catch (  MismatchingStoreIdException e) {
+    console.log("The store does not represent the same database as master. Will remove and fetch a new one from master");
     if (nioneoDataSource.getNeoStore().getLastCommittedTx() == 1) {
       msgLog.warn("Found and deleting empty store with mismatching store id " + e.getMessage());
       stopServicesAndHandleBranchedStore(BranchedDataPolicy.keep_none);
