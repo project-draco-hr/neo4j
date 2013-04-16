@@ -1,0 +1,21 @@
+{
+  ByteArrayOutputStream output=new ByteArrayOutputStream();
+  ExecutionResultSerializer serializer=new ExecutionResultSerializer(output,txUriScheme);
+  Map<String,Object> data=map("column1","value1","column2","value2");
+  ExecutionResult executionResult=mock(ExecutionResult.class);
+  when(executionResult.columns()).thenReturn(new ArrayList<String>(data.keySet()));
+  @SuppressWarnings("unchecked") Iterator<Map<String,Object>> iterator=mock(Iterator.class);
+  when(iterator.hasNext()).thenReturn(true,true,false);
+  when(iterator.next()).thenReturn(data).thenThrow(new RuntimeException("Stuff went wrong!"));
+  when(executionResult.iterator()).thenReturn(iterator);
+  try {
+    serializer.statementResult(executionResult);
+    fail("should have thrown exception");
+  }
+ catch (  Neo4jError neo4jError) {
+    serializer.errors(asList(neo4jError));
+  }
+  serializer.finish();
+  String result=output.toString("UTF-8");
+  assertEquals("{\"results\":[{\"columns\":[\"column1\",\"column2\"],\"data\":[[\"value1\",\"value2\"]]}]," + "\"errors\":[{\"code\":20100,\"message\":\"Failed to execute 'Executing statement failed.'.\"}]}",result);
+}

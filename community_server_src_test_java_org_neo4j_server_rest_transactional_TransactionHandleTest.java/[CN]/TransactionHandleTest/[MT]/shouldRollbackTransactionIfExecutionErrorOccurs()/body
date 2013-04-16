@@ -6,7 +6,13 @@
   ExecutionEngine executionEngine=mock(ExecutionEngine.class);
   when(executionEngine.execute("query",map())).thenThrow(new NullPointerException());
   TransactionHandle handle=new TransactionHandle(kernel,executionEngine,registry,StringLogger.DEV_NULL);
-  handle.execute(statements(new Statement("query",map())),new ValidatingResultHandler());
+  ExecutionResultSerializer output=mock(ExecutionResultSerializer.class);
+  handle.execute(statements(new Statement("query",map())),output);
   verify(transactionContext).rollback();
   verify(registry).forget(1337l);
+  InOrder outputOrder=inOrder(output);
+  outputOrder.verify(output).transactionId(1337);
+  outputOrder.verify(output).errors(argThat(hasErrors(1)));
+  outputOrder.verify(output).finish();
+  verifyNoMoreInteractions(output);
 }
