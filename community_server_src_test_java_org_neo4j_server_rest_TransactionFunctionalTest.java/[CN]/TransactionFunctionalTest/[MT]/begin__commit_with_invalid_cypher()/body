@@ -1,9 +1,12 @@
 {
   long nodesInDatabaseBeforeTransaction=countNodes();
-  Response begin=POST(getDataUri() + "transaction",quotedJson("{ 'statements': [ { 'statement': 'CREATE n' } ] }"));
-  String commitResource=begin.stringFromContent("commit");
-  begin=POST(commitResource,quotedJson("{ 'statements': [ { 'statement': 'CREATE ;;' } ] }"));
-  assertThat(begin.status(),is(200));
-  assertErrors(begin,Neo4jError.Code.UNKNOWN_STATEMENT_ERROR);
+  Response response=POST(getDataUri() + "transaction",quotedJson("{ 'statements': [ { 'statement': 'CREATE n' } ] }"));
+  String commitResource=response.stringFromContent("commit");
+  response=POST(commitResource,quotedJson("{ 'statements': [ { 'statement': 'CREATE ;;' } ] }"));
+  System.out.println("begin.rawContent() = " + response.rawContent());
+  assertThat(response.status(),is(200));
+  assertErrorCodes(response,StatusCode.STATEMENT_SYNTAX_ERROR);
+  assertErrorMessages(response,"expected an expression that is a node\n\"CREATE ;;\"\n        ^");
+  assertNoStackTrace(response);
   assertThat(countNodes(),equalTo(nodesInDatabaseBeforeTransaction));
 }

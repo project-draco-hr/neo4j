@@ -2,20 +2,21 @@
   try {
     while (statements.hasNext()) {
       Statement statement=statements.next();
+      ExecutionResult result;
       try {
-        ExecutionResult result=engine.execute(statement.statement(),statement.parameters());
+        result=engine.execute(statement.statement(),statement.parameters());
         output.statementResult(result);
       }
- catch (      ParameterNotFoundException e) {
-        errors.add(new MissingParameterError(e.getMessage(),e));
+ catch (      CypherException e) {
+        errors.add(new StatementExecutionError(e));
+        break;
+      }
+catch (      IOException e) {
+        errors.add(new CommunicationError(e));
         break;
       }
 catch (      RuntimeException e) {
-        errors.add(new UnknownStatementError(statement.statement(),e));
-        break;
-      }
-catch (      Neo4jError e) {
-        errors.add(e);
+        errors.add(new InternalStatementExecutionError(e));
         break;
       }
     }
@@ -25,6 +26,6 @@ catch (      Neo4jError e) {
     }
   }
  catch (  RuntimeException e) {
-    errors.add(new UnknownDatabaseError(e));
+    errors.add(new InternalDatabaseError(e));
   }
 }
