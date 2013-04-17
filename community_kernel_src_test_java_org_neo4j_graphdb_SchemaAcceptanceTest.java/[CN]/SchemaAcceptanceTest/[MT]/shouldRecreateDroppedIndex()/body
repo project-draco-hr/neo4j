@@ -1,0 +1,14 @@
+{
+  GraphDatabaseService beansAPI=dbRule.getGraphDatabaseService();
+  String property="name";
+  Labels label=Labels.MY_LABEL;
+  Node node=createNode(beansAPI,property,"Neo",label);
+  IndexDefinition index=createIndexRule(beansAPI,label,property);
+  beansAPI.schema().awaitIndexOnline(index,1L,TimeUnit.MINUTES);
+  dropIndex(beansAPI,index);
+  createIndexRule(beansAPI,label,property);
+  beansAPI.schema().awaitIndexOnline(index,1L,TimeUnit.MINUTES);
+  index=single(beansAPI.schema().getIndexes(label));
+  assertEquals(IndexState.ONLINE,beansAPI.schema().getIndexState(index));
+  assertEquals(asSet(node),asSet(beansAPI.findNodesByLabelAndProperty(label,property,"Neo")));
+}
