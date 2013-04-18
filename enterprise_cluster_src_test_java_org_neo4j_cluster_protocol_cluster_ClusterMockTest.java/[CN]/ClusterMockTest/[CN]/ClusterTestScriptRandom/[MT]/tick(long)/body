@@ -16,25 +16,21 @@
         cluster.create("default");
       }
  else {
-        try {
-          final Future<ClusterConfiguration> result=cluster.join("default",new URI(in.get(0).toString()));
-          executor.submit(new Runnable(){
-            @Override public void run(){
-              try {
-                ClusterConfiguration clusterConfiguration=result.get();
-                logger.getLogger().debug("**** Cluster configuration:" + clusterConfiguration);
-              }
- catch (              Exception e) {
-                logger.getLogger().debug("**** Node could not join cluster:" + e.getMessage());
-                out.add(cluster);
-              }
+        final Future<ClusterConfiguration> result=cluster.join("default",URI.create(in.get(0).toString()));
+        Runnable joiner=new Runnable(){
+          @Override public void run(){
+            try {
+              ClusterConfiguration clusterConfiguration=result.get();
+              logger.getLogger().debug("**** Cluster configuration:" + clusterConfiguration);
+            }
+ catch (            Exception e) {
+              logger.getLogger().debug("**** Node could not join cluster:" + e.getMessage());
+              out.add(cluster);
             }
           }
-);
         }
- catch (        URISyntaxException e) {
-          e.printStackTrace();
-        }
+;
+        network.addFutureWaiter(result,joiner);
       }
       logger.getLogger().debug("Enter cluster:" + cluster.toString());
     }
