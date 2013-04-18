@@ -1,11 +1,21 @@
 {
-  if (parser.arguments().size() < 2) {
-    throw new ShellException("Must supply key and value, " + "like: set title \"This is a my title\"");
+  boolean forProperty=parser.options().containsKey("p");
+  boolean forLabel=parser.options().containsKey("l");
+  if (forProperty || !forLabel) {
+    if (parser.arguments().size() < 2) {
+      throw new ShellException("Must supply key and value, " + "like: set title \"This is a my title\"");
+    }
+    String key=parser.arguments().get(0);
+    ValueType valueType=getValueType(parser);
+    Object value=parseValue(parser.arguments().get(1),valueType);
+    NodeOrRelationship thing=getCurrent(session);
+    thing.setProperty(key,value);
   }
-  String key=parser.arguments().get(0);
-  ValueType valueType=getValueType(parser);
-  Object value=parseValue(parser.arguments().get(1),valueType);
-  NodeOrRelationship thing=getCurrent(session);
-  thing.setProperty(key,value);
+ else {
+    Node node=getCurrent(session).asNode();
+    for (    Label label : Mknode.parseLabels(parser)) {
+      node.addLabel(label);
+    }
+  }
   return Continuation.INPUT_COMPLETE;
 }
