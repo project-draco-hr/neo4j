@@ -1,0 +1,25 @@
+{
+  StatementContext delegate=mock(StatementContext.class);
+  Object[] arguments=arguments(method);
+  Object expectedResult=null;
+  if (method.getReturnType() != void.class) {
+    expectedResult=sample(method.getReturnType());
+    method.invoke(doReturn(expectedResult).when(delegate),arguments);
+  }
+  MyStatementContext context=new MyStatementContext(delegate);
+  Object result=method.invoke(context,arguments);
+  method.invoke(verify(delegate),arguments);
+  verifyNoMoreInteractions(delegate);
+  if (method.getReturnType() != void.class) {
+    assertEquals(expectedResult,result);
+  }
+  if (!"close".equals(method.getName())) {
+    ArgumentCaptor<ReadOrWrite> readORwrite=ArgumentCaptor.forClass(ReadOrWrite.class);
+    InOrder order=inOrder(context.checking);
+    order.verify(context.checking).beforeOperation();
+    order.verify(context.checking).beforeReadOrWriteOperation(readORwrite.capture());
+    order.verify(context.checking).afterReadOrWriteOperation(readORwrite.getValue());
+    order.verify(context.checking).afterOperation();
+    verifyNoMoreInteractions(context.checking);
+  }
+}
