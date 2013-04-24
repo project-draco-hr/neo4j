@@ -1,28 +1,9 @@
 {
-  if (key == null) {
-    throw new IllegalArgumentException("null key");
+  PropertyIndex[] keys=nodeManager.index(key);
+  if (keys != null && keys.length > 0) {
+    return getProperty(nodeManager,keys[0].getKeyId());
   }
-  TransactionState tx=nodeManager.getTransactionState();
-  ArrayMap<Integer,PropertyData> skipMap=null, addMap=null;
-  if (tx.hasChanges()) {
-    skipMap=tx.getCowPropertyRemoveMap(this);
-    addMap=tx.getCowPropertyAddMap(this);
+ else {
+    throw newPropertyNotFoundException(key);
   }
-  ensureFullProperties(nodeManager);
-  for (  PropertyIndex index : nodeManager.index(key)) {
-    if (skipMap != null && skipMap.get(index.getKeyId()) != null) {
-      throw newPropertyNotFoundException(key);
-    }
-    if (addMap != null) {
-      PropertyData property=addMap.get(index.getKeyId());
-      if (property != null) {
-        return getPropertyValue(nodeManager,property);
-      }
-    }
-    PropertyData property=getPropertyForIndex(index.getKeyId());
-    if (property != null) {
-      return getPropertyValue(nodeManager,property);
-    }
-  }
-  throw newPropertyNotFoundException(key);
 }
