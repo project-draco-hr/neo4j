@@ -1,4 +1,40 @@
 {
+  final AtomicBoolean clearState=new AtomicBoolean(false);
+  state.accept(new TxState.Visitor(){
+    @Override public void visitNodeLabelChanges(    long id,    Set<Long> added,    Set<Long> removed){
+    }
+    @Override public void visitAddedIndex(    IndexDescriptor element){
+      SchemaIndexProvider.Descriptor providerDescriptor=providerMap.getDefaultProvider().getProviderDescriptor();
+      IndexRule rule=new IndexRule(schemaStorage.newRuleId(),element.getLabelId(),providerDescriptor,element.getPropertyKeyId());
+      persistenceManager.createSchemaRule(rule);
+    }
+    @Override public void visitRemovedIndex(    IndexDescriptor element){
+      try {
+        IndexRule rule=schemaStorage.indexRule(element.getLabelId(),element.getPropertyKeyId());
+        persistenceManager.dropSchemaRule(rule.getId());
+      }
+ catch (      SchemaRuleNotFoundException e) {
+        throw new ThisShouldNotHappenError("Tobias Lindaaker","Index to be removed should exist, since its existence should have " + "been validated earlier and the schema should have been locked.");
+      }
+    }
+    @Override public void visitAddedConstraint(    UniquenessConstraint element){
+      clearState.set(true);
+      persistenceManager.createSchemaRule(new UniquenessConstraintRule(schemaStorage.newRuleId(),element.label(),element.property()));
+    }
+    @Override public void visitRemovedConstraint(    UniquenessConstraint element){
+      try {
+        UniquenessConstraintRule rule=schemaStorage.uniquenessConstraint(element.label(),element.property());
+        persistenceManager.dropSchemaRule(rule.getId());
+      }
+ catch (      SchemaRuleNotFoundException e) {
+        throw new ThisShouldNotHappenError("Tobias Lindaaker","Constraint to be removed should exist, since its existence should " + "have been validated earlier and the schema should have been locked.");
+      }
+    }
+  }
+);
+  if (clearState.get()) {
+    schemaState.clear();
+  }
   super.commit();
   persistenceCache.apply(state);
 }
