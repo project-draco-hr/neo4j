@@ -13,25 +13,21 @@ synchronized (this) {
     isReadOnly=xaTransaction.isReadOnly();
     if (onePhase) {
       txStatus.markAsPrepared();
-      if (!isReadOnly) {
-        if (!xaTransaction.isRecovered()) {
-          xaTransaction.prepare();
-          long txId=txIdGenerator.generate(dataSource,xaTransaction.getIdentifier());
-          xaTransaction.setCommitTxId(txId);
-          log.commitOnePhase(xaTransaction.getIdentifier(),xaTransaction.getCommitTxId(),getForceMode());
-        }
+      if (!isReadOnly && !xaTransaction.isRecovered()) {
+        xaTransaction.prepare();
+        long txId=txIdGenerator.generate(dataSource,xaTransaction.getIdentifier());
+        xaTransaction.setCommitTxId(txId);
+        log.commitOnePhase(xaTransaction.getIdentifier(),xaTransaction.getCommitTxId(),getForceMode());
       }
     }
     if (!txStatus.prepared() || txStatus.rollback()) {
       throw new XAException("Transaction not prepared or " + "(marked as) rolledbacked");
     }
     if (!isReadOnly) {
-      if (!xaTransaction.isRecovered()) {
-        if (!onePhase) {
-          long txId=txIdGenerator.generate(dataSource,xaTransaction.getIdentifier());
-          xaTransaction.setCommitTxId(txId);
-          log.commitTwoPhase(xaTransaction.getIdentifier(),xaTransaction.getCommitTxId(),getForceMode());
-        }
+      if (!onePhase && !xaTransaction.isRecovered()) {
+        long txId=txIdGenerator.generate(dataSource,xaTransaction.getIdentifier());
+        xaTransaction.setCommitTxId(txId);
+        log.commitTwoPhase(xaTransaction.getIdentifier(),xaTransaction.getCommitTxId(),getForceMode());
       }
       txStatus.markCommitStarted();
       if (xaTransaction.isRecovered() && xaTransaction.getCommitTxId() == -1) {
