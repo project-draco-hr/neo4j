@@ -58,13 +58,13 @@
   persistenceSource=life.add(new NioNeoDbPersistenceSource(xaDataSourceManager));
   syncHook=new DefaultTxEventSyncHookFactory();
   persistenceManager=new PersistenceManager(logging.getMessagesLog(PersistenceManager.class),txManager,persistenceSource,syncHook);
-  KeyCreator propertyIndexCreator=createPropertyKeyCreator();
-  propertyIndexManager=life.add(new PropertyIndexManager(txManager,persistenceManager,persistenceSource,propertyIndexCreator));
-  relationshipTypeHolder=new RelationshipTypeHolder(txManager,persistenceManager,persistenceSource,relationshipTypeCreator);
+  propertyKeyTokenHolder=life.add(new PropertyKeyTokenHolder(txManager,persistenceManager,persistenceSource,createPropertyKeyCreator()));
+  labelTokenHolder=life.add(new LabelTokenHolder(txManager,persistenceManager,persistenceSource,createLabelIdCreator()));
+  relationshipTypeTokenHolder=new RelationshipTypeTokenHolder(txManager,persistenceManager,persistenceSource,relationshipTypeCreator);
   caches.configure(cacheProvider,config);
   Cache<NodeImpl> nodeCache=diagnosticsManager.tryAppendProvider(caches.node());
   Cache<RelationshipImpl> relCache=diagnosticsManager.tryAppendProvider(caches.relationship());
-  kernelAPI=life.add(new Kernel(txManager,propertyIndexManager,persistenceManager,xaDataSourceManager,lockManager,updateableSchemaState,dependencyResolver));
+  kernelAPI=life.add(new Kernel(txManager,propertyKeyTokenHolder,labelTokenHolder,persistenceManager,xaDataSourceManager,lockManager,updateableSchemaState,dependencyResolver));
   txManager.setKernel(kernelAPI);
   statementContextProvider=life.add(new ThreadToStatementContextBridge(kernelAPI,txManager));
   nodeManager=guard != null ? createGuardedNodeManager(readOnly,cacheProvider,nodeCache,relCache) : createNodeManager(readOnly,cacheProvider,nodeCache,relCache);
@@ -78,7 +78,7 @@
   if (config.get(Configuration.load_kernel_extensions)) {
     life.add(kernelExtensions);
   }
-  schema=new SchemaImpl(statementContextProvider,cleanupService,propertyIndexManager);
+  schema=new SchemaImpl(statementContextProvider,cleanupService,propertyKeyTokenHolder);
   indexManager=new IndexManagerImpl(config,indexStore,xaDataSourceManager,txManager,this);
   nodeAutoIndexer=life.add(new NodeAutoIndexerImpl(config,indexManager,nodeManager));
   relAutoIndexer=life.add(new RelationshipAutoIndexerImpl(config,indexManager,nodeManager));
