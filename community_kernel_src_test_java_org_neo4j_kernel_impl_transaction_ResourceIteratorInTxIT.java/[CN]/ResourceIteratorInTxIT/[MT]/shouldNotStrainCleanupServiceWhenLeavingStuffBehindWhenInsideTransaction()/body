@@ -1,0 +1,29 @@
+{
+  GraphDatabaseAPI db=(GraphDatabaseAPI)new TestGraphDatabaseFactory().newImpermanentDatabase();
+  Label label=DynamicLabel.label("PERSON");
+{
+    Transaction tx=db.beginTx();
+    try {
+      db.schema().indexCreator(label).on("name").create();
+      for (int i=0; i < 10; i++) {
+        Node node=db.createNode(label);
+        node.setProperty("name","Mattias");
+      }
+      tx.success();
+    }
+  finally {
+      tx.finish();
+    }
+  }
+  while (true) {
+    Transaction tx=db.tx().unforced().begin();
+    try {
+      ResourceIterator<Node> iterator=db.findNodesByLabelAndProperty(label,"name","Mattias").iterator();
+      iterator.next();
+      tx.success();
+    }
+  finally {
+      tx.finish();
+    }
+  }
+}
