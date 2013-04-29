@@ -59,12 +59,11 @@
   syncHook=new DefaultTxEventSyncHookFactory();
   persistenceManager=new PersistenceManager(logging.getMessagesLog(PersistenceManager.class),txManager,persistenceSource,syncHook);
   propertyIndexManager=life.add(new PropertyIndexManager(persistenceManager,persistenceSource));
-  relationshipTypeHolder=new RelationshipTypeHolder(txManager,persistenceManager,persistenceSource,relationshipTypeCreator);
+  relationshipTypeHolder=life.add(new RelationshipTypeHolder(txManager,persistenceManager,persistenceSource,relationshipTypeCreator));
   caches.configure(cacheProvider,config);
   Cache<NodeImpl> nodeCache=diagnosticsManager.tryAppendProvider(caches.node());
   Cache<RelationshipImpl> relCache=diagnosticsManager.tryAppendProvider(caches.relationship());
   nodeManager=guard != null ? createGuardedNodeManager(readOnly,cacheProvider,nodeCache,relCache) : createNodeManager(readOnly,cacheProvider,nodeCache,relCache);
-  life.add(nodeManager);
   stateFactory.setDependencies(lockManager,propertyIndexManager,nodeManager,txHook,txIdGenerator);
   indexStore=life.add(new IndexStore(this.storeDir,fileSystem));
   diagnosticsManager.prependProvider(config);
@@ -87,5 +86,6 @@
   life.add(new MonitorGc(config,msgLog));
   life.add(new DatabaseAvailability());
   life.add(kernelEventHandlers);
+  life.add(nodeManager);
   life.add(new ConfigurationChangedRestarter());
 }
