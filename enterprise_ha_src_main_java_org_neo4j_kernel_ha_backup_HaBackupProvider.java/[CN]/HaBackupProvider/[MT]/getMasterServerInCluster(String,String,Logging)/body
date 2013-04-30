@@ -4,6 +4,7 @@
   params.put(ClusterSettings.server_id.name(),"-1");
   params.put(ClusterSettings.cluster_name.name(),clusterName);
   params.put(ClusterSettings.initial_hosts.name(),from);
+  params.put(ClusterClient.clusterJoinTimeout.name(),"20s");
   final Config config=new Config(params,ClusterSettings.class,OnlineBackupSettings.class);
   final ClusterClient clusterClient=life.add(new ClusterClient(ClusterClient.adapt(config),logging,new NotElectableElectionCredentialsProvider()));
   ClusterMemberEvents events=life.add(new PaxosClusterMemberEvents(clusterClient,clusterClient,clusterClient,clusterClient,new SystemOutLogging(),Predicates.<PaxosClusterMemberEvents.ClusterMembersSnapshot>TRUE()));
@@ -34,21 +35,36 @@
     /** 
  * Called when new master has been elected. The new master may not be available a.t.m.
  * A call to {@link #memberIsAvailable} will confirm that the master given in
- * the most recent {@link #coordinatorIsElected(org.neo4j.cluster.InstanceId)} call is up and running as master.
+ * the most recent {@link #coordinatorIsElected(org.neo4j.cluster.InstanceId)} call is up and running as
+ * master.
  * @param coordinatorId the connection information to the master.
  */
     @Override public void coordinatorIsElected(    InstanceId coordinatorId){
     }
   }
 );
-  life.start();
   try {
+    life.start();
     if (!infoReceivedLatch.tryAcquire(20,TimeUnit.SECONDS)) {
       throw new RuntimeException("Could not find backup server in cluster " + clusterName + " at "+ from+ ", "+ "operation timed out");
     }
   }
  catch (  InterruptedException e) {
     throw new RuntimeException(e);
+  }
+catch (  LifecycleException e) {
+    Throwable ex=Exceptions.peel(e,Exceptions.exceptionsOfType(TimeoutException.class));
+    if (ex != null) {
+      throw new RuntimeException("Could not find backup server in cluster " + clusterName + " at "+ from+ ", "+ "operation timed out");
+    }
+ else {
+      throw new RuntimeException(Exceptions.peel(e,new Predicate<Throwable>(){
+        @Override public boolean accept(        Throwable item){
+          return !(item instanceof LifecycleException);
+        }
+      }
+));
+    }
   }
  finally {
     life.shutdown();

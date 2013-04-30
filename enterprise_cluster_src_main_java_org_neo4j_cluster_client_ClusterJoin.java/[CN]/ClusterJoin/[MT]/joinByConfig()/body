@@ -20,26 +20,51 @@
     while (true) {
       console.log("Attempting to join cluster of " + hosts.toString());
       Future<ClusterConfiguration> clusterConfig=cluster.join(this.config.getClusterName(),memberURIs);
-      try {
-        console.log("Joined cluster:" + clusterConfig.get());
-        return;
-      }
- catch (      InterruptedException e) {
-        console.log("Could not join cluster, interrupted. Retrying...");
-        continue;
-      }
-catch (      ExecutionException e) {
-        logger.debug("Could not join cluster " + this.config.getClusterName());
-        if (e.getCause() instanceof IllegalStateException) {
-          throw ((IllegalStateException)e.getCause());
+      if (config.getClusterJoinTimeout() > 0) {
+        try {
+          console.log("Joined cluster:" + clusterConfig.get(config.getClusterJoinTimeout(),TimeUnit.MILLISECONDS));
+          return;
         }
-        if (config.isAllowedToCreateCluster()) {
-          console.log("Could not join cluster of " + hosts.toString());
-          console.log(format("Creating new cluster with name [%s]...",config.getClusterName()));
-          cluster.create(config.getClusterName());
-          break;
+ catch (        InterruptedException e) {
+          console.log("Could not join cluster, interrupted. Retrying...");
+          continue;
         }
-        console.log("Could not join cluster, timed out. Retrying...");
+catch (        ExecutionException e) {
+          logger.debug("Could not join cluster " + this.config.getClusterName());
+          if (e.getCause() instanceof IllegalStateException) {
+            throw ((IllegalStateException)e.getCause());
+          }
+          if (config.isAllowedToCreateCluster()) {
+            console.log("Could not join cluster of " + hosts.toString());
+            console.log(format("Creating new cluster with name [%s]...",config.getClusterName()));
+            cluster.create(config.getClusterName());
+            break;
+          }
+          console.log("Could not join cluster, timed out. Retrying...");
+        }
+      }
+ else {
+        try {
+          console.log("Joined cluster:" + clusterConfig.get());
+          return;
+        }
+ catch (        InterruptedException e) {
+          console.log("Could not join cluster, interrupted. Retrying...");
+          continue;
+        }
+catch (        ExecutionException e) {
+          logger.debug("Could not join cluster " + this.config.getClusterName());
+          if (e.getCause() instanceof IllegalStateException) {
+            throw ((IllegalStateException)e.getCause());
+          }
+          if (config.isAllowedToCreateCluster()) {
+            console.log("Could not join cluster of " + hosts.toString());
+            console.log(format("Creating new cluster with name [%s]...",config.getClusterName()));
+            cluster.create(config.getClusterName());
+            break;
+          }
+          console.log("Could not join cluster, timed out. Retrying...");
+        }
       }
     }
   }
