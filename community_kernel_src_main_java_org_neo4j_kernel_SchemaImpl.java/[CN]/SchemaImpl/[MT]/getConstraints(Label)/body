@@ -1,0 +1,24 @@
+{
+  final StatementContext context=ctxProvider.getCtxForReading();
+  try {
+    Iterator<UniquenessConstraint> constraints=context.getConstraints(context.getLabelId(label.name()));
+    Iterator<ConstraintDefinition> definitions=map(new Function<UniquenessConstraint,ConstraintDefinition>(){
+      @Override public ConstraintDefinition apply(      UniquenessConstraint constraint){
+        try {
+          return new PropertyUniqueConstraintDefinition(actions,label,context.getPropertyKeyName(constraint.property()));
+        }
+ catch (        PropertyKeyIdNotFoundException e) {
+          throw new ThisShouldNotHappenError("Mattias","Couldn't find property name for " + constraint.property(),e);
+        }
+      }
+    }
+,constraints);
+    return asCollection(definitions);
+  }
+ catch (  LabelNotFoundKernelException e) {
+    return emptyList();
+  }
+ finally {
+    context.close();
+  }
+}

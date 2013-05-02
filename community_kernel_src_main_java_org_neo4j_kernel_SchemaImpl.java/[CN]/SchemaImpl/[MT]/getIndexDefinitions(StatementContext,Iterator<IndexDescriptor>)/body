@@ -1,15 +1,19 @@
 {
-  return cleanupService.resourceIterator(map(new Function<IndexDescriptor,IndexDefinition>(){
+  Iterator<IndexDefinition> eagerDefinitions=map(new Function<IndexDescriptor,IndexDefinition>(){
     @Override public IndexDefinition apply(    IndexDescriptor rule){
       try {
         Label label=label(context.getLabelName(rule.getLabelId()));
-        String propertyKey=propertyKeyManager.getTokenByIdOrNull((int)rule.getPropertyKeyId()).getKey();
-        return new IndexDefinitionImpl(ctxProvider,label,propertyKey);
+        String propertyKey=context.getPropertyKeyName(rule.getPropertyKeyId());
+        return new IndexDefinitionImpl(actions,label,propertyKey);
       }
  catch (      LabelNotFoundKernelException e) {
         throw new RuntimeException(e);
       }
+catch (      PropertyKeyIdNotFoundException e) {
+        throw new RuntimeException(e);
+      }
     }
   }
-,indexRules),context);
+,indexRules);
+  return asCollection(eagerDefinitions);
 }
