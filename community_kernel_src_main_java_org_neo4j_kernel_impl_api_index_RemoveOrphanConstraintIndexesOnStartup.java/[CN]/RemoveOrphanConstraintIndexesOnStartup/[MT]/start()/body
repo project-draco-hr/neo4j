@@ -1,0 +1,31 @@
+{
+  if (txManager.getRecoveryError() != null) {
+    return;
+  }
+  txManager.begin(ForceMode.unforced);
+  TransactionContext tx=kernel.newTransactionContext();
+  boolean success=false;
+  try {
+    StatementContext context=tx.newStatementContext();
+    try {
+      for (Iterator<IndexDescriptor> indexes=context.getIndexRules(); indexes.hasNext(); ) {
+        IndexDescriptor index=indexes.next();
+        if (index.isConstraintIndex() && context.getOwningConstraint(index) == null) {
+          context.dropIndexRule(index);
+        }
+      }
+    }
+  finally {
+      context.close();
+    }
+    success=true;
+  }
+  finally {
+    if (success) {
+      tx.commit();
+    }
+ else {
+      tx.rollback();
+    }
+  }
+}
