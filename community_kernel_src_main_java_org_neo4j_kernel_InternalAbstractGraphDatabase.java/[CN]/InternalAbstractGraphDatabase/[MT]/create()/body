@@ -60,7 +60,7 @@
   persistenceManager=new PersistenceManager(logging.getMessagesLog(PersistenceManager.class),txManager,persistenceSource,syncHook);
   propertyKeyTokenHolder=life.add(new PropertyKeyTokenHolder(txManager,persistenceManager,persistenceSource,createPropertyKeyCreator()));
   labelTokenHolder=life.add(new LabelTokenHolder(txManager,persistenceManager,persistenceSource,createLabelIdCreator()));
-  relationshipTypeTokenHolder=new RelationshipTypeTokenHolder(txManager,persistenceManager,persistenceSource,relationshipTypeCreator);
+  relationshipTypeTokenHolder=life.add(new RelationshipTypeTokenHolder(txManager,persistenceManager,persistenceSource,relationshipTypeCreator));
   caches.configure(cacheProvider,config);
   Cache<NodeImpl> nodeCache=diagnosticsManager.tryAppendProvider(caches.node());
   Cache<RelationshipImpl> relCache=diagnosticsManager.tryAppendProvider(caches.relationship());
@@ -68,7 +68,6 @@
   txManager.setKernel(kernelAPI);
   statementContextProvider=life.add(new ThreadToStatementContextBridge(kernelAPI,txManager));
   nodeManager=guard != null ? createGuardedNodeManager(readOnly,cacheProvider,nodeCache,relCache) : createNodeManager(readOnly,cacheProvider,nodeCache,relCache);
-  life.add(nodeManager);
   stateFactory.setDependencies(lockManager,nodeManager,txHook,txIdGenerator);
   indexStore=life.add(new IndexStore(this.storeDir,fileSystem));
   diagnosticsManager.prependProvider(config);
@@ -92,5 +91,6 @@
   life.add(new MonitorGc(config,msgLog));
   life.add(new DatabaseAvailability());
   life.add(kernelEventHandlers);
+  life.add(nodeManager);
   life.add(new ConfigurationChangedRestarter());
 }
