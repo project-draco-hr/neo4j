@@ -1,0 +1,37 @@
+{
+  Transaction previousTransaction=suspendTransaction();
+  try {
+    beginTransaction();
+    @SuppressWarnings("deprecation") TransactionContext tx=txManager.getTransactionContext();
+    boolean success=false;
+    try {
+      RESULT result;
+      StatementContext context=tx.newStatementContext();
+      try {
+        result=statement.perform(context);
+      }
+  finally {
+        context.close();
+      }
+      success=true;
+      return result;
+    }
+  finally {
+      if (success) {
+        tx.commit();
+      }
+ else {
+        tx.rollback();
+      }
+    }
+  }
+ catch (  TransactionalException failure) {
+    previousTransaction=null;
+    throw failure;
+  }
+ finally {
+    if (previousTransaction != null) {
+      resumeTransaction(previousTransaction);
+    }
+  }
+}

@@ -1,0 +1,24 @@
+{
+  IndexDescriptor descriptor=transactor.execute(createConstraintIndex(labelId,propertyKeyId));
+  long indexId;
+  try {
+    indexId=schema.getCommittedIndexId(descriptor);
+  }
+ catch (  SchemaRuleNotFoundException e) {
+    throw new IllegalStateException(String.format("Index (%s) that we just created does not exist.",descriptor));
+  }
+  boolean success=false;
+  try {
+    awaitIndexPopulation(indexId);
+    success=true;
+  }
+ catch (  InterruptedException exception) {
+    throw new IndexPopulationFailedKernelException(descriptor,exception);
+  }
+ finally {
+    if (!success) {
+      transactor.execute(dropConstraintIndex(descriptor));
+    }
+  }
+  return indexId;
+}
