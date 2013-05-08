@@ -1,0 +1,33 @@
+{
+  try {
+    txManager.begin(ForceMode.unforced);
+    @SuppressWarnings("deprecation") TransactionContext tx=txManager.getTransactionContext();
+    boolean success=false;
+    try {
+      StatementContext context=tx.newStatementContext();
+      try {
+        for (Iterator<IndexDescriptor> indexes=context.getConstraintIndexes(); indexes.hasNext(); ) {
+          IndexDescriptor index=indexes.next();
+          if (context.getOwningConstraint(index) == null) {
+            context.dropConstraintIndex(index);
+          }
+        }
+      }
+  finally {
+        context.close();
+      }
+      success=true;
+    }
+  finally {
+      if (success) {
+        tx.commit();
+      }
+ else {
+        tx.rollback();
+      }
+    }
+  }
+ catch (  Throwable e) {
+    log.error("Failed to execute orphan index checking transaction.",e);
+  }
+}
