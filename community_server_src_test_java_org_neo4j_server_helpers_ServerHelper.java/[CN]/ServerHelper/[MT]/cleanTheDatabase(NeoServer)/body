@@ -3,66 +3,6 @@
     return;
   }
   rollbackAllOpenTransactions(server);
-  new Transactor(server.getDatabase().getGraph(),new UnitOfWork(){
-    @Override public void doWork(){
-      deleteAllNodesAndRelationships(server);
-      deleteAllIndexes(server);
-      deleteAllIndexRules(server);
-      deleteAllConstraints(server);
-    }
-    private void deleteAllIndexRules(    NeoServer server){
-      for (      IndexDefinition index : server.getDatabase().getGraph().schema().getIndexes()) {
-        index.drop();
-      }
-    }
-    private void deleteAllConstraints(    NeoServer server){
-      for (      ConstraintDefinition constraint : server.getDatabase().getGraph().schema().getConstraints()) {
-        constraint.drop();
-      }
-    }
-    private void deleteAllNodesAndRelationships(    final NeoServer server){
-      Iterable<Node> allNodes=GlobalGraphOperations.at(server.getDatabase().getGraph()).getAllNodes();
-      for (      Node n : allNodes) {
-        Iterable<Relationship> relationships=n.getRelationships();
-        for (        Relationship rel : relationships) {
-          rel.delete();
-        }
-        if (n.getId() != 0) {
-          n.delete();
-        }
- else {
-          for (          String key : n.getPropertyKeys()) {
-            n.removeProperty(key);
-          }
-        }
-      }
-    }
-    private void deleteAllIndexes(    final NeoServer server){
-      IndexManager indexManager=server.getDatabase().getGraph().index();
-      for (      String indexName : indexManager.nodeIndexNames()) {
-        try {
-          server.getDatabase().getGraph().index().forNodes(indexName).delete();
-        }
- catch (        UnsupportedOperationException e) {
-        }
-      }
-      for (      String indexName : indexManager.relationshipIndexNames()) {
-        try {
-          server.getDatabase().getGraph().index().forRelationships(indexName).delete();
-        }
- catch (        UnsupportedOperationException e) {
-        }
-      }
-      for (      String k : indexManager.getNodeAutoIndexer().getAutoIndexedProperties()) {
-        indexManager.getNodeAutoIndexer().stopAutoIndexingProperty(k);
-      }
-      indexManager.getNodeAutoIndexer().setEnabled(false);
-      for (      String k : indexManager.getRelationshipAutoIndexer().getAutoIndexedProperties()) {
-        indexManager.getRelationshipAutoIndexer().stopAutoIndexingProperty(k);
-      }
-      indexManager.getRelationshipAutoIndexer().setEnabled(false);
-    }
-  }
-).execute();
+  cleanTheDatabase(server.getDatabase().getGraph());
   removeLogs(server);
 }

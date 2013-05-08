@@ -1,0 +1,65 @@
+{
+  new Transactor(db,new UnitOfWork(){
+    @Override public void doWork(){
+      deleteAllNodesAndRelationships();
+      deleteAllIndexes();
+      deleteAllIndexRules();
+      deleteAllConstraints();
+    }
+    private void deleteAllIndexRules(){
+      for (      IndexDefinition index : db.schema().getIndexes()) {
+        if (!index.isConstraintIndex()) {
+          index.drop();
+        }
+      }
+    }
+    private void deleteAllConstraints(){
+      for (      ConstraintDefinition constraint : db.schema().getConstraints()) {
+        constraint.drop();
+      }
+    }
+    private void deleteAllNodesAndRelationships(){
+      Iterable<Node> allNodes=GlobalGraphOperations.at(db).getAllNodes();
+      for (      Node n : allNodes) {
+        Iterable<Relationship> relationships=n.getRelationships();
+        for (        Relationship rel : relationships) {
+          rel.delete();
+        }
+        if (n.getId() != 0) {
+          n.delete();
+        }
+ else {
+          for (          String key : n.getPropertyKeys()) {
+            n.removeProperty(key);
+          }
+        }
+      }
+    }
+    private void deleteAllIndexes(){
+      IndexManager indexManager=db.index();
+      for (      String indexName : indexManager.nodeIndexNames()) {
+        try {
+          db.index().forNodes(indexName).delete();
+        }
+ catch (        UnsupportedOperationException e) {
+        }
+      }
+      for (      String indexName : indexManager.relationshipIndexNames()) {
+        try {
+          db.index().forRelationships(indexName).delete();
+        }
+ catch (        UnsupportedOperationException e) {
+        }
+      }
+      for (      String k : indexManager.getNodeAutoIndexer().getAutoIndexedProperties()) {
+        indexManager.getNodeAutoIndexer().stopAutoIndexingProperty(k);
+      }
+      indexManager.getNodeAutoIndexer().setEnabled(false);
+      for (      String k : indexManager.getRelationshipAutoIndexer().getAutoIndexedProperties()) {
+        indexManager.getRelationshipAutoIndexer().stopAutoIndexingProperty(k);
+      }
+      indexManager.getRelationshipAutoIndexer().setEnabled(false);
+    }
+  }
+).execute();
+}
