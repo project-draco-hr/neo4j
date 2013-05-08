@@ -1,0 +1,22 @@
+{
+  URI me=URI.create("cluster://me");
+  Map<InstanceId,URI> members=new HashMap<InstanceId,URI>();
+  final InstanceId myId=new InstanceId(1);
+  members.put(myId,me);
+  members.putAll(extraMembers);
+  ClusterConfiguration clusterConfiguration=mock(ClusterConfiguration.class);
+  when(clusterConfiguration.getMembers()).thenReturn(members);
+  when(clusterConfiguration.getElected(ClusterConfiguration.COORDINATOR)).thenReturn(myId);
+  when(clusterConfiguration.getUriForId(myId)).thenReturn(me);
+  ClusterContext clusterContext=mock(ClusterContext.class);
+  when(clusterContext.getConfiguration()).thenReturn(clusterConfiguration);
+  when(clusterContext.getMyId()).thenReturn(myId);
+  SnapshotContext context=mock(SnapshotContext.class);
+  when(context.getClusterContext()).thenReturn(clusterContext);
+  when(context.getSnapshotProvider()).thenReturn(mock(SnapshotProvider.class));
+  Message<SnapshotMessage> message=Message.to(SnapshotMessage.refreshSnapshot,me);
+  MessageHolder outgoing=mock(MessageHolder.class);
+  SnapshotState newState=(SnapshotState)SnapshotState.ready.handle(context,message,outgoing);
+  assertThat(newState,equalTo(SnapshotState.ready));
+  Mockito.verifyZeroInteractions(outgoing);
+}
