@@ -9,9 +9,14 @@
   ExecutorService executor=Executors.newSingleThreadExecutor();
   executor.submit(new Runnable(){
     @Override public void run(){
-      newTransaction();
-      db.createNode(label("Foo")).setProperty("name","foo");
-      commit();
+      Transaction tx=db.beginTx();
+      try {
+        db.createNode(label("Foo")).setProperty("name","foo");
+        tx.success();
+      }
+  finally {
+        tx.finish();
+      }
     }
   }
 ).get();
@@ -20,8 +25,7 @@
     commit();
     fail("expected exception");
   }
- catch (  Exception ex) {
-    ex.printStackTrace();
-    assertNotNull(ex);
+ catch (  ConstraintCreationException ex) {
+    assertEquals("",ex.getMessage());
   }
 }

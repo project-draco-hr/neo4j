@@ -1,6 +1,11 @@
 {
-  this.lock.readLock().lock();
-  IndexProxy proxy=delegate;
-  this.lock.readLock().unlock();
-  proxy.awaitPopulationCompleted();
+  for (; ; ) {
+    this.lock.readLock().lock();
+    IndexProxy proxy=delegate;
+    if (proxy.getState() == InternalIndexState.ONLINE) {
+      break;
+    }
+    this.lock.readLock().unlock();
+    proxy.awaitPopulationCompleted();
+  }
 }
