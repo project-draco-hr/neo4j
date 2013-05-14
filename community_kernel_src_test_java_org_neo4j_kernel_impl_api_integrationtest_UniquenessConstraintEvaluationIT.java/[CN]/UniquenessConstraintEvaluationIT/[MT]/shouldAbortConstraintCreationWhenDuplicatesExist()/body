@@ -1,7 +1,11 @@
 {
   newTransaction();
-  db.createNode(label("Foo")).setProperty("name","foo");
-  db.createNode(label("Foo")).setProperty("name","foo");
+  Node node=db.createNode(label("Foo"));
+  long node1=node.getId();
+  node.setProperty("name","foo");
+  node=db.createNode(label("Foo"));
+  long node2=node.getId();
+  node.setProperty("name","foo");
   long foo=statement.getLabelId("Foo");
   long name=statement.getPropertyKeyId("name");
   commit();
@@ -12,6 +16,8 @@
   }
  catch (  ConstraintCreationKernelException ex) {
     assertEquals(new UniquenessConstraint(foo,name),ex.constraint());
-    assertThat(ex.getCause().getCause(),instanceOf(IllegalStateException.class));
+    Throwable cause=ex.getCause();
+    assertThat(cause,instanceOf(ConstraintVerificationFailedKernelException.class));
+    assertEquals(asSet(new ConstraintVerificationFailedKernelException.Evidence(node1,"foo",node2)),((ConstraintVerificationFailedKernelException)cause).evidence());
   }
 }

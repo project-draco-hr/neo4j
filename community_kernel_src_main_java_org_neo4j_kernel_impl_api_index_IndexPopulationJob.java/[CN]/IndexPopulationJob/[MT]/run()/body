@@ -7,7 +7,7 @@
     indexAllNodes();
     if (cancelled)     return;
     Callable<Void> duringFlip=new Callable<Void>(){
-      @Override public Void call() throws IOException {
+      @Override public Void call() throws Exception {
         populateFromQueueIfAvailable(Long.MAX_VALUE);
         populator.close(true);
         updateableSchemaState.clear();
@@ -22,10 +22,14 @@
     log.flush();
   }
  catch (  Throwable t) {
-    log.error("Failed to populate index.",t);
-    log.flush();
-    flipper.setFlipTarget(singleProxy(new FailedIndexProxy(descriptor,providerDescriptor,populator,t)));
-    flipper.flip();
+    if (t instanceof IndexEntryConflictException.Runtime) {
+      t=((IndexEntryConflictException.Runtime)t).getCause();
+    }
+    if (!(t instanceof IndexEntryConflictException)) {
+      log.error("Failed to populate index.",t);
+      log.flush();
+    }
+    flipper.flipTo(new FailedIndexProxy(descriptor,providerDescriptor,populator,t));
   }
  finally {
     try {

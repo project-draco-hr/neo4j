@@ -1,0 +1,41 @@
+{
+  newTransaction();
+  Node node=db.createNode(label("Foo"));
+  long node1=node.getId();
+  node.setProperty("name","foo");
+  long foo=statement.getLabelId("Foo");
+  long name=statement.getPropertyKeyId("name");
+  commit();
+  newTransaction();
+  statement.addUniquenessConstraint(foo,name);
+  ExecutorService executor=Executors.newSingleThreadExecutor();
+  long node2=executor.submit(new Callable<Long>(){
+    @Override public Long call(){
+      Transaction tx=db.beginTx();
+      try {
+        Node node=db.createNode(label("Foo"));
+        node.setProperty("name","foo");
+        tx.success();
+        return node.getId();
+      }
+  finally {
+        tx.finish();
+      }
+    }
+  }
+).get();
+  executor.shutdown();
+  try {
+    commit();
+    fail("expected exception");
+  }
+ catch (  TransactionFailureException ex) {
+    Throwable cause=ex.getCause();
+    assertThat(cause,instanceOf(ConstraintCreationException.class));
+    ConstraintCreationKernelException creationException=(ConstraintCreationKernelException)cause.getCause();
+    assertEquals(new UniquenessConstraint(foo,name),creationException.constraint());
+    cause=creationException.getCause();
+    assertThat(cause,instanceOf(ConstraintVerificationFailedKernelException.class));
+    assertEquals(asSet(new ConstraintVerificationFailedKernelException.Evidence(node1,"foo",node2)),((ConstraintVerificationFailedKernelException)cause).evidence());
+  }
+}
