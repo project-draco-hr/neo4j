@@ -8,17 +8,31 @@
   tm.setLockManager(lm);
   CountDownLatch startSignal=new CountDownLatch(1);
   for (int i=0; i < stressThreads.length; i++) {
-    stressThreads[i]=new StressThread("T" + i,100,10,0.80f,lm,startSignal);
+    int numberOfIterations=100;
+    int depthCount=10;
+    float readWriteRatio=0.80f;
+    stressThreads[i]=new StressThread("T" + i,numberOfIterations,depthCount,readWriteRatio,lm,startSignal);
   }
   for (  Thread thread : stressThreads) {
     thread.start();
   }
   startSignal.countDown();
   long end=currentTimeMillis() + SECONDS.toMillis(10);
-  boolean anyAlive=true;
+  boolean anyAlive;
   while ((anyAlive=anyAliveAndAllWell(stressThreads)) && currentTimeMillis() < end) {
+    throwErrors(stressThreads);
     sleepALittle();
   }
-  assertFalse(anyAlive);
-  for (  StressThread stressThread : stressThreads)   if (stressThread.error != null)   throw stressThread.error;
+  if (anyAlive) {
+    StringBuilder builder=new StringBuilder();
+    for (    StressThread stressThread : stressThreads) {
+      if (stressThread.isAlive()) {
+        for (        StackTraceElement element : stressThread.getStackTrace()) {
+          builder.append(element.toString()).append("\n");
+        }
+      }
+      builder.append("\n");
+    }
+    fail("Expected all thread to be finished, but some were lingering. These are the bad boys:\n" + builder.toString());
+  }
 }
