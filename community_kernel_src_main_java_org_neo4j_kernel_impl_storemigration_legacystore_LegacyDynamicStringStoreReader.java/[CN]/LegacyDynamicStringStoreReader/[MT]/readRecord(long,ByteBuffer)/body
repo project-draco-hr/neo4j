@@ -1,0 +1,16 @@
+{
+  long firstInteger=getUnsignedInt(recordData);
+  long maskedInteger=firstInteger & ~0x80000000;
+  int highNibbleInMaskedInteger=(int)((maskedInteger) >> 28);
+  boolean inUse=highNibbleInMaskedInteger == Record.IN_USE.intValue();
+  if (!inUse) {
+    throw new InvalidRecordException("DynamicRecord not in use, blockId[" + blockId + "]");
+  }
+  int nrOfBytes=(int)(firstInteger & 0xFFFFFF);
+  long nextBlock=getUnsignedInt(recordData);
+  long nextModifier=(firstInteger & 0xF000000L) << 8;
+  long longNextBlock=longFromIntAndMod(nextBlock,nextModifier);
+  recordData.limit(recordData.position() + nrOfBytes);
+  chainBuffer.put(recordData);
+  return longNextBlock;
+}

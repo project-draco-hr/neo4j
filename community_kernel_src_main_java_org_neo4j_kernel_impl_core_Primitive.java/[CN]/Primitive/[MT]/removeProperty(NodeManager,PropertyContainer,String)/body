@@ -7,29 +7,7 @@
   tx.acquireWriteLock(proxy);
   try {
     ensureFullProperties(nodeManager);
-    PropertyData property=null;
-    ArrayMap<Integer,PropertyData> addMap=tx.getCowPropertyAddMap(this);
-    ArrayMap<Integer,PropertyData> removeMap=tx.getCowPropertyRemoveMap(this);
-    for (    PropertyKeyToken cachedIndex : nodeManager.getPropertyKeyTokens(key)) {
-      if (addMap != null) {
-        property=addMap.remove(cachedIndex.getKeyId());
-        if (property != null) {
-          removeMap=removeMap != null ? removeMap : tx.getOrCreateCowPropertyRemoveMap(this);
-          removeMap.put(cachedIndex.getKeyId(),property);
-          break;
-        }
-      }
-      if (removeMap != null && removeMap.get(cachedIndex.getKeyId()) != null) {
-        success=true;
-        return null;
-      }
-      property=getPropertyForIndex(cachedIndex.getKeyId());
-      if (property != null) {
-        removeMap=removeMap != null ? removeMap : tx.getOrCreateCowPropertyRemoveMap(this);
-        removeMap.put(cachedIndex.getKeyId(),property);
-        break;
-      }
-    }
+    PropertyData property=getAndUpdateTransactionStateForRemoveProperty(nodeManager,tx,key);
     if (property == null) {
       success=true;
       return null;
