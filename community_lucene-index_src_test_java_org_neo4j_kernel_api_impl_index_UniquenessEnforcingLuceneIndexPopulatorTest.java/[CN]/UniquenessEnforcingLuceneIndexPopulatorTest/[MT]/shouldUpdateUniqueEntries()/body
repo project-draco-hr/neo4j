@@ -1,0 +1,15 @@
+{
+  DirectoryFactory.InMemoryDirectoryFactory directoryFactory=new DirectoryFactory.InMemoryDirectoryFactory();
+  File indexDirectory=new File("whatever");
+  final LuceneSchemaIndexProvider.DocumentLogic documentLogic=new LuceneSchemaIndexProvider.DocumentLogic();
+  UniquenessEnforcingLuceneIndexPopulator populator=new UniquenessEnforcingLuceneIndexPopulator(100,documentLogic,standard(),directoryFactory,indexDirectory);
+  populator.create();
+  populator.add(1,"value1");
+  populator.add(2,"value2");
+  populator.update(asList(NodePropertyUpdate.add(3,100,"value3",new long[]{1000})));
+  populator.close(true);
+  final IndexSearcher searcher=new SearcherManager(standard().create(directoryFactory.open(indexDirectory)),true,new SearcherFactory()).acquire();
+  ArrayList<Long> nodeIds=new ArrayList<Long>();
+  searcher.search(documentLogic.newQuery("value3"),new AllNodesCollector(documentLogic,nodeIds));
+  assertEquals(asList(3l),nodeIds);
+}

@@ -1,0 +1,18 @@
+{
+  DirectoryFactory.InMemoryDirectoryFactory directoryFactory=new DirectoryFactory.InMemoryDirectoryFactory();
+  File indexDirectory=new File("whatever");
+  final LuceneSchemaIndexProvider.DocumentLogic documentLogic=new LuceneSchemaIndexProvider.DocumentLogic();
+  UniquenessEnforcingLuceneIndexPopulator populator=new UniquenessEnforcingLuceneIndexPopulator(2,documentLogic,standard(),directoryFactory,indexDirectory);
+  populator.create();
+  populator.add(1,"value1");
+  populator.add(2,"value2");
+  try {
+    populator.add(3,"value1");
+    fail("should have thrown exception");
+  }
+ catch (  IndexEntryConflictException conflict) {
+    assertEquals(1,conflict.getExistingNodeId());
+    assertEquals("value1",conflict.getPropertyValue());
+    assertEquals(3,conflict.getAddedNodeId());
+  }
+}
