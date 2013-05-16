@@ -1,9 +1,8 @@
 {
-  Process process=Runtime.getRuntime().exec(new String[]{"jps","-l"});
+  Process process=getRuntime().exec(new String[]{"jps","-l"});
   BufferedReader reader=new BufferedReader(new InputStreamReader(process.getInputStream()));
-  String line=null;
   Collection<Pair<Long,String>> jPids=new ArrayList<Pair<Long,String>>();
-  while ((line=reader.readLine()) != null) {
+  for (String line=null; (line=reader.readLine()) != null; ) {
     int spaceIndex=line.indexOf(' ');
     String name=line.substring(spaceIndex + 1);
     if (name.contains(":")) {
@@ -13,10 +12,9 @@
     if (name.contains(DumpProcessInformation.class.getSimpleName()) || name.contains("Jps") || name.contains("eclipse.equinox")) {
       continue;
     }
-    if (containing != null && !name.contains(containing)) {
-      continue;
+    if (processFilter.accept(name)) {
+      jPids.add(Pair.of(Long.parseLong(line.substring(0,spaceIndex)),name));
     }
-    jPids.add(Pair.of(Long.parseLong(line.substring(0,spaceIndex)),name));
   }
   process.waitFor();
   return jPids;
