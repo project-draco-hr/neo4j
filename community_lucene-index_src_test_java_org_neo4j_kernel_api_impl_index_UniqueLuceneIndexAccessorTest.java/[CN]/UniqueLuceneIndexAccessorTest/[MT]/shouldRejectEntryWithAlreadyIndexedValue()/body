@@ -1,16 +1,11 @@
 {
-  DirectoryFactory directoryFactory=new DirectoryFactory.InMemoryDirectoryFactory();
-  File indexDirectory=new File("index1");
-  LuceneDocumentStructure documentStructure=new LuceneDocumentStructure();
-  IndexAccessor accessor=new UniqueLuceneIndexAccessor(documentStructure,standard(),new IndexWriterStatus(),directoryFactory,indexDirectory);
-  accessor.updateAndCommit(asList(add(1,"value1")));
+  UniqueLuceneIndexAccessor accessor=createAccessor();
+  accessor.updateAndCommit(asList(add(1l,"value1")));
   try {
-    accessor.updateAndCommit(asList(add(2,"value1")));
+    accessor.updateAndCommit(asList(add(2l,"value1")));
     fail("expected exception");
   }
- catch (  IndexEntryConflictException conflict) {
-    assertEquals(1,conflict.getExistingNodeId());
-    assertEquals("value1",conflict.getPropertyValue());
-    assertEquals(2,conflict.getAddedNodeId());
+ catch (  PreexistingIndexEntryConflictException conflict) {
+    assertConflict(conflict,"value1",1l,2l);
   }
 }
