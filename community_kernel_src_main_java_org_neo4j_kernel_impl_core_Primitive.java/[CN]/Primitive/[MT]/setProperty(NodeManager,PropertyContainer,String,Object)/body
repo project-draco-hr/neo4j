@@ -9,21 +9,18 @@
     ensureFullProperties(nodeManager);
     ArrayMap<Integer,PropertyData> addMap=tx.getOrCreateCowPropertyAddMap(this);
     ArrayMap<Integer,PropertyData> skipMap=tx.getCowPropertyRemoveMap(this);
-    PropertyKeyToken index=null;
+    Token index=null;
     PropertyData property=null;
     boolean foundInSkipMap=false;
-    for (    PropertyKeyToken cachedIndex : nodeManager.getPropertyKeyTokens(key)) {
-      if (skipMap != null && skipMap.remove(cachedIndex.getKeyId()) != null) {
+    Token cachedIndex=nodeManager.getPropertyKeyTokenOrNull(key);
+    if (cachedIndex != null) {
+      if (skipMap != null && skipMap.remove(cachedIndex.id()) != null) {
         foundInSkipMap=true;
       }
       index=cachedIndex;
-      property=addMap.get(cachedIndex.getKeyId());
-      if (property != null) {
-        break;
-      }
-      property=getPropertyForIndex(cachedIndex.getKeyId());
-      if (property != null) {
-        break;
+      property=addMap.get(cachedIndex.id());
+      if (property == null) {
+        property=getPropertyForIndex(cachedIndex.id());
       }
     }
     if (index == null) {
@@ -36,7 +33,7 @@
  else {
       property=addProperty(nodeManager,index,value);
     }
-    addMap.put(index.getKeyId(),property);
+    addMap.put(index.id(),property);
     success=true;
   }
   finally {
