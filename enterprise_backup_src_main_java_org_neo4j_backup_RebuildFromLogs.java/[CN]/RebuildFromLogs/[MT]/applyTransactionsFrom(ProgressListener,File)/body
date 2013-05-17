@@ -1,0 +1,21 @@
+{
+  LogExtractor extractor=null;
+  try {
+    extractor=LogExtractor.from(FS,sourceDir);
+    for (InMemoryLogBuffer buffer=new InMemoryLogBuffer(); ; buffer.reset()) {
+      long txId=extractor.extractNext(buffer);
+      if (txId == -1) {
+        break;
+      }
+      applyTransaction(txId,buffer);
+      progress.set(txId);
+    }
+  }
+  finally {
+    if (extractor != null) {
+      extractor.close();
+    }
+    progress.done();
+  }
+  return this;
+}
