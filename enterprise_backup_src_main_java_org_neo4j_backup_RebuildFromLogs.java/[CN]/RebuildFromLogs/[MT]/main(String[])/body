@@ -5,7 +5,8 @@
   }
   Args params=new Args(args);
   @SuppressWarnings("boxing") boolean full=params.getBoolean("full",false,true);
-  args=params.orphans().toArray(new String[0]);
+  List<String> orphans=params.orphans();
+  args=orphans.toArray(new String[orphans.size()]);
   if (args.length != 2) {
     printUsage("Exactly two positional arguments expected: " + "<source dir with logs> <target dir for graphdb>, got " + args.length);
     System.exit(-1);
@@ -43,21 +44,18 @@
   long txCount=findLastTransactionId(source,LOGICAL_LOG_DEFAULT_NAME + ".v" + maxFileId);
   String txdifflog=params.get("txdifflog",null,new File(target,"txdiff.log").getAbsolutePath());
   GraphDatabaseAPI graphdb=BackupService.startTemporaryDb(target.getAbsolutePath(),new TxDiffLogConfig(full ? VerificationLevel.FULL_WITH_LOGGING : VerificationLevel.LOGGING,txdifflog));
-  ProgressIndicator progress;
+  ProgressMonitorFactory progress;
   if (txCount < 0) {
-    progress=null;
+    progress=ProgressMonitorFactory.NONE;
     System.err.println("Unable to report progress, cannot find highest txId, attempting rebuild anyhow.");
   }
  else {
-    progress=textual(System.err,txCount);
-    System.err.printf("Rebuilding store from %s transactions %n",txCount);
+    progress=ProgressMonitorFactory.textual(System.err);
   }
   try {
     try {
-      RebuildFromLogs rebuilder=new RebuildFromLogs(graphdb).applyTransactionsFrom(progress,source);
-      if (progress != null) {
-        progress.done(txCount);
-      }
+      ProgressListener listener=progress.singlePart(String.format("Rebuilding store from %s transactions ",txCount),txCount);
+      RebuildFromLogs rebuilder=new RebuildFromLogs(graphdb).applyTransactionsFrom(listener,source);
       if (!full) {
         rebuilder.checkConsistency();
       }
@@ -70,6 +68,5 @@
     System.err.println();
     e.printStackTrace(System.err);
     System.exit(-1);
-    return;
   }
 }
