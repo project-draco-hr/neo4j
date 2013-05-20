@@ -1,6 +1,4 @@
 {
-  String path=new File(PATH,"10").getAbsolutePath();
-  BatchInserter inserter=inserter(path);
   BatchInserterIndexProvider provider=new LuceneBatchInserterIndexProviderNewImpl(inserter);
   BatchInserterIndex index=provider.nodeIndex("node_auto_index",EXACT_CONFIG);
   long id=inserter.createNode(null);
@@ -9,18 +7,15 @@
   index.add(id,props);
   index.flush();
   provider.shutdown();
-  inserter.shutdown();
-  GraphDatabaseService db=new GraphDatabaseFactory().newEmbeddedDatabaseBuilder(path).setConfig(GraphDatabaseSettings.node_keys_indexable,"name").setConfig(GraphDatabaseSettings.relationship_keys_indexable,"relProp1,relProp2").setConfig(GraphDatabaseSettings.node_auto_indexing,"true").setConfig(GraphDatabaseSettings.relationship_auto_indexing,"true").newGraphDatabase();
+  shutdownInserter();
+  switchToGraphDatabaseService(configure(GraphDatabaseSettings.node_keys_indexable,"name"),configure(GraphDatabaseSettings.relationship_keys_indexable,"relProp1,relProp2"),configure(GraphDatabaseSettings.node_auto_indexing,"true"),configure(GraphDatabaseSettings.relationship_auto_indexing,"true"));
   Transaction tx=db.beginTx();
   try {
     Node node1=db.createNode();
     node1.setProperty("name","bob");
     tx.success();
   }
- catch (  Exception e) {
-    tx.failure();
-  }
- finally {
+  finally {
     tx.finish();
   }
   assertTrue(db.index().getNodeAutoIndexer().getAutoIndex().get("name","peter").hasNext());
