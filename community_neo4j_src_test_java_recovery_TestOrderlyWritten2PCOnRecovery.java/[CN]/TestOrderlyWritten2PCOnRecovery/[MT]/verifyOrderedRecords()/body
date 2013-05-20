@@ -1,5 +1,5 @@
 {
-  RandomAccessFile file=new RandomAccessFile(new File(getStoreDir(this,0),"nioneo_logical.log.v0"),"r");
+  RandomAccessFile file=new RandomAccessFile(new File(getStoreDir(this,0,false),"nioneo_logical.log.v0"),"r");
   CommandFactory cf=new CommandFactory();
   try {
     FileChannel channel=file.getChannel();
@@ -10,13 +10,14 @@
     for (LogEntry entry; (entry=readEntry(buffer,channel,cf)) != null; ) {
       if (entry instanceof TwoPhaseCommit) {
         long txId=((TwoPhaseCommit)entry).getTxId();
-        if (lastOne == -1)         txId=lastOne;
- else         assertEquals(lastOne + 1,txId);
+        if (lastOne != -1) {
+          assertEquals("transaction id",lastOne + 1,txId);
+        }
         lastOne=txId;
         counted++;
       }
     }
-    assertEquals(TX_COUNT,counted);
+    assertEquals("number of transactions",TX_COUNT,counted);
   }
   finally {
     file.close();
