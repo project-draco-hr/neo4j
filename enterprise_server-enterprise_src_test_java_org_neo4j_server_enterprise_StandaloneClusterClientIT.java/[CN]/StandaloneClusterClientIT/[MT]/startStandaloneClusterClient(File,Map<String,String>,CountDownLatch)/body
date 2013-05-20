@@ -1,0 +1,27 @@
+{
+  Process process=null;
+  ProcessStreamHandler handler=null;
+  BufferedReader startSignalReader=null;
+  try {
+    process=startStandaloneClusterClientProcess(configFile,config);
+    startSignalReader=new BufferedReader(new InputStreamReader(process.getInputStream()));
+    assertEquals(START_SIGNAL,startSignalReader.readLine());
+    startSignalReader.close();
+    startSignalReader=null;
+    handler=new ProcessStreamHandler(process,false,"",IGNORE_FAILURES);
+    handler.launch();
+    return latch.await(5,SECONDS);
+  }
+  finally {
+    if (startSignalReader != null) {
+      startSignalReader.close();
+    }
+    if (process != null) {
+      kill(process);
+      process.waitFor();
+    }
+    if (handler != null) {
+      handler.done();
+    }
+  }
+}
