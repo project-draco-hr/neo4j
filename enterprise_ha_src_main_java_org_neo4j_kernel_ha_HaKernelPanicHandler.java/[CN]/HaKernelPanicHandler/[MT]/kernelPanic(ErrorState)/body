@@ -4,12 +4,18 @@
       int myEpoch=epoch.get();
 synchronized (dataSourceManager) {
         if (myEpoch != epoch.get())         return;
-        txManager.stop();
-        dataSourceManager.stop();
-        dataSourceManager.start();
-        txManager.start();
-        txManager.doRecovery();
-        epoch.incrementAndGet();
+        accessGuard.enter();
+        try {
+          txManager.stop();
+          dataSourceManager.stop();
+          dataSourceManager.start();
+          txManager.start();
+          txManager.doRecovery();
+          epoch.incrementAndGet();
+        }
+  finally {
+          accessGuard.exit();
+        }
       }
     }
  catch (    Throwable t) {
