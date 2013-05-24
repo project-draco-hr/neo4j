@@ -1,3 +1,20 @@
 {
-  return relationshipLookups.lookupRelationship(relId).getProperty(relationshipLookups.getNodeManager(),key,defaultValue);
+  if (null == key)   throw new IllegalArgumentException("(null) property key is not allowed");
+  StatementContext ctxForReading=statementCtxProvider.getCtxForReading();
+  try {
+    long propertyId=ctxForReading.propertyKeyGetForName(key);
+    return ctxForReading.relationshipGetProperty(relId,propertyId).value(defaultValue);
+  }
+ catch (  EntityNotFoundException e) {
+    throw new IllegalStateException(e);
+  }
+catch (  PropertyKeyIdNotFoundException e) {
+    return defaultValue;
+  }
+catch (  PropertyKeyNotFoundException e) {
+    return defaultValue;
+  }
+ finally {
+    ctxForReading.close();
+  }
 }

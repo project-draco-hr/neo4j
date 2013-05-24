@@ -1,3 +1,19 @@
 {
-  relationshipLookups.lookupRelationship(relId,LockType.WRITE).setProperty(relationshipLookups.getNodeManager(),this,key,property);
+  StatementContext ctxForWriting=statementCtxProvider.getCtxForWriting();
+  try {
+    long propertyKeyId=ctxForWriting.propertyKeyGetOrCreateForName(key);
+    ctxForWriting.relationshipSetProperty(relId,Property.property(propertyKeyId,value));
+  }
+ catch (  PropertyKeyIdNotFoundException e) {
+    throw new ThisShouldNotHappenError("Stefan/Jake","A property key id disappeared under our feet");
+  }
+catch (  EntityNotFoundException e) {
+    throw new IllegalStateException(e);
+  }
+catch (  SchemaKernelException e) {
+    throw new IllegalArgumentException(e);
+  }
+ finally {
+    ctxForWriting.close();
+  }
 }
