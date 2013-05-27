@@ -11,8 +11,15 @@
     tf=new TransactionFactory();
   }
   neoStore=storeFactory.newNeoStore(store);
-  persistenceCache=new PersistenceCache(new NodeCacheLoader(neoStore.getNodeStore()));
   schemaCache=new SchemaCache(Collections.<SchemaRule>emptyList());
+  final NodeManager nodeManager=dependencyResolver.resolveDependency(NodeManager.class);
+  Iterator<? extends Cache<?>> caches=nodeManager.caches().iterator();
+  persistenceCache=new PersistenceCache((LockStripedCache<NodeImpl>)caches.next(),(LockStripedCache<RelationshipImpl>)caches.next(),new Thunk<GraphPropertiesImpl>(){
+    @Override public GraphPropertiesImpl evaluate(){
+      return nodeManager.getGraphProperties();
+    }
+  }
+);
   cacheAccess=new BridgingCacheAccess(nodeManager,schemaCache,updateableSchemaState,persistenceCache);
   final SchemaIndexProvider indexProvider=dependencyResolver.resolveDependency(SchemaIndexProvider.class,HIGHEST_PRIORITIZED_OR_NONE);
   providerMap=new DefaultSchemaIndexProviderMap(indexProvider);
