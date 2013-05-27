@@ -1,13 +1,14 @@
 {
-  final int timeout=configurator.configuration().getInt(TRANSACTION_TIMEOUT,DEFAULT_TRANSACTION_TIMEOUT);
+  final long timeoutMillis=getTransactionTimeoutMillis();
   final Clock clock=new RealClock();
-  transactionRegistry=new TransactionHandleRegistry(clock,logging.getMessagesLog(TransactionRegistry.class));
+  transactionRegistry=new TransactionHandleRegistry(clock,timeoutMillis,logging.getMessagesLog(TransactionRegistry.class));
+  long runEvery=round(timeoutMillis / 2.0);
   resolveDependency(JobScheduler.class).scheduleRecurring(new Runnable(){
     @Override public void run(){
-      long maxAge=clock.currentTimeInMilliseconds() - (1000 * timeout);
+      long maxAge=clock.currentTimeInMilliseconds() - timeoutMillis;
       transactionRegistry.rollbackSuspendedTransactionsIdleSince(maxAge);
     }
   }
-,round(timeout / 2.0),SECONDS);
+,runEvery,MILLISECONDS);
   return new TransactionFacade(new TransitionalPeriodTransactionMessContainer(database.getGraph()),new ExecutionEngine(database.getGraph(),logging.getMessagesLog(ExecutionEngine.class)),transactionRegistry,logging.getMessagesLog(TransactionFacade.class));
 }
