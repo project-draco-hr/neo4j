@@ -1,0 +1,16 @@
+{
+  long label=0, propertyKey=7;
+  IndexDescriptor rule=new IndexDescriptor(label,propertyKey);
+  StatementContext inner=mock(StatementContext.class);
+  DataIntegrityValidatingStatementContext ctx=new DataIntegrityValidatingStatementContext(inner);
+  when(inner.indexesGetForLabel(rule.getLabelId())).thenAnswer(withIterator());
+  when(inner.uniqueIndexesGetForLabel(rule.getLabelId())).thenAnswer(withIterator(rule));
+  try {
+    ctx.uniqueIndexCreate(label,propertyKey);
+    fail("Should have thrown exception.");
+  }
+ catch (  AddIndexFailureException e) {
+    assertThat(e.getCause(),instanceOf(AlreadyConstrainedException.class));
+  }
+  verify(inner,never()).indexCreate(anyLong(),anyLong());
+}
