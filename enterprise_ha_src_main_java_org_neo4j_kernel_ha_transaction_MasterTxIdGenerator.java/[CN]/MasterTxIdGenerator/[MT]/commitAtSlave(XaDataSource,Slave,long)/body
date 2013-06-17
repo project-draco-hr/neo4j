@@ -1,5 +1,5 @@
 {
-  PullUpdateFuture pullRequest=new PullUpdateFuture(slave);
+  PullUpdateFuture pullRequest=new PullUpdateFuture(slave,txId);
 synchronized (pullUpdateQueues) {
     BlockingQueue<PullUpdateFuture> queue=pullUpdateQueues.get(slave.getServerId());
     if (queue == null) {
@@ -20,7 +20,8 @@ synchronized (pullUpdateQueues) {
                 currentPulls.add(pullRequest);
               }
               try {
-                Response<Void> response=currentPulls.get(0).getSlave().pullUpdates(dataSource.getName(),txId);
+                PullUpdateFuture pullUpdateFuture=currentPulls.get(0);
+                Response<Void> response=pullUpdateFuture.getSlave().pullUpdates(dataSource.getName(),pullUpdateFuture.getTxId());
                 response.close();
                 for (                PullUpdateFuture currentPull : currentPulls) {
                   currentPull.done();
@@ -48,6 +49,7 @@ synchronized (pullUpdateQueues) {
     throw new RuntimeException(e);
   }
 catch (  ExecutionException e) {
-    throw new RuntimeException(e);
+    if (e.getCause() instanceof RuntimeException)     throw ((RuntimeException)e.getCause());
+ else     throw new RuntimeException(e.getCause());
   }
 }
