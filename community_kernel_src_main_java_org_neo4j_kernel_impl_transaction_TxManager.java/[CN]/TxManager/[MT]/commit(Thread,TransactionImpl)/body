@@ -5,20 +5,19 @@
     tx.setStatus(Status.STATUS_COMMITTED);
   }
  else {
-synchronized (this) {
-      try {
-        tx.doCommit();
-      }
- catch (      XAException e) {
+    try {
+      tx.doCommit();
+    }
+ catch (    XAException e) {
 switch (e.errorCode) {
 case XAException.XA_RBINTEGRITY:
 case XAException.XA_HEURCOM:
-          xaErrorCode=e.errorCode;
-        commitFailureCause=e;
-      log.logMessage("Commit failed, status=" + getTxStatusAsString(tx.getStatus()) + ", errorCode="+ xaErrorCode,e);
-    break;
+        xaErrorCode=e.errorCode;
+      commitFailureCause=e;
+    log.logMessage("Commit failed, status=" + getTxStatusAsString(tx.getStatus()) + ", errorCode="+ xaErrorCode,e);
+  break;
 default :
-  setTmNotOk(e);
+setTmNotOk(e);
 throw logAndReturn("TM error tx commit",new TransactionFailureException("commit threw exception",e));
 }
 }
@@ -27,6 +26,7 @@ t.printStackTrace();
 log.logMessage("Commit failed",t);
 setTmNotOk(t);
 throw logAndReturn("TM error tx commit",new TransactionFailureException("commit threw exception but status is committed?",t));
+}
 }
 if (tx.getStatus() != Status.STATUS_COMMITTED) {
 try {
@@ -47,8 +47,6 @@ if (e instanceof XAException) {
 rollbackErrorCode=Integer.toString(((XAException)e).errorCode);
 }
 throw logAndReturn("TM error tx commit",Exceptions.withCause(new HeuristicMixedException("Unable " + "to rollback ---> " + commitError + " ---> error code for rollback: "+ rollbackErrorCode),e));
-}
-}
 }
 tx.doAfterCompletion();
 try {
