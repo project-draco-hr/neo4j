@@ -1,13 +1,19 @@
 {
-  pool.acquire();
-  onAcquire.countDown();
   try {
-    latch.acquire();
+    pool.acquire();
+    onAcquire.countDown();
+    try {
+      latch.acquire();
+    }
+ catch (    InterruptedException e) {
+      throw new RuntimeException(e);
+    }
+    if (release.get()) {
+      pool.release();
+      released.countDown();
+    }
   }
- catch (  InterruptedException e) {
-    throw new RuntimeException(e);
-  }
-  if (release) {
-    pool.release();
+ catch (  Throwable e) {
+    e.printStackTrace();
   }
 }
