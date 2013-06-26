@@ -4,7 +4,8 @@
     IndexDescriptor descriptor=createDescriptor(indexRule);
     IndexProxy indexProxy=null;
     SchemaIndexProvider.Descriptor providerDescriptor=indexRule.getProviderDescriptor();
-    InternalIndexState initialState=providerMap.apply(providerDescriptor).getInitialState(ruleId);
+    SchemaIndexProvider provider=providerMap.apply(providerDescriptor);
+    InternalIndexState initialState=provider.getInitialState(ruleId);
     logger.info(format("IndexingService.initIndexes: index on %s is %s",descriptor.toString(),initialState.name()));
 switch (initialState) {
 case ONLINE:
@@ -14,8 +15,10 @@ case POPULATING:
   indexProxy=createRecoveringIndexProxy(ruleId,descriptor,providerDescriptor);
 break;
 case FAILED:
-indexProxy=createFailedIndexProxy(ruleId,descriptor,providerDescriptor,indexRule.isConstraintIndex(),null);
+indexProxy=createFailedIndexProxy(ruleId,descriptor,providerDescriptor,indexRule.isConstraintIndex(),failure(provider.getPopulationFailure(ruleId)));
 break;
+default :
+throw new IllegalArgumentException("" + initialState);
 }
 indexes.put(ruleId,indexProxy);
 }
