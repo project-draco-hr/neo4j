@@ -14,13 +14,23 @@ synchronized (unused) {
     }
     if (resource == null) {
       resource=create();
+      monitor.created(resource);
     }
     current.put(thread,resource);
+    monitor.acquired(resource);
     if (garbage != null) {
       for (      R dead : garbage) {
         dispose(dead);
+        monitor.disposed(dead);
       }
     }
+  }
+  currentPeakSize=Math.max(currentPeakSize,current.size());
+  if (checkStrategy.shouldCheck()) {
+    targetSize=Math.max(minSize,currentPeakSize);
+    monitor.updatedCurrentPeakSize(currentPeakSize);
+    currentPeakSize=0;
+    monitor.updatedTargetSize(targetSize);
   }
   return resource;
 }

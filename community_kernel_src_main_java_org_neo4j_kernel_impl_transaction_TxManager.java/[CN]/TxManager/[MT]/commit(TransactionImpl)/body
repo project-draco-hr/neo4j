@@ -1,28 +1,28 @@
 {
   Throwable commitFailureCause=null;
   int xaErrorCode=-1;
-  if (tx.getResourceCount() == 0) {
-    tx.setStatus(Status.STATUS_COMMITTED);
-  }
- else {
-    try {
-      tx.doCommit();
+synchronized (this) {
+    if (tx.getResourceCount() == 0) {
+      tx.setStatus(Status.STATUS_COMMITTED);
     }
- catch (    XAException e) {
+ else {
+      try {
+        tx.doCommit();
+      }
+ catch (      XAException e) {
 switch (e.errorCode) {
 case XAException.XA_RBINTEGRITY:
 case XAException.XA_HEURCOM:
-        xaErrorCode=e.errorCode;
-      commitFailureCause=e;
-    log.logMessage("Commit failed, status=" + getTxStatusAsString(tx.getStatus()) + ", errorCode="+ xaErrorCode,e);
-  break;
+          xaErrorCode=e.errorCode;
+        commitFailureCause=e;
+      log.logMessage("Commit failed, status=" + getTxStatusAsString(tx.getStatus()) + ", errorCode="+ xaErrorCode,e);
+    break;
 default :
-setTmNotOk(e);
+  setTmNotOk(e);
 throw logAndReturn("TM error tx commit",new TransactionFailureException("commit threw exception",e));
 }
 }
 catch (Throwable t) {
-t.printStackTrace();
 log.logMessage("Commit failed",t);
 setTmNotOk(t);
 throw logAndReturn("TM error tx commit",new TransactionFailureException("commit threw exception but status is committed?",t));
@@ -65,6 +65,7 @@ throw logAndReturn("TM error tx commit",new HeuristicRollbackException("Failed t
 }
  else {
 throw logAndReturn("TM error tx commit",Exceptions.withCause(new HeuristicRollbackException("Failed to commit, transaction rolledback ---> " + commitFailureCause),commitFailureCause));
+}
 }
 }
 tx.doAfterCompletion();

@@ -1,0 +1,55 @@
+{
+  PullUpdateFuture pullRequest=new PullUpdateFuture(slave,txId);
+synchronized (pullUpdateQueues) {
+    BlockingQueue<PullUpdateFuture> queue=pullUpdateQueues.get(slave.getServerId());
+    if (queue == null) {
+      queue=new ArrayBlockingQueue<PullUpdateFuture>(100);
+      pullUpdateQueues.put(slave.getServerId(),queue);
+      final ExecutorService executorService=Executors.newSingleThreadExecutor(new NamedThreadFactory("pull-worker"));
+      pullUpdateWorkers.add(executorService);
+      final BlockingQueue<PullUpdateFuture> finalQueue=queue;
+      executorService.submit(new Runnable(){
+        List<PullUpdateFuture> currentPulls=new ArrayList<PullUpdateFuture>();
+        @Override public void run(){
+          try {
+            while (true) {
+              currentPulls.clear();
+              currentPulls.add(finalQueue.take());
+              PullUpdateFuture pullRequest;
+              while ((pullRequest=finalQueue.poll()) != null) {
+                currentPulls.add(pullRequest);
+              }
+              try {
+                PullUpdateFuture pullUpdateFuture=currentPulls.get(0);
+                Response<Void> response=pullUpdateFuture.getSlave().pullUpdates(dataSource.getName(),pullUpdateFuture.getTxId());
+                response.close();
+                for (                PullUpdateFuture currentPull : currentPulls) {
+                  currentPull.done();
+                }
+              }
+ catch (              Exception e) {
+                for (                PullUpdateFuture currentPull : currentPulls) {
+                  currentPull.setException(e);
+                }
+              }
+            }
+          }
+ catch (          InterruptedException e) {
+          }
+        }
+      }
+);
+    }
+    queue.offer(pullRequest);
+  }
+  try {
+    pullRequest.get();
+  }
+ catch (  InterruptedException e) {
+    throw new RuntimeException(e);
+  }
+catch (  ExecutionException e) {
+    if (e.getCause() instanceof RuntimeException)     throw ((RuntimeException)e.getCause());
+ else     throw new RuntimeException(e.getCause());
+  }
+}
