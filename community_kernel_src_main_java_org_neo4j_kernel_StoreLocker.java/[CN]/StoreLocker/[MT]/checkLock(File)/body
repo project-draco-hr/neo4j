@@ -2,15 +2,11 @@
   File storeLockFile=new File(storeDir,STORE_LOCK_FILENAME);
   try {
     if (!fileSystemAbstraction.fileExists(storeLockFile)) {
-      if (configuration.get(read_only)) {
-        String msg="Unable to lock store as store dir does not exist and instance is in read-only mode";
-        throw new StoreLockException(msg);
-      }
       fileSystemAbstraction.mkdirs(storeLockFile.getParentFile());
     }
   }
  catch (  IOException e) {
-    throw new StoreLockException("Unable to create path for store dir: " + storeDir,e);
+    throw new StoreLockException("Unable to create path for store dir: " + storeDir + ". Please ensure no other process is using this database, and that the directory is writable (required even for read-only access)",e);
   }
   try {
     storeLockFileChannel=fileSystemAbstraction.open(storeLockFile,"rw");
@@ -20,9 +16,9 @@
     }
   }
  catch (  OverlappingFileLockException e) {
-    throw new StoreLockException("Unable to obtain lock on store lock file: " + storeLockFile,e);
+    throw new StoreLockException("Unable to obtain lock on store lock file: " + storeLockFile + ". Please ensure no other process is using this database, and that the directory is writable (required even for read-only access)",e);
   }
 catch (  IOException e) {
-    throw new StoreLockException("Unable to obtain lock on store lock file: " + storeLockFile,e);
+    throw new StoreLockException("Unable to obtain lock on store lock file: " + storeLockFile + ". Please ensure no other process is using this database, and that the directory is writable (required even for read-only access)",e);
   }
 }
