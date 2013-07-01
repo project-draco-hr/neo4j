@@ -1,0 +1,22 @@
+{
+  long labelId=5, propertyKeyId=7, nodeId=1;
+  NodePropertyUpdate expectedUpdate=NodePropertyUpdate.add(nodeId,propertyKeyId,"Neo",new long[]{labelId});
+  long ruleId=0;
+  WriteTransaction tx=newWriteTransaction(NO_INDEXING);
+  SchemaRule rule=IndexRule.indexRule(ruleId,labelId,propertyKeyId,PROVIDER_DESCRIPTOR);
+  tx.createSchemaRule(rule);
+  prepareAndCommit(tx);
+  IndexingService index=mock(IndexingService.class);
+  CommandCapturingVisitor commandCapturingVisitor=new CommandCapturingVisitor();
+  tx=newWriteTransaction(index,commandCapturingVisitor);
+  tx.nodeCreate(nodeId);
+  tx.addLabelToNode(labelId,nodeId);
+  tx.nodeAddProperty(nodeId,(int)propertyKeyId,"Neo");
+  prepareAndCommit(tx);
+  verify(index,times(1)).updateIndexes(argThat(matchesAll(expectedUpdate)));
+  reset(index);
+  tx=newWriteTransaction(index);
+  commandCapturingVisitor.injectInto(tx);
+  prepareAndCommitRecovered(tx);
+  verify(index,times(1)).updateIndexes(argThat(matchesAll(expectedUpdate)));
+}

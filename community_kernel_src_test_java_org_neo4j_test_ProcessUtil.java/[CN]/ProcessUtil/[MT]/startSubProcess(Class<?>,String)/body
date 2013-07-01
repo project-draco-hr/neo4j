@@ -1,0 +1,42 @@
+{
+  List<String> args=new ArrayList<>();
+  args.addAll(asList("java","-cp",System.getProperty("java.class.path"),mainClass.getName()));
+  args.addAll(asList(arguments));
+  Process process=Runtime.getRuntime().exec(args.toArray(new String[args.size()]));
+  final ProcessStreamHandler processOutput=new ProcessStreamHandler(process,false);
+  processOutput.launch();
+  final Future<Integer> realFuture=FutureAdapter.processFuture(process);
+  return new Future<Integer>(){
+    @Override public boolean cancel(    boolean mayInterruptIfRunning){
+      try {
+        return realFuture.cancel(mayInterruptIfRunning);
+      }
+  finally {
+        processOutput.done();
+      }
+    }
+    @Override public boolean isCancelled(){
+      return realFuture.isCancelled();
+    }
+    @Override public boolean isDone(){
+      return realFuture.isDone();
+    }
+    @Override public Integer get() throws InterruptedException, ExecutionException {
+      try {
+        return realFuture.get();
+      }
+  finally {
+        processOutput.done();
+      }
+    }
+    @Override public Integer get(    long timeout,    TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
+      try {
+        return realFuture.get(timeout,unit);
+      }
+  finally {
+        processOutput.done();
+      }
+    }
+  }
+;
+}
