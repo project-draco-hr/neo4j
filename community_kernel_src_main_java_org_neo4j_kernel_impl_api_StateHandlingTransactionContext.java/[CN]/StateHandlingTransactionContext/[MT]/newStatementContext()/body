@@ -1,9 +1,10 @@
 {
-  StoreStatementContext storeContext=(StoreStatementContext)super.newStatementContext();
-  StatementContext result=storeContext;
-  result=new CachingStatementContext(result,persistenceCache,schemaCache);
-  AuxiliaryStoreOperations auxStoreOperations=storeContext;
+  StatementContextParts parts=delegate.newStatementContext();
+  CachingStatementContext cachingContext=new CachingStatementContext(parts.entityReadOperations(),parts.schemaReadOperations(),persistenceCache,schemaCache);
+  parts.replace(null,null,cachingContext,null,cachingContext,null,null,null);
+  AuxiliaryStoreOperations auxStoreOperations=parts.resolve(AuxiliaryStoreOperations.class);
   auxStoreOperations=new LegacyAutoIndexAuxStoreOps(auxStoreOperations,propertyKeyTokenHolder,nodeManager.getNodePropertyTrackers(),nodeManager.getRelationshipPropertyTrackers(),nodeManager);
-  result=new StateHandlingStatementContext(result,new SchemaStateConcern(schemaState),state,constraintIndexCreator,auxStoreOperations);
-  return result;
+  StateHandlingStatementContext stateHandlingContext=new StateHandlingStatementContext(parts.entityReadOperations(),parts.schemaReadOperations(),auxStoreOperations,state,constraintIndexCreator);
+  parts.replace(null,null,stateHandlingContext,stateHandlingContext,stateHandlingContext,stateHandlingContext,new SchemaStateConcern(schemaState),null);
+  return parts;
 }
