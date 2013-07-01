@@ -1,24 +1,23 @@
 {
   GraphDatabaseService beansAPI=dbRule.getGraphDatabaseAPI();
   IndexDefinition index=null;
-  Labels label=Labels.MY_LABEL;
   String key="key";
 {
     Transaction tx=beansAPI.beginTx();
     try {
-      Node node=beansAPI.createNode(label);
+      Node node=beansAPI.createNode(MY_LABEL);
       node.setProperty(key,"value");
-      index=beansAPI.schema().indexFor(label).on(key).create();
+      index=beansAPI.schema().indexFor(MY_LABEL).on(key).create();
       tx.success();
     }
   finally {
       tx.finish();
     }
-    beansAPI.schema().awaitIndexOnline(index,10,SECONDS);
+    waitForIndex(beansAPI,index);
   }
   Transaction tx=beansAPI.beginTx();
   try {
-    Node node=beansAPI.createNode(label);
+    Node node=beansAPI.createNode(MY_LABEL);
     node.setProperty(key,"other value");
     index.drop();
     tx.success();
@@ -26,12 +25,16 @@
   finally {
     tx.finish();
   }
-  assertEquals(emptySetOf(IndexDefinition.class),asSet(beansAPI.schema().getIndexes(label)));
+  tx=beansAPI.beginTx();
   try {
+    assertEquals(emptySetOf(IndexDefinition.class),asSet(beansAPI.schema().getIndexes(MY_LABEL)));
     beansAPI.schema().getIndexState(index);
     fail("Should not succeed");
   }
  catch (  NotFoundException e) {
-    assertThat(e.getMessage(),CoreMatchers.containsString(label.name()));
+    assertThat(e.getMessage(),containsString(MY_LABEL.name()));
+  }
+ finally {
+    tx.finish();
   }
 }

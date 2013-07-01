@@ -9,19 +9,19 @@
       id=myNode.getId();
       myNode.setProperty("key0",true);
       myNode.setProperty("key1",true);
-      indexDefinition=beansAPI.schema().indexFor(Labels.MY_LABEL).on("key2").create();
+      indexDefinition=beansAPI.schema().indexFor(MY_LABEL).on("key2").create();
       tx.success();
     }
   finally {
       tx.finish();
     }
-    beansAPI.schema().awaitIndexOnline(indexDefinition,10,SECONDS);
+    waitForIndex(beansAPI,indexDefinition);
   }
+  Node myNode=beansAPI.getNodeById(id);
 {
     Transaction tx=beansAPI.beginTx();
     try {
-      Node myNode=beansAPI.getNodeById(id);
-      myNode.addLabel(Labels.MY_LABEL);
+      myNode.addLabel(MY_LABEL);
       myNode.setProperty("key2",LONG_STRING);
       myNode.setProperty("key3",LONG_STRING);
       tx.success();
@@ -30,8 +30,7 @@
       tx.finish();
     }
   }
-  assertEquals(LONG_STRING,beansAPI.getNodeById(id).getProperty("key2"));
-  assertEquals(LONG_STRING,beansAPI.getNodeById(id).getProperty("key3"));
-  Node foundNode=single(beansAPI.findNodesByLabelAndProperty(Labels.MY_LABEL,"key2",LONG_STRING));
-  assertEquals(id,foundNode.getId());
+  assertThat(myNode,inTx(beansAPI,hasProperty("key2").withValue(LONG_STRING)));
+  assertThat(myNode,inTx(beansAPI,hasProperty("key3").withValue(LONG_STRING)));
+  assertThat(findNodesByLabelAndProperty(MY_LABEL,"key2",LONG_STRING,beansAPI),containsOnly(myNode));
 }

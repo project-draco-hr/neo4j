@@ -1,12 +1,18 @@
 {
   String indexProperty="indexProperty";
   GatheringIndexWriter writer=newWriter(indexProperty);
-  createIndex(myLabel,indexProperty);
+  createIndex(db,myLabel,indexProperty);
   int value1=12;
   String otherProperty="otherProperty";
   int otherValue=17;
   Node node=createNode(map(indexProperty,value1,otherProperty,otherValue),myLabel);
-  long propertyKey1=ctxProvider.getCtxForReading().propertyKeyGetForName(indexProperty);
-  long[] labels=new long[]{ctxProvider.getCtxForReading().labelGetForName(myLabel.name())};
-  assertThat(writer.updates,equalTo(asSet(NodePropertyUpdate.add(node.getId(),propertyKey1,value1,labels))));
+  Transaction tx=db.beginTx();
+  try {
+    long propertyKey1=ctxProvider.getCtxForWriting().propertyKeyGetForName(indexProperty);
+    long[] labels=new long[]{ctxProvider.getCtxForWriting().labelGetForName(myLabel.name())};
+    assertThat(writer.updates,equalTo(asSet(NodePropertyUpdate.add(node.getId(),propertyKey1,value1,labels))));
+  }
+  finally {
+    tx.finish();
+  }
 }

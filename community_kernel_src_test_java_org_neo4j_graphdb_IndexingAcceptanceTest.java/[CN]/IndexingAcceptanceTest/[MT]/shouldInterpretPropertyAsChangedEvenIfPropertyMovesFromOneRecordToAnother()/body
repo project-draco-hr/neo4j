@@ -6,18 +6,18 @@
     Transaction tx=beansAPI.beginTx();
     IndexDefinition indexDefinition;
     try {
-      myNode=beansAPI.createNode(Labels.MY_LABEL);
+      myNode=beansAPI.createNode(MY_LABEL);
       myNode.setProperty("pad0",true);
       myNode.setProperty("pad1",true);
       myNode.setProperty("pad2",true);
       myNode.setProperty("key",smallValue);
-      indexDefinition=beansAPI.schema().indexFor(Labels.MY_LABEL).on("key").create();
+      indexDefinition=beansAPI.schema().indexFor(MY_LABEL).on("key").create();
       tx.success();
     }
   finally {
       tx.finish();
     }
-    beansAPI.schema().awaitIndexOnline(indexDefinition,10,SECONDS);
+    waitForIndex(beansAPI,indexDefinition);
   }
   Transaction tx=beansAPI.beginTx();
   try {
@@ -27,6 +27,6 @@
   finally {
     tx.finish();
   }
-  assertEquals(asSet(myNode),asUniqueSet(beansAPI.findNodesByLabelAndProperty(Labels.MY_LABEL,"key",bigValue)));
-  assertEquals(emptySetOf(Node.class),asUniqueSet(beansAPI.findNodesByLabelAndProperty(Labels.MY_LABEL,"key",smallValue)));
+  assertThat(findNodesByLabelAndProperty(MY_LABEL,"key",bigValue,beansAPI),containsOnly(myNode));
+  assertThat(findNodesByLabelAndProperty(MY_LABEL,"key",smallValue,beansAPI),isEmpty());
 }

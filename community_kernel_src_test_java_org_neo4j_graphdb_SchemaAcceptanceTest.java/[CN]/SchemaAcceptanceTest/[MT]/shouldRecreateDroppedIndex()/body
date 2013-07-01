@@ -1,11 +1,10 @@
 {
   Node node=createNode(db,propertyKey,"Neo",label);
-  IndexDefinition index=createIndex(label,propertyKey);
-  db.schema().awaitIndexOnline(index,1L,TimeUnit.MINUTES);
+  IndexDefinition index=createIndex(db,label,propertyKey);
+  waitForIndex(db,index);
   dropIndex(index);
-  createIndex(label,propertyKey);
-  db.schema().awaitIndexOnline(index,1L,TimeUnit.MINUTES);
-  index=single(db.schema().getIndexes(label));
-  assertEquals(IndexState.ONLINE,db.schema().getIndexState(index));
-  assertEquals(asSet(node),asSet(db.findNodesByLabelAndProperty(label,propertyKey,"Neo")));
+  createIndex(db,label,propertyKey);
+  waitForIndex(db,index);
+  assertThat(getIndexes(db,label),contains(index));
+  assertThat(findNodesByLabelAndProperty(label,propertyKey,"Neo",db),containsOnly(node));
 }
