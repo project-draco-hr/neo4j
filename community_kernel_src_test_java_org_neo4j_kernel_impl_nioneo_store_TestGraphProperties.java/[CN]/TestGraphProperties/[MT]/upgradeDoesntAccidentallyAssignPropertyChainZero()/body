@@ -12,17 +12,17 @@
   removeLastNeoStoreRecord(fileSystem,storeDir);
   db=(GraphDatabaseAPI)factory.newImpermanentDatabase(storeDir);
   PropertyContainer properties=db.getNodeManager().getGraphProperties();
-  assertFalse(properties.getPropertyKeys().iterator().hasNext());
+  assertThat(getPropertyKeys(db,properties),isEmpty());
   tx=db.beginTx();
   properties.setProperty("a property","a value");
   tx.success();
   tx.finish();
   db.getNodeManager().clearCache();
-  assertEquals("a value",properties.getProperty("a property"));
+  assertThat(properties,inTx(db,hasProperty("a property").withValue("a value")));
   db.shutdown();
   db=(GraphDatabaseAPI)factory.newImpermanentDatabase(storeDir);
   properties=db.getNodeManager().getGraphProperties();
-  assertEquals("a value",properties.getProperty("a property"));
+  assertThat(properties,inTx(db,hasProperty("a property").withValue("a value")));
   db.shutdown();
   fileSystem.shutdown();
 }
