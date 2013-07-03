@@ -1,10 +1,11 @@
 {
-  StatementContext context=ctxProvider.getCtxForReading();
+  StatementOperations context=ctxProvider.getCtxForReading();
   String propertyKey=single(index.getPropertyKeys());
+  StatementState state=ctxProvider.statementForReading();
   try {
-    long labelId=context.labelGetForName(index.getLabel().name());
-    long propertyKeyId=context.propertyKeyGetForName(propertyKey);
-    org.neo4j.kernel.api.index.InternalIndexState indexState=context.indexGetState(context.indexesGetForLabelAndPropertyKey(labelId,propertyKeyId));
+    long labelId=context.labelGetForName(state,index.getLabel().name());
+    long propertyKeyId=context.propertyKeyGetForName(state,propertyKey);
+    org.neo4j.kernel.api.index.InternalIndexState indexState=context.indexGetState(state,context.indexesGetForLabelAndPropertyKey(state,labelId,propertyKeyId));
 switch (indexState) {
 case POPULATING:
       return POPULATING;
@@ -22,13 +23,10 @@ throw new NotFoundException(format("Label %s not found",index.getLabel().name())
 catch (PropertyKeyNotFoundException e) {
 throw new NotFoundException(format("Property key %s not found",propertyKey));
 }
-catch (SchemaRuleNotFoundException e) {
+catch (SchemaRuleNotFoundException|IndexNotFoundKernelException e) {
 throw new NotFoundException(format("No index for label %s on property %s",index.getLabel().name(),propertyKey));
 }
-catch (IndexNotFoundKernelException e) {
-throw new NotFoundException(format("No index for label %s on property %s",index.getLabel().name(),propertyKey),e);
-}
  finally {
-context.close();
+context.close(state);
 }
 }

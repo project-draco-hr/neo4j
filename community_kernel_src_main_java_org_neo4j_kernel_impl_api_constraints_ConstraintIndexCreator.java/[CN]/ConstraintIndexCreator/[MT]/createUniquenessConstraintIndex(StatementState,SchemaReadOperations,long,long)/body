@@ -1,0 +1,25 @@
+{
+  UniquenessConstraint constraint=new UniquenessConstraint(labelId,propertyKeyId);
+  IndexDescriptor descriptor=transactor.execute(createConstraintIndex(labelId,propertyKeyId));
+  long indexId;
+  try {
+    indexId=schema.indexGetCommittedId(state,descriptor);
+  }
+ catch (  SchemaRuleNotFoundException e) {
+    throw new IllegalStateException(String.format("Index (%s) that we just created does not exist.",descriptor));
+  }
+  boolean success=false;
+  try {
+    awaitIndexPopulation(constraint,indexId);
+    success=true;
+  }
+ catch (  InterruptedException exception) {
+    throw new ConstraintVerificationFailedKernelException(constraint,exception);
+  }
+ finally {
+    if (!success) {
+      dropUniquenessConstraintIndex(descriptor);
+    }
+  }
+  return indexId;
+}

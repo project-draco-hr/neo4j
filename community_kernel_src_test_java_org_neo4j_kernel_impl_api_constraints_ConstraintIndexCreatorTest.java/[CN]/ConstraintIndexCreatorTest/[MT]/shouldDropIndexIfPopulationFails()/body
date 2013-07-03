@@ -1,27 +1,28 @@
 {
-  StatementContextParts constraintCreationContext=mockedParts();
-  StatementContextParts indexCreationContext=mockedParts();
-  StatementContextParts indexDestructionContext=mockedParts();
+  StatementOperationParts constraintCreationContext=mockedParts();
+  StatementOperationParts indexCreationContext=mockedParts();
+  StatementOperationParts indexDestructionContext=mockedParts();
+  StatementState state=mockedState();
   IndexDescriptor descriptor=new IndexDescriptor(123,456);
-  when(indexCreationContext.schemaWriteOperations().uniqueIndexCreate(123,456)).thenReturn(descriptor);
+  when(indexCreationContext.schemaWriteOperations().uniqueIndexCreate(state,123,456)).thenReturn(descriptor);
   IndexingService indexingService=mock(IndexingService.class);
-  StubTransactor transactor=new StubTransactor(indexCreationContext,indexDestructionContext);
-  when(constraintCreationContext.schemaReadOperations().indexGetCommittedId(descriptor)).thenReturn(2468l);
+  StubTransactor transactor=new StubTransactor(state,indexCreationContext,indexDestructionContext);
+  when(constraintCreationContext.schemaReadOperations().indexGetCommittedId(state,descriptor)).thenReturn(2468l);
   IndexProxy indexProxy=mock(IndexProxy.class);
   when(indexingService.getProxyForRule(2468l)).thenReturn(indexProxy);
   doThrow(new IndexPopulationFailedKernelException(descriptor,new PreexistingIndexEntryConflictException("a",2,1))).when(indexProxy).awaitStoreScanCompleted();
   ConstraintIndexCreator creator=new ConstraintIndexCreator(transactor,indexingService);
   try {
-    creator.createUniquenessConstraintIndex(constraintCreationContext.schemaReadOperations(),123,456);
+    creator.createUniquenessConstraintIndex(state,constraintCreationContext.schemaReadOperations(),123,456);
     fail("expected exception");
   }
  catch (  ConstraintVerificationFailedKernelException e) {
     assertEquals("Existing data does not satisfy CONSTRAINT ON ( n:label[123] ) ASSERT n.property[456] IS UNIQUE.",e.getMessage());
   }
-  verify(indexCreationContext.schemaWriteOperations()).uniqueIndexCreate(123,456);
+  verify(indexCreationContext.schemaWriteOperations()).uniqueIndexCreate(state,123,456);
   verifyNoMoreInteractions(indexCreationContext.schemaWriteOperations());
-  verify(constraintCreationContext.schemaReadOperations()).indexGetCommittedId(descriptor);
+  verify(constraintCreationContext.schemaReadOperations()).indexGetCommittedId(state,descriptor);
   verifyNoMoreInteractions(constraintCreationContext.schemaReadOperations());
-  verify(indexDestructionContext.schemaWriteOperations()).uniqueIndexDrop(descriptor);
+  verify(indexDestructionContext.schemaWriteOperations()).uniqueIndexDrop(state,descriptor);
   verifyNoMoreInteractions(indexDestructionContext.schemaWriteOperations());
 }

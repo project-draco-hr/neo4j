@@ -1,8 +1,14 @@
 {
-  NeoStoreXaDataSource neoStoreDataSource=xaDataSourceManager.getNeoStoreDataSource();
-  storeId=neoStoreDataSource.getStoreId();
-  KernelDiagnostics.register(diagnosticsManager,InternalAbstractGraphDatabase.this,neoStoreDataSource);
-  if (isMaster) {
-    new RemoveOrphanConstraintIndexesOnStartup(txManager,logging).perform();
+  if (txManager.getRecoveryError() != null) {
+    return;
+  }
+  kernelAPI.bootstrapAfterRecovery();
+  if (txManager instanceof TxManager) {
+    NeoStoreXaDataSource neoStoreDataSource=xaDataSourceManager.getNeoStoreDataSource();
+    storeId=neoStoreDataSource.getStoreId();
+    KernelDiagnostics.register(diagnosticsManager,InternalAbstractGraphDatabase.this,neoStoreDataSource);
+    if (isMaster) {
+      new RemoveOrphanConstraintIndexesOnStartup(txManager,statementContextProvider,logging).perform();
+    }
   }
 }

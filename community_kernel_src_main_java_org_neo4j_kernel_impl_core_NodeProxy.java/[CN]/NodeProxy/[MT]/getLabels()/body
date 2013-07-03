@@ -1,26 +1,27 @@
 {
   return new ResourceIterable<Label>(){
-    @Override public ResourceIterator<Label> iterator(){
-      final StatementContext context=statementCtxProvider.getCtxForReading();
+    @SuppressWarnings("resource") @Override public ResourceIterator<Label> iterator(){
+      final StatementOperations context=statementCtxProvider.getCtxForReading();
       Iterator<Long> labels;
+      final StatementState state=statementCtxProvider.statementForReading();
       try {
-        labels=context.nodeGetLabels(getId());
+        labels=context.nodeGetLabels(state,getId());
       }
  catch (      EntityNotFoundException e) {
-        context.close();
+        context.close(state);
         throw new NotFoundException("No node with id " + getId() + " found.",e);
       }
       return nodeLookup.getCleanupService().resourceIterator(map(new Function<Long,Label>(){
         @Override public Label apply(        Long labelId){
           try {
-            return label(context.labelGetName(labelId));
+            return label(context.labelGetName(state,labelId));
           }
  catch (          LabelNotFoundKernelException e) {
             throw new ThisShouldNotHappenError("Mattias","Listed labels for node " + nodeId + ", but the returned label "+ labelId+ " doesn't exist anymore");
           }
         }
       }
-,labels),context);
+,labels),state.closeable(context));
     }
   }
 ;

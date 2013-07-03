@@ -1,19 +1,20 @@
 {
-  StatementContextParts constraintCreationContext=mockedParts();
-  StatementContextParts indexCreationContext=mockedParts();
+  StatementOperationParts constraintCreationContext=mockedParts();
+  StatementOperationParts indexCreationContext=mockedParts();
   IndexDescriptor descriptor=new IndexDescriptor(123,456);
-  when(indexCreationContext.schemaWriteOperations().uniqueIndexCreate(123,456)).thenReturn(descriptor);
+  StatementState state=mockedState();
+  when(indexCreationContext.schemaWriteOperations().uniqueIndexCreate(state,123,456)).thenReturn(descriptor);
   IndexingService indexingService=mock(IndexingService.class);
-  StubTransactor transactor=new StubTransactor(indexCreationContext);
-  when(constraintCreationContext.schemaReadOperations().indexGetCommittedId(descriptor)).thenReturn(2468l);
+  StubTransactor transactor=new StubTransactor(state,indexCreationContext);
+  when(constraintCreationContext.schemaReadOperations().indexGetCommittedId(state,descriptor)).thenReturn(2468l);
   IndexProxy indexProxy=mock(IndexProxy.class);
   when(indexingService.getProxyForRule(2468l)).thenReturn(indexProxy);
   ConstraintIndexCreator creator=new ConstraintIndexCreator(transactor,indexingService);
-  long indexId=creator.createUniquenessConstraintIndex(constraintCreationContext.schemaReadOperations(),123,456);
+  long indexId=creator.createUniquenessConstraintIndex(state,constraintCreationContext.schemaReadOperations(),123,456);
   assertEquals(2468l,indexId);
-  verify(indexCreationContext.schemaWriteOperations()).uniqueIndexCreate(123,456);
+  verify(indexCreationContext.schemaWriteOperations()).uniqueIndexCreate(state,123,456);
   verifyNoMoreInteractions(indexCreationContext.schemaWriteOperations());
-  verify(constraintCreationContext.schemaReadOperations()).indexGetCommittedId(descriptor);
+  verify(constraintCreationContext.schemaReadOperations()).indexGetCommittedId(state,descriptor);
   verifyNoMoreInteractions(constraintCreationContext.schemaReadOperations());
   verify(indexProxy).awaitStoreScanCompleted();
 }

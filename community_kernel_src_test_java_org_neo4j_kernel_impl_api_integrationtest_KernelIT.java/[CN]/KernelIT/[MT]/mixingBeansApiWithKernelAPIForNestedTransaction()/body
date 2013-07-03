@@ -1,12 +1,13 @@
 {
   KernelAPI kernel=db.getDependencyResolver().resolveDependency(KernelAPI.class);
   Transaction outerTx=db.beginTx();
-  TransactionContext tx=kernel.newTransactionContext();
-  StatementContextParts statement=tx.newStatementContext();
+  KernelTransaction tx=kernel.newTransaction();
+  StatementOperationParts context=tx.newStatementOperations();
+  StatementState statement=tx.newStatementState();
   Node node=db.createNode();
-  long labelId=statement.keyWriteOperations().labelGetOrCreateForName("labello");
-  statement.entityWriteOperations().nodeAddLabel(node.getId(),labelId);
-  statement.close();
+  long labelId=context.keyWriteOperations().labelGetOrCreateForName(statement,"labello");
+  context.entityWriteOperations().nodeAddLabel(statement,node.getId(),labelId);
+  context.lifecycleOperations().close(statement);
   tx.commit();
   outerTx.finish();
 }

@@ -1,9 +1,10 @@
 {
-  StatementContext context=ctxProvider.getCtxForWriting();
+  StatementOperations context=ctxProvider.getCtxForWriting();
+  StatementState state=ctxProvider.statementForWriting();
   try {
-    long labelId=context.labelGetOrCreateForName(label.name());
-    long propertyKeyId=context.propertyKeyGetOrCreateForName(propertyKey);
-    context.indexCreate(labelId,propertyKeyId);
+    long labelId=context.labelGetOrCreateForName(state,label.name());
+    long propertyKeyId=context.propertyKeyGetOrCreateForName(state,propertyKey);
+    context.indexCreate(state,labelId,propertyKeyId);
     return new IndexDefinitionImpl(this,label,propertyKey,false);
   }
  catch (  AlreadyIndexedException e) {
@@ -13,9 +14,9 @@ catch (  AlreadyConstrainedException e) {
     throw new ConstraintViolationException(String.format("Label '%s' and property '%s' have a unique constraint defined on them, so an index is " + "already created that matches this.",label.name(),propertyKey),e);
   }
 catch (  SchemaKernelException e) {
-    throw new ConstraintViolationException(e.getUserMessage(new KeyNameLookup(context)),e);
+    throw new ConstraintViolationException(e.getUserMessage(new KeyNameLookup(state,context)),e);
   }
  finally {
-    context.close();
+    context.close(state);
   }
 }

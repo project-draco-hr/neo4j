@@ -1,16 +1,17 @@
 {
   long labelId1=10, labelId2=12;
-  store=mock(StatementContext.class);
-  when(store.indexesGetForLabel(labelId1)).then(asAnswer(Collections.<IndexDescriptor>emptyList()));
-  when(store.indexesGetForLabel(labelId2)).then(asAnswer(Collections.<IndexDescriptor>emptyList()));
-  when(store.indexesGetAll()).then(asAnswer(Collections.<IndexDescriptor>emptyList()));
-  when(store.indexCreate(anyLong(),anyLong())).thenAnswer(new Answer<IndexDescriptor>(){
+  store=mock(StatementOperations.class);
+  when(store.indexesGetForLabel(state,labelId1)).then(asAnswer(Collections.<IndexDescriptor>emptyList()));
+  when(store.indexesGetForLabel(state,labelId2)).then(asAnswer(Collections.<IndexDescriptor>emptyList()));
+  when(store.indexesGetAll(state)).then(asAnswer(Collections.<IndexDescriptor>emptyList()));
+  when(store.indexCreate(eq(state),anyLong(),anyLong())).thenAnswer(new Answer<IndexDescriptor>(){
     @Override public IndexDescriptor answer(    InvocationOnMock invocation) throws Throwable {
       return new IndexDescriptor((Long)invocation.getArguments()[0],(Long)invocation.getArguments()[1]);
     }
   }
 );
   oldTxState=mock(OldTxStateBridge.class);
-  TxState state=new TxState(oldTxState,mock(PersistenceManager.class),mock(TxState.IdGeneration.class));
-  txContext=new StateHandlingStatementContext(store,store,mock(AuxiliaryStoreOperations.class),state,mock(ConstraintIndexCreator.class));
+  TxState txState=new TxStateImpl(oldTxState,mock(PersistenceManager.class),mock(TxState.IdGeneration.class));
+  state=StatementOperationsTestHelper.mockedState(txState);
+  txContext=new StateHandlingStatementOperations(store,store,mock(AuxiliaryStoreOperations.class),mock(ConstraintIndexCreator.class));
 }

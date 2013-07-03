@@ -1,0 +1,21 @@
+{
+  UniquenessConstraint constraint=new UniquenessConstraint(labelId,propertyKeyId);
+  if (!state.txState().unRemoveConstraint(constraint)) {
+    for (Iterator<UniquenessConstraint> it=schemaReadDelegate.constraintsGetForLabelAndPropertyKey(state,labelId,propertyKeyId); it.hasNext(); ) {
+      if (it.next().equals(labelId,propertyKeyId)) {
+        return constraint;
+      }
+    }
+    try {
+      long indexId=constraintIndexCreator.createUniquenessConstraintIndex(state,this,labelId,propertyKeyId);
+      state.txState().addConstraint(constraint,indexId);
+    }
+ catch (    TransactionalException e) {
+      throw new ConstraintCreationKernelException(constraint,e);
+    }
+catch (    KernelException e) {
+      throw new ConstraintCreationKernelException(constraint,e);
+    }
+  }
+  return constraint;
+}

@@ -2,13 +2,15 @@
   Set<NodePropertyUpdate> updates=new HashSet<NodePropertyUpdate>();
   Transaction tx=db.beginTx();
   try {
-    StatementContext context=db.getDependencyResolver().resolveDependency(ThreadToStatementContextBridge.class).getCtxForWriting();
+    ThreadToStatementContextBridge ctxProvider=db.getDependencyResolver().resolveDependency(ThreadToStatementContextBridge.class);
+    StatementOperations context=ctxProvider.getCtxForWriting();
+    StatementState state=ctxProvider.statementForReading();
     for (    int number : new int[]{4,10}) {
       Node node=db.createNode(label);
       node.setProperty(key,number);
-      updates.add(NodePropertyUpdate.add(node.getId(),context.propertyKeyGetForName(key),number,new long[]{context.labelGetForName(label.name())}));
+      updates.add(NodePropertyUpdate.add(node.getId(),context.propertyKeyGetForName(state,key),number,new long[]{context.labelGetForName(state,label.name())}));
     }
-    context.close();
+    context.close(state);
     tx.success();
     return updates;
   }
