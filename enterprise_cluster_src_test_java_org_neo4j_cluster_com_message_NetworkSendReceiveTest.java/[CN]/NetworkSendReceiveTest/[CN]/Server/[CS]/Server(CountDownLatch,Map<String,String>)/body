@@ -1,6 +1,6 @@
 {
   final Config conf=new Config(config,ClusterSettings.class);
-  node=new NetworkInstance(new NetworkInstance.Configuration(){
+  networkInstance=new NetworkInstance(new NetworkInstance.Configuration(){
     @Override public HostnamePort clusterServer(){
       return conf.get(ClusterSettings.cluster_server);
     }
@@ -9,12 +9,13 @@
     }
   }
 ,new DevNullLoggingService());
-  life.add(node);
+  life.add(networkInstance);
   life.add(new LifecycleAdapter(){
     @Override public void start() throws Throwable {
-      node.addMessageProcessor(new MessageProcessor(){
+      networkInstance.addMessageProcessor(new MessageProcessor(){
         @Override public boolean process(        Message<? extends MessageType> message){
-          System.out.println(message);
+          latch.countDown();
+          processedMessage=true;
           return true;
         }
       }
