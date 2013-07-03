@@ -4,11 +4,11 @@
   when(txManager.suspend()).thenReturn(existingTransaction);
   TransactionContext txContext=mock(TransactionContext.class);
   when(txManager.getTransactionContext()).thenReturn(txContext);
-  StatementContext stmtContext=mock(StatementContext.class);
+  StatementContextParts stmtContext=mockedParts(txContext);
   when(txContext.newStatementContext()).thenReturn(stmtContext);
   @SuppressWarnings("unchecked") Transactor.Statement<Object,KernelException> statement=mock(Transactor.Statement.class);
   SpecificKernelException exception=new SpecificKernelException();
-  when(statement.perform(any(StatementContext.class))).thenThrow(exception);
+  when(statement.perform(any(StatementContextParts.class))).thenThrow(exception);
   Transactor transactor=new Transactor(txManager);
   try {
     transactor.execute(statement);
@@ -17,14 +17,14 @@
  catch (  SpecificKernelException e) {
     assertSame(exception,e);
   }
-  InOrder order=inOrder(txManager,txContext,stmtContext,statement);
+  InOrder order=inOrder(txManager,txContext,stmtContext.lifecycleOperations(),statement);
   order.verify(txManager).suspend();
   order.verify(txManager).begin();
   order.verify(txManager).getTransactionContext();
   order.verify(txContext).newStatementContext();
   order.verify(statement).perform(stmtContext);
-  order.verify(stmtContext).close();
+  order.verify(stmtContext.lifecycleOperations()).close();
   order.verify(txContext).rollback();
   order.verify(txManager).resume(existingTransaction);
-  verifyNoMoreInteractions(txManager,txContext,stmtContext,statement);
+  order.verifyNoMoreInteractions();
 }
