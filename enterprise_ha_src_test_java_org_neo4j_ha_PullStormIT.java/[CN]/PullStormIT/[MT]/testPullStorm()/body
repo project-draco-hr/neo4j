@@ -35,9 +35,8 @@
     cluster.await(ClusterManager.masterSeesSlavesAsAvailable(1));
     System.out.println("Pull storm");
     ExecutorService executor=Executors.newFixedThreadPool(20);
-    List<Future<?>> result=new ArrayList<Future<?>>();
     for (int i=0; i < 20; i++) {
-      result.add(executor.submit(new Runnable(){
+      executor.submit(new Runnable(){
         @Override public void run(){
           Transaction tx=master.beginTx();
           master.createNode().setProperty("foo","bar");
@@ -45,16 +44,14 @@
           tx.finish();
         }
       }
-));
-    }
-    for (    Future<?> future : result) {
-      future.get();
+);
     }
     executor.shutdown();
+    executor.awaitTermination(1,TimeUnit.MINUTES);
     System.out.println("Pull storm done");
-    for (    HighlyAvailableGraphDatabase highlyAvailableGraphDatabase : cluster.getAllMembers()) {
-      long txId=((NeoStoreXaDataSource)highlyAvailableGraphDatabase.getDependencyResolver().resolveDependency(XaDataSourceManager.class).getXaDataSource(NeoStoreXaDataSource.DEFAULT_DATA_SOURCE_NAME)).getNeoStore().getLastCommittedTx();
-      System.out.println(highlyAvailableGraphDatabase.getConfig().get(ClusterSettings.server_id) + "=" + txId);
+    long masterLastCommittedTxId=lastCommittedTxId(master);
+    for (    HighlyAvailableGraphDatabase member : cluster.getAllMembers()) {
+      assertEquals(masterLastCommittedTxId,lastCommittedTxId(member));
     }
   }
   finally {
