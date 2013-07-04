@@ -1,0 +1,21 @@
+{
+  nodeStore.ensureHeavy(node,parseLabelsBody(labelField));
+  Collection<DynamicRecord> existingRecords=node.getDynamicLabelRecords();
+  long[] existingLabelIds=nodeStore.getDynamicLabelsArray(existingRecords);
+  long[] newLabelIds=filter(existingLabelIds,labelId);
+  if (new InlineNodeLabels(labelField,node).tryInlineInNodeRecord(newLabelIds,existingRecords)) {
+    setNotInUse(existingRecords);
+  }
+ else {
+    Collection<DynamicRecord> newRecords=nodeStore.allocateRecordsForDynamicLabels(newLabelIds,existingRecords.iterator());
+    node.setLabelField(dynamicPointer(newRecords),existingRecords);
+    if (!newRecords.equals(existingRecords)) {
+      for (      DynamicRecord record : existingRecords) {
+        if (!newRecords.contains(record)) {
+          record.setInUse(false);
+        }
+      }
+    }
+  }
+  return existingRecords;
+}
