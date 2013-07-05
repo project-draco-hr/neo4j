@@ -66,7 +66,8 @@
   Cache<RelationshipImpl> relCache=diagnosticsManager.tryAppendProvider(caches.relationship());
   kernelAPI=life.add(new Kernel(txManager,propertyKeyTokenHolder,labelTokenHolder,persistenceManager,xaDataSourceManager,lockManager,updateableSchemaState,dependencyResolver,this.isHighlyAvailable()));
   txManager.setKernel(kernelAPI);
-  statementContextProvider=life.add(new ThreadToStatementContextBridge(kernelAPI,txManager));
+  ThreadToStatementContextBridge statementBridge=readOnly ? new ThreadToStatementContextBridge.ReadOnly(kernelAPI,txManager,xaDataSourceManager) : new ThreadToStatementContextBridge(kernelAPI,txManager,xaDataSourceManager);
+  statementContextProvider=life.add(statementBridge);
   nodeManager=guard != null ? createGuardedNodeManager(readOnly,cacheProvider,nodeCache,relCache) : createNodeManager(readOnly,cacheProvider,nodeCache,relCache);
   stateFactory.setDependencies(lockManager,nodeManager,txHook,txIdGenerator);
   indexStore=life.add(new IndexStore(this.storeDir,fileSystem));

@@ -1,16 +1,16 @@
 {
-  StatementContextParts before=singleContext.newStatementContext();
-  singleContext.commit();
-  StatementContextParts after=singleContext.newStatementContext();
+  StatementState before=refCountingContext.newStatementState();
+  refCountingContext.commit();
+  StatementState after=refCountingContext.newStatementState();
   try {
-    before.close();
+    refCountingOperations.close(before);
     fail("expected exception");
   }
  catch (  IllegalStateException e) {
-    assertEquals("This StatementContext has been closed. No more interaction allowed",e.getMessage());
+    assertEqualsStatementClosed(e);
   }
-  verify(actualContext.lifecycleOperations(),times(1)).close();
-  verifyZeroInteractions(otherActualContext.lifecycleOperations());
-  after.close();
-  verify(otherActualContext.lifecycleOperations(),times(1)).close();
+  verify(actualState.refCounting(),times(1)).close();
+  verifyZeroInteractions(otherActualState);
+  refCountingOperations.close(after);
+  verify(otherActualState.refCounting(),times(1)).close();
 }

@@ -1,17 +1,18 @@
 {
-  StatementContext context=statementCtxProvider.getCtxForReading();
+  StatementOperations context=statementCtxProvider.getCtxForReading();
+  StatementState state=statementCtxProvider.statementForReading();
   try {
-    long labelId=context.labelGetForName(label);
-    final Iterator<Long> nodeIds=context.nodesGetForLabel(labelId);
+    long labelId=context.labelGetForName(state,label);
+    final Iterator<Long> nodeIds=context.nodesGetForLabel(state,labelId);
     return cleanupService.resourceIterator(map(new Function<Long,Node>(){
       @Override public Node apply(      Long nodeId){
         return nodeManager.getNodeById(nodeId);
       }
     }
-,nodeIds),context);
+,nodeIds),state.closeable(context));
   }
  catch (  LabelNotFoundKernelException e) {
-    context.close();
+    context.close(state);
     return emptyIterator();
   }
 }

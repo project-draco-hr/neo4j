@@ -1,29 +1,36 @@
 {
   try {
     txManager.begin(ForceMode.unforced);
-    @SuppressWarnings("deprecation") TransactionContext tx=txManager.getTransactionContext();
     boolean success=false;
+    KernelTransaction tx=null;
     try {
-      StatementContextParts context=tx.newStatementContext();
+      tx=txManager.getKernelTransaction();
+      StatementOperations context=ctxProvider.getCtxForWriting();
+      StatementState state=tx.newStatementState();
       try {
-        for (Iterator<IndexDescriptor> indexes=context.schemaReadOperations().uniqueIndexesGetAll(); indexes.hasNext(); ) {
+        for (Iterator<IndexDescriptor> indexes=context.uniqueIndexesGetAll(state); indexes.hasNext(); ) {
           IndexDescriptor index=indexes.next();
-          if (context.schemaReadOperations().indexGetOwningUniquenessConstraintId(index) == null) {
-            context.schemaWriteOperations().uniqueIndexDrop(index);
+          if (context.indexGetOwningUniquenessConstraintId(state,index) == null) {
+            context.uniqueIndexDrop(state,index);
           }
         }
       }
   finally {
-        context.close();
+        context.close(state);
       }
       success=true;
     }
   finally {
-      if (success) {
-        tx.commit();
+      if (tx != null) {
+        if (success) {
+          tx.commit();
+        }
+ else {
+          tx.rollback();
+        }
       }
  else {
-        tx.rollback();
+        txManager.rollback();
       }
     }
   }
