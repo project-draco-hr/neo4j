@@ -1,21 +1,19 @@
 {
-  final StatementOperations context=statementCtxProvider.getCtxForReading();
+  final StatementOperationParts context=statementCtxProvider.getCtxForReading();
   final StatementState state=statementCtxProvider.statementForReading();
   try {
-    return asSet(map(new Function<Long,String>(){
-      @Override public String apply(      Long propertyKeyId){
-        try {
-          return context.propertyKeyGetName(state,propertyKeyId);
-        }
- catch (        PropertyKeyIdNotFoundException e) {
-          throw new ThisShouldNotHappenError("Jake","Property key retrieved through kernel API should exist.");
-        }
-      }
+    List<String> keys=new ArrayList<>();
+    PrimitiveLongIterator keyIds=context.entityReadOperations().nodeGetPropertyKeys(state,getId());
+    while (keyIds.hasNext()) {
+      keys.add(context.keyReadOperations().propertyKeyGetName(state,keyIds.next()));
     }
-,context.nodeGetPropertyKeys(state,getId())));
+    return keys;
   }
  catch (  EntityNotFoundException e) {
     throw new NotFoundException("Node not found",e);
+  }
+catch (  PropertyKeyIdNotFoundException e) {
+    throw new ThisShouldNotHappenError("Jake","Property key retrieved through kernel API should exist.");
   }
  finally {
     context.close(state);
