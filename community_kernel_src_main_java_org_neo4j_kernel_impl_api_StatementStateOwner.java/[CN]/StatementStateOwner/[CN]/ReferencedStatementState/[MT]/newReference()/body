@@ -1,31 +1,10 @@
 {
   count++;
-  final AtomicReference<RefCounting> refCounting=new AtomicReference<>();
-  final StatementState referencedState=new StatementState(){
-    @Override public TxState txState(){
-      return parentState.txState();
-    }
-    @Override public RefCounting refCounting(){
-      return refCounting.get();
-    }
-    @Override public LockHolder locks(){
-      return parentState.locks();
-    }
-    @Override public IndexReaderFactory indexReaderFactory(){
-      return parentState.indexReaderFactory();
-    }
-    @Override public Closeable closeable(    StatementOperations logic){
-      return parentState.closeable(logic);
-    }
-  }
-;
-  refCounting.set(new RefCounting(){
+  return new StatementState(){
     private boolean open=true;
-    @Override public boolean isOpen(){
-      return open && count > 0;
-    }
-    @Override public void close(){
-      if (!isOpen()) {
+    @Override public void markAsClosed(){
+      boolean isOpen=open && count > 0;
+      if (!isOpen) {
         throw new IllegalStateException("This " + StatementState.class.getSimpleName() + " has been closed. No more interaction allowed");
       }
       open=false;
@@ -34,7 +13,18 @@
         reference=null;
       }
     }
+    @Override public TxState txState(){
+      return parentState.txState();
+    }
+    @Override public LockHolder locks(){
+      return parentState.locks();
+    }
+    @Override public IndexReaderFactory indexReaderFactory(){
+      return parentState.indexReaderFactory();
+    }
+    @Override public Closeable closeable(    LifecycleOperations logic){
+      return parentState.closeable(logic);
+    }
   }
-);
-  return referencedState;
+;
 }
