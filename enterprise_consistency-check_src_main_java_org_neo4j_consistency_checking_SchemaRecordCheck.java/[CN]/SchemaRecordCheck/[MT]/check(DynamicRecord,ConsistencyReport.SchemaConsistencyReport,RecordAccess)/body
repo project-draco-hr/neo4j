@@ -1,6 +1,32 @@
 {
   if (record.inUse() && record.isStartRecord()) {
-    SchemaRule rule=store.loadSingleSchemaRule(record.getId());
-    report.forReference(records.label((int)rule.getLabel()),VALID_LABEL);
-  }
+    SchemaRule rule;
+    try {
+      rule=store.loadSingleSchemaRule(record.getId());
+    }
+ catch (    MalformedSchemaRuleException e) {
+      report.malformedSchemaRule();
+      return;
+    }
+    if (Phase.CHECK_RULES == phase) {
+      report.forReference(records.label((int)rule.getLabel()),VALID_LABEL);
+      SchemaRuleContent content=new SchemaRuleContent(rule);
+      DynamicRecord previousContentRecord=contentMap.put(content,record);
+      if (null != previousContentRecord) {
+        report.duplicateRuleContent(previousContentRecord);
+      }
+    }
+    SchemaRule.Kind kind=rule.getKind();
+switch (kind) {
+case INDEX_RULE:
+case CONSTRAINT_INDEX_RULE:
+      checkIndexRule((IndexRule)rule,record,records,report);
+    break;
+case UNIQUENESS_CONSTRAINT:
+  checkUniquenessConstraintRule((UniquenessConstraintRule)rule,record,records,report);
+break;
+default :
+report.unsupportedSchemaRuleKind(kind);
+}
+}
 }
