@@ -1,5 +1,5 @@
 {
-  Collection<DynamicRecord> records=new ArrayList<DynamicRecord>();
+  Collection<DynamicRecord> records=new ArrayList<>();
   readDynamicRecords(byteChannel,buffer,records,COLLECTION_DYNAMIC_RECORD_ADDER);
   if (!readAndFlip(byteChannel,buffer,1))   throw new IllegalStateException("Missing SchemaRule.isCreated flag in deserialization");
   byte isCreated=buffer.get();
@@ -11,7 +11,12 @@
   SchemaRule rule=null;
   if (first(records).inUse()) {
     ByteBuffer deserialized=AbstractDynamicStore.concatData(records,new byte[100]);
-    rule=SchemaRule.Kind.deserialize(first(records).getId(),deserialized);
+    try {
+      rule=SchemaRule.Kind.deserialize(first(records).getId(),deserialized);
+    }
+ catch (    MalformedSchemaRuleException e) {
+      throw launderedException(e);
+    }
   }
   return new SchemaRuleCommand(neoStore != null ? neoStore.getSchemaStore() : null,indexes,records,rule);
 }
