@@ -1,14 +1,19 @@
 {
-  DefaultHttpClient httpClient=new DefaultHttpClient();
   HttpGet request=new HttpGet(uri);
   boolean success=false;
   long startTime=System.currentTimeMillis();
   while (!success && System.currentTimeMillis() - startTime < 60000) {
+    DefaultHttpClient httpClient=new DefaultHttpClient();
     try {
-      success=httpClient.execute(request).getStatusLine().getStatusCode() == 200;
+      HttpResponse response=httpClient.execute(request);
+      success=response.getStatusLine().getStatusCode() == 200;
+      response.getEntity().getContent().close();
     }
  catch (    ConnectException e) {
       System.out.println("Connection refused, sleeping");
+    }
+ finally {
+      httpClient.getConnectionManager().shutdown();
     }
     Thread.sleep(1000);
   }
