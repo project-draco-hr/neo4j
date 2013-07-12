@@ -2,7 +2,6 @@
   try {
     final StreamingOutput stream=new StreamingOutput(){
       public void write(      final OutputStream output) throws IOException, WebApplicationException {
-        Transaction tx=database.getGraph().beginTx();
         try {
           final ServletOutputStream servletOutputStream=new ServletOutputStream(){
             public void write(            int i) throws IOException {
@@ -11,14 +10,13 @@
           }
 ;
           new StreamingBatchOperations(webServer).readAndExecuteOperations(uriInfo,httpHeaders,body,servletOutputStream);
-          tx.success();
+          representationWrittenHandler.onRepresentationWritten();
         }
  catch (        Exception e) {
           Log.warn("Error executing batch request ",e);
-          tx.failure();
         }
  finally {
-          tx.finish();
+          representationWrittenHandler.onRepresentationFinal();
         }
       }
     }

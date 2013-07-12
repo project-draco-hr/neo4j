@@ -1,32 +1,27 @@
 {
   assertIsLegalIndexName(indexName);
-  Transaction tx=beginTx();
-  try {
-    Node result;
-    boolean created;
-    if (nodeOrNull != null) {
-      if (properties != null) {
-        throw new BadInputException("Cannot specify properties for a new node, when a node to index is specified.");
-      }
-      Node node=node(nodeOrNull);
-      result=graphDb.index().forNodes(indexName).putIfAbsent(node,key,value);
-      created=result == null;
-      if (created)       result=node;
+  Node result;
+  boolean created;
+  if (nodeOrNull != null) {
+    if (properties != null) {
+      throw new BadInputException("Cannot specify properties for a new node, " + "when a node to index is specified.");
     }
+    Node node=node(nodeOrNull);
+    result=graphDb.index().forNodes(indexName).putIfAbsent(node,key,value);
+    created=result == null;
+    if (created) {
+      result=node;
+    }
+  }
  else {
-      if (properties != null) {
-        for (        Map.Entry<String,Object> entry : properties.entrySet()) {
-          entry.setValue(propertySetter.convert(entry.getValue()));
-        }
+    if (properties != null) {
+      for (      Map.Entry<String,Object> entry : properties.entrySet()) {
+        entry.setValue(propertySetter.convert(entry.getValue()));
       }
-      UniqueNodeFactory factory=new UniqueNodeFactory(indexName,properties);
-      result=factory.getOrCreate(key,value);
-      created=factory.created;
     }
-    tx.success();
-    return Pair.of(new IndexedEntityRepresentation(result,key,value,new NodeIndexRepresentation(indexName,Collections.<String,String>emptyMap())),created);
+    UniqueNodeFactory factory=new UniqueNodeFactory(indexName,properties);
+    result=factory.getOrCreate(key,value);
+    created=factory.created;
   }
-  finally {
-    tx.finish();
-  }
+  return Pair.of(new IndexedEntityRepresentation(result,key,value,new NodeIndexRepresentation(indexName,Collections.<String,String>emptyMap())),created);
 }
