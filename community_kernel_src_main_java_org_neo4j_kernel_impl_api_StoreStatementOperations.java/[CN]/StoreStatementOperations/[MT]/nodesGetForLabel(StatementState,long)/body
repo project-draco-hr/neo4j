@@ -1,20 +1,25 @@
 {
   final NodeStore nodeStore=neoStore.getNodeStore();
   final long highestId=nodeStore.getHighestPossibleIdInUse();
-  return new PrefetchingIterator<Long>(){
+  return new AbstractPrimitiveLongIterator(){
     private long id=0;
-    @Override protected Long fetchNextOrNull(){
+{
+      computeNext();
+    }
+    @Override protected void computeNext(){
       while (id <= highestId) {
         NodeRecord node=nodeStore.forceGetRecord(id++);
         if (node.inUse()) {
           for (          long label : parseLabelsField(node).get(nodeStore)) {
             if (label == labelId) {
-              return node.getId();
+              nextValue=node.getId();
+              hasNext=true;
+              return;
             }
           }
         }
       }
-      return null;
+      hasNext=false;
     }
   }
 ;
