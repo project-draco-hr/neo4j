@@ -2,26 +2,9 @@
   if (lock != null) {
     lock.acquire(getTransactionState(),new RelationshipProxy(relId,relationshipLookups,statementCtxProvider));
   }
-  RelationshipImpl relationship=relCache.get(relId);
-  if (relationship != null) {
-    return relationship;
+  RelationshipImpl rel=relCache.get(relId);
+  if (rel == null) {
+    throw new NotFoundException(format("Relationship %d not found",relId));
   }
-  ReentrantLock loadLock=lockId(relId);
-  try {
-    relationship=relCache.get(relId);
-    if (relationship != null) {
-      return relationship;
-    }
-    RelationshipRecord data=persistenceManager.loadLightRelationship(relId);
-    if (data == null) {
-      throw new NotFoundException(format("Relationship %d not found",relId));
-    }
-    int typeId=data.getType();
-    relationship=newRelationshipImpl(relId,data.getFirstNode(),data.getSecondNode(),typeId,false);
-    relCache.put(relationship);
-    return relationship;
-  }
-  finally {
-    loadLock.unlock();
-  }
+  return rel;
 }
