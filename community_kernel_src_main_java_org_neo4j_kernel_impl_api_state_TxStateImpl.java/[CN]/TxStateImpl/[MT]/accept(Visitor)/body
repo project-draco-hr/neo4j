@@ -1,17 +1,25 @@
 {
-  for (  NodeState node : nodeStates.values()) {
-    DiffSets<Long> labelDiff=node.getLabelDiffSets();
-    visitor.visitNodeLabelChanges(node.getId(),labelDiff.getAdded(),labelDiff.getRemoved());
-  }
-  indexChanges.accept(indexVisitor(visitor,false));
-  constraintIndexChanges.accept(indexVisitor(visitor,true));
-  constraintsChanges.accept(new DiffSets.Visitor<UniquenessConstraint>(){
-    @Override public void visitAdded(    UniquenessConstraint element){
-      visitor.visitAddedConstraint(element,createdConstraintIndexes.get(element));
-    }
-    @Override public void visitRemoved(    UniquenessConstraint element){
-      visitor.visitRemovedConstraint(element);
+  if (hasNodeStatesMap()) {
+    for (    NodeState node : nodeStates()) {
+      DiffSets<Long> labelDiff=node.labelDiffSets();
+      visitor.visitNodeLabelChanges(node.getId(),labelDiff.getAdded(),labelDiff.getRemoved());
     }
   }
+  if (hasIndexChangesDiffSets()) {
+    indexChanges().accept(indexVisitor(visitor,false));
+  }
+  if (hasConstraintIndexChangesDiffSets()) {
+    constraintIndexChanges().accept(indexVisitor(visitor,true));
+  }
+  if (hasConstraintsChangesDiffSets()) {
+    constraintsChanges().accept(new DiffSets.Visitor<UniquenessConstraint>(){
+      @Override public void visitAdded(      UniquenessConstraint element){
+        visitor.visitAddedConstraint(element,createdConstraintIndexesByConstraint().get(element));
+      }
+      @Override public void visitRemoved(      UniquenessConstraint element){
+        visitor.visitRemovedConstraint(element);
+      }
+    }
 );
+  }
 }
