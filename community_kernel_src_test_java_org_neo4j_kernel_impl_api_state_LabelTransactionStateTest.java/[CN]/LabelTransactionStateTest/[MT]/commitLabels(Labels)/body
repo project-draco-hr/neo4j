@@ -1,20 +1,20 @@
 {
-  Map<Long,Collection<Long>> allLabels=new HashMap<Long,Collection<Long>>();
+  Map<Long,Collection<Long>> allLabels=new HashMap<>();
   for (  Labels nodeLabels : labels) {
-    when(store.nodeGetLabels(state,nodeLabels.nodeId)).then(asAnswer(Arrays.<Long>asList(nodeLabels.labelIds)));
+    when(store.nodeGetLabels(state,nodeLabels.nodeId)).then(answerAsPrimitiveLongIteratorFrom(Arrays.<Long>asList(nodeLabels.labelIds)));
     for (    long label : nodeLabels.labelIds) {
       when(store.nodeHasLabel(state,nodeLabels.nodeId,label)).thenReturn(true);
       when(store.nodeRemoveLabel(state,nodeLabels.nodeId,label)).thenReturn(true);
       when(store.nodeAddLabel(state,nodeLabels.nodeId,label)).thenReturn(false);
       Collection<Long> nodes=allLabels.get(label);
       if (nodes == null) {
-        nodes=new ArrayList<Long>();
+        nodes=new ArrayList<>();
         allLabels.put(label,nodes);
       }
       nodes.add(nodeLabels.nodeId);
     }
   }
   for (  Map.Entry<Long,Collection<Long>> entry : allLabels.entrySet()) {
-    when(store.nodesGetForLabel(state,entry.getKey())).then(asAnswer(entry.getValue()));
+    when(store.nodesGetForLabel(state,entry.getKey())).then(answerAsPrimitiveLongIteratorFrom(entry.getValue()));
   }
 }
