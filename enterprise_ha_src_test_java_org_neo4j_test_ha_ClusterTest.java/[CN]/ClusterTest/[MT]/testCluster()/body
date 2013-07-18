@@ -1,10 +1,15 @@
 {
-  ClusterManager clusterManager=new ClusterManager(fromXml(getClass().getResource("/threeinstances.xml").toURI()),TargetDirectory.forTest(getClass()).directory("testCluster",true),MapUtil.stringMap());
+  ClusterManager clusterManager=new ClusterManager(fromXml(getClass().getResource("/threeinstances.xml").toURI()),TargetDirectory.forTest(getClass()).directory("testCluster",true),MapUtil.stringMap(HaSettings.ha_server.name(),":6001-6005"));
   clusterManager.start();
+  clusterManager.getDefaultCluster().await(ClusterManager.allSeesAllAsAvailable());
   GraphDatabaseAPI master=clusterManager.getDefaultCluster().getMaster();
   Transaction tx=master.beginTx();
-  master.createNode();
+  Node node=master.createNode();
+  long nodeId=node.getId();
+  node.setProperty("foo","bar");
   tx.success();
   tx.finish();
+  node=clusterManager.getDefaultCluster().getAnySlave().getNodeById(nodeId);
+  System.out.println(node.getProperty("foo"));
   clusterManager.stop();
 }
