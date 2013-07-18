@@ -3,10 +3,10 @@
   ClusterManager clusterManager=new ClusterManager(fromXml(getClass().getResource("/twoclustertest.xml").toURI()),root,MapUtil.stringMap());
   try {
     clusterManager.start();
-    ManagedCluster cluster=clusterManager.getDefaultCluster();
+    ManagedCluster cluster1=clusterManager.getCluster("neo4j.ha");
     long cluster1NodeId;
 {
-      GraphDatabaseService master=cluster.getMaster();
+      GraphDatabaseService master=cluster1.getMaster();
       logging.getLogger().info("CREATE NODE");
       Transaction tx=master.beginTx();
       Node node=master.createNode();
@@ -29,7 +29,7 @@
       tx.success();
       tx.finish();
     }
-    for (    HighlyAvailableGraphDatabase highlyAvailableGraphDatabase : cluster.getAllMembers()) {
+    for (    HighlyAvailableGraphDatabase highlyAvailableGraphDatabase : cluster1.getAllMembers()) {
       highlyAvailableGraphDatabase.getDependencyResolver().resolveDependency(UpdatePuller.class).pullUpdates();
       assertEquals("neo4j.ha",highlyAvailableGraphDatabase.getNodeById(cluster1NodeId).getProperty("cluster"));
     }
