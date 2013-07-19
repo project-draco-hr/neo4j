@@ -27,11 +27,13 @@
   }
 );
   clusterClient.addClusterListener(new ClusterListener.Adapter(){
+    boolean hasRequestedElection=false;
     @Override public void enteredCluster(    ClusterConfiguration clusterConfiguration){
+      hasRequestedElection=true;
       clusterClient.performRoleElections();
     }
     @Override public void elected(    String role,    InstanceId instanceId,    URI electedMember){
-      if (role.equals(ClusterConfiguration.COORDINATOR)) {
+      if (hasRequestedElection && role.equals(ClusterConfiguration.COORDINATOR)) {
         clusterClient.refreshSnapshot();
         clusterClient.removeClusterListener(this);
       }
