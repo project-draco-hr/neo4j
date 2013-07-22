@@ -15,7 +15,13 @@
     tx.success();
     tx.finish();
     slave=new HighlyAvailableGraphDatabaseFactory().newHighlyAvailableDatabaseBuilder(slaveDir.getAbsolutePath()).setConfig(ClusterSettings.server_id,"2").setConfig(ClusterSettings.initial_hosts,":5001").setConfig(HaSettings.pull_interval,"0").newGraphDatabase();
-    assertEquals("master",slave.getNodeById(nodeId).getProperty("from"));
+    Transaction transaction=slave.beginTx();
+    try {
+      assertEquals("master",slave.getNodeById(nodeId).getProperty("from"));
+    }
+  finally {
+      transaction.finish();
+    }
   }
   finally {
     if (slave != null) {
