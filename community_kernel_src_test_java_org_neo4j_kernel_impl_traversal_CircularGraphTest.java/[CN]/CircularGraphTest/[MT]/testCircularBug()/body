@@ -1,10 +1,14 @@
 {
   final long timestamp=3;
   Transaction tx=beginTx();
-  getNodeWithName("2").setProperty("timestamp",1L);
-  getNodeWithName("3").setProperty("timestamp",2L);
-  tx.success();
-  tx.finish();
+  try {
+    getNodeWithName("2").setProperty("timestamp",1L);
+    getNodeWithName("3").setProperty("timestamp",2L);
+    tx.success();
+  }
+  finally {
+    tx.finish();
+  }
   final RelationshipType type=DynamicRelationshipType.withName("TO");
   Traverser t=node("1").traverse(Order.DEPTH_FIRST,new StopEvaluator(){
     public boolean isStopNode(    TraversalPosition position){
@@ -28,7 +32,14 @@
   }
 ,type,Direction.OUTGOING);
   Iterator<Node> nodes=t.iterator();
-  assertEquals("2",nodes.next().getProperty("name"));
-  assertEquals("3",nodes.next().getProperty("name"));
-  assertFalse(nodes.hasNext());
+  Transaction tx2=beginTx();
+  try {
+    assertEquals("2",nodes.next().getProperty("name"));
+    assertEquals("3",nodes.next().getProperty("name"));
+    assertFalse(nodes.hasNext());
+    tx2.success();
+  }
+  finally {
+    tx2.finish();
+  }
 }

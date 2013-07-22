@@ -1,0 +1,25 @@
+{
+  labelId=7;
+  propertyKeyId=15;
+  IndexPopulator populator=mock(IndexPopulator.class);
+  IndexAccessor accessor=mock(IndexAccessor.class);
+  CountDownLatch latch=new CountDownLatch(1);
+  doAnswer(afterAwaiting(latch)).when(populator).add(anyLong(),any());
+  IndexingService indexingService=newIndexingServiceWithMockedDependencies(populator,accessor,withData(add(1,"value1")));
+  life.start();
+  indexingService.createIndex(IndexRule.indexRule(0,labelId,propertyKeyId,PROVIDER_DESCRIPTOR));
+  IndexProxy proxy=indexingService.getProxyForRule(0);
+  assertEquals(InternalIndexState.POPULATING,proxy.getState());
+  proxy.update(withData(add(2,"value2")));
+  latch.countDown();
+  verify(populator,timeout(1000)).close(true);
+  assertEquals(InternalIndexState.ONLINE,proxy.getState());
+  InOrder order=inOrder(populator,accessor);
+  order.verify(populator).create();
+  order.verify(populator).add(1,"value1");
+  order.verify(populator).update(argThat(containsAll(withData())));
+  order.verify(populator).update(argThat(containsAll(withData(add(2,"value2")))));
+  order.verify(populator).close(true);
+  verifyNoMoreInteractions(populator);
+  verifyZeroInteractions(accessor);
+}

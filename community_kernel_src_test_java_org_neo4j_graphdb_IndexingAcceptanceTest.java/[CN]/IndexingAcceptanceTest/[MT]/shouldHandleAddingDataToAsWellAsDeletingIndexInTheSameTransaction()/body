@@ -1,0 +1,40 @@
+{
+  GraphDatabaseService beansAPI=dbRule.getGraphDatabaseAPI();
+  IndexDefinition index=null;
+  String key="key";
+{
+    Transaction tx=beansAPI.beginTx();
+    try {
+      Node node=beansAPI.createNode(MY_LABEL);
+      node.setProperty(key,"value");
+      index=beansAPI.schema().indexFor(MY_LABEL).on(key).create();
+      tx.success();
+    }
+  finally {
+      tx.finish();
+    }
+    waitForIndex(beansAPI,index);
+  }
+  Transaction tx=beansAPI.beginTx();
+  try {
+    Node node=beansAPI.createNode(MY_LABEL);
+    node.setProperty(key,"other value");
+    index.drop();
+    tx.success();
+  }
+  finally {
+    tx.finish();
+  }
+  tx=beansAPI.beginTx();
+  try {
+    assertEquals(emptySetOf(IndexDefinition.class),asSet(beansAPI.schema().getIndexes(MY_LABEL)));
+    beansAPI.schema().getIndexState(index);
+    fail("Should not succeed");
+  }
+ catch (  NotFoundException e) {
+    assertThat(e.getMessage(),containsString(MY_LABEL.name()));
+  }
+ finally {
+    tx.finish();
+  }
+}

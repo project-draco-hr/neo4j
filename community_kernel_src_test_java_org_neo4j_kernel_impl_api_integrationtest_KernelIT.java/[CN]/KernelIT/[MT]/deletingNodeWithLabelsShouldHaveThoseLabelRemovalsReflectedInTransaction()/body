@@ -1,0 +1,21 @@
+{
+  Transaction tx=db.beginTx();
+  Label label=label("labello");
+  Node node=db.createNode(label);
+  tx.success();
+  tx.finish();
+  tx=db.beginTx();
+  StatementOperations context=statementContextProvider.getCtxForWriting().asStatementOperations();
+  StatementState statement=statementContextProvider.statementForWriting();
+  context.nodeDelete(statement,node.getId());
+  long labelId=context.labelGetForName(statement,label.name());
+  Set<Long> labels=asSet(context.nodeGetLabels(statement,node.getId()));
+  boolean labelIsSet=context.nodeHasLabel(statement,node.getId(),labelId);
+  Set<Long> nodes=asSet(context.nodesGetForLabel(statement,labelId));
+  context.close(statement);
+  tx.success();
+  tx.finish();
+  assertEquals(emptySetOf(Long.class),nodes);
+  assertEquals(emptySetOf(Long.class),labels);
+  assertFalse("Label should not be set on node here",labelIsSet);
+}

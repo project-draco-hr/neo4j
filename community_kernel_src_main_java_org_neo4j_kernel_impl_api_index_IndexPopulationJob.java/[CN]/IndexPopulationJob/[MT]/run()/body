@@ -1,0 +1,60 @@
+{
+  boolean success=false;
+  Throwable failureCause=null;
+  try {
+    log.info(format("Index population started for label id %d on property id %d",descriptor.getLabelId(),descriptor.getPropertyKeyId()));
+    log.flush();
+    populator.create();
+    indexAllNodes();
+    if (cancelled)     return;
+    Callable<Void> duringFlip=new Callable<Void>(){
+      @Override public Void call() throws Exception {
+        populateFromQueueIfAvailable(Long.MAX_VALUE);
+        populator.close(true);
+        updateableSchemaState.clear();
+        return null;
+      }
+    }
+;
+    flipper.flip(duringFlip,new FailedIndexProxyFactory(){
+      @Override public IndexProxy create(      Throwable failure){
+        return new FailedIndexProxy(descriptor,providerDescriptor,populator,failure(failure));
+      }
+    }
+);
+    success=true;
+    log.info(format("Index population completed for label id %d on property id %d, index is now online.",descriptor.getLabelId(),descriptor.getPropertyKeyId()));
+    log.flush();
+  }
+ catch (  Throwable t) {
+    if (t instanceof IndexPopulationFailedKernelException) {
+      Throwable cause=t.getCause();
+      if (cause instanceof IndexEntryConflictException) {
+        t=cause;
+      }
+    }
+    failureCause=t;
+    if (!(t instanceof IndexEntryConflictException)) {
+      log.error("Failed to populate index.",t);
+      log.flush();
+    }
+    flipper.flipTo(new FailedIndexProxy(descriptor,providerDescriptor,populator,failure(t)));
+  }
+ finally {
+    try {
+      if (!success) {
+        if (failureCause != null) {
+          populator.markAsFailed(failure(failureCause).asString());
+        }
+        populator.close(false);
+      }
+    }
+ catch (    Throwable e) {
+      log.warn("Unable to close failed populator",e);
+      log.flush();
+    }
+ finally {
+      doneSignal.countDown();
+    }
+  }
+}

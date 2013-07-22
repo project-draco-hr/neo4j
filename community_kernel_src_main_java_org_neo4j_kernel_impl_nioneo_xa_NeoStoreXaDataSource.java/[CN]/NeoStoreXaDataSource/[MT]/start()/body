@@ -11,11 +11,25 @@
     tf=new TransactionFactory();
   }
   neoStore=storeFactory.newNeoStore(store);
-  xaContainer=xaFactory.newXaContainer(this,config.get(Configuration.logical_log),new CommandFactory(neoStore),tf,stateFactory,providers);
+  schemaCache=new SchemaCache(Collections.<SchemaRule>emptyList());
+  final NodeManager nodeManager=dependencyResolver.resolveDependency(NodeManager.class);
+  Iterator<? extends Cache<?>> caches=nodeManager.caches().iterator();
+  persistenceCache=new PersistenceCache((LockStripedCache<NodeImpl>)caches.next(),(LockStripedCache<RelationshipImpl>)caches.next(),new Thunk<GraphPropertiesImpl>(){
+    @Override public GraphPropertiesImpl evaluate(){
+      return nodeManager.getGraphProperties();
+    }
+  }
+);
+  cacheAccess=new BridgingCacheAccess(nodeManager,schemaCache,updateableSchemaState,persistenceCache);
+  final SchemaIndexProvider indexProvider=dependencyResolver.resolveDependency(SchemaIndexProvider.class,HIGHEST_PRIORITIZED_OR_NONE);
+  providerMap=new DefaultSchemaIndexProviderMap(indexProvider);
+  indexingService=life.add(new IndexingService(scheduler,providerMap,new NeoStoreIndexStoreView(neoStore),updateableSchemaState,logging));
+  xaContainer=xaFactory.newXaContainer(this,config.get(Configuration.logical_log),new CommandFactory(neoStore,indexingService),tf,stateFactory,providers);
   try {
     if (!readOnly) {
       neoStore.setRecoveredStatus(true);
       try {
+        indexingService.initIndexes(loadIndexRules());
         xaContainer.openLogicalLog();
       }
   finally {
@@ -32,9 +46,11 @@
     this.idGenerators.put(Node.class,neoStore.getNodeStore());
     this.idGenerators.put(Relationship.class,neoStore.getRelationshipStore());
     this.idGenerators.put(RelationshipType.class,neoStore.getRelationshipTypeStore());
+    this.idGenerators.put(Label.class,neoStore.getLabelTokenStore());
     this.idGenerators.put(PropertyStore.class,neoStore.getPropertyStore());
-    this.idGenerators.put(PropertyIndex.class,neoStore.getPropertyStore().getIndexStore());
+    this.idGenerators.put(PropertyKeyTokenRecord.class,neoStore.getPropertyStore().getPropertyKeyTokenStore());
     setLogicalLogAtCreationTime(xaContainer.getLogicalLog());
+    life.start();
   }
  catch (  Throwable e) {
     try {

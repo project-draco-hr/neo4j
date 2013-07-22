@@ -9,7 +9,7 @@
     assert success;
   }
   createIdGenerator(new File(getStorageFileName().getPath() + ".id"));
-  openIdGenerator(false);
+  openIdGenerator();
   setHighId(1);
   FileChannel fileChannel=getFileChannel();
   long highId=0;
@@ -17,12 +17,12 @@
   try {
     long fileSize=fileChannel.size();
     boolean fullRebuild=true;
-    if ((boolean)conf.get(Configuration.rebuild_idgenerators_fast)) {
+    if (conf.get(Configuration.rebuild_idgenerators_fast)) {
       fullRebuild=false;
       highId=findHighIdBackwards();
     }
     ByteBuffer byteBuffer=ByteBuffer.wrap(new byte[1]);
-    LinkedList<Long> freeIdList=new LinkedList<Long>();
+    LinkedList<Long> freeIdList=new LinkedList<>();
     if (fullRebuild) {
       for (long i=1; i * getBlockSize() < fileSize; i++) {
         fileChannel.position(i * getBlockSize());
@@ -36,7 +36,7 @@
           highId=i;
           setHighId(highId + 1);
           while (!freeIdList.isEmpty()) {
-            freeBlockId(freeIdList.removeFirst());
+            freeId(freeIdList.removeFirst());
             defraggedCount++;
           }
         }
@@ -48,9 +48,7 @@
   }
   setHighId(highId + 1);
   stringLogger.debug("[" + getStorageFileName() + "] high id="+ getHighId()+ " (defragged="+ defraggedCount+ ")");
-  if (stringLogger != null) {
-    stringLogger.logMessage(getStorageFileName() + " rebuild id generator, highId=" + getHighId()+ " defragged count="+ defraggedCount,true);
-  }
+  stringLogger.logMessage(getStorageFileName() + " rebuild id generator, highId=" + getHighId()+ " defragged count="+ defraggedCount,true);
   closeIdGenerator();
-  openIdGenerator(false);
+  openIdGenerator();
 }

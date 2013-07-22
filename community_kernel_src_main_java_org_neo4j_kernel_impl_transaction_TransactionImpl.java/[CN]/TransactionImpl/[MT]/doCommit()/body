@@ -4,9 +4,7 @@
   if (!onePhase) {
     status=Status.STATUS_PREPARING;
     LinkedList<Xid> preparedXids=new LinkedList<Xid>();
-    Iterator<ResourceElement> itr=resourceList.iterator();
-    while (itr.hasNext()) {
-      ResourceElement re=itr.next();
+    for (    ResourceElement re : resourceList) {
       if (!preparedXids.contains(re.getXid())) {
         preparedXids.add(re.getXid());
         int vote=re.getResource().prepare(re.getXid());
@@ -25,13 +23,13 @@
         re.setStatus(RS_READONLY);
       }
     }
-    status=Status.STATUS_PREPARED;
-  }
-  if (!onePhase && readOnly) {
-    status=Status.STATUS_COMMITTED;
-    return;
-  }
-  if (!onePhase) {
+    if (readOnly) {
+      status=Status.STATUS_COMMITTED;
+      return;
+    }
+ else {
+      status=Status.STATUS_PREPARED;
+    }
     try {
       txManager.getTxLog().markAsCommitting(getGlobalId(),forceMode);
     }
@@ -42,9 +40,7 @@
     }
   }
   status=Status.STATUS_COMMITTING;
-  Iterator<ResourceElement> itr=resourceList.iterator();
-  while (itr.hasNext()) {
-    ResourceElement re=itr.next();
+  for (  ResourceElement re : resourceList) {
     if (re.getStatus() != RS_READONLY) {
       try {
         re.getResource().commit(re.getXid(),onePhase);

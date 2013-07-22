@@ -1,0 +1,36 @@
+{
+  GraphDatabaseService beansAPI=dbRule.getGraphDatabaseAPI();
+  long id;
+{
+    Transaction tx=beansAPI.beginTx();
+    IndexDefinition indexDefinition;
+    try {
+      Node myNode=beansAPI.createNode();
+      id=myNode.getId();
+      myNode.setProperty("key0",true);
+      myNode.setProperty("key1",true);
+      indexDefinition=beansAPI.schema().indexFor(MY_LABEL).on("key2").create();
+      tx.success();
+    }
+  finally {
+      tx.finish();
+    }
+    waitForIndex(beansAPI,indexDefinition);
+  }
+  Node myNode=beansAPI.getNodeById(id);
+{
+    Transaction tx=beansAPI.beginTx();
+    try {
+      myNode.addLabel(MY_LABEL);
+      myNode.setProperty("key2",LONG_STRING);
+      myNode.setProperty("key3",LONG_STRING);
+      tx.success();
+    }
+  finally {
+      tx.finish();
+    }
+  }
+  assertThat(myNode,inTx(beansAPI,hasProperty("key2").withValue(LONG_STRING)));
+  assertThat(myNode,inTx(beansAPI,hasProperty("key3").withValue(LONG_STRING)));
+  assertThat(findNodesByLabelAndProperty(MY_LABEL,"key2",LONG_STRING,beansAPI),containsOnly(myNode));
+}

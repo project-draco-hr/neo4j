@@ -1,0 +1,25 @@
+{
+  long id=idGenerator.nextId(Node.class);
+  NodeImpl node=new NodeImpl(id,true);
+  NodeProxy proxy=new NodeProxy(id,nodeLookup,statementCtxProvider);
+  TransactionState transactionState=getTransactionState();
+  transactionState.acquireWriteLock(proxy);
+  boolean success=false;
+  try {
+    persistenceManager.nodeCreate(id);
+    transactionState.createNode(id);
+    if (labels != null) {
+      for (      Label label : labels) {
+        proxy.addLabel(label);
+      }
+    }
+    nodeCache.put(node);
+    success=true;
+    return proxy;
+  }
+  finally {
+    if (!success) {
+      setRollbackOnly();
+    }
+  }
+}

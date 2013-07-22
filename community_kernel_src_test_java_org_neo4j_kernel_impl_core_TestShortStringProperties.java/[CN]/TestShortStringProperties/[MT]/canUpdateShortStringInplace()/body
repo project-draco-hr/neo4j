@@ -1,15 +1,21 @@
 {
-  long recordCount=dynamicRecordsInUse();
-  long propCount=propertyRecordsInUse();
-  Node node=graphdb.getGraphDatabaseService().createNode();
-  node.setProperty("key","value");
-  newTx();
-  assertEquals(recordCount,dynamicRecordsInUse());
-  assertEquals(propCount + 1,propertyRecordsInUse());
-  assertEquals("value",node.getProperty("key"));
-  node.setProperty("key","other");
-  commit();
-  assertEquals(recordCount,dynamicRecordsInUse());
-  assertEquals(propCount + 1,propertyRecordsInUse());
-  assertEquals("other",node.getProperty("key"));
+  try {
+    long recordCount=dynamicRecordsInUse();
+    long propCount=propertyRecordsInUse();
+    Node node=graphdb.getGraphDatabaseService().createNode();
+    node.setProperty("key","value");
+    newTx();
+    assertEquals(recordCount,dynamicRecordsInUse());
+    assertEquals(propCount + 1,propertyRecordsInUse());
+    assertEquals("value",node.getProperty("key"));
+    node.setProperty("key","other");
+    commit();
+    assertEquals(recordCount,dynamicRecordsInUse());
+    assertEquals(propCount + 1,propertyRecordsInUse());
+    assertThat(node,inTx(graphdb.getGraphDatabaseService(),hasProperty("key").withValue("other")));
+  }
+ catch (  Exception e) {
+    e.printStackTrace();
+    throw e;
+  }
 }

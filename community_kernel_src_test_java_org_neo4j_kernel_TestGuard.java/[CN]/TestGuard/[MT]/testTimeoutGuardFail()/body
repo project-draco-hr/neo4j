@@ -1,22 +1,13 @@
 {
-  GraphDatabaseAPI db=(GraphDatabaseAPI)new TestGraphDatabaseFactory().newImpermanentDatabaseBuilder().setConfig(GraphDatabaseSettings.execution_guard_enabled,GraphDatabaseSetting.TRUE).newGraphDatabase();
+  GraphDatabaseAPI db=(GraphDatabaseAPI)new TestGraphDatabaseFactory().newImpermanentDatabaseBuilder().setConfig(GraphDatabaseSettings.execution_guard_enabled,Settings.TRUE).newGraphDatabase();
   db.beginTx();
-  db.getGuard().startTimeout(200);
-  int i=0;
+  db.getDependencyResolver().resolveDependency(Guard.class).startTimeout(50);
+  sleep(100);
   try {
-    for (i=0; i < 1000; i++) {
-      db.createNode();
-      try {
-        sleep(1);
-      }
- catch (      InterruptedException e) {
-      }
-    }
-    fail();
+    db.createNode();
+    fail("Expected guard to stop this");
   }
  catch (  GuardTimeoutException e) {
   }
-  assertTrue(i > 1);
-  assertTrue(i < 500);
   db.shutdown();
 }

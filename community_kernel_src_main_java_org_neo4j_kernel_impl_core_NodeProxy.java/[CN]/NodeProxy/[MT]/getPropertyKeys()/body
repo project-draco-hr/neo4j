@@ -1,3 +1,21 @@
 {
-  return nodeLookup.lookup(nodeId).getPropertyKeys(nodeLookup.getNodeManager());
+  final StatementOperationParts context=statementCtxProvider.getCtxForReading();
+  final StatementState state=statementCtxProvider.statementForReading();
+  try {
+    List<String> keys=new ArrayList<>();
+    PrimitiveLongIterator keyIds=context.entityReadOperations().nodeGetPropertyKeys(state,getId());
+    while (keyIds.hasNext()) {
+      keys.add(context.keyReadOperations().propertyKeyGetName(state,keyIds.next()));
+    }
+    return keys;
+  }
+ catch (  EntityNotFoundException e) {
+    throw new NotFoundException("Node not found",e);
+  }
+catch (  PropertyKeyIdNotFoundException e) {
+    throw new ThisShouldNotHappenError("Jake","Property key retrieved through kernel API should exist.");
+  }
+ finally {
+    context.close(state);
+  }
 }

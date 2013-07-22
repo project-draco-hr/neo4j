@@ -1,3 +1,21 @@
 {
-  return nodeLookup.lookup(nodeId).getProperty(nodeLookup.getNodeManager(),key,defaultValue);
+  if (null == key)   throw new IllegalArgumentException("(null) property key is not allowed");
+  StatementOperationParts context=statementCtxProvider.getCtxForReading();
+  StatementState state=statementCtxProvider.statementForReading();
+  try {
+    long propertyKeyId=context.keyReadOperations().propertyKeyGetForName(state,key);
+    return context.entityReadOperations().nodeGetProperty(state,nodeId,propertyKeyId).value(defaultValue);
+  }
+ catch (  EntityNotFoundException e) {
+    throw new NotFoundException(e);
+  }
+catch (  PropertyKeyIdNotFoundException e) {
+    return defaultValue;
+  }
+catch (  PropertyKeyNotFoundException e) {
+    return defaultValue;
+  }
+ finally {
+    context.close(state);
+  }
 }

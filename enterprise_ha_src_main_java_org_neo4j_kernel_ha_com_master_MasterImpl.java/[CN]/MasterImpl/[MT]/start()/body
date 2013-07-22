@@ -4,11 +4,7 @@
   this.unfinishedTransactionsExecutor.scheduleWithFixedDelay(new Runnable(){
     @Override public void run(){
       try {
-        Map<RequestContext,MasterTransaction> safeTransactions=null;
-synchronized (transactions) {
-          safeTransactions=new HashMap<RequestContext,MasterTransaction>(transactions);
-        }
-        for (        Map.Entry<RequestContext,MasterTransaction> entry : safeTransactions.entrySet()) {
+        for (        Map.Entry<RequestContext,MasterTransaction> entry : transactions()) {
           long time=entry.getValue().timeLastSuspended.get();
           if ((time != 0 && System.currentTimeMillis() - time >= unfinishedTransactionThresholdMillis) || entry.getValue().finishAsap()) {
             long displayableTime=(time == 0 ? 0 : (System.currentTimeMillis() - time));
@@ -28,6 +24,15 @@ catch (            Throwable t) {
       }
  catch (      Throwable t) {
         msgLog.logMessage("Exception in MasterImpl",t);
+      }
+    }
+    /** 
+ * Create a copy to make iteration safe, while minimizing the duration of the synchronized region. 
+ */
+    @SuppressWarnings("SynchronizationOnLocalVariableOrMethodParameter") private Iterable<Map.Entry<RequestContext,MasterTransaction>> transactions(){
+      Map<RequestContext,MasterTransaction> transactions=MasterImpl.this.transactions;
+synchronized (transactions) {
+        return new HashMap<RequestContext,MasterTransaction>(transactions).entrySet();
       }
     }
   }

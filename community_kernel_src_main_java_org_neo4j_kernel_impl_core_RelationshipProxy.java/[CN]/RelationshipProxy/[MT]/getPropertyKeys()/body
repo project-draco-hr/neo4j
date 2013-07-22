@@ -1,3 +1,21 @@
 {
-  return relationshipLookups.lookupRelationship(relId).getPropertyKeys(relationshipLookups.getNodeManager());
+  final StatementOperationParts context=statementCtxProvider.getCtxForReading();
+  final StatementState state=statementCtxProvider.statementForReading();
+  try {
+    List<String> keys=new ArrayList<>();
+    PrimitiveLongIterator keyIds=context.entityReadOperations().relationshipGetPropertyKeys(state,getId());
+    while (keyIds.hasNext()) {
+      keys.add(context.keyReadOperations().propertyKeyGetName(state,keyIds.next()));
+    }
+    return keys;
+  }
+ catch (  EntityNotFoundException e) {
+    throw new NotFoundException("Relationship not found",e);
+  }
+catch (  PropertyKeyIdNotFoundException e) {
+    throw new ThisShouldNotHappenError("Jake","Property key retrieved through kernel API should exist.");
+  }
+ finally {
+    context.close(state);
+  }
 }

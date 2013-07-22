@@ -1,0 +1,25 @@
+{
+  String indexProperty="indexProperty";
+  GatheringIndexWriter writer=newWriter(indexProperty);
+  createIndex(db,myLabel,indexProperty);
+  String otherProperty="otherProperty";
+  int value=12;
+  int otherValue=17;
+  Node node=createNode(map(indexProperty,value,otherProperty,otherValue));
+  assertThat(writer.updates.size(),equalTo(0));
+  Transaction tx=db.beginTx();
+  node.addLabel(myLabel);
+  tx.success();
+  tx.finish();
+  tx=db.beginTx();
+  try {
+    StatementOperations context=ctxProvider.getCtxForWriting().asStatementOperations();
+    StatementState state=ctxProvider.statementForWriting();
+    long propertyKey1=context.propertyKeyGetForName(state,indexProperty);
+    long[] labels=new long[]{context.labelGetForName(state,myLabel.name())};
+    assertThat(writer.updates,equalTo(asSet(NodePropertyUpdate.add(node.getId(),propertyKey1,value,labels))));
+  }
+  finally {
+    tx.finish();
+  }
+}

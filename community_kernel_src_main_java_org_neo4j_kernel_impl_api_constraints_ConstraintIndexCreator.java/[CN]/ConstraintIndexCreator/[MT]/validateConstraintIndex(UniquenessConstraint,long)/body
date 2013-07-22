@@ -1,0 +1,19 @@
+{
+  try {
+    indexingService.validateIndex(indexId);
+  }
+ catch (  IndexNotFoundKernelException e) {
+    throw new IllegalStateException(String.format("Index (indexId=%d) that we just created does not exist.",indexId));
+  }
+catch (  IndexPopulationFailedKernelException e) {
+    Throwable failure=e.getCause();
+    if (failure instanceof ConstraintVerificationFailedKernelException) {
+      throw new ConstraintCreationKernelException(constraint,failure);
+    }
+    if (failure instanceof IndexEntryConflictException) {
+      IndexEntryConflictException conflict=(IndexEntryConflictException)failure;
+      throw new ConstraintCreationKernelException(constraint,new ConstraintVerificationFailedKernelException(constraint,singleton(new ConstraintVerificationFailedKernelException.Evidence(conflict))));
+    }
+    throw new ConstraintCreationKernelException(constraint,failure);
+  }
+}

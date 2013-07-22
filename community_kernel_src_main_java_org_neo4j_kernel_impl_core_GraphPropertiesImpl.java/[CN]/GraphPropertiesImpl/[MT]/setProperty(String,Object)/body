@@ -1,0 +1,22 @@
+{
+  StatementOperationParts ctxForWriting=statementCtxProvider.getCtxForWriting();
+  StatementState state=statementCtxProvider.statementForWriting();
+  boolean success=false;
+  try {
+    long propertyKeyId=ctxForWriting.keyWriteOperations().propertyKeyGetOrCreateForName(state,key);
+    ctxForWriting.entityWriteOperations().graphSetProperty(state,property(propertyKeyId,value));
+    success=true;
+  }
+ catch (  PropertyKeyIdNotFoundException e) {
+    throw new ThisShouldNotHappenError("Stefan/Jake","A property key id disappeared under our feet");
+  }
+catch (  SchemaKernelException e) {
+    throw new IllegalArgumentException(e);
+  }
+ finally {
+    ctxForWriting.close(state);
+    if (!success) {
+      nodeManager.setRollbackOnly();
+    }
+  }
+}

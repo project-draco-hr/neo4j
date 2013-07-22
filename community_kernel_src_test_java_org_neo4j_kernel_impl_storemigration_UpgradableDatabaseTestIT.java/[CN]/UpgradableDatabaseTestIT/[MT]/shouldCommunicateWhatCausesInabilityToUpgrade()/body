@@ -1,0 +1,16 @@
+{
+  URL legacyStoreResource=getClass().getResource("legacystore/exampledb/neostore");
+  File resourceDirectory=new File(legacyStoreResource.getFile()).getParentFile();
+  File workingDirectory=new File("target/" + UpgradableDatabaseTestIT.class.getSimpleName());
+  FileUtils.deleteRecursively(workingDirectory);
+  assertTrue(workingDirectory.mkdirs());
+  copyRecursively(resourceDirectory,workingDirectory);
+  changeVersionNumber(fileSystem,new File(workingDirectory,"neostore.nodestore.db"),"v0.9.5");
+  try {
+    new UpgradableDatabase(fileSystem).checkUpgradeable(new File(workingDirectory,"neostore"));
+    fail("should not have been able to upgrade");
+  }
+ catch (  StoreUpgrader.UnableToUpgradeException e) {
+    assertThat(e.getMessage(),is("'neostore.nodestore.db' has a store version number that we cannot upgrade " + "from. Expected 'NodeStore " + LEGACY_VERSION + "' but file is version 'NodeStore v0.9.5'."));
+  }
+}

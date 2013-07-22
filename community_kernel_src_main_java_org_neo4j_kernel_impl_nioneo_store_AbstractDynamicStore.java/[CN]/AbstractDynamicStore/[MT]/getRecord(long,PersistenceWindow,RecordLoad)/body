@@ -2,8 +2,10 @@
   DynamicRecord record=new DynamicRecord(blockId);
   Buffer buffer=window.getOffsettedBuffer(blockId);
   long firstInteger=buffer.getUnsignedInt();
-  int inUseByte=(int)((firstInteger & 0xF0000000) >> 28);
-  boolean inUse=inUseByte == Record.IN_USE.intValue();
+  boolean isStartRecord=(firstInteger & 0x80000000) == 0;
+  long maskedInteger=firstInteger & ~0x80000000;
+  int highNibbleInMaskedInteger=(int)((maskedInteger) >> 28);
+  boolean inUse=highNibbleInMaskedInteger == Record.IN_USE.intValue();
   if (!inUse && load != RecordLoad.FORCE) {
     throw new InvalidRecordException("DynamicRecord Not in use, blockId[" + blockId + "]");
   }
@@ -18,6 +20,7 @@
     if (load != RecordLoad.FORCE)     throw new InvalidRecordException("Next block set[" + nextBlock + "] current block illegal size["+ nrOfBytes+ "/"+ dataSize+ "]");
   }
   record.setInUse(inUse);
+  record.setStartRecord(isStartRecord);
   record.setLength(nrOfBytes);
   record.setNextBlock(longNextBlock);
   if (readData) {

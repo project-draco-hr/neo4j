@@ -1,0 +1,20 @@
+{
+  Set<NodePropertyUpdate> updates=new HashSet<NodePropertyUpdate>();
+  Transaction tx=db.beginTx();
+  try {
+    ThreadToStatementContextBridge ctxProvider=db.getDependencyResolver().resolveDependency(ThreadToStatementContextBridge.class);
+    StatementOperationParts context=ctxProvider.getCtxForWriting();
+    StatementState state=ctxProvider.statementForReading();
+    for (    int number : new int[]{4,10}) {
+      Node node=db.createNode(label);
+      node.setProperty(key,number);
+      updates.add(NodePropertyUpdate.add(node.getId(),context.keyReadOperations().propertyKeyGetForName(state,key),number,new long[]{context.keyReadOperations().labelGetForName(state,label.name())}));
+    }
+    context.close(state);
+    tx.success();
+    return updates;
+  }
+  finally {
+    tx.finish();
+  }
+}

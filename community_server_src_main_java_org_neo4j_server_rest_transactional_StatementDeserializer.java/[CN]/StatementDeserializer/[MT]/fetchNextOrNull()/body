@@ -1,0 +1,48 @@
+{
+  try {
+    if (errors != null) {
+      return null;
+    }
+switch (state) {
+case BEFORE_OUTER_ARRAY:
+      if (!beginsWithCorrectTokens()) {
+        return null;
+      }
+    state=State.IN_BODY;
+case IN_BODY:
+  String statement=null;
+Map<String,Object> parameters=null;
+JsonToken tok;
+while ((tok=input.nextToken()) != null && tok != END_OBJECT) {
+if (tok == END_ARRAY) {
+state=State.FINISHED;
+return null;
+}
+input.nextToken();
+String currentName=input.getCurrentName();
+if ("statement".equals(currentName)) {
+statement=input.nextTextValue();
+}
+ else if ("parameters".equals(currentName)) {
+parameters=readMap(input);
+}
+}
+if (statement == null) {
+addError(new Neo4jError(StatusCode.INVALID_REQUEST_FORMAT,new DeserializationException("No statement provided.")));
+return null;
+}
+return new Statement(statement,parameters == null ? NO_PARAMETERS : parameters);
+case FINISHED:
+return null;
+}
+return null;
+}
+ catch (JsonParseException e) {
+addError(new Neo4jError(StatusCode.INVALID_REQUEST_FORMAT,new DeserializationException("Unable to deserialize request",e)));
+return null;
+}
+catch (IOException e) {
+addError(new Neo4jError(StatusCode.NETWORK_ERROR,e));
+return null;
+}
+}

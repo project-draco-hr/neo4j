@@ -1,0 +1,32 @@
+{
+  StatementOperationParts context=ctxProvider.getCtxForReading();
+  String propertyKey=single(index.getPropertyKeys());
+  StatementState state=ctxProvider.statementForReading();
+  try {
+    long labelId=context.keyReadOperations().labelGetForName(state,index.getLabel().name());
+    long propertyKeyId=context.keyReadOperations().propertyKeyGetForName(state,propertyKey);
+    org.neo4j.kernel.api.index.InternalIndexState indexState=context.schemaReadOperations().indexGetState(state,context.schemaReadOperations().indexesGetForLabelAndPropertyKey(state,labelId,propertyKeyId));
+switch (indexState) {
+case POPULATING:
+      return POPULATING;
+case ONLINE:
+    return ONLINE;
+case FAILED:
+  return FAILED;
+default :
+throw new IllegalArgumentException(String.format("Illegal index state %s",indexState));
+}
+}
+ catch (LabelNotFoundKernelException e) {
+throw new NotFoundException(format("Label %s not found",index.getLabel().name()));
+}
+catch (PropertyKeyNotFoundException e) {
+throw new NotFoundException(format("Property key %s not found",propertyKey));
+}
+catch (SchemaRuleNotFoundException|IndexNotFoundKernelException e) {
+throw new NotFoundException(format("No index for label %s on property %s",index.getLabel().name(),propertyKey));
+}
+ finally {
+context.close(state);
+}
+}

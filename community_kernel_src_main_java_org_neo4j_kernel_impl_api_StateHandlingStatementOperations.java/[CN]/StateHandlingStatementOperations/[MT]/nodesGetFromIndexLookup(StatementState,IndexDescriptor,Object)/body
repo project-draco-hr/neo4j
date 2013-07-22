@@ -1,0 +1,14 @@
+{
+  PrimitiveLongIterator committed=entityReadDelegate.nodesGetFromIndexLookup(state,index,value);
+  if (!state.txState().hasChanges()) {
+    return committed;
+  }
+  DiffSets<Long> diff=state.txState().nodesWithChangedProperty(index.getPropertyKeyId(),value);
+  diff=diff.filterAdded(new HasLabelFilter(state,index.getLabelId()));
+  HasPropertyFilter hasPropertyFilter=new HasPropertyFilter(state,index.getPropertyKeyId(),value);
+  Iterator<Long> addedNodesWithLabel=state.txState().nodesWithLabelAdded(index.getLabelId()).iterator();
+  diff.addAll(Iterables.filter(hasPropertyFilter,addedNodesWithLabel));
+  Set<Long> removedNodesWithLabel=state.txState().nodesWithLabelChanged(index.getLabelId()).getRemoved();
+  diff.removeAll(Iterables.filter(hasPropertyFilter,removedNodesWithLabel.iterator()));
+  return state.txState().nodesDeletedInTx().applyPrimitiveLongIterator(diff.applyPrimitiveLongIterator(committed));
+}

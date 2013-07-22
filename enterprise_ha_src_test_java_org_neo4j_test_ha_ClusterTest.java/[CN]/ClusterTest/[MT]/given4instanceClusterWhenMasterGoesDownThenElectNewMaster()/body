@@ -1,18 +1,23 @@
 {
   ClusterManager clusterManager=new ClusterManager(fromXml(getClass().getResource("/fourinstances.xml").toURI()),TargetDirectory.forTest(getClass()).directory("4instances",true),MapUtil.stringMap());
-  clusterManager.start();
-  ClusterManager.ManagedCluster cluster=clusterManager.getDefaultCluster();
-  logging.getLogger().info("STOPPING MASTER");
-  cluster.shutdown(cluster.getMaster());
-  logging.getLogger().info("STOPPED MASTER");
-  cluster.await(ClusterManager.masterAvailable());
-  GraphDatabaseService master=cluster.getMaster();
-  logging.getLogger().info("CREATE NODE");
-  Transaction tx=master.beginTx();
-  master.createNode();
-  logging.getLogger().info("CREATED NODE");
-  tx.success();
-  tx.finish();
-  logging.getLogger().info("STOPPING CLUSTER");
-  clusterManager.stop();
+  try {
+    clusterManager.start();
+    ClusterManager.ManagedCluster cluster=clusterManager.getDefaultCluster();
+    cluster.await(ClusterManager.allSeesAllAsAvailable());
+    logging.getLogger().info("STOPPING MASTER");
+    cluster.shutdown(cluster.getMaster());
+    logging.getLogger().info("STOPPED MASTER");
+    cluster.await(ClusterManager.masterAvailable());
+    GraphDatabaseService master=cluster.getMaster();
+    logging.getLogger().info("CREATE NODE");
+    Transaction tx=master.beginTx();
+    master.createNode();
+    logging.getLogger().info("CREATED NODE");
+    tx.success();
+    tx.finish();
+    logging.getLogger().info("STOPPING CLUSTER");
+  }
+  finally {
+    clusterManager.stop();
+  }
 }

@@ -1,0 +1,38 @@
+{
+  Transaction previousTransaction=suspendTransaction();
+  try {
+    beginTransaction();
+    @SuppressWarnings("deprecation") KernelTransaction tx=txManager.getKernelTransaction();
+    StatementState state=tx.newStatementState();
+    boolean success=false;
+    try {
+      RESULT result;
+      StatementOperationParts context=tx.newStatementOperations();
+      try {
+        result=statement.perform(context,state);
+      }
+  finally {
+        context.lifecycleOperations().close(state);
+      }
+      success=true;
+      return result;
+    }
+  finally {
+      if (success) {
+        tx.commit();
+      }
+ else {
+        tx.rollback();
+      }
+    }
+  }
+ catch (  TransactionalException failure) {
+    previousTransaction=null;
+    throw failure;
+  }
+ finally {
+    if (previousTransaction != null) {
+      resumeTransaction(previousTransaction);
+    }
+  }
+}

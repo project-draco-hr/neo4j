@@ -1,11 +1,18 @@
 {
   EphemeralFileSystemAbstraction fileSystem=new EphemeralFileSystemAbstraction();
-  String storeDir="dir";
+  String storeDir="source" + nr;
   GraphDatabaseAPI db=(GraphDatabaseAPI)new TestGraphDatabaseFactory().setFileSystem(fileSystem).newImpermanentDatabase(storeDir);
   createSomeTransactions(db);
-  EphemeralFileSystemAbstraction snapshot=fileSystem.snapshot();
   DbRepresentation rep=DbRepresentation.of(db);
-  db.shutdown();
+  EphemeralFileSystemAbstraction snapshot;
+  if (cleanShutdown) {
+    db.shutdown();
+    snapshot=fileSystem.snapshot();
+  }
+ else {
+    snapshot=fileSystem.snapshot();
+    db.shutdown();
+  }
   GraphDatabaseAPI newDb=(GraphDatabaseAPI)new TestGraphDatabaseFactory().setFileSystem(snapshot).newImpermanentDatabase(storeDir);
   XaDataSource ds=newDb.getXaDataSourceManager().getNeoStoreDataSource();
   LogExtractor extractor=LogExtractor.from(snapshot,new File(storeDir));
@@ -14,7 +21,7 @@
     InMemoryLogBuffer buffer=new InMemoryLogBuffer();
     long txId=extractor.extractNext(buffer);
     assertEquals(expectedTxId++,txId);
-    if (expectedTxId == 9)     expectedTxId=-1;
+    if (expectedTxId == 11)     expectedTxId=-1;
     if (txId == -1)     break;
     ds.applyCommittedTransaction(txId,buffer);
   }

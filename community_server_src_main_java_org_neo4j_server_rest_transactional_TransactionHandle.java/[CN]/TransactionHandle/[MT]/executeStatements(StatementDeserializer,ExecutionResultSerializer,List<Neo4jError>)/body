@@ -1,0 +1,31 @@
+{
+  try {
+    while (statements.hasNext()) {
+      Statement statement=statements.next();
+      ExecutionResult result;
+      try {
+        result=engine.execute(statement.statement(),statement.parameters());
+        output.statementResult(result);
+      }
+ catch (      CypherException e) {
+        errors.add(new Neo4jError(EXCEPTION_MAPPING.apply(e),e));
+        break;
+      }
+catch (      IOException e) {
+        errors.add(new Neo4jError(StatusCode.NETWORK_ERROR,e));
+        break;
+      }
+catch (      RuntimeException e) {
+        errors.add(new Neo4jError(StatusCode.INTERNAL_STATEMENT_EXECUTION_ERROR,e));
+        break;
+      }
+    }
+    Iterator<Neo4jError> deserializationErrors=statements.errors();
+    while (deserializationErrors.hasNext()) {
+      errors.add(deserializationErrors.next());
+    }
+  }
+ catch (  RuntimeException e) {
+    errors.add(new Neo4jError(StatusCode.INTERNAL_DATABASE_ERROR,e));
+  }
+}

@@ -1,0 +1,15 @@
+{
+  if (txManager.getRecoveryError() != null) {
+    return;
+  }
+  kernelAPI.bootstrapAfterRecovery();
+  statementContextProvider.bootstrapAfterRecovery();
+  if (txManager instanceof TxManager) {
+    NeoStoreXaDataSource neoStoreDataSource=xaDataSourceManager.getNeoStoreDataSource();
+    storeId=neoStoreDataSource.getStoreId();
+    KernelDiagnostics.register(diagnosticsManager,InternalAbstractGraphDatabase.this,neoStoreDataSource);
+    if (isMaster) {
+      new RemoveOrphanConstraintIndexesOnStartup(txManager,statementContextProvider,logging).perform();
+    }
+  }
+}

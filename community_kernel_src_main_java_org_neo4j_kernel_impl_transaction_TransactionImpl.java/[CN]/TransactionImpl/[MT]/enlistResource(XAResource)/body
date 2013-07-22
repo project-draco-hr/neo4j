@@ -12,7 +12,6 @@
         byte branchId[]=txManager.getBranchId(xaRes);
         Xid xid=new XidImpl(globalId,branchId);
         resourceList.add(new ResourceElement(xid,xaRes));
-        hasChanges=true;
         xaRes.start(xid,XAResource.TMNOFLAGS);
         try {
           txManager.getTxLog().addBranch(globalId,branchId);
@@ -22,13 +21,13 @@
           txManager.setTmNotOk(e);
           throw Exceptions.withCause(new SystemException("TM encountered a problem, " + " error writing transaction log"),e);
         }
-        if (!hasAnyLocks())         getState().getTxHook().initializeTransaction(eventIdentifier);
+        if (!hasAnyLocks()) {
+          getState().getTxHook().initializeTransaction(eventIdentifier);
+        }
         return true;
       }
       Xid sameRmXid=null;
-      Iterator<ResourceElement> itr=resourceList.iterator();
-      while (itr.hasNext()) {
-        ResourceElement re=itr.next();
+      for (      ResourceElement re : resourceList) {
         if (sameRmXid == null && re.getResource().isSameRM(xaRes)) {
           sameRmXid=re.getXid();
         }

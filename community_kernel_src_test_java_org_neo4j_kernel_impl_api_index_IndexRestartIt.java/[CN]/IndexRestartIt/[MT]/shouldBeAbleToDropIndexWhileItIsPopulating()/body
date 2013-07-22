@@ -1,0 +1,15 @@
+{
+  startDb();
+  DoubleLatch populationCompletionLatch=provider.installPopulationJobCompletionLatch();
+  IndexDefinition index=createIndex();
+  populationCompletionLatch.awaitStart();
+  dropIndex(index,populationCompletionLatch);
+  assertThat(getIndexes(db,myLabel),inTx(db,hasSize(0)));
+  try {
+    getIndexState(db,index);
+    fail("This index should have been deleted");
+  }
+ catch (  NotFoundException e) {
+    assertThat(e.getMessage(),CoreMatchers.containsString(myLabel.name()));
+  }
+}

@@ -24,6 +24,7 @@
   if (cacheProvider == null) {
     throw new IllegalArgumentException("No cache type '" + cacheTypeName + "'");
   }
+  jobScheduler=life.add(new Neo4jJobScheduler(this.toString(),logging.getMessagesLog(Neo4jJobScheduler.class)));
   kernelEventHandlers=new KernelEventHandlers();
   caches=createCaches();
   diagnosticsManager=life.add(new DiagnosticsManager(logging.getMessagesLog(DiagnosticsManager.class)));
@@ -32,6 +33,7 @@
   txHook=createTxHook();
   guard=config.get(Configuration.execution_guard_enabled) ? new Guard(msgLog) : null;
   stateFactory=createTransactionStateFactory();
+  updateableSchemaState=new KernelSchemaStateStore(newSchemaStateMap());
   if (readOnly) {
     txManager=new ReadOnlyTxManager(xaDataSourceManager,logging.getMessagesLog(ReadOnlyTxManager.class));
   }
@@ -43,13 +45,11 @@
  else {
       TransactionManagerProvider provider;
       provider=Service.load(TransactionManagerProvider.class,serviceName);
-      if (provider == null) {
-        throw new IllegalStateException("Unknown transaction manager implementation: " + serviceName);
-      }
       txManager=provider.loadTransactionManager(this.storeDir.getPath(),xaDataSourceManager,kernelPanicEventGenerator,txHook,logging.getMessagesLog(AbstractTransactionManager.class),fileSystem,stateFactory);
     }
   }
   life.add(txManager);
+  cleanupService=life.add(createCleanupService());
   transactionEventHandlers=new TransactionEventHandlers(txManager);
   txIdGenerator=life.add(createTxIdGenerator());
   lockManager=createLockManager();
@@ -58,13 +58,18 @@
   persistenceSource=life.add(new NioNeoDbPersistenceSource(xaDataSourceManager));
   syncHook=new DefaultTxEventSyncHookFactory();
   persistenceManager=new PersistenceManager(logging.getMessagesLog(PersistenceManager.class),txManager,persistenceSource,syncHook);
-  propertyIndexManager=life.add(new PropertyIndexManager(persistenceManager,persistenceSource));
-  relationshipTypeHolder=life.add(new RelationshipTypeHolder(txManager,persistenceManager,persistenceSource,relationshipTypeCreator));
+  propertyKeyTokenHolder=life.add(new PropertyKeyTokenHolder(txManager,persistenceManager,persistenceSource,createPropertyKeyCreator()));
+  labelTokenHolder=life.add(new LabelTokenHolder(txManager,persistenceManager,persistenceSource,createLabelIdCreator()));
+  relationshipTypeTokenHolder=life.add(new RelationshipTypeTokenHolder(txManager,persistenceManager,persistenceSource,relationshipTypeCreator));
   caches.configure(cacheProvider,config);
   Cache<NodeImpl> nodeCache=diagnosticsManager.tryAppendProvider(caches.node());
   Cache<RelationshipImpl> relCache=diagnosticsManager.tryAppendProvider(caches.relationship());
+  kernelAPI=life.add(new Kernel(txManager,propertyKeyTokenHolder,labelTokenHolder,persistenceManager,xaDataSourceManager,lockManager,updateableSchemaState,dependencyResolver,this.isHighlyAvailable()));
+  txManager.setKernel(kernelAPI);
+  ThreadToStatementContextBridge statementBridge=readOnly ? new ThreadToStatementContextBridge.ReadOnly(kernelAPI,txManager,xaDataSourceManager) : new ThreadToStatementContextBridge(kernelAPI,txManager,xaDataSourceManager);
+  statementContextProvider=life.add(statementBridge);
   nodeManager=guard != null ? createGuardedNodeManager(readOnly,cacheProvider,nodeCache,relCache) : createNodeManager(readOnly,cacheProvider,nodeCache,relCache);
-  stateFactory.setDependencies(lockManager,propertyIndexManager,nodeManager,txHook,txIdGenerator);
+  stateFactory.setDependencies(lockManager,nodeManager,txHook,txIdGenerator);
   indexStore=life.add(new IndexStore(this.storeDir,fileSystem));
   diagnosticsManager.prependProvider(config);
   params=config.getParams();
@@ -73,6 +78,7 @@
   if (config.get(Configuration.load_kernel_extensions)) {
     life.add(kernelExtensions);
   }
+  schema=new SchemaImpl(statementContextProvider);
   indexManager=new IndexManagerImpl(config,indexStore,xaDataSourceManager,txManager,this);
   nodeAutoIndexer=life.add(new NodeAutoIndexerImpl(config,indexManager,nodeManager));
   relAutoIndexer=life.add(new RelationshipAutoIndexerImpl(config,indexManager,nodeManager));
@@ -81,7 +87,7 @@
   recoveryVerifier=createRecoveryVerifier();
   storeFactory=createStoreFactory();
   String keepLogicalLogsConfig=config.get(GraphDatabaseSettings.keep_logical_logs);
-  xaFactory=new XaFactory(config,txIdGenerator,txManager,logBufferFactory,fileSystem,logging,recoveryVerifier,LogPruneStrategies.fromConfigValue(fileSystem,keepLogicalLogsConfig));
+  xaFactory=new XaFactory(txIdGenerator,txManager,logBufferFactory,fileSystem,logging,recoveryVerifier,LogPruneStrategies.fromConfigValue(fileSystem,keepLogicalLogsConfig));
   createNeoDataSource();
   life.add(new MonitorGc(config,msgLog));
   life.add(new DatabaseAvailability());

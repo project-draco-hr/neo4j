@@ -1,0 +1,22 @@
+{
+  GraphDatabaseAPI db=dbRule.getGraphDatabaseAPI();
+  final TransactionManager tm=db.getDependencyResolver().resolveDependency(TransactionManager.class);
+  final Node node=createNode();
+  db.beginTx();
+  node.addLabel(Labels.MY_LABEL);
+  final Transaction jtaTx=tm.suspend();
+  OtherThreadExecutor<Boolean> otherThread=new OtherThreadExecutor<Boolean>("Thread to resume tx in",null);
+  boolean result=otherThread.execute(new OtherThreadExecutor.WorkerCommand<Boolean,Boolean>(){
+    @Override public Boolean doWork(    Boolean ignore){
+      try {
+        tm.resume(jtaTx);
+        return node.hasLabel(Labels.MY_LABEL);
+      }
+ catch (      Throwable e) {
+        throw new RuntimeException(e);
+      }
+    }
+  }
+);
+  assertTrue("The label should be visible when I've resumed the transaction.",result);
+}

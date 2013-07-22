@@ -1,0 +1,24 @@
+{
+  StatementState state=mock(StatementState.class);
+  LockHolder lockHolder=mock(LockHolder.class);
+  IndexReaderFactory indexReaderFactory=mock(IndexReaderFactory.class);
+  try {
+    IndexReader indexReader=mock(IndexReader.class);
+    when(indexReader.lookup(Matchers.any())).thenReturn(IteratorUtil.emptyPrimitiveLongIterator());
+    when(indexReaderFactory.newReader(anyLong())).thenReturn(indexReader);
+  }
+ catch (  IndexNotFoundKernelException e) {
+    throw new Error(e);
+  }
+  when(state.txState()).thenReturn(txState);
+  when(state.hasTxState()).thenReturn(true);
+  when(state.hasTxStateWithChanges()).thenAnswer(new Answer<Boolean>(){
+    @Override public Boolean answer(    InvocationOnMock invocation) throws Throwable {
+      return txState.hasChanges();
+    }
+  }
+);
+  when(state.locks()).thenReturn(lockHolder);
+  when(state.indexReaderFactory()).thenReturn(indexReaderFactory);
+  return state;
+}

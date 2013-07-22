@@ -1,0 +1,18 @@
+{
+  StatementOperationParts context=statementCtxProvider.getCtxForReading();
+  StatementState state=statementCtxProvider.statementForReading();
+  try {
+    long labelId=context.keyReadOperations().labelGetForName(state,label);
+    final PrimitiveLongIterator nodeIds=context.entityReadOperations().nodesGetForLabel(state,labelId);
+    return cleanupService.resourceIterator(map(new FunctionFromPrimitiveLong<Node>(){
+      @Override public Node apply(      long nodeId){
+        return nodeManager.getNodeById(nodeId);
+      }
+    }
+,nodeIds),state.closeable(context.lifecycleOperations()));
+  }
+ catch (  LabelNotFoundKernelException e) {
+    context.close(state);
+    return emptyIterator();
+  }
+}

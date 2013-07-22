@@ -1,0 +1,18 @@
+{
+  KernelAPI kernel=mockKernel();
+  TransitionalTxManagementKernelTransaction transactionContext=(TransitionalTxManagementKernelTransaction)kernel.newTransaction();
+  TransactionRegistry registry=mock(TransactionRegistry.class);
+  when(registry.begin()).thenReturn(1337l);
+  ExecutionEngine executionEngine=mock(ExecutionEngine.class);
+  when(executionEngine.execute("query",map())).thenThrow(new NullPointerException());
+  TransactionHandle handle=new TransactionHandle(kernel,executionEngine,registry,uriScheme,StringLogger.DEV_NULL);
+  ExecutionResultSerializer output=mock(ExecutionResultSerializer.class);
+  handle.execute(statements(new Statement("query",map())),output);
+  verify(transactionContext).rollback();
+  verify(registry).forget(1337l);
+  InOrder outputOrder=inOrder(output);
+  outputOrder.verify(output).transactionCommitUri(uriScheme.txCommitUri(1337));
+  outputOrder.verify(output).errors(argThat(hasErrors(StatusCode.INTERNAL_STATEMENT_EXECUTION_ERROR)));
+  outputOrder.verify(output).finish();
+  verifyNoMoreInteractions(output);
+}

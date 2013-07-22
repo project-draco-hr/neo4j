@@ -1,0 +1,16 @@
+{
+  labelId=7;
+  propertyKeyId=15;
+  IndexPopulator populator=mock(IndexPopulator.class);
+  IndexAccessor accessor=mock(IndexAccessor.class);
+  IndexingService indexingService=newIndexingServiceWithMockedDependencies(populator,accessor,withData());
+  life.start();
+  indexingService.createIndex(IndexRule.constraintIndexRule(0,labelId,propertyKeyId,PROVIDER_DESCRIPTOR,null));
+  IndexProxy proxy=indexingService.getProxyForRule(0);
+  verify(populator,timeout(1000)).close(true);
+  indexingService.activateIndex(0);
+  assertEquals(InternalIndexState.ONLINE,proxy.getState());
+  InOrder order=inOrder(populator,accessor);
+  order.verify(populator).create();
+  order.verify(populator).close(true);
+}

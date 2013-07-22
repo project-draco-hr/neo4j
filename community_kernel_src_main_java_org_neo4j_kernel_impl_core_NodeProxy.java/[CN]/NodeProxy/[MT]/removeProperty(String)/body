@@ -1,3 +1,20 @@
 {
-  return nodeLookup.lookup(nodeId,LockType.WRITE).removeProperty(nodeLookup.getNodeManager(),this,key);
+  StatementOperationParts context=statementCtxProvider.getCtxForWriting();
+  StatementState state=statementCtxProvider.statementForWriting();
+  try {
+    long propertyKeyId=context.keyWriteOperations().propertyKeyGetOrCreateForName(state,key);
+    return context.entityWriteOperations().nodeRemoveProperty(state,nodeId,propertyKeyId).value(null);
+  }
+ catch (  PropertyKeyIdNotFoundException e) {
+    throw new ThisShouldNotHappenError("Stefan/Jake","A property key id disappeared under our feet");
+  }
+catch (  EntityNotFoundException e) {
+    throw new NotFoundException(e);
+  }
+catch (  SchemaKernelException e) {
+    throw new IllegalArgumentException(e);
+  }
+ finally {
+    context.close(state);
+  }
 }

@@ -1,0 +1,28 @@
+{
+  final long[] labels=new long[labelCount + 1];
+  for (int i=1; i < labels.length; i++) {
+    final int offset=i;
+    fixture.apply(new GraphStoreFixture.Transaction(){
+      @Override protected void transactionData(      GraphStoreFixture.TransactionDataBuilder tx,      GraphStoreFixture.IdGenerator next){
+        tx.nodeLabel((int)(labels[offset]=next.label()),"label:" + offset);
+      }
+    }
+);
+  }
+  final List<DynamicRecord> chain=new ArrayList<>();
+  fixture.apply(new GraphStoreFixture.Transaction(){
+    @Override protected void transactionData(    GraphStoreFixture.TransactionDataBuilder tx,    GraphStoreFixture.IdGenerator next){
+      NodeRecord nodeRecord=new NodeRecord(next.node(),-1,-1);
+      DynamicRecord record1=inUse(new DynamicRecord(next.nodeLabel()));
+      DynamicRecord record2=inUse(new DynamicRecord(next.nodeLabel()));
+      DynamicRecord record3=inUse(new DynamicRecord(next.nodeLabel()));
+      labels[0]=nodeRecord.getLongId();
+      PreAllocatedRecords allocator=new PreAllocatedRecords(60);
+      chain.addAll(allocateFromNumbers(labels,asIterator(record1,record2,record3),allocator));
+      nodeRecord.setLabelField(dynamicPointer(chain),chain);
+      tx.create(nodeRecord);
+    }
+  }
+);
+  return chain;
+}

@@ -1,11 +1,21 @@
 {
-  if (parser.arguments().isEmpty()) {
-    throw new ShellException("Must supply the property key to " + "remove, like: rm title");
-  }
-  String key=parser.arguments().get(0);
   NodeOrRelationship thing=getCurrent(session);
-  if (thing.removeProperty(key) == null) {
-    out.println("Property '" + key + "' not found");
+  boolean forProperty=parser.options().containsKey("p");
+  boolean forLabel=parser.options().containsKey("l");
+  if (forProperty || !forLabel) {
+    if (parser.arguments().isEmpty()) {
+      throw new ShellException("Must supply the property key or label name to " + "remove, like: rm title");
+    }
+    String key=parser.arguments().get(0);
+    if (thing.removeProperty(key) == null) {
+      out.println("Property '" + key + "' not found");
+    }
+  }
+ else {
+    Node node=thing.asNode();
+    for (    Label label : parseLabels(parser)) {
+      node.removeLabel(label);
+    }
   }
   return Continuation.INPUT_COMPLETE;
 }

@@ -1,10 +1,5 @@
 {
-  try {
-    FileUtils.deleteRecursively(new File(DB_PATH));
-  }
- catch (  IOException e) {
-    throw new RuntimeException(e);
-  }
+  clearDbPath();
   GraphDatabaseService db=new GraphDatabaseFactory().newEmbeddedDatabase(DB_PATH);
   Transaction tx=db.beginTx();
   try {
@@ -16,12 +11,14 @@
     tx.finish();
   }
   ExecutionEngine engine=new ExecutionEngine(db);
+  tx=db.beginTx();
   ExecutionResult result=engine.execute("start n=node(*) where n.name! = 'my node' return n, n.name");
   List<String> columns=result.columns();
   Iterator<Node> n_column=result.columnAs("n");
   for (  Node node : IteratorUtil.asIterable(n_column)) {
     nodeResult=node + ": " + node.getProperty("name");
   }
+  tx.finish();
   result=engine.execute("start n=node(*) where n.name! = 'my node' return n, n.name");
   for (  Map<String,Object> row : result) {
     for (    Entry<String,Object> column : row.entrySet()) {

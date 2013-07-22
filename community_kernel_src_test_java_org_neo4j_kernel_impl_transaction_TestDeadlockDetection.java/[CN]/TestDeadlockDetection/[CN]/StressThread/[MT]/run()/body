@@ -10,36 +10,25 @@
           float f=rand.nextFloat();
           int n=rand.nextInt(resources.length);
           if (f < readWriteRatio) {
-            lm.getReadLock(resources[n]);
+            startedWaiting=currentTimeMillis();
+            lm.getReadLock(resources[n],tx);
+            startedWaiting=null;
             lockStack.push(READ);
           }
  else {
-            lm.getWriteLock(resources[n]);
+            startedWaiting=currentTimeMillis();
+            lm.getWriteLock(resources[n],tx);
+            startedWaiting=null;
             lockStack.push(WRITE);
           }
           resourceStack.push(resources[n]);
         }
  while (--depth > 0);
-        while (!lockStack.isEmpty()) {
-          if (lockStack.pop() == READ) {
-            lm.releaseReadLock(resourceStack.pop(),null);
-          }
- else {
-            lm.releaseWriteLock(resourceStack.pop(),null);
-          }
-        }
       }
  catch (      DeadlockDetectedException e) {
       }
  finally {
-        while (!lockStack.isEmpty()) {
-          if (lockStack.pop() == READ) {
-            lm.releaseReadLock(resourceStack.pop(),null);
-          }
- else {
-            lm.releaseWriteLock(resourceStack.pop(),null);
-          }
-        }
+        releaseAllLocks(lockStack,resourceStack);
       }
     }
   }

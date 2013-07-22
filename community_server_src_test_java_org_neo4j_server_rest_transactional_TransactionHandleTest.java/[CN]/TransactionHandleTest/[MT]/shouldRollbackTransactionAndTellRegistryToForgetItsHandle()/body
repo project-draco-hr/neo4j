@@ -1,0 +1,16 @@
+{
+  KernelAPI kernel=mockKernel();
+  TransitionalTxManagementKernelTransaction transactionContext=(TransitionalTxManagementKernelTransaction)kernel.newTransaction();
+  TransactionRegistry registry=mock(TransactionRegistry.class);
+  when(registry.begin()).thenReturn(1337l);
+  TransactionHandle handle=new TransactionHandle(kernel,mock(ExecutionEngine.class),registry,uriScheme,StringLogger.DEV_NULL);
+  ExecutionResultSerializer output=mock(ExecutionResultSerializer.class);
+  handle.rollback(output);
+  InOrder transactionOrder=inOrder(transactionContext,registry);
+  transactionOrder.verify(transactionContext).rollback();
+  transactionOrder.verify(registry).forget(1337l);
+  InOrder outputOrder=inOrder(output);
+  outputOrder.verify(output).errors(argThat(hasNoErrors()));
+  outputOrder.verify(output).finish();
+  verifyNoMoreInteractions(output);
+}

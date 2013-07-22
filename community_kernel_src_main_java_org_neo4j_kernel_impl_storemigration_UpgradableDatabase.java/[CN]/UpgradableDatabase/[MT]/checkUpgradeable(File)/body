@@ -1,5 +1,37 @@
 {
-  if (!storeFilesUpgradeable(neoStoreFile)) {
-    throw new StoreUpgrader.UnableToUpgradeException("Not all store files match the version required for successful upgrade");
+  File storeDirectory=neoStoreFile.getParentFile();
+  for (  StoreFile store : StoreFile.legacyStoreFiles()) {
+    String expectedVersion=store.legacyVersion();
+    FileChannel fileChannel=null;
+    byte[] expectedVersionBytes=UTF8.encode(expectedVersion);
+    try {
+      File storeFile=new File(storeDirectory,store.storeFileName());
+      if (!fs.fileExists(storeFile)) {
+        throw new StoreUpgrader.UnableToUpgradeException(String.format("Missing required store file " + "'%s'.",storeFile.getName()));
+      }
+      fileChannel=fs.open(storeFile,"r");
+      if (fileChannel.size() < expectedVersionBytes.length) {
+        throw new StoreUpgrader.UnableToUpgradeException(String.format("'%s' does not contain a store " + "version, please ensure that the original database was shut down in a clean state.",storeFile.getName()));
+      }
+      fileChannel.position(fileChannel.size() - expectedVersionBytes.length);
+      byte[] foundVersionBytes=new byte[expectedVersionBytes.length];
+      fileChannel.read(ByteBuffer.wrap(foundVersionBytes));
+      if (!expectedVersion.equals(UTF8.decode(foundVersionBytes))) {
+        throw new StoreUpgrader.UnableToUpgradeException(String.format("'%s' has a store version number that we cannot upgrade from. " + "Expected '%s' but file is version '%s'.",storeFile.getName(),expectedVersion,UTF8.decode(foundVersionBytes)));
+      }
+    }
+ catch (    IOException e) {
+      throw new RuntimeException(e);
+    }
+ finally {
+      if (fileChannel != null) {
+        try {
+          fileChannel.close();
+        }
+ catch (        IOException e) {
+          return;
+        }
+      }
+    }
   }
 }

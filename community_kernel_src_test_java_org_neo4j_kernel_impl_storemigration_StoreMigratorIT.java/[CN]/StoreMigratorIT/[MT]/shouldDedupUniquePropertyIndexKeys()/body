@@ -1,0 +1,20 @@
+{
+  LegacyStore legacyStore=new LegacyStore(fs,new File(getClass().getResource("legacystore/propkeydupdb/neostore").getFile()));
+  NeoStore neoStore=storeFactory.createNeoStore(storeFileName);
+  new StoreMigrator(monitor).migrate(legacyStore,neoStore);
+  legacyStore.close();
+  GraphDatabaseService db=new GraphDatabaseFactory().newEmbeddedDatabase(storeDir);
+  Node nodeA=getNodeWithName(db,"A");
+  assertThat(nodeA,inTx(db,hasProperty("name").withValue("A")));
+  Node nodeB=getNodeWithName(db,"B");
+  assertThat(nodeB,inTx(db,hasProperty("name").withValue("B")));
+  Node nodeC=getNodeWithName(db,"C");
+  assertThat(nodeC,inTx(db,hasProperty("name").withValue("C")));
+  assertThat(nodeC,inTx(db,hasProperty("other").withValue("a value")));
+  assertThat(nodeC,inTx(db,hasProperty("third").withValue("something")));
+  db.shutdown();
+  PropertyKeyTokenStore tokenStore=storeFactory.newPropertyKeyTokenStore(new File(storeFileName + PROPERTY_KEY_TOKEN_STORE_NAME));
+  Token[] tokens=tokenStore.getTokens(MAX_VALUE);
+  tokenStore.close();
+  assertNuDuplicates(tokens);
+}

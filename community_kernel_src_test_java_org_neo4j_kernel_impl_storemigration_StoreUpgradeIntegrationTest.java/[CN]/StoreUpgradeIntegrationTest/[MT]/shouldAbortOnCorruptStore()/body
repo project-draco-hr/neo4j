@@ -1,8 +1,7 @@
 {
-  File workingDirectory=new File("target/" + StoreUpgraderTestIT.class.getSimpleName() + "shouldAbortOnCorruptStore");
   prepareSampleLegacyDatabase(fileSystem,workingDirectory);
-  assertTrue(allStoreFilesHaveVersion(fileSystem,workingDirectory,"v0.9.9"));
-  truncateFile(fileSystem,new File(workingDirectory,"neostore.propertystore.db.index.keys"),"StringPropertyStore v0.9.9");
+  assertTrue(allStoreFilesHaveVersion(fileSystem,workingDirectory,LEGACY_VERSION));
+  truncateFile(fileSystem,new File(workingDirectory,"neostore.propertystore.db.index.keys"),"StringPropertyStore " + LEGACY_VERSION);
   Map<String,String> params=new HashMap<String,String>();
   params.put(Config.ALLOW_STORE_UPGRADE,"true");
   try {
@@ -10,6 +9,6 @@
     fail("Should have been unable to start upgrade on old version");
   }
  catch (  RuntimeException e) {
-    assertTrue(UnableToUpgradeException.class.isAssignableFrom(e.getCause().getCause().getCause().getClass()));
+    assertThat(Exceptions.rootCause(e),Matchers.instanceOf(UnableToUpgradeException.class));
   }
 }

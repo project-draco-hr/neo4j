@@ -1,14 +1,15 @@
 {
-  if (transactionRunning()) {
-    return new PlaceboTransaction(txManager,lockManager,txManager.getTransactionState());
-  }
-  Transaction result=null;
   try {
+    if (transactionRunning()) {
+      return new PlaceboTransaction(txManager,txManager.getTransactionState());
+    }
     txManager.begin(forceMode);
-    result=new TopLevelTransaction(txManager,lockManager,txManager.getTransactionState());
+    return new TopLevelTransaction(txManager,txManager.getTransactionState());
   }
- catch (  Exception e) {
-    throw new TransactionFailureException("Unable to begin transaction",e);
+ catch (  SystemException e) {
+    throw new TransactionFailureException("Couldn't get transaction",e);
   }
-  return result;
+catch (  NotSupportedException e) {
+    throw new TransactionFailureException("Couldn't begin transaction",e);
+  }
 }

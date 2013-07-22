@@ -1,15 +1,20 @@
 {
-  IdBlock block=direction.getBlock(this);
-  if (block == null || !block.accepts(id)) {
-    IdBlock newBlock=null;
-    if (block == null && LowIdBlock.idIsLow(id)) {
-      newBlock=new LowIdBlock();
+  IdBlock lastBlock=direction.getLastBlock(this);
+  long highBits=id & 0xFFFFFFFF00000000L;
+  if (lastBlock == null || lastBlock.getHighBits() != highBits) {
+    IdBlock newLastBlock=null;
+    if (highBits == 0 && lastBlock == null) {
+      newLastBlock=new LowIdBlock();
     }
  else {
-      newBlock=block != null ? block.upgradeToHighIdBlock() : new HighIdBlock();
+      newLastBlock=new HighIdBlock(highBits);
+      if (lastBlock != null) {
+        lastBlock=lastBlock.upgradeIfNeeded();
+        newLastBlock.setPrev(lastBlock);
+      }
     }
-    direction.setBlock(this,newBlock);
-    block=newBlock;
+    direction.setLastBlock(this,newLastBlock);
+    lastBlock=newLastBlock;
   }
-  block.add(id);
+  lastBlock.add((int)id);
 }

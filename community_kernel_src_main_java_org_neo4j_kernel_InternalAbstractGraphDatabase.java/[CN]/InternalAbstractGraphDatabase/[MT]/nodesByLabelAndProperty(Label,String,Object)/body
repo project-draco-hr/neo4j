@@ -1,0 +1,25 @@
+{
+  StatementOperationParts ctx=statementContextProvider.getCtxForReading();
+  StatementState state=statementContextProvider.statementForReading();
+  long propertyId;
+  long labelId;
+  try {
+    propertyId=ctx.keyReadOperations().propertyKeyGetForName(state,key);
+    labelId=ctx.keyReadOperations().labelGetForName(state,myLabel.name());
+  }
+ catch (  KernelException e) {
+    ctx.close(state);
+    return IteratorUtil.emptyIterator();
+  }
+  try {
+    IndexDescriptor indexRule=ctx.schemaReadOperations().indexesGetForLabelAndPropertyKey(state,labelId,propertyId);
+    if (ctx.schemaReadOperations().indexGetState(state,indexRule) == InternalIndexState.ONLINE) {
+      return map2nodes(ctx.entityReadOperations().nodesGetFromIndexLookup(state,indexRule,value),state);
+    }
+  }
+ catch (  SchemaRuleNotFoundException e) {
+  }
+catch (  IndexNotFoundKernelException e) {
+  }
+  return getNodesByLabelAndPropertyWithoutIndex(propertyId,value,ctx,state,labelId);
+}

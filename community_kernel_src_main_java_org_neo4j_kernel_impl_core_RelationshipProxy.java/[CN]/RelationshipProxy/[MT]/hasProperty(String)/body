@@ -1,3 +1,21 @@
 {
-  return relationshipLookups.lookupRelationship(relId).hasProperty(relationshipLookups.getNodeManager(),key);
+  if (null == key)   return false;
+  StatementOperationParts ctxForReading=statementCtxProvider.getCtxForReading();
+  StatementState state=statementCtxProvider.statementForReading();
+  try {
+    long propertyId=ctxForReading.keyReadOperations().propertyKeyGetForName(state,key);
+    return ctxForReading.entityReadOperations().relationshipHasProperty(state,relId,propertyId);
+  }
+ catch (  EntityNotFoundException e) {
+    throw new IllegalStateException(e);
+  }
+catch (  PropertyKeyIdNotFoundException e) {
+    return false;
+  }
+catch (  PropertyKeyNotFoundException e) {
+    return false;
+  }
+ finally {
+    ctxForReading.close(state);
+  }
 }

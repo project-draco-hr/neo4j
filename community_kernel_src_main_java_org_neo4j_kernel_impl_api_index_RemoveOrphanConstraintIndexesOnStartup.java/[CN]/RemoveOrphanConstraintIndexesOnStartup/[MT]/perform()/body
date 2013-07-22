@@ -1,0 +1,40 @@
+{
+  try {
+    txManager.begin(ForceMode.unforced);
+    boolean success=false;
+    KernelTransaction tx=null;
+    try {
+      tx=txManager.getKernelTransaction();
+      StatementOperationParts context=ctxProvider.getCtxForWriting();
+      StatementState state=tx.newStatementState();
+      try {
+        for (Iterator<IndexDescriptor> indexes=context.schemaReadOperations().uniqueIndexesGetAll(state); indexes.hasNext(); ) {
+          IndexDescriptor index=indexes.next();
+          if (context.schemaReadOperations().indexGetOwningUniquenessConstraintId(state,index) == null) {
+            context.schemaWriteOperations().uniqueIndexDrop(state,index);
+          }
+        }
+      }
+  finally {
+        context.close(state);
+      }
+      success=true;
+    }
+  finally {
+      if (tx != null) {
+        if (success) {
+          tx.commit();
+        }
+ else {
+          tx.rollback();
+        }
+      }
+ else {
+        txManager.rollback();
+      }
+    }
+  }
+ catch (  Throwable e) {
+    log.error("Failed to execute orphan index checking transaction.",e);
+  }
+}
