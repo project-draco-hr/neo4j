@@ -2,9 +2,11 @@
   return new Predicate<ManagedCluster>(){
     @Override public boolean accept(    ManagedCluster cluster){
       for (      HighlyAvailableGraphDatabase database : cluster.getAllMembers()) {
-        Neo4jManager jmx=new Neo4jManager(database.getDependencyResolver().resolveDependency(JmxKernelExtension.class).getSingleManagementBean(Kernel.class));
-        for (        ClusterMemberInfo clusterMemberInfo : jmx.getHighAvailabilityBean().getInstancesInCluster()) {
-          if (!clusterMemberInfo.isAvailable())           return false;
+        ClusterMembers members=database.getDependencyResolver().resolveDependency(ClusterMembers.class);
+        for (        ClusterMember clusterMember : members.getMembers()) {
+          if (clusterMember.getHARole().equals("UNKNOWN")) {
+            return false;
+          }
         }
       }
       return true;
