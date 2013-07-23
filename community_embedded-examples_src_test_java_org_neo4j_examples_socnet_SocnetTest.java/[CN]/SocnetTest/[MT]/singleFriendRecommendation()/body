@@ -1,16 +1,31 @@
 {
   deleteSocialGraph();
-  Person a=personRepository.createPerson("a");
-  Person b=personRepository.createPerson("b");
-  Person c=personRepository.createPerson("c");
-  Person d=personRepository.createPerson("d");
-  Person e=personRepository.createPerson("e");
-  a.addFriend(b);
-  a.addFriend(c);
-  a.addFriend(d);
-  e.addFriend(b);
-  e.addFriend(c);
-  e.addFriend(d);
-  Person recommendation=IteratorUtil.single(a.getFriendRecommendation(1).iterator());
-  assertThat(recommendation,equalTo(e));
+  Person a;
+  Person e;
+  Transaction transaction=graphDb.beginTx();
+  try {
+    a=personRepository.createPerson("a");
+    Person b=personRepository.createPerson("b");
+    Person c=personRepository.createPerson("c");
+    Person d=personRepository.createPerson("d");
+    e=personRepository.createPerson("e");
+    a.addFriend(b);
+    a.addFriend(c);
+    a.addFriend(d);
+    e.addFriend(b);
+    e.addFriend(c);
+    e.addFriend(d);
+    transaction.success();
+  }
+  finally {
+    transaction.finish();
+  }
+  transaction=graphDb.beginTx();
+  try {
+    Person recommendation=IteratorUtil.single(a.getFriendRecommendation(1).iterator());
+    assertThat(recommendation,equalTo(e));
+  }
+  finally {
+    transaction.finish();
+  }
 }

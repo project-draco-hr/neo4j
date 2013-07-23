@@ -1,9 +1,22 @@
 {
-  Person person=getRandomPerson();
-  person.addStatus("Testing!");
-  StatusUpdate update=person.getStatus().iterator().next();
-  graphDb.beginTx();
-  assertThat(update,notNullValue());
-  assertThat(update.getStatusText(),equalTo("Testing!"));
-  assertThat(update.getPerson(),equalTo(person));
+  Transaction transaction=graphDb.beginTx();
+  Person person;
+  try {
+    person=getRandomPerson();
+    person.addStatus("Testing!");
+    transaction.success();
+  }
+  finally {
+    transaction.finish();
+  }
+  transaction=graphDb.beginTx();
+  try {
+    StatusUpdate update=person.getStatus().iterator().next();
+    assertThat(update,notNullValue());
+    assertThat(update.getStatusText(),equalTo("Testing!"));
+    assertThat(update.getPerson(),equalTo(person));
+  }
+  finally {
+    transaction.finish();
+  }
 }
