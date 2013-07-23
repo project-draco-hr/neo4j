@@ -11,8 +11,14 @@
   inserter.createRelationship(mattiasNode,chrisNode,knows,null);
   inserter.shutdown();
   GraphDatabaseService db=new TestGraphDatabaseFactory().setFileSystem(fileSystem).newImpermanentDatabase("target/batchinserter-example");
-  Node mNode=db.getNodeById(mattiasNode);
-  Node cNode=mNode.getSingleRelationship(knows,Direction.OUTGOING).getEndNode();
-  assertThat(cNode,inTx(db,hasProperty("name").withValue("Chris")));
-  db.shutdown();
+  Transaction transaction=db.beginTx();
+  try {
+    Node mNode=db.getNodeById(mattiasNode);
+    Node cNode=mNode.getSingleRelationship(knows,Direction.OUTGOING).getEndNode();
+    assertThat((String)cNode.getProperty("name"),is("Chris"));
+  }
+  finally {
+    transaction.finish();
+    db.shutdown();
+  }
 }

@@ -1,10 +1,16 @@
 {
-  long timeout=System.currentTimeMillis() + SECONDS.toMillis(60);
-  while (!indexOnline(index,db)) {
-    Thread.sleep(1);
-    if (System.currentTimeMillis() > timeout) {
-      fail("Expected index to come online within a reasonable time.");
+  Transaction transaction=db.beginTx();
+  try {
+    long timeout=System.currentTimeMillis() + SECONDS.toMillis(60);
+    while (!indexOnline(index,db)) {
+      Thread.sleep(1);
+      if (System.currentTimeMillis() > timeout) {
+        fail("Expected index to come online within a reasonable time.");
+      }
     }
+    assertIndexContents(index,db,expectedData);
   }
-  assertIndexContents(index,db,expectedData);
+  finally {
+    transaction.finish();
+  }
 }

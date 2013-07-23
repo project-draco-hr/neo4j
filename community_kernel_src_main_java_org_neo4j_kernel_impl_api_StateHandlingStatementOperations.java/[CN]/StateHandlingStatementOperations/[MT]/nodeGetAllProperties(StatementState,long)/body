@@ -1,9 +1,12 @@
 {
-  if (state.txState().nodeIsAddedInThisTx(nodeId)) {
-    return state.txState().nodePropertyDiffSets(nodeId).getAdded().iterator();
+  if (state.hasTxStateWithChanges()) {
+    if (state.txState().nodeIsAddedInThisTx(nodeId)) {
+      return state.txState().nodePropertyDiffSets(nodeId).getAdded().iterator();
+    }
+    if (state.txState().nodeIsDeletedInThisTx(nodeId)) {
+      throw new IllegalStateException("Node " + nodeId + " has been deleted");
+    }
+    return state.txState().nodePropertyDiffSets(nodeId).apply(entityReadDelegate.nodeGetAllProperties(state,nodeId));
   }
-  if (state.txState().nodeIsDeletedInThisTx(nodeId)) {
-    throw new IllegalStateException("Node " + nodeId + " has been deleted");
-  }
-  return state.txState().nodePropertyDiffSets(nodeId).apply(entityReadDelegate.nodeGetAllProperties(state,nodeId));
+  return entityReadDelegate.nodeGetAllProperties(state,nodeId);
 }

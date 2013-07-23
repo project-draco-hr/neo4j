@@ -10,8 +10,15 @@
     node.setProperty("foo","bar");
     tx.success();
     tx.finish();
-    node=clusterManager.getDefaultCluster().getAnySlave().getNodeById(nodeId);
-    Assert.assertThat(node.getProperty("foo").toString(),CoreMatchers.equalTo("bar"));
+    HighlyAvailableGraphDatabase slave=clusterManager.getDefaultCluster().getAnySlave();
+    Transaction transaction=slave.beginTx();
+    try {
+      node=slave.getNodeById(nodeId);
+      assertThat(node.getProperty("foo").toString(),CoreMatchers.equalTo("bar"));
+    }
+  finally {
+      transaction.finish();
+    }
   }
   finally {
     clusterManager.stop();

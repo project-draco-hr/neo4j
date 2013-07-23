@@ -11,8 +11,14 @@
   long mattiasNodeId=mattiasNode.getId();
   batchDb.shutdown();
   GraphDatabaseService db=new TestGraphDatabaseFactory().setFileSystem(fileSystem).newImpermanentDatabase("target/batchdb-example");
-  Node mNode=db.getNodeById(mattiasNodeId);
-  Node cNode=mNode.getSingleRelationship(knows,Direction.OUTGOING).getEndNode();
-  assertThat(cNode,inTx(db,hasProperty("name").withValue("Chris")));
-  db.shutdown();
+  Transaction transaction=db.beginTx();
+  try {
+    Node mNode=db.getNodeById(mattiasNodeId);
+    Node cNode=mNode.getSingleRelationship(knows,Direction.OUTGOING).getEndNode();
+    assertThat(cNode,inTx(db,hasProperty("name").withValue("Chris")));
+  }
+  finally {
+    transaction.finish();
+    db.shutdown();
+  }
 }
