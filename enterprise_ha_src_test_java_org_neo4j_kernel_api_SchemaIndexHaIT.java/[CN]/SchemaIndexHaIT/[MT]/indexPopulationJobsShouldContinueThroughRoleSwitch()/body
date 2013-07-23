@@ -13,5 +13,13 @@
   cluster.await(masterAvailable(firstMaster));
   HighlyAvailableGraphDatabase newMaster=cluster.getMaster();
   assertEquals("Unexpected new master",aSlave,newMaster);
-  awaitIndexOnline(single(newMaster.schema().getIndexes()),newMaster,data);
+  Transaction transaction=newMaster.beginTx();
+  IndexDefinition index;
+  try {
+    index=single(newMaster.schema().getIndexes());
+  }
+  finally {
+    transaction.finish();
+  }
+  awaitIndexOnline(index,newMaster,data);
 }

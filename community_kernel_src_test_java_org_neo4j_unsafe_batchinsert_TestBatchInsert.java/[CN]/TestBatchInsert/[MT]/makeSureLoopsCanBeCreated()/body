@@ -18,11 +18,17 @@
     }
   }
   GraphDatabaseService db=switchToEmbeddedGraphDatabaseService(graphDb);
-  Node realStartNode=db.getNodeById(startNode);
-  Relationship realSelfRelationship=db.getRelationshipById(selfRelationship);
-  Relationship realRelationship=db.getRelationshipById(relationship);
-  assertEquals(realSelfRelationship,realStartNode.getSingleRelationship(RelTypes.REL_TYPE1,Direction.INCOMING));
-  assertEquals(asSet(realSelfRelationship,realRelationship),asSet(realStartNode.getRelationships(Direction.OUTGOING)));
-  assertEquals(asSet(realSelfRelationship,realRelationship),asSet(realStartNode.getRelationships()));
-  db.shutdown();
+  Transaction transaction=db.beginTx();
+  try {
+    Node realStartNode=db.getNodeById(startNode);
+    Relationship realSelfRelationship=db.getRelationshipById(selfRelationship);
+    Relationship realRelationship=db.getRelationshipById(relationship);
+    assertEquals(realSelfRelationship,realStartNode.getSingleRelationship(RelTypes.REL_TYPE1,Direction.INCOMING));
+    assertEquals(asSet(realSelfRelationship,realRelationship),asSet(realStartNode.getRelationships(Direction.OUTGOING)));
+    assertEquals(asSet(realSelfRelationship,realRelationship),asSet(realStartNode.getRelationships()));
+  }
+  finally {
+    transaction.finish();
+    db.shutdown();
+  }
 }
