@@ -1,15 +1,27 @@
 {
   String indexName="inneo";
-  assertFalse(hasIndexWithName(indexName));
+  assertFalse(indexExists(indexName));
   Map<String,String> config=stringMap(PROVIDER,"test-dummy-neo-index","config1","A value","another config","Another value");
-  Index<Node> index=index(indexName,config);
-  assertTrue(hasIndexWithName(indexName));
-  assertEquals(config,indexConfiguration(index));
   Transaction transaction=db.beginTx();
-  assertEquals(db.getReferenceNode(),index.get("key","refnode").getSingle());
-  transaction.finish();
+  Index<Node> index;
+  try {
+    index=db.index().forNodes(indexName,config);
+    transaction.success();
+  }
+  finally {
+    transaction.finish();
+  }
+  assertTrue(indexExists(indexName));
+  assertEquals(config,db.index().getConfiguration(index));
+  transaction=db.beginTx();
+  try {
+    assertEquals(db.getReferenceNode(),index.get("key","refnode").getSingle());
+  }
+  finally {
+    transaction.finish();
+  }
   assertEquals(0,count((Iterable<Node>)index.get("key","something else")));
   restartDb();
-  assertTrue(hasIndexWithName(indexName));
-  assertEquals(config,indexConfiguration(index));
+  assertTrue(indexExists(indexName));
+  assertEquals(config,db.index().getConfiguration(index));
 }

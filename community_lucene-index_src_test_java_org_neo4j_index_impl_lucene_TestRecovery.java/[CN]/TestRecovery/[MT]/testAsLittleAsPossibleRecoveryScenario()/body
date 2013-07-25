@@ -1,9 +1,13 @@
 {
   GraphDatabaseService db=newGraphDbService();
-  Index<Node> index=db.index().forNodes("my-index");
-  db.beginTx();
-  Node node=db.createNode();
-  index.add(node,"key","value");
-  db.shutdown();
+  Transaction transaction=db.beginTx();
+  try {
+    db.index().forNodes("my-index").add(db.createNode(),"key","value");
+    transaction.success();
+  }
+  finally {
+    transaction.finish();
+    db.shutdown();
+  }
   new GraphDatabaseFactory().newEmbeddedDatabase(getDbPath().getPath()).shutdown();
 }
