@@ -1,15 +1,17 @@
 {
   KernelAPI kernel=mockKernel();
   ExecutionEngine executionEngine=mock(ExecutionEngine.class);
+  ExecutionResult executionResult=mock(ExecutionResult.class);
+  when(executionEngine.execute("query",map())).thenReturn(executionResult);
   TransactionRegistry registry=mock(TransactionRegistry.class);
   when(registry.begin()).thenReturn(1337l);
   TransactionHandle handle=new TransactionHandle(kernel,executionEngine,registry,uriScheme,StringLogger.DEV_NULL);
   ExecutionResultSerializer output=mock(ExecutionResultSerializer.class);
-  handle.execute(statements(new Statement("query",map())),output);
+  handle.execute(statements(new Statement("query",map(),null)),output);
   verify(executionEngine).execute("query",map());
   InOrder outputOrder=inOrder(output);
   outputOrder.verify(output).transactionCommitUri(uriScheme.txCommitUri(1337));
-  outputOrder.verify(output).statementResult(any(ExecutionResult.class));
+  outputOrder.verify(output).statementResult(executionResult,(ResultDataContent[])null);
   outputOrder.verify(output).transactionStatus(anyLong());
   outputOrder.verify(output).errors(argThat(hasNoErrors()));
   outputOrder.verify(output).finish();

@@ -12,6 +12,7 @@ case BEFORE_OUTER_ARRAY:
 case IN_BODY:
   String statement=null;
 Map<String,Object> parameters=null;
+List<Object> resultsDataContents=null;
 JsonToken tok;
 while ((tok=input.nextToken()) != null && tok != END_OBJECT) {
 if (tok == END_ARRAY) {
@@ -20,18 +21,23 @@ return null;
 }
 input.nextToken();
 String currentName=input.getCurrentName();
-if ("statement".equals(currentName)) {
+switch (currentName) {
+case "statement":
 statement=input.nextTextValue();
-}
- else if ("parameters".equals(currentName)) {
+break;
+case "parameters":
 parameters=readMap(input);
+break;
+case "resultDataContents":
+resultsDataContents=readArray(input);
+break;
 }
 }
 if (statement == null) {
 addError(new Neo4jError(StatusCode.INVALID_REQUEST_FORMAT,new DeserializationException("No statement provided.")));
 return null;
 }
-return new Statement(statement,parameters == null ? NO_PARAMETERS : parameters);
+return new Statement(statement,parameters == null ? NO_PARAMETERS : parameters,ResultDataContent.fromNames(resultsDataContents));
 case FINISHED:
 return null;
 }
