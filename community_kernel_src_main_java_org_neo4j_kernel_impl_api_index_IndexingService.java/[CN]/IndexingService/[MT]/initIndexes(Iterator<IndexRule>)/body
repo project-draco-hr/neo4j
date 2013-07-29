@@ -2,20 +2,20 @@
   for (  IndexRule indexRule : loop(indexRules)) {
     long ruleId=indexRule.getId();
     IndexDescriptor descriptor=createDescriptor(indexRule);
-    IndexProxy indexProxy=null;
+    IndexProxy indexProxy;
     SchemaIndexProvider.Descriptor providerDescriptor=indexRule.getProviderDescriptor();
     SchemaIndexProvider provider=providerMap.apply(providerDescriptor);
     InternalIndexState initialState=provider.getInitialState(ruleId);
-    logger.info(format("IndexingService.initIndexes: index on %s is %s",descriptor.toString(),initialState.name()));
+    logger.info(format("IndexingService.initIndexes: index on %s is %s",descriptor.userDescription(tokenNameLookup),initialState.name()));
 switch (initialState) {
 case ONLINE:
-      indexProxy=createOnlineIndexProxy(ruleId,descriptor,providerDescriptor,indexRule.isConstraintIndex());
+      indexProxy=createAndStartOnlineIndexProxy(ruleId,descriptor,providerDescriptor,indexRule.isConstraintIndex());
     break;
 case POPULATING:
-  indexProxy=createRecoveringIndexProxy(ruleId,descriptor,providerDescriptor);
+  indexProxy=createAndStartRecoveringIndexProxy(ruleId,descriptor,providerDescriptor);
 break;
 case FAILED:
-indexProxy=createFailedIndexProxy(ruleId,descriptor,providerDescriptor,indexRule.isConstraintIndex(),failure(provider.getPopulationFailure(ruleId)));
+indexProxy=createAndStartFailedIndexProxy(ruleId,descriptor,providerDescriptor,indexRule.isConstraintIndex(),failure(provider.getPopulationFailure(ruleId)));
 break;
 default :
 throw new IllegalArgumentException("" + initialState);
