@@ -1,7 +1,13 @@
 {
   Object[] arguments=new Object[extractors.length];
-  for (int i=0; i < arguments.length; i++) {
-    arguments[i]=extractors[i].extract(graphDb,source,params);
+  Transaction tx=graphDb.beginTx();
+  try {
+    for (int i=0; i < arguments.length; i++) {
+      arguments[i]=extractors[i].extract(graphDb,source,params);
+    }
+  }
+  finally {
+    tx.finish();
   }
   try {
     Object returned=method.invoke(plugin,arguments);
@@ -19,10 +25,7 @@
     }
     throw new PluginInvocationFailureException(targetExc);
   }
-catch (  IllegalArgumentException e) {
-    throw new PluginInvocationFailureException(e);
-  }
-catch (  IllegalAccessException e) {
+catch (  IllegalArgumentException|IllegalAccessException e) {
     throw new PluginInvocationFailureException(e);
   }
 }
