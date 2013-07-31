@@ -1,7 +1,7 @@
 {
   fileSystem=createFileSystemAbstraction();
   this.logging=createLogging();
-  AutoConfigurator autoConfigurator=new AutoConfigurator(fileSystem,config.get(NeoStoreXaDataSource.Configuration.store_dir),GraphDatabaseSettings.UseMemoryMappedBuffers.shouldMemoryMap(config.get(Configuration.use_memory_mapped_buffers)));
+  AutoConfigurator autoConfigurator=new AutoConfigurator(fileSystem,config.get(NeoStoreXaDataSource.Configuration.store_dir),GraphDatabaseSettings.UseMemoryMappedBuffers.shouldMemoryMap(config.get(Configuration.use_memory_mapped_buffers)),logging.getConsoleLog(AutoConfigurator.class));
   if (config.get(GraphDatabaseSettings.dump_configuration)) {
     System.out.println(autoConfigurator.getNiceMemoryInformation());
   }
@@ -22,7 +22,7 @@
   String cacheTypeName=config.get(Configuration.cache_type);
   CacheProvider cacheProvider=cacheProviders.get(cacheTypeName);
   if (cacheProvider == null) {
-    throw new IllegalArgumentException("No cache type '" + cacheTypeName + "'");
+    throw new IllegalArgumentException("No provider for cache type '" + cacheTypeName + "'. "+ "Cache providers are loaded using java service loading where they "+ "register themselves in resource (plain-text) files found on the class path under "+ "META-INF/services/"+ CacheProvider.class.getName()+ ". This missing provider may have "+ "been caused by either such a missing registration, or by the lack of the provider class itself.");
   }
   jobScheduler=life.add(new Neo4jJobScheduler(this.toString(),logging.getMessagesLog(Neo4jJobScheduler.class)));
   kernelEventHandlers=new KernelEventHandlers();
@@ -87,7 +87,7 @@
   recoveryVerifier=createRecoveryVerifier();
   storeFactory=createStoreFactory();
   String keepLogicalLogsConfig=config.get(GraphDatabaseSettings.keep_logical_logs);
-  xaFactory=new XaFactory(txIdGenerator,txManager,logBufferFactory,fileSystem,logging,recoveryVerifier,LogPruneStrategies.fromConfigValue(fileSystem,keepLogicalLogsConfig));
+  xaFactory=new XaFactory(config,txIdGenerator,txManager,logBufferFactory,fileSystem,logging,recoveryVerifier,LogPruneStrategies.fromConfigValue(fileSystem,keepLogicalLogsConfig));
   createNeoDataSource();
   life.add(new MonitorGc(config,msgLog));
   life.add(new DatabaseAvailability());
