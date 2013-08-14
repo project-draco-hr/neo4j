@@ -3,23 +3,19 @@
   this.debugWindow=new SystemOutDebugWindow();
   this.environment=environment;
   this.databaseActions=databaseActions;
-  frame=init();
-  this.sysTray=SysTray.install("/neo4j-systray-16.png",new SysTray.Actions(){
-    @Override public void closeForReal(){
-      shutdown();
-    }
-    @Override public void clickSysTray(){
-      frame.setVisible(true);
-    }
-    @Override public void clickCloseButton(){
-      if (databaseStatus == DatabaseStatus.stopped) {
-        shutdown();
-      }
- else {
-        frame.setVisible(false);
-      }
-    }
-  }
-,frame);
-  goToStoppedStatus();
+  this.frame=new JFrame("Neo4j Desktop");
+  this.frame.setIconImages(Graphics.loadIcons());
+  this.sysTray=SysTray.install(new SysTrayActions(),frame);
+  this.directoryDisplay=new JTextField(model.getDatabaseDirectory().getAbsolutePath(),30);
+  this.browseButton=createBrowseButton();
+  this.statusPanelLayout=new CardLayout();
+  this.statusPanel=createStatusPanel(statusPanelLayout);
+  this.startButton=createStartButton();
+  this.stopButton=createStopButton();
+  this.settingsButton=createSettingsButton();
+  JPanel root=createRootPanel(directoryDisplay,browseButton,statusPanel,startButton,stopButton,settingsButton);
+  frame.add(root);
+  frame.pack();
+  frame.setResizable(false);
+  updateStatus(DatabaseStatus.STOPPED);
 }
