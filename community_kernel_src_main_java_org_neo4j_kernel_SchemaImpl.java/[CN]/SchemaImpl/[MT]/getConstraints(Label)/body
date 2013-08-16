@@ -3,13 +3,14 @@
   final StatementOperationParts context=ctxProvider.getCtxForReading();
   StatementState state=ctxProvider.statementForReading();
   try {
-    Iterator<UniquenessConstraint> constraints=context.schemaReadOperations().constraintsGetForLabel(state,context.keyReadOperations().labelGetForName(state,label.name()));
+    long labelId=context.keyReadOperations().labelGetForName(state,label.name());
+    if (labelId == KeyReadOperations.NO_SUCH_LABEL) {
+      return emptyList();
+    }
+    Iterator<UniquenessConstraint> constraints=context.schemaReadOperations().constraintsGetForLabel(state,labelId);
     return asConstraintDefinitions(context,state,constraints);
   }
- catch (  LabelNotFoundKernelException e) {
-    return emptyList();
-  }
- finally {
+  finally {
     state.close();
   }
 }
