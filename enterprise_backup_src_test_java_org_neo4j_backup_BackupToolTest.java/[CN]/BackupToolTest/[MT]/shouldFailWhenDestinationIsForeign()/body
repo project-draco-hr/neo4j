@@ -6,8 +6,12 @@
   StoreId encountered=new StoreId(287,345,756);
   when(service.doIncrementalBackup(eq("localhost"),eq(BackupServer.DEFAULT_PORT),eq("my_backup"),eq(true))).thenThrow(new MismatchingStoreIdException(expected,encountered));
   PrintStream systemOut=mock(PrintStream.class);
-  new BackupTool(service,systemOut).run(args);
-  verify(systemOut).println("Performing incremental backup from 'single://localhost'");
-  verify(systemOut).println("Backup failed.");
-  verify(systemOut).println(format(MISMATCHED_STORE_ID,expected,encountered));
+  try {
+    new BackupTool(service,systemOut).run(args);
+  }
+ catch (  BackupTool.ToolFailureException e) {
+    verify(systemOut).println("Performing incremental backup from 'single://localhost'");
+    verify(systemOut).println("Backup failed.");
+    assertEquals(format(MISMATCHED_STORE_ID,expected,encountered),e.getMessage());
+  }
 }
