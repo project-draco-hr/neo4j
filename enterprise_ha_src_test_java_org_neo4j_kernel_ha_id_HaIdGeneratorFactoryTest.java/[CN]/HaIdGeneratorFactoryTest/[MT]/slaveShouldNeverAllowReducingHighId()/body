@@ -1,0 +1,16 @@
+{
+  final int highIdFromAllocation=123;
+  IdAllocation firstResult=new IdAllocation(new IdRange(new long[]{},42,highIdFromAllocation),highIdFromAllocation,0);
+  Response<IdAllocation> toReturn=mock(Response.class);
+  when(toReturn.response()).thenReturn(firstResult);
+  Master returning=mock(Master.class);
+  when(returning.allocateIds(Matchers.<IdType>any())).thenReturn(toReturn);
+  FileSystemAbstraction fs=new EphemeralFileSystemAbstraction();
+  HaIdGeneratorFactory fac=new HaIdGeneratorFactory(returning,new DevNullLoggingService());
+  fac.switchToSlave();
+  IdGenerator gen=fac.open(fs,new File("someFile"),10,IdType.PROPERTY,1);
+  final int highIdFromUpdatedRecord=highIdFromAllocation + 1;
+  gen.setHighId(highIdFromUpdatedRecord);
+  gen.nextId();
+  assertEquals(highIdFromUpdatedRecord,gen.getHighId());
+}
