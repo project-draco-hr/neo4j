@@ -1,0 +1,15 @@
+{
+  IdAllocation firstResult=new IdAllocation(new IdRange(new long[]{},42,123),123,0);
+  Response<IdAllocation> toReturn=mock(Response.class);
+  when(toReturn.response()).thenReturn(firstResult);
+  Master returning=mock(Master.class);
+  when(returning.allocateIds(Matchers.<IdType>any())).thenReturn(toReturn);
+  FileSystemAbstraction fs=new EphemeralFileSystemAbstraction();
+  HaIdGeneratorFactory fac=new HaIdGeneratorFactory(returning,new DevNullLoggingService());
+  fac.switchToSlave();
+  IdGenerator gen=fac.open(fs,new File("someFile"),10,IdType.NODE,1);
+  for (long i=firstResult.getIdRange().getRangeStart(); i < firstResult.getIdRange().getRangeLength(); i++) {
+    assertEquals(i,gen.nextId());
+  }
+  verify(returning,times(1)).allocateIds(IdType.NODE);
+}
