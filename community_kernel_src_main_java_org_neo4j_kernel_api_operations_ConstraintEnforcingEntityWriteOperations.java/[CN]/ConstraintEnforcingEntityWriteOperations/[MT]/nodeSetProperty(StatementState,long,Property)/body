@@ -1,0 +1,21 @@
+{
+  PrimitiveLongIterator labelIds=entityReadOperations.nodeGetLabels(state,nodeId);
+  while (labelIds.hasNext()) {
+    long labelId=labelIds.next();
+    long propertyKeyId=property.propertyKeyId();
+    Iterator<UniquenessConstraint> constraintIterator=schemaReadOperations.constraintsGetForLabelAndPropertyKey(state,labelId,propertyKeyId);
+    if (constraintIterator.hasNext()) {
+      try {
+        Object value=property.value();
+        PrimitiveLongIterator existingNodes=entityReadOperations.nodesGetFromIndexLookup(state,new IndexDescriptor(labelId,propertyKeyId),value);
+        if (existingNodes.hasNext()) {
+          throw new UniqueConstraintViolationKernelException(labelId,propertyKeyId,value,existingNodes.next());
+        }
+      }
+ catch (      IndexNotFoundKernelException|PropertyNotFoundException e) {
+        throw new UnableToValidateConstraintKernelException(e);
+      }
+    }
+  }
+  return entityWriteOperations.nodeSetProperty(state,nodeId,property);
+}
