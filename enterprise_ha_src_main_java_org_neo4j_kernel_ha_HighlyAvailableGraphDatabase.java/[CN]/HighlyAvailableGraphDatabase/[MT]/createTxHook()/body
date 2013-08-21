@@ -11,7 +11,8 @@
     }
   }
 );
-  clusterClient=new ClusterClient(ClusterClient.adapt(config),logging,electionCredentialsProvider);
+  ObjectStreamFactory objectStreamFactory=new ObjectStreamFactory();
+  clusterClient=new ClusterClient(ClusterClient.adapt(config),logging,electionCredentialsProvider,objectStreamFactory,objectStreamFactory);
   PaxosClusterMemberEvents localClusterEvents=new PaxosClusterMemberEvents(clusterClient,clusterClient,clusterClient,clusterClient,logging,new Predicate<PaxosClusterMemberEvents.ClusterMembersSnapshot>(){
     @Override public boolean accept(    PaxosClusterMemberEvents.ClusterMembersSnapshot item){
       for (      MemberIsAvailable member : item.getCurrentAvailableMembers()) {
@@ -25,7 +26,7 @@
       return true;
     }
   }
-,new HANewSnapshotFunction());
+,new HANewSnapshotFunction(),objectStreamFactory,objectStreamFactory);
   clusterClient.addClusterListener(new ClusterListener.Adapter(){
     boolean hasRequestedElection=false;
     @Override public void enteredCluster(    ClusterConfiguration clusterConfiguration){
@@ -41,7 +42,7 @@
   }
 );
   HighAvailabilityMemberContext localMemberContext=new SimpleHighAvailabilityMemberContext(clusterClient.getServerId());
-  PaxosClusterMemberAvailability localClusterMemberAvailability=new PaxosClusterMemberAvailability(clusterClient.getServerId(),clusterClient,clusterClient,logging);
+  PaxosClusterMemberAvailability localClusterMemberAvailability=new PaxosClusterMemberAvailability(clusterClient.getServerId(),clusterClient,clusterClient,logging,objectStreamFactory,objectStreamFactory);
   if (!config.get(HaSettings.coordinators).isEmpty() && !config.get(HaSettings.coordinators).get(0).toString().trim().equals("")) {
     compatibilityMode=true;
     compatibilityLifecycle=new LinkedList<Lifecycle>();
