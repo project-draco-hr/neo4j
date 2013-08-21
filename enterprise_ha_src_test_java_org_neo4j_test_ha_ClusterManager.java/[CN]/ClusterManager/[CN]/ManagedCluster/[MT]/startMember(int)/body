@@ -6,7 +6,11 @@
   }
   if (member.isFullHaMember()) {
     int haPort=new URI("cluster://" + member.getHost()).getPort() + 3000;
-    GraphDatabaseBuilder graphDatabaseBuilder=dbFactory.newHighlyAvailableDatabaseBuilder(new File(new File(root,name),"server" + serverId).getAbsolutePath()).setConfig(ClusterSettings.cluster_name,name).setConfig(ClusterSettings.initial_hosts,initialHosts.toString()).setConfig(ClusterSettings.server_id,serverId + "").setConfig(ClusterSettings.cluster_server,member.getHost()).setConfig(HaSettings.ha_server,":" + haPort).setConfig(OnlineBackupSettings.online_backup_enabled,Settings.FALSE).setConfig(commonConfig);
+    File storeDir=new File(new File(root,name),"server" + serverId);
+    if (seedDir != null) {
+      copyRecursively(seedDir,storeDir);
+    }
+    GraphDatabaseBuilder graphDatabaseBuilder=dbFactory.newHighlyAvailableDatabaseBuilder(storeDir.getAbsolutePath()).setConfig(ClusterSettings.cluster_name,name).setConfig(ClusterSettings.initial_hosts,initialHosts.toString()).setConfig(ClusterSettings.server_id,serverId + "").setConfig(ClusterSettings.cluster_server,member.getHost()).setConfig(HaSettings.ha_server,":" + haPort).setConfig(OnlineBackupSettings.online_backup_enabled,Settings.FALSE).setConfig(commonConfig);
     if (instanceConfig.containsKey(serverId)) {
       graphDatabaseBuilder.setConfig(instanceConfig.get(serverId));
     }
@@ -24,6 +28,6 @@
     Map<String,String> config=MapUtil.stringMap(ClusterSettings.cluster_name.name(),name,ClusterSettings.initial_hosts.name(),initialHosts.toString(),ClusterSettings.server_id.name(),serverId + "",ClusterSettings.cluster_server.name(),member.getHost());
     Config config1=new Config(config);
     Logging clientLogging=life.add(new LogbackService(config1,(LoggerContext)StaticLoggerBinder.getSingleton().getLoggerFactory()));
-    life.add(new FutureLifecycleAdapter<ClusterClient>(new ClusterClient(ClusterClient.adapt(config1),clientLogging,new NotElectableElectionCredentialsProvider())));
+    life.add(new FutureLifecycleAdapter<>(new ClusterClient(ClusterClient.adapt(config1),clientLogging,new NotElectableElectionCredentialsProvider())));
   }
 }
