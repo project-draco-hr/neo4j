@@ -1,27 +1,18 @@
 {
   DiffSets<Long> diff=new DiffSets<Long>();
-  Iterable<WritableTransactionState.CowNodeElement> changedNodes=state.getChangedNodes();
-  for (  WritableTransactionState.CowNodeElement changedNode : changedNodes) {
-    ArrayMap<Integer,PropertyData> propRmMap=changedNode.getPropertyRemoveMap(false);
-    if (propRmMap != null) {
-      for (      PropertyData propertyData : propRmMap.values()) {
-        if (propertyData.getIndex() == propertyKey && propertyData.getValue().equals(value)) {
-          diff.remove(changedNode.getId());
-        }
-      }
+  for (  WritableTransactionState.CowNodeElement changedNode : state.getChangedNodes()) {
+    PropertyData removed=propertyChange(changedNode.getPropertyRemoveMap(false),propertyKey);
+    if (removed != null && removed.getValue().equals(value)) {
+      diff.remove(changedNode.getId());
     }
     if (!changedNode.isDeleted()) {
-      ArrayMap<Integer,PropertyData> propAddMap=changedNode.getPropertyAddMap(false);
-      if (propAddMap != null) {
-        for (        PropertyData propertyData : propAddMap.values()) {
-          if (propertyData.getIndex() == propertyKey) {
-            if (propertyData.getValue().equals(value)) {
-              diff.add(changedNode.getId());
-            }
+      PropertyData added=propertyChange(changedNode.getPropertyAddMap(false),propertyKey);
+      if (added != null) {
+        if (added.getValue().equals(value)) {
+          diff.add(changedNode.getId());
+        }
  else {
-              diff.remove(changedNode.getId());
-            }
-          }
+          diff.remove(changedNode.getId());
         }
       }
     }
