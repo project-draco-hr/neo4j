@@ -1,0 +1,28 @@
+{
+  final NodeStore nodeStore=getNodeStore();
+  for (  NodeCommand nodeCommand : nodeCommands.values()) {
+    long nodeId=nodeCommand.getKey();
+    long[] labelsBefore=parseLabelsField(nodeCommand.getBefore()).get(nodeStore);
+    long[] labelsAfter=parseLabelsField(nodeCommand.getAfter()).get(nodeStore);
+    labelUpdates.add(NodeLabelUpdate.labelChanges(nodeId,labelsBefore,labelsAfter));
+    if (nodeCommand.getMode() != Mode.UPDATE) {
+      continue;
+    }
+    for (    long labelAfter : labelsAfter) {
+      if (binarySearch(labelsBefore,labelAfter) < 0) {
+        ArrayMap<Integer,PropertyData> properties=nodeFullyLoadProperties(nodeId);
+        for (        PropertyData property : properties.values()) {
+          propertyUpdates.add(NodePropertyUpdate.add(nodeId,property.getIndex(),property.getValue(),new long[]{labelAfter}));
+        }
+      }
+    }
+    for (    long labelBefore : labelsBefore) {
+      if (binarySearch(labelsAfter,labelBefore) < 0) {
+        ArrayMap<Integer,PropertyData> properties=nodeFullyLoadProperties(nodeId);
+        for (        PropertyData property : properties.values()) {
+          propertyUpdates.add(NodePropertyUpdate.remove(nodeId,property.getIndex(),property.getValue(),new long[]{labelBefore}));
+        }
+      }
+    }
+  }
+}
