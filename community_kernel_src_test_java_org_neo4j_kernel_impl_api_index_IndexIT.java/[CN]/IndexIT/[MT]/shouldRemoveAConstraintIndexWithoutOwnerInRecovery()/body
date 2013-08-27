@@ -1,10 +1,10 @@
 {
-  newTransaction();
-  ConstraintIndexCreator creator=new ConstraintIndexCreator(new Transactor(db.getDependencyResolver().resolveDependency(TxManager.class)),db.getDependencyResolver().resolveDependency(IndexingService.class));
-  creator.createUniquenessConstraintIndex(getState(),statement,labelId,propertyKey);
-  commit();
+  Transactor transactor=new Transactor(db.getDependencyResolver().resolveDependency(TxManager.class));
+  transactor.execute(ConstraintIndexCreator.createConstraintIndex(labelId,propertyKey));
   restartDb();
-  newTransaction();
-  assertEquals(emptySetOf(IndexDescriptor.class),asSet(readOnlyContext().indexesGetForLabel(getState(),labelId)));
-  commit();
+{
+    SchemaStatement statement=schemaStatementInNewTransaction();
+    assertEquals(emptySetOf(IndexDescriptor.class),asSet(statement.indexesGetForLabel(labelId)));
+    commit();
+  }
 }

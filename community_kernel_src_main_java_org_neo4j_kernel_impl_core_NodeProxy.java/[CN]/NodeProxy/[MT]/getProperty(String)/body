@@ -1,12 +1,11 @@
 {
   if (null == key)   throw new IllegalArgumentException("(null) property key is not allowed");
-  StatementOperationParts context=statementCtxProvider.getCtxForReading();
-  try (StatementState state=statementCtxProvider.statementForReading()){
-    long propertyKeyId=context.keyReadOperations().propertyKeyGetForName(state,key);
+  try (DataStatement statement=statementCtxProvider.dataStatement()){
+    long propertyKeyId=statement.propertyKeyGetForName(key);
     if (propertyKeyId == KeyReadOperations.NO_SUCH_PROPERTY_KEY) {
-      return false;
+      throw new NotFoundException(String.format("No such property, '%s'.",key));
     }
-    return context.entityReadOperations().nodeGetProperty(state,nodeId,propertyKeyId).value();
+    return statement.nodeGetProperty(nodeId,propertyKeyId).value();
   }
  catch (  EntityNotFoundException|PropertyKeyIdNotFoundException|PropertyNotFoundException e) {
     throw new NotFoundException(e);

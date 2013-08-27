@@ -1,19 +1,18 @@
 {
-  StatementOperationParts ctx=statementContextProvider.getCtxForReading();
-  StatementState state=statementContextProvider.statementForReading();
-  long propertyId=ctx.keyReadOperations().propertyKeyGetForName(state,key);
-  long labelId=ctx.keyReadOperations().labelGetForName(state,myLabel.name());
+  DataStatement statement=statementContextProvider.dataStatement();
+  long propertyId=statement.propertyKeyGetForName(key);
+  long labelId=statement.labelGetForName(myLabel.name());
   if (propertyId == NO_SUCH_PROPERTY_KEY || labelId == NO_SUCH_LABEL) {
-    state.close();
+    statement.close();
     return IteratorUtil.emptyIterator();
   }
   try {
-    IndexDescriptor indexRule=ctx.schemaReadOperations().indexesGetForLabelAndPropertyKey(state,labelId,propertyId);
-    if (ctx.schemaReadOperations().indexGetState(state,indexRule) == InternalIndexState.ONLINE) {
-      return map2nodes(ctx.entityReadOperations().nodesGetFromIndexLookup(state,indexRule,value),state);
+    IndexDescriptor indexRule=statement.indexesGetForLabelAndPropertyKey(labelId,propertyId);
+    if (statement.indexGetState(indexRule) == InternalIndexState.ONLINE) {
+      return map2nodes(statement.nodesGetFromIndexLookup(indexRule,value),statement);
     }
   }
  catch (  SchemaRuleNotFoundException|IndexNotFoundKernelException e) {
   }
-  return getNodesByLabelAndPropertyWithoutIndex(propertyId,value,ctx,state,labelId);
+  return getNodesByLabelAndPropertyWithoutIndex(propertyId,value,statement,labelId);
 }

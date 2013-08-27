@@ -1,19 +1,16 @@
 {
-  StatementOperationParts context=statementCtxProvider.getCtxForWriting();
-  StatementState state=statementCtxProvider.statementForWriting();
-  try {
-    context.entityWriteOperations().nodeAddLabel(state,getId(),context.keyWriteOperations().labelGetOrCreateForName(state,label.name()));
+  try (DataStatement statement=statementCtxProvider.dataStatement()){
+    try {
+      statement.nodeAddLabel(getId(),statement.labelGetOrCreateForName(label.name()));
+    }
+ catch (    ConstraintValidationKernelException e) {
+      throw new ConstraintViolationException(e.getUserMessage(new StatementTokenNameLookup(statement)),e);
+    }
   }
  catch (  SchemaKernelException e) {
     throw new ConstraintViolationException("Unable to add label.",e);
   }
 catch (  EntityNotFoundException e) {
     throw new NotFoundException("No node with id " + getId() + " found.",e);
-  }
-catch (  ConstraintValidationKernelException e) {
-    throw new ConstraintViolationException(e.getUserMessage(new StatementTokenNameLookup(state,context.keyReadOperations())),e);
-  }
- finally {
-    state.close();
   }
 }

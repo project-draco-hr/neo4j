@@ -1,32 +1,30 @@
 {
   AbstractTransactionManager txManager=mock(AbstractTransactionManager.class);
-  Transaction existingTransaction=mock(Transaction.class);
+  javax.transaction.Transaction existingTransaction=mock(javax.transaction.Transaction.class);
   when(txManager.suspend()).thenReturn(existingTransaction);
-  KernelTransaction txContext=mock(KernelTransaction.class);
-  when(txManager.getKernelTransaction()).thenReturn(txContext);
-  StatementOperationParts stmtContext=mockedParts(txContext);
-  when(txContext.newStatementOperations()).thenReturn(stmtContext);
-  @SuppressWarnings("unchecked") Transactor.Statement<Object,KernelException> statement=mock(Transactor.Statement.class);
+  StatementOperationParts operations=mock(StatementOperationParts.class);
+  Statement statement=mock(Statement.class);
+  StubKernelTransaction kernelTransaction=spy(new StubKernelTransaction(operations,statement));
+  when(txManager.getKernelTransaction()).thenReturn(kernelTransaction);
+  @SuppressWarnings("unchecked") Transactor.Work<Object,KernelException> work=mock(Transactor.Work.class);
   SpecificKernelException exception=new SpecificKernelException();
-  when(statement.perform(any(StatementOperationParts.class),any(StatementState.class))).thenThrow(exception);
-  StatementState state=mock(StatementState.class);
-  when(txContext.newStatementState()).thenReturn(state);
+  when(work.perform(any(StatementOperationParts.class),any(StatementState.class))).thenThrow(exception);
   Transactor transactor=new Transactor(txManager);
   try {
-    transactor.execute(statement);
+    transactor.execute(work);
     fail("expected exception");
   }
  catch (  SpecificKernelException e) {
     assertSame(exception,e);
   }
-  InOrder order=inOrder(txManager,txContext,state,statement);
+  InOrder order=inOrder(txManager,kernelTransaction,operations,statement,work);
   order.verify(txManager).suspend();
   order.verify(txManager).begin();
   order.verify(txManager).getKernelTransaction();
-  order.verify(txContext).newStatementOperations();
-  order.verify(statement).perform(stmtContext,state);
-  order.verify(state).close();
-  order.verify(txContext).rollback();
+  order.verify(kernelTransaction).newStatement();
+  order.verify(work).perform(operations,statement);
+  order.verify(statement).close();
+  order.verify(kernelTransaction).rollback();
   order.verify(txManager).resume(existingTransaction);
   order.verifyNoMoreInteractions();
 }

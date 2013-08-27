@@ -1,0 +1,30 @@
+{
+  Transaction previousTransaction=suspendTransaction();
+  try {
+    beginTransaction();
+    @SuppressWarnings("deprecation") KernelTransaction tx=txManager.getKernelTransaction();
+    boolean success=false;
+    try {
+      RESULT result=tx.execute(new MicroTransaction<>(work));
+      success=true;
+      return result;
+    }
+  finally {
+      if (success) {
+        tx.commit();
+      }
+ else {
+        tx.rollback();
+      }
+    }
+  }
+ catch (  TransactionalException failure) {
+    previousTransaction=null;
+    throw failure;
+  }
+ finally {
+    if (previousTransaction != null) {
+      resumeTransaction(previousTransaction);
+    }
+  }
+}

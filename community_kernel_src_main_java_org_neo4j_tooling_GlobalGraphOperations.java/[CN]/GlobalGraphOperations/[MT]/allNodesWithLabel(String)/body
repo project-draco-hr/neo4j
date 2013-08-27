@@ -1,16 +1,15 @@
 {
-  StatementOperationParts context=statementCtxProvider.getCtxForReading();
-  StatementState state=statementCtxProvider.statementForReading();
-  long labelId=context.keyReadOperations().labelGetForName(state,label);
+  DataStatement statement=statementCtxProvider.dataStatement();
+  long labelId=statement.labelGetForName(label);
   if (labelId == KeyReadOperations.NO_SUCH_LABEL) {
-    state.close();
+    statement.close();
     return emptyIterator();
   }
-  final PrimitiveLongIterator nodeIds=context.entityReadOperations().nodesGetForLabel(state,labelId);
+  final PrimitiveLongIterator nodeIds=statement.nodesGetForLabel(labelId);
   return cleanupService.resourceIterator(map(new FunctionFromPrimitiveLong<Node>(){
     @Override public Node apply(    long nodeId){
       return nodeManager.getNodeById(nodeId);
     }
   }
-,nodeIds),state);
+,nodeIds),statement);
 }

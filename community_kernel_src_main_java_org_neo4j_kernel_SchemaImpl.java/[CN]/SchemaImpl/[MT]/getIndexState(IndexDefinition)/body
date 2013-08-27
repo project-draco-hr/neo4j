@@ -1,19 +1,17 @@
 {
   assertInTransaction();
-  StatementOperationParts context=ctxProvider.getCtxForReading();
   String propertyKey=single(index.getPropertyKeys());
-  SchemaReadOperations schemaReading=context.schemaReadOperations();
-  try (StatementState state=ctxProvider.statementForReading()){
-    long labelId=context.keyReadOperations().labelGetForName(state,index.getLabel().name());
-    long propertyKeyId=context.keyReadOperations().propertyKeyGetForName(state,propertyKey);
+  try (BaseStatement statement=ctxProvider.baseStatement()){
+    long labelId=statement.labelGetForName(index.getLabel().name());
+    long propertyKeyId=statement.propertyKeyGetForName(propertyKey);
     if (labelId == KeyReadOperations.NO_SUCH_LABEL) {
       throw new NotFoundException(format("Label %s not found",index.getLabel().name()));
     }
     if (propertyKeyId == KeyReadOperations.NO_SUCH_PROPERTY_KEY) {
       throw new NotFoundException(format("Property key %s not found",propertyKey));
     }
-    IndexDescriptor descriptor=schemaReading.indexesGetForLabelAndPropertyKey(state,labelId,propertyKeyId);
-    InternalIndexState indexState=schemaReading.indexGetState(state,descriptor);
+    IndexDescriptor descriptor=statement.indexesGetForLabelAndPropertyKey(labelId,propertyKeyId);
+    InternalIndexState indexState=statement.indexGetState(descriptor);
 switch (indexState) {
 case POPULATING:
       return POPULATING;

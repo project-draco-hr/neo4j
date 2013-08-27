@@ -1,40 +1,19 @@
 {
   try {
-    txManager.begin(ForceMode.unforced);
-    boolean success=false;
-    KernelTransaction tx=null;
-    try {
-      tx=txManager.getKernelTransaction();
-      StatementOperationParts context=ctxProvider.getCtxForWriting();
-      StatementState state=tx.newStatementState();
-      try {
+    transactor.execute(new Transactor.Work<Void,SchemaKernelException>(){
+      @Override public Void perform(      StatementOperationParts context,      StatementState state) throws SchemaKernelException {
         for (Iterator<IndexDescriptor> indexes=context.schemaReadOperations().uniqueIndexesGetAll(state); indexes.hasNext(); ) {
           IndexDescriptor index=indexes.next();
           if (context.schemaReadOperations().indexGetOwningUniquenessConstraintId(state,index) == null) {
             context.schemaWriteOperations().uniqueIndexDrop(state,index);
           }
         }
-      }
-  finally {
-        state.close();
-      }
-      success=true;
-    }
-  finally {
-      if (tx != null) {
-        if (success) {
-          tx.commit();
-        }
- else {
-          tx.rollback();
-        }
-      }
- else {
-        txManager.rollback();
+        return null;
       }
     }
+);
   }
- catch (  Throwable e) {
+ catch (  SchemaKernelException|TransactionalException e) {
     log.error("Failed to execute orphan index checking transaction.",e);
   }
 }

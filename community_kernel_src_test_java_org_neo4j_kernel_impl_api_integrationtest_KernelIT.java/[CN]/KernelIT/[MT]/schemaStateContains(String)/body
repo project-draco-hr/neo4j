@@ -1,10 +1,15 @@
 {
-  Transaction tx;
-  StatementOperations statement;
-  tx=db.beginTx();
-  statement=statementContextProvider.getCtxForWriting().asStatementOperations();
-  boolean state=statement.schemaStateContains(getState(),key);
+  Transaction tx=db.beginTx();
+  SchemaStatement statement=statementContextProvider.schemaStatement();
+  final AtomicBoolean result=new AtomicBoolean(true);
+  statement.schemaStateGetOrCreate(key,new Function<String,Object>(){
+    @Override public Object apply(    String s){
+      result.set(false);
+      return null;
+    }
+  }
+);
   tx.success();
   tx.finish();
-  return state;
+  return result.get();
 }

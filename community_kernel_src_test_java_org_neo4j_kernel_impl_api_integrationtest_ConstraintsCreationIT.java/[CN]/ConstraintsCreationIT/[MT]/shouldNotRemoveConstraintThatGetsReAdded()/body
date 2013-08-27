@@ -1,13 +1,20 @@
 {
-  newTransaction();
-  UniquenessConstraint constraint=statement.uniquenessConstraintCreate(getState(),labelId,propertyKeyId);
-  commit();
+  UniquenessConstraint constraint;
+{
+    SchemaStatement statement=schemaStatementInNewTransaction();
+    constraint=statement.uniquenessConstraintCreate(labelId,propertyKeyId);
+    commit();
+  }
   SchemaStateCheck schemaState=new SchemaStateCheck().setUp();
-  newTransaction();
-  statement.constraintDrop(getState(),constraint);
-  statement.uniquenessConstraintCreate(getState(),labelId,propertyKeyId);
-  commit();
-  newTransaction();
-  assertEquals(singletonList(constraint),asCollection(statement.constraintsGetForLabelAndPropertyKey(getState(),labelId,propertyKeyId)));
-  schemaState.assertNotCleared();
+{
+    SchemaStatement statement=schemaStatementInNewTransaction();
+    statement.constraintDrop(constraint);
+    statement.uniquenessConstraintCreate(labelId,propertyKeyId);
+    commit();
+  }
+{
+    SchemaStatement statement=schemaStatementInNewTransaction();
+    assertEquals(singletonList(constraint),asCollection(statement.constraintsGetForLabelAndPropertyKey(labelId,propertyKeyId)));
+    schemaState.assertNotCleared();
+  }
 }

@@ -1,10 +1,14 @@
 {
-  StatementOperationParts context=statementCtxProvider.getCtxForWriting();
-  StatementState state=statementCtxProvider.statementForWriting();
   boolean success=false;
-  try {
-    long propertyKeyId=context.keyWriteOperations().propertyKeyGetOrCreateForName(state,key);
-    context.entityWriteOperations().nodeSetProperty(state,nodeId,Property.property(propertyKeyId,value));
+  try (DataStatement statement=statementCtxProvider.dataStatement()){
+    long propertyKeyId=statement.propertyKeyGetOrCreateForName(key);
+    try {
+      statement.nodeSetProperty(nodeId,Property.property(propertyKeyId,value));
+    }
+ catch (    ConstraintValidationKernelException e) {
+      success=true;
+      throw new ConstraintViolationException(e.getUserMessage(new StatementTokenNameLookup(statement)),e);
+    }
     success=true;
   }
  catch (  PropertyKeyIdNotFoundException e) {
@@ -16,11 +20,7 @@ catch (  EntityNotFoundException e) {
 catch (  SchemaKernelException e) {
     throw new IllegalArgumentException(e);
   }
-catch (  ConstraintValidationKernelException e) {
-    throw new ConstraintViolationException(e.getUserMessage(new StatementTokenNameLookup(state,context.keyReadOperations())),e);
-  }
  finally {
-    state.close();
     if (!success) {
       nodeLookup.getNodeManager().setRollbackOnly();
     }
