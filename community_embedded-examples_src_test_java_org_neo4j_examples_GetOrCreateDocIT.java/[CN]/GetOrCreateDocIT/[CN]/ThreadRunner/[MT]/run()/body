@@ -1,7 +1,7 @@
 {
   final Node lockNode=createLockNode();
   final UniqueFactory<Node> uniqueFactory=createUniqueFactory();
-  final List<GetOrCreateTask> threads=new ArrayList<GetOrCreateTask>();
+  final List<GetOrCreateTask> threads=new ArrayList<>();
   int numThreads=Runtime.getRuntime().availableProcessors() * 2;
   for (int i=0; i < numThreads; i++) {
     threads.add(new GetOrCreateTask(db,lockNode,NUM_USERS,impl,GetOrCreateDocIT.class.getSimpleName() + " thread " + i,uniqueFactory));
@@ -10,18 +10,22 @@
     thread.start();
   }
   RuntimeException failure=null;
-  List<List<Node>> results=new ArrayList<List<Node>>();
+  List<List<Node>> results=new ArrayList<>();
   for (  GetOrCreateTask thread : threads) {
     try {
       thread.join();
-      if (failure == null)       failure=thread.failure;
+      if (failure == null) {
+        failure=thread.failure;
+      }
       results.add(thread.result);
     }
  catch (    InterruptedException e) {
       e.printStackTrace();
     }
   }
-  if (failure != null)   throw failure;
+  if (failure != null) {
+    throw failure;
+  }
   assertEquals(numThreads,results.size());
   List<Node> firstResult=results.remove(0);
   for (  List<Node> subresult : results) {

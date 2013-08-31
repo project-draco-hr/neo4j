@@ -1,6 +1,6 @@
 {
   Node root=createGraph(new GraphDefinition<Node>(){
-    public Node create(    GraphDatabaseService graphdb){
+    @Override public Node create(    GraphDatabaseService graphdb){
       Node me=graphdb.createNode();
       Node stockholm=graphdb.createNode(), gothenburg=graphdb.createNode();
       stockholm.setProperty("name","Stockholm");
@@ -24,14 +24,14 @@
     }
   }
 );
-  Set<String> expected=new HashSet<String>(Arrays.asList("Andy","Bob"));
+  Set<String> expected=new HashSet<>(Arrays.asList("Andy","Bob"));
   Iterable<Node> friends=findFriendsSinceSpecifiedTimeInSpecifiedPlace(root,"Stockholm",3);
-  Transaction transaction=graphDb.getGraphDatabaseService().beginTx();
-  for (  Node friend : friends) {
-    String name=(String)friend.getProperty("name",null);
-    assertNotNull(name);
-    assertTrue("Unexpected friend: " + name,expected.remove(name));
+  try (Transaction transaction=graphDb.getGraphDatabaseService().beginTx()){
+    for (    Node friend : friends) {
+      String name=(String)friend.getProperty("name",null);
+      assertNotNull(name);
+      assertTrue("Unexpected friend: " + name,expected.remove(name));
+    }
+    assertTrue("These friends were not found: " + expected,expected.isEmpty());
   }
-  assertTrue("These friends were not found: " + expected,expected.isEmpty());
-  transaction.finish();
-}
+ }

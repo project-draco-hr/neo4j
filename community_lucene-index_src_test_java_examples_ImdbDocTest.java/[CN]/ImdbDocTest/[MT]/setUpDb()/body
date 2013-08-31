@@ -1,7 +1,6 @@
 {
   graphDb=new TestGraphDatabaseFactory().newImpermanentDatabaseBuilder().setConfig(GraphDatabaseSettings.cache_type,WeakCacheProvider.NAME).newGraphDatabase();
-  Transaction transaction=graphDb.beginTx();
-  try {
+  try (Transaction tx=graphDb.beginTx()){
     IndexManager index=graphDb.index();
     Index<Node> actors=index.forNodes("actors");
     Index<Node> movies=index.forNodes("movies");
@@ -41,20 +40,13 @@
     Relationship role4=bellucci.createRelationshipTo(malena,ACTS_IN);
     role4.setProperty("name","Mal??na Scordia");
     roles.add(role4,"name",role4.getProperty("name"));
-    transaction.success();
+    tx.success();
   }
-  finally {
-    transaction.finish();
-  }
-  transaction=graphDb.beginTx();
-  try {
+   try (Transaction tx=graphDb.beginTx()){
     String title="Movie and Actor Graph";
-    PrintWriter pw=AsciiDocGenerator.getPrintWriter("target/docs/dev",title);
-    pw.println(AsciidocHelper.createGraphVizDeletingReferenceNode(title,graphDb,"initial"));
-    pw.flush();
-    pw.close();
-  }
-  finally {
-    transaction.finish();
-  }
-}
+    try (PrintWriter pw=AsciiDocGenerator.getPrintWriter("target/docs/dev",title)){
+      pw.println(AsciidocHelper.createGraphVizDeletingReferenceNode(title,graphDb,"initial"));
+      pw.flush();
+    }
+   }
+ }
