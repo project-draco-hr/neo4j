@@ -1,0 +1,13 @@
+{
+  BatchInserter inserter=BatchInserters.inserter(testDir.directory().getAbsolutePath());
+  inserter.createNode(map("name","Bob"),label("User"),label("Admin"));
+  inserter.createDeferredSchemaIndex(label("Banana")).on("name").create();
+  inserter.shutdown();
+  GraphDatabaseService db=new GraphDatabaseFactory().newEmbeddedDatabase(testDir.directory().getAbsolutePath());
+  try (Transaction tx=db.beginTx()){
+    assertThat(count(db.findNodesByLabelAndProperty(label("Banana"),"name","Bob")),equalTo(0));
+  }
+  finally {
+    db.shutdown();
+  }
+}
