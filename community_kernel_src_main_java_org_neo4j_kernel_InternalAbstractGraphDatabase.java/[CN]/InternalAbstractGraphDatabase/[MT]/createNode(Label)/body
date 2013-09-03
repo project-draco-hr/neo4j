@@ -1,3 +1,21 @@
 {
-  return nodeManager.createNode(labels);
+  try (DataStatement statement=statementContextProvider.dataStatement()){
+    long nodeId=statement.nodeCreate();
+    for (    Label label : labels) {
+      long labelId=statement.labelGetOrCreateForName(label.name());
+      try {
+        statement.nodeAddLabel(nodeId,labelId);
+      }
+ catch (      EntityNotFoundException e) {
+        throw new NotFoundException("No node with id " + nodeId + " found.",e);
+      }
+    }
+    return nodeManager.newNodeProxyById(nodeId);
+  }
+ catch (  ConstraintValidationKernelException e) {
+    throw new ConstraintViolationException("Unable to add label.",e);
+  }
+catch (  SchemaKernelException e) {
+    throw new IllegalArgumentException(e);
+  }
 }

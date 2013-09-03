@@ -1,15 +1,15 @@
 {
-  boolean success=false;
+  boolean requireRollback=true;
   try (DataStatement statement=statementCtxProvider.dataStatement()){
     long propertyKeyId=statement.propertyKeyGetOrCreateForName(key);
     try {
       statement.nodeSetProperty(nodeId,Property.property(propertyKeyId,value));
     }
  catch (    ConstraintValidationKernelException e) {
-      success=true;
+      requireRollback=false;
       throw new ConstraintViolationException(e.getUserMessage(new StatementTokenNameLookup(statement)),e);
     }
-    success=true;
+    requireRollback=false;
   }
  catch (  PropertyKeyIdNotFoundException e) {
     throw new ThisShouldNotHappenError("Stefan/Jake","A property key id disappeared under our feet");
@@ -21,7 +21,7 @@ catch (  SchemaKernelException e) {
     throw new IllegalArgumentException(e);
   }
  finally {
-    if (!success) {
+    if (requireRollback) {
       nodeLookup.getNodeManager().setRollbackOnly();
     }
   }

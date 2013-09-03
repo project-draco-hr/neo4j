@@ -1,0 +1,40 @@
+{
+  if (startNode == null || endNode == null || relationshipTypeId > Integer.MAX_VALUE) {
+    throw new IllegalArgumentException("Bad parameter, startNode=" + startNode + ", endNode="+ endNode+ ", typeId="+ relationshipTypeId);
+  }
+  int typeId=(int)relationshipTypeId;
+  long startNodeId=startNode.getId();
+  long endNodeId=endNode.getId();
+  NodeImpl secondNode=getLightNode(endNodeId);
+  if (secondNode == null) {
+    setRollbackOnly();
+    throw new NotFoundException("Second node[" + endNode.getId() + "] deleted");
+  }
+  long id=idGenerator.nextId(Relationship.class);
+  RelationshipImpl rel=newRelationshipImpl(id,startNodeId,endNodeId,typeId,true);
+  RelationshipProxy proxy=new RelationshipProxy(id,relationshipLookups,statementCtxProvider);
+  TransactionState tx=getTransactionState();
+  tx.acquireWriteLock(proxy);
+  boolean success=false;
+  try {
+    tx.acquireWriteLock(startNodeProxy);
+    tx.acquireWriteLock(endNode);
+    persistenceManager.relationshipCreate(id,typeId,startNodeId,endNodeId);
+    tx.createRelationship(id);
+    if (startNodeId == endNodeId) {
+      tx.getOrCreateCowRelationshipAddMap(startNode,typeId).add(id,DirectionWrapper.BOTH);
+    }
+ else {
+      tx.getOrCreateCowRelationshipAddMap(startNode,typeId).add(id,DirectionWrapper.OUTGOING);
+      tx.getOrCreateCowRelationshipAddMap(secondNode,typeId).add(id,DirectionWrapper.INCOMING);
+    }
+    relCache.put(rel);
+    success=true;
+    return proxy;
+  }
+  finally {
+    if (!success) {
+      setRollbackOnly();
+    }
+  }
+}

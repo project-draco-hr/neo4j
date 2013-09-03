@@ -1,3 +1,20 @@
 {
-  return createNode(null);
+  long id=idGenerator.nextId(Node.class);
+  NodeImpl node=new NodeImpl(id,true);
+  NodeProxy proxy=new NodeProxy(id,nodeLookup,statementCtxProvider);
+  TransactionState transactionState=getTransactionState();
+  transactionState.acquireWriteLock(proxy);
+  boolean success=false;
+  try {
+    persistenceManager.nodeCreate(id);
+    transactionState.createNode(id);
+    nodeCache.put(node);
+    success=true;
+    return proxy;
+  }
+  finally {
+    if (!success) {
+      setRollbackOnly();
+    }
+  }
 }
