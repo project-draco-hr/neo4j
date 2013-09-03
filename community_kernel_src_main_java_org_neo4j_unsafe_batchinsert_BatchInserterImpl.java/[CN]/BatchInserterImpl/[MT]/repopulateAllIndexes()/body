@@ -1,5 +1,5 @@
 {
-  IndexRule[] rules=getIndexesNeedingPopulation();
+  final IndexRule[] rules=getIndexesNeedingPopulation();
   final IndexPopulator[] populators=new IndexPopulator[rules.length];
   IndexStoreView storeView=new NeoStoreIndexStoreView(neoStore);
   final long[] labelIds=new long[rules.length];
@@ -13,28 +13,20 @@
   }
   StoreScan<IOException> storeScan=storeView.visitNodes(labelIds,propertyKeyIds,new Visitor<NodePropertyUpdate,IOException>(){
     @Override public boolean visit(    NodePropertyUpdate update) throws IOException {
-      int i=indexOf(propertyKeyIds,update.getPropertyKeyId());
-      if (i == -1) {
-        throw new ThisShouldNotHappenError("Mattias","The store view scan gave back a node property " + "update that I didn't care about. I care about these properties:" + Arrays.toString(propertyKeyIds) + ", but got:"+ update.getPropertyKeyId());
-      }
-      if (update.forLabel(labelIds[i])) {
-        try {
-          populators[i].add(update.getNodeId(),update.getValueAfter());
-        }
- catch (        IndexEntryConflictException conflict) {
-          throw conflict.notAllowed(labelIds[i],propertyKeyIds[i]);
-        }
-        return true;
-      }
-      return false;
-    }
-    private int indexOf(    long[] ids,    long idToFind){
-      for (int i=0; i < ids.length; i++) {
-        if (ids[i] == idToFind) {
-          return i;
+      long propertyInQuestion=update.getPropertyKeyId();
+      for (int i=0; i < propertyKeyIds.length; i++) {
+        if (propertyKeyIds[i] == propertyInQuestion) {
+          if (update.forLabel(labelIds[i])) {
+            try {
+              populators[i].add(update.getNodeId(),update.getValueAfter());
+            }
+ catch (            IndexEntryConflictException conflict) {
+              throw conflict.notAllowed(rules[i].getLabel(),rules[i].getPropertyKey());
+            }
+          }
         }
       }
-      return -1;
+      return true;
     }
   }
 );
