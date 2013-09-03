@@ -1,6 +1,6 @@
 {
-  final Collection<File> files=new ArrayList<File>();
-  final Collection<SnapshotDeletionPolicy> snapshots=new ArrayList<SnapshotDeletionPolicy>();
+  final Collection<File> files=new ArrayList<>();
+  final Collection<SnapshotDeletionPolicy> snapshots=new ArrayList<>();
   makeSureAllIndexesAreInstantiated();
   for (  IndexReference writer : getAllIndexes()) {
     SnapshotDeletionPolicy deletionPolicy=(SnapshotDeletionPolicy)writer.getWriter().getConfig().getIndexDeletionPolicy();
@@ -16,9 +16,10 @@
     }
   }
   files.add(providerStore.getFile());
-  return new ClosableIterable<File>(){
-    @Override public Iterator<File> iterator(){
-      return files.iterator();
+  return new PrefetchingResourceIterator<File>(){
+    private final Iterator<File> filesIterator=files.iterator();
+    @Override protected File fetchNextOrNull(){
+      return filesIterator.hasNext() ? filesIterator.next() : null;
     }
     @Override public void close(){
       for (      SnapshotDeletionPolicy deletionPolicy : snapshots) {
