@@ -1,4 +1,5 @@
 {
+  life=new LifeSupport();
   readOnly=config.get(Configuration.read_only);
   storeDir=config.get(Configuration.store_dir);
   File store=config.get(Configuration.neo_store);
@@ -21,10 +22,12 @@
   }
 );
   cacheAccess=new BridgingCacheAccess(nodeManager,schemaCache,updateableSchemaState,persistenceCache);
-  final SchemaIndexProvider indexProvider=dependencyResolver.resolveDependency(SchemaIndexProvider.class,HIGHEST_PRIORITIZED_OR_NONE);
+  final SchemaIndexProvider indexProvider=dependencyResolver.resolveDependency(SchemaIndexProvider.class,SchemaIndexProvider.HIGHEST_PRIORITIZED_OR_NONE);
   providerMap=new DefaultSchemaIndexProviderMap(indexProvider);
   indexingService=life.add(new IndexingService(scheduler,providerMap,new NeoStoreIndexStoreView(neoStore),tokenNameLookup,updateableSchemaState,logging));
   xaContainer=xaFactory.newXaContainer(this,config.get(Configuration.logical_log),new CommandFactory(neoStore,indexingService),tf,stateFactory,providers);
+  labelScanStore=life.add(dependencyResolver.resolveDependency(LabelScanStoreProvider.class,LabelScanStoreProvider.HIGHEST_PRIORITIZED).getLabelScanStore());
+  life.init();
   try {
     if (!readOnly) {
       neoStore.setRecoveredStatus(true);
