@@ -1,8 +1,22 @@
 {
-  ObjectStreamClass wirePayload=super.readClassDescriptor();
-  Long wireSuid=getSuidFrom(wirePayload);
-  if (versionMapper.hasMappingFor(wireSuid)) {
-    updateWirePayloadSuid(wirePayload,versionMapper.map(wireSuid));
+  ObjectStreamClass wireClassDescriptor=super.readClassDescriptor();
+  if (!versionMapper.hasMappingFor(wireClassDescriptor.getName())) {
+    versionMapper.addMappingFor(wireClassDescriptor.getName(),wireClassDescriptor.getSerialVersionUID());
   }
-  return wirePayload;
+  Class localClass;
+  try {
+    localClass=Class.forName(wireClassDescriptor.getName());
+  }
+ catch (  ClassNotFoundException e) {
+    return wireClassDescriptor;
+  }
+  ObjectStreamClass localClassDescriptor=ObjectStreamClass.lookup(localClass);
+  if (localClassDescriptor != null) {
+    final long localSUID=localClassDescriptor.getSerialVersionUID();
+    final long wireSUID=wireClassDescriptor.getSerialVersionUID();
+    if (wireSUID != localSUID) {
+      wireClassDescriptor=localClassDescriptor;
+    }
+  }
+  return wireClassDescriptor;
 }
