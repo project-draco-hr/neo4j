@@ -1,0 +1,25 @@
+{
+  String separator=System.lineSeparator();
+  StringBuilder result=new StringBuilder("Kernel extensions available on classpath: ");
+  StringBuilder classPath=new StringBuilder();
+  for (  String entry : getProperty("java.class.path").split(pathSeparator)) {
+    classPath.append(separator).append("  ").append(entry);
+    File entryFile=new File(entry);
+    if (entryFile.isDirectory()) {
+      File servicesDir=new File(new File(entryFile,"META-INF"),"services");
+      if (servicesDir.exists()) {
+        result.append(separator).append("Listing service files and kernel extensions where possible in " + servicesDir + ":");
+        for (        File serviceFile : servicesDir.listFiles()) {
+          if (serviceFile.isFile()) {
+            result.append(separator).append("  ").append(serviceFile.getName());
+          }
+        }
+        File extensionsFile=new File(servicesDir,KernelExtensionFactory.class.getName());
+        if (extensionsFile.exists()) {
+          appendKernelExtensionsList(extensionsFile,result,separator + "   + ");
+        }
+      }
+    }
+  }
+  return result.append(separator).append(separator).append("Class path entries:").append(classPath).toString();
+}
