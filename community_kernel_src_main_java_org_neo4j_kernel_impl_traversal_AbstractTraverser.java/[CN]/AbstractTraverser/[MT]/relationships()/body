@@ -1,18 +1,25 @@
 {
-  return new IterableWrapper<Relationship,Path>(this){
-    @Override public Iterator<Relationship> iterator(){
-      Iterator<Relationship> iter=super.iterator();
-      if (iter.hasNext()) {
-        Relationship first=iter.next();
-        if (first == null)         return iter;
-        return new CombiningIterator<Relationship>(first,iter);
+  return new ResourcePathIterableWrapper<Relationship>(this){
+    @Override public ResourceIterator<Relationship> iterator(){
+      final ResourceIterator<Path> pathIterator=pathIterator();
+      return new PrefetchingResourceIterator<Relationship>(){
+        @Override public void close(){
+          pathIterator.close();
+        }
+        @Override protected Relationship fetchNextOrNull(){
+          while (pathIterator.hasNext()) {
+            Path path=pathIterator.next();
+            if (path.length() > 0) {
+              return path.lastRelationship();
+            }
+          }
+          return null;
+        }
       }
- else {
-        return iter;
-      }
+;
     }
-    @Override protected Relationship underlyingObjectToObject(    Path position){
-      return position.lastRelationship();
+    @Override protected Relationship convert(    Path path){
+      return path.lastRelationship();
     }
   }
 ;
