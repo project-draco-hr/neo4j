@@ -4,7 +4,7 @@
   LockManager manager=resolver.resolveDependency(LockManager.class);
   final IndexDescriptor index=createUniquenessConstraint();
   final String value="value";
-  DataStatement dataStatement=dataStatementInNewTransaction();
+  DataWriteOperations dataStatement=dataWriteOperationsInNewTransaction();
   long nodeId=dataStatement.nodeCreate();
   dataStatement.nodeAddLabel(nodeId,labelId);
   dataStatement.nodeSetProperty(nodeId,Property.stringProperty(propertyKeyId,value));
@@ -12,16 +12,13 @@
     @Override public void run(){
       latch.awaitStart();
       Transaction tx=db.beginTx();
-      DataStatement statement=statementContextProvider.dataStatement();
+      Statement statement=statementContextProvider.statement();
       try {
-        statement.nodeGetUniqueFromIndexLookup(index,value);
+        statement.readOperations().nodeGetUniqueFromIndexLookup(index,value);
         statement.close();
         tx.success();
       }
- catch (      IndexNotFoundKernelException e) {
-        throw new RuntimeException(e);
-      }
-catch (      IndexBrokenKernelException e) {
+ catch (      IndexNotFoundKernelException|IndexBrokenKernelException e) {
         throw new RuntimeException(e);
       }
  finally {
@@ -47,7 +44,6 @@ catch (      IndexBrokenKernelException e) {
       }
     }
   }
-  dataStatement.close();
   commit();
   latch.awaitFinish();
 }

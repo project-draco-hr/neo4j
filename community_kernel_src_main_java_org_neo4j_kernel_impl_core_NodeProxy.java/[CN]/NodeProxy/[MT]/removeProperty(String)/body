@@ -1,12 +1,15 @@
 {
-  try (DataStatement statement=statementCtxProvider.dataStatement()){
-    long propertyKeyId=statement.propertyKeyGetOrCreateForName(key);
-    return statement.nodeRemoveProperty(nodeId,propertyKeyId).value(null);
+  try (Statement statement=statementContextProvider.statement()){
+    long propertyKeyId=statement.readOperations().propertyKeyGetOrCreateForName(key);
+    return statement.dataWriteOperations().nodeRemoveProperty(nodeId,propertyKeyId).value(null);
   }
  catch (  EntityNotFoundException e) {
     throw new NotFoundException(e);
   }
 catch (  IllegalTokenNameException e) {
     throw new IllegalArgumentException(format("Invalid property key '%s'.",key),e);
+  }
+catch (  InvalidTransactionTypeException e) {
+    throw new ConstraintViolationException(e.getMessage(),e);
   }
 }

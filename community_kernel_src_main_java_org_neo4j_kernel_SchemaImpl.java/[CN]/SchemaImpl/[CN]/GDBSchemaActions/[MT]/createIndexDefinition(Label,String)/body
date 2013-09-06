@@ -1,27 +1,28 @@
 {
-  SchemaStatement statement=ctxProvider.schemaStatement();
-  try {
-    long labelId=statement.labelGetOrCreateForName(label.name());
-    long propertyKeyId=statement.propertyKeyGetOrCreateForName(propertyKey);
-    statement.indexCreate(labelId,propertyKeyId);
-    return new IndexDefinitionImpl(this,label,propertyKey,false);
+  try (Statement statement=ctxProvider.statement()){
+    try {
+      long labelId=statement.readOperations().labelGetOrCreateForName(label.name());
+      long propertyKeyId=statement.readOperations().propertyKeyGetOrCreateForName(propertyKey);
+      statement.schemaWriteOperations().indexCreate(labelId,propertyKeyId);
+      return new IndexDefinitionImpl(this,label,propertyKey,false);
+    }
+ catch (    AlreadyIndexedException e) {
+      throw new ConstraintViolationException(format("There already exists an index for label '%s' on property '%s'.",label.name(),propertyKey),e);
+    }
+catch (    AlreadyConstrainedException e) {
+      throw new ConstraintViolationException(format("Label '%s' and property '%s' have a unique constraint defined on them, so an index is " + "already created that matches this.",label.name(),propertyKey),e);
+    }
+catch (    AddIndexFailureException e) {
+      throw new ConstraintViolationException(e.getUserMessage(new StatementTokenNameLookup(statement.readOperations())),e);
+    }
+catch (    IllegalTokenNameException e) {
+      throw new IllegalArgumentException(e);
+    }
+catch (    TooManyLabelsException e) {
+      throw new IllegalStateException(e);
+    }
+catch (    InvalidTransactionTypeException e) {
+      throw new ConstraintViolationException(e.getMessage(),e);
+    }
   }
- catch (  AlreadyIndexedException e) {
-    throw new ConstraintViolationException(format("There already exists an index for label '%s' on property '%s'.",label.name(),propertyKey),e);
-  }
-catch (  AlreadyConstrainedException e) {
-    throw new ConstraintViolationException(format("Label '%s' and property '%s' have a unique constraint defined on them, so an index is " + "already created that matches this.",label.name(),propertyKey),e);
-  }
-catch (  AddIndexFailureException e) {
-    throw new ConstraintViolationException(e.getUserMessage(new StatementTokenNameLookup(statement)),e);
-  }
-catch (  IllegalTokenNameException e) {
-    throw new IllegalArgumentException(e);
-  }
-catch (  TooManyLabelsException e) {
-    throw new IllegalStateException(e);
-  }
- finally {
-    statement.close();
-  }
-}
+ }

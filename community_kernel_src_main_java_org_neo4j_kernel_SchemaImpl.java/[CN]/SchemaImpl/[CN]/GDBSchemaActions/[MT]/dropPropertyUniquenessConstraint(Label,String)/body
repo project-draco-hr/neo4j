@@ -1,11 +1,14 @@
 {
-  try (SchemaStatement statement=ctxProvider.schemaStatement()){
-    long labelId=statement.labelGetOrCreateForName(label.name());
-    long propertyKeyId=statement.propertyKeyGetOrCreateForName(propertyKey);
+  try (Statement statement=ctxProvider.statement()){
+    long labelId=statement.readOperations().labelGetOrCreateForName(label.name());
+    long propertyKeyId=statement.readOperations().propertyKeyGetOrCreateForName(propertyKey);
     UniquenessConstraint constraint=new UniquenessConstraint(labelId,propertyKeyId);
-    statement.constraintDrop(constraint);
+    statement.schemaWriteOperations().constraintDrop(constraint);
   }
  catch (  IllegalTokenNameException|TooManyLabelsException|DropConstraintFailureException e) {
     throw new ThisShouldNotHappenError("Mattias","Unable to drop property unique constraint");
+  }
+catch (  InvalidTransactionTypeException e) {
+    throw new ConstraintViolationException(e.getMessage(),e);
   }
 }

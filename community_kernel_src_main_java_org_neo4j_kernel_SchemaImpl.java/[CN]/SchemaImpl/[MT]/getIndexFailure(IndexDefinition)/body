@@ -1,17 +1,17 @@
 {
   assertInTransaction();
   String propertyKey=single(index.getPropertyKeys());
-  try (ReadStatement statement=ctxProvider.readStatement()){
-    long labelId=statement.labelGetForName(index.getLabel().name());
-    long propertyKeyId=statement.propertyKeyGetForName(propertyKey);
+  try (Statement statement=statementContextProvider.statement()){
+    long labelId=statement.readOperations().labelGetForName(index.getLabel().name());
+    long propertyKeyId=statement.readOperations().propertyKeyGetForName(propertyKey);
     if (labelId == KeyReadOperations.NO_SUCH_LABEL) {
       throw new NotFoundException(format("Label %s not found",index.getLabel().name()));
     }
     if (propertyKeyId == KeyReadOperations.NO_SUCH_PROPERTY_KEY) {
       throw new NotFoundException(format("Property key %s not found",propertyKey));
     }
-    IndexDescriptor indexId=statement.indexesGetForLabelAndPropertyKey(labelId,propertyKeyId);
-    return statement.indexGetFailure(indexId);
+    IndexDescriptor indexId=statement.readOperations().indexesGetForLabelAndPropertyKey(labelId,propertyKeyId);
+    return statement.readOperations().indexGetFailure(indexId);
   }
  catch (  SchemaRuleNotFoundException|IndexNotFoundKernelException e) {
     throw new NotFoundException(format("No index for label %s on property %s",index.getLabel().name(),propertyKey));

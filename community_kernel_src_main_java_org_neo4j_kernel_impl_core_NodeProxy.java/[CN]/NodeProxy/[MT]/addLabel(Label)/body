@@ -1,10 +1,10 @@
 {
-  try (DataStatement statement=statementCtxProvider.dataStatement()){
+  try (Statement statement=statementContextProvider.statement()){
     try {
-      statement.nodeAddLabel(getId(),statement.labelGetOrCreateForName(label.name()));
+      statement.dataWriteOperations().nodeAddLabel(getId(),statement.readOperations().labelGetOrCreateForName(label.name()));
     }
  catch (    ConstraintValidationKernelException e) {
-      throw new ConstraintViolationException(e.getUserMessage(new StatementTokenNameLookup(statement)),e);
+      throw new ConstraintViolationException(e.getUserMessage(new StatementTokenNameLookup(statement.readOperations())),e);
     }
   }
  catch (  IllegalTokenNameException e) {
@@ -15,5 +15,8 @@ catch (  TooManyLabelsException e) {
   }
 catch (  EntityNotFoundException e) {
     throw new NotFoundException("No node with id " + getId() + " found.",e);
+  }
+catch (  InvalidTransactionTypeException e) {
+    throw new ConstraintViolationException(e.getMessage(),e);
   }
 }

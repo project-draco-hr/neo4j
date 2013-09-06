@@ -1,8 +1,8 @@
 {
   boolean success=false;
-  try (DataStatement statement=statementCtxProvider.dataStatement()){
-    long propertyKeyId=statement.propertyKeyGetOrCreateForName(key);
-    statement.relationshipSetProperty(relId,Property.property(propertyKeyId,value));
+  try (Statement statement=statementContextProvider.statement()){
+    long propertyKeyId=statement.readOperations().propertyKeyGetOrCreateForName(key);
+    statement.dataWriteOperations().relationshipSetProperty(relId,Property.property(propertyKeyId,value));
     success=true;
   }
  catch (  EntityNotFoundException e) {
@@ -10,6 +10,9 @@
   }
 catch (  IllegalTokenNameException e) {
     throw new IllegalArgumentException(e);
+  }
+catch (  InvalidTransactionTypeException e) {
+    throw new ConstraintViolationException(e.getMessage(),e);
   }
  finally {
     if (!success) {

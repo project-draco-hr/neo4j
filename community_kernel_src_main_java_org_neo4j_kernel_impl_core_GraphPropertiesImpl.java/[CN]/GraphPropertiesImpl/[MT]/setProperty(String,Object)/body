@@ -1,12 +1,15 @@
 {
   boolean success=false;
-  try (DataStatement statement=statementCtxProvider.dataStatement()){
-    long propertyKeyId=statement.propertyKeyGetOrCreateForName(key);
-    statement.graphSetProperty(property(propertyKeyId,value));
+  try (Statement statement=statementContextProvider.statement()){
+    long propertyKeyId=statement.readOperations().propertyKeyGetOrCreateForName(key);
+    statement.dataWriteOperations().graphSetProperty(property(propertyKeyId,value));
     success=true;
   }
  catch (  IllegalTokenNameException e) {
     throw new IllegalArgumentException(e);
+  }
+catch (  InvalidTransactionTypeException e) {
+    throw new ConstraintViolationException(e.getMessage(),e);
   }
  finally {
     if (!success) {
