@@ -1,0 +1,53 @@
+{
+  final DoubleLatch latch=new DoubleLatch();
+  DependencyResolver resolver=db.getDependencyResolver();
+  LockManager manager=resolver.resolveDependency(LockManager.class);
+  final IndexDescriptor index=createUniquenessConstraint();
+  final String value="value";
+  DataStatement dataStatement=dataStatementInNewTransaction();
+  long nodeId=dataStatement.nodeCreate();
+  dataStatement.nodeAddLabel(nodeId,labelId);
+  dataStatement.nodeSetProperty(nodeId,Property.stringProperty(propertyKeyId,value));
+  Runnable runnableForThread2=new Runnable(){
+    @Override public void run(){
+      latch.awaitStart();
+      Transaction tx=db.beginTx();
+      DataStatement statement=statementContextProvider.dataStatement();
+      try {
+        statement.nodeGetUniqueFromIndexLookup(index,value);
+        statement.close();
+        tx.success();
+      }
+ catch (      IndexNotFoundKernelException e) {
+        throw new RuntimeException(e);
+      }
+catch (      IndexBrokenKernelException e) {
+        throw new RuntimeException(e);
+      }
+ finally {
+        tx.close();
+        latch.finish();
+      }
+    }
+  }
+;
+  Thread thread2=new Thread(runnableForThread2,"Transaction Thread 2");
+  thread2.start();
+  latch.start();
+  spinUntilBlocking:   for (; ; ) {
+    for (    LockInfo info : manager.getAllLocks()) {
+      for (      WaitingThread waiter : info.getWaitingThreads()) {
+        if (waiter.getThreadId() == thread2.getId()) {
+          assertThat(info.getReadCount(),equalTo(0));
+          assertThat(info.getWriteCount(),equalTo(1));
+          assertThat(info.getResourceType(),equalTo(ResourceType.OTHER));
+          assertThat(info.getResourceId(),equalTo("IndexEntryLock{labelId=0, propertyKeyId=0, propertyValue=value}"));
+          break spinUntilBlocking;
+        }
+      }
+    }
+  }
+  dataStatement.close();
+  commit();
+  latch.awaitFinish();
+}
