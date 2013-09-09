@@ -11,7 +11,7 @@
     populators[i]=schemaIndexProviders.apply(rule.getProviderDescriptor()).getPopulator(rule.getId(),new IndexConfiguration(rule.isConstraintIndex()));
     populators[i].create();
   }
-  StoreScan<IOException> storeScan=storeView.visitNodes(labelIds,propertyKeyIds,new Visitor<NodePropertyUpdate,IOException>(){
+  Visitor<NodePropertyUpdate,IOException> propertyUpdateVisitor=new Visitor<NodePropertyUpdate,IOException>(){
     @Override public boolean visit(    NodePropertyUpdate update) throws IOException {
       long propertyInQuestion=update.getPropertyKeyId();
       for (int i=0; i < propertyKeyIds.length; i++) {
@@ -29,9 +29,12 @@
       return true;
     }
   }
-);
+;
+  NodeLabelUpdateVisitor labelUpdateVisitor=new NodeLabelUpdateVisitor();
+  StoreScan<IOException> storeScan=storeView.visitNodes(labelIds,propertyKeyIds,propertyUpdateVisitor,labelUpdateVisitor);
   storeScan.run();
   for (  IndexPopulator populator : populators) {
     populator.close(true);
   }
+  labelUpdateVisitor.close();
 }
