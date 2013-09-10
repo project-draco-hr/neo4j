@@ -1,38 +1,40 @@
 {
-  URI to;
-  try {
-    to=new URI(message.getHeader(Message.TO));
+  final URI to=URI.create(message.getHeader(Message.TO));
+  ExecutorService senderExecutor=senderExecutors.get(to);
+  if (senderExecutor == null) {
+    senderExecutor=Executors.newSingleThreadExecutor(new NamedThreadFactory("Cluster Sender " + to.toASCIIString()));
+    senderExecutors.put(to,senderExecutor);
   }
- catch (  URISyntaxException e) {
-    msgLog.error("Not valid URI:" + message.getHeader(Message.TO));
-    return;
-  }
-  Channel channel=getChannel(to);
-  try {
-    if (channel == null) {
-      channel=openChannel(to);
-      openedChannel(to,channel);
-    }
-  }
- catch (  Exception e) {
-    msgLog.debug("Could not connect to:" + to);
-    return;
-  }
-  try {
-    msgLog.debug("Sending to " + to + ": "+ message);
-    ChannelFuture future=channel.write(message);
-    future.addListener(new ChannelFutureListener(){
-      @Override public void operationComplete(      ChannelFuture future) throws Exception {
-        if (!future.isSuccess()) {
-          msgLog.debug("Unable to write " + message + " to "+ future.getChannel(),future.getCause());
+  senderExecutor.submit(new Runnable(){
+    @Override public void run(){
+      Channel channel=getChannel(to);
+      try {
+        if (channel == null) {
+          channel=openChannel(to);
+          openedChannel(to,channel);
         }
       }
-    }
+ catch (      Exception e) {
+        msgLog.error("Could not connect to:" + to,e);
+        return;
+      }
+      try {
+        msgLog.debug("Sending to " + to + ": "+ message);
+        ChannelFuture future=channel.write(message);
+        future.addListener(new ChannelFutureListener(){
+          @Override public void operationComplete(          ChannelFuture future) throws Exception {
+            if (!future.isSuccess()) {
+              msgLog.debug("Unable to write " + message + " to "+ future.getChannel(),future.getCause());
+            }
+          }
+        }
 );
+      }
+ catch (      Exception e) {
+        msgLog.warn("Could not send message",e);
+        channel.close();
+      }
+    }
   }
- catch (  Exception e) {
-    e.printStackTrace();
-    channel.close();
-    closedChannel(to);
-  }
+);
 }
