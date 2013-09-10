@@ -1,0 +1,23 @@
+{
+  if (jetty == null) {
+    jetty=new Server(new QueuedThreadPool(jettyMaxThreads));
+    ServerConnector connector=new ServerConnector(jetty);
+    connector.setPort(jettyHttpPort);
+    connector.setHost(jettyAddr);
+    jetty.addConnector(connector);
+    if (httpsEnabled) {
+      if (httpsCertificateInformation != null) {
+        jetty.addConnector(sslSocketFactory.createConnector(jetty,httpsCertificateInformation,jettyAddr,jettyHttpsPort));
+      }
+ else {
+        throw new RuntimeException("HTTPS set to enabled, but no HTTPS configuration provided.");
+      }
+    }
+  }
+  handlers=new HandlerList();
+  jetty.setHandler(handlers);
+  MovedContextHandler redirector=new MovedContextHandler();
+  handlers.addHandler(redirector);
+  loadAllMounts();
+  startJetty();
+}
