@@ -1,0 +1,16 @@
+{
+  RecordChange<Long,NodeRecord,Void> node=nodeRecords.getIfLoaded(nodeId);
+  if (node != null) {
+    if (node.isCreated()) {
+      return;
+    }
+    if (!node.forReadingLinkage().inUse() && !light) {
+      throw new IllegalStateException("Node[" + nodeId + "] has been deleted in this tx");
+    }
+  }
+  NodeRecord nodeRecord=nodeRecords.getOrLoad(nodeId,null).forReadingLinkage();
+  if (!nodeRecord.inUse()) {
+    throw new IllegalStateException("Node[" + nodeId + "] has been deleted in this tx");
+  }
+  ReadTransaction.loadProperties(getPropertyStore(),nodeRecord.getNextProp(),receiver);
+}
