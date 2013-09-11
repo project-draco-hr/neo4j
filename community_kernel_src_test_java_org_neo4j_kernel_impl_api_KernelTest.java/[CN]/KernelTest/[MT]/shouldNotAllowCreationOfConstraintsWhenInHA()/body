@@ -3,12 +3,13 @@
   KernelAPI kernelAPI=db.getDependencyResolver().resolveDependency(KernelAPI.class);
   db.beginTx();
   KernelTransaction tx=kernelAPI.newTransaction();
-  SchemaWriteOperations statement=tx.acquireStatement().schemaWriteOperations();
+  Statement statement=tx.acquireStatement();
   try {
-    statement.uniquenessConstraintCreate(1,1);
+    statement.schemaWriteOperations().uniquenessConstraintCreate(1,1);
     fail("expected exception here");
   }
- catch (  UnsupportedSchemaModificationException e) {
+ catch (  InvalidTransactionTypeException e) {
+    assertThat(e.getMessage(),containsString("HA"));
   }
   db.shutdown();
 }

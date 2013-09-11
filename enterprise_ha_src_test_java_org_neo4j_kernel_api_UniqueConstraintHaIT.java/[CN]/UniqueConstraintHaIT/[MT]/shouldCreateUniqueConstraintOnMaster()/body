@@ -1,0 +1,13 @@
+{
+  ClusterManager.ManagedCluster cluster=clusterRule.startCluster();
+  HighlyAvailableGraphDatabase master=cluster.getMaster();
+  try (Transaction tx=master.beginTx()){
+    master.schema().constraintFor(label("Label1")).on("key1").unique().create();
+    tx.success();
+  }
+   try (Transaction tx=master.beginTx()){
+    UniquenessConstraintDefinition constraint=single(master.schema().getConstraints(label("Label1"))).asUniquenessConstraint();
+    assertEquals("key1",single(constraint.getPropertyKeys()));
+    tx.success();
+  }
+ }

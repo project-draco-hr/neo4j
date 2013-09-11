@@ -11,9 +11,8 @@
   Runnable runnableForThread2=new Runnable(){
     @Override public void run(){
       latch.awaitStart();
-      Transaction tx=db.beginTx();
       Statement statement=statementContextProvider.statement();
-      try {
+      try (Transaction tx=db.beginTx()){
         statement.readOperations().nodeGetUniqueFromIndexLookup(index,value);
         statement.close();
         tx.success();
@@ -22,7 +21,6 @@
         throw new RuntimeException(e);
       }
  finally {
-        tx.close();
         latch.finish();
       }
     }
