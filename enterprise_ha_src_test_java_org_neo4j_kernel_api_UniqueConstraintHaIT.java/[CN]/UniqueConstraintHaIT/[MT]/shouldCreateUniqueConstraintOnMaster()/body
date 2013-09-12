@@ -5,13 +5,9 @@
     master.schema().constraintFor(label("Label1")).on("key1").unique().create();
     tx.success();
   }
-   cluster.sync();
-  Thread.sleep(5000);
-  for (  HighlyAvailableGraphDatabase clusterMember : cluster.getAllMembers()) {
-    try (Transaction tx=clusterMember.beginTx()){
-      UniquenessConstraintDefinition constraint=single(clusterMember.schema().getConstraints(label("Label1"))).asUniquenessConstraint();
-      assertEquals("key1",single(constraint.getPropertyKeys()));
-      tx.success();
-    }
-   }
-}
+   try (Transaction tx=master.beginTx()){
+    UniquenessConstraintDefinition constraint=single(master.schema().getConstraints(label("Label1"))).asUniquenessConstraint();
+    assertEquals("key1",single(constraint.getPropertyKeys()));
+    tx.success();
+  }
+ }
