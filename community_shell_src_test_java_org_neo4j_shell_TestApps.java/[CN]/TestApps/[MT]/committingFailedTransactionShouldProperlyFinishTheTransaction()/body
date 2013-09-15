@@ -1,0 +1,26 @@
+{
+  executeCommand("begin");
+  executeCommand("create constraint on (node:Label1) assert node.key1 is unique;");
+  try {
+    executeCommand("set foo bar");
+    fail("Should have failed");
+  }
+ catch (  ShellException e) {
+    assertThat(e.getMessage(),containsString(ConstraintViolationException.class.getSimpleName()));
+    assertThat(e.getMessage(),containsString("Cannot perform data updates"));
+  }
+  try {
+    executeCommand("commit");
+    fail("Commit should fail");
+  }
+ catch (  ShellException e) {
+    assertThat(e.getMessage(),containsString("The transaction is marked for rollback"));
+  }
+  try {
+    executeCommand("rollback");
+    fail("Rolling back at this point should fail since there's no transaction open");
+  }
+ catch (  ShellException e) {
+    assertThat(e.getMessage(),containsString("Not in a transaction"));
+  }
+}
