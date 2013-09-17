@@ -8,22 +8,15 @@
     if (nodeCommand.getMode() != Mode.UPDATE) {
       continue;
     }
-    for (    long labelAfter : labelsAfter) {
-      if (binarySearch(labelsBefore,labelAfter) < 0) {
-        Iterator<DefinedProperty> properties=nodeFullyLoadProperties(nodeId);
-        while (properties.hasNext()) {
-          DefinedProperty property=properties.next();
-          propertyUpdates.add(NodePropertyUpdate.add(nodeId,property.propertyKeyId(),property.value(),new long[]{labelAfter}));
-        }
+    LabelChangeSummary summary=new LabelChangeSummary(labelsBefore,labelsAfter);
+    Iterator<DefinedProperty> properties=nodeFullyLoadProperties(nodeId);
+    while (properties.hasNext()) {
+      DefinedProperty property=properties.next();
+      if (summary.hasAddedLabels()) {
+        propertyUpdates.add(add(nodeId,property.propertyKeyId(),property.value(),summary.getAddedLabels()));
       }
-    }
-    for (    long labelBefore : labelsBefore) {
-      if (binarySearch(labelsAfter,labelBefore) < 0) {
-        Iterator<DefinedProperty> properties=nodeFullyLoadProperties(nodeId);
-        while (properties.hasNext()) {
-          DefinedProperty property=properties.next();
-          propertyUpdates.add(NodePropertyUpdate.remove(nodeId,property.propertyKeyId(),property.value(),new long[]{labelBefore}));
-        }
+      if (summary.hasRemovedLabels()) {
+        propertyUpdates.add(remove(nodeId,property.propertyKeyId(),property.value(),summary.getRemovedLabels()));
       }
     }
   }
