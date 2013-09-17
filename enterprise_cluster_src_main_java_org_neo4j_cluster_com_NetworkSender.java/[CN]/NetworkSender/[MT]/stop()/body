@@ -1,9 +1,12 @@
 {
   msgLog.debug("Shutting down NetworkSender");
-  sendExecutor.shutdown();
-  if (!sendExecutor.awaitTermination(10,TimeUnit.SECONDS)) {
-    msgLog.warn("Could not shut down send executor");
+  for (  ExecutorService executorService : senderExecutors.values()) {
+    executorService.shutdown();
+    if (!executorService.awaitTermination(100,TimeUnit.SECONDS)) {
+      msgLog.warn("Could not shut down send executor");
+    }
   }
+  senderExecutors.clear();
   channels.close().awaitUninterruptibly();
   clientBootstrap.releaseExternalResources();
   msgLog.debug("Shutting down NetworkSender complete");
