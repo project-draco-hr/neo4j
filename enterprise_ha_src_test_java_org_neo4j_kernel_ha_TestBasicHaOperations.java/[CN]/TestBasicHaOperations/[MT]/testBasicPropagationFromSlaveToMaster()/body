@@ -2,31 +2,20 @@
   clusterManager=new ClusterManager(clusterOfSize(3),dir.directory("propagation",true),stringMap(tx_push_factor.name(),"2"));
   clusterManager.start();
   ClusterManager.ManagedCluster cluster=clusterManager.getDefaultCluster();
+  cluster.await(ClusterManager.allSeesAllAsAvailable());
   long nodeId=0;
   HighlyAvailableGraphDatabase slave=cluster.getAnySlave();
-  Transaction tx=null;
-  try {
-    tx=slave.beginTx();
+  try (Transaction tx=slave.beginTx()){
     Node node=slave.createNode();
     node.setProperty("Hello","World");
     nodeId=node.getId();
     tx.success();
   }
- catch (  Throwable ex) {
-    ex.printStackTrace();
-    fail();
-  }
- finally {
-    if (tx != null)     tx.finish();
-  }
-  HighlyAvailableGraphDatabase master=cluster.getMaster();
-  Transaction transaction=master.beginTx();
-  try {
+   HighlyAvailableGraphDatabase master=cluster.getMaster();
+  try (Transaction tx=master.beginTx()){
     String value=master.getNodeById(nodeId).getProperty("Hello").toString();
     logger.getLogger().info("Hello=" + value);
     assertEquals("World",value);
+    tx.success();
   }
-  finally {
-    transaction.finish();
-  }
-}
+ }

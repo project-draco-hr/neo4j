@@ -2,42 +2,28 @@
   clusterManager=new ClusterManager(clusterOfSize(3),dir.directory("propagation",true),stringMap(tx_push_factor.name(),"2"));
   clusterManager.start();
   ClusterManager.ManagedCluster cluster=clusterManager.getDefaultCluster();
+  cluster.await(ClusterManager.allSeesAllAsAvailable());
   long nodeId=0;
   HighlyAvailableGraphDatabase master=cluster.getMaster();
-  Transaction tx=null;
-  try {
-    tx=master.beginTx();
+  try (Transaction tx=master.beginTx()){
     Node node=master.createNode();
     node.setProperty("Hello","World");
     nodeId=node.getId();
     tx.success();
   }
- catch (  Throwable ex) {
-    ex.printStackTrace();
-    fail();
-  }
- finally {
-    if (tx != null)     tx.finish();
-  }
-  HighlyAvailableGraphDatabase slave1=cluster.getAnySlave();
-  Transaction transaction=slave1.beginTx();
+   HighlyAvailableGraphDatabase slave1=cluster.getAnySlave();
   String value;
-  try {
+  try (Transaction tx=slave1.beginTx()){
     value=slave1.getNodeById(nodeId).getProperty("Hello").toString();
     logger.getLogger().info("Hello=" + value);
     assertEquals("World",value);
+    tx.success();
   }
-  finally {
-    transaction.finish();
-  }
-  HighlyAvailableGraphDatabase slave2=cluster.getAnySlave(slave1);
-  transaction=slave2.beginTx();
-  try {
+   HighlyAvailableGraphDatabase slave2=cluster.getAnySlave(slave1);
+  try (Transaction tx=slave2.beginTx()){
     value=slave2.getNodeById(nodeId).getProperty("Hello").toString();
     logger.getLogger().info("Hello=" + value);
     assertEquals("World",value);
+    tx.success();
   }
-  finally {
-    transaction.finish();
-  }
-}
+ }
