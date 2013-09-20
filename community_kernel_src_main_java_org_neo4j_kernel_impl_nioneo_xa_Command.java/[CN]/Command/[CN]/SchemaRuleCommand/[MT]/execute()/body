@@ -7,8 +7,8 @@ case UPDATE:
         try {
           indexes.activateIndex(schemaRule.getId());
         }
- catch (        IndexNotFoundKernelException e) {
-          throw new IllegalStateException("Index should have existed.",e);
+ catch (        IndexNotFoundKernelException|IndexActivationFailedKernelException|IndexPopulationFailedKernelException e) {
+          throw new IllegalStateException("Unable to enable constraint, backing index is not online.",e);
         }
       }
     break;
@@ -17,6 +17,18 @@ case CREATE:
 break;
 case DELETE:
 indexes.dropIndex((IndexRule)schemaRule);
+break;
+default :
+throw new IllegalStateException(getMode().name());
+}
+}
+if (schemaRule instanceof UniquenessConstraintRule) {
+switch (getMode()) {
+case UPDATE:
+case CREATE:
+neoStore.setLatestConstraintIntroducingTx(txId);
+break;
+case DELETE:
 break;
 default :
 throw new IllegalStateException(getMode().name());

@@ -1,0 +1,11 @@
+{
+  ClusterManager.ManagedCluster cluster=clusterRule.startCluster();
+  HighlyAvailableGraphDatabase slave=cluster.getAnySlave();
+  try (Transaction tx=slave.beginTx()){
+    slave.schema().constraintFor(label("Label1")).on("key1").unique().create();
+    fail("We expected to not be able to create a constraint on a slave in a cluster.");
+  }
+ catch (  Exception e) {
+    assertThat(e,instanceOf(InvalidTransactionTypeException.class));
+  }
+}
