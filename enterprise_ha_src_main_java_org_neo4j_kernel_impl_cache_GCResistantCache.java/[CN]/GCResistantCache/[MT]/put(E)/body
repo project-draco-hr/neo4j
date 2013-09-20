@@ -6,7 +6,10 @@
   }
   int pos=getPosition(obj);
   E oldObj=cache.get(pos);
-  if (oldObj != obj) {
+  while (oldObj != obj) {
+    if (oldObj != null && oldObj.getId() == obj.getId()) {
+      return oldObj;
+    }
     int objectSize=obj.sizeOfObjectInBytesIncludingOverhead();
     if (cache.compareAndSet(pos,oldObj,obj)) {
       setHighest(pos);
@@ -23,6 +26,9 @@
       if (size > closeToMaxSize) {
         purgeFrom(pos);
       }
+      break;
     }
+    oldObj=cache.get(pos);
   }
+  return obj;
 }
