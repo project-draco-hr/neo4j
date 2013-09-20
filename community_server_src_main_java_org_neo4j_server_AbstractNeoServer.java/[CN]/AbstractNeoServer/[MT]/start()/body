@@ -3,33 +3,29 @@
   try {
     runPreflightTasks();
     interruptStartupTimer.startCountdown();
-    database.start();
-    databaseActions=createDatabaseActions();
-    cypherExecutor=new CypherExecutor(database,getLogging().getMessagesLog(CypherExecutor.class));
-    configureWebServer();
-    cypherExecutor.start();
-    DiagnosticsManager diagnosticsManager=database.getGraph().getDiagnosticsManager();
-    StringLogger logger=diagnosticsManager.getTargetLog();
-    logger.logMessage("--- SERVER STARTED START ---");
-    diagnosticsManager.register(Configurator.DIAGNOSTICS,configurator);
-    startModules(logger);
-    boolean webServerStartupSuccessful=startWebServer(logger);
-    logger.logMessage("--- SERVER STARTED END ---",true);
-    interruptStartupTimer.stopCountdown();
-    if (webServerStartupSuccessful)     return;
+    try {
+      database.start();
+      databaseActions=createDatabaseActions();
+      cypherExecutor=new CypherExecutor(database,getLogging().getMessagesLog(CypherExecutor.class));
+      configureWebServer();
+      cypherExecutor.start();
+      DiagnosticsManager diagnosticsManager=database.getGraph().getDiagnosticsManager();
+      StringLogger logger=diagnosticsManager.getTargetLog();
+      logger.logMessage("--- SERVER STARTED START ---");
+      diagnosticsManager.register(Configurator.DIAGNOSTICS,configurator);
+      startModules(logger);
+      startWebServer(logger);
+      logger.logMessage("--- SERVER STARTED END ---",true);
+    }
+  finally {
+      interruptStartupTimer.stopCountdown();
+    }
   }
  catch (  Throwable t) {
-    interruptStartupTimer.stopCountdown();
     Thread.interrupted();
     if (interruptStartupTimer.wasTriggered()) {
       throw new ServerStartupException("Startup took longer than " + interruptStartupTimer.getTimeoutMillis() + "ms, "+ "and was stopped. You can disable this behavior by setting '"+ Configurator.STARTUP_TIMEOUT+ "' to 0.",1);
     }
-    if (t instanceof RuntimeException) {
-      throw (RuntimeException)t;
-    }
- else {
-      throw new ServerStartupException("Starting neo server failed, see nested exception.",t);
-    }
+    throw new ServerStartupException(String.format("Starting Neo4j Server failed: %s",t.getMessage()),t);
   }
-  throw new ServerStartupException("Starting neo server failed, see logs for details.");
 }
