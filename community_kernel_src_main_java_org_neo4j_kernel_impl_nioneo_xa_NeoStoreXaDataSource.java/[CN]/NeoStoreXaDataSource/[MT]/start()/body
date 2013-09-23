@@ -13,7 +13,6 @@
   }
   neoStore=storeFactory.newNeoStore(store);
   schemaCache=new SchemaCache(Collections.<SchemaRule>emptyList());
-  integrityValidator=new IntegrityValidator(neoStore);
   final NodeManager nodeManager=dependencyResolver.resolveDependency(NodeManager.class);
   Iterator<? extends Cache<?>> caches=nodeManager.caches().iterator();
   persistenceCache=new PersistenceCache((AutoLoadingCache<NodeImpl>)caches.next(),(AutoLoadingCache<RelationshipImpl>)caches.next(),new Thunk<GraphPropertiesImpl>(){
@@ -27,6 +26,7 @@
     final SchemaIndexProvider indexProvider=dependencyResolver.resolveDependency(SchemaIndexProvider.class,SchemaIndexProvider.HIGHEST_PRIORITIZED_OR_NONE);
     providerMap=new DefaultSchemaIndexProviderMap(indexProvider);
     indexingService=life.add(new IndexingService(scheduler,providerMap,new NeoStoreIndexStoreView(neoStore),tokenNameLookup,updateableSchemaState,logging));
+    integrityValidator=new IntegrityValidator(neoStore,indexingService);
     xaContainer=xaFactory.newXaContainer(this,config.get(Configuration.logical_log),new CommandFactory(neoStore,indexingService),new NeoStoreInjectedTransactionValidator(integrityValidator),tf,stateFactory,providers);
     labelScanStore=life.add(dependencyResolver.resolveDependency(LabelScanStoreProvider.class,LabelScanStoreProvider.HIGHEST_PRIORITIZED).getLabelScanStore());
     life.init();
