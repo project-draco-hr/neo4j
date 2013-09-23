@@ -2,7 +2,7 @@
   BatchInserterIndexProvider provider=new LuceneBatchInserterIndexProviderNewImpl(inserter);
   String indexName="users";
   BatchInserterIndex index=provider.nodeIndex(indexName,EXACT_CONFIG);
-  Map<Integer,Long> ids=new HashMap<Integer,Long>();
+  Map<Integer,Long> ids=new HashMap<>();
   int count=5;
   for (int i=0; i < count; i++) {
     long id=inserter.createNode(null);
@@ -16,20 +16,21 @@
   assertContains(index.query("name","Joe*"),ids.values().toArray(new Long[ids.size()]));
   provider.shutdown();
   switchToGraphDatabaseService();
-  Transaction transaction=db.beginTx();
-  IndexManager indexManager=db.index();
-  assertFalse(indexManager.existsForRelationships(indexName));
-  assertTrue(indexManager.existsForNodes(indexName));
-  assertNotNull(indexManager.forNodes(indexName));
-  Index<Node> dbIndex=db.index().forNodes("users");
-  for (int i=0; i < count; i++) {
-    assertContains(dbIndex.get("name","Joe" + i),db.getNodeById(ids.get(i)));
+  try (Transaction transaction=db.beginTx()){
+    IndexManager indexManager=db.index();
+    assertFalse(indexManager.existsForRelationships(indexName));
+    assertTrue(indexManager.existsForNodes(indexName));
+    assertNotNull(indexManager.forNodes(indexName));
+    Index<Node> dbIndex=db.index().forNodes("users");
+    for (int i=0; i < count; i++) {
+      assertContains(dbIndex.get("name","Joe" + i),db.getNodeById(ids.get(i)));
+    }
+    Collection<Node> nodes=new ArrayList<>();
+    for (    long id : ids.values()) {
+      nodes.add(db.getNodeById(id));
+    }
+    assertContains(dbIndex.query("name","Joe*"),nodes.toArray(new Node[nodes.size()]));
+    assertContains(dbIndex.query("name:Joe0 AND other:Schmoe"),db.getNodeById(ids.get(0)));
+    transaction.success();
   }
-  Collection<Node> nodes=new ArrayList<Node>();
-  for (  long id : ids.values()) {
-    nodes.add(db.getNodeById(id));
-  }
-  assertContains(dbIndex.query("name","Joe*"),nodes.toArray(new Node[nodes.size()]));
-  assertContains(dbIndex.query("name:Joe0 AND other:Schmoe"),db.getNodeById(ids.get(0)));
-  transaction.finish();
-}
+ }

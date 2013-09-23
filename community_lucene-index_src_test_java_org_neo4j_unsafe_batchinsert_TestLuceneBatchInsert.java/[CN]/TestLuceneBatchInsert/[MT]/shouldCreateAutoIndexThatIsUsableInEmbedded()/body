@@ -2,25 +2,22 @@
   BatchInserterIndexProvider provider=new LuceneBatchInserterIndexProviderNewImpl(inserter);
   BatchInserterIndex index=provider.nodeIndex("node_auto_index",EXACT_CONFIG);
   long id=inserter.createNode(null);
-  Map<String,Object> props=new HashMap<String,Object>();
+  Map<String,Object> props=new HashMap<>();
   props.put("name","peter");
   index.add(id,props);
   index.flush();
   provider.shutdown();
   shutdownInserter();
   switchToGraphDatabaseService(configure(GraphDatabaseSettings.node_keys_indexable,"name"),configure(GraphDatabaseSettings.relationship_keys_indexable,"relProp1,relProp2"),configure(GraphDatabaseSettings.node_auto_indexing,"true"),configure(GraphDatabaseSettings.relationship_auto_indexing,"true"));
-  Transaction tx=db.beginTx();
-  try {
+  try (Transaction tx=db.beginTx()){
     Node node1=db.createNode();
     node1.setProperty("name","bob");
     tx.success();
   }
-  finally {
-    tx.finish();
+   try (Transaction tx=db.beginTx()){
+    assertTrue(db.index().getNodeAutoIndexer().getAutoIndex().get("name","peter").hasNext());
+    assertTrue(db.index().getNodeAutoIndexer().getAutoIndex().get("name","bob").hasNext());
+    assertFalse(db.index().getNodeAutoIndexer().getAutoIndex().get("name","joe").hasNext());
+    tx.success();
   }
-  tx=db.beginTx();
-  assertTrue(db.index().getNodeAutoIndexer().getAutoIndex().get("name","peter").hasNext());
-  assertTrue(db.index().getNodeAutoIndexer().getAutoIndex().get("name","bob").hasNext());
-  assertFalse(db.index().getNodeAutoIndexer().getAutoIndex().get("name","joe").hasNext());
-  tx.finish();
-}
+ }
