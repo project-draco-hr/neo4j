@@ -1,0 +1,17 @@
+{
+  TestIndexProviderFactory.TestIndexProvider provider=spy(new TestIndexProviderFactory.TestIndexProvider());
+  Collection<KernelExtensionFactory<?>> extensions=new ArrayList<>();
+  extensions.add(new TestIndexProviderFactory(provider));
+  final GraphDatabaseAPI gdb=(GraphDatabaseAPI)new TestGraphDatabaseFactory().addKernelExtensions(extensions).newEmbeddedDatabase(testDir.absolutePath());
+  IndexPopulator populator=mock(IndexPopulator.class);
+  doAnswer(triggerConcurrentNodeCreation(gdb)).when(populator).create();
+  when(provider.getPopulator(anyLong(),any(IndexConfiguration.class))).thenReturn(populator);
+  try (Transaction tx=gdb.beginTx()){
+    gdb.schema().constraintFor(label("User")).on("name").unique().create();
+    tx.success();
+  }
+   try (Transaction tx=gdb.beginTx()){
+    assertThat(count(GlobalGraphOperations.at(gdb).getAllNodes()),equalTo(2l));
+    assertThat(count(gdb.schema().getConstraints()),equalTo(1l));
+  }
+ }
