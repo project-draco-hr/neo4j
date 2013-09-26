@@ -1,24 +1,16 @@
 {
-  AbstractTransactionManager txManager=mock(AbstractTransactionManager.class);
   javax.transaction.Transaction existingTransaction=mock(javax.transaction.Transaction.class);
   when(txManager.suspend()).thenReturn(existingTransaction);
-  StatementOperationParts operations=mock(StatementOperationParts.class);
-  KernelStatement statement=mock(KernelStatement.class);
-  StubKernelTransaction kernelTransaction=spy(new StubKernelTransaction(operations,statement));
   when(txManager.getKernelTransaction()).thenReturn(kernelTransaction);
-  @SuppressWarnings("unchecked") Transactor.Work<Object,KernelException> work=mock(Transactor.Work.class);
+  when(kernelTransaction.acquireStatement()).thenReturn(statement);
   Object expectedResult=new Object();
-  when(work.perform(eq(operations),any(KernelStatement.class))).thenReturn(expectedResult);
-  Transactor transactor=new Transactor(txManager);
+  when(work.perform(statement)).thenReturn(expectedResult);
   Object result=transactor.execute(work);
   assertEquals(expectedResult,result);
-  InOrder order=inOrder(txManager,kernelTransaction,statement,work);
+  InOrder order=inOrder(txManager,kernelTransaction);
   order.verify(txManager).suspend();
   order.verify(txManager).begin();
   order.verify(txManager).getKernelTransaction();
-  order.verify(kernelTransaction).newStatement();
-  order.verify(work).perform(operations,statement);
-  order.verify(statement).close();
   order.verify(kernelTransaction).commit();
   order.verify(txManager).resume(existingTransaction);
   order.verifyNoMoreInteractions();
