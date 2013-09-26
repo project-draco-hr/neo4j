@@ -1,0 +1,31 @@
+{
+  final Config conf=new Config(config,ClusterSettings.class);
+  networkReceiver=life.add(new NetworkReceiver(new NetworkReceiver.Configuration(){
+    @Override public HostnamePort clusterServer(){
+      return conf.get(ClusterSettings.cluster_server);
+    }
+    @Override public int defaultPort(){
+      return 5001;
+    }
+  }
+,new DevNullLoggingService()));
+  networkSender=life.add(new NetworkSender(new NetworkSender.Configuration(){
+    @Override public int defaultPort(){
+      return 5001;
+    }
+  }
+,networkReceiver,new DevNullLoggingService()));
+  life.add(new LifecycleAdapter(){
+    @Override public void start() throws Throwable {
+      networkReceiver.addMessageProcessor(new MessageProcessor(){
+        @Override public boolean process(        Message<? extends MessageType> message){
+          processedMessage.set(true);
+          latch.countDown();
+          return true;
+        }
+      }
+);
+    }
+  }
+);
+}
