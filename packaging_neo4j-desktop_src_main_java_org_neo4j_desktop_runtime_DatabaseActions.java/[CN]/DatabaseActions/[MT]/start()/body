@@ -2,9 +2,19 @@
   if (isRunning()) {
     throw new UnableToStartServerException("Already started");
   }
-  server=new DesktopBootstrapper(model.getDatabaseDirectory(),model.getDatabaseConfigurationFile(),new ArrayList<String>());
-  int startupCode=server.start();
-  if (startupCode == OK)   return;
-  stop();
-  throw new UnableToStartServerException("Unable to start Neo4j Server on port 7474. See logs for details.");
+  server=new CommunityNeoServer(new DesktopConfigurator(model));
+  try {
+    server.start();
+  }
+ catch (  ServerStartupException e) {
+    server=null;
+    Set<Class> causes=extractCauseTypes(e);
+    if (causes.contains(StoreLockException.class)) {
+      throw new UnableToStartServerException("Unable to lock store. Are you running another Neo4j process against this database?");
+    }
+    if (causes.contains(BindException.class)) {
+      throw new UnableToStartServerException("Unable to bind to port. Are you running another Neo4j process on this computer?");
+    }
+    throw new UnableToStartServerException(e.getMessage());
+  }
 }
