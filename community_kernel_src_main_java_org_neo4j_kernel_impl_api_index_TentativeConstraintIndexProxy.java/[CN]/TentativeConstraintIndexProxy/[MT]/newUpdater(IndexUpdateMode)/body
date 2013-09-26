@@ -1,10 +1,18 @@
 {
 switch (mode) {
 case ONLINE:
-    return new CollectingIndexUpdater(){
-      @Override public void close() throws IOException {
+    return new DelegatingIndexUpdater(target.accessor.newUpdater(mode)){
+      @Override public void process(      NodePropertyUpdate update) throws IOException, IndexEntryConflictException {
         try {
-          target.accessor.updateAndCommit(updates);
+          delegate.process(update);
+        }
+ catch (        IndexEntryConflictException conflict) {
+          failures.add(conflict);
+        }
+      }
+      @Override public void close() throws IOException, IndexEntryConflictException {
+        try {
+          delegate.close();
         }
  catch (        IndexEntryConflictException conflict) {
           failures.add(conflict);

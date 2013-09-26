@@ -1,6 +1,5 @@
 {
   IndexMap indexMap=indexMapReference.getIndexMapCopy();
-  final Set<IndexProxy> rebuildingIndexes=new HashSet<>();
   final Map<Long,Pair<IndexDescriptor,SchemaIndexProvider.Descriptor>> rebuildingDescriptors=new HashMap<>();
   indexMap.foreachIndexProxy(new BiConsumer<Long,IndexProxy>(){
     @Override public void accept(    Long indexId,    IndexProxy indexProxy){
@@ -10,16 +9,15 @@ switch (state) {
 case ONLINE:
         break;
 case POPULATING:
-      rebuildingIndexes.add(indexProxy);
-    rebuildingDescriptors.put(indexId,getIndexProxyDescriptors(indexProxy));
-  break;
+      rebuildingDescriptors.put(indexId,getIndexProxyDescriptors(indexProxy));
+    break;
 case FAILED:
-break;
+  break;
 }
 }
 }
 );
-dropIndexes(rebuildingIndexes);
+dropRecoveringIndexes(indexMap,rebuildingDescriptors);
 for (Map.Entry<Long,Pair<IndexDescriptor,SchemaIndexProvider.Descriptor>> entry : rebuildingDescriptors.entrySet()) {
 long indexId=entry.getKey();
 Pair<IndexDescriptor,SchemaIndexProvider.Descriptor> descriptors=entry.getValue();

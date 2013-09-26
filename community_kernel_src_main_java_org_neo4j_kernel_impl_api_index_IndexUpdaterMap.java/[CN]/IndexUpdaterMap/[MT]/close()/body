@@ -1,19 +1,19 @@
 {
-  Set<Pair<IndexDescriptor,IOException>> exceptions=null;
+  Set<Pair<IndexDescriptor,UnderlyingStorageException>> exceptions=null;
   for (  Map.Entry<IndexDescriptor,IndexUpdater> updaterEntry : updaterMap.entrySet()) {
     IndexUpdater updater=updaterEntry.getValue();
     try {
       updater.close();
     }
- catch (    IOException e) {
+ catch (    IOException|IndexEntryConflictException e) {
       if (null == exceptions) {
         exceptions=new HashSet<>();
       }
-      exceptions.add(Pair.of(updaterEntry.getKey(),e));
+      exceptions.add(Pair.of(updaterEntry.getKey(),new UnderlyingStorageException(e)));
     }
   }
   clear();
   if (null != exceptions) {
-    throw new IndexUpdaterMapCloseException(exceptions);
+    throw new MultipleUnderlyingStorageExceptions(exceptions);
   }
 }
