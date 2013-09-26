@@ -1,8 +1,8 @@
 {
   final DoubleLatch latch=new DoubleLatch();
-  final IndexProxy inner=new IndexProxy.Adapter(){
-    @Override public void update(    Iterable<NodePropertyUpdate> updates){
-      latch.startAndAwaitFinish();
+  final IndexProxy inner=new IndexProxyAdapter(){
+    @Override public IndexUpdater newUpdater(    IndexUpdateMode mode){
+      return super.newUpdater(mode);
     }
   }
 ;
@@ -10,8 +10,11 @@
   outer.start();
   runInSeparateThread(new ThrowingRunnable(){
     @Override public void run() throws IOException {
-      outer.update(null);
-    }
+      try (IndexUpdater updater=outer.newUpdater(IndexUpdateMode.ONLINE)){
+        updater.process(null);
+        latch.startAndAwaitFinish();
+      }
+     }
   }
 );
   try {
