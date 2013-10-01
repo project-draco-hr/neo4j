@@ -1,18 +1,19 @@
 {
   Statement statement=statementContextProvider.statement();
-  int propertyId=statement.readOperations().propertyKeyGetForName(key);
-  int labelId=statement.readOperations().labelGetForName(myLabel.name());
+  ReadOperations readOps=statement.readOperations();
+  int propertyId=readOps.propertyKeyGetForName(key);
+  int labelId=readOps.labelGetForName(myLabel.name());
   if (propertyId == NO_SUCH_PROPERTY_KEY || labelId == NO_SUCH_LABEL) {
     statement.close();
     return IteratorUtil.emptyIterator();
   }
+  IndexDescriptor descriptor=findAnyIndexByLabelAndProperty(readOps,propertyId,labelId);
   try {
-    IndexDescriptor indexRule=statement.readOperations().indexesGetForLabelAndPropertyKey(labelId,propertyId);
-    if (statement.readOperations().indexGetState(indexRule) == InternalIndexState.ONLINE) {
-      return map2nodes(statement.readOperations().nodesGetFromIndexLookup(indexRule,value),statement);
+    if (null != descriptor) {
+      return map2nodes(readOps.nodesGetFromIndexLookup(descriptor,value),statement);
     }
   }
- catch (  SchemaRuleNotFoundException|IndexNotFoundKernelException e) {
+ catch (  IndexNotFoundKernelException e) {
   }
   return getNodesByLabelAndPropertyWithoutIndex(propertyId,value,statement,labelId);
 }
