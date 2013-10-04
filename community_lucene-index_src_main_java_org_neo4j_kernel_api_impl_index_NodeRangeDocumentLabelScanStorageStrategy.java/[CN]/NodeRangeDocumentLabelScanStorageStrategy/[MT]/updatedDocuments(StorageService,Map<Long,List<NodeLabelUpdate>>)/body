@@ -1,0 +1,23 @@
+{
+  List<Document> updatedDocuments=new ArrayList<>();
+  IndexSearcher searcher=storage.acquireSearcher();
+  try {
+    for (    Map.Entry<Long,List<NodeLabelUpdate>> update : updates.entrySet()) {
+      Map<Long,Bitmap> fields=readLabelBitMapsInRange(searcher,update.getKey());
+      updateFields(update.getValue(),fields);
+      Document document=new Document();
+      document.add(format.rangeField(update.getKey()));
+      for (      Map.Entry<Long,Bitmap> field : fields.entrySet()) {
+        Bitmap value=field.getValue();
+        if (value.hasContent()) {
+          document.add(format.labelField(field.getKey(),value));
+        }
+      }
+      updatedDocuments.add(document);
+    }
+  }
+  finally {
+    storage.releaseSearcher(searcher);
+  }
+  return updatedDocuments;
+}

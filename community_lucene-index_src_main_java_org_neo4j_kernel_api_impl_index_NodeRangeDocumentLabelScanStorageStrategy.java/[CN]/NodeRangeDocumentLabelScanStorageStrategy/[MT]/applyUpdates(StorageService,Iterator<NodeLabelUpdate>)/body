@@ -1,0 +1,20 @@
+{
+  Map<Long,List<NodeLabelUpdate>> rangedUpdates=new HashMap<>();
+  for (int size=0; updates.hasNext(); size++) {
+    NodeLabelUpdate update=updates.next();
+    Long range=format.bitmapFormat().rangeOf(update.getNodeId());
+    List<NodeLabelUpdate> updateList=rangedUpdates.get(range);
+    if (updateList == null) {
+      rangedUpdates.put(range,updateList=new ArrayList<>(8));
+    }
+    updateList.add(update);
+    if (rangedUpdates.size() >= DOCUMENT_BATCH_SIZE || size >= CHANGES_BATCH_SIZE) {
+      flush(storage,rangedUpdates);
+      rangedUpdates.clear();
+      size=0;
+    }
+  }
+  if (!rangedUpdates.isEmpty()) {
+    flush(storage,rangedUpdates);
+  }
+}
