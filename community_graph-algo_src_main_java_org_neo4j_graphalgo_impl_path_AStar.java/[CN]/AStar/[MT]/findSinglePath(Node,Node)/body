@@ -1,18 +1,18 @@
 {
   lastMetadata=new Metadata();
-  Doer doer=new Doer(start,end);
-  while (doer.hasNext()) {
-    Node node=doer.next();
+  AStarIterator iterator=new AStarIterator(start,end);
+  while (iterator.hasNext()) {
+    Node node=iterator.next();
     GraphDatabaseService graphDb=node.getGraphDatabase();
     if (node.equals(end)) {
-      double weight=doer.score.get(node.getId()).wayLength;
+      double weight=iterator.visitData.get(node.getId()).wayLength;
       LinkedList<Relationship> rels=new LinkedList<Relationship>();
-      Relationship rel=graphDb.getRelationshipById(doer.cameFrom.get(node.getId()));
+      Relationship rel=graphDb.getRelationshipById(iterator.visitData.get(node.getId()).cameFromRelationship);
       while (rel != null) {
         rels.addFirst(rel);
         node=rel.getOtherNode(node);
-        Long nextRelId=doer.cameFrom.get(node.getId());
-        rel=nextRelId == null ? null : graphDb.getRelationshipById(nextRelId);
+        long nextRelId=iterator.visitData.get(node.getId()).cameFromRelationship;
+        rel=nextRelId == -1 ? null : graphDb.getRelationshipById(nextRelId);
       }
       Path path=toPath(start,rels);
       lastMetadata.paths++;
