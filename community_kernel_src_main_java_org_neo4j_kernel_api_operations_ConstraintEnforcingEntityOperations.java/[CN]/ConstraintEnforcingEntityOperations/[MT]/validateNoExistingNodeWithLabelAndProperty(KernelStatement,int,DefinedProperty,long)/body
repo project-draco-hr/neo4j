@@ -5,8 +5,11 @@
     verifyIndexOnline(state,indexDescriptor);
     state.locks().acquireIndexEntryWriteLock(labelId,property.propertyKeyId(),property.valueAsString());
     PrimitiveLongIterator existingNodes=entityReadOperations.nodesGetFromIndexLookup(state,indexDescriptor,value);
-    if (existingNodes.hasNext()) {
-      throw new UniqueConstraintViolationKernelException(labelId,property.propertyKeyId(),value,existingNodes.next());
+    while (existingNodes.hasNext()) {
+      long existingNode=existingNodes.next();
+      if (existingNode != modifiedNode) {
+        throw new UniqueConstraintViolationKernelException(labelId,property.propertyKeyId(),value,existingNode);
+      }
     }
   }
  catch (  IndexNotFoundKernelException|IndexBrokenKernelException e) {
