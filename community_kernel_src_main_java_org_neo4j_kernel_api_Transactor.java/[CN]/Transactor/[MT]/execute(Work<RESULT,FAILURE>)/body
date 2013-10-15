@@ -2,7 +2,7 @@
   Transaction previousTransaction=suspendTransaction();
   try {
     beginTransaction();
-    @SuppressWarnings("deprecation") KernelTransaction tx=txManager.getKernelTransaction();
+    @SuppressWarnings("deprecation") KernelTransaction tx=persistenceManager.currentKernelTransaction();
     boolean success=false;
     try {
       RESULT result;
@@ -14,16 +14,16 @@
     }
   finally {
       if (success) {
-        tx.commit();
+        txManager.commit();
       }
  else {
-        tx.rollback();
+        txManager.rollback();
       }
     }
   }
- catch (  TransactionalException failure) {
+ catch (  HeuristicMixedException|RollbackException|HeuristicRollbackException|SystemException|TransactionalException failure) {
     previousTransaction=null;
-    throw failure;
+    throw new TransactionFailureException(failure);
   }
  finally {
     if (previousTransaction != null) {

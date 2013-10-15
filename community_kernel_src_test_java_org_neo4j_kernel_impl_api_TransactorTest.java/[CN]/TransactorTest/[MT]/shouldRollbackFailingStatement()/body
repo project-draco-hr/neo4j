@@ -1,7 +1,7 @@
 {
   javax.transaction.Transaction existingTransaction=mock(javax.transaction.Transaction.class);
   when(txManager.suspend()).thenReturn(existingTransaction);
-  when(txManager.getKernelTransaction()).thenReturn(kernelTransaction);
+  when(pm.currentKernelTransaction()).thenReturn(kernelTransaction);
   when(kernelTransaction.acquireStatement()).thenReturn(statement);
   SpecificKernelException exception=new SpecificKernelException();
   when(work.perform(any(KernelStatement.class))).thenThrow(exception);
@@ -12,11 +12,11 @@
  catch (  SpecificKernelException e) {
     assertSame(exception,e);
   }
-  InOrder order=inOrder(txManager,kernelTransaction,work);
+  InOrder order=inOrder(txManager,pm,kernelTransaction,work);
   order.verify(txManager).suspend();
   order.verify(txManager).begin();
-  order.verify(txManager).getKernelTransaction();
-  order.verify(kernelTransaction).rollback();
+  order.verify(pm).currentKernelTransaction();
+  order.verify(txManager).rollback();
   order.verify(txManager).resume(existingTransaction);
   order.verifyNoMoreInteractions();
 }

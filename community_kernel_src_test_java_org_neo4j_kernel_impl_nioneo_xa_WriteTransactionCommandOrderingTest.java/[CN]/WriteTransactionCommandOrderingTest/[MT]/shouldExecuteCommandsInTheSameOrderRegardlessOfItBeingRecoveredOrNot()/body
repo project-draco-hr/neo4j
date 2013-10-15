@@ -1,0 +1,17 @@
+{
+  List<String> nonRecoveredRecording=new ArrayList<>();
+  WriteTransaction nonRecoveredTx=newWriteTransaction();
+  injectAllPossibleCommands(nonRecoveredTx);
+  List<String> recoveredRecording=new ArrayList<>();
+  WriteTransaction recoveredTx=newWriteTransaction();
+  recoveredTx.setRecovered();
+  injectAllPossibleCommands(recoveredTx);
+  currentRecording.set(nonRecoveredRecording);
+  nonRecoveredTx.doPrepare();
+  nonRecoveredTx.doCommit();
+  currentRecording.set(recoveredRecording);
+  recoveredTx.doPrepare();
+  recoveredTx.doCommit();
+  assertThat(nonRecoveredRecording,equalTo(recoveredRecording));
+  assertThat(new HashSet<>(recoveredRecording).size(),is(9));
+}

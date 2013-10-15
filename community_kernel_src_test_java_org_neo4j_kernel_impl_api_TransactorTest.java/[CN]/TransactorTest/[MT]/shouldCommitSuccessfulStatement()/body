@@ -1,17 +1,17 @@
 {
   javax.transaction.Transaction existingTransaction=mock(javax.transaction.Transaction.class);
   when(txManager.suspend()).thenReturn(existingTransaction);
-  when(txManager.getKernelTransaction()).thenReturn(kernelTransaction);
+  when(pm.currentKernelTransaction()).thenReturn(kernelTransaction);
   when(kernelTransaction.acquireStatement()).thenReturn(statement);
   Object expectedResult=new Object();
   when(work.perform(statement)).thenReturn(expectedResult);
   Object result=transactor.execute(work);
   assertEquals(expectedResult,result);
-  InOrder order=inOrder(txManager,kernelTransaction);
+  InOrder order=inOrder(txManager,pm,kernelTransaction);
   order.verify(txManager).suspend();
   order.verify(txManager).begin();
-  order.verify(txManager).getKernelTransaction();
-  order.verify(kernelTransaction).commit();
+  order.verify(pm).currentKernelTransaction();
+  order.verify(txManager).commit();
   order.verify(txManager).resume(existingTransaction);
   order.verifyNoMoreInteractions();
 }
