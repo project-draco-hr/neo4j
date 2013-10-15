@@ -1,25 +1,30 @@
 {
+  IndexMap indexMap=indexMapReference.getIndexMapCopy();
   for (  IndexRule indexRule : loop(indexRules)) {
-    long ruleId=indexRule.getId();
-    IndexDescriptor descriptor=createDescriptor(indexRule);
     IndexProxy indexProxy;
+    long indexId=indexRule.getId();
+    IndexDescriptor descriptor=createDescriptor(indexRule);
     SchemaIndexProvider.Descriptor providerDescriptor=indexRule.getProviderDescriptor();
     SchemaIndexProvider provider=providerMap.apply(providerDescriptor);
-    InternalIndexState initialState=provider.getInitialState(ruleId);
-    logger.info(format("IndexingService.initIndexes: index on %s is %s",descriptor.userDescription(tokenNameLookup),initialState.name()));
+    InternalIndexState initialState=provider.getInitialState(indexId);
+    String userDescription=descriptor.userDescription(tokenNameLookup);
+    logger.info(format("IndexingService.initIndexes: index on %s is %s",userDescription,initialState));
+    boolean constraint=indexRule.isConstraintIndex();
 switch (initialState) {
 case ONLINE:
-      indexProxy=createAndStartOnlineIndexProxy(ruleId,descriptor,providerDescriptor,indexRule.isConstraintIndex());
+      indexProxy=createAndStartOnlineIndexProxy(indexId,descriptor,providerDescriptor,constraint);
     break;
 case POPULATING:
-  indexProxy=createAndStartRecoveringIndexProxy(ruleId,descriptor,providerDescriptor);
+  indexProxy=createAndStartRecoveringIndexProxy(descriptor,providerDescriptor);
 break;
 case FAILED:
-indexProxy=createAndStartFailedIndexProxy(ruleId,descriptor,providerDescriptor,indexRule.isConstraintIndex(),failure(provider.getPopulationFailure(ruleId)));
+IndexPopulationFailure failure=failure(provider.getPopulationFailure(indexId));
+indexProxy=createAndStartFailedIndexProxy(indexId,descriptor,providerDescriptor,constraint,failure);
 break;
 default :
 throw new IllegalArgumentException("" + initialState);
 }
-indexes.put(ruleId,indexProxy);
+indexMap.putIndexProxy(indexId,indexProxy);
 }
+indexMapReference.setIndexMap(indexMap);
 }
