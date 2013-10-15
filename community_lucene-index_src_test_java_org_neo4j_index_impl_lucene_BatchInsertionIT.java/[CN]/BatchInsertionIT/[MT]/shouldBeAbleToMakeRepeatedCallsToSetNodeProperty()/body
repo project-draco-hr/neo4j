@@ -1,0 +1,18 @@
+{
+  BatchInserter inserter=BatchInserters.inserter(testDir.directory().getAbsolutePath());
+  long nodeId=inserter.createNode(Collections.<String,Object>emptyMap());
+  final Object finalValue=87;
+  inserter.setNodeProperty(nodeId,"a","some property value");
+  inserter.setNodeProperty(nodeId,"a",42);
+  inserter.setNodeProperty(nodeId,"a",3.14);
+  inserter.setNodeProperty(nodeId,"a",true);
+  inserter.setNodeProperty(nodeId,"a",finalValue);
+  inserter.shutdown();
+  GraphDatabaseService db=new GraphDatabaseFactory().newEmbeddedDatabase(testDir.directory().getAbsolutePath());
+  try (Transaction ignored=db.beginTx()){
+    assertThat(db.getNodeById(nodeId).getProperty("a"),equalTo(finalValue));
+  }
+  finally {
+    db.shutdown();
+  }
+}
