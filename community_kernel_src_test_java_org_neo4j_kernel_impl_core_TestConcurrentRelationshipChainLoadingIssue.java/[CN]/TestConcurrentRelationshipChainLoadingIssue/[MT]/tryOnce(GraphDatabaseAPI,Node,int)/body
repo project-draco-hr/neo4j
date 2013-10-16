@@ -3,7 +3,7 @@
   ExecutorService executor=newCachedThreadPool();
   final CountDownLatch startSignal=new CountDownLatch(1);
   int threads=getRuntime().availableProcessors();
-  final AtomicReference<Throwable> error=new AtomicReference<Throwable>();
+  final List<Throwable> errors=Collections.synchronizedList(new ArrayList<Throwable>());
   for (int i=0; i < threads; i++) {
     executor.submit(new Runnable(){
       @Override public void run(){
@@ -13,7 +13,7 @@
           assertEquals(relCount,count(node.getRelationships()));
         }
  catch (        Throwable e) {
-          error.set(e);
+          errors.add(e);
         }
  finally {
           transaction.finish();
@@ -25,5 +25,5 @@
   startSignal.countDown();
   executor.shutdown();
   executor.awaitTermination(10,SECONDS);
-  if (error.get() != null)   throw error.get();
+  if (!errors.isEmpty())   throw new MultipleCauseException(format("Exceptions from threads after %s iterations",iterations),errors);
 }
