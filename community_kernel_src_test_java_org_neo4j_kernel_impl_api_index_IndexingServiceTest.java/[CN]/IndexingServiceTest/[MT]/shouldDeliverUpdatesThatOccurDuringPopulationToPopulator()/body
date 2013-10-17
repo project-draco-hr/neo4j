@@ -1,10 +1,5 @@
 {
-  labelId=7;
-  propertyKeyId=15;
-  IndexPopulator populator=mock(IndexPopulator.class);
-  IndexAccessor accessor=mock(IndexAccessor.class);
-  IndexUpdater mockedUpdater=mock(IndexUpdater.class);
-  when(populator.newPopulatingUpdater()).thenReturn(mockedUpdater);
+  when(populator.newPopulatingUpdater()).thenReturn(updater);
   CountDownLatch latch=new CountDownLatch(1);
   doAnswer(afterAwaiting(latch)).when(populator).add(anyLong(),any());
   IndexingService indexingService=newIndexingServiceWithMockedDependencies(populator,accessor,withData(add(1,"value1")));
@@ -18,16 +13,16 @@
    latch.countDown();
   verify(populator,timeout(1000)).close(true);
   assertEquals(InternalIndexState.ONLINE,proxy.getState());
-  InOrder order=inOrder(populator,accessor,mockedUpdater);
+  InOrder order=inOrder(populator,accessor,updater);
   order.verify(populator).create();
   order.verify(populator).add(1,"value1");
   order.verify(populator).newPopulatingUpdater();
-  order.verify(mockedUpdater).close();
+  order.verify(updater).close();
   order.verify(populator).newPopulatingUpdater();
-  order.verify(mockedUpdater).process(add(2,"value2"));
-  order.verify(mockedUpdater).close();
+  order.verify(updater).process(add(2,"value2"));
+  order.verify(updater).close();
   order.verify(populator).close(true);
-  verifyNoMoreInteractions(mockedUpdater);
+  verifyNoMoreInteractions(updater);
   verifyNoMoreInteractions(populator);
   verifyZeroInteractions(accessor);
 }

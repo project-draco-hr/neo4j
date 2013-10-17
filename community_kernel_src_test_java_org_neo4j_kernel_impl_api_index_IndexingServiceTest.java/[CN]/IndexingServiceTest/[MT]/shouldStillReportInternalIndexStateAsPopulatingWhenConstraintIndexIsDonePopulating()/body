@@ -1,10 +1,5 @@
 {
-  labelId=7;
-  propertyKeyId=15;
-  IndexPopulator populator=mock(IndexPopulator.class);
-  IndexUpdater mockedUpdater=mock(IndexUpdater.class);
-  IndexAccessor accessor=mock(IndexAccessor.class);
-  when(accessor.newUpdater(any(IndexUpdateMode.class))).thenReturn(mockedUpdater);
+  when(accessor.newUpdater(any(IndexUpdateMode.class))).thenReturn(updater);
   IndexingService indexingService=newIndexingServiceWithMockedDependencies(populator,accessor,withData());
   life.start();
   indexingService.createIndex(IndexRule.constraintIndexRule(0,labelId,propertyKeyId,PROVIDER_DESCRIPTOR,null));
@@ -14,10 +9,10 @@
     updater.process(add(10,"foo"));
   }
    assertEquals(InternalIndexState.POPULATING,proxy.getState());
-  InOrder order=inOrder(populator,accessor,mockedUpdater);
+  InOrder order=inOrder(populator,accessor,updater);
   order.verify(populator).create();
   order.verify(populator).close(true);
   order.verify(accessor).newUpdater(IndexUpdateMode.ONLINE);
-  order.verify(mockedUpdater).process(add(10,"foo"));
-  order.verify(mockedUpdater).close();
+  order.verify(updater).process(add(10,"foo"));
+  order.verify(updater).close();
 }
