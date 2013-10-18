@@ -1,7 +1,11 @@
 {
-  Transaction tx=graphDb.beginTx();
-  try {
-    graphDb.getReferenceNode().setProperty("key","value");
+  Node node;
+  try (Transaction tx=graphDb.beginTx()){
+    node=graphDb.createNode();
+    tx.success();
+  }
+   try (Transaction ignore=graphDb.beginTx()){
+    node.setProperty("key","value");
     List<LockInfo> locks=lockManager.getLocks();
     assertEquals("unexpected lock count",1,locks.size());
     LockInfo lock=locks.get(0);
@@ -17,9 +21,6 @@
     assertEquals("write count",1,lock.getWriteCount());
     assertEquals("waiting thread count",0,lock.getWaitingThreadsCount());
   }
-  finally {
-    tx.finish();
-  }
-  List<LockInfo> locks=lockManager.getLocks();
+   List<LockInfo> locks=lockManager.getLocks();
   assertEquals("unexpected lock count",0,locks.size());
 }

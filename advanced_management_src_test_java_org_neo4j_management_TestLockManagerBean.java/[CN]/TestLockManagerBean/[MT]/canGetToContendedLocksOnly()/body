@@ -1,7 +1,11 @@
 {
-  Transaction tx=graphDb.beginTx();
+  Node root;
+  try (Transaction tx=graphDb.beginTx()){
+    root=graphDb.createNode();
+    tx.success();
+  }
+   Transaction tx=graphDb.beginTx();
   try {
-    final Node root=graphDb.getReferenceNode();
     graphDb.createNode();
     Lock lock=tx.acquireReadLock(root);
     List<LockInfo> locks=lockManager.getLocks();
@@ -9,7 +13,7 @@
     for (    LockInfo l : locks) {
 switch (l.getResourceType()) {
 case NODE:
-        if ("0".equals(l.getResourceId())) {
+        if (l.getResourceId().equals(String.valueOf(root.getId()))) {
           assertEquals("read count",1,l.getReadCount());
           assertEquals("write count",0,l.getWriteCount());
         }
@@ -23,11 +27,12 @@ default :
 }
 }
 final CountDownLatch latch=new CountDownLatch(1);
+final Node finalRoot=root;
 Thread t=new Thread(){
 @Override public void run(){
   Transaction tx=graphDb.beginTx();
   try {
-    root.setProperty("block","here");
+    finalRoot.setProperty("block","here");
   }
   finally {
     tx.finish();
