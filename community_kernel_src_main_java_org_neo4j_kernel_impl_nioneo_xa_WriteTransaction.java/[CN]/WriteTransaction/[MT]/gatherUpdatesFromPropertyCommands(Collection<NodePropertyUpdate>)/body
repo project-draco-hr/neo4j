@@ -3,19 +3,24 @@
   final NodeStore nodeStore=getNodeStore();
   for (  PropertyCommand propertyCommand : propCommands) {
     PropertyRecord after=propertyCommand.getAfter();
-    if (after.isNodeSet()) {
-      long[] nodeLabelsBefore, nodeLabelsAfter;
-      NodeCommand nodeChanges=nodeCommands.get(after.getNodeId());
-      if (nodeChanges != null) {
-        nodeLabelsBefore=parseLabelsField(nodeChanges.getBefore()).get(nodeStore);
-        nodeLabelsAfter=parseLabelsField(nodeChanges.getAfter()).get(nodeStore);
-      }
+    if (!after.isNodeSet()) {
+      continue;
+    }
+    long[] nodeLabelsBefore, nodeLabelsAfter;
+    NodeCommand nodeChanges=nodeCommands.get(after.getNodeId());
+    if (nodeChanges != null) {
+      nodeLabelsBefore=parseLabelsField(nodeChanges.getBefore()).get(nodeStore);
+      nodeLabelsAfter=parseLabelsField(nodeChanges.getAfter()).get(nodeStore);
+    }
  else {
-        nodeLabelsBefore=nodeLabelsAfter=parseLabelsField(nodeStore.getRecord(after.getNodeId())).get(nodeStore);
+      NodeRecord nodeRecord=nodeStore.forceGetRecord(after.getNodeId());
+      if (!nodeRecord.inUse() && isRecovered()) {
+        continue;
       }
-      for (      NodePropertyUpdate update : propertyStore.toLogicalUpdates(propertyCommand.getBefore(),nodeLabelsBefore,after,nodeLabelsAfter)) {
-        updates.add(update);
-      }
+      nodeLabelsBefore=nodeLabelsAfter=parseLabelsField(nodeRecord).get(nodeStore);
+    }
+    for (    NodePropertyUpdate update : propertyStore.toLogicalUpdates(propertyCommand.getBefore(),nodeLabelsBefore,after,nodeLabelsAfter)) {
+      updates.add(update);
     }
   }
 }
