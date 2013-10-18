@@ -1,2 +1,24 @@
 {
+  IndexMap indexMap=indexMapReference.getIndexMapCopy();
+  long ruleId=rule.getId();
+  IndexProxy index=indexMap.getIndexProxy(ruleId);
+  if (index != null) {
+    return;
+  }
+  final IndexDescriptor descriptor=createDescriptor(rule);
+  SchemaIndexProvider.Descriptor providerDescriptor=rule.getProviderDescriptor();
+  boolean constraint=rule.isConstraintIndex();
+  if (serviceRunning) {
+    try {
+      index=createAndStartPopulatingIndexProxy(ruleId,descriptor,providerDescriptor,constraint);
+    }
+ catch (    IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
+ else {
+    index=createAndStartRecoveringIndexProxy(descriptor,providerDescriptor);
+  }
+  indexMap.putIndexProxy(rule.getId(),index);
+  indexMapReference.setIndexMap(indexMap);
 }
