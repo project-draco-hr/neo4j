@@ -2,12 +2,7 @@
   String storeDir="dir";
   final GraphDatabaseAPI db=(GraphDatabaseAPI)new TestGraphDatabaseFactory().setFileSystem(fs.get()).newImpermanentDatabase(storeDir);
   produceNonCleanDefraggedStringStore(db);
-  EphemeralFileSystemAbstraction snapshot=fs.snapshot(new Runnable(){
-    @Override public void run(){
-      db.shutdown();
-    }
-  }
-);
+  EphemeralFileSystemAbstraction snapshot=fs.snapshot(shutdownDb(db));
   assertNumberOfFreeIdsEquals(storeDir,snapshot,0);
   GraphDatabaseAPI newDb=(GraphDatabaseAPI)new TestGraphDatabaseFactory().setFileSystem(snapshot).newImpermanentDatabaseBuilder(storeDir).setConfig(GraphDatabaseSettings.rebuild_idgenerators_fast,Settings.FALSE).newGraphDatabase();
   assertNumberOfFreeIdsEquals(storeDir,snapshot,4);
@@ -16,7 +11,9 @@
     int nameCount=0;
     int relCount=0;
     for (    Node node : GlobalGraphOperations.at(newDb).getAllNodes()) {
-      if (node.equals(newDb.getReferenceNode()))       continue;
+      if (node.equals(newDb.getReferenceNode())) {
+        continue;
+      }
       nameCount++;
       assertThat(node,inTx(newDb,hasProperty("name")));
       relCount+=count(node.getRelationships(Direction.OUTGOING));
