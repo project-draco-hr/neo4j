@@ -1,24 +1,21 @@
 {
   clearDbPath();
   GraphDatabaseService db=new GraphDatabaseFactory().newEmbeddedDatabase(DB_PATH);
-  Transaction tx=db.beginTx();
-  try {
+  try (Transaction tx=db.beginTx()){
     Node myNode=db.createNode();
     myNode.setProperty("name","my node");
     tx.success();
   }
-  finally {
-    tx.finish();
+   ExecutionEngine engine=new ExecutionEngine(db);
+  ExecutionResult result;
+  try (Transaction ignored=db.beginTx()){
+    result=engine.execute("start n=node(*) where n.name = 'my node' return n, n.name");
+    Iterator<Node> n_column=result.columnAs("n");
+    for (    Node node : IteratorUtil.asIterable(n_column)) {
+      nodeResult=node + ": " + node.getProperty("name");
+    }
   }
-  ExecutionEngine engine=new ExecutionEngine(db);
-  tx=db.beginTx();
-  ExecutionResult result=engine.execute("start n=node(*) where n.name = 'my node' return n, n.name");
-  List<String> columns=result.columns();
-  Iterator<Node> n_column=result.columnAs("n");
-  for (  Node node : IteratorUtil.asIterable(n_column)) {
-    nodeResult=node + ": " + node.getProperty("name");
-  }
-  tx.finish();
+   List<String> columns=result.columns();
   result=engine.execute("start n=node(*) where n.name = 'my node' return n, n.name");
   for (  Map<String,Object> row : result) {
     for (    Entry<String,Object> column : row.entrySet()) {
