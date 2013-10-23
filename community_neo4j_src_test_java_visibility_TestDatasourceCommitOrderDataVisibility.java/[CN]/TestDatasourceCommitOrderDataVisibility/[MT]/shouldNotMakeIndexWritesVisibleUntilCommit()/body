@@ -1,13 +1,18 @@
 {
-  try (Transaction transaction=graphDatabaseService.beginTx()){
-    graphDatabaseService.index().forNodes(INDEX_NAME).add(graphDatabaseService.getReferenceNode(),INDEX_KEY,INDEX_VALUE);
-    graphDatabaseService.getReferenceNode().setProperty(PROPERTY_NAME,PROPERTY_VALUE);
-    assertReferenceNodeIsNotIndexedOutsideThisTransaction();
-    assertReferenceNodeIsUnchangedOutsideThisTransaction();
-    transaction.success();
-    assertReferenceNodeIsNotIndexedOutsideThisTransaction();
-    assertReferenceNodeIsUnchangedOutsideThisTransaction();
+  Node commonNode;
+  try (Transaction tx=graphDatabaseService.beginTx()){
+    commonNode=graphDatabaseService.createNode();
+    tx.success();
   }
-   assertReferenceNodeIsIndexed();
-  assertReferenceNodeHasBeenUpdated();
+   try (Transaction transaction=graphDatabaseService.beginTx()){
+    graphDatabaseService.index().forNodes(INDEX_NAME).add(commonNode,INDEX_KEY,INDEX_VALUE);
+    commonNode.setProperty(PROPERTY_NAME,PROPERTY_VALUE);
+    assertNodeIsNotIndexedOutsideThisTransaction();
+    assertNodeIsUnchangedOutsideThisTransaction(commonNode);
+    transaction.success();
+    assertNodeIsNotIndexedOutsideThisTransaction();
+    assertNodeIsUnchangedOutsideThisTransaction(commonNode);
+  }
+   assertNodeIsIndexed(commonNode);
+  assertNodeHasBeenUpdated(commonNode);
 }

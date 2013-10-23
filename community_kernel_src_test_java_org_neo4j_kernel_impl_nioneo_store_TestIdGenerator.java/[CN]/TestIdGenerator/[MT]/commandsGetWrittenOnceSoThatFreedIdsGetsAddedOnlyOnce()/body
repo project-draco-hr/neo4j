@@ -6,9 +6,10 @@
   Set<Long> createdNodeIds=new HashSet<Long>();
   Set<Long> createdRelationshipIds=new HashSet<Long>();
   Transaction tx=db.beginTx();
+  Node commonNode=db.createNode();
   for (int i=0; i < 20; i++) {
     Node otherNode=db.createNode();
-    Relationship relationship=db.getReferenceNode().createRelationshipTo(otherNode,type);
+    Relationship relationship=commonNode.createRelationshipTo(otherNode,type);
     if (i % 5 == 0) {
       otherNode.delete();
       relationship.delete();
@@ -23,12 +24,13 @@
   db.shutdown();
   db=new TestGraphDatabaseFactory().setFileSystem(fs).newImpermanentDatabase(storeDir);
   tx=db.beginTx();
+  commonNode=db.getNodeById(commonNode.getId());
   for (int i=0; i < 100; i++) {
     Node otherNode=db.createNode();
     if (!createdNodeIds.add(otherNode.getId())) {
       fail("Managed to create a node with an id that was already in use");
     }
-    Relationship relationship=db.getReferenceNode().createRelationshipTo(otherNode,type);
+    Relationship relationship=commonNode.createRelationshipTo(otherNode,type);
     if (!createdRelationshipIds.add(relationship.getId())) {
       fail("Managed to create a relationship with an id that was already in use");
     }
