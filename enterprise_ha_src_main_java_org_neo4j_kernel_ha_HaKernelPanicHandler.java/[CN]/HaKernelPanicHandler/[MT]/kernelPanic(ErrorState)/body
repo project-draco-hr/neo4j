@@ -4,7 +4,7 @@
       int myEpoch=epoch.get();
 synchronized (dataSourceManager) {
         if (myEpoch != epoch.get())         return;
-        accessGuard.enter();
+        availabilityGuard.deny();
         try {
           txManager.stop();
           dataSourceManager.stop();
@@ -14,12 +14,15 @@ synchronized (dataSourceManager) {
           epoch.incrementAndGet();
         }
   finally {
-          accessGuard.exit();
+          availabilityGuard.grant();
         }
       }
     }
  catch (    Throwable t) {
       throw new RuntimeException("error while handling kernel panic for TX_MANAGER_NOT_OK",t);
     }
+  }
+ else   if (error == ErrorState.STORAGE_MEDIA_FULL) {
+    availabilityGuard.shutdown();
   }
 }

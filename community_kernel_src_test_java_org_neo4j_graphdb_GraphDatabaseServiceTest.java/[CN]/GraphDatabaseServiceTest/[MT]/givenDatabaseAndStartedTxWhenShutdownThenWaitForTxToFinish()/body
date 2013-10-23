@@ -1,0 +1,28 @@
+{
+  final GraphDatabaseService db=new TestGraphDatabaseFactory().newImpermanentDatabase();
+  final CountDownLatch started=new CountDownLatch(1);
+  Executors.newSingleThreadExecutor().submit(new Runnable(){
+    @Override public void run(){
+      System.out.println("Do tx");
+      final Transaction tx=db.beginTx();
+      started.countDown();
+      try {
+        Thread.sleep(2000);
+      }
+ catch (      InterruptedException e) {
+        throw new RuntimeException(e);
+      }
+      db.createNode().setProperty("foo","bar");
+      tx.success();
+      System.out.println("Doing tx");
+      tx.finish();
+      System.out.println("Done tx");
+      System.out.flush();
+    }
+  }
+);
+  started.await();
+  System.out.println("Shutting down");
+  db.shutdown();
+  System.out.println("Shut down");
+}

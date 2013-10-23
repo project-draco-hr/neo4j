@@ -1,0 +1,49 @@
+{
+  final GraphDatabaseService db=new TestGraphDatabaseFactory().newImpermanentDatabase();
+  final CountDownLatch started=new CountDownLatch(1);
+  final AtomicReference result=new AtomicReference();
+  Executors.newSingleThreadExecutor().submit(new Runnable(){
+    @Override public void run(){
+      System.out.println("Do tx");
+      final Transaction tx=db.beginTx();
+      started.countDown();
+      try {
+        Thread.sleep(2000);
+      }
+ catch (      InterruptedException e) {
+        throw new RuntimeException(e);
+      }
+      db.createNode().setProperty("foo","bar");
+      tx.success();
+      System.out.println("Doing tx");
+      Executors.newSingleThreadExecutor().submit(new Runnable(){
+        @Override public void run(){
+          try {
+            db.beginTx();
+            result.set(Boolean.TRUE);
+          }
+ catch (          Exception e) {
+            result.set(e);
+          }
+synchronized (result) {
+            result.notifyAll();
+          }
+        }
+      }
+);
+      tx.finish();
+      System.out.println("Done tx");
+    }
+  }
+);
+  started.await();
+  System.out.println("Shutting down");
+  db.shutdown();
+  System.out.println("Shut down");
+  while (result.get() == null) {
+synchronized (result) {
+      result.wait(100);
+    }
+  }
+  Assert.assertThat(result.get().getClass(),CoreMatchers.<Object>equalTo(TransactionFailureException.class));
+}
