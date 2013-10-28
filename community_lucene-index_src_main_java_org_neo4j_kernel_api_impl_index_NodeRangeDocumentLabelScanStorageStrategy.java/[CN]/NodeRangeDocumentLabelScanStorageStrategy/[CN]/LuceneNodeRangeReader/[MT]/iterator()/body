@@ -1,0 +1,64 @@
+{
+  final IndexReader reader=searcher.getIndexReader();
+  return new Iterator<NodeLabelRange>(){
+    private int id=0;
+    private NodeLabelRange current=computeNext();
+    @Override public boolean hasNext(){
+      return current != null;
+    }
+    @Override public NodeLabelRange next(){
+      if (hasNext()) {
+        NodeLabelRange result=current;
+        current=computeNext();
+        return result;
+      }
+ else {
+        throw new NoSuchElementException();
+      }
+    }
+    @Override public void remove(){
+      throw new UnsupportedOperationException();
+    }
+    NodeLabelRange computeNext(){
+      while (id < searcher.maxDoc()) {
+        if (reader.isDeleted(id)) {
+          id++;
+          continue;
+        }
+        try {
+          Document document=searcher.doc(id);
+          List<Fieldable> fields=document.getFields();
+          long[] labelIds=new long[fields.size() - 1];
+          Bitmap[] bitmaps=new Bitmap[fields.size() - 1];
+          int i=0;
+          long rangeId=-1;
+          for (          Fieldable field : fields) {
+            if (format.isRangeField(field)) {
+              rangeId=format.rangeOf(field);
+            }
+ else {
+              labelIds[i]=format.labelId(field);
+              bitmaps[i]=format.readBitmap(field);
+              i++;
+            }
+          }
+          assert(rangeId >= 0);
+          id++;
+          return new LuceneNodeLabelRange(rangeId,labelIds,getLongs(bitmaps,rangeId),bitmaps);
+        }
+ catch (        IOException e) {
+          throw new RuntimeException(e);
+        }
+      }
+      return null;
+    }
+    private long[][] getLongs(    Bitmap[] bitmaps,    long rangeId){
+      long[][] nodeIds=new long[bitmaps.length][];
+      for (int k=0; k < nodeIds.length; k++) {
+        nodeIds[k]=format.bitmapFormat().convertRangeAndBitmapToArray(rangeId,bitmaps[k].bitmap());
+      }
+      return nodeIds;
+    }
+  }
+;
+}
