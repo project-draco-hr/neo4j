@@ -1,0 +1,33 @@
+{
+  while (id < searcher.maxDoc()) {
+    if (searcher.getIndexReader().isDeleted(id)) {
+      id++;
+      continue;
+    }
+    try {
+      Document document=searcher.doc(id);
+      List<Fieldable> fields=document.getFields();
+      long[] labelIds=new long[fields.size() - 1];
+      Bitmap[] bitmaps=new Bitmap[fields.size() - 1];
+      int i=0;
+      long rangeId=-1;
+      for (      Fieldable field : fields) {
+        if (format.isRangeField(field)) {
+          rangeId=format.rangeOf(field);
+        }
+ else {
+          labelIds[i]=format.labelId(field);
+          bitmaps[i]=format.readBitmap(field);
+          i++;
+        }
+      }
+      assert(rangeId >= 0);
+      id++;
+      return new LuceneNodeLabelRange(labelIds,getLongs(bitmaps,rangeId));
+    }
+ catch (    IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
+  return null;
+}
