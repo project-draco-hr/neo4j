@@ -1,8 +1,16 @@
 {
   if (config.<Boolean>get(OnlineBackupSettings.online_backup_enabled)) {
-    TheBackupInterface backup=new BackupImpl(graphDatabaseAPI);
+    TheBackupInterface backup=new BackupImpl(logging.getMessagesLog(BackupImpl.class),new BackupImpl.SPI(){
+      @Override public String getStoreDir(){
+        return graphDatabaseAPI.getStoreDir();
+      }
+      @Override public StoreId getStoreId(){
+        return graphDatabaseAPI.getStoreId();
+      }
+    }
+,xaDataSourceManager,kpeg);
     try {
-      server=new BackupServer(backup,config.get(OnlineBackupSettings.online_backup_server),graphDatabaseAPI.getDependencyResolver().resolveDependency(Logging.class));
+      server=new BackupServer(backup,config.get(OnlineBackupSettings.online_backup_server),logging);
       server.init();
       server.start();
       try {
