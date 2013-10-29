@@ -1,0 +1,32 @@
+{
+  if (record.inUse() && record.isStartRecord()) {
+    SchemaRule rule;
+    try {
+      rule=ruleAccess.loadSingleSchemaRule(record.getId());
+    }
+ catch (    MalformedSchemaRuleException e) {
+      engine.report().malformedSchemaRule();
+      return;
+    }
+    if (Phase.CHECK_RULES == phase) {
+      engine.comparativeCheck(records.label(rule.getLabel()),VALID_LABEL);
+      SchemaRuleContent content=new SchemaRuleContent(rule);
+      DynamicRecord previousContentRecord=contentMap.put(content,record);
+      if (null != previousContentRecord) {
+        engine.report().duplicateRuleContent(previousContentRecord);
+      }
+    }
+    SchemaRule.Kind kind=rule.getKind();
+switch (kind) {
+case INDEX_RULE:
+case CONSTRAINT_INDEX_RULE:
+      checkIndexRule((IndexRule)rule,engine,record,records);
+    break;
+case UNIQUENESS_CONSTRAINT:
+  checkUniquenessConstraintRule((UniquenessConstraintRule)rule,engine,record,records);
+break;
+default :
+engine.report().unsupportedSchemaRuleKind(kind);
+}
+}
+}
