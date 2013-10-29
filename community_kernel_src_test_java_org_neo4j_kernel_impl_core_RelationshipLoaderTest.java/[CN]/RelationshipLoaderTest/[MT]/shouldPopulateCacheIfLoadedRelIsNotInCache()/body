@@ -1,0 +1,16 @@
+{
+  long fromDiskRelId=12l;
+  PersistenceManager persistenceManager=mock(PersistenceManager.class);
+  Cache relCache=mock(Cache.class);
+  NodeImpl node=new NodeImpl(1337l);
+  node.setRelChainPosition(0l);
+  Map<RelIdArray.DirectionWrapper,Iterable<RelationshipRecord>> relsFromDisk=new HashMap<>();
+  relsFromDisk.put(RelIdArray.DirectionWrapper.OUTGOING,asList(new RelationshipRecord(fromDiskRelId)));
+  relsFromDisk.put(RelIdArray.DirectionWrapper.INCOMING,Collections.<RelationshipRecord>emptyList());
+  when(persistenceManager.getMoreRelationships(1337l,0l)).thenReturn(Pair.of(relsFromDisk,-1l));
+  RelationshipLoader loader=new RelationshipLoader(persistenceManager,relCache);
+  Triplet<ArrayMap<Integer,RelIdArray>,List<RelationshipImpl>,Long> result=loader.getMoreRelationships(node);
+  List<RelationshipImpl> relsThatWereNotInCache=result.second();
+  assertThat(relsThatWereNotInCache.size(),equalTo(1));
+  assertThat(relsThatWereNotInCache.get(0).getId(),equalTo(fromDiskRelId));
+}
