@@ -1,21 +1,14 @@
 {
   long nodesInDatabaseBeforeTransaction=countNodes();
-  long startOfTest=System.currentTimeMillis();
-  Thread.sleep(3000);
   Response begin=http.POST("/db/data/transaction");
   assertThat(begin.status(),equalTo(201));
   assertThat(begin.location(),matches("http://localhost:\\d+/db/data/transaction/\\d+"));
-  long beginStamp=expirationTime(jsonToMap(begin.rawContent()));
-  long defaultTimeoutMillis=SECONDS.toMillis(server().getConfiguration().getInt(TRANSACTION_TIMEOUT,DEFAULT_TRANSACTION_TIMEOUT));
-  assertTrue(beginStamp > (defaultTimeoutMillis + startOfTest));
   String commitResource=begin.stringFromContent("commit");
   assertThat(commitResource,matches("http://localhost:\\d+/db/data/transaction/\\d+/commit"));
-  Thread.sleep(3000);
+  assertThat(begin.get("transaction").get("expires").asText(),isValidRFCTimestamp());
   Response execute=http.POST(begin.location(),quotedJson("{ 'statements': [ { 'statement': 'CREATE n' } ] }"));
   assertThat(execute.status(),equalTo(200));
-  long executeStamp=expirationTime(jsonToMap(execute.rawContent()));
-  assertTrue(executeStamp > startOfTest);
-  assertTrue(executeStamp > beginStamp);
+  assertThat(execute.get("transaction").get("expires").asText(),isValidRFCTimestamp());
   Response commit=http.POST(commitResource);
   assertThat(commit.status(),equalTo(200));
   assertThat(countNodes(),equalTo(nodesInDatabaseBeforeTransaction + 1));
