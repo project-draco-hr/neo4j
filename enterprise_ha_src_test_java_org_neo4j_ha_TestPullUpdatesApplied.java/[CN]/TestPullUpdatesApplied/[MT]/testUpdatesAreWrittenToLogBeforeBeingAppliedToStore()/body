@@ -13,10 +13,9 @@
   }
 );
   dbToKill.shutdown();
-  if (!latch1.await(60,TimeUnit.SECONDS))   throw new IllegalStateException("Timeout waiting for first latch");
+  if (!latch1.await(60,TimeUnit.SECONDS))   throw new IllegalStateException("Timeout waiting for instance to leave cluster");
   addNode(master);
   File targetDirectory=dir.directory("" + toKill,false);
-  dbToKill.shutdown();
   final CountDownLatch latch2=new CountDownLatch(1);
   masterDb.getDependencyResolver().resolveDependency(ClusterClient.class).addHeartbeatListener(new HeartbeatListener.Adapter(){
     @Override public void failed(    InstanceId server){
@@ -25,8 +24,9 @@
     }
   }
 );
+  dbToKill.shutdown();
   runInOtherJvmToGetExitCode(new String[]{targetDirectory.getAbsolutePath(),"" + toKill});
-  if (!latch1.await(60,TimeUnit.SECONDS))   throw new IllegalStateException("Timeout waiting for second latch");
+  if (!latch2.await(60,TimeUnit.SECONDS))   throw new IllegalStateException("Timeout waiting for instance to fail");
   start(toKill,false);
   boolean hasBranchedData=new File(targetDirectory,"branched").listFiles().length > 0;
   assertFalse(hasBranchedData);

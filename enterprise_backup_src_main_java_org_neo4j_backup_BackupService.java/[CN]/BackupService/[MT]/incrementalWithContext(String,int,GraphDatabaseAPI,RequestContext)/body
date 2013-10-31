@@ -2,9 +2,11 @@
   BackupClient client=new BackupClient(sourceHostNameOrIp,sourcePort,targetDb.getDependencyResolver().resolveDependency(Logging.class),targetDb.getStoreId());
   client.start();
   Map<String,Long> lastCommittedTxs;
+  boolean consistent=false;
   try {
     lastCommittedTxs=unpackResponse(client.incrementalBackup(context),targetDb.getDependencyResolver().resolveDependency(XaDataSourceManager.class),new ProgressTxHandler());
     trimLogicalLogCount(targetDb);
+    consistent=true;
   }
   finally {
     try {
@@ -14,5 +16,5 @@
       throw new RuntimeException(throwable);
     }
   }
-  return new BackupOutcome(lastCommittedTxs);
+  return new BackupOutcome(lastCommittedTxs,consistent);
 }

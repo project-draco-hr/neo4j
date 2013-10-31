@@ -6,6 +6,7 @@
   client.start();
   long timestamp=System.currentTimeMillis();
   Map<String,Long> lastCommittedTxs=emptyMap();
+  boolean consistent=!checkConsistency;
   try {
     Response<Void> response=client.fullBackup(decorateWithProgressIndicator(new ToFileStoreWriter(new File(targetDirectory))));
     GraphDatabaseAPI targetDb=startTemporaryDb(targetDirectory,VerificationLevel.NONE);
@@ -82,7 +83,7 @@ catch (        IOException e) {
     if (checkConsistency) {
       StringLogger logger=StringLogger.SYSTEM;
       try {
-        new ConsistencyCheckService().runFullConsistencyCheck(targetDirectory,tuningConfiguration,ProgressMonitorFactory.textual(System.err),logger);
+        consistent=new ConsistencyCheckService().runFullConsistencyCheck(targetDirectory,tuningConfiguration,ProgressMonitorFactory.textual(System.err),logger);
       }
  catch (      ConsistencyCheckIncompleteException e) {
         e.printStackTrace(System.err);
@@ -100,5 +101,5 @@ catch (        IOException e) {
       throw new RuntimeException(throwable);
     }
   }
-  return new BackupOutcome(lastCommittedTxs);
+  return new BackupOutcome(lastCommittedTxs,consistent);
 }
