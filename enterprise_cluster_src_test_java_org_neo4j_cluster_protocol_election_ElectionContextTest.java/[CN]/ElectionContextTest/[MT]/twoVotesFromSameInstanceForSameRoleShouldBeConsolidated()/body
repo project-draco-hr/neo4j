@@ -1,0 +1,21 @@
+{
+  final String coordinatorRole="coordinator";
+  HeartbeatContext heartbeatContext=mock(HeartbeatContext.class);
+  when(heartbeatContext.getFailed()).thenReturn(Collections.<InstanceId>emptySet());
+  Map<InstanceId,URI> members=new HashMap<InstanceId,URI>();
+  members.put(new InstanceId(1),URI.create("server1"));
+  members.put(new InstanceId(2),URI.create("server2"));
+  members.put(new InstanceId(3),URI.create("server3"));
+  ClusterConfiguration clusterConfiguration=mock(ClusterConfiguration.class);
+  when(clusterConfiguration.getMembers()).thenReturn(members);
+  ClusterContext clusterContext=mock(ClusterContext.class);
+  when(clusterContext.getConfiguration()).thenReturn(clusterConfiguration);
+  when(clusterContext.getLogger(Matchers.<Class>any())).thenReturn(mock(StringLogger.class));
+  ElectionContext toTest=new ElectionContext(Iterables.<ElectionRole,ElectionRole>iterable(new ElectionRole(coordinatorRole)),clusterContext,heartbeatContext);
+  toTest.startElectionProcess(coordinatorRole);
+  toTest.voted(coordinatorRole,new InstanceId(1),new IntegerElectionCredentials(100));
+  toTest.voted(coordinatorRole,new InstanceId(2),new IntegerElectionCredentials(100));
+  toTest.voted(coordinatorRole,new InstanceId(2),new IntegerElectionCredentials(101));
+  assertNull(toTest.getElectionWinner(coordinatorRole));
+  assertEquals(2,toTest.getVoteCount(coordinatorRole));
+}
