@@ -12,6 +12,9 @@
     @Override public int defaultPort(){
       return 5001;
     }
+    @Override public int port(){
+      return config.get(ClusterSettings.cluster_server).getPort();
+    }
   }
 ,receiver,logging);
   ExecutorLifecycleAdapter stateMachineExecutor=new ExecutorLifecycleAdapter(new Factory<ExecutorService>(){
@@ -22,9 +25,13 @@
 );
   final ProtocolServer protocolServer=protocolServerFactory.newProtocolServer(new InstanceId(config.get(ClusterSettings.server_id)),timeoutStrategy,receiver,sender,acceptorInstanceStore,electionCredentialsProvider,stateMachineExecutor,objectInputStreamFactory,objectOutputStreamFactory);
   receiver.addNetworkChannelsListener(new NetworkReceiver.NetworkChannelsListener(){
+    private StateTransitionLogger logger;
     @Override public void listeningAt(    URI me){
       protocolServer.listeningAt(me);
-      protocolServer.addStateTransitionListener(new StateTransitionLogger(logging));
+      if (logger == null) {
+        logger=new StateTransitionLogger(logging);
+        protocolServer.addStateTransitionListener(logger);
+      }
     }
     @Override public void channelOpened(    URI to){
     }
