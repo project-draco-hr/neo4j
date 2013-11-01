@@ -1,0 +1,16 @@
+{
+  int nodeId=42;
+  int documentId=13;
+  long[] expectedLabelIds={1,2,3,4,5,6,7,8,9,10};
+  long[] presentLabelIds={1,2,3,4,5,6,8,9,10};
+  long missingLabelId=7;
+  RecordAccessStub recordAccess=new RecordAccessStub();
+  NodeRecord node=inUse(withDynamicLabels(recordAccess,new NodeRecord(nodeId,0,0),presentLabelIds));
+  LabelScanDocument document=document(documentId,new long[]{nodeId},new long[][]{expectedLabelIds});
+  ConsistencyReport.LabelScanConsistencyReport report=mock(ConsistencyReport.LabelScanConsistencyReport.class);
+  LabelScanDocumentToNodeRecordCheck check=new LabelScanDocumentToNodeRecordCheck();
+  CheckerEngine<LabelScanDocument,ConsistencyReport.LabelScanConsistencyReport> engine=recordAccess.engine(document,report);
+  check.checkReference(document,node,engine,recordAccess);
+  recordAccess.checkDeferred();
+  verify(report).nodeDoesNotHaveExpectedLabel(node,missingLabelId);
+}
