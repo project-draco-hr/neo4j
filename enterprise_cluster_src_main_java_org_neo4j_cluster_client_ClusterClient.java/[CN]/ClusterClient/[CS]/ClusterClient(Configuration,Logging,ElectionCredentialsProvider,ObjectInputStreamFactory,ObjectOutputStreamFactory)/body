@@ -16,6 +16,9 @@
     @Override public int defaultPort(){
       return 5001;
     }
+    @Override public int port(){
+      return config.getAddress().getPort();
+    }
   }
 ,receiver,logging);
   ExecutorLifecycleAdapter stateMachineExecutor=new ExecutorLifecycleAdapter(new Factory<ExecutorService>(){
@@ -26,9 +29,13 @@
 );
   server=protocolServerFactory.newProtocolServer(new InstanceId(config.getServerId()),timeoutStrategy,receiver,sender,acceptorInstanceStore,electionCredentialsProvider,stateMachineExecutor,objectInputStreamFactory,objectOutputStreamFactory);
   receiver.addNetworkChannelsListener(new NetworkReceiver.NetworkChannelsListener(){
+    volatile private StateTransitionLogger logger=null;
     @Override public void listeningAt(    URI me){
       server.listeningAt(me);
-      server.addStateTransitionListener(new StateTransitionLogger(logging));
+      if (logger == null) {
+        logger=new StateTransitionLogger(logging);
+        server.addStateTransitionListener(logger);
+      }
     }
     @Override public void channelOpened(    URI to){
     }

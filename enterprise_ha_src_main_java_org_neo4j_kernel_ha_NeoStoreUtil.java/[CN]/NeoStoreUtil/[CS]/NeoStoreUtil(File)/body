@@ -1,20 +1,32 @@
 {
+  RandomAccessFile randomAccessFile=null;
   try {
-    FileChannel fileChannel=new RandomAccessFile(neoStoreFile(storeDir),"r").getChannel();
-    int recordsToRead=5;
+    randomAccessFile=new RandomAccessFile(file=neoStoreFile(storeDir),"r");
+    FileChannel fileChannel=randomAccessFile.getChannel();
+    int recordsToRead=6;
     ByteBuffer buf=ByteBuffer.allocate(recordsToRead * NeoStore.RECORD_SIZE);
     if (fileChannel.read(buf) != recordsToRead * NeoStore.RECORD_SIZE) {
       throw new RuntimeException("Unable to read neo store header information");
     }
     buf.flip();
     creationTime=nextRecord(buf);
-    storeId=nextRecord(buf);
+    randomId=nextRecord(buf);
     logVersion=nextRecord(buf);
     txId=nextRecord(buf);
     storeVersion=nextRecord(buf);
-    fileChannel.close();
+    firstGraphProp=nextRecord(buf);
   }
  catch (  IOException e) {
     throw new RuntimeException(e);
+  }
+ finally {
+    if (randomAccessFile != null) {
+      try {
+        randomAccessFile.close();
+      }
+ catch (      IOException e) {
+        throw new RuntimeException(e);
+      }
+    }
   }
 }
