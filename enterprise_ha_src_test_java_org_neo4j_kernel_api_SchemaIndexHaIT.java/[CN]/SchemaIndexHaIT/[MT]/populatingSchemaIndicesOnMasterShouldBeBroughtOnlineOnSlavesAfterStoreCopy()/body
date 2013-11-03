@@ -1,27 +1,34 @@
 {
   ControlledGraphDatabaseFactory dbFactory=new ControlledGraphDatabaseFactory();
   ManagedCluster cluster=clusterRule.startCluster(dbFactory);
-  cluster.await(allSeesAllAsAvailable());
-  HighlyAvailableGraphDatabase slave=cluster.getAnySlave();
-  proceedAsNormalWithIndexPopulationOnAllSlavesExcept(dbFactory,cluster,slave);
-  ClusterManager.RepairKit slaveDown=bringSlaveOfflineAndRemoveStoreFiles(cluster,slave);
-  HighlyAvailableGraphDatabase master=cluster.getMaster();
-  Map<Object,Node> data=createSomeData(master);
-  createIndex(master);
-  dbFactory.awaitPopulationStarted(master);
-  slave=slaveDown.repair();
-  cluster.await(allSeesAllAsAvailable(),120);
-  cluster.sync();
-  dbFactory.triggerFinish(master);
-  dbFactory.triggerFinish(slave);
-  IndexDefinition index;
-  try (Transaction tx=master.beginTx()){
-    index=single(master.schema().getIndexes());
-    awaitIndexOnline(index,master,data);
-    tx.success();
+  try {
+    cluster.await(allSeesAllAsAvailable());
+    HighlyAvailableGraphDatabase slave=cluster.getAnySlave();
+    proceedAsNormalWithIndexPopulationOnAllSlavesExcept(dbFactory,cluster,slave);
+    ClusterManager.RepairKit slaveDown=bringSlaveOfflineAndRemoveStoreFiles(cluster,slave);
+    HighlyAvailableGraphDatabase master=cluster.getMaster();
+    Map<Object,Node> data=createSomeData(master);
+    createIndex(master);
+    dbFactory.awaitPopulationStarted(master);
+    slave=slaveDown.repair();
+    cluster.await(allSeesAllAsAvailable(),180);
+    cluster.sync();
+    dbFactory.triggerFinish(master);
+    dbFactory.triggerFinish(slave);
+    IndexDefinition index;
+    try (Transaction tx=master.beginTx()){
+      index=single(master.schema().getIndexes());
+      awaitIndexOnline(index,master,data);
+      tx.success();
+    }
+     try (Transaction tx=slave.beginTx()){
+      awaitIndexOnline(index,slave,data);
+      tx.success();
+    }
+   }
+  finally {
+    for (    HighlyAvailableGraphDatabase db : cluster.getAllMembers()) {
+      dbFactory.triggerFinish(db);
+    }
   }
-   try (Transaction tx=slave.beginTx()){
-    awaitIndexOnline(index,slave,data);
-    tx.success();
-  }
- }
+}
