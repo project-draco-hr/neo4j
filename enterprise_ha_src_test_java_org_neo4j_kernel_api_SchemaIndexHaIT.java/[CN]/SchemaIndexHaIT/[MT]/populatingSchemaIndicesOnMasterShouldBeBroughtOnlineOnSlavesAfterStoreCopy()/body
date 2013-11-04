@@ -1,10 +1,9 @@
 {
-  ControlledGraphDatabaseFactory dbFactory=new ControlledGraphDatabaseFactory();
+  ControlledGraphDatabaseFactory dbFactory=new ControlledGraphDatabaseFactory(IS_MASTER);
   ManagedCluster cluster=clusterRule.startCluster(dbFactory);
   try {
     cluster.await(allSeesAllAsAvailable());
     HighlyAvailableGraphDatabase slave=cluster.getAnySlave();
-    proceedAsNormalWithIndexPopulationOnAllSlavesExcept(dbFactory,cluster,slave);
     ClusterManager.RepairKit slaveDown=bringSlaveOfflineAndRemoveStoreFiles(cluster,slave);
     HighlyAvailableGraphDatabase master=cluster.getMaster();
     Map<Object,Node> data=createSomeData(master);
@@ -14,7 +13,6 @@
     cluster.await(allSeesAllAsAvailable(),180);
     cluster.sync();
     dbFactory.triggerFinish(master);
-    dbFactory.triggerFinish(slave);
     IndexDefinition index;
     try (Transaction tx=master.beginTx()){
       index=single(master.schema().getIndexes());
