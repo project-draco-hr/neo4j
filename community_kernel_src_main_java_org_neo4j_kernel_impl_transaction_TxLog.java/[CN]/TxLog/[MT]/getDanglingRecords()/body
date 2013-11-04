@@ -1,21 +1,25 @@
 {
   FileChannel fileChannel=logBuffer.getFileChannel();
-  ByteBuffer buffer=ByteBuffer.allocateDirect((3 + Xid.MAXGTRIDSIZE + Xid.MAXBQUALSIZE) * 1000);
+  ByteBuffer buffer=ByteBuffer.allocateDirect(SCAN_WINDOW_SIZE);
   fileChannel.position(0);
   buffer.clear();
   fileChannel.read(buffer);
   buffer.flip();
   long nextPosition=0;
   int seqNr=0;
-  Map<Xid,List<Record>> recordMap=new HashMap<Xid,List<Record>>();
+  Map<Xid,List<Record>> recordMap=new HashMap<>();
   while (buffer.hasRemaining()) {
     byte recordType=buffer.get();
-    if (recordType == TX_START) {
+    if (recordType == 0) {
+      nextPosition++;
+      continue;
+    }
+ else     if (recordType == TX_START) {
       if (!buffer.hasRemaining()) {
         break;
       }
       byte globalId[]=new byte[buffer.get()];
-      if (buffer.limit() - buffer.position() < globalId.length) {
+      if (buffer.remaining() < globalId.length) {
         break;
       }
       buffer.get(globalId);
@@ -23,18 +27,18 @@
       if (recordMap.containsKey(xid)) {
         throw new IOException("Tx start for same xid[" + xid + "] found twice");
       }
-      List<Record> recordList=new LinkedList<Record>();
+      List<Record> recordList=new LinkedList<>();
       recordList.add(new Record(recordType,globalId,null,seqNr++));
       recordMap.put(xid,recordList);
       nextPosition+=2 + globalId.length;
     }
  else     if (recordType == BRANCH_ADD) {
-      if (buffer.limit() - buffer.position() < 2) {
+      if (buffer.remaining() < 2) {
         break;
       }
       byte globalId[]=new byte[buffer.get()];
       byte branchId[]=new byte[buffer.get()];
-      if (buffer.limit() - buffer.position() < globalId.length + branchId.length) {
+      if (buffer.remaining() < globalId.length + branchId.length) {
         break;
       }
       buffer.get(globalId);
@@ -51,7 +55,7 @@
         break;
       }
       byte globalId[]=new byte[buffer.get()];
-      if (buffer.limit() - buffer.position() < globalId.length) {
+      if (buffer.remaining() < globalId.length) {
         break;
       }
       buffer.get(globalId);
@@ -69,7 +73,7 @@
         break;
       }
       byte globalId[]=new byte[buffer.get()];
-      if (buffer.limit() - buffer.position() < globalId.length) {
+      if (buffer.remaining() < globalId.length) {
         break;
       }
       buffer.get(globalId);
@@ -80,13 +84,10 @@
       recordMap.remove(xid);
       nextPosition+=2 + globalId.length;
     }
- else     if (recordType == 0) {
-      continue;
-    }
- else {
+ else     if (recordType != 0) {
       throw new IOException("Unknown type: " + recordType);
     }
-    if ((buffer.limit() - buffer.position()) < (3 + Xid.MAXGTRIDSIZE + Xid.MAXBQUALSIZE)) {
+    if (buffer.remaining() < MAX_RECORD_SIZE) {
       buffer.clear();
       fileChannel.position(nextPosition);
       fileChannel.read(buffer);

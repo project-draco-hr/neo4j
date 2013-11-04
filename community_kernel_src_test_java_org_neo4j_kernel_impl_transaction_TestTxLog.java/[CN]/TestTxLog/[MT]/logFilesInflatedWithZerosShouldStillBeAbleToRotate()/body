@@ -1,0 +1,21 @@
+{
+  File logFile=tmpFile();
+  DefaultFileSystemAbstraction fileSystem=new DefaultFileSystemAbstraction();
+  FileChannel ch=fileSystem.open(logFile,"rw");
+  ch.write(ByteBuffer.allocate(TxLog.SCAN_WINDOW_SIZE / 2));
+  ch.force(false);
+  ch.close();
+  TxLog log=new TxLog(logFile,fileSystem);
+  ByteBuffer tmp=ByteBuffer.allocate(Xid.MAXGTRIDSIZE);
+  for (int i=0; i < 2000; i++) {
+    tmp.putInt(0,i);
+    byte[] bytes=new byte[Xid.MAXGTRIDSIZE];
+    tmp.position(0);
+    tmp.get(bytes);
+    log.txStart(bytes);
+  }
+  log.force();
+  File rotationTarget=tmpFile();
+  log.switchToLogFile(rotationTarget);
+  assertThat(log.getRecordCount(),is(2000));
+}
