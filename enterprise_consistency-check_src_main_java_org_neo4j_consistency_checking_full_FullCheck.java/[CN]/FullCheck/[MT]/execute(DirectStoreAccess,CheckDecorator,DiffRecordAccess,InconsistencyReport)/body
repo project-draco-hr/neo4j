@@ -21,9 +21,9 @@
   tasks.add(new StoreProcessorTask<>(nativeStores.getPropertyKeyNameStore(),progress,order,processEverything,processEverything));
   tasks.add(new StoreProcessorTask<>(nativeStores.getLabelNameStore(),progress,order,processEverything,processEverything));
   tasks.add(new StoreProcessorTask<>(nativeStores.getNodeDynamicLabelStore(),progress,order,processEverything,processEverything));
-  tasks.add(new LabelScanStoreCheckTask(directStoreAccess.labelScanStore(),progress,reporter,new LabelScanCheck()));
+  tasks.add(new RecordScanner<NodeLabelRange>(directStoreAccess.labelScanStore().newAllEntriesReader(),"LabelScanStore",progress,new LabelScanDocumentProcessor(reporter,new LabelScanCheck())));
   for (  IndexRule indexRule : loadAllIndexRules(directStoreAccess.nativeStores().getSchemaStore())) {
-    tasks.add(new IndexCheckTask(indexRule,directStoreAccess.indexes(),progress,reporter,new IndexCheck(indexRule)));
+    tasks.add(new RecordScanner<Long>(new IndexIterator(indexRule,directStoreAccess.indexes()),"Index_" + indexRule.getId(),progress,new IndexEntryProcessor(reporter,new IndexCheck(indexRule))));
   }
   order.execute(tasks,progress.build());
 }
