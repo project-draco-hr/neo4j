@@ -1,19 +1,15 @@
 {
   return new PrefetchingIterator<Long>(){
-    private int nextId;
+    private int docId;
     @Override protected Long fetchNextOrNull(){
-      if (nextId >= maxCount()) {
-        return null;
+      Long node=null;
+      while (node == null && isPossibleDocId(docId)) {
+        if (!deleted(docId)) {
+          node=getNode(docId);
+        }
+        docId++;
       }
-      while (searcher.getIndexReader().isDeleted(nextId)) {
-        nextId++;
-      }
-      try {
-        return documentLogic.getNodeId(searcher.doc(nextId++));
-      }
- catch (      IOException e) {
-        throw new RuntimeException(e);
-      }
+      return node;
     }
   }
 ;
