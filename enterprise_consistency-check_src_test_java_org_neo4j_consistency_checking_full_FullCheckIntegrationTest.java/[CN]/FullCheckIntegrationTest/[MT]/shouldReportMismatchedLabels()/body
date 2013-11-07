@@ -1,0 +1,27 @@
+{
+  final List<Integer> labels=new ArrayList<>();
+  fixture.apply(new GraphStoreFixture.Transaction(){
+    @Override protected void transactionData(    GraphStoreFixture.TransactionDataBuilder tx,    GraphStoreFixture.IdGenerator next){
+      NodeRecord node=new NodeRecord(42,-1,-1);
+      node.setInUse(true);
+      List<DynamicRecord> dynamicRecords;
+      try {
+        Pair<List<DynamicRecord>,List<Integer>> pair=self.chainOfDynamicRecordsWithLabelsForANode(3);
+        dynamicRecords=pair.first();
+        labels.addAll(pair.other());
+      }
+ catch (      IOException e) {
+        throw new RuntimeException(e);
+      }
+      node.setLabelField(dynamicPointer(dynamicRecords),dynamicRecords);
+      tx.create(node);
+    }
+  }
+);
+  long[] before=asArray(labels);
+  labels.remove(1);
+  long[] after=asArray(labels);
+  fixture.labelScanStore().updateAndCommit(asList(labelChanges(42,before,after)).iterator());
+  ConsistencySummaryStatistics stats=check();
+  verifyInconsistency(stats,RecordType.NODE);
+}
