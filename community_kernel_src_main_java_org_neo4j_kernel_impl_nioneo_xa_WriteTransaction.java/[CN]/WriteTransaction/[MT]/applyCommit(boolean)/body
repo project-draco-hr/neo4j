@@ -34,15 +34,13 @@
     executeCreated(isRecovered,propCommands,relCommands,nodeCommands.values());
     executeModified(isRecovered,propCommands,relCommands,nodeCommands.values());
     executeDeleted(propCommands,relCommands,nodeCommands.values());
-    Collection<NodePropertyUpdate> propertyUpdates=new HashSet<>();
-    Collection<NodeLabelUpdate> labelUpdates=new ArrayList<>();
-    gatherPropertyAndLabelUpdates(propertyUpdates,labelUpdates);
-    if (propertyUpdates.size() > 0) {
-      indexes.updateIndexes(propertyUpdates);
-    }
-    if (labelUpdates.size() > 0) {
+    Collection<NodeLabelUpdate> labelUpdates=gatherLabelUpdates();
+    if (!labelUpdates.isEmpty()) {
       updateLabelScanStore(labelUpdates);
       cacheAccess.applyLabelUpdates(labelUpdates);
+    }
+    if (!nodeCommands.isEmpty() || !propCommands.isEmpty()) {
+      indexes.updateIndexes(new LazyIndexUpdates(getNodeStore(),getPropertyStore(),new ArrayList<>(propCommands),new HashMap<>(nodeCommands)));
     }
     for (    SchemaRuleCommand command : schemaRuleCommands) {
       command.setTxId(getCommitTxId());

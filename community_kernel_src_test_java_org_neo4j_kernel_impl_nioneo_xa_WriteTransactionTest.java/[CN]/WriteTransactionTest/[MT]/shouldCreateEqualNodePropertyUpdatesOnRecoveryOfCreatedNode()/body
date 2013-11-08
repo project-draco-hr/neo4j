@@ -8,16 +8,22 @@
   tx.createSchemaRule(rule);
   prepareAndCommit(tx);
   IndexingService index=mock(IndexingService.class);
+  IteratorCollector<NodePropertyUpdate> indexUpdates=new IteratorCollector<>(0);
+  doAnswer(indexUpdates).when(index).updateIndexes(any(IndexUpdates.class));
   CommandCapturingVisitor commandCapturingVisitor=new CommandCapturingVisitor();
   tx=newWriteTransaction(index,commandCapturingVisitor);
   tx.nodeCreate(nodeId);
   tx.addLabelToNode(labelId,nodeId);
   tx.nodeAddProperty(nodeId,propertyKeyId,"Neo");
   prepareAndCommit(tx);
-  verify(index,times(1)).updateIndexes(argThat(matchesAll(expectedUpdate)));
+  verify(index,times(1)).updateIndexes(any(IndexUpdates.class));
+  indexUpdates.assertContent(expectedUpdate);
   reset(index);
+  indexUpdates=new IteratorCollector<>(0);
+  doAnswer(indexUpdates).when(index).updateIndexes(any(IndexUpdates.class));
   tx=newWriteTransaction(index);
   commandCapturingVisitor.injectInto(tx);
   prepareAndCommitRecovered(tx);
-  verify(index,times(1)).updateIndexes(argThat(matchesAll(expectedUpdate)));
+  verify(index,times(1)).updateIndexes(any(IndexUpdates.class));
+  indexUpdates.assertContent(expectedUpdate);
 }
