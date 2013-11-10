@@ -2,45 +2,33 @@
   GraphDatabaseService beansAPI=dbRule.getGraphDatabaseAPI();
   long id;
 {
-    Transaction tx=beansAPI.beginTx();
-    try {
+    try (Transaction tx=beansAPI.beginTx()){
       Node myNode=beansAPI.createNode();
       id=myNode.getId();
       myNode.setProperty("key0",true);
       myNode.setProperty("key1",true);
       tx.success();
     }
-  finally {
-      tx.finish();
-    }
-  }
+   }
 {
     IndexDefinition indexDefinition;
-    Transaction tx=beansAPI.beginTx();
-    try {
-      indexDefinition=beansAPI.schema().indexFor(MY_LABEL).on("key2").create();
+    try (Transaction tx=beansAPI.beginTx()){
+      indexDefinition=beansAPI.schema().indexFor(LABEL1).on("key2").create();
       tx.success();
     }
-  finally {
-      tx.finish();
-    }
-    waitForIndex(beansAPI,indexDefinition);
+     waitForIndex(beansAPI,indexDefinition);
   }
   Node myNode;
 {
-    Transaction tx=beansAPI.beginTx();
-    myNode=beansAPI.getNodeById(id);
-    try {
-      myNode.addLabel(MY_LABEL);
+    try (Transaction tx=beansAPI.beginTx()){
+      myNode=beansAPI.getNodeById(id);
+      myNode.addLabel(LABEL1);
       myNode.setProperty("key2",LONG_STRING);
       myNode.setProperty("key3",LONG_STRING);
       tx.success();
     }
-  finally {
-      tx.finish();
-    }
-  }
+   }
   assertThat(myNode,inTx(beansAPI,hasProperty("key2").withValue(LONG_STRING)));
   assertThat(myNode,inTx(beansAPI,hasProperty("key3").withValue(LONG_STRING)));
-  assertThat(findNodesByLabelAndProperty(MY_LABEL,"key2",LONG_STRING,beansAPI),containsOnly(myNode));
+  assertThat(findNodesByLabelAndProperty(LABEL1,"key2",LONG_STRING,beansAPI),containsOnly(myNode));
 }
