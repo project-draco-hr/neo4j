@@ -1,0 +1,22 @@
+{
+  NodeRecord node=nodeStore.forceGetRecord(nodeId);
+  if (!node.inUse()) {
+    return Iterables.empty();
+  }
+  long firstPropertyId=node.getCommittedNextProp();
+  if (firstPropertyId == Record.NO_NEXT_PROPERTY.intValue()) {
+    return Iterables.empty();
+  }
+  long[] labels=parseLabelsField(node).get(nodeStore);
+  if (labels.length == 0) {
+    return Iterables.empty();
+  }
+  ArrayList<NodePropertyUpdate> updates=new ArrayList<>();
+  for (  PropertyRecord propertyRecord : propertyStore.getPropertyRecordChain(firstPropertyId)) {
+    for (    PropertyBlock property : propertyRecord.getPropertyBlocks()) {
+      Object value=property.getType().getValue(property,propertyStore);
+      updates.add(NodePropertyUpdate.add(node.getId(),property.getKeyIndexId(),value,labels));
+    }
+  }
+  return updates;
+}

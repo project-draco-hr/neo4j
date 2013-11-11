@@ -1,0 +1,14 @@
+{
+  createIndex(label,"key");
+  Node node=createNodeWithProperty("key","value");
+  rotateLog();
+  addLabel(node,label);
+  InMemoryIndexProvider outdatedIndexProvider=indexProvider.snapshot();
+  removeProperty(node,"key");
+  flushAll();
+  crashAndRestart(outdatedIndexProvider);
+  try (Transaction tx=db.beginTx()){
+    assertEquals("Updates not propagated correctly during recovery",Collections.<Node>emptyList(),IteratorUtil.asList(db.findNodesByLabelAndProperty(label,"key","value")));
+    tx.success();
+  }
+ }
