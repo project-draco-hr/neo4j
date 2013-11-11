@@ -1,4 +1,14 @@
 {
+  availabilityGuard=createAvailabilityGuard();
+  availabilityGuard.addListener(new AvailabilityGuard.AvailabilityListener(){
+    @Override public void available(){
+      msgLog.logMessage("Database is now ready");
+    }
+    @Override public void unavailable(){
+      msgLog.logMessage("Database is no longer ready");
+    }
+  }
+);
   fileSystem=createFileSystemAbstraction();
   this.logging=createLogging();
   AutoConfigurator autoConfigurator=new AutoConfigurator(fileSystem,config.get(NeoStoreXaDataSource.Configuration.store_dir),GraphDatabaseSettings.UseMemoryMappedBuffers.shouldMemoryMap(config.get(Configuration.use_memory_mapped_buffers)),logging.getConsoleLog(AutoConfigurator.class));
@@ -84,8 +94,8 @@
   xaFactory=new XaFactory(config,txIdGenerator,txManager,logBufferFactory,fileSystem,logging,recoveryVerifier,LogPruneStrategies.fromConfigValue(fileSystem,keepLogicalLogsConfig));
   createNeoDataSource();
   life.add(new MonitorGc(config,msgLog));
-  life.add(new DatabaseAvailability());
-  life.add(kernelEventHandlers);
   life.add(nodeManager);
+  createDatabaseAvailability();
+  life.add(kernelEventHandlers);
   life.add(new ConfigurationChangedRestarter());
 }
