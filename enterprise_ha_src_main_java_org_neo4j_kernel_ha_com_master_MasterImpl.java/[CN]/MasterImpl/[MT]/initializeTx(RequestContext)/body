@@ -1,9 +1,16 @@
 {
-  Transaction otherTx=suspendOtherAndResumeThis(context,true);
+  if (!spi.isAccessible()) {
+    throw new TransactionFailureException("Database is currently not available");
+  }
   try {
+    Transaction tx=spi.beginTx();
+    transactions.put(context,new MasterTransaction(tx));
     return packResponse(context,null);
   }
-  finally {
-    suspendThisAndResumeOther(otherTx,context);
+ catch (  NotSupportedException|SystemException e) {
+    throw new RuntimeException(e);
+  }
+ finally {
+    suspendTransaction(context);
   }
 }

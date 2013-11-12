@@ -1,0 +1,28 @@
+{
+  try {
+    Map<RequestContext,MasterTransaction> safeTransactions;
+synchronized (transactions) {
+      safeTransactions=new HashMap<>(transactions);
+    }
+    for (    Map.Entry<RequestContext,MasterTransaction> entry : safeTransactions.entrySet()) {
+      long time=entry.getValue().timeLastSuspended.get();
+      if ((time != 0 && System.currentTimeMillis() - time >= unfinishedTransactionThresholdMillis) || entry.getValue().finishAsap()) {
+        long displayableTime=(time == 0 ? 0 : (System.currentTimeMillis() - time));
+        msgLog.logMessage("Found old tx " + entry.getKey() + ", "+ ""+ entry.getValue().transaction+ ", "+ displayableTime);
+        try {
+          resumeTransaction(entry.getKey());
+          finishTransaction0(entry.getKey(),false);
+          msgLog.logMessage("Rolled back old tx " + entry.getKey() + ", "+ ""+ entry.getValue().transaction+ ", "+ displayableTime);
+        }
+ catch (        IllegalStateException e) {
+        }
+catch (        Throwable t) {
+          msgLog.logMessage("Unable to roll back old tx " + entry.getKey() + ", "+ ""+ entry.getValue().transaction+ ", "+ displayableTime,t);
+        }
+      }
+    }
+  }
+ catch (  Throwable t) {
+    msgLog.logMessage("Exception in MasterImpl",t);
+  }
+}
