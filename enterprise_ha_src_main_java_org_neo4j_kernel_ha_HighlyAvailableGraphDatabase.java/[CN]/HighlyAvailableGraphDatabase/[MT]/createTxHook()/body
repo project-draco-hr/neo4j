@@ -18,7 +18,7 @@
       for (      MemberIsAvailable member : item.getCurrentAvailableMembers()) {
         if (member.getRoleUri().getScheme().equals("ha")) {
           if (HighAvailabilityModeSwitcher.getServerId(member.getRoleUri()) == config.get(ClusterSettings.server_id)) {
-            msgLog.error(String.format("Instance %s has the same serverId as ours (%d) - will not join this cluster",member.getRoleUri(),config.get(ClusterSettings.server_id)));
+            msgLog.error(String.format("Instance %s has the same serverId as ours (%d) - will not " + "join this cluster",member.getRoleUri(),config.get(ClusterSettings.server_id)));
             return true;
           }
         }
@@ -47,21 +47,15 @@
   clusterEventsDelegateInvocationHandler.setDelegate(localClusterEvents);
   clusterMemberAvailabilityDelegateInvocationHandler.setDelegate(localClusterMemberAvailability);
   members=new ClusterMembers(clusterClient,clusterClient,clusterEvents,new InstanceId(config.get(ClusterSettings.server_id)));
-  memberStateMachine=new HighAvailabilityMemberStateMachine(memberContext,accessGuard,members,clusterEvents,clusterClient,logging.getMessagesLog(HighAvailabilityMemberStateMachine.class));
+  memberStateMachine=new HighAvailabilityMemberStateMachine(memberContext,availabilityGuard,members,clusterEvents,clusterClient,logging.getMessagesLog(HighAvailabilityMemberStateMachine.class));
   HighAvailabilityConsoleLogger highAvailabilityConsoleLogger=new HighAvailabilityConsoleLogger(logging.getConsoleLog(HighAvailabilityConsoleLogger.class),new InstanceId(config.get(ClusterSettings.server_id)));
-  accessGuard.addListener(highAvailabilityConsoleLogger);
+  availabilityGuard.addListener(highAvailabilityConsoleLogger);
   clusterEvents.addClusterMemberListener(highAvailabilityConsoleLogger);
   clusterClient.addClusterListener(highAvailabilityConsoleLogger);
-  if (compatibilityMode) {
-    compatibilityLifecycle.add(memberStateMachine);
-    compatibilityLifecycle.add((Lifecycle)clusterEvents);
-    life.add(memberStateMachine);
-    life.add(clusterEvents);
-  }
-  paxosLife.add(clusterClient);
-  paxosLife.add(memberStateMachine);
-  paxosLife.add(clusterEvents);
-  paxosLife.add(localClusterMemberAvailability);
+  life.add(clusterClient);
+  life.add(memberStateMachine);
+  life.add(clusterEvents);
+  life.add(localClusterMemberAvailability);
   DelegateInvocationHandler<TxHook> txHookDelegate=new DelegateInvocationHandler<>();
   TxHook txHook=(TxHook)Proxy.newProxyInstance(TxHook.class.getClassLoader(),new Class[]{TxHook.class},txHookDelegate);
   new TxHookModeSwitcher(memberStateMachine,txHookDelegate,master,new TxHookModeSwitcher.RequestContextFactoryResolver(){

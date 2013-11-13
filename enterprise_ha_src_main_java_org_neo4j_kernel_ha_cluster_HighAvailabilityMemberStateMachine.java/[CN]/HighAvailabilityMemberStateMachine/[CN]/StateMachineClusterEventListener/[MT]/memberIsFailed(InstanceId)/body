@@ -1,19 +1,22 @@
 {
   if (getAliveCount() <= getTotalCount() / 2) {
-    try {
-      final HighAvailabilityMemberChangeEvent event=new HighAvailabilityMemberChangeEvent(state,HighAvailabilityMemberState.PENDING,null,null);
-      state=HighAvailabilityMemberState.PENDING;
-      Listeners.notifyListeners(memberListeners,new Listeners.Notification<HighAvailabilityMemberListener>(){
-        @Override public void notify(        HighAvailabilityMemberListener listener){
-          listener.instanceStops(event);
+    if (state == HighAvailabilityMemberState.MASTER || state == HighAvailabilityMemberState.SLAVE) {
+      try {
+        final HighAvailabilityMemberChangeEvent event=new HighAvailabilityMemberChangeEvent(state,HighAvailabilityMemberState.PENDING,null,null);
+        state=HighAvailabilityMemberState.PENDING;
+        Listeners.notifyListeners(memberListeners,new Listeners.Notification<HighAvailabilityMemberListener>(){
+          @Override public void notify(          HighAvailabilityMemberListener listener){
+            listener.instanceStops(event);
+          }
         }
-      }
 );
-      accessGuard.setState(state);
-      context.setAvailableHaMasterId(null);
-    }
- catch (    Throwable throwable) {
-      throw new RuntimeException(throwable);
+        context.setAvailableHaMasterId(null);
+        context.setElectedMasterId(null);
+        availabilityGuard.deny();
+      }
+ catch (      Throwable throwable) {
+        throw new RuntimeException(throwable);
+      }
     }
   }
 }

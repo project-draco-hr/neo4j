@@ -1,40 +1,5 @@
 {
   this.unfinishedTransactionThresholdMillis=config.get(HaSettings.lock_read_timeout);
   this.unfinishedTransactionsExecutor=Executors.newSingleThreadScheduledExecutor(new NamedThreadFactory("Unfinished transaction reaper"));
-  this.unfinishedTransactionsExecutor.scheduleWithFixedDelay(new Runnable(){
-    @Override public void run(){
-      try {
-        for (        Map.Entry<RequestContext,MasterTransaction> entry : transactions()) {
-          long time=entry.getValue().timeLastSuspended.get();
-          if ((time != 0 && System.currentTimeMillis() - time >= unfinishedTransactionThresholdMillis) || entry.getValue().finishAsap()) {
-            long displayableTime=(time == 0 ? 0 : (System.currentTimeMillis() - time));
-            msgLog.logMessage("Found old tx " + entry.getKey() + ", "+ ""+ entry.getValue().transaction+ ", "+ displayableTime);
-            try {
-              Transaction otherTx=suspendOtherAndResumeThis(entry.getKey(),false);
-              finishThisAndResumeOther(otherTx,entry.getKey(),false);
-              msgLog.logMessage("Rolled back old tx " + entry.getKey() + ", "+ ""+ entry.getValue().transaction+ ", "+ displayableTime);
-            }
- catch (            IllegalStateException e) {
-            }
-catch (            Throwable t) {
-              msgLog.logMessage("Unable to roll back old tx " + entry.getKey() + ", "+ ""+ entry.getValue().transaction+ ", "+ displayableTime,t);
-            }
-          }
-        }
-      }
- catch (      Throwable t) {
-        msgLog.logMessage("Exception in MasterImpl",t);
-      }
-    }
-    /** 
- * Create a copy to make iteration safe, while minimizing the duration of the synchronized region. 
- */
-    @SuppressWarnings("SynchronizationOnLocalVariableOrMethodParameter") private Iterable<Map.Entry<RequestContext,MasterTransaction>> transactions(){
-      Map<RequestContext,MasterTransaction> transactions=MasterImpl.this.transactions;
-synchronized (transactions) {
-        return new HashMap<>(transactions).entrySet();
-      }
-    }
-  }
-,UNFINISHED_TRANSACTION_CLEANUP_DELAY,UNFINISHED_TRANSACTION_CLEANUP_DELAY,TimeUnit.SECONDS);
+  this.unfinishedTransactionsExecutor.scheduleWithFixedDelay(new UnfinishedTransactionReaper(),UNFINISHED_TRANSACTION_CLEANUP_DELAY,UNFINISHED_TRANSACTION_CLEANUP_DELAY,TimeUnit.SECONDS);
 }
