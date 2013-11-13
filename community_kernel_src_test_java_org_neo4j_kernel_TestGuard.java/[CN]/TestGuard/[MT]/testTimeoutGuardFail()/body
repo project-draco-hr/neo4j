@@ -1,13 +1,14 @@
 {
   GraphDatabaseAPI db=(GraphDatabaseAPI)new TestGraphDatabaseFactory().newImpermanentDatabaseBuilder().setConfig(GraphDatabaseSettings.execution_guard_enabled,Settings.TRUE).newGraphDatabase();
-  db.beginTx();
   db.getDependencyResolver().resolveDependency(Guard.class).startTimeout(50);
-  sleep(100);
-  try {
-    db.createNode();
-    fail("Expected guard to stop this");
+  try (Transaction ignore=db.beginTx()){
+    sleep(100);
+    try {
+      db.createNode();
+      fail("Expected guard to stop this");
+    }
+ catch (    GuardTimeoutException e) {
+    }
   }
- catch (  GuardTimeoutException e) {
-  }
-  db.shutdown();
+   db.shutdown();
 }
