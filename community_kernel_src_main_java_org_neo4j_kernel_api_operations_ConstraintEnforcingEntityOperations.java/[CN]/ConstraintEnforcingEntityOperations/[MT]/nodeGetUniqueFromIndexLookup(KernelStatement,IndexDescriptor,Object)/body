@@ -1,10 +1,26 @@
 {
-  verifyIndexOnline(state,index);
-  String stringValue="";
+  LockHolder holder=state.locks();
+  holder.acquireSchemaReadLock();
+  assertIndexOnline(state,index);
+  int labelId=index.getLabelId();
+  int propertyKeyId=index.getPropertyKeyId();
+  String stringVal="";
   if (null != value) {
-    DefinedProperty property=Property.property(index.getPropertyKeyId(),value);
-    stringValue=property.valueAsString();
+    DefinedProperty property=Property.property(propertyKeyId,value);
+    stringVal=property.valueAsString();
   }
-  state.locks().acquireIndexEntryReadLock(index.getLabelId(),index.getPropertyKeyId(),stringValue);
-  return entityReadOperations.nodeGetUniqueFromIndexLookup(state,index,value);
-}
+  try (ReleasableLock r=holder.getReleasableIndexEntryReadLock(labelId,propertyKeyId,stringVal)){
+    long nodeId=entityReadOperations.nodeGetUniqueFromIndexLookup(state,index,value);
+    if (StatementConstants.NO_SUCH_NODE == nodeId) {
+      r.release();
+      try (ReleasableLock w=holder.getReleasableIndexEntryWriteLock(labelId,propertyKeyId,stringVal)){
+        nodeId=entityReadOperations.nodeGetUniqueFromIndexLookup(state,index,value);
+        if (StatementConstants.NO_SUCH_NODE != nodeId) {
+          holder.getReleasableIndexEntryReadLock(labelId,propertyKeyId,stringVal).registerWithTransaction();
+          w.release();
+        }
+      }
+     }
+    return nodeId;
+  }
+ }
