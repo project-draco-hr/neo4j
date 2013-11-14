@@ -1,0 +1,16 @@
+{
+  MasterImpl.SPI spi=mock(MasterImpl.SPI.class);
+  Config config=new Config(new HashMap<String,String>(),HaSettings.class);
+  when(spi.isAccessible()).thenReturn(true);
+  when(spi.beginTx()).thenThrow(new SystemException("Nope"));
+  MasterImpl instance=new MasterImpl(spi,new DevNullLoggingService(),config);
+  instance.start();
+  try {
+    instance.initializeTx(new RequestContext(0,1,2,new RequestContext.Tx[0],1,0));
+    fail("Should have failed.");
+  }
+ catch (  Exception e) {
+    assertThat(e.getCause(),instanceOf(SystemException.class));
+    assertThat(e.getCause().getMessage(),equalTo("Nope"));
+  }
+}
