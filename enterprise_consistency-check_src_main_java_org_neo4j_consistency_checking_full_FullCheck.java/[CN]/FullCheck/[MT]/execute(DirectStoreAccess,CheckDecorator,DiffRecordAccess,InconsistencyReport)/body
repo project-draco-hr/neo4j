@@ -3,33 +3,12 @@
   StoreProcessor processEverything=new StoreProcessor(decorator,reporter);
   ProgressMonitorFactory.MultiPartBuilder progress=progressFactory.multipleParts("Full consistency check");
   final StoreAccess nativeStores=directStoreAccess.nativeStores();
-  MultiPassStore.Factory multiPass=new MultiPassStore.Factory(decorator,totalMappedMemory,nativeStores,recordAccess,report);
-  TaskCreator taskCreator=new TaskCreator(progress,order,processEverything);
-  List<StoppableRunnable> tasks=new ArrayList<>();
-  tasks.add(taskCreator.create(nativeStores.getNodeStore(),multiPass.processors(PROPERTIES,RELATIONSHIPS)));
-  tasks.add(taskCreator.create(nativeStores.getRelationshipStore(),multiPass.processors(NODES,PROPERTIES,RELATIONSHIPS)));
-  tasks.add(taskCreator.create(nativeStores.getPropertyStore(),multiPass.processors(PROPERTIES,STRINGS,ARRAYS)));
-  tasks.add(taskCreator.create(nativeStores.getStringStore(),multiPass.processors(STRINGS)));
-  tasks.add(taskCreator.create(nativeStores.getArrayStore(),multiPass.processors(ARRAYS)));
-  tasks.add(taskCreator.create(nativeStores.getSchemaStore()));
-  final SchemaRecordCheck schemaCheck=new SchemaRecordCheck((SchemaStore)nativeStores.getSchemaStore());
-  tasks.add(new SchemaStoreProcessorTask<>(nativeStores.getSchemaStore(),"check_rules",schemaCheck,progress,order,processEverything,processEverything));
-  tasks.add(new SchemaStoreProcessorTask<>(nativeStores.getSchemaStore(),"check_obligations",schemaCheck.forObligationChecking(),progress,order,processEverything,processEverything));
-  tasks.add(taskCreator.create(nativeStores.getRelationshipTypeTokenStore()));
-  tasks.add(taskCreator.create(nativeStores.getPropertyKeyTokenStore()));
-  tasks.add(taskCreator.create(nativeStores.getLabelTokenStore()));
-  tasks.add(taskCreator.create(nativeStores.getRelationshipTypeNameStore()));
-  tasks.add(taskCreator.create(nativeStores.getPropertyKeyNameStore()));
-  tasks.add(taskCreator.create(nativeStores.getLabelNameStore()));
-  tasks.add(taskCreator.create(nativeStores.getNodeDynamicLabelStore()));
-  tasks.add(new RecordScanner<>(new IterableStore<>(nativeStores.getNodeStore()),"NodeStoreToLabelScanStore",progress,new NodeToLabelScanRecordProcessor(reporter,directStoreAccess.labelScanStore())));
-  int iPass=0;
-  for (  ConsistencyReporter filteredReporter : multiPass.reporters(order,NODES)) {
-    tasks.add(new RecordScanner<>(directStoreAccess.labelScanStore().newAllEntriesReader(),format("LabelScanStore_%d",iPass),progress,new LabelScanDocumentProcessor(filteredReporter,new LabelScanCheck())));
-    for (    IndexRule indexRule : loadAllIndexRules(directStoreAccess.nativeStores().getSchemaStore())) {
-      tasks.add(new RecordScanner<>(new IndexIterator(indexRule,directStoreAccess.indexes()),format("Index_%d_%d",indexRule.getId(),iPass),progress,new IndexEntryProcessor(filteredReporter,new IndexCheck(indexRule))));
-    }
-    iPass++;
+  try (IndexAccessors indexes=new IndexAccessors(directStoreAccess.indexes(),nativeStores.getSchemaStore())){
+    MultiPassStore.Factory multiPass=new MultiPassStore.Factory(decorator,totalMappedMemory,nativeStores,recordAccess,report);
+    List<StoppableRunnable> tasks=new ConsistencyCheckTasks(progress,order,processEverything).createTasks(nativeStores,directStoreAccess.labelScanStore(),indexes,multiPass,reporter,checkLabelScanStore,checkIndexes);
+    order.execute(tasks,progress.build());
   }
-  order.execute(tasks,progress.build());
+ catch (  Exception e) {
+    throw new ConsistencyCheckIncompleteException(e);
+  }
 }

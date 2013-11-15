@@ -1,20 +1,15 @@
 {
   final List<IndexRule> indexRules=new ArrayList<>();
-  try {
-    new RecordStore.Processor<MalformedSchemaRuleException>(){
-      @Override public void processSchema(      RecordStore<DynamicRecord> store,      DynamicRecord record) throws MalformedSchemaRuleException {
-        if (record.inUse() && record.isStartRecord()) {
-          SchemaRule schemaRule=((SchemaStore)schemaStore).loadSingleSchemaRule(record.getId());
-          if (schemaRule.getKind() == SchemaRule.Kind.INDEX_RULE) {
-            indexRules.add((IndexRule)schemaRule);
-          }
+  new RecordStore.Processor<MalformedSchemaRuleException>(){
+    @Override public void processSchema(    RecordStore<DynamicRecord> store,    DynamicRecord record) throws MalformedSchemaRuleException {
+      if (record.inUse() && record.isStartRecord()) {
+        SchemaRule schemaRule=((SchemaStore)schemaStore).loadSingleSchemaRule(record.getId());
+        if (schemaRule instanceof IndexRule) {
+          indexRules.add((IndexRule)schemaRule);
         }
       }
     }
+  }
 .applyFiltered(schemaStore);
-    return indexRules;
-  }
- catch (  MalformedSchemaRuleException e) {
-    throw new ConsistencyCheckIncompleteException(e);
-  }
+  return indexRules;
 }
