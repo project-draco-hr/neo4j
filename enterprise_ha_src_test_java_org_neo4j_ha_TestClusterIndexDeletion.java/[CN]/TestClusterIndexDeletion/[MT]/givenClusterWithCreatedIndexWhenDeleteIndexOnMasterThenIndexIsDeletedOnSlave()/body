@@ -1,0 +1,25 @@
+{
+  ClusterManager clusterManager=new ClusterManager(fromXml(getClass().getResource("/threeinstances.xml").toURI()),TargetDirectory.forTest(getClass()).directory("testCluster",true),MapUtil.stringMap(HaSettings.ha_server.name(),":6001-6005",HaSettings.tx_push_factor.name(),"2"));
+  try {
+    clusterManager.start();
+    clusterManager.getDefaultCluster().await(ClusterManager.allSeesAllAsAvailable());
+    GraphDatabaseAPI master=clusterManager.getDefaultCluster().getMaster();
+{
+      Transaction tx=master.beginTx();
+      master.index().forNodes("Test");
+      tx.success();
+      tx.finish();
+    }
+    assertThat(clusterManager.getDefaultCluster().getAnySlave().index().existsForNodes("Test"),equalTo(true));
+{
+      Transaction tx=master.beginTx();
+      master.index().forNodes("Test").delete();
+      tx.success();
+      tx.finish();
+    }
+    assertThat(clusterManager.getDefaultCluster().getAnySlave().index().existsForNodes("Test"),equalTo(false));
+  }
+  finally {
+    clusterManager.stop();
+  }
+}
