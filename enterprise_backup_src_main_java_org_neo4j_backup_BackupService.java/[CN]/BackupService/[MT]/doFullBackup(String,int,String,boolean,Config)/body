@@ -13,7 +13,7 @@
     try {
       lastCommittedTxs=unpackResponse(response,targetDb.getDependencyResolver().resolveDependency(XaDataSourceManager.class),ServerUtil.txHandlerForFullCopy());
       Set<String> noTxPresent=new HashSet<String>();
-      for (      XaDataSource ds : targetDb.getXaDataSourceManager().getAllRegisteredDataSources()) {
+      for (      XaDataSource ds : dsManager(targetDb).getAllRegisteredDataSources()) {
         long lastTx=ds.getLastCommittedTxId();
         try {
           ds.getMasterForCommittedTx(lastTx);
@@ -26,7 +26,7 @@ catch (        IOException e) {
         }
       }
       if (!noTxPresent.isEmpty()) {
-        BackupClient recoveryClient=new BackupClient(sourceHostNameOrIp,sourcePort,targetDb.getDependencyResolver().resolveDependency(Logging.class),targetDb.getStoreId());
+        BackupClient recoveryClient=new BackupClient(sourceHostNameOrIp,sourcePort,targetDb.getDependencyResolver().resolveDependency(Logging.class),targetDb.storeId());
         recoveryClient.start();
         Response<Void> recoveryResponse=null;
         Map<String,Long> recoveryDiff=new HashMap<String,Long>();
@@ -41,7 +41,7 @@ catch (        IOException e) {
           while (txs.hasNext()) {
             Triplet<String,Long,TxExtractor> tx=txs.next();
             scratch.clear();
-            XaDataSource ds=targetDb.getXaDataSourceManager().getXaDataSource(tx.first());
+            XaDataSource ds=dsManager(targetDb).getXaDataSource(tx.first());
             long logVersion=ds.getCurrentLogVersion() - 1;
             FileChannel newLog=new RandomAccessFile(ds.getFileName(logVersion),"rw").getChannel();
             newLog.truncate(0);

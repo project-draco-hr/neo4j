@@ -1,11 +1,13 @@
 {
   Integer limit=config.getInteger(WEBSERVER_LIMIT_EXECUTION_TIME_PROPERTY_KEY,null);
   if (limit != null) {
-    Guard guard=database.getGraph().getGuard();
-    if (guard == null) {
-      throw new RuntimeException("Unable to use guard, you have to enable guard in neo4j.properties");
+    try {
+      Guard guard=database.getGraph().getDependencyResolver().resolveDependency(Guard.class);
+      this.requestTimeLimitFilter=new GuardingRequestFilter(guard,limit);
+      webServer.addFilter(requestTimeLimitFilter,"/*");
     }
-    this.requestTimeLimitFilter=new GuardingRequestFilter(guard,limit);
-    webServer.addFilter(requestTimeLimitFilter,"/*");
+ catch (    IllegalArgumentException e) {
+      throw new RuntimeException("Unable to use guard, you have to enable guard in neo4j.properties",e);
+    }
   }
 }
