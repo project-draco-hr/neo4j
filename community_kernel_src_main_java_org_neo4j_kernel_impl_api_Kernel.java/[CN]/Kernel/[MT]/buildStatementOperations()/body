@@ -1,12 +1,8 @@
 {
-  StoreStatementOperations context=new StoreStatementOperations(propertyKeyTokenHolder,labelTokenHolder,relationshipTypeTokenHolder,new SchemaStorage(neoStore.getSchemaStore()),neoStore,persistenceManager,indexService);
-  StatementOperationParts parts=new StatementOperationParts(context,context,context,context,context,null,null).additionalPart(AuxiliaryStoreOperations.class,context);
-  CachingStatementOperations cachingContext=new CachingStatementOperations(parts.entityReadOperations(),parts.schemaReadOperations(),persistenceCache,schemaCache);
-  parts=parts.override(null,null,cachingContext,null,cachingContext,null,null);
-  AuxiliaryStoreOperations auxStoreOperations=parts.resolve(AuxiliaryStoreOperations.class);
-  auxStoreOperations=new LegacyAutoIndexAuxStoreOps(auxStoreOperations,propertyKeyTokenHolder,nodeManager.getNodePropertyTrackers(),nodeManager.getRelationshipPropertyTrackers(),nodeManager);
-  StateHandlingStatementOperations stateHandlingContext=new StateHandlingStatementOperations(parts.entityReadOperations(),parts.schemaReadOperations(),auxStoreOperations,new ConstraintIndexCreator(new Transactor(transactionManager,persistenceManager),indexService));
-  parts=parts.override(null,null,stateHandlingContext,stateHandlingContext,stateHandlingContext,stateHandlingContext,new SchemaStateConcern(schemaState));
+  StoreReadLayer storeLayer=new CacheLayer(new DiskLayer(propertyKeyTokenHolder,labelTokenHolder,relationshipTypeTokenHolder,new SchemaStorage(neoStore.getSchemaStore()),neoStore,indexService),persistenceCache,schemaCache);
+  ;
+  StateHandlingStatementOperations stateHandlingContext=new StateHandlingStatementOperations(storeLayer,legacyPropertyTrackers,new ConstraintIndexCreator(new Transactor(transactionManager,persistenceManager),indexService),persistenceManager);
+  StatementOperationParts parts=new StatementOperationParts(stateHandlingContext,stateHandlingContext,stateHandlingContext,stateHandlingContext,stateHandlingContext,stateHandlingContext,new SchemaStateConcern(schemaState));
   ConstraintEnforcingEntityOperations constraintEnforcingEntityOperations=new ConstraintEnforcingEntityOperations(parts.entityWriteOperations(),parts.entityReadOperations(),parts.schemaReadOperations());
   DataIntegrityValidatingStatementOperations dataIntegrityContext=new DataIntegrityValidatingStatementOperations(parts.keyWriteOperations(),parts.schemaReadOperations(),parts.schemaWriteOperations());
   parts=parts.override(null,dataIntegrityContext,constraintEnforcingEntityOperations,constraintEnforcingEntityOperations,null,dataIntegrityContext,null);
