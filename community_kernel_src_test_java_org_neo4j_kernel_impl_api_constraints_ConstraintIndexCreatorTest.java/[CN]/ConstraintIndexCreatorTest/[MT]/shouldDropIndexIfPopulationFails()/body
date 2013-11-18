@@ -1,11 +1,9 @@
 {
   StatementOperationParts constraintCreationContext=mockedParts();
-  StatementOperationParts indexCreationContext=mockedParts();
-  StatementOperationParts indexDestructionContext=mockedParts();
   KernelStatement state=mockedState();
   IndexDescriptor descriptor=new IndexDescriptor(123,456);
   IndexingService indexingService=mock(IndexingService.class);
-  StubTransactor transactor=new StubTransactor(state);
+  StubTransactor transactor=new StubTransactor();
   when(constraintCreationContext.schemaReadOperations().indexGetCommittedId(state,descriptor)).thenReturn(2468l);
   IndexProxy indexProxy=mock(IndexProxy.class);
   when(indexingService.getProxyForRule(2468l)).thenReturn(indexProxy);
@@ -19,8 +17,13 @@
  catch (  ConstraintVerificationFailedKernelException e) {
     assertEquals("Existing data does not satisfy CONSTRAINT ON ( n:label[123] ) ASSERT n.property[456] IS UNIQUE.",e.getMessage());
   }
-  verifyNoMoreInteractions(indexCreationContext.schemaWriteOperations());
+  assertEquals(2,transactor.transactions.size());
+  TxState tx1=transactor.transactions.get(0).txState();
+  verify(tx1).constraintIndexRuleDoAdd(new IndexDescriptor(123,456));
+  verifyNoMoreInteractions(tx1);
   verify(constraintCreationContext.schemaReadOperations()).indexGetCommittedId(state,descriptor);
   verifyNoMoreInteractions(constraintCreationContext.schemaReadOperations());
-  verifyNoMoreInteractions(indexDestructionContext.schemaWriteOperations());
+  TxState tx2=transactor.transactions.get(1).txState();
+  verify(tx2).constraintIndexDoDrop(new IndexDescriptor(123,456));
+  verifyNoMoreInteractions(tx2);
 }

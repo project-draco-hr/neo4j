@@ -4,13 +4,15 @@
   IndexDescriptor descriptor=new IndexDescriptor(123,456);
   KernelStatement state=mockedState();
   IndexingService indexingService=mock(IndexingService.class);
-  StubTransactor transactor=new StubTransactor(state);
+  StubTransactor transactor=new StubTransactor();
   when(constraintCreationContext.schemaReadOperations().indexGetCommittedId(state,descriptor)).thenReturn(2468l);
   IndexProxy indexProxy=mock(IndexProxy.class);
   when(indexingService.getProxyForRule(2468l)).thenReturn(indexProxy);
   ConstraintIndexCreator creator=new ConstraintIndexCreator(transactor,indexingService);
   long indexId=creator.createUniquenessConstraintIndex(state,constraintCreationContext.schemaReadOperations(),123,456);
   assertEquals(2468l,indexId);
+  assertEquals(1,transactor.transactions.size());
+  verify(transactor.transactions.get(0).txState()).constraintIndexRuleDoAdd(descriptor);
   verifyNoMoreInteractions(indexCreationContext.schemaWriteOperations());
   verify(constraintCreationContext.schemaReadOperations()).indexGetCommittedId(state,descriptor);
   verifyNoMoreInteractions(constraintCreationContext.schemaReadOperations());
