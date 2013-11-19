@@ -1,9 +1,10 @@
 {
-  int eventIdentifier=txManager.getEventIdentifier();
-  if (!txManager.getTransactionState().hasLocks()) {
-    if (!availabilityGuard.isAvailable(config.getAvailabilityTimeout())) {
-      throw new RuntimeException("Timed out waiting for database to switch state");
-    }
-    txHook.initializeTransaction(eventIdentifier);
+  if (!availabilityGuard.isAvailable(config.getAvailabilityTimeout())) {
+    throw new RuntimeException("Timed out waiting for database to switch state");
+  }
+  TransactionState state=txManager.getTransactionState();
+  if (!state.isRemotelyInitialized()) {
+    txHook.remotelyInitializeTransaction(txManager.getEventIdentifier());
+    state.markAsRemotelyInitialized();
   }
 }
