@@ -1,15 +1,11 @@
 {
-  assertTransaction(tx);
-  TxLockElement tle=txLockElementMap.get(tx);
-  if (tle == null) {
-    throw new LockNotFoundException("No transaction lock element found for " + tx);
-  }
+  TxLockElement tle=getLockElement(tx);
   if (tle.readCount == 0) {
     throw new LockNotFoundException("" + tx + " don't have readLock");
   }
-  readCount--;
+  totalReadCount--;
   tle.readCount--;
-  if (tle.readCount == 0 && tle.writeCount == 0) {
+  if (tle.isFree()) {
     if (!this.isMarked()) {
       txLockElementMap.remove(tx);
     }
@@ -18,17 +14,17 @@
   if (waitingThreadList.size() > 0) {
     WaitElement we=waitingThreadList.getLast();
     if (we.lockType == LockType.WRITE) {
-      if (readCount == we.element.readCount) {
+      if (totalReadCount == we.element.readCount) {
         waitingThreadList.removeLast();
         if (!we.element.movedOn) {
           we.waitingThread.interrupt();
         }
       }
  else {
-        java.util.ListIterator<WaitElement> listItr=waitingThreadList.listIterator(waitingThreadList.lastIndexOf(we));
+        ListIterator<WaitElement> listItr=waitingThreadList.listIterator(waitingThreadList.lastIndexOf(we));
         while (listItr.hasPrevious()) {
           we=listItr.previous();
-          if (we.lockType == LockType.WRITE && readCount == we.element.readCount) {
+          if (we.lockType == LockType.WRITE && totalReadCount == we.element.readCount) {
             listItr.remove();
             if (!we.element.movedOn) {
               we.waitingThread.interrupt();
@@ -45,7 +41,7 @@
       }
     }
  else {
-      if (writeCount == 0) {
+      if (totalWriteCount == 0) {
         waitingThreadList.removeLast();
         if (!we.element.movedOn) {
           we.waitingThread.interrupt();
