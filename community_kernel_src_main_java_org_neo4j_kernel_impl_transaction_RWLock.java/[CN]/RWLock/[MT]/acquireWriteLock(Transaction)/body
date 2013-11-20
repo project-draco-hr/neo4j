@@ -1,31 +1,14 @@
 {
-  assertTransaction(tx);
-  TxLockElement tle=txLockElementMap.get(tx);
-  if (tle == null) {
-    tle=new TxLockElement(tx);
-  }
+  TxLockElement tle=getOrCreateLockElement(tx);
   try {
     tle.movedOn=false;
-    while (writeCount > tle.writeCount || readCount > tle.readCount) {
-      ragManager.checkWaitOn(this,tx);
-      waitingThreadList.addFirst(new WaitElement(tle,LockType.WRITE,Thread.currentThread()));
-      try {
-        wait();
-      }
- catch (      InterruptedException e) {
-        Thread.interrupted();
-      }
-      ragManager.stopWaitOn(this,tx);
+    while (totalWriteCount > tle.writeCount || totalReadCount > tle.readCount) {
+      deadlockGuardedWait(tx,tle,WRITE);
     }
-    if (tle.readCount == 0 && tle.writeCount == 0) {
-      ragManager.lockAcquired(this,tx);
-    }
-    writeCount++;
-    tle.writeCount++;
-    tle.movedOn=true;
-    txLockElementMap.put(tx,tle);
+    registerWriteLockAcquired(tx,tle);
   }
   finally {
+    tle.movedOn=true;
     marked--;
   }
 }
