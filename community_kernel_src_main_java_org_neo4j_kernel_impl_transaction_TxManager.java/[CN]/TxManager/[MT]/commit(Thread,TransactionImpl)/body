@@ -15,7 +15,7 @@ case XAException.XA_RBINTEGRITY:
 case XAException.XA_HEURCOM:
           xaErrorCode=e.errorCode;
         commitFailureCause=e;
-      log.logMessage("Commit failed, status=" + getTxStatusAsString(tx.getStatus()) + ", errorCode="+ xaErrorCode,e);
+      log.error("Commit failed, status=" + getTxStatusAsString(tx.getStatus()) + ", errorCode="+ xaErrorCode,e);
     break;
 default :
   setTmNotOk(e);
@@ -23,9 +23,8 @@ throw logAndReturn("TM error tx commit",new TransactionFailureException("commit 
 }
 }
 catch (Throwable t) {
-log.logMessage("Commit failed",t);
 setTmNotOk(t);
-throw logAndReturn("TM error tx commit",new TransactionFailureException("commit threw exception but status is committed?",t));
+throw logAndReturn("Commit failed for " + tx,new TransactionFailureException("commit threw exception but status is committed?",t));
 }
 }
 if (tx.getStatus() != Status.STATUS_COMMITTED) {
@@ -33,7 +32,6 @@ try {
 tx.doRollback();
 }
  catch (Throwable e) {
-log.logMessage("Unable to rollback transaction. " + "Some resources may be commited others not. " + "Neo4j kernel should be SHUTDOWN for "+ "resource maintance and transaction recovery ---->",e);
 setTmNotOk(e);
 String commitError;
 if (commitFailureCause != null) {
@@ -46,7 +44,7 @@ String rollbackErrorCode="Unknown error code";
 if (e instanceof XAException) {
 rollbackErrorCode=Integer.toString(((XAException)e).errorCode);
 }
-throw logAndReturn("TM error tx commit",Exceptions.withCause(new HeuristicMixedException("Unable " + "to rollback ---> " + commitError + " ---> error code for rollback: "+ rollbackErrorCode),e));
+throw logAndReturn("Unable to rollback transaction " + tx + ". "+ "Some resources may be commited others not. "+ "Neo4j kernel should be SHUTDOWN for "+ "resource maintance and transaction recovery ---->",Exceptions.withCause(new HeuristicMixedException("Unable to rollback " + tx + " ---> "+ commitError+ " ---> error code for rollback: "+ rollbackErrorCode),e));
 }
 tx.doAfterCompletion();
 try {
@@ -55,16 +53,15 @@ getTxLog().txDone(tx.getGlobalId());
 }
 }
  catch (IOException e) {
-log.logMessage("Error writing transaction log",e);
 setTmNotOk(e);
-throw logAndReturn("TM error tx commit",Exceptions.withCause(new SystemException("TM encountered " + "a problem, " + " error writing transaction log"),e));
+throw logAndReturn("Error writing transaction log for " + tx,Exceptions.withCause(new SystemException("TM encountered a problem, while committing transaction  " + tx + ", error writing transaction log"),e));
 }
 tx.setStatus(Status.STATUS_NO_TRANSACTION);
 if (commitFailureCause == null) {
-throw logAndReturn("TM error tx commit",new HeuristicRollbackException("Failed to commit, transaction rolledback ---> " + "error code was: " + xaErrorCode));
+throw logAndReturn("TM error tx commit",new HeuristicRollbackException("Failed to commit, transaction  " + tx + " rolled back ---> "+ "error code was: "+ xaErrorCode));
 }
  else {
-throw logAndReturn("TM error tx commit",Exceptions.withCause(new HeuristicRollbackException("Failed to commit, transaction rolledback ---> " + commitFailureCause),commitFailureCause));
+throw logAndReturn("TM error tx commit",Exceptions.withCause(new HeuristicRollbackException("Failed to commit transaction " + tx + ", transaction rolled back ---> "+ commitFailureCause),commitFailureCause));
 }
 }
 }
@@ -75,9 +72,8 @@ getTxLog().txDone(tx.getGlobalId());
 }
 }
  catch (IOException e) {
-log.logMessage("Error writing transaction log",e);
 setTmNotOk(e);
-throw logAndReturn("TM error tx commit",Exceptions.withCause(new SystemException("TM encountered a problem, " + " error writing transaction log"),e));
+throw logAndReturn("Error writing transaction log for " + tx,Exceptions.withCause(new SystemException("TM encountered a problem, " + " error writing transaction log for " + tx),e));
 }
 tx.setStatus(Status.STATUS_NO_TRANSACTION);
 }
