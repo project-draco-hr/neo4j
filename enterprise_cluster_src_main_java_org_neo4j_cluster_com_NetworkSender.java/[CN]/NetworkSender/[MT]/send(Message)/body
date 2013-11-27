@@ -1,0 +1,45 @@
+{
+  final URI to=URI.create(message.getHeader(Message.TO));
+  ExecutorService senderExecutor=senderExecutors.get(to);
+  if (senderExecutor == null) {
+    senderExecutor=Executors.newSingleThreadExecutor(new NamedThreadFactory("Cluster Sender " + to.toASCIIString()));
+    senderExecutors.put(to,senderExecutor);
+  }
+  senderExecutor.submit(new Runnable(){
+    @Override public void run(){
+      Channel channel=getChannel(to);
+      try {
+        if (channel == null) {
+          channel=openChannel(to);
+          openedChannel(to,channel);
+          failedInstances.remove(to);
+        }
+      }
+ catch (      Exception e) {
+        if (!failedInstances.contains(to)) {
+          msgLog.warn("Could not connect to:" + to,e);
+          failedInstances.add(to);
+        }
+        return;
+      }
+      try {
+        message.setHeader(Message.FROM,me.toASCIIString());
+        msgLog.debug("Sending to " + to + ": "+ message);
+        ChannelFuture future=channel.write(message);
+        future.addListener(new ChannelFutureListener(){
+          @Override public void operationComplete(          ChannelFuture future) throws Exception {
+            if (!future.isSuccess()) {
+              msgLog.debug("Unable to write " + message + " to "+ future.getChannel(),future.getCause());
+            }
+          }
+        }
+);
+      }
+ catch (      Exception e) {
+        msgLog.warn("Could not send message",e);
+        channel.close();
+      }
+    }
+  }
+);
+}

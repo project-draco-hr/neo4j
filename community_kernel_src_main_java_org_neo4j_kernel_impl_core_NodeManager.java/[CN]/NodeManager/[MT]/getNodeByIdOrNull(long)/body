@@ -1,22 +1,5 @@
 {
-  NodeImpl node=nodeCache.get(nodeId);
-  if (node != null) {
-    return new NodeProxy(nodeId,nodeLookup);
-  }
-  ReentrantLock loadLock=lockId(nodeId);
-  try {
-    if (nodeCache.get(nodeId) != null) {
-      return new NodeProxy(nodeId,nodeLookup);
-    }
-    NodeRecord record=persistenceManager.loadLightNode(nodeId);
-    if (record == null) {
-      return null;
-    }
-    node=new NodeImpl(nodeId);
-    nodeCache.put(node);
-    return new NodeProxy(nodeId,nodeLookup);
-  }
-  finally {
-    loadLock.unlock();
-  }
+  transactionManager.assertInTransaction();
+  NodeImpl node=getLightNode(nodeId);
+  return node != null ? new NodeProxy(nodeId,nodeLookup,statementCtxProvider) : null;
 }

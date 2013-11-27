@@ -3,18 +3,14 @@
   final AtomicBoolean gotTheLock=new AtomicBoolean();
   Thread thread=new Thread(){
     @Override public void run(){
-      Transaction tx=getGraphDb().beginTx();
-      try {
-        getGraphDbAPI().getLockManager().getWriteLock(entity);
+      try (Transaction tx=getGraphDb().beginTx()){
+        tx.acquireWriteLock(entity);
         gotTheLock.set(true);
         tx.success();
       }
- catch (      RuntimeException e) {
+ catch (      Exception e) {
         e.printStackTrace();
-        throw e;
-      }
- finally {
-        tx.failure();
+        throw launderedException(e);
       }
     }
   }

@@ -3,31 +3,36 @@
   try {
     runPreflightTasks();
     interruptStartupTimer.startCountdown();
-    database.start();
-    databaseActions=createDatabaseActions();
-    cypherExecutor=new CypherExecutor(database,getLogging().getMessagesLog(CypherExecutor.class));
-    configureWebServer();
-    cypherExecutor.start();
-    DiagnosticsManager diagnosticsManager=database.getGraph().getDiagnosticsManager();
-    StringLogger logger=diagnosticsManager.getTargetLog();
-    logger.logMessage("--- SERVER STARTED START ---");
-    diagnosticsManager.register(Configurator.DIAGNOSTICS,configurator);
-    startModules(logger);
-    startWebServer(logger);
-    logger.logMessage("--- SERVER STARTED END ---",true);
-    interruptStartupTimer.stopCountdown();
+    try {
+      database.start();
+      DiagnosticsManager diagnosticsManager=resolveDependency(DiagnosticsManager.class);
+      logging=resolveDependency(Logging.class);
+      StringLogger diagnosticsLog=diagnosticsManager.getTargetLog();
+      diagnosticsLog.info("--- SERVER STARTED START ---");
+      databaseActions=createDatabaseActions();
+      rrdDbWrapper=new RrdFactory(configurator.configuration()).createRrdDbAndSampler(database,new RoundRobinJobScheduler());
+      transactionFacade=createTransactionalActions();
+      cypherExecutor=new CypherExecutor(database,logging.getMessagesLog(CypherExecutor.class));
+      configureWebServer();
+      cypherExecutor.start();
+      diagnosticsManager.register(Configurator.DIAGNOSTICS,configurator);
+      startModules(diagnosticsLog);
+      startWebServer(diagnosticsLog);
+      diagnosticsLog.info("--- SERVER STARTED END ---");
+    }
+  finally {
+      interruptStartupTimer.stopCountdown();
+    }
   }
  catch (  Throwable t) {
-    interruptStartupTimer.stopCountdown();
     Thread.interrupted();
     if (interruptStartupTimer.wasTriggered()) {
+      stopRrdDb();
+      if (database.isRunning()) {
+        stopDatabase();
+      }
       throw new ServerStartupException("Startup took longer than " + interruptStartupTimer.getTimeoutMillis() + "ms, "+ "and was stopped. You can disable this behavior by setting '"+ Configurator.STARTUP_TIMEOUT+ "' to 0.",1);
     }
-    if (t instanceof RuntimeException) {
-      throw (RuntimeException)t;
-    }
- else {
-      throw new ServerStartupException("Starting neo server failed, see nested exception.",t);
-    }
+    throw new ServerStartupException(format("Starting Neo4j Server failed: %s",t.getMessage()),t);
   }
 }

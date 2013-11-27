@@ -1,6 +1,4 @@
 {
-  String path=new File(PATH,"8").getAbsolutePath();
-  BatchInserter inserter=new BatchInserterImpl(path);
   BatchInserterIndexProvider provider=new LuceneBatchInserterIndexProviderNewImpl(inserter);
   BatchInserterIndex batchIndex=provider.nodeIndex("mine",EXACT_CONFIG);
   long nodeId1=inserter.createNode(null);
@@ -19,21 +17,22 @@
   IndexHits<Long> batchIndexResult4=batchIndex.query("number",newIntRange("number",47,98,false,false));
   assertThat(batchIndexResult4,isEmpty());
   provider.shutdown();
-  inserter.shutdown();
-  GraphDatabaseService db=new GraphDatabaseFactory().newEmbeddedDatabase(path);
-  Node node1=db.getNodeById(nodeId1);
-  Node node2=db.getNodeById(nodeId2);
-  Index<Node> index=db.index().forNodes("mine");
-  IndexHits<Node> indexResult1=index.query("number",newIntRange("number",47,98,true,true));
-  assertThat(indexResult1,contains(node1,node2));
-  assertThat(indexResult1.size(),is(2));
-  IndexHits<Node> indexResult2=index.query("number",newIntRange("number",44,46,true,true));
-  assertThat(indexResult2,contains(node1));
-  assertThat(indexResult2.size(),is(1));
-  IndexHits<Node> indexResult3=index.query("number",newIntRange("number",99,101,true,true));
-  assertThat(indexResult3,contains(node2));
-  assertThat(indexResult3.size(),is(1));
-  IndexHits<Node> indexResult4=index.query("number",newIntRange("number",47,98,false,false));
-  assertThat(indexResult4,isEmpty());
-  db.shutdown();
-}
+  switchToGraphDatabaseService();
+  try (Transaction transaction=db.beginTx()){
+    Node node1=db.getNodeById(nodeId1);
+    Node node2=db.getNodeById(nodeId2);
+    Index<Node> index=db.index().forNodes("mine");
+    IndexHits<Node> indexResult1=index.query("number",newIntRange("number",47,98,true,true));
+    assertThat(indexResult1,contains(node1,node2));
+    assertThat(indexResult1.size(),is(2));
+    IndexHits<Node> indexResult2=index.query("number",newIntRange("number",44,46,true,true));
+    assertThat(indexResult2,contains(node1));
+    assertThat(indexResult2.size(),is(1));
+    IndexHits<Node> indexResult3=index.query("number",newIntRange("number",99,101,true,true));
+    assertThat(indexResult3,contains(node2));
+    assertThat(indexResult3.size(),is(1));
+    IndexHits<Node> indexResult4=index.query("number",newIntRange("number",47,98,false,false));
+    assertThat(indexResult4,isEmpty());
+    transaction.success();
+  }
+ }

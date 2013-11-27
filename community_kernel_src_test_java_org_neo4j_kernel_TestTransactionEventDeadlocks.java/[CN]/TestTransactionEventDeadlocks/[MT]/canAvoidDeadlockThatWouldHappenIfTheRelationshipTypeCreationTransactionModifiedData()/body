@@ -1,7 +1,7 @@
 {
   GraphDatabaseService graphdb=database.getGraphDatabaseService();
-  final Node root=graphdb.getReferenceNode();
   Transaction tx=graphdb.beginTx();
+  final Node root=graphdb.createNode();
   try {
     root.setProperty("counter",Long.valueOf(0L));
     tx.success();
@@ -11,6 +11,7 @@
   }
   graphdb.registerTransactionEventHandler(new TransactionEventHandler<Void>(){
     @SuppressWarnings("boxing") @Override public Void beforeCommit(    TransactionData data) throws Exception {
+      if (count(data.createdRelationships()) == 0)       return null;
       root.setProperty("counter",((Long)root.removeProperty("counter")) + 1);
       return null;
     }
@@ -30,5 +31,5 @@
   finally {
     tx.finish();
   }
-  assertEquals(1L,root.getProperty("counter"));
+  assertThat(root,inTx(graphdb,hasProperty("counter").withValue(1L)));
 }

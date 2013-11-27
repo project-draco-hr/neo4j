@@ -1,10 +1,11 @@
 {
+  cluster.await(allSeesAllAsAvailable());
   String key="key", value="value";
   HighlyAvailableGraphDatabase db1=cluster.getMaster(), db2=cluster.getAnySlave();
   long node=createNode(db1,key,value,false);
   cluster.sync();
-  OtherThreadExecutor<HighlyAvailableGraphDatabase> w1=new OtherThreadExecutor<HighlyAvailableGraphDatabase>("w1",db1);
-  OtherThreadExecutor<HighlyAvailableGraphDatabase> w2=new OtherThreadExecutor<HighlyAvailableGraphDatabase>("w2",db2);
+  OtherThreadExecutor<HighlyAvailableGraphDatabase> w1=new OtherThreadExecutor<>("w1",db1);
+  OtherThreadExecutor<HighlyAvailableGraphDatabase> w2=new OtherThreadExecutor<>("w2",db2);
   Transaction tx1=w1.execute(new BeginTx());
   Transaction tx2=w2.execute(new BeginTx());
   assertNull(w2.execute(new PutIfAbsent(node,key,value)));
@@ -19,6 +20,6 @@
   assertNodeAndIndexingExists(db2,node,key,value);
   cluster.sync();
   assertNodeAndIndexingExists(cluster.getAnySlave(db1,db2),node,key,value);
-  w2.shutdown();
-  w1.shutdown();
+  w2.close();
+  w1.close();
 }

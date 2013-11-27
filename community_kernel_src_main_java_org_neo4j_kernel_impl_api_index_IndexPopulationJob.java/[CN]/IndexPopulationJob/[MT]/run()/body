@@ -1,0 +1,62 @@
+{
+  String oldThreadName=currentThread().getName();
+  currentThread().setName(format("Index populator on %s [runs on: %s]",indexUserDescription,oldThreadName));
+  boolean success=false;
+  Throwable failureCause=null;
+  try {
+    try {
+      log.info(format("Index population started: [%s]",indexUserDescription));
+      log.flush();
+      populator.create();
+      indexAllNodes();
+      if (cancelled) {
+        return;
+      }
+      Callable<Void> duringFlip=new Callable<Void>(){
+        @Override public Void call() throws Exception {
+          populateFromQueueIfAvailable(Long.MAX_VALUE);
+          populator.close(true);
+          updateableSchemaState.clear();
+          return null;
+        }
+      }
+;
+      flipper.flip(duringFlip,failureDelegate);
+      success=true;
+      log.info(format("Index population completed. Index is now online: [%s]",indexUserDescription));
+      log.flush();
+    }
+ catch (    Throwable t) {
+      if (t instanceof IndexPopulationFailedKernelException) {
+        Throwable cause=t.getCause();
+        if (cause instanceof IndexEntryConflictException) {
+          t=cause;
+        }
+      }
+      if (!(t instanceof IndexEntryConflictException)) {
+        log.error(format("Failed to populate index: [%s]",indexUserDescription),t);
+        log.flush();
+      }
+      failureCause=t;
+      flipper.flipTo(new FailedIndexProxy(descriptor,providerDescriptor,indexUserDescription,populator,failure(t)));
+    }
+ finally {
+      try {
+        if (!success) {
+          if (failureCause != null) {
+            populator.markAsFailed(failure(failureCause).asString());
+          }
+          populator.close(false);
+        }
+      }
+ catch (      Throwable e) {
+        log.error(format("Unable to close failed populator for index: [%s]",indexUserDescription),e);
+        log.flush();
+      }
+    }
+  }
+  finally {
+    doneSignal.countDown();
+    currentThread().setName(oldThreadName);
+  }
+}

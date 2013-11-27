@@ -1,12 +1,19 @@
 {
-  GraphvizWriter writer=new GraphvizWriter(graphStyle);
-  OutputStream out=new ByteArrayOutputStream();
-  try {
-    writer.emit(out,Walker.fullGraph(graph));
+  try (Transaction tx=graph.beginTx()){
+    GraphvizWriter writer=new GraphvizWriter(graphStyle);
+    ByteArrayOutputStream out=new ByteArrayOutputStream();
+    try {
+      writer.emit(out,Walker.fullGraph(graph));
+    }
+ catch (    IOException e) {
+      e.printStackTrace();
+    }
+    String safeTitle=title.replaceAll(ILLEGAL_STRINGS,"");
+    try {
+      return "." + title + "\n[\"dot\", \""+ (safeTitle + "-" + identifier).replace(" ","-")+ ".svg\", \"neoviz\", \""+ graphvizOptions+ "\"]\n"+ "----\n"+ out.toString("UTF-8")+ "----\n";
+    }
+ catch (    UnsupportedEncodingException e) {
+      throw new RuntimeException(e);
+    }
   }
- catch (  IOException e) {
-    e.printStackTrace();
-  }
-  String safeTitle=title.replaceAll(ILLEGAL_STRINGS,"");
-  return "." + title + "\n[\"dot\", \""+ (safeTitle + "-" + identifier).replace(" ","-")+ ".svg\", \"neoviz\", \""+ graphvizOptions+ "\"]\n"+ "----\n"+ out.toString()+ "----\n";
-}
+ }

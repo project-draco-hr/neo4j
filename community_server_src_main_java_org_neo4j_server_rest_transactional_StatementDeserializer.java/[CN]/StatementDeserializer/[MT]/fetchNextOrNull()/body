@@ -1,0 +1,64 @@
+{
+  try {
+    if (errors != null) {
+      return null;
+    }
+switch (state) {
+case BEFORE_OUTER_ARRAY:
+      if (!beginsWithCorrectTokens()) {
+        return null;
+      }
+    state=State.IN_BODY;
+case IN_BODY:
+  String statement=null;
+Map<String,Object> parameters=null;
+List<Object> resultsDataContents=null;
+boolean includeStats=false;
+JsonToken tok;
+while ((tok=input.nextToken()) != null && tok != END_OBJECT) {
+if (tok == END_ARRAY) {
+state=State.FINISHED;
+return null;
+}
+input.nextValue();
+String currentName=input.getCurrentName();
+switch (currentName) {
+case "statement":
+statement=input.readValueAs(String.class);
+break;
+case "parameters":
+parameters=readMap(input);
+break;
+case "resultDataContents":
+resultsDataContents=readArray(input);
+break;
+case "includeStats":
+includeStats=input.getBooleanValue();
+break;
+default :
+discardValue(input);
+}
+}
+if (statement == null) {
+addError(new Neo4jError(Status.Request.InvalidFormat,new DeserializationException("No statement provided.")));
+return null;
+}
+return new Statement(statement,parameters == null ? NO_PARAMETERS : parameters,includeStats,ResultDataContent.fromNames(resultsDataContents));
+case FINISHED:
+return null;
+}
+return null;
+}
+ catch (JsonParseException|JsonMappingException e) {
+addError(new Neo4jError(Status.Request.InvalidFormat,new DeserializationException("Unable to deserialize request",e)));
+return null;
+}
+catch (IOException e) {
+addError(new Neo4jError(Status.Network.UnknownFailure,e));
+return null;
+}
+catch (Exception e) {
+addError(new Neo4jError(Status.General.UnknownFailure,e));
+return null;
+}
+}

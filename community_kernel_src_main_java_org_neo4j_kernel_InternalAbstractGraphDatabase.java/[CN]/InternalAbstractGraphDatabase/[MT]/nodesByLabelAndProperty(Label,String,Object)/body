@@ -1,0 +1,19 @@
+{
+  Statement statement=statementContextProvider.instance();
+  ReadOperations readOps=statement.readOperations();
+  int propertyId=readOps.propertyKeyGetForName(key);
+  int labelId=readOps.labelGetForName(myLabel.name());
+  if (propertyId == NO_SUCH_PROPERTY_KEY || labelId == NO_SUCH_LABEL) {
+    statement.close();
+    return IteratorUtil.emptyIterator();
+  }
+  IndexDescriptor descriptor=findAnyIndexByLabelAndProperty(readOps,propertyId,labelId);
+  try {
+    if (null != descriptor) {
+      return map2nodes(readOps.nodesGetFromIndexLookup(descriptor,value),statement);
+    }
+  }
+ catch (  IndexNotFoundKernelException e) {
+  }
+  return getNodesByLabelAndPropertyWithoutIndex(propertyId,value,statement,labelId);
+}

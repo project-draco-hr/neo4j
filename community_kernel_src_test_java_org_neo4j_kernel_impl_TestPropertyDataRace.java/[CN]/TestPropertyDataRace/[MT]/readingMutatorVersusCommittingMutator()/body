@@ -18,7 +18,7 @@
       Transaction txn=graphdb.beginTx();
       try {
         for (        String key : one.getPropertyKeys()) {
-          System.out.println(getName() + " removed " + key+ "="+ one.removeProperty(key));
+          one.removeProperty(key);
         }
         clearCaches();
         prepare.countDown();
@@ -53,7 +53,7 @@
           }
         }
         for (        String key : one.getPropertyKeys()) {
-          System.out.println(getName() + " removed " + key+ "="+ one.removeProperty(key));
+          one.removeProperty(key);
         }
         txn.success();
       }
@@ -65,8 +65,13 @@
     }
   }
 .start();
-  done.await();
+  if (!done.await(1,MINUTES)) {
+    File dumpDirectory=targetDir.directory("dump",true);
+    dumpVmInfo(dumpDirectory);
+    doThreadDump(stringContains(SubProcess.class.getSimpleName()),dumpDirectory);
+    fail("Test didn't complete within a reasonable time, dumping process information to " + dumpDirectory);
+  }
   for (  String key : two.getPropertyKeys()) {
-    System.out.println("should be untouched: " + key + "="+ two.getProperty(key));
+    assertEquals("two",two.getProperty(key));
   }
 }

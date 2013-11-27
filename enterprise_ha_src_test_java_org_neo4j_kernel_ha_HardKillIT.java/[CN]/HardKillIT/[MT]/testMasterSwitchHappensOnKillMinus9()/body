@@ -12,7 +12,7 @@
     dbWithId2.getDependencyResolver().resolveDependency(ClusterClient.class).addAtomicBroadcastListener(new AtomicBroadcastListener(){
       @Override public void receive(      Payload value){
         try {
-          Object event=new AtomicBroadcastSerializer().receive(value);
+          Object event=new AtomicBroadcastSerializer(new ObjectStreamFactory(),new ObjectStreamFactory()).receive(value);
           if (event instanceof MemberIsAvailable) {
             if (HighAvailabilityModeSwitcher.MASTER.equals(((MemberIsAvailable)event).getRole())) {
               newMasterAvailableLatch.countDown();
@@ -30,6 +30,7 @@
     newMasterAvailableLatch.await(60,SECONDS);
     assertTrue(dbWithId2.isMaster());
     assertTrue(!dbWithId3.isMaster());
+    Thread.sleep(15000);
     oldMaster=startDb(1);
     long oldMasterNode=createNamedNode(oldMaster,"Old master");
     assertEquals(oldMasterNode,getNamedNode(dbWithId2,"Old master"));

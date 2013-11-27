@@ -1,0 +1,29 @@
+{
+  try {
+    TopDocs topDocs=searcher.search(format.rangeQuery(format.bitmapFormat().rangeOf(nodeId)),1);
+    if (topDocs.scoreDocs.length < 1) {
+      return emptyIterator();
+    }
+ else     if (topDocs.scoreDocs.length > 1) {
+      throw new RuntimeException("This label scan store is corrupted");
+    }
+    int doc=topDocs.scoreDocs[0].doc;
+    List<Long> labels=new ArrayList<>();
+    for (    Fieldable fields : searcher.doc(doc).getFields()) {
+      if ("range".equals(fields.name())) {
+        continue;
+      }
+      if (fields instanceof NumericField) {
+        NumericField labelField=(NumericField)fields;
+        Long bitmap=Long.decode(labelField.stringValue());
+        if (format.bitmapFormat().peek(bitmap,nodeId)) {
+          labels.add(Long.decode(labelField.name()));
+        }
+      }
+    }
+    return labels.iterator();
+  }
+ catch (  IOException e) {
+    throw new RuntimeException(e);
+  }
+}

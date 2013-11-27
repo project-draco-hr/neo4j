@@ -4,21 +4,21 @@
   }
   StressThread stressThreads[]=new StressThread[50];
   PlaceboTm tm=new PlaceboTm(null,null);
-  LockManager lm=new LockManagerImpl(new RagManager(tm));
+  LockManager lm=new LockManagerImpl(new RagManager());
   tm.setLockManager(lm);
   CountDownLatch startSignal=new CountDownLatch(1);
   for (int i=0; i < stressThreads.length; i++) {
-    stressThreads[i]=new StressThread("T" + i,100,10,0.80f,lm,startSignal);
+    int numberOfIterations=100;
+    int depthCount=10;
+    float readWriteRatio=0.80f;
+    stressThreads[i]=new StressThread("T" + i,numberOfIterations,depthCount,readWriteRatio,lm,startSignal);
   }
   for (  Thread thread : stressThreads) {
     thread.start();
   }
   startSignal.countDown();
-  long end=currentTimeMillis() + SECONDS.toMillis(10);
-  boolean anyAlive=true;
-  while ((anyAlive=anyAliveAndAllWell(stressThreads)) && currentTimeMillis() < end) {
+  while (anyAliveAndAllWell(stressThreads)) {
+    throwErrorsIfAny(stressThreads);
     sleepALittle();
   }
-  assertFalse(anyAlive);
-  for (  StressThread stressThread : stressThreads)   if (stressThread.error != null)   throw stressThread.error;
 }

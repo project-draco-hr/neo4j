@@ -1,9 +1,9 @@
 {
-  broadcastSerializer=new AtomicBroadcastSerializer();
+  broadcastSerializer=new AtomicBroadcastSerializer(new ObjectStreamFactory(),new ObjectStreamFactory());
   final LifeSupport life=new LifeSupport();
   try {
     MessageTimeoutStrategy timeoutStrategy=new MessageTimeoutStrategy(new FixedTimeoutStrategy(5000)).timeout(HeartbeatMessage.sendHeartbeat,200);
-    NetworkedServerFactory serverFactory=new NetworkedServerFactory(life,new MultiPaxosServerFactory(new ClusterConfiguration("default"),new LogbackService(null,null)),timeoutStrategy,new LogbackService(null,null));
+    NetworkedServerFactory serverFactory=new NetworkedServerFactory(life,new MultiPaxosServerFactory(new ClusterConfiguration("default",StringLogger.SYSTEM),new LogbackService(null,null)),timeoutStrategy,new LogbackService(null,null),new ObjectStreamFactory(),new ObjectStreamFactory());
     ServerIdElectionCredentialsProvider electionCredentialsProvider=new ServerIdElectionCredentialsProvider();
     server=serverFactory.newNetworkedServer(new Config(MapUtil.stringMap(),ClusterSettings.class),new InMemoryAcceptorInstanceStore(),electionCredentialsProvider);
     server.addBindingListener(electionCredentialsProvider);
@@ -45,7 +45,6 @@
       }
     }
 );
-    election=server.newClient(Election.class);
     broadcast=server.newClient(AtomicBroadcast.class);
     broadcast.addAtomicBroadcastListener(new AtomicBroadcastListener(){
       @Override public void receive(      Payload value){
@@ -71,7 +70,7 @@ catch (        ClassNotFoundException e) {
         String[] realArgs=new String[arguments.length - 1];
         System.arraycopy(arguments,1,realArgs,0,realArgs.length);
         try {
-          method.invoke(this,realArgs);
+          method.invoke(this,(Object[])realArgs);
         }
  catch (        IllegalAccessException e) {
           e.printStackTrace();

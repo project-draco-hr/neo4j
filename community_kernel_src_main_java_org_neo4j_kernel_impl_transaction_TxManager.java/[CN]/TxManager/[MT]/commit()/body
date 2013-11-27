@@ -3,23 +3,20 @@
   if (tx == null) {
     throw logAndReturn("TM error tx commit",new IllegalStateException("Not in transaction"));
   }
-  boolean hasAnyLocks=false;
   boolean successful=false;
   try {
-    assertTmOk("tx commit");
-    Thread thread=Thread.currentThread();
-    hasAnyLocks=tx.hasAnyLocks();
+    assertTmOk();
     if (tx.getStatus() != Status.STATUS_ACTIVE && tx.getStatus() != Status.STATUS_MARKED_ROLLBACK) {
       throw logAndReturn("TM error tx commit",new IllegalStateException("Tx status is: " + getTxStatusAsString(tx.getStatus())));
     }
     tx.doBeforeCompletion();
     if (tx.getStatus() == Status.STATUS_ACTIVE) {
       comittedTxCount.incrementAndGet();
-      commit(thread,tx);
+      commit(tx);
     }
  else     if (tx.getStatus() == Status.STATUS_MARKED_ROLLBACK) {
       rolledBackTxCount.incrementAndGet();
-      rollbackCommit(thread,tx);
+      rollbackCommit(tx);
     }
  else {
       throw logAndReturn("TM error tx commit",new IllegalStateException("Tx status is: " + getTxStatusAsString(tx.getStatus())));
@@ -27,9 +24,18 @@
     successful=true;
   }
   finally {
+    monitor.txCommitted(new XidImpl(tx.getGlobalId(),new byte[0]));
     txThreadMap.remove();
-    if (hasAnyLocks) {
-      tx.finish(successful);
+    if (successful) {
+      tx.finish(true);
+    }
+ else {
+      try {
+        tx.finish(false);
+      }
+ catch (      RuntimeException e) {
+        log.error("Failed to commit transaction, and was then subsequently unable to " + "finish the failed tx.",e);
+      }
     }
   }
 }

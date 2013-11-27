@@ -1,0 +1,19 @@
+{
+  IndexPopulator populator=mock(IndexPopulator.class);
+  SchemaIndexProvider provider=mock(SchemaIndexProvider.class);
+  when(provider.getProviderDescriptor()).thenReturn(InMemoryIndexProviderFactory.PROVIDER_DESCRIPTOR);
+  when(provider.getPopulator(anyLong(),any(IndexConfiguration.class))).thenReturn(populator);
+  BatchInserter inserter=newBatchInserterWithSchemaIndexProvider(singleInstanceSchemaIndexProviderFactory(InMemoryIndexProviderFactory.KEY,provider));
+  inserter.createDeferredSchemaIndex(label("Hacker")).on("handle").create();
+  long nodeId=inserter.createNode(map("handle","Jakewins"),label("Hacker"));
+  inserter.shutdown();
+  verify(provider).init();
+  verify(provider).start();
+  verify(provider).getPopulator(anyLong(),any(IndexConfiguration.class));
+  verify(populator).create();
+  verify(populator).add(nodeId,"Jakewins");
+  verify(populator).close(true);
+  verify(provider).stop();
+  verify(provider).shutdown();
+  verifyNoMoreInteractions(populator);
+}

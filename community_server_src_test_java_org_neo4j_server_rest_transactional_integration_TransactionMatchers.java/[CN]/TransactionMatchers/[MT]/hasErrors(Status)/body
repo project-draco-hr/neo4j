@@ -1,0 +1,25 @@
+{
+  return new TypeSafeMatcher<HTTP.Response>(){
+    @Override protected boolean matchesSafely(    HTTP.Response response){
+      try {
+        Iterator<JsonNode> errors=response.get("errors").iterator();
+        Iterator<Status> expected=iterator(expectedErrors);
+        while (expected.hasNext()) {
+          assertTrue(errors.hasNext());
+          assertThat(errors.next().get("code").asText(),equalTo(expected.next().code().getCode()));
+        }
+        if (errors.hasNext()) {
+          JsonNode error=errors.next();
+          fail("Expected no more errors, but got " + error.get("code") + " - '"+ error.get("message")+ "'.");
+        }
+        return true;
+      }
+ catch (      JsonParseException e) {
+        return false;
+      }
+    }
+    @Override public void describeTo(    Description description){
+    }
+  }
+;
+}

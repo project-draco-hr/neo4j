@@ -31,22 +31,22 @@
   if (!txState.hasChanges()) {
     return committedRelationships;
   }
-  final Set<Long> createdRelationships=asSet(getCreatedRelationships().iterator(DirectionWrapper.OUTGOING));
+  final Set<Long> createdRelationships=new HashSet<>(txState.getCreatedRelationships());
   if (!createdRelationships.isEmpty()) {
-    committedRelationships=new FilteringIterator<Relationship>(committedRelationships,new Predicate<Relationship>(){
+    committedRelationships=new FilteringIterator<>(committedRelationships,new Predicate<Relationship>(){
       @Override public boolean accept(      Relationship relationship){
         return !createdRelationships.contains(relationship.getId());
       }
     }
 );
   }
-  Iterator<Relationship> filteredRemovedRelationships=new FilteringIterator<Relationship>(committedRelationships,new Predicate<Relationship>(){
+  Iterator<Relationship> filteredRemovedRelationships=new FilteringIterator<>(committedRelationships,new Predicate<Relationship>(){
     @Override public boolean accept(    Relationship relationship){
-      return !txState.isDeleted(relationship);
+      return !txState.relationshipIsDeleted(relationship.getId());
     }
   }
 );
-  return new CombiningIterator<Relationship>(asList(filteredRemovedRelationships,new IteratorWrapper<Relationship,Long>(createdRelationships.iterator()){
+  return new CombiningIterator<>(asList(filteredRemovedRelationships,new IteratorWrapper<Relationship,Long>(createdRelationships.iterator()){
     @Override protected Relationship underlyingObjectToObject(    Long id){
       return getRelationshipById(id);
     }

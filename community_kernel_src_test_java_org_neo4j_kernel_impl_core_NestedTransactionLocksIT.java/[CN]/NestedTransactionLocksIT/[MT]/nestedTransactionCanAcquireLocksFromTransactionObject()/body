@@ -1,19 +1,13 @@
 {
-  Node resource=db.getReferenceNode();
-  Transaction realTx=db.beginTx();
-  Transaction nestedTx=db.beginTx();
-  assertNotSame(realTx,nestedTx);
-  OtherThreadExecutor<Void> otherTx=new OtherThreadExecutor<Void>("other thread",null);
-  Lock lock=nestedTx.acquireWriteLock(resource);
-  Future<Lock> future=otherTx.executeDontWait(acquireWriteLock(resource));
-  otherTx.waitUntilWaiting();
-  try {
-    future.get(1,SECONDS);
-    fail("The nested transaction seems to not have acquired the lock");
-  }
- catch (  TimeoutException e) {
-  }
-  lock.release();
-  assertNotNull(future.get());
-  otherTx.shutdown();
-}
+  Node resource=createNode();
+  try (Transaction outerTx=db.beginTx();Transaction nestedTx=db.beginTx()){
+    assertNotSame(outerTx,nestedTx);
+    try (OtherThreadExecutor<Void> otherThread=new OtherThreadExecutor<>("other thread",null)){
+      Lock lock=nestedTx.acquireWriteLock(resource);
+      Future<Lock> future=tryToAcquireSameLockOnAnotherThread(resource,otherThread);
+      acquireOnOtherThreadTimesOut(future);
+      lock.release();
+      assertNotNull(future.get());
+    }
+   }
+ }

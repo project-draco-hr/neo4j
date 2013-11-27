@@ -1,0 +1,26 @@
+{
+  monitor.init();
+  directory=directoryFactory.open(directoryLocation);
+  if (!indexExists()) {
+    monitor.noIndex();
+    prepareRebuildOfIndex();
+  }
+  try {
+    IndexReader.open(directory).close();
+    writer=writerFactory.create(directory);
+  }
+ catch (  IndexNotFoundException e) {
+    monitor.noIndex();
+    prepareRebuildOfIndex();
+    writer=writerFactory.create(directory);
+  }
+catch (  LockObtainFailedException e) {
+    monitor.lockedIndex(e);
+    throw e;
+  }
+catch (  IOException e) {
+    monitor.corruptIndex(e);
+    throw new IOException("Label scan store is corrupted, and needs to be rebuilt. " + "To trigger a rebuild, ensure the database is stopped, delete the files in '" + directoryLocation.getAbsolutePath() + "', and then start the database again.");
+  }
+  searcherManager=new SearcherManager(writer,true,new SearcherFactory());
+}

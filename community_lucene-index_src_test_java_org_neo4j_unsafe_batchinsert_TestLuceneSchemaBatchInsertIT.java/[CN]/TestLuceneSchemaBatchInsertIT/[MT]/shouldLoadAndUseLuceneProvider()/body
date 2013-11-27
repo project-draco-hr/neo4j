@@ -1,0 +1,23 @@
+{
+  String storeDir=forTest(getClass()).graphDbDir(true).getAbsolutePath();
+  BatchInserter inserter=inserter(storeDir);
+  inserter.createDeferredSchemaIndex(LABEL).on("name").create();
+  inserter.createNode(map("name","Mattias"),LABEL);
+  inserter.shutdown();
+  Config config=new Config(stringMap(GraphDatabaseSettings.store_dir.name(),storeDir));
+  LifeSupport life=new LifeSupport();
+  LuceneSchemaIndexProvider provider=life.add(new LuceneSchemaIndexProvider(DirectoryFactory.PERSISTENT,config));
+  StoreFactory storeFactory=new StoreFactory(config,new DefaultIdGeneratorFactory(),new DefaultWindowPoolFactory(),new DefaultFileSystemAbstraction(),StringLogger.DEV_NULL,new DefaultTxHook());
+  NeoStore neoStore=storeFactory.newNeoStore(new File(storeDir,NeoStore.DEFAULT_NAME));
+  life.start();
+  SchemaRule rule=single(filter(new Predicate<SchemaRule>(){
+    @Override public boolean accept(    SchemaRule item){
+      return item.getKind() == Kind.INDEX_RULE;
+    }
+  }
+,neoStore.getSchemaStore()));
+  InternalIndexState initialState=provider.getInitialState(rule.getId());
+  assertEquals(InternalIndexState.ONLINE,initialState);
+  life.shutdown();
+  neoStore.close();
+}

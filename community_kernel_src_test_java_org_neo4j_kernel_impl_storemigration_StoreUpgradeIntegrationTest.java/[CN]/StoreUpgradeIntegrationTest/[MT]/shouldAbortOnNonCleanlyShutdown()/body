@@ -1,15 +1,14 @@
 {
-  File workingDirectory=new File("target/" + StoreUpgraderTestIT.class.getSimpleName() + "shouldAbordOnNonCleanlyShutdown");
   prepareSampleLegacyDatabase(fileSystem,workingDirectory);
-  assertTrue(allStoreFilesHaveVersion(fileSystem,workingDirectory,"v0.9.9"));
+  assertTrue(allStoreFilesHaveVersion(fileSystem,workingDirectory,LEGACY_VERSION));
   StoreUpgraderTestIT.truncateAllFiles(fileSystem,workingDirectory);
   Map<String,String> params=new HashMap<String,String>();
-  params.put(Config.ALLOW_STORE_UPGRADE,"true");
+  params.put(GraphDatabaseSettings.allow_store_upgrade.name(),"true");
   try {
     new GraphDatabaseFactory().newEmbeddedDatabaseBuilder(workingDirectory.getPath()).setConfig(params).newGraphDatabase();
     fail("Should have been unable to start upgrade on old version");
   }
  catch (  RuntimeException e) {
-    assertTrue(IllegalStateException.class.isAssignableFrom(e.getCause().getCause().getCause().getClass()));
+    assertThat(Exceptions.rootCause(e),Matchers.instanceOf(StoreUpgrader.UpgradingStoreVersionNotFoundException.class));
   }
 }

@@ -11,13 +11,14 @@
     }
   }
 );
-  clusterClient=new ClusterClient(ClusterClient.adapt(config),logging,electionCredentialsProvider);
+  ObjectStreamFactory objectStreamFactory=new ObjectStreamFactory();
+  clusterClient=new ClusterClient(ClusterClient.adapt(config),logging,electionCredentialsProvider,objectStreamFactory,objectStreamFactory);
   PaxosClusterMemberEvents localClusterEvents=new PaxosClusterMemberEvents(clusterClient,clusterClient,clusterClient,clusterClient,logging,new Predicate<PaxosClusterMemberEvents.ClusterMembersSnapshot>(){
     @Override public boolean accept(    PaxosClusterMemberEvents.ClusterMembersSnapshot item){
       for (      MemberIsAvailable member : item.getCurrentAvailableMembers()) {
         if (member.getRoleUri().getScheme().equals("ha")) {
           if (HighAvailabilityModeSwitcher.getServerId(member.getRoleUri()) == config.get(ClusterSettings.server_id)) {
-            msgLog.error(String.format("Instance %s has the same serverId as ours (%d) - will not join this cluster",member.getRoleUri(),config.get(ClusterSettings.server_id)));
+            msgLog.error(String.format("Instance %s has the same serverId as ours (%d) - will not " + "join this cluster",member.getRoleUri(),config.get(ClusterSettings.server_id)));
             return true;
           }
         }
@@ -25,56 +26,41 @@
       return true;
     }
   }
-);
+,new HANewSnapshotFunction(),objectStreamFactory,objectStreamFactory);
   clusterClient.addClusterListener(new ClusterListener.Adapter(){
+    boolean hasRequestedElection=true;
     @Override public void enteredCluster(    ClusterConfiguration clusterConfiguration){
       clusterClient.performRoleElections();
     }
     @Override public void elected(    String role,    InstanceId instanceId,    URI electedMember){
-      if (role.equals(ClusterConfiguration.COORDINATOR)) {
-        clusterClient.refreshSnapshot();
+      if (hasRequestedElection && role.equals(ClusterConfiguration.COORDINATOR)) {
         clusterClient.removeClusterListener(this);
       }
     }
   }
 );
   HighAvailabilityMemberContext localMemberContext=new SimpleHighAvailabilityMemberContext(clusterClient.getServerId());
-  PaxosClusterMemberAvailability localClusterMemberAvailability=new PaxosClusterMemberAvailability(clusterClient.getServerId(),clusterClient,clusterClient,logging);
-  if (!config.get(HaSettings.coordinators).isEmpty() && !config.get(HaSettings.coordinators).get(0).toString().trim().equals("")) {
-    compatibilityMode=true;
-    compatibilityLifecycle=new LinkedList<Lifecycle>();
-    Switchover switchover=new ZooToPaxosSwitchover(life,paxosLife,compatibilityLifecycle,clusterEventsDelegateInvocationHandler,memberContextDelegateInvocationHandler,clusterMemberAvailabilityDelegateInvocationHandler,localClusterEvents,localMemberContext,localClusterMemberAvailability);
-    ZooKeeperHighAvailabilityEvents zkEvents=new ZooKeeperHighAvailabilityEvents(logging,config,switchover);
-    compatibilityLifecycle.add(zkEvents);
-    memberContextDelegateInvocationHandler.setDelegate(new SimpleHighAvailabilityMemberContext(zkEvents.getInstanceId()));
-    clusterEventsDelegateInvocationHandler.setDelegate(zkEvents);
-    clusterMemberAvailabilityDelegateInvocationHandler.setDelegate(zkEvents);
-    paxosLife.add(localClusterEvents);
-  }
- else {
-    memberContextDelegateInvocationHandler.setDelegate(localMemberContext);
-    clusterEventsDelegateInvocationHandler.setDelegate(localClusterEvents);
-    clusterMemberAvailabilityDelegateInvocationHandler.setDelegate(localClusterMemberAvailability);
-  }
+  PaxosClusterMemberAvailability localClusterMemberAvailability=new PaxosClusterMemberAvailability(clusterClient.getServerId(),clusterClient,clusterClient,logging,objectStreamFactory,objectStreamFactory);
+  memberContextDelegateInvocationHandler.setDelegate(localMemberContext);
+  clusterEventsDelegateInvocationHandler.setDelegate(localClusterEvents);
+  clusterMemberAvailabilityDelegateInvocationHandler.setDelegate(localClusterMemberAvailability);
   members=new ClusterMembers(clusterClient,clusterClient,clusterEvents,new InstanceId(config.get(ClusterSettings.server_id)));
-  memberStateMachine=new HighAvailabilityMemberStateMachine(memberContext,accessGuard,members,clusterEvents,clusterClient,logging.getMessagesLog(HighAvailabilityMemberStateMachine.class));
-  if (compatibilityMode) {
-    compatibilityLifecycle.add(memberStateMachine);
-    compatibilityLifecycle.add((Lifecycle)clusterEvents);
-    life.add(memberStateMachine);
-    life.add(clusterEvents);
-  }
+  memberStateMachine=new HighAvailabilityMemberStateMachine(memberContext,availabilityGuard,members,clusterEvents,clusterClient,logging.getMessagesLog(HighAvailabilityMemberStateMachine.class));
+  HighAvailabilityConsoleLogger highAvailabilityConsoleLogger=new HighAvailabilityConsoleLogger(logging.getConsoleLog(HighAvailabilityConsoleLogger.class),new InstanceId(config.get(ClusterSettings.server_id)));
+  availabilityGuard.addListener(highAvailabilityConsoleLogger);
+  clusterEvents.addClusterMemberListener(highAvailabilityConsoleLogger);
+  clusterClient.addClusterListener(highAvailabilityConsoleLogger);
   paxosLife.add(clusterClient);
   paxosLife.add(memberStateMachine);
   paxosLife.add(clusterEvents);
   paxosLife.add(localClusterMemberAvailability);
-  DelegateInvocationHandler<TxHook> txHookDelegate=new DelegateInvocationHandler<TxHook>();
-  TxHook txHook=(TxHook)Proxy.newProxyInstance(TxHook.class.getClassLoader(),new Class[]{TxHook.class},txHookDelegate);
+  DelegateInvocationHandler<RemoteTxHook> txHookDelegate=new DelegateInvocationHandler<>();
+  RemoteTxHook txHook=(RemoteTxHook)Proxy.newProxyInstance(RemoteTxHook.class.getClassLoader(),new Class[]{RemoteTxHook.class},txHookDelegate);
   new TxHookModeSwitcher(memberStateMachine,txHookDelegate,master,new TxHookModeSwitcher.RequestContextFactoryResolver(){
     @Override public RequestContextFactory get(){
       return requestContextFactory;
     }
   }
-,dependencyResolver);
+,logging.getMessagesLog(TxHookModeSwitcher.class),dependencyResolver);
   return txHook;
 }

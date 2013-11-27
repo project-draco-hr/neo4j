@@ -1,3 +1,31 @@
 {
-  nodeLookup.lookup(nodeId,LockType.WRITE).setProperty(nodeLookup.getNodeManager(),this,key,value);
+  boolean requireRollback=true;
+  try (Statement statement=statementContextProvider.instance()){
+    int propertyKeyId=statement.tokenWriteOperations().propertyKeyGetOrCreateForName(key);
+    try {
+      statement.dataWriteOperations().nodeSetProperty(nodeId,Property.property(propertyKeyId,value));
+    }
+ catch (    ConstraintValidationKernelException e) {
+      requireRollback=false;
+      throw new ConstraintViolationException(e.getUserMessage(new StatementTokenNameLookup(statement.readOperations())),e);
+    }
+    requireRollback=false;
+  }
+ catch (  EntityNotFoundException e) {
+    throw new NotFoundException(e);
+  }
+catch (  IllegalTokenNameException e) {
+    throw new IllegalArgumentException(format("Invalid property key '%s'.",key),e);
+  }
+catch (  InvalidTransactionTypeKernelException e) {
+    throw new ConstraintViolationException(e.getMessage(),e);
+  }
+catch (  ReadOnlyDatabaseKernelException e) {
+    throw new ReadOnlyDbException();
+  }
+ finally {
+    if (requireRollback) {
+      nodeLookup.getNodeManager().setRollbackOnly();
+    }
+  }
 }

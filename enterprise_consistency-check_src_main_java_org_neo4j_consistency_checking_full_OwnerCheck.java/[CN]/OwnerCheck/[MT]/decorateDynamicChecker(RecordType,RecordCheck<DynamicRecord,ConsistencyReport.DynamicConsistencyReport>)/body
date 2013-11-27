@@ -4,10 +4,10 @@
     return checker;
   }
   return new RecordCheck<DynamicRecord,ConsistencyReport.DynamicConsistencyReport>(){
-    @Override public void check(    DynamicRecord record,    ConsistencyReport.DynamicConsistencyReport report,    RecordAccess records){
+    @Override public void check(    DynamicRecord record,    CheckerEngine<DynamicRecord,ConsistencyReport.DynamicConsistencyReport> engine,    RecordAccess records){
       if (record.inUse()) {
         DynamicOwner.Unknown owner=new DynamicOwner.Unknown();
-        report.forReference(owner,DynamicOwner.ORPHAN_CHECK);
+        engine.comparativeCheck(owner,DynamicOwner.ORPHAN_CHECK);
         if (null == dynamicOwners.putIfAbsent(record.getId(),owner)) {
           owner.markInCustody();
         }
@@ -15,14 +15,14 @@
           DynamicOwner.Dynamic nextOwner=new DynamicOwner.Dynamic(type,record);
           DynamicOwner prevOwner=dynamicOwners.put(record.getNextBlock(),nextOwner);
           if (prevOwner != null) {
-            report.forReference(prevOwner.record(records),nextOwner);
+            engine.comparativeCheck(prevOwner.record(records),nextOwner);
           }
         }
       }
-      checker.check(record,report,records);
+      checker.check(record,engine,records);
     }
-    @Override public void checkChange(    DynamicRecord oldRecord,    DynamicRecord newRecord,    ConsistencyReport.DynamicConsistencyReport report,    DiffRecordAccess records){
-      checker.checkChange(oldRecord,newRecord,report,records);
+    @Override public void checkChange(    DynamicRecord oldRecord,    DynamicRecord newRecord,    CheckerEngine<DynamicRecord,ConsistencyReport.DynamicConsistencyReport> engine,    DiffRecordAccess records){
+      checker.checkChange(oldRecord,newRecord,engine,records);
     }
   }
 ;

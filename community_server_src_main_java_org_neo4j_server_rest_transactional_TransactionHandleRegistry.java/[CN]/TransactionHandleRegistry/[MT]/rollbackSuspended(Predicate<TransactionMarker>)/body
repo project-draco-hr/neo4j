@@ -1,0 +1,28 @@
+{
+  Set<Long> candidateTransactionIdsToRollback=new HashSet<Long>();
+  for (  Map.Entry<Long,TransactionMarker> entry : registry.entrySet()) {
+    TransactionMarker marker=entry.getValue();
+    if (marker.isSuspended() && predicate.accept(marker)) {
+      candidateTransactionIdsToRollback.add(entry.getKey());
+    }
+  }
+  for (  long id : candidateTransactionIdsToRollback) {
+    TransactionHandle handle;
+    try {
+      handle=acquire(id);
+    }
+ catch (    TransactionLifecycleException invalidTransactionId) {
+      continue;
+    }
+    try {
+      handle.forceRollback();
+      log.info(format("Transaction with id %d has been automatically rolled back.",id));
+    }
+ catch (    TransactionFailureException e) {
+      log.error(format("Transaction with id %d failed to roll back.",id),e);
+    }
+ finally {
+      forget(id);
+    }
+  }
+}

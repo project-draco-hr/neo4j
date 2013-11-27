@@ -1,0 +1,24 @@
+{
+  for (  PropertyCommand propertyCommand : propCommands) {
+    PropertyRecord after=propertyCommand.getAfter();
+    if (!after.isNodeSet()) {
+      continue;
+    }
+    long[] nodeLabelsBefore, nodeLabelsAfter;
+    NodeCommand nodeChanges=nodeCommands.get(after.getNodeId());
+    if (nodeChanges != null) {
+      nodeLabelsBefore=parseLabelsField(nodeChanges.getBefore()).get(nodeStore);
+      nodeLabelsAfter=parseLabelsField(nodeChanges.getAfter()).get(nodeStore);
+    }
+ else {
+      NodeRecord nodeRecord=nodeStore.getRecord(after.getNodeId());
+      nodeLabelsBefore=nodeLabelsAfter=parseLabelsField(nodeRecord).get(nodeStore);
+    }
+    for (    NodePropertyUpdate update : propertyStore.toLogicalUpdates(propertyCommand.getBefore(),nodeLabelsBefore,after,nodeLabelsAfter)) {
+      updates.add(update);
+      if (update.getUpdateMode() == UpdateMode.CHANGED) {
+        propertyLookup.put(Pair.of(update.getNodeId(),update.getPropertyKeyId()),update);
+      }
+    }
+  }
+}

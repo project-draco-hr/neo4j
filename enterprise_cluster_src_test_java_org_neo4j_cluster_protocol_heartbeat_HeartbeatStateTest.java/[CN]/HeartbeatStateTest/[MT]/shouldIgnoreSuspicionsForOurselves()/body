@@ -1,0 +1,15 @@
+{
+  InstanceId instanceId=new InstanceId(1);
+  HeartbeatState heartbeat=HeartbeatState.heartbeat;
+  ClusterConfiguration configuration=new ClusterConfiguration("whatever",StringLogger.DEV_NULL,"cluster://1","cluster://2");
+  configuration.joined(instanceId,URI.create("cluster://1"));
+  configuration.joined(new InstanceId(2),URI.create("cluster://2"));
+  Logging logging=mock(Logging.class);
+  ClusterContext clusterContext=new ClusterContext(instanceId,mock(ProposerContext.class),mock(LearnerContext.class),configuration,mock(Timeouts.class),mock(Executor.class),logging,mock(ObjectInputStreamFactory.class),mock(ObjectOutputStreamFactory.class));
+  when(logging.getMessagesLog(Matchers.<Class>any())).thenReturn(mock(StringLogger.class));
+  HeartbeatContext context=new HeartbeatContext(clusterContext,mock(LearnerContext.class),mock(Executor.class));
+  Message received=Message.internal(HeartbeatMessage.suspicions,new HeartbeatMessage.SuspicionsState(Iterables.toSet(Iterables.<InstanceId,InstanceId>iterable(instanceId))));
+  received.setHeader(Message.FROM,"cluster://2");
+  heartbeat.handle(context,received,mock(MessageHolder.class));
+  assertThat(context.getSuspicionsOf(instanceId).size(),equalTo(0));
+}

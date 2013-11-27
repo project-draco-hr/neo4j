@@ -2,6 +2,7 @@
   GraphDatabaseAPI db=(GraphDatabaseAPI)new TestGraphDatabaseFactory().newImpermanentDatabaseBuilder().loadPropertiesFromURL(getClass().getResource("/autoindex.properties")).newGraphDatabase();
   final GraphDatabaseShellServer server=new GraphDatabaseShellServer(db,false);
   Documenter doc=new Documenter("a matrix example",server);
+  doc.add("mknode --cd","","Create a reference node");
   doc.add("mkrel -t ROOT -c -v","created","create the Thomas Andersson node");
   doc.add("cd 1","","go to the new node");
   doc.add("set name \"Thomas Andersson\"","","set the name property");
@@ -35,13 +36,14 @@
   doc.add("cd","","go to the first node in the history stack");
   doc.add("","","");
   doc.add("start morpheus = node:node_auto_index(name='Morpheus') " + "match morpheus-[:KNOWS]-zionist " + "return zionist.name;","Trinity","Morpheus' friends, looking up Morpheus by name in the Neo4j autoindex");
-  doc.add("cypher 1.9 start morpheus = node:node_auto_index(name='Morpheus') " + "match morpheus-[:KNOWS]-zionist " + "return zionist.name;","Cypher","Morpheus' friends, looking up Morpheus by name in the Neo4j autoindex");
-  doc.add("profile start morpheus = node:node_auto_index(name='Morpheus') " + "match morpheus-[:KNOWS]-zionist " + "return zionist.name;","ColumnFilter","profile the query by displaying more query execution information");
-  doc.run();
-  server.shutdown();
-  PrintWriter writer=doc.getWriter("shell-matrix-example-graph");
-  writer.println(createGraphVizWithNodeId("Shell Matrix Example",db,"graph"));
-  writer.flush();
-  writer.close();
-  db.shutdown();
+  doc.add("cypher 2.0 start morpheus = node:node_auto_index(name='Morpheus') " + "match morpheus-[:KNOWS]-zionist " + "return zionist.name;","Cypher","Morpheus' friends, looking up Morpheus by name in the Neo4j autoindex");
+  try (Transaction tx=db.beginTx()){
+    doc.run();
+  }
+   server.shutdown();
+  try (PrintWriter writer=doc.getWriter("shell-matrix-example-graph");Transaction tx=db.beginTx()){
+    writer.println(createGraphVizWithNodeId("Shell Matrix Example",db,"graph"));
+    writer.flush();
+  }
+   db.shutdown();
 }

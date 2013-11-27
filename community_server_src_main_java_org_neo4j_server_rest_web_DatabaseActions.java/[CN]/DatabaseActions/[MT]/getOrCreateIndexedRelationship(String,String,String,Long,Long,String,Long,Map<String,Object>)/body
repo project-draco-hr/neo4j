@@ -1,29 +1,25 @@
 {
   assertIsLegalIndexName(indexName);
-  Transaction tx=beginTx();
-  try {
-    Relationship result;
-    boolean created;
-    if (relationshipOrNull != null) {
-      if (startNode != null || type != null || endNode != null || properties != null) {
-        throw new BadInputException("Either specify a relationship to index uniquely, or the means for creating it.");
-      }
-      Relationship relationship=relationship(relationshipOrNull);
-      result=graphDb.index().forRelationships(indexName).putIfAbsent(relationship,key,value);
-      if ((created=(result == null)) == true)       result=relationship;
+  Relationship result;
+  boolean created;
+  if (relationshipOrNull != null) {
+    if (startNode != null || type != null || endNode != null || properties != null) {
+      throw new BadInputException("Either specify a relationship to index uniquely, " + "or the means for creating it.");
     }
- else     if (startNode == null || type == null || endNode == null) {
-      throw new BadInputException("Either specify a relationship to index uniquely, or the means for creating it.");
-    }
+    Relationship relationship=relationship(relationshipOrNull);
+    UniqueRelationshipFactory factory=new UniqueRelationshipFactory(indexName,relationship.getStartNode(),relationship.getEndNode(),relationship.getType().name(),properties);
+    UniqueEntity<Relationship> entity=factory.getOrCreateWithOutcome(key,value);
+    created=entity.entity().getId() == relationship.getId() || entity.wasCreated();
+    result=entity.entity();
+  }
+ else   if (startNode == null || type == null || endNode == null) {
+    throw new BadInputException("Either specify a relationship to index uniquely, " + "or the means for creating it.");
+  }
  else {
-      UniqueRelationshipFactory factory=new UniqueRelationshipFactory(indexName,node(startNode),node(endNode),type,properties);
-      result=factory.getOrCreate(key,value);
-      created=factory.created;
-    }
-    tx.success();
-    return Pair.of(new IndexedEntityRepresentation(result,key,value,new RelationshipIndexRepresentation(indexName,Collections.<String,String>emptyMap())),created);
+    UniqueRelationshipFactory factory=new UniqueRelationshipFactory(indexName,node(startNode),node(endNode),type,properties);
+    UniqueEntity<Relationship> entity=factory.getOrCreateWithOutcome(key,value);
+    result=entity.entity();
+    created=entity.wasCreated();
   }
-  finally {
-    tx.finish();
-  }
+  return Pair.of(new IndexedEntityRepresentation(result,key,value,new RelationshipIndexRepresentation(indexName,Collections.<String,String>emptyMap())),created);
 }

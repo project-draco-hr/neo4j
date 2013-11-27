@@ -1,0 +1,31 @@
+{
+  try {
+    while (statements.hasNext()) {
+      Statement statement=statements.next();
+      ExecutionResult result;
+      try {
+        result=engine.execute(statement.statement(),statement.parameters());
+        output.statementResult(result,statement.includeStats(),statement.resultDataContents());
+      }
+ catch (      CypherException e) {
+        errors.add(new Neo4jError(EXCEPTION_MAPPING.apply(e),e));
+        break;
+      }
+catch (      IOException e) {
+        errors.add(new Neo4jError(Status.Network.UnknownFailure,e));
+        break;
+      }
+catch (      Exception e) {
+        errors.add(new Neo4jError(Status.Statement.ExecutionFailure,e));
+        break;
+      }
+    }
+    Iterator<Neo4jError> deserializationErrors=statements.errors();
+    while (deserializationErrors.hasNext()) {
+      errors.add(deserializationErrors.next());
+    }
+  }
+ catch (  Exception e) {
+    errors.add(new Neo4jError(Status.General.UnknownFailure,e));
+  }
+}

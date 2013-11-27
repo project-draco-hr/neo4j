@@ -4,28 +4,26 @@
   ClusterManager.ManagedCluster cluster=clusterManager.getDefaultCluster();
   cluster.await(ClusterManager.allSeesAllAsAvailable());
   long nodeId=0;
-  Transaction tx=null;
   HighlyAvailableGraphDatabase master=cluster.getMaster();
-  try {
-    tx=master.beginTx();
+  try (Transaction tx=master.beginTx()){
     Node node=master.createNode();
     node.setProperty("Hello","World");
     nodeId=node.getId();
     tx.success();
   }
- catch (  Throwable ex) {
-    ex.printStackTrace();
-    Assert.fail();
+   HighlyAvailableGraphDatabase slave1=cluster.getAnySlave();
+  String value;
+  try (Transaction tx=slave1.beginTx()){
+    value=slave1.getNodeById(nodeId).getProperty("Hello").toString();
+    logger.getLogger().info("Hello=" + value);
+    assertEquals("World",value);
+    tx.success();
   }
- finally {
-    tx.finish();
+   HighlyAvailableGraphDatabase slave2=cluster.getAnySlave(slave1);
+  try (Transaction tx=slave2.beginTx()){
+    value=slave2.getNodeById(nodeId).getProperty("Hello").toString();
+    logger.getLogger().info("Hello=" + value);
+    assertEquals("World",value);
+    tx.success();
   }
-  HighlyAvailableGraphDatabase slave1=cluster.getAnySlave();
-  String value=slave1.getNodeById(nodeId).getProperty("Hello").toString();
-  logger.getLogger().info("Hello=" + value);
-  assertEquals("World",value);
-  HighlyAvailableGraphDatabase slave2=cluster.getAnySlave(slave1);
-  value=slave2.getNodeById(nodeId).getProperty("Hello").toString();
-  logger.getLogger().info("Hello=" + value);
-  assertEquals("World",value);
-}
+ }

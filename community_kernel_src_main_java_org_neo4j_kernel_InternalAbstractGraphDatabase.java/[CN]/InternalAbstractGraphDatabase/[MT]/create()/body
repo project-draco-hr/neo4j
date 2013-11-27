@@ -1,7 +1,18 @@
 {
+  availabilityGuard=createAvailabilityGuard();
+  availabilityGuard.addListener(new AvailabilityGuard.AvailabilityListener(){
+    @Override public void available(){
+      msgLog.info("Database is now ready");
+    }
+    @Override public void unavailable(){
+      msgLog.info("Database is now unavailable");
+    }
+  }
+);
   fileSystem=createFileSystemAbstraction();
   this.logging=createLogging();
-  AutoConfigurator autoConfigurator=new AutoConfigurator(fileSystem,config.get(NeoStoreXaDataSource.Configuration.store_dir),GraphDatabaseSettings.UseMemoryMappedBuffers.shouldMemoryMap(config.get(Configuration.use_memory_mapped_buffers)));
+  this.monitors=new Monitors(logging.getMessagesLog(Monitors.class));
+  AutoConfigurator autoConfigurator=new AutoConfigurator(fileSystem,config.get(NeoStoreXaDataSource.Configuration.store_dir),config.get(Configuration.use_memory_mapped_buffers),logging.getConsoleLog(AutoConfigurator.class));
   if (config.get(GraphDatabaseSettings.dump_configuration)) {
     System.out.println(autoConfigurator.getNiceMemoryInformation());
   }
@@ -22,9 +33,10 @@
   String cacheTypeName=config.get(Configuration.cache_type);
   CacheProvider cacheProvider=cacheProviders.get(cacheTypeName);
   if (cacheProvider == null) {
-    throw new IllegalArgumentException("No cache type '" + cacheTypeName + "'");
+    throw new IllegalArgumentException("No provider for cache type '" + cacheTypeName + "'. "+ "Cache providers are loaded using java service loading where they "+ "register themselves in resource (plain-text) files found on the class path under "+ "META-INF/services/"+ CacheProvider.class.getName()+ ". This missing provider may have "+ "been caused by either such a missing registration, or by the lack of the provider class itself.");
   }
-  kernelEventHandlers=new KernelEventHandlers();
+  jobScheduler=life.add(new Neo4jJobScheduler(this.toString(),logging.getMessagesLog(Neo4jJobScheduler.class)));
+  kernelEventHandlers=new KernelEventHandlers(logging.getMessagesLog(KernelEventHandlers.class));
   caches=createCaches();
   diagnosticsManager=life.add(new DiagnosticsManager(logging.getMessagesLog(DiagnosticsManager.class)));
   kernelPanicEventGenerator=new KernelPanicEventGenerator(kernelEventHandlers);
@@ -32,6 +44,7 @@
   txHook=createTxHook();
   guard=config.get(Configuration.execution_guard_enabled) ? new Guard(msgLog) : null;
   stateFactory=createTransactionStateFactory();
+  updateableSchemaState=new KernelSchemaStateStore(newSchemaStateMap());
   if (readOnly) {
     txManager=new ReadOnlyTxManager(xaDataSourceManager,logging.getMessagesLog(ReadOnlyTxManager.class));
   }
@@ -43,36 +56,34 @@
  else {
       TransactionManagerProvider provider;
       provider=Service.load(TransactionManagerProvider.class,serviceName);
-      if (provider == null) {
-        throw new IllegalStateException("Unknown transaction manager implementation: " + serviceName);
-      }
       txManager=provider.loadTransactionManager(this.storeDir.getPath(),xaDataSourceManager,kernelPanicEventGenerator,txHook,logging.getMessagesLog(AbstractTransactionManager.class),fileSystem,stateFactory);
     }
   }
   life.add(txManager);
+  cleanupService=life.add(createCleanupService());
   transactionEventHandlers=new TransactionEventHandlers(txManager);
   txIdGenerator=life.add(createTxIdGenerator());
   lockManager=createLockManager();
   idGeneratorFactory=createIdGeneratorFactory();
-  relationshipTypeCreator=createRelationshipTypeCreator();
   persistenceSource=life.add(new NioNeoDbPersistenceSource(xaDataSourceManager));
   syncHook=new DefaultTxEventSyncHookFactory();
   persistenceManager=new PersistenceManager(logging.getMessagesLog(PersistenceManager.class),txManager,persistenceSource,syncHook);
-  propertyIndexManager=life.add(new PropertyIndexManager(persistenceManager,persistenceSource));
-  relationshipTypeHolder=life.add(new RelationshipTypeHolder(txManager,persistenceManager,persistenceSource,relationshipTypeCreator));
+  propertyKeyTokenHolder=life.add(new PropertyKeyTokenHolder(txManager,persistenceManager,persistenceSource,createPropertyKeyCreator()));
+  labelTokenHolder=life.add(new LabelTokenHolder(txManager,persistenceManager,persistenceSource,createLabelIdCreator()));
+  relationshipTypeTokenHolder=life.add(new RelationshipTypeTokenHolder(txManager,persistenceManager,persistenceSource,createRelationshipTypeCreator()));
   caches.configure(cacheProvider,config);
   Cache<NodeImpl> nodeCache=diagnosticsManager.tryAppendProvider(caches.node());
   Cache<RelationshipImpl> relCache=diagnosticsManager.tryAppendProvider(caches.relationship());
+  statementContextProvider=life.add(new ThreadToStatementContextBridge(persistenceManager));
   nodeManager=guard != null ? createGuardedNodeManager(readOnly,cacheProvider,nodeCache,relCache) : createNodeManager(readOnly,cacheProvider,nodeCache,relCache);
-  stateFactory.setDependencies(lockManager,propertyIndexManager,nodeManager,txHook,txIdGenerator);
+  stateFactory.setDependencies(lockManager,nodeManager,txHook,txIdGenerator);
   indexStore=life.add(new IndexStore(this.storeDir,fileSystem));
   diagnosticsManager.prependProvider(config);
   params=config.getParams();
   logBufferFactory=new DefaultLogBufferFactory();
   extensions=life.add(createKernelData());
-  if (config.get(Configuration.load_kernel_extensions)) {
-    life.add(kernelExtensions);
-  }
+  life.add(kernelExtensions);
+  schema=new SchemaImpl(statementContextProvider);
   indexManager=new IndexManagerImpl(config,indexStore,xaDataSourceManager,txManager,this);
   nodeAutoIndexer=life.add(new NodeAutoIndexerImpl(config,indexManager,nodeManager));
   relAutoIndexer=life.add(new RelationshipAutoIndexerImpl(config,indexManager,nodeManager));
@@ -84,8 +95,8 @@
   xaFactory=new XaFactory(config,txIdGenerator,txManager,logBufferFactory,fileSystem,logging,recoveryVerifier,LogPruneStrategies.fromConfigValue(fileSystem,keepLogicalLogsConfig));
   createNeoDataSource();
   life.add(new MonitorGc(config,msgLog));
-  life.add(new DatabaseAvailability());
-  life.add(kernelEventHandlers);
   life.add(nodeManager);
+  createDatabaseAvailability();
+  life.add(kernelEventHandlers);
   life.add(new ConfigurationChangedRestarter());
 }

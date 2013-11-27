@@ -22,11 +22,12 @@
   roles.add(reevesAsNeo,"type",reevesAsNeo.getType().name());
   tx.success();
   tx.finish();
-  IndexHits<Relationship> typeHits;
-  typeHits=roles.query("type:ACTS_IN AND name:Neo",null,theMatrix);
-  Relationship typeNeo=typeHits.iterator().next();
-  typeHits.close();
-  assertEquals("Neo",typeNeo.getProperty("name"));
-  actor=matrixNeo.getStartNode();
-  assertEquals(reeves,actor);
-}
+  try (Transaction tx=graphDb.beginTx()){
+    IndexHits<Relationship> typeHits=roles.query("type:ACTS_IN AND name:Neo",null,theMatrix);
+    Relationship typeNeo=typeHits.iterator().next();
+    typeHits.close();
+    assertThat(typeNeo,inTx(graphDb,hasProperty("name").withValue("Neo")));
+    actor=matrixNeo.getStartNode();
+    assertEquals(reeves,actor);
+  }
+ }

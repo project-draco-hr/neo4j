@@ -1,0 +1,22 @@
+{
+  boolean success=false;
+  try (Statement statement=statementContextProvider.instance()){
+    int propertyKeyId=statement.tokenWriteOperations().propertyKeyGetOrCreateForName(key);
+    statement.dataWriteOperations().graphSetProperty(property(propertyKeyId,value));
+    success=true;
+  }
+ catch (  IllegalTokenNameException e) {
+    throw new IllegalArgumentException(e);
+  }
+catch (  InvalidTransactionTypeKernelException e) {
+    throw new ConstraintViolationException(e.getMessage(),e);
+  }
+catch (  ReadOnlyDatabaseKernelException e) {
+    throw new ReadOnlyDbException();
+  }
+ finally {
+    if (!success) {
+      nodeManager.setRollbackOnly();
+    }
+  }
+}

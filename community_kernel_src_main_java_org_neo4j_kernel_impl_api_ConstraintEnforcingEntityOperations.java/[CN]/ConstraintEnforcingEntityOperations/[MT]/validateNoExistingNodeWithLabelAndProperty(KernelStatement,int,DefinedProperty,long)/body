@@ -1,0 +1,18 @@
+{
+  try {
+    Object value=property.value();
+    IndexDescriptor indexDescriptor=new IndexDescriptor(labelId,property.propertyKeyId());
+    assertIndexOnline(state,indexDescriptor);
+    state.locks().acquireIndexEntryWriteLock(labelId,property.propertyKeyId(),property.valueAsString());
+    PrimitiveLongIterator existingNodes=entityReadOperations.nodesGetFromIndexLookup(state,indexDescriptor,value);
+    while (existingNodes.hasNext()) {
+      long existingNode=existingNodes.next();
+      if (existingNode != modifiedNode) {
+        throw new UniqueConstraintViolationKernelException(labelId,property.propertyKeyId(),value,existingNode);
+      }
+    }
+  }
+ catch (  IndexNotFoundKernelException|IndexBrokenKernelException e) {
+    throw new UnableToValidateConstraintKernelException(e);
+  }
+}

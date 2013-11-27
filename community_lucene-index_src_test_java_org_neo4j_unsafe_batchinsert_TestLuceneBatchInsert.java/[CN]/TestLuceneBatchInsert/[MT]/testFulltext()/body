@@ -1,6 +1,4 @@
 {
-  String path=new File(PATH,"2").getAbsolutePath();
-  BatchInserter inserter=new BatchInserterImpl(path);
   BatchInserterIndexProvider provider=new LuceneBatchInserterIndexProviderNewImpl(inserter);
   String name="users";
   BatchInserterIndex index=provider.nodeIndex(name,stringMap("type","fulltext"));
@@ -21,11 +19,12 @@
   assertContains(index.get("name","What Ever"),id3);
   assertContains(index.get("name","Anything"),id3);
   provider.shutdown();
-  inserter.shutdown();
-  GraphDatabaseService db=new GraphDatabaseFactory().newEmbeddedDatabase(path);
-  Index<Node> dbIndex=db.index().forNodes(name);
-  Node node1=db.getNodeById(id1);
-  Node node2=db.getNodeById(id2);
-  assertContains(dbIndex.query("name","persson"),node1,node2);
-  db.shutdown();
-}
+  switchToGraphDatabaseService();
+  try (Transaction transaction=db.beginTx()){
+    Index<Node> dbIndex=db.index().forNodes(name);
+    Node node1=db.getNodeById(id1);
+    Node node2=db.getNodeById(id2);
+    assertContains(dbIndex.query("name","persson"),node1,node2);
+    transaction.success();
+  }
+ }

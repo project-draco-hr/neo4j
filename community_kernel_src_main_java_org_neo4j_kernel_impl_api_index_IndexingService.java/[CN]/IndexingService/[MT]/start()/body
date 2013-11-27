@@ -1,0 +1,32 @@
+{
+  applyRecoveredUpdates();
+  IndexMap indexMap=indexMapReference.getIndexMapCopy();
+  final Map<Long,Pair<IndexDescriptor,SchemaIndexProvider.Descriptor>> rebuildingDescriptors=new HashMap<>();
+  indexMap.foreachIndexProxy(new BiConsumer<Long,IndexProxy>(){
+    @Override public void accept(    Long indexId,    IndexProxy indexProxy){
+      InternalIndexState state=indexProxy.getState();
+      logger.info(String.format("IndexingService.start: index on %s is %s",indexProxy.getDescriptor().userDescription(tokenNameLookup),state.name()));
+switch (state) {
+case ONLINE:
+        break;
+case POPULATING:
+      rebuildingDescriptors.put(indexId,getIndexProxyDescriptors(indexProxy));
+    break;
+case FAILED:
+  break;
+}
+}
+}
+);
+dropRecoveringIndexes(indexMap,rebuildingDescriptors);
+for (Map.Entry<Long,Pair<IndexDescriptor,SchemaIndexProvider.Descriptor>> entry : rebuildingDescriptors.entrySet()) {
+long indexId=entry.getKey();
+Pair<IndexDescriptor,SchemaIndexProvider.Descriptor> descriptors=entry.getValue();
+IndexDescriptor indexDescriptor=descriptors.first();
+SchemaIndexProvider.Descriptor providerDescriptor=descriptors.other();
+IndexProxy indexProxy=createAndStartPopulatingIndexProxy(indexId,indexDescriptor,providerDescriptor,serviceRunning);
+indexMap.putIndexProxy(indexId,indexProxy);
+}
+serviceRunning=true;
+indexMapReference.setIndexMap(indexMap);
+}

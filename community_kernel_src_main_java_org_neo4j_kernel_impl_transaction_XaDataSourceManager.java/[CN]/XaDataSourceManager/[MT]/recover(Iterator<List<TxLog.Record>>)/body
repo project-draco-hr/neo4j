@@ -8,30 +8,28 @@
     for (    XaDataSource xaDataSource : dataSources.values()) {
       XAResource xaRes=xaDataSource.getXaConnection().getXaResource();
       Xid xids[]=xaRes.recover(XAResource.TMNOFLAGS);
-      for (int i=0; i < xids.length; i++) {
-        if (XidImpl.isThisTm(xids[i].getGlobalTransactionId())) {
-          if (rollbackList.contains(xids[i])) {
-            msgLog.logMessage("TM: Found pre commit " + xids[i] + " rolling back ... ",true);
-            rollbackList.remove(xids[i]);
-            xaRes.rollback(xids[i]);
+      for (      Xid xid : xids) {
+        if (XidImpl.isThisTm(xid.getGlobalTransactionId())) {
+          if (rollbackList.contains(xid)) {
+            msgLog.logMessage("TM: Found pre commit " + xid + " rolling back ... ",true);
+            rollbackList.remove(xid);
+            xaRes.rollback(xid);
           }
  else {
-            Resource resource=new Resource(xids[i].getBranchQualifier());
+            Resource resource=new Resource(xid.getBranchQualifier());
             if (!resourceMap.containsKey(resource)) {
               resourceMap.put(resource,xaDataSource);
             }
-            recoveredXidsList.add(xids[i]);
+            recoveredXidsList.add(xid);
           }
         }
  else {
-          msgLog.warn("Unknown xid: " + xids[i]);
+          msgLog.warn("Unknown xid: " + xid);
         }
       }
     }
     Collections.sort(commitList);
-    Iterator<NonCompletedTransaction> commitItr=commitList.iterator();
-    while (commitItr.hasNext()) {
-      NonCompletedTransaction nct=commitItr.next();
+    for (    NonCompletedTransaction nct : commitList) {
       int seq=nct.getSequenceNumber();
       Xid xids[]=nct.getXids();
       msgLog.debug("Marked as commit tx-seq[" + seq + "] branch length: "+ xids.length);
@@ -50,9 +48,7 @@
         resourceMap.get(resource).getXaConnection().getXaResource().commit(xid,false);
       }
     }
-    Iterator<Xid> rollbackItr=recoveredXidsList.iterator();
-    while (rollbackItr.hasNext()) {
-      Xid xid=rollbackItr.next();
+    for (    Xid xid : recoveredXidsList) {
       Resource resource=new Resource(xid.getBranchQualifier());
       if (!resourceMap.containsKey(resource)) {
         final TransactionFailureException ex=new TransactionFailureException("Couldn't find XAResource for " + xid);
@@ -68,10 +64,7 @@
       participant.rotateLogicalLog();
     }
   }
- catch (  IOException e) {
-    throw logAndReturn("TM: recovery failed",new TransactionFailureException("Recovery failed.",e));
-  }
-catch (  XAException e) {
+ catch (  IOException|XAException e) {
     throw logAndReturn("TM: recovery failed",new TransactionFailureException("Recovery failed.",e));
   }
 }

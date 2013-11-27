@@ -1,24 +1,34 @@
 {
-  final NetworkInstance node=new NetworkInstance(new NetworkInstance.Configuration(){
+  final NetworkReceiver receiver=new NetworkReceiver(new NetworkReceiver.Configuration(){
     @Override public HostnamePort clusterServer(){
       return config.get(ClusterSettings.cluster_server);
     }
+  }
+,logging);
+  final NetworkSender sender=new NetworkSender(new NetworkSender.Configuration(){
     @Override public int defaultPort(){
       return 5001;
     }
+    @Override public int port(){
+      return config.get(ClusterSettings.cluster_server).getPort();
+    }
   }
-,logging);
+,receiver,logging);
   ExecutorLifecycleAdapter stateMachineExecutor=new ExecutorLifecycleAdapter(new Factory<ExecutorService>(){
     @Override public ExecutorService newInstance(){
       return Executors.newSingleThreadExecutor(new NamedThreadFactory("State machine"));
     }
   }
 );
-  final ProtocolServer protocolServer=protocolServerFactory.newProtocolServer(new InstanceId(config.get(ClusterSettings.server_id)),timeoutStrategy,node,node,acceptorInstanceStore,electionCredentialsProvider,stateMachineExecutor);
-  node.addNetworkChannelsListener(new NetworkInstance.NetworkChannelsListener(){
+  final ProtocolServer protocolServer=protocolServerFactory.newProtocolServer(new InstanceId(config.get(ClusterSettings.server_id)),timeoutStrategy,receiver,sender,acceptorInstanceStore,electionCredentialsProvider,stateMachineExecutor,objectInputStreamFactory,objectOutputStreamFactory);
+  receiver.addNetworkChannelsListener(new NetworkReceiver.NetworkChannelsListener(){
+    private StateTransitionLogger logger;
     @Override public void listeningAt(    URI me){
       protocolServer.listeningAt(me);
-      protocolServer.addStateTransitionListener(new StateTransitionLogger(logging));
+      if (logger == null) {
+        logger=new StateTransitionLogger(logging);
+        protocolServer.addStateTransitionListener(logger);
+      }
     }
     @Override public void channelOpened(    URI to){
     }
@@ -49,6 +59,7 @@
     }
   }
 );
-  life.add(node);
+  life.add(sender);
+  life.add(receiver);
   return protocolServer;
 }

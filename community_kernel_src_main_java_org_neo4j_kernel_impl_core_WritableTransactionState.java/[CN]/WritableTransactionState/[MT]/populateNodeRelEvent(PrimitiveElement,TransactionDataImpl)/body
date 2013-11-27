@@ -3,13 +3,13 @@
     CowNodeElement nodeElement=element.nodes.get(nodeId);
     NodeProxy node=nodeManager.newNodeProxyById(nodeId);
     NodeImpl nodeImpl=nodeManager.getNodeForProxy(nodeId,null);
-    if (nodeElement.deleted) {
-      if (nodeManager.nodeCreated(nodeId)) {
+    if (nodeElement.isDeleted()) {
+      if (primitiveElement.createdNodes.contains(nodeId)) {
         continue;
       }
       result.deleted(node);
     }
-    if (nodeElement.relationshipAddMap != null && !nodeElement.deleted) {
+    if (nodeElement.relationshipAddMap != null && !nodeElement.isDeleted()) {
       for (      Integer type : nodeElement.relationshipAddMap.keySet()) {
         RelIdArray createdRels=nodeElement.relationshipAddMap.get(type);
         populateNodeRelEvent(element,result,nodeId,createdRels);
@@ -19,7 +19,7 @@
       for (      Integer type : nodeElement.relationshipRemoveMap.keySet()) {
         Collection<Long> deletedRels=nodeElement.relationshipRemoveMap.get(type);
         for (        long relId : deletedRels) {
-          if (nodeManager.relCreated(relId)) {
+          if (primitiveElement.createdRelationships.contains(relId)) {
             continue;
           }
           RelationshipProxy rel=nodeManager.newRelationshipProxyById(relId);
@@ -29,20 +29,20 @@
         }
       }
     }
-    if (nodeElement.propertyAddMap != null && !nodeElement.deleted) {
-      for (      PropertyData data : nodeElement.propertyAddMap.values()) {
-        String key=nodeManager.getKeyForProperty(data,this);
-        Object oldValue=nodeImpl.getCommittedPropertyValue(nodeManager,key,this);
-        Object newValue=data.getValue();
+    if (nodeElement.propertyAddMap != null && !nodeElement.isDeleted()) {
+      for (      DefinedProperty data : nodeElement.propertyAddMap.values()) {
+        String key=nodeManager.getKeyForProperty(data);
+        Object oldValue=nodeImpl.getCommittedPropertyValue(nodeManager,key);
+        Object newValue=data.value();
         result.assignedProperty(node,key,newValue,oldValue);
       }
     }
     if (nodeElement.propertyRemoveMap != null) {
-      for (      PropertyData data : nodeElement.propertyRemoveMap.values()) {
-        String key=nodeManager.getKeyForProperty(data,this);
-        Object oldValue=data.getValue();
-        if (oldValue == null && !nodeElement.deleted) {
-          nodeImpl.getCommittedPropertyValue(nodeManager,key,this);
+      for (      DefinedProperty data : nodeElement.propertyRemoveMap.values()) {
+        String key=nodeManager.getKeyForProperty(data);
+        Object oldValue=data.value();
+        if (oldValue == null && !nodeElement.isDeleted()) {
+          nodeImpl.getCommittedPropertyValue(nodeManager,key);
         }
         result.removedProperty(node,key,oldValue);
       }

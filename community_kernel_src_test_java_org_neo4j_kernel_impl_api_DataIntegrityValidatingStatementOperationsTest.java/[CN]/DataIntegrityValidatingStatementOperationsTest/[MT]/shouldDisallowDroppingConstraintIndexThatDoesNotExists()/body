@@ -1,0 +1,17 @@
+{
+  int label=0, propertyKey=7;
+  IndexDescriptor indexDescriptor=new IndexDescriptor(label,propertyKey);
+  SchemaReadOperations innerRead=mock(SchemaReadOperations.class);
+  SchemaWriteOperations innerWrite=mock(SchemaWriteOperations.class);
+  DataIntegrityValidatingStatementOperations ctx=new DataIntegrityValidatingStatementOperations(null,innerRead,innerWrite);
+  when(innerRead.uniqueIndexesGetForLabel(state,indexDescriptor.getLabelId())).thenAnswer(withIterator(indexDescriptor));
+  when(innerRead.indexesGetForLabel(state,indexDescriptor.getLabelId())).thenAnswer(withIterator());
+  try {
+    ctx.indexDrop(state,new IndexDescriptor(label,propertyKey));
+    fail("Should have thrown exception.");
+  }
+ catch (  DropIndexFailureException e) {
+    assertThat(e.getCause(),instanceOf(IndexBelongsToConstraintException.class));
+  }
+  verify(innerWrite,never()).indexCreate(eq(state),anyInt(),anyInt());
+}

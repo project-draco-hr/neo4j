@@ -1,0 +1,31 @@
+{
+  try (Statement statement=ctxProvider.instance()){
+    try {
+      int labelId=statement.schemaWriteOperations().labelGetOrCreateForName(label.name());
+      int propertyKeyId=statement.schemaWriteOperations().propertyKeyGetOrCreateForName(propertyKey);
+      statement.schemaWriteOperations().indexCreate(labelId,propertyKeyId);
+      return new IndexDefinitionImpl(this,label,propertyKey,false);
+    }
+ catch (    AlreadyIndexedException e) {
+      throw new ConstraintViolationException(format("There already exists an index for label '%s' on property '%s'.",label.name(),propertyKey),e);
+    }
+catch (    AlreadyConstrainedException e) {
+      throw new ConstraintViolationException(format("Label '%s' and property '%s' have a unique constraint defined on them, so an index is " + "already created that matches this.",label.name(),propertyKey),e);
+    }
+catch (    AddIndexFailureException e) {
+      throw new ConstraintViolationException(e.getUserMessage(new StatementTokenNameLookup(statement.readOperations())),e);
+    }
+catch (    IllegalTokenNameException e) {
+      throw new IllegalArgumentException(e);
+    }
+catch (    TooManyLabelsException e) {
+      throw new IllegalStateException(e);
+    }
+catch (    InvalidTransactionTypeKernelException e) {
+      throw new ConstraintViolationException(e.getMessage(),e);
+    }
+catch (    ReadOnlyDatabaseKernelException e) {
+      throw new ReadOnlyDbException();
+    }
+  }
+ }

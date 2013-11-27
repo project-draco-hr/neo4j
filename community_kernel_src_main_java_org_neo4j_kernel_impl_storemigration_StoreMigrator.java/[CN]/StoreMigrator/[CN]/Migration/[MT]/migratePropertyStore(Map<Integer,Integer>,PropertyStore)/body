@@ -1,0 +1,18 @@
+{
+  long lastInUseId=-1;
+  for (  PropertyRecord propertyRecord : loop(legacyStore.getPropertyStoreReader().readPropertyStore())) {
+    for (    PropertyBlock block : propertyRecord.getPropertyBlocks()) {
+      int key=block.getKeyIndexId();
+      Integer translation=propertyKeyTranslation.get(key);
+      if (translation != null) {
+        block.setKeyIndexId(translation);
+      }
+    }
+    propertyStore.setHighId(propertyRecord.getId() + 1);
+    propertyStore.updateRecord(propertyRecord);
+    for (long id=lastInUseId + 1; id < propertyRecord.getId(); id++) {
+      propertyStore.freeId(id);
+    }
+    lastInUseId=propertyRecord.getId();
+  }
+}

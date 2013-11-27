@@ -1,4 +1,9 @@
 {
   Config tuningConfiguration=new Config(stringMap(),GraphDatabaseSettings.class,ConsistencyCheckSettings.class);
-  return new FullCheck(tuningConfiguration,ProgressMonitorFactory.NONE).execute(diffs,logger);
+  String storeDir=tuningConfiguration.get(GraphDatabaseSettings.store_dir).getAbsolutePath();
+  DefaultFileSystemAbstraction fileSystem=new DefaultFileSystemAbstraction();
+  LabelScanStore labelScanStore=new LuceneLabelScanStoreBuilder(storeDir,diffs.getRawNeoStore(),fileSystem,logger).build();
+  SchemaIndexProvider indexes=new LuceneSchemaIndexProvider(DirectoryFactory.PERSISTENT,tuningConfiguration);
+  DirectStoreAccess stores=new DirectStoreAccess(diffs,labelScanStore,indexes);
+  return new FullCheck(tuningConfiguration,ProgressMonitorFactory.NONE).execute(stores,logger);
 }

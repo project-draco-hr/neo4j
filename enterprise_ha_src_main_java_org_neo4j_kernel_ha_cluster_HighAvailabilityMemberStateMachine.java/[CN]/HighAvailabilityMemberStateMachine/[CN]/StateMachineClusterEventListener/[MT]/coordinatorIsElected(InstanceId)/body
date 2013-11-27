@@ -2,18 +2,22 @@
   try {
     HighAvailabilityMemberState oldState=state;
     InstanceId previousElected=context.getElectedMasterId();
-    state=state.masterIsElected(context,coordinatorId);
-    context.setElectedMasterId(coordinatorId);
-    final HighAvailabilityMemberChangeEvent event=new HighAvailabilityMemberChangeEvent(oldState,state,coordinatorId,null);
-    Listeners.notifyListeners(memberListeners,new Listeners.Notification<HighAvailabilityMemberListener>(){
-      @Override public void notify(      HighAvailabilityMemberListener listener){
-        listener.masterIsElected(event);
+{
+      state=state.masterIsElected(context,coordinatorId);
+      context.setElectedMasterId(coordinatorId);
+      final HighAvailabilityMemberChangeEvent event=new HighAvailabilityMemberChangeEvent(oldState,state,coordinatorId,null);
+      Listeners.notifyListeners(memberListeners,new Listeners.Notification<HighAvailabilityMemberListener>(){
+        @Override public void notify(        HighAvailabilityMemberListener listener){
+          listener.masterIsElected(event);
+        }
       }
-    }
 );
-    context.setAvailableHaMasterId(null);
-    accessGuard.setState(state);
-    logger.debug("Got masterIsElected(" + coordinatorId + "), changed "+ oldState+ " -> "+ state+ ". Previous elected master is "+ previousElected);
+      context.setAvailableHaMasterId(null);
+      if ((oldState == HighAvailabilityMemberState.MASTER || oldState == HighAvailabilityMemberState.SLAVE) && oldState != state) {
+        availabilityGuard.deny(HighAvailabilityMemberStateMachine.this);
+      }
+      logger.debug("Got masterIsElected(" + coordinatorId + "), changed "+ oldState+ " -> "+ state+ ". Previous elected master is "+ previousElected);
+    }
   }
  catch (  Throwable t) {
     throw new RuntimeException(t);

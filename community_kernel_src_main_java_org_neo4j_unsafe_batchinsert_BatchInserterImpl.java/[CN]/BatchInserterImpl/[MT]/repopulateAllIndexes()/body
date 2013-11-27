@@ -1,0 +1,40 @@
+{
+  final IndexRule[] rules=getIndexesNeedingPopulation();
+  final IndexPopulator[] populators=new IndexPopulator[rules.length];
+  IndexStoreView storeView=new NeoStoreIndexStoreView(neoStore);
+  final int[] labelIds=new int[rules.length];
+  final int[] propertyKeyIds=new int[rules.length];
+  for (int i=0; i < labelIds.length; i++) {
+    IndexRule rule=rules[i];
+    labelIds[i]=rule.getLabel();
+    propertyKeyIds[i]=rule.getPropertyKey();
+    populators[i]=schemaIndexProviders.apply(rule.getProviderDescriptor()).getPopulator(rule.getId(),new IndexConfiguration(rule.isConstraintIndex()));
+    populators[i].create();
+  }
+  Visitor<NodePropertyUpdate,IOException> propertyUpdateVisitor=new Visitor<NodePropertyUpdate,IOException>(){
+    @Override public boolean visit(    NodePropertyUpdate update) throws IOException {
+      int propertyKeyInQuestion=update.getPropertyKeyId();
+      for (int i=0; i < propertyKeyIds.length; i++) {
+        if (propertyKeyIds[i] == propertyKeyInQuestion) {
+          if (update.forLabel(labelIds[i])) {
+            try {
+              populators[i].add(update.getNodeId(),update.getValueAfter());
+            }
+ catch (            IndexEntryConflictException conflict) {
+              throw conflict.notAllowed(rules[i].getLabel(),rules[i].getPropertyKey());
+            }
+          }
+        }
+      }
+      return true;
+    }
+  }
+;
+  NodeLabelUpdateVisitor labelUpdateVisitor=new NodeLabelUpdateVisitor();
+  StoreScan<IOException> storeScan=storeView.visitNodes(labelIds,propertyKeyIds,propertyUpdateVisitor,labelUpdateVisitor);
+  storeScan.run();
+  for (  IndexPopulator populator : populators) {
+    populator.close(true);
+  }
+  labelUpdateVisitor.close();
+}

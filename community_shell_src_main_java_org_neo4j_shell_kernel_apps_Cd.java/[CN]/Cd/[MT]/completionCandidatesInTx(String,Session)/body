@@ -1,0 +1,35 @@
+{
+  String lastWord=lastWordOrQuoteOf(partOfLine,false);
+  if (lastWord.startsWith("-")) {
+    return super.completionCandidates(partOfLine,session);
+  }
+  NodeOrRelationship current;
+  try {
+    current=getCurrent(session);
+  }
+ catch (  ShellException e) {
+    return Collections.emptyList();
+  }
+  TreeSet<String> result=new TreeSet<>();
+  if (current.isNode()) {
+    Node node=current.asNode();
+    for (    Node otherNode : RelationshipToNodeIterable.wrap(node.getRelationships(),node)) {
+      long otherNodeId=otherNode.getId();
+      String title=findTitle(session,otherNode);
+      if (title != null) {
+        if (!result.contains(title)) {
+          maybeAddCompletionCandidate(result,title + "," + otherNodeId,lastWord);
+        }
+      }
+      maybeAddCompletionCandidate(result,"" + otherNodeId,lastWord);
+    }
+  }
+ else {
+    maybeAddCompletionCandidate(result,START_ALIAS,lastWord);
+    maybeAddCompletionCandidate(result,END_ALIAS,lastWord);
+    Relationship rel=current.asRelationship();
+    maybeAddCompletionCandidate(result,"" + rel.getStartNode().getId(),lastWord);
+    maybeAddCompletionCandidate(result,"" + rel.getEndNode().getId(),lastWord);
+  }
+  return new ArrayList<>(result);
+}

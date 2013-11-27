@@ -1,19 +1,14 @@
 {
-  Transaction tx=graphDb.beginTx();
   Node n=null;
-  try {
+  try (Transaction tx=graphDb.beginTx()){
     n=graphDb.createNode();
     n.setProperty("name","Nancy");
     tx.success();
   }
- catch (  Exception e) {
-    tx.failure();
+   assertThat(n.getId(),is(greaterThan(-1L)));
+  try (Transaction tx=graphDb.beginTx()){
+    Node foundNode=graphDb.getNodeById(n.getId());
+    assertThat(foundNode.getId(),is(n.getId()));
+    assertThat((String)foundNode.getProperty("name"),is("Nancy"));
   }
- finally {
-    tx.finish();
-  }
-  assertThat(n.getId(),is(greaterThan(0L)));
-  Node foundNode=graphDb.getNodeById(n.getId());
-  assertThat(foundNode.getId(),is(n.getId()));
-  assertThat((String)foundNode.getProperty("name"),is("Nancy"));
-}
+ }

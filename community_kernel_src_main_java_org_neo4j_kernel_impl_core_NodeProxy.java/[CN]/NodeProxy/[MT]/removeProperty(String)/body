@@ -1,3 +1,18 @@
 {
-  return nodeLookup.lookup(nodeId,LockType.WRITE).removeProperty(nodeLookup.getNodeManager(),this,key);
+  try (Statement statement=statementContextProvider.instance()){
+    int propertyKeyId=statement.tokenWriteOperations().propertyKeyGetOrCreateForName(key);
+    return statement.dataWriteOperations().nodeRemoveProperty(nodeId,propertyKeyId).value(null);
+  }
+ catch (  EntityNotFoundException e) {
+    throw new NotFoundException(e);
+  }
+catch (  IllegalTokenNameException e) {
+    throw new IllegalArgumentException(format("Invalid property key '%s'.",key),e);
+  }
+catch (  InvalidTransactionTypeKernelException e) {
+    throw new ConstraintViolationException(e.getMessage(),e);
+  }
+catch (  ReadOnlyDatabaseKernelException e) {
+    throw new ReadOnlyDbException();
+  }
 }

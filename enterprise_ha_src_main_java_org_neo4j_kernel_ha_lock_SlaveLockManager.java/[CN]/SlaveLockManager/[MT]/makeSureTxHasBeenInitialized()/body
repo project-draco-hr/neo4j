@@ -1,9 +1,6 @@
 {
-  int eventIdentifier=txManager.getEventIdentifier();
-  if (!txManager.getTransactionState().hasLocks()) {
-    if (!switchBlock.await(config.getStateSwitchTimeout())) {
-      throw new RuntimeException("Timed out waiting for database to switch state");
-    }
-    txHook.initializeTransaction(eventIdentifier);
+  if (!availabilityGuard.isAvailable(config.getAvailabilityTimeout())) {
+    throw new RuntimeException("Timed out waiting for database to allow operations to proceed. " + availabilityGuard.describeWhoIsBlocking());
   }
+  txHook.remotelyInitializeTransaction(txManager.getEventIdentifier(),txManager.getTransactionState());
 }

@@ -1,0 +1,20 @@
+{
+  if (isRunning()) {
+    throw new UnableToStartServerException("Already started");
+  }
+  server=new CommunityNeoServer(model.getServerConfigurator());
+  try {
+    server.start();
+  }
+ catch (  ServerStartupException e) {
+    server=null;
+    Set<Class> causes=extractCauseTypes(e);
+    if (causes.contains(StoreLockException.class)) {
+      throw new UnableToStartServerException("Unable to lock store. Are you running another Neo4j process against this database?");
+    }
+    if (causes.contains(BindException.class)) {
+      throw new UnableToStartServerException("Unable to bind to port. Are you running another Neo4j process on this computer?");
+    }
+    throw new UnableToStartServerException(e.getMessage());
+  }
+}

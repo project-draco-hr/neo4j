@@ -2,7 +2,7 @@
   readOnly=configuration.get(Configuration.read_only);
   backupSlave=configuration.get(Configuration.backup_slave);
   if (!fileSystemAbstraction.fileExists(storageFileName)) {
-    throw new IllegalStateException("No such store[" + storageFileName + "] for "+ fileSystemAbstraction);
+    throw new StoreNotFoundException("No such store[" + storageFileName + "] in "+ fileSystemAbstraction);
   }
   try {
     this.fileChannel=fileSystemAbstraction.open(storageFileName,readOnly ? "r" : "rw");
@@ -11,7 +11,7 @@
     throw new UnderlyingStorageException("Unable to open file " + storageFileName,e);
   }
   try {
-    if ((!readOnly || backupSlave)) {
+    if (!readOnly || backupSlave) {
       this.fileLock=fileSystemAbstraction.tryLock(storageFileName,fileChannel);
       if (fileLock == null) {
         throw new IllegalStateException("Unable to lock store [" + storageFileName + "], this is usually a result of some "+ "other Neo4j kernel running using the same store.");

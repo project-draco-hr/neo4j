@@ -1,0 +1,18 @@
+{
+  UniquenessConstraint constraint=new UniquenessConstraint(labelId,propertyKeyId);
+  try {
+    if (!state.txState().constraintDoUnRemove(constraint)) {
+      for (Iterator<UniquenessConstraint> it=storeLayer.constraintsGetForLabelAndPropertyKey(state,labelId,propertyKeyId); it.hasNext(); ) {
+        if (it.next().equals(labelId,propertyKeyId)) {
+          return constraint;
+        }
+      }
+      long indexId=constraintIndexCreator.createUniquenessConstraintIndex(state,this,labelId,propertyKeyId);
+      state.txState().constraintDoAdd(constraint,indexId);
+    }
+    return constraint;
+  }
+ catch (  TransactionalException|ConstraintVerificationFailedKernelException|DropIndexFailureException e) {
+    throw new CreateConstraintFailureException(constraint,e);
+  }
+}

@@ -2,9 +2,9 @@
   String filename=new File(target.graphDbDir(true),"dirty").getAbsolutePath();
   RandomAccessFile file=resources.add(new RandomAccessFile(filename,"rw"));
   final int blockSize=8;
-  final PersistenceWindowPool pool=new PersistenceWindowPool(new File("test.store"),blockSize,file.getChannel(),0,false,false,StringLogger.DEV_NULL);
+  final PersistenceWindowPool pool=new PersistenceWindowPool(new File("test.store"),blockSize,file.getChannel(),0,false,false,new ConcurrentHashMap<Long,PersistenceRow>(),BrickElementFactory.DEFAULT,StringLogger.DEV_NULL);
   final PersistenceWindow t1Row=pool.acquire(0,OperationType.WRITE);
-  OtherThreadExecutor<Void> otherThread=new OtherThreadExecutor<Void>("other thread",null);
+  OtherThreadExecutor<Void> otherThread=new OtherThreadExecutor<>("other thread",null);
   Future<Throwable> future=otherThread.executeDontWait(new WorkerCommand<Void,Throwable>(){
     @Override public Throwable doWork(    Void state){
       PersistenceWindow t2Row=pool.acquire(0,OperationType.READ);
@@ -30,11 +30,13 @@
     pool.release(t1Row);
   }
   Throwable failure=future.get();
-  if (failure != null)   throw launderedException(failure);
+  if (failure != null) {
+    throw launderedException(failure);
+  }
   PersistenceWindow row=pool.acquire(0,OperationType.READ);
   assertFalse(t1Row == row);
   assertBufferContents(blockSize,row);
   pool.close();
-  otherThread.shutdown();
+  otherThread.close();
   file.close();
 }

@@ -2,8 +2,15 @@
   assertMember(db);
   ClusterClient clusterClient=db.getDependencyResolver().resolveDependency(ClusterClient.class);
   LifeSupport clusterClientLife=(LifeSupport)accessible(clusterClient.getClass().getDeclaredField("life")).get(clusterClient);
-  NetworkInstance network=instance(NetworkInstance.class,clusterClientLife.getLifecycleInstances());
-  network.stop();
-  int serverId=db.getDependencyResolver().resolveDependency(Config.class).get(ClusterSettings.server_id);
-  return new StartNetworkAgainKit(db,network);
+  NetworkReceiver receiver=instance(NetworkReceiver.class,clusterClientLife.getLifecycleInstances());
+  receiver.stop();
+  ExecutorLifecycleAdapter statemachineExecutor=instance(ExecutorLifecycleAdapter.class,clusterClientLife.getLifecycleInstances());
+  statemachineExecutor.stop();
+  NetworkSender sender=instance(NetworkSender.class,clusterClientLife.getLifecycleInstances());
+  sender.stop();
+  List<Lifecycle> stoppedServices=new ArrayList<>();
+  stoppedServices.add(sender);
+  stoppedServices.add(statemachineExecutor);
+  stoppedServices.add(receiver);
+  return new StartNetworkAgainKit(db,stoppedServices);
 }

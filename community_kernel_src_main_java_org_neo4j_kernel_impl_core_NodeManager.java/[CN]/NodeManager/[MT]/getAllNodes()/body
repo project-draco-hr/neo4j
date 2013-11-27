@@ -31,22 +31,22 @@
   if (!txState.hasChanges()) {
     return committedNodes;
   }
-  final Set<Long> createdNodes=asSet(getCreatedNodes().iterator(DirectionWrapper.OUTGOING));
+  final Set<Long> createdNodes=new HashSet<>(txState.getCreatedNodes());
   if (!createdNodes.isEmpty()) {
-    committedNodes=new FilteringIterator<Node>(committedNodes,new Predicate<Node>(){
+    committedNodes=new FilteringIterator<>(committedNodes,new Predicate<Node>(){
       @Override public boolean accept(      Node node){
         return !createdNodes.contains(node.getId());
       }
     }
 );
   }
-  Iterator<Node> filteredRemovedNodes=new FilteringIterator<Node>(committedNodes,new Predicate<Node>(){
+  Iterator<Node> filteredRemovedNodes=new FilteringIterator<>(committedNodes,new Predicate<Node>(){
     @Override public boolean accept(    Node node){
-      return !txState.isDeleted(node);
+      return !txState.nodeIsDeleted(node.getId());
     }
   }
 );
-  return new CombiningIterator<Node>(asList(filteredRemovedNodes,new IteratorWrapper<Node,Long>(createdNodes.iterator()){
+  return new CombiningIterator<>(asList(filteredRemovedNodes,new IteratorWrapper<Node,Long>(createdNodes.iterator()){
     @Override protected Node underlyingObjectToObject(    Long id){
       return getNodeById(id);
     }

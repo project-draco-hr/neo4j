@@ -1,17 +1,19 @@
 {
   String storeDir=args[0];
   boolean setGraphProperty=args.length > 1 ? Boolean.parseBoolean(args[1]) : false;
-  GraphDatabaseService db=new EmbeddedGraphDatabase(storeDir){
+  GraphDatabaseService db=new EmbeddedGraphDatabase(storeDir,new HashMap<String,String>(),Iterables.<KernelExtensionFactory<?>,KernelExtensionFactory>cast(Service.load(KernelExtensionFactory.class)),Service.load(CacheProvider.class),Service.load(TransactionInterceptorProvider.class)){
     @Override protected Logging createLogging(){
       return new DevNullLoggingService();
     }
   }
 ;
-  Transaction tx=db.beginTx();
-  Node node=db.createNode();
-  node.setProperty("name","Something");
-  if (setGraphProperty)   ((GraphDatabaseAPI)db).getNodeManager().getGraphProperties().setProperty("prop","Some value");
-  tx.success();
-  tx.finish();
-  System.exit(0);
+  try (Transaction tx=db.beginTx()){
+    Node node=db.createNode();
+    node.setProperty("name","Something");
+    if (setGraphProperty) {
+      ((GraphDatabaseAPI)db).getDependencyResolver().resolveDependency(NodeManager.class).getGraphProperties().setProperty("prop","Some value");
+    }
+    tx.success();
+  }
+   System.exit(0);
 }

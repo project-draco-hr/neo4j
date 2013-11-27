@@ -1,0 +1,18 @@
+{
+  Set<Long> labels=NodeLabelReader.getListOfLabels(record,records,engine);
+  for (  IndexRule indexRule : indexes.rules()) {
+    if (!labels.contains((long)indexRule.getLabel())) {
+      continue;
+    }
+    List<PropertyBlock> properties=propertyReader.propertyBlocks(record);
+    PropertyBlock property=propertyWithKey(properties,indexRule.getPropertyKey());
+    if (property == null) {
+      continue;
+    }
+    try (IndexReader reader=indexes.accessorFor(indexRule).newReader()){
+      Object propertyValue=propertyReader.propertyValue(property).value();
+      PrimitiveLongIterator indexedNodeIds=reader.lookup(propertyValue);
+      verifyNodeCorrectlyIndexed(record,engine,indexRule,propertyValue,indexedNodeIds);
+    }
+   }
+}

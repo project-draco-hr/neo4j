@@ -1,0 +1,19 @@
+{
+  try {
+    transactor.execute(new Transactor.Work<Void,KernelException>(){
+      @Override public Void perform(      Statement state) throws KernelException {
+        for (Iterator<IndexDescriptor> indexes=state.readOperations().uniqueIndexesGetAll(); indexes.hasNext(); ) {
+          IndexDescriptor index=indexes.next();
+          if (state.readOperations().indexGetOwningUniquenessConstraintId(index) == null) {
+            state.schemaWriteOperations().uniqueIndexDrop(index);
+          }
+        }
+        return null;
+      }
+    }
+);
+  }
+ catch (  KernelException|TransactionalException e) {
+    log.error("Failed to execute orphan index checking transaction.",e);
+  }
+}

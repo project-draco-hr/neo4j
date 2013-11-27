@@ -2,7 +2,7 @@
   executor=Executors.newCachedThreadPool(new NamedThreadFactory(getClass().getSimpleName() + "@" + address));
   bootstrap=new ClientBootstrap(new NioClientSocketChannelFactory(executor,executor));
   bootstrap.setPipelineFactory(this);
-  channelPool=new ResourcePool<Triplet<Channel,ChannelBuffer,ByteBuffer>>(maxUnusedChannels,new ResourcePool.CheckStrategy.TimeoutCheckStrategy(ResourcePool.DEFAULT_CHECK_INTERVAL,new RealClock()),new LoggingResourcePoolMonitor()){
+  channelPool=new ResourcePool<Triplet<Channel,ChannelBuffer,ByteBuffer>>(maxUnusedChannels,new ResourcePool.CheckStrategy.TimeoutCheckStrategy(ResourcePool.DEFAULT_CHECK_INTERVAL,SYSTEM_CLOCK),new LoggingResourcePoolMonitor(msgLog)){
     @Override protected Triplet<Channel,ChannelBuffer,ByteBuffer> create(){
       ChannelFuture channelFuture=bootstrap.connect(address);
       channelFuture.awaitUninterruptibly(5,TimeUnit.SECONDS);
@@ -23,13 +23,14 @@
     @Override protected void dispose(    Triplet<Channel,ChannelBuffer,ByteBuffer> resource){
       Channel channel=resource.first();
       if (channel.isConnected()) {
+        msgLog.debug("Closing channel: " + channel + ". Channel pool size is now "+ channelPool.currentSize());
         channel.close();
       }
     }
   }
 ;
   resourcePoolReleaser=new ResourceReleaser(){
-    public void release(){
+    @Override public void release(){
       channelPool.release();
     }
   }

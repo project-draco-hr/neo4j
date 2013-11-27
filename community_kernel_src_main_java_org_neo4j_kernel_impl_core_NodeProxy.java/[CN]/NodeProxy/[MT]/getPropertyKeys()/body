@@ -1,3 +1,16 @@
 {
-  return nodeLookup.lookup(nodeId).getPropertyKeys(nodeLookup.getNodeManager());
+  try (Statement statement=statementContextProvider.instance()){
+    List<String> keys=new ArrayList<>();
+    Iterator<DefinedProperty> properties=statement.readOperations().nodeGetAllProperties(getId());
+    while (properties.hasNext()) {
+      keys.add(statement.readOperations().propertyKeyGetName(properties.next().propertyKeyId()));
+    }
+    return keys;
+  }
+ catch (  EntityNotFoundException e) {
+    throw new NotFoundException("Node not found",e);
+  }
+catch (  PropertyKeyIdNotFoundKernelException e) {
+    throw new ThisShouldNotHappenError("Jake","Property key retrieved through kernel API should exist.",e);
+  }
 }

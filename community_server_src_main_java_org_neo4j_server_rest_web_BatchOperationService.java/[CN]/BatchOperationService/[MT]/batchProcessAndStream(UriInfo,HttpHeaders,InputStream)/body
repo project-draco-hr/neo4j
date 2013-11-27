@@ -1,29 +1,27 @@
 {
   try {
     final StreamingOutput stream=new StreamingOutput(){
-      public void write(      final OutputStream output) throws IOException, WebApplicationException {
-        Transaction tx=database.getGraph().beginTx();
+      @Override public void write(      final OutputStream output) throws IOException, WebApplicationException {
         try {
           final ServletOutputStream servletOutputStream=new ServletOutputStream(){
-            public void write(            int i) throws IOException {
+            @Override public void write(            int i) throws IOException {
               output.write(i);
             }
           }
 ;
           new StreamingBatchOperations(webServer).readAndExecuteOperations(uriInfo,httpHeaders,body,servletOutputStream);
-          tx.success();
+          representationWriteHandler.onRepresentationWritten();
         }
  catch (        Exception e) {
-          Log.warn("Error executing batch request ",e);
-          tx.failure();
+          LOGGER.warn("Error executing batch request ",e);
         }
  finally {
-          tx.finish();
+          representationWriteHandler.onRepresentationFinal();
         }
       }
     }
 ;
-    return Response.ok(stream).header(HttpHeaders.CONTENT_ENCODING,"UTF-8").type(MediaType.APPLICATION_JSON).build();
+    return Response.ok(stream).type(HttpHeaderUtils.mediaTypeWithCharsetUtf8(MediaType.APPLICATION_JSON_TYPE)).build();
   }
  catch (  Exception e) {
     return output.serverError(e);

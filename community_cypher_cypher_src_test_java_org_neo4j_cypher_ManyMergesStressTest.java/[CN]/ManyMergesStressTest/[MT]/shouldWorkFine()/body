@@ -1,0 +1,26 @@
+{
+  GraphDatabaseService db=dbRule.getGraphDatabaseService();
+  Label person=DynamicLabel.label("Person");
+  try (Transaction tx=db.beginTx()){
+    db.schema().indexFor(person).on("id").create();
+    tx.success();
+  }
+   try (Transaction tx=db.beginTx()){
+    db.schema().indexFor(person).on("name").create();
+    tx.success();
+  }
+   try (Transaction tx=db.beginTx()){
+    db.schema().awaitIndexesOnline(1,TimeUnit.MINUTES);
+    tx.success();
+  }
+   org.neo4j.cypher.javacompat.ExecutionEngine engine=new org.neo4j.cypher.javacompat.ExecutionEngine(db);
+  for (int count=0; count < TRIES; count++) {
+    Pair<String,String> stringPair=getRandomName();
+    String ident=stringPair.first();
+    String name=stringPair.other();
+    String id=Long.toString(Math.abs(random.nextLong()));
+    String query=format("MERGE (%s:Person {id: %s}) ON CREATE %s SET %s.name = \"%s\";",ident,id,ident,ident,name);
+    ExecutionResult result=engine.execute(query);
+    result.iterator().close();
+  }
+}

@@ -1,0 +1,15 @@
+{
+  assertInTransaction();
+  long millisLeft=TimeUnit.MILLISECONDS.convert(duration,unit);
+  Collection<IndexDefinition> onlineIndexes=new ArrayList<>();
+  for (Iterator<IndexDefinition> iter=getIndexes().iterator(); iter.hasNext(); ) {
+    if (millisLeft < 0) {
+      throw new IllegalStateException("Expected all indexes to come online within a reasonable time." + "Indexes brought online: " + onlineIndexes + ". Indexes not guaranteed to be online: "+ asCollection(iter));
+    }
+    IndexDefinition index=iter.next();
+    long millisBefore=System.currentTimeMillis();
+    awaitIndexOnline(index,millisLeft,TimeUnit.MILLISECONDS);
+    millisLeft-=System.currentTimeMillis() - millisBefore;
+    onlineIndexes.add(index);
+  }
+}

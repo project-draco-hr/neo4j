@@ -1,5 +1,11 @@
 {
-  final Node root=graphdb.getReferenceNode(), original=tx(new Callable<Node>(){
+  final Node root=tx(new Callable<Node>(){
+    @Override public Node call() throws Exception {
+      return graphdb.createNode();
+    }
+  }
+);
+  final Node original=tx(new Callable<Node>(){
     @Override public Node call() throws Exception {
       Node node=graphdb.createNode();
       node.setProperty("key","original");
@@ -52,6 +58,6 @@
   waitChainSetUp.countDown();
   await(done);
   clearCaches();
-  assertEquals("root should have a key property","root",root.getProperty("key"));
+  assertThat(root,inTx(graphdb,hasProperty("key")));
   assertTrue("invalid precondition",precondition.get());
 }

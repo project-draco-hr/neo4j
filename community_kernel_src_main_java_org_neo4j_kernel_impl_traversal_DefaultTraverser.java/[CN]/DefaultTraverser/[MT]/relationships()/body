@@ -1,0 +1,26 @@
+{
+  return new ResourcePathIterableWrapper<Relationship>(this){
+    @Override public ResourceIterator<Relationship> iterator(){
+      final ResourceIterator<Path> pathIterator=pathIterator();
+      return new PrefetchingResourceIterator<Relationship>(){
+        @Override public void close(){
+          pathIterator.close();
+        }
+        @Override protected Relationship fetchNextOrNull(){
+          while (pathIterator.hasNext()) {
+            Path path=pathIterator.next();
+            if (path.length() > 0) {
+              return path.lastRelationship();
+            }
+          }
+          return null;
+        }
+      }
+;
+    }
+    @Override protected Relationship convert(    Path path){
+      return path.lastRelationship();
+    }
+  }
+;
+}

@@ -1,0 +1,20 @@
+{
+  TransitionalPeriodTransactionMessContainer kernel=mockKernel();
+  ExecutionResultSerializer output=mock(ExecutionResultSerializer.class);
+  TransactionRegistry registry=mock(TransactionRegistry.class);
+  when(registry.begin()).thenReturn(1337l);
+  ExecutionEngine engine=mock(ExecutionEngine.class);
+  ExecutionResult executionResult=mock(ExecutionResult.class);
+  when(engine.execute("query",map())).thenReturn(executionResult);
+  TransactionHandle handle=new TransactionHandle(kernel,engine,registry,uriScheme,StringLogger.DEV_NULL);
+  verifyZeroInteractions(kernel);
+  handle.execute(statements(new Statement("query",map(),false,(ResultDataContent[])null)),output);
+  verify(kernel).newTransaction();
+  InOrder outputOrder=inOrder(output);
+  outputOrder.verify(output).transactionCommitUri(uriScheme.txCommitUri(1337));
+  outputOrder.verify(output).statementResult(executionResult,false,(ResultDataContent[])null);
+  outputOrder.verify(output).transactionStatus(anyLong());
+  outputOrder.verify(output).errors(argThat(hasNoErrors()));
+  outputOrder.verify(output).finish();
+  verifyNoMoreInteractions(output);
+}

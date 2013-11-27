@@ -9,20 +9,20 @@
   tx.success();
   tx.finish();
   db.shutdown();
-  removeLastNeoStoreRecord(fileSystem,storeDir);
+  truncateNeoStoreTo5Records(fileSystem,storeDir);
   db=(GraphDatabaseAPI)factory.newImpermanentDatabase(storeDir);
-  PropertyContainer properties=db.getNodeManager().getGraphProperties();
-  assertFalse(properties.getPropertyKeys().iterator().hasNext());
+  PropertyContainer properties=nodeManager(db).getGraphProperties();
+  assertThat(getPropertyKeys(db,properties),isEmpty());
   tx=db.beginTx();
   properties.setProperty("a property","a value");
   tx.success();
   tx.finish();
-  db.getNodeManager().clearCache();
-  assertEquals("a value",properties.getProperty("a property"));
+  nodeManager(db).clearCache();
+  assertThat(properties,inTx(db,hasProperty("a property").withValue("a value")));
   db.shutdown();
   db=(GraphDatabaseAPI)factory.newImpermanentDatabase(storeDir);
-  properties=db.getNodeManager().getGraphProperties();
-  assertEquals("a value",properties.getProperty("a property"));
+  properties=nodeManager(db).getGraphProperties();
+  assertThat(properties,inTx(db,hasProperty("a property").withValue("a value")));
   db.shutdown();
   fileSystem.shutdown();
 }

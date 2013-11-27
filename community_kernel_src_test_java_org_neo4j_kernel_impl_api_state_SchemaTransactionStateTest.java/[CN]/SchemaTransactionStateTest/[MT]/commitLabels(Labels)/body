@@ -1,0 +1,18 @@
+{
+  Map<Integer,Collection<Long>> allLabels=new HashMap<>();
+  for (  Labels nodeLabels : labels) {
+    when(store.nodeGetLabels(state,nodeLabels.nodeId)).then(asAnswer(Arrays.<Integer>asList(nodeLabels.labelIds)));
+    for (    int label : nodeLabels.labelIds) {
+      when(store.nodeHasLabel(state,nodeLabels.nodeId,label)).thenReturn(true);
+      Collection<Long> nodes=allLabels.get(label);
+      if (nodes == null) {
+        nodes=new ArrayList<>();
+        allLabels.put(label,nodes);
+      }
+      nodes.add(nodeLabels.nodeId);
+    }
+  }
+  for (  Map.Entry<Integer,Collection<Long>> entry : allLabels.entrySet()) {
+    when(store.nodesGetForLabel(state,entry.getKey())).then(asAnswer(entry.getValue()));
+  }
+}

@@ -1,10 +1,17 @@
 {
   createGraph("a TO b","b TO c","c TO d","a TO e","e TO f","f TO c");
-  PathEvaluator<Integer> evaluator=new PathEvaluator.Adapter<Integer>(){
-    @Override public Evaluation evaluate(    Path path,    BranchState<Integer> state){
-      return ofIncludes(path.endNode().getProperty("name").equals("c") && state.getState() == 3);
+  Transaction tx=beginTx();
+  try {
+    PathEvaluator<Integer> evaluator=new PathEvaluator.Adapter<Integer>(){
+      @Override public Evaluation evaluate(      Path path,      BranchState<Integer> state){
+        return ofIncludes(path.endNode().getProperty("name").equals("c") && state.getState() == 3);
+      }
     }
-  }
 ;
-  expectPaths(traversal(NODE_PATH).expand(new RelationshipWeightExpander(),new InitialBranchState.State<Integer>(1,1)).evaluator(evaluator).traverse(getNodeWithName("a")),"a,b,c");
+    expectPaths(traversal(NODE_PATH).expand(new RelationshipWeightExpander(),new InitialBranchState.State<Integer>(1,1)).evaluator(evaluator).traverse(getNodeWithName("a")),"a,b,c");
+    tx.success();
+  }
+  finally {
+    tx.finish();
+  }
 }

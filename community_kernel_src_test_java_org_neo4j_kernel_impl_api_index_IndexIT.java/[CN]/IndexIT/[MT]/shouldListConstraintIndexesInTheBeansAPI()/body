@@ -1,0 +1,24 @@
+{
+{
+    SchemaWriteOperations statement=schemaWriteOperationsInNewTransaction();
+    statement.uniquenessConstraintCreate(statement.labelGetOrCreateForName("Label1"),statement.propertyKeyGetOrCreateForName("property1"));
+    commit();
+  }
+{
+    schemaWriteOperationsInNewTransaction();
+    Set<IndexDefinition> indexes=asSet(db.schema().getIndexes());
+    assertEquals(1,indexes.size());
+    IndexDefinition index=indexes.iterator().next();
+    assertEquals("Label1",index.getLabel().name());
+    assertEquals(asSet("property1"),asSet(index.getPropertyKeys()));
+    assertTrue("index should be a constraint index",index.isConstraintIndex());
+    try {
+      index.drop();
+      fail("expected exception");
+    }
+ catch (    IllegalStateException e) {
+      assertEquals("Constraint indexes cannot be dropped directly, " + "instead drop the owning uniqueness constraint.",e.getMessage());
+    }
+    commit();
+  }
+}

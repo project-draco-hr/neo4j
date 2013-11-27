@@ -1,0 +1,27 @@
+{
+  try (Statement statement=statementContextProvider.instance()){
+    long nodeId=statement.dataWriteOperations().nodeCreate();
+    for (    Label label : labels) {
+      int labelId=statement.tokenWriteOperations().labelGetOrCreateForName(label.name());
+      try {
+        statement.dataWriteOperations().nodeAddLabel(nodeId,labelId);
+      }
+ catch (      EntityNotFoundException e) {
+        throw new NotFoundException("No node with id " + nodeId + " found.",e);
+      }
+    }
+    return nodeManager.newNodeProxyById(nodeId);
+  }
+ catch (  ConstraintValidationKernelException e) {
+    throw new ConstraintViolationException("Unable to add label.",e);
+  }
+catch (  SchemaKernelException e) {
+    throw new IllegalArgumentException(e);
+  }
+catch (  InvalidTransactionTypeKernelException e) {
+    throw new ConstraintViolationException(e.getMessage(),e);
+  }
+catch (  ReadOnlyDatabaseKernelException e) {
+    throw new ReadOnlyDbException();
+  }
+}

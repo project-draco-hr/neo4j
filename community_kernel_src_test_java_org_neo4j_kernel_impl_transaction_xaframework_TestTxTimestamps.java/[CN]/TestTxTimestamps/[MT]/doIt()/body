@@ -10,15 +10,15 @@
     tx.finish();
     expectedCommitTimestamps[i]=System.currentTimeMillis();
   }
-  db.getXaDataSourceManager().getNeoStoreDataSource().rotateLogicalLog();
+  db.getDependencyResolver().resolveDependency(XaDataSourceManager.class).getNeoStoreDataSource().rotateLogicalLog();
   ByteBuffer buffer=ByteBuffer.allocate(1024 * 500);
   FileChannel channel=fileSystem.open(new File(db.getStoreDir(),NeoStoreXaDataSource.LOGICAL_LOG_DEFAULT_NAME + ".v0"),"r");
   try {
     XaCommandFactory commandFactory=new CommandFactory();
     LogIoUtils.readLogHeader(buffer,channel,true);
-    LogEntry entry=null;
     int foundTxCount=0;
-    while ((entry=LogIoUtils.readEntry(buffer,channel,commandFactory)) != null) {
+    skipFirstTransaction(buffer,channel,commandFactory);
+    for (LogEntry entry; (entry=LogIoUtils.readEntry(buffer,channel,commandFactory)) != null; ) {
       if (entry instanceof LogEntry.Start) {
         long diff=((LogEntry.Start)entry).getTimeWritten() - expectedStartTimestamps[foundTxCount];
         long exp=expectedCommitTimestamps[foundTxCount] - expectedStartTimestamps[foundTxCount];

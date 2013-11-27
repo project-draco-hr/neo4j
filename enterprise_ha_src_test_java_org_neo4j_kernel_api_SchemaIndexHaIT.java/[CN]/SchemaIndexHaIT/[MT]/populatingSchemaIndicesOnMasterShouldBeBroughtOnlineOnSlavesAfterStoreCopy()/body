@@ -1,0 +1,32 @@
+{
+  ControlledGraphDatabaseFactory dbFactory=new ControlledGraphDatabaseFactory(IS_MASTER);
+  ManagedCluster cluster=clusterRule.startCluster(dbFactory);
+  try {
+    cluster.await(allSeesAllAsAvailable());
+    HighlyAvailableGraphDatabase slave=cluster.getAnySlave();
+    ClusterManager.RepairKit slaveDown=bringSlaveOfflineAndRemoveStoreFiles(cluster,slave);
+    HighlyAvailableGraphDatabase master=cluster.getMaster();
+    Map<Object,Node> data=createSomeData(master);
+    createIndex(master);
+    dbFactory.awaitPopulationStarted(master);
+    slave=slaveDown.repair();
+    cluster.await(allSeesAllAsAvailable(),180);
+    cluster.sync();
+    dbFactory.triggerFinish(master);
+    IndexDefinition index;
+    try (Transaction tx=master.beginTx()){
+      index=single(master.schema().getIndexes());
+      awaitIndexOnline(index,master,data);
+      tx.success();
+    }
+     try (Transaction tx=slave.beginTx()){
+      awaitIndexOnline(index,slave,data);
+      tx.success();
+    }
+   }
+  finally {
+    for (    HighlyAvailableGraphDatabase db : cluster.getAllMembers()) {
+      dbFactory.triggerFinish(db);
+    }
+  }
+}

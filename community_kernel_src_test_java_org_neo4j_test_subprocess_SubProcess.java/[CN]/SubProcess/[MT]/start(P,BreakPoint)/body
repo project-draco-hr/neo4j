@@ -1,6 +1,8 @@
 {
   DebuggerConnector debugger=null;
-  if (breakpoints != null && breakpoints.length != 0)   debugger=new DebuggerConnector(breakpoints);
+  if (breakpoints != null && breakpoints.length != 0) {
+    debugger=new DebuggerConnector(breakpoints);
+  }
   DispatcherTrapImpl callback;
   try {
     callback=new DispatcherTrapImpl(this,parameter);
@@ -11,23 +13,38 @@
   Process process;
   String pid;
   DebugDispatch debugDispatch=null;
+  Dispatcher dispatcher;
+  try {
 synchronized (debugger != null ? DebuggerConnector.class : new Object()) {
-    if (debugger != null) {
-      process=start("java","-Xmx1G",debugger.listen(),"-cp",classPath(System.getProperty("java.class.path")),SubProcess.class.getName(),serialize(callback));
-    }
+      if (debugger != null) {
+        process=start("java","-Xmx1G",debugger.listen(),"-cp",classPath(System.getProperty("java.class.path")),SubProcess.class.getName(),serialize(callback));
+      }
  else {
-      process=start("java","-Xmx1G","-cp",classPath(System.getProperty("java.class.path")),SubProcess.class.getName(),serialize(callback));
+        process=start("java","-Xmx1G","-cp",classPath(System.getProperty("java.class.path")),SubProcess.class.getName(),serialize(callback));
+      }
+      pid=getPid(process);
+      pipe("[" + toString() + ":"+ pid+ "] ",process.getErrorStream(),errorStreamTarget());
+      pipe("[" + toString() + ":"+ pid+ "] ",process.getInputStream(),inputStreamTarget());
+      if (debugger != null) {
+        debugDispatch=debugger.connect(toString() + ":" + pid);
+      }
     }
-    pid=getPid(process);
-    pipe("[" + toString() + ":"+ pid+ "] ",process.getErrorStream(),errorStreamTarget());
-    pipe("[" + toString() + ":"+ pid+ "] ",process.getInputStream(),inputStreamTarget());
-    if (debugger != null) {
-      debugDispatch=debugger.connect(toString() + ":" + pid);
+    dispatcher=callback.get(process);
+  }
+  finally {
+    try {
+      UnicastRemoteObject.unexportObject(callback,true);
+    }
+ catch (    RemoteException e) {
+      e.printStackTrace();
     }
   }
-  Dispatcher dispatcher=callback.get(process);
-  if (dispatcher == null)   throw new IllegalStateException("failed to start sub process");
+  if (dispatcher == null) {
+    throw new IllegalStateException("failed to start sub process");
+  }
   Handler handler=new Handler(t,dispatcher,process,"<" + toString() + ":"+ pid+ ">",debugDispatch);
-  if (debugDispatch != null)   debugDispatch.handler=handler;
+  if (debugDispatch != null) {
+    debugDispatch.handler=handler;
+  }
   return t.cast(Proxy.newProxyInstance(t.getClassLoader(),new Class[]{t},live(handler)));
 }

@@ -1,18 +1,19 @@
 {
-  File root=TargetDirectory.forTest(getClass()).directory("makeSureUpdatePullerGetsGoingAfterMasterSwitch");
+  File root=TargetDirectory.forTest(getClass()).directory("makeSureUpdatePullerGetsGoingAfterMasterSwitch",true);
   ClusterManager clusterManager=new ClusterManager(clusterOfSize(3),root,MapUtil.stringMap(HaSettings.pull_interval.name(),PULL_INTERVAL + "ms"));
   clusterManager.start();
   cluster=clusterManager.getDefaultCluster();
+  long commonNodeId=createNodeOnMaster();
   HighlyAvailableGraphDatabase master=cluster.getMaster();
-  setProperty(master,1);
-  awaitPropagation(1,cluster);
+  setProperty(master,commonNodeId,1);
+  awaitPropagation(1,commonNodeId,cluster);
   cluster.await(masterSeesSlavesAsAvailable(2));
   ClusterManager.RepairKit masterShutdownRK=cluster.shutdown(master);
   cluster.await(masterAvailable());
   cluster.await(masterSeesSlavesAsAvailable(1));
-  setProperty(cluster.getMaster(),2);
+  setProperty(cluster.getMaster(),commonNodeId,2);
   masterShutdownRK.repair();
   cluster.await(masterAvailable());
   cluster.await(masterSeesSlavesAsAvailable(2));
-  awaitPropagation(2,cluster);
+  awaitPropagation(2,commonNodeId,cluster);
 }

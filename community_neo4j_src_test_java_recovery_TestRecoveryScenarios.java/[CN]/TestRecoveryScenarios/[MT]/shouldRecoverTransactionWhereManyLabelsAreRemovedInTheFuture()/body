@@ -1,0 +1,23 @@
+{
+  createIndex(label,"key");
+  Label[] labels=new Label[16];
+  for (int i=0; i < labels.length; i++) {
+    labels[i]=DynamicLabel.label("Label" + Integer.toHexString(i));
+  }
+  Node node;
+  try (Transaction tx=db.beginTx()){
+    node=db.createNode(labels);
+    node.addLabel(label);
+    tx.success();
+  }
+   rotateLog();
+  InMemoryIndexProvider outdatedIndexProvider=indexProvider.snapshot();
+  setProperty(node,"key","value");
+  removeLabels(node,labels);
+  flushAll();
+  crashAndRestart(outdatedIndexProvider);
+  try (Transaction tx=db.beginTx()){
+    assertEquals(node,single(db.findNodesByLabelAndProperty(label,"key","value")));
+    tx.success();
+  }
+ }

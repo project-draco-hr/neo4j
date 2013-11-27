@@ -3,10 +3,8 @@
   if (tx == null) {
     throw logAndReturn("TM error tx commit",new IllegalStateException("Not in transaction"));
   }
-  boolean hasAnyLocks=false;
   try {
-    assertTmOk("tx rollback");
-    hasAnyLocks=tx.hasAnyLocks();
+    assertTmOk();
     if (tx.getStatus() == Status.STATUS_ACTIVE || tx.getStatus() == Status.STATUS_MARKED_ROLLBACK || tx.getStatus() == Status.STATUS_PREPARING) {
       tx.setStatus(Status.STATUS_MARKED_ROLLBACK);
       tx.doBeforeCompletion();
@@ -38,8 +36,7 @@
   }
   finally {
     txThreadMap.remove();
-    if (hasAnyLocks) {
-      tx.finish(false);
-    }
+    tx.finish(false);
   }
+  monitor.txRolledBack(new XidImpl(tx.getGlobalId(),new byte[0]));
 }

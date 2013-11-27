@@ -1,0 +1,88 @@
+{
+  System.out.println("Starting database ...");
+  GraphDatabaseService graphDb=new GraphDatabaseFactory().newEmbeddedDatabase(DB_PATH);
+{
+    IndexDefinition indexDefinition;
+    try (Transaction tx=graphDb.beginTx()){
+      Schema schema=graphDb.schema();
+      indexDefinition=schema.indexFor(DynamicLabel.label("User")).on("username").create();
+      tx.success();
+    }
+     try (Transaction tx=graphDb.beginTx()){
+      Schema schema=graphDb.schema();
+      schema.awaitIndexOnline(indexDefinition,10,TimeUnit.SECONDS);
+    }
+   }
+{
+    try (Transaction tx=graphDb.beginTx()){
+      Label label=DynamicLabel.label("User");
+      for (int id=0; id < 100; id++) {
+        Node userNode=graphDb.createNode(label);
+        userNode.setProperty("username","user" + id + "@neo4j.org");
+      }
+      System.out.println("Users created");
+      tx.success();
+    }
+   }
+{
+    Label label=DynamicLabel.label("User");
+    int idToFind=45;
+    String nameToFind="user" + idToFind + "@neo4j.org";
+    try (Transaction tx=graphDb.beginTx()){
+      try (ResourceIterator<Node> users=graphDb.findNodesByLabelAndProperty(label,"username",nameToFind).iterator()){
+        ArrayList<Node> userNodes=new ArrayList<>();
+        while (users.hasNext()) {
+          userNodes.add(users.next());
+        }
+        for (        Node node : userNodes) {
+          System.out.println("The username of user " + idToFind + " is "+ node.getProperty("username"));
+        }
+      }
+     }
+   }
+{
+    Label label=DynamicLabel.label("User");
+    int idToFind=45;
+    String nameToFind="user" + idToFind + "@neo4j.org";
+    try (Transaction tx=graphDb.beginTx();ResourceIterator<Node> users=graphDb.findNodesByLabelAndProperty(label,"username",nameToFind).iterator()){
+      Node firstUserNode;
+      if (users.hasNext()) {
+        firstUserNode=users.next();
+      }
+      users.close();
+    }
+   }
+{
+    try (Transaction tx=graphDb.beginTx()){
+      Label label=DynamicLabel.label("User");
+      int idToFind=45;
+      String nameToFind="user" + idToFind + "@neo4j.org";
+      for (      Node node : graphDb.findNodesByLabelAndProperty(label,"username",nameToFind)) {
+        node.setProperty("username","user" + (idToFind + 1) + "@neo4j.org");
+      }
+      tx.success();
+    }
+   }
+{
+    try (Transaction tx=graphDb.beginTx()){
+      Label label=DynamicLabel.label("User");
+      int idToFind=46;
+      String nameToFind="user" + idToFind + "@neo4j.org";
+      for (      Node node : graphDb.findNodesByLabelAndProperty(label,"username",nameToFind)) {
+        node.delete();
+      }
+      tx.success();
+    }
+   }
+{
+    try (Transaction tx=graphDb.beginTx()){
+      Label label=DynamicLabel.label("User");
+      for (      IndexDefinition indexDefinition : graphDb.schema().getIndexes(label)) {
+        indexDefinition.drop();
+      }
+      tx.success();
+    }
+   }
+  System.out.println("Shutting down database ...");
+  graphDb.shutdown();
+}

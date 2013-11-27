@@ -5,18 +5,22 @@
     throw new IllegalStateException("Tried to apply tx " + nextTxId + " but expected transaction "+ (xaTf.getCurrentVersion() + 1));
   }
   logRecoveryMessage("applyTxWithoutTxId log version: " + logVersion + ", committing tx="+ nextTxId+ ") @ pos "+ writeBuffer.getFileChannelPosition());
-  long logEntriesFound=0;
   scanIsComplete=false;
   LogDeserializer logApplier=getLogDeserializer(byteChannel);
   xidIdent=getNextIdentifier();
   long startEntryPosition=writeBuffer.getFileChannelPosition();
   while (logApplier.readAndWriteAndApplyEntry(xidIdent)) {
-    logEntriesFound++;
   }
   byteChannel.close();
   startEntry=logApplier.getStartEntry();
   if (startEntry == null) {
     throw new IOException("Unable to find start entry");
+  }
+  try {
+    injectedTxValidator.assertInjectionAllowed(startEntry.getLastCommittedTxWhenTransactionStarted());
+  }
+ catch (  XAException e) {
+    throw new IOException(e);
   }
   startEntry.setStartPosition(startEntryPosition);
   LogEntry.OnePhaseCommit commit=new LogEntry.OnePhaseCommit(xidIdent,nextTxId,System.currentTimeMillis());

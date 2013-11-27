@@ -1,0 +1,22 @@
+{
+  Transaction tx=db.beginTx();
+  Statement statement=statementContextProvider.instance();
+  Node node=db.createNode();
+  int labelId1=statement.dataWriteOperations().labelGetOrCreateForName("labello1");
+  int labelId2=statement.dataWriteOperations().labelGetOrCreateForName("labello2");
+  statement.dataWriteOperations().nodeAddLabel(node.getId(),labelId1);
+  statement.dataWriteOperations().nodeAddLabel(node.getId(),labelId2);
+  statement.close();
+  tx.success();
+  tx.finish();
+  tx=db.beginTx();
+  statement=statementContextProvider.instance();
+  statement.dataWriteOperations().nodeRemoveLabel(node.getId(),labelId2);
+  PrimitiveIntIterator labelsIterator=statement.readOperations().nodeGetLabels(node.getId());
+  Set<Integer> labels=asSet(labelsIterator);
+  assertFalse(statement.readOperations().nodeHasLabel(node.getId(),labelId2));
+  assertEquals(asSet(labelId1),labels);
+  statement.close();
+  tx.success();
+  tx.finish();
+}

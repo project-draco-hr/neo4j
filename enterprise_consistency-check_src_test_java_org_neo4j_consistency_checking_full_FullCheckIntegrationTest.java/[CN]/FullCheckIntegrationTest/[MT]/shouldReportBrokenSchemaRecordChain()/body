@@ -1,0 +1,15 @@
+{
+  fixture.apply(new GraphStoreFixture.Transaction(){
+    @Override protected void transactionData(    GraphStoreFixture.TransactionDataBuilder tx,    GraphStoreFixture.IdGenerator next){
+      DynamicRecord schema=new DynamicRecord(next.schema());
+      DynamicRecord schemaBefore=schema.clone();
+      schema.setNextBlock(next.schema());
+      IndexRule rule=IndexRule.indexRule(1,1,1,new SchemaIndexProvider.Descriptor("lucene","1.0"));
+      schema.setData(new RecordSerializer().append(rule).serialize());
+      tx.createSchema(asList(schemaBefore),asList(schema));
+    }
+  }
+);
+  ConsistencySummaryStatistics stats=check();
+  verifyInconsistency(stats,RecordType.SCHEMA);
+}
