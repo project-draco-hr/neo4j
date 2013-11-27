@@ -5,11 +5,11 @@
   configuration.joined(instanceId,URI.create("cluster://1"));
   configuration.joined(new InstanceId(2),URI.create("cluster://2"));
   Logging logging=mock(Logging.class);
-  ClusterContext clusterContext=new ClusterContext(instanceId,mock(ProposerContext.class),mock(LearnerContext.class),configuration,mock(Timeouts.class),mock(Executor.class),logging,mock(ObjectInputStreamFactory.class),mock(ObjectOutputStreamFactory.class));
   when(logging.getMessagesLog(Matchers.<Class>any())).thenReturn(mock(StringLogger.class));
-  HeartbeatContext context=new HeartbeatContext(clusterContext,mock(LearnerContext.class),mock(Executor.class));
+  MultiPaxosContext context=new MultiPaxosContext(instanceId,Iterables.<ElectionRole,ElectionRole>iterable(new ElectionRole("coordinator")),configuration,Mockito.mock(Executor.class),logging,Mockito.mock(ObjectInputStreamFactory.class),Mockito.mock(ObjectOutputStreamFactory.class),Mockito.mock(AcceptorInstanceStore.class),Mockito.mock(Timeouts.class));
+  HeartbeatContext heartbeatContext=context.getHeartbeatContext();
   Message received=Message.internal(HeartbeatMessage.suspicions,new HeartbeatMessage.SuspicionsState(Iterables.toSet(Iterables.<InstanceId,InstanceId>iterable(instanceId))));
   received.setHeader(Message.FROM,"cluster://2");
-  heartbeat.handle(context,received,mock(MessageHolder.class));
-  assertThat(context.getSuspicionsOf(instanceId).size(),equalTo(0));
+  heartbeat.handle(heartbeatContext,received,mock(MessageHolder.class));
+  assertThat(heartbeatContext.getSuspicionsOf(instanceId).size(),equalTo(0));
 }
