@@ -1,26 +1,35 @@
 {
-  long myCurrentSize=currentSize.get();
-  if (myCurrentSize <= closeToMaxSize)   return;
+  long sizeBefore=currentSize.get();
+  if (sizeBefore <= closeToMaxSize) {
+    return;
+  }
   long startTime=System.currentTimeMillis();
   purgeCount++;
-  long sizeBefore=currentSize.get();
+  int numberOfEntitiesPurged=0;
   try {
     int index=1;
     do {
-      if ((pos - index) >= 0) {
-        int minusPos=pos - index;
-        remove(minusPos);
-        if (currentSize.get() <= purgeStopSize)         return;
+      int minusPos=pos - index;
+      if (minusPos >= 0) {
+        if (remove(minusPos) != null) {
+          numberOfEntitiesPurged++;
+          if (currentSize.get() <= purgeStopSize) {
+            return;
+          }
+        }
       }
-      if ((pos + index) < cache.length()) {
-        int plusPos=pos + index;
-        remove(plusPos);
-        if (currentSize.get() <= purgeStopSize)         return;
+      int plusPos=pos + index;
+      if (plusPos < cache.length()) {
+        if (remove(plusPos) != null) {
+          numberOfEntitiesPurged++;
+          if (currentSize.get() <= purgeStopSize) {
+            return;
+          }
+        }
       }
       index++;
     }
  while ((pos - index) >= 0 || (pos + index) < cache.length());
-    remove(pos);
   }
   finally {
     long timestamp=System.currentTimeMillis();
@@ -36,5 +45,6 @@
       logger.logMessage(name + " purge (nr " + purgeCount+ ") "+ sizeBeforeStr+ " -> "+ sizeAfterStr+ " ("+ diffStr+ ") "+ missPercentage+ " misses, "+ colPercentage+ " collisions ("+ collisions+ ").",true);
       printAccurateStatistics();
     }
+    monitor.purged(sizeBefore,currentSize.get(),numberOfEntitiesPurged);
   }
 }
