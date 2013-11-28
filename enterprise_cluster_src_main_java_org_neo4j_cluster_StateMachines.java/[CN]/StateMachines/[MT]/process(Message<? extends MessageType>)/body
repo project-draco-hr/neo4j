@@ -1,5 +1,6 @@
 {
   stateMachineExecutor.execute(new Runnable(){
+    OutgoingMessageHolder temporaryOutgoing=new OutgoingMessageHolder();
     @Override public void run(){
       lock.writeLock().lock();
       try {
@@ -9,6 +10,10 @@ synchronized (timeouts) {
             return;
           }
           stateMachine.handle(message,outgoing);
+          Message<? extends MessageType> tempMessage;
+          while ((tempMessage=temporaryOutgoing.nextOutgoingMessage()) != null) {
+            outgoing.offer(tempMessage);
+          }
           Message<? extends MessageType> outgoingMessage;
           List<Message<? extends MessageType>> toSend=new LinkedList<Message<? extends MessageType>>();
           try {
@@ -30,7 +35,10 @@ synchronized (timeouts) {
  else {
                 StateMachine internalStatemachine=stateMachines.get(outgoingMessage.getMessageType().getClass());
                 if (internalStatemachine != null) {
-                  internalStatemachine.handle((Message)outgoingMessage,outgoing);
+                  internalStatemachine.handle((Message)outgoingMessage,temporaryOutgoing);
+                  while ((tempMessage=temporaryOutgoing.nextOutgoingMessage()) != null) {
+                    outgoing.offer(tempMessage);
+                  }
                 }
               }
             }
