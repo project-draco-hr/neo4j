@@ -1,4 +1,15 @@
 {
-  ProposerState state=ProposerState.proposer;
   ProposerContext context=Mockito.mock(ProposerContext.class);
+  InstanceId instanceId=new InstanceId(42);
+  PaxosInstanceStore paxosInstanceStore=new PaxosInstanceStore();
+  PaxosInstance paxosInstance=new PaxosInstance(paxosInstanceStore,instanceId);
+  paxosInstance.closed(null,"1/15#");
+  when(context.unbookInstance(instanceId)).thenReturn(Message.internal(ProposerMessage.accepted,"the closed payload"));
+  when(context.getPaxosInstance(instanceId)).thenReturn(paxosInstance);
+  String theTimedoutPayload="the timed out payload";
+  Message message=Message.internal(ProposerMessage.phase1Timeout,theTimedoutPayload);
+  message.setHeader(InstanceId.INSTANCE,instanceId.toString());
+  MessageHolder mockHolder=mock(MessageHolder.class);
+  ProposerState.proposer.handle(context,message,mockHolder);
+  verify(mockHolder,times(1)).offer(Matchers.<Message<? extends MessageType>>argThat(new MessageArgumentMatcher().onMessageType(ProposerMessage.propose).withPayload(theTimedoutPayload)));
 }
