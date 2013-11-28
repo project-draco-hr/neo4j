@@ -5,11 +5,21 @@
   PropertyBlock block=new PropertyBlock();
   getPropertyStore().encodeValue(block,index,value);
   int size=block.getSize();
-  PropertyRecord current, thatFits=null, thatHas=null;
+  PropertyRecord current=null, thatFits=null, thatHas=null;
+  updatedRecords.clear();
   while (!(nextProp == Record.NO_NEXT_PROPERTY.intValue() || (thatHas != null && thatFits != null))) {
     current=getPropertyStore().getRecord(nextProp);
     if (thatHas == null && current.getPropertyBlock(index) != null) {
       thatHas=current;
+      PropertyBlock removed=thatHas.removePropertyBlock(index);
+      if (removed.isLight()) {
+        getPropertyStore().makeHeavyIfLight(removed);
+      }
+      for (      DynamicRecord dynRec : removed.getValueRecords()) {
+        dynRec.setInUse(false);
+        thatHas.addDeletedRecord(dynRec);
+      }
+      updatedRecords.add(thatHas);
     }
     if (thatFits == null && (PropertyType.getPayloadSize() - current.size() >= size)) {
       thatFits=current;
@@ -37,7 +47,10 @@
     }
     primitive.setNextProp(thatFits.getId());
   }
-  thatFits.setPropertyBlock(block);
-  getPropertyStore().updateRecord(thatFits);
+  thatFits.addPropertyBlock(block);
+  updatedRecords.add(thatFits);
+  for (  PropertyRecord updatedRecord : updatedRecords) {
+    getPropertyStore().updateRecord(thatFits);
+  }
   return result;
 }

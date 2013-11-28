@@ -7,22 +7,20 @@
     File slaveDir=TargetDirectory.forTest(getClass()).directory("slave",true);
     slave=new HighlyAvailableGraphDatabaseFactory().newHighlyAvailableDatabaseBuilder(slaveDir.getAbsolutePath()).setConfig(ClusterSettings.server_id,"2").setConfig(ClusterSettings.initial_hosts,":5001").newGraphDatabase();
     slave.shutdown();
-    long nodeId=-1;
-    Transaction tx=master.beginTx();
-    Node node=master.createNode();
-    node.setProperty("from","master");
-    nodeId=node.getId();
-    tx.success();
-    tx.finish();
-    slave=new HighlyAvailableGraphDatabaseFactory().newHighlyAvailableDatabaseBuilder(slaveDir.getAbsolutePath()).setConfig(ClusterSettings.server_id,"2").setConfig(ClusterSettings.initial_hosts,":5001").setConfig(HaSettings.pull_interval,"0").newGraphDatabase();
-    Transaction transaction=slave.beginTx();
-    try {
+    long nodeId;
+    try (Transaction tx=master.beginTx()){
+      Node node=master.createNode();
+      node.setProperty("from","master");
+      nodeId=node.getId();
+      tx.success();
+    }
+     slave=new HighlyAvailableGraphDatabaseFactory().newHighlyAvailableDatabaseBuilder(slaveDir.getAbsolutePath()).setConfig(ClusterSettings.server_id,"2").setConfig(ClusterSettings.initial_hosts,":5001").setConfig(HaSettings.pull_interval,"0").newGraphDatabase();
+    slave.beginTx().close();
+    try (Transaction tx=slave.beginTx()){
       assertEquals("master",slave.getNodeById(nodeId).getProperty("from"));
+      tx.success();
     }
-  finally {
-      transaction.finish();
-    }
-  }
+   }
   finally {
     if (slave != null) {
       slave.shutdown();
