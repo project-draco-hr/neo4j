@@ -1,0 +1,24 @@
+{
+  try (ZipOutputStream zip=new ZipOutputStream(output)){
+    String prefix=null;
+    for (    Map.Entry<File,EphemeralFileData> entry : files.entrySet()) {
+      File file=entry.getKey();
+      String parent=file.getParentFile().getAbsolutePath();
+      if (prefix == null || prefix.startsWith(parent)) {
+        prefix=parent;
+      }
+      zip.putNextEntry(new ZipEntry(file.getAbsolutePath()));
+      entry.getValue().dumpTo(zip);
+      zip.closeEntry();
+    }
+    for (    ThirdPartyFileSystem fs : thirdPartyFileSystems.values()) {
+      fs.dumpToZip(zip,EphemeralFileData.SCRATCH_PAD.get());
+    }
+    if (prefix != null) {
+      File directory=new File(prefix);
+      if (directory.exists()) {
+        addRecursively(zip,directory);
+      }
+    }
+  }
+ }
