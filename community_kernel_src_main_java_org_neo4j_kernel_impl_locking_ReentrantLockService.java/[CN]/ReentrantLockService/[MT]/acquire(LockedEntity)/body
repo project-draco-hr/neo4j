@@ -1,0 +1,20 @@
+{
+  LockOwner<Thread> suggestion=new LockOwner<>(currentThread());
+  for (; ; ) {
+    LockOwner<Thread> owner=locks.putIfAbsent(key,suggestion);
+    if (owner == null) {
+      return suggestion;
+    }
+    Thread other=owner.owner;
+    if (other == currentThread()) {
+      owner.count++;
+      return owner;
+    }
+    if (suggestion.head == suggestion) {
+      if (!owner.push(suggestion)) {
+        continue;
+      }
+    }
+    parkNanos(key,maxParkNanos);
+  }
+}
