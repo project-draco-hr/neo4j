@@ -12,6 +12,7 @@
   fileSystem=createFileSystemAbstraction();
   this.logging=createLogging();
   this.monitors=new Monitors(logging.getMessagesLog(Monitors.class));
+  this.monitors=new Monitors(logging.getMessagesLog(Monitors.class));
   AutoConfigurator autoConfigurator=new AutoConfigurator(fileSystem,config.get(NeoStoreXaDataSource.Configuration.store_dir),config.get(Configuration.use_memory_mapped_buffers),logging.getConsoleLog(AutoConfigurator.class));
   if (config.get(GraphDatabaseSettings.dump_configuration)) {
     System.out.println(autoConfigurator.getNiceMemoryInformation());
@@ -44,14 +45,15 @@
   txHook=createTxHook();
   guard=config.get(Configuration.execution_guard_enabled) ? new Guard(msgLog) : null;
   stateFactory=createTransactionStateFactory();
+  Factory<byte[]> xidGlobalIdFactory=createXidGlobalIdFactory();
   updateableSchemaState=new KernelSchemaStateStore(newSchemaStateMap());
   if (readOnly) {
-    txManager=new ReadOnlyTxManager(xaDataSourceManager,logging.getMessagesLog(ReadOnlyTxManager.class));
+    txManager=new ReadOnlyTxManager(xaDataSourceManager,xidGlobalIdFactory,logging.getMessagesLog(ReadOnlyTxManager.class));
   }
  else {
     String serviceName=config.get(GraphDatabaseSettings.tx_manager_impl);
     if (GraphDatabaseSettings.tx_manager_impl.getDefaultValue().equals(serviceName)) {
-      txManager=new TxManager(this.storeDir,xaDataSourceManager,kernelPanicEventGenerator,logging.getMessagesLog(TxManager.class),fileSystem,stateFactory);
+      txManager=new TxManager(this.storeDir,xaDataSourceManager,kernelPanicEventGenerator,logging.getMessagesLog(TxManager.class),fileSystem,stateFactory,xidGlobalIdFactory);
     }
  else {
       TransactionManagerProvider provider;
