@@ -1,0 +1,17 @@
+{
+  PrimitiveLongIterator nodeIds=new StoreIdIterator(nodeStore);
+  continueScanning=true;
+  while (continueScanning && nodeIds.hasNext()) {
+    long id=nodeIds.next();
+    RESULT result=null;
+    try (Lock ignored=locks.acquireNodeLock(id,LockService.LockType.READ_LOCK)){
+      NodeRecord record=nodeStore.forceGetRecord(id);
+      if (record.inUse()) {
+        result=read(record);
+      }
+    }
+     if (result != null) {
+      process(result);
+    }
+  }
+}

@@ -1,6 +1,23 @@
 {
-  LabelsReference labelsReference=new LabelsReference();
-  RecordStore.Processor<FAILURE> processor=new NodePropertyUpdateProcessor<>(propertyStore,singleIntPredicate(descriptor.getPropertyKeyId()),labelsReference,visitor);
-  Predicate<NodeRecord> predicate=new NodeLabelFilterPredicate(nodeStore,singleIntPredicate(descriptor.getLabelId()),labelsReference);
-  return new ProcessStoreScan<>(processor,predicate);
+  final int soughtLabelId=descriptor.getLabelId();
+  final int soughtPropertyKeyId=descriptor.getPropertyKeyId();
+  return new NodeStoreScan<NodePropertyUpdate,FAILURE>(){
+    @Override protected NodePropertyUpdate read(    NodeRecord node){
+      long[] labels=parseLabelsField(node).get(nodeStore);
+      if (!containsLabel(soughtLabelId,labels)) {
+        return null;
+      }
+      for (      PropertyBlock property : properties(node)) {
+        int propertyKeyId=property.getKeyIndexId();
+        if (soughtPropertyKeyId == propertyKeyId) {
+          return NodePropertyUpdate.add(node.getId(),propertyKeyId,valueOf(property),labels);
+        }
+      }
+      return null;
+    }
+    @Override protected void process(    NodePropertyUpdate update) throws FAILURE {
+      visitor.visit(update);
+    }
+  }
+;
 }
