@@ -7,7 +7,7 @@
   }
  else   if (fileName.getName().equals(NeoStore.DEFAULT_NAME)) {
     FileLock regular=wrapOrNull(channel.tryLock());
-    if (regular == null)     throw new IOException("Unable to lock " + channel);
+    if (regular == null)     throw new IOException("Unable to lock " + channel + " because another process already holds the lock.");
     FileLock extra=getLockFileBasedFileLock(fileName.getParentFile());
     if (extra == null) {
       regular.release();
@@ -16,6 +16,8 @@
     return new DoubleFileLock(regular,extra);
   }
  else {
-    return wrapOrNull(channel.tryLock());
+    FileLock regular=wrapOrNull(channel.tryLock());
+    if (regular == null)     throw new IOException("Unable to lock " + channel + " because another process already holds the lock.");
+    return regular;
   }
 }
