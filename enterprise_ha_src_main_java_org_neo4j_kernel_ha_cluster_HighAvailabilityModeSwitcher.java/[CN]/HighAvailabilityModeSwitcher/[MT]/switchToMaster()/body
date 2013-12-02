@@ -1,18 +1,22 @@
 {
   msgLog.logMessage("I am " + config.get(ClusterSettings.server_id) + ", moving to master");
   try {
-    final TransactionManager txManager=graphDb.getDependencyResolver().resolveDependency(TransactionManager.class);
-    idGeneratorFactory.switchToMaster();
-    MasterImpl.SPI spi=new DefaultMasterImplSPI(graphDb,logging,txManager);
-    MasterImpl masterImpl=new MasterImpl(spi,logging,config);
-    MasterServer masterServer=new MasterServer(masterImpl,logging,serverConfig(),new BranchDetectingTxVerifier(graphDb));
-    life.add(masterImpl);
-    life.add(masterServer);
-    delegateHandler.setDelegate(masterImpl);
-    life.start();
-    masterHaURI=URI.create("ha://" + (ServerUtil.getHostString(masterServer.getSocketAddress()).contains("0.0.0.0") ? me.getHost() : ServerUtil.getHostString(masterServer.getSocketAddress())) + ":"+ masterServer.getSocketAddress().getPort()+ "?serverId="+ config.get(ClusterSettings.server_id));
-    clusterMemberAvailability.memberIsAvailable(MASTER,masterHaURI);
-    msgLog.logMessage("I am " + config.get(ClusterSettings.server_id) + ", successfully moved to master");
+    DependencyResolver resolver=graphDb.getDependencyResolver();
+    HaXaDataSourceManager xaDataSourceManager=resolver.resolveDependency(HaXaDataSourceManager.class);
+synchronized (xaDataSourceManager) {
+      final TransactionManager txManager=graphDb.getDependencyResolver().resolveDependency(TransactionManager.class);
+      idGeneratorFactory.switchToMaster();
+      MasterImpl.SPI spi=new DefaultMasterImplSPI(graphDb,logging,txManager);
+      MasterImpl masterImpl=new MasterImpl(spi,logging,config);
+      MasterServer masterServer=new MasterServer(masterImpl,logging,serverConfig(),new BranchDetectingTxVerifier(graphDb));
+      life.add(masterImpl);
+      life.add(masterServer);
+      delegateHandler.setDelegate(masterImpl);
+      life.start();
+      masterHaURI=URI.create("ha://" + (ServerUtil.getHostString(masterServer.getSocketAddress()).contains("0.0.0.0") ? me.getHost() : ServerUtil.getHostString(masterServer.getSocketAddress())) + ":"+ masterServer.getSocketAddress().getPort()+ "?serverId="+ config.get(ClusterSettings.server_id));
+      clusterMemberAvailability.memberIsAvailable(MASTER,masterHaURI);
+      msgLog.logMessage("I am " + config.get(ClusterSettings.server_id) + ", successfully moved to master");
+    }
   }
  catch (  Throwable e) {
     msgLog.logMessage("Failed to switch to master",e);
