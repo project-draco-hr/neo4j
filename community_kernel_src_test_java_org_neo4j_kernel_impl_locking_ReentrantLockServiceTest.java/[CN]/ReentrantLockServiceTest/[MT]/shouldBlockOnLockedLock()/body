@@ -1,0 +1,14 @@
+{
+  LockService locks=new ReentrantLockService();
+  LockNode lockSameNode=new LockNode(locks,17);
+  ThreadRepository.Events events=threads.events();
+  ThreadRepository.Signal ready=threads.signal();
+  try (Lock ignored=locks.acquireNodeLock(17,LockService.LockType.WRITE_LOCK)){
+    ThreadRepository.ThreadInfo thread=threads.execute(ready,lockSameNode,events.trigger("locked"),lockSameNode.release);
+    ready.await();
+    StackTraceElement current=thread.getStackTrace()[0];
+    assertTrue(current.toString(),("park".equals(current.getMethodName()) && "sun.misc.Unsafe".equals(current.getClassName())) || ("acquire".equals(current.getMethodName()) && ReentrantLockService.class.getName().equals(current.getClassName())));
+    assertTrue(events.snapshot().isEmpty());
+  }
+   events.assertInOrder("locked");
+}

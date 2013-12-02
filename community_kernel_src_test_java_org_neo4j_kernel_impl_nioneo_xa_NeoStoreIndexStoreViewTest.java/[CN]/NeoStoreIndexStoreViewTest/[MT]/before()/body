@@ -4,5 +4,16 @@
   createAlistairAndStefanNodes();
   getOrCreateIds();
   NeoStore neoStore=new StoreAccess(graphDb).getRawNeoStore();
-  storeView=new NeoStoreIndexStoreView(neoStore);
+  locks=mock(LockService.class,new Answer(){
+    @Override public Object answer(    InvocationOnMock invocation) throws Throwable {
+      Long nodeId=(Long)invocation.getArguments()[0];
+      Lock lock=lockMocks.get(nodeId);
+      if (lock == null) {
+        lockMocks.put(nodeId,lock=mock(Lock.class));
+      }
+      return lock;
+    }
+  }
+);
+  storeView=new NeoStoreIndexStoreView(locks,neoStore);
 }
