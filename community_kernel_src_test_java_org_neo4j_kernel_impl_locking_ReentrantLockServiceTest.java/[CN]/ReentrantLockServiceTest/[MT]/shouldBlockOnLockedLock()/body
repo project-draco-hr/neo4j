@@ -6,7 +6,13 @@
   try (Lock ignored=locks.acquireNodeLock(17,LockService.LockType.WRITE_LOCK)){
     ThreadRepository.ThreadInfo thread=threads.execute(ready,lockSameNode,events.trigger("locked"),lockSameNode.release);
     ready.await();
-    StackTraceElement current=thread.getStackTrace()[0];
+    StackTraceElement current;
+    try {
+      current=thread.getStackTrace()[0];
+    }
+ catch (    Exception e) {
+      throw new AssertionError("Failed to access stack trace of thread in state: " + thread.getState(),e);
+    }
     assertTrue(current.toString(),("park".equals(current.getMethodName()) && "sun.misc.Unsafe".equals(current.getClassName())) || ("acquire".equals(current.getMethodName()) && ReentrantLockService.class.getName().equals(current.getClassName())));
     assertTrue(events.snapshot().isEmpty());
   }
