@@ -1,6 +1,9 @@
 {
-  if (getAliveCount() <= getTotalCount() / 2) {
+  if (!isQuorum(getAliveCount(),getTotalCount())) {
     try {
+      if (state.isAccessAllowed()) {
+        availabilityGuard.deny(HighAvailabilityMemberStateMachine.this);
+      }
       final HighAvailabilityMemberChangeEvent event=new HighAvailabilityMemberChangeEvent(state,HighAvailabilityMemberState.PENDING,null,null);
       state=HighAvailabilityMemberState.PENDING;
       Listeners.notifyListeners(memberListeners,new Listeners.Notification<HighAvailabilityMemberListener>(){
@@ -11,7 +14,6 @@
 );
       context.setAvailableHaMasterId(null);
       context.setElectedMasterId(null);
-      availabilityGuard.deny(HighAvailabilityMemberStateMachine.this);
     }
  catch (    Throwable throwable) {
       throw new RuntimeException(throwable);
