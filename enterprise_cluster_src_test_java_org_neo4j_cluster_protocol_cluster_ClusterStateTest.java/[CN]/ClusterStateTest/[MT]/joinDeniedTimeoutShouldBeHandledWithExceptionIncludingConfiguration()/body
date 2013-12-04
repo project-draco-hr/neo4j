@@ -1,0 +1,13 @@
+{
+  ClusterContext context=mock(ClusterContext.class);
+  Map<InstanceId,URI> existingMembers=members(1,2);
+  when(context.getLogger(any(Class.class))).thenReturn(StringLogger.DEV_NULL);
+  when(context.getJoiningInstances()).thenReturn(Collections.<URI>emptyList());
+  when(context.hasJoinBeenDenied()).thenReturn(true);
+  when(context.getJoinDeniedConfigurationResponseState()).thenReturn(configurationResponseState(existingMembers));
+  TrackingMessageHolder outgoing=new TrackingMessageHolder();
+  ClusterState.joining.handle(context,to(ClusterMessage.joiningTimeout,uri(2)).setHeader(Message.CONVERSATION_ID,"bla"),outgoing);
+  Message<? extends MessageType> response=single(outgoing.messages);
+  ClusterEntryDeniedException deniedException=response.getPayload();
+  assertEquals(existingMembers,deniedException.getConfigurationResponseState().getMembers());
+}

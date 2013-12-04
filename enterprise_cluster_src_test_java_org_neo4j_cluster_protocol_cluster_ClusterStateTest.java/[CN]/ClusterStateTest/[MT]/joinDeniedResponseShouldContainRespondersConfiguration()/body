@@ -1,0 +1,15 @@
+{
+  ClusterContext context=mock(ClusterContext.class);
+  Map<InstanceId,URI> existingMembers=members(1,2);
+  when(context.isCurrentlyAlive(any(InstanceId.class))).thenReturn(true);
+  when(context.getMembers()).thenReturn(existingMembers);
+  when(context.getConfiguration()).thenReturn(clusterConfiguration(existingMembers));
+  when(context.getLogger(any(Class.class))).thenReturn(StringLogger.DEV_NULL);
+  TrackingMessageHolder outgoing=new TrackingMessageHolder();
+  Message<ClusterMessage> message=to(configurationRequest,uri(1),configuration(2)).setHeader(Message.FROM,uri(2).toString());
+  ClusterState.entered.handle(context,message,outgoing);
+  @SuppressWarnings("unchecked") Message<ClusterMessage> response=(Message<ClusterMessage>)single(outgoing.messages);
+  assertTrue(response.getPayload() instanceof ConfigurationResponseState);
+  ConfigurationResponseState responseState=response.getPayload();
+  assertEquals(existingMembers,responseState.getMembers());
+}
