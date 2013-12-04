@@ -6,7 +6,17 @@
     master=new HighlyAvailableGraphDatabaseFactory().newHighlyAvailableDatabaseBuilder(masterDir.getAbsolutePath()).setConfig(ClusterSettings.server_id,"1").setConfig(ClusterSettings.initial_hosts,":5001").newGraphDatabase();
     File slaveDir=TargetDirectory.forTest(getClass()).directory("slave",true);
     slave=new HighlyAvailableGraphDatabaseFactory().newHighlyAvailableDatabaseBuilder(slaveDir.getAbsolutePath()).setConfig(ClusterSettings.server_id,"2").setConfig(ClusterSettings.initial_hosts,":5001").newGraphDatabase();
+    final CountDownLatch slaveLeftLatch=new CountDownLatch(1);
+    final ClusterClient masterClusterClient=((HighlyAvailableGraphDatabase)master).getDependencyResolver().resolveDependency(ClusterClient.class);
+    masterClusterClient.addClusterListener(new ClusterListener.Adapter(){
+      @Override public void leftCluster(      InstanceId instanceId){
+        slaveLeftLatch.countDown();
+        masterClusterClient.removeClusterListener(this);
+      }
+    }
+);
     slave.shutdown();
+    slaveLeftLatch.await();
     long nodeId;
     try (Transaction tx=master.beginTx()){
       Node node=master.createNode();
