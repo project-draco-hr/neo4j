@@ -10,7 +10,19 @@ case GetOrCreate:
 case CreateOrFail:
 entityBody=input.readMap(postBody,"key","value");
 result=actions(force).getOrCreateIndexedNode(indexName,String.valueOf(entityBody.get("key")),String.valueOf(entityBody.get("value")),extractNodeIdOrNull(getStringOrNull(entityBody,"uri")),getMapOrNull(entityBody,"properties"));
-return result.other() ? output.created(result.first()) : output.conflict(result.first());
+if (result.other()) {
+return output.created(result.first());
+}
+String uri=getStringOrNull(entityBody,"uri");
+if (uri == null) {
+return output.conflict(result.first());
+}
+long idOfNodeToBeIndexed=extractNodeId(uri);
+long idOfNodeAlreadyInIndex=extractNodeId(result.first().getIdentity());
+if (idOfNodeToBeIndexed == idOfNodeAlreadyInIndex) {
+return output.created(result.first());
+}
+return output.conflict(result.first());
 default :
 entityBody=input.readMap(postBody,"key","value","uri");
 return output.created(actions(force).addToNodeIndex(indexName,String.valueOf(entityBody.get("key")),String.valueOf(entityBody.get("value")),extractNodeId(entityBody.get("uri").toString())));
