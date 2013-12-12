@@ -1,0 +1,33 @@
+{
+  FileChannel fileChannel=null;
+  byte[] expectedVersionBytes=UTF8.encode(expectedVersion);
+  try {
+    if (!fs.fileExists(storeFile)) {
+      return Pair.of(Outcome.missingStoreFile,null);
+    }
+    fileChannel=fs.open(storeFile,"r");
+    if (fileChannel.size() < expectedVersionBytes.length) {
+      return Pair.of(Outcome.storeVersionNotFound,null);
+    }
+    String actualVersion=readVersion(fileChannel,expectedVersionBytes.length);
+    if (!actualVersion.startsWith(typeDescriptor(expectedVersion))) {
+      return Pair.of(Outcome.storeVersionNotFound,actualVersion);
+    }
+    if (!expectedVersion.equals(actualVersion)) {
+      return Pair.of(Outcome.unexpectedUpgradingStoreVersion,actualVersion);
+    }
+  }
+ catch (  IOException e) {
+    throw new RuntimeException(e);
+  }
+ finally {
+    if (fileChannel != null) {
+      try {
+        fileChannel.close();
+      }
+ catch (      IOException e) {
+      }
+    }
+  }
+  return Pair.of(Outcome.ok,null);
+}

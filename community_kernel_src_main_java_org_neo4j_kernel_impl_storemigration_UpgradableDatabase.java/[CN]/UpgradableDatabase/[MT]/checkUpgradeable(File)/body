@@ -2,40 +2,19 @@
   File storeDirectory=neoStoreFile.getParentFile();
   for (  StoreFile store : StoreFile.legacyStoreFiles()) {
     String expectedVersion=store.legacyVersion();
-    FileChannel fileChannel=null;
-    byte[] expectedVersionBytes=UTF8.encode(expectedVersion);
-    try {
-      File storeFile=new File(storeDirectory,store.storeFileName());
-      if (!fs.fileExists(storeFile)) {
+    File storeFile=new File(storeDirectory,store.storeFileName());
+    Pair<Outcome,String> outcome=storeVersionCheck.hasVersion(storeFile,expectedVersion);
+    if (!outcome.first().isSuccessful()) {
+switch (outcome.first()) {
+case missingStoreFile:
         throw new StoreUpgrader.UpgradeMissingStoreFilesException(storeFile.getName());
-      }
-      fileChannel=fs.open(storeFile,"r");
-      if (fileChannel.size() < expectedVersionBytes.length) {
-        throw new StoreUpgrader.UpgradingStoreVersionNotFoundException(storeFile.getName());
-      }
-      fileChannel.position(fileChannel.size() - expectedVersionBytes.length);
-      byte[] foundVersionBytes=new byte[expectedVersionBytes.length];
-      fileChannel.read(ByteBuffer.wrap(foundVersionBytes));
-      String actualVersion=UTF8.decode(foundVersionBytes);
-      if (!actualVersion.startsWith(store.typeDescriptor())) {
-        throw new StoreUpgrader.UpgradingStoreVersionNotFoundException(store.storeFileName());
-      }
-      if (!expectedVersion.equals(actualVersion)) {
-        throw new StoreUpgrader.UnexpectedUpgradingStoreVersionException(storeFile.getName(),expectedVersion,actualVersion);
-      }
-    }
- catch (    IOException e) {
-      throw new RuntimeException(e);
-    }
- finally {
-      if (fileChannel != null) {
-        try {
-          fileChannel.close();
-        }
- catch (        IOException e) {
-          return;
-        }
-      }
-    }
-  }
+case storeVersionNotFound:
+      throw new StoreUpgrader.UpgradingStoreVersionNotFoundException(storeFile.getName());
+case unexpectedUpgradingStoreVersion:
+    throw new StoreUpgrader.UnexpectedUpgradingStoreVersionException(storeFile.getName(),expectedVersion,outcome.other());
+default :
+  throw new IllegalArgumentException(outcome.first().name());
+}
+}
+}
 }
