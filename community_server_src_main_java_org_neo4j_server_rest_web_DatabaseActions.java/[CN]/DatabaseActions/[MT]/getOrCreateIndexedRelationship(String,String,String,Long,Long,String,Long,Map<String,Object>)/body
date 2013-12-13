@@ -7,10 +7,13 @@
       throw new BadInputException("Either specify a relationship to index uniquely, " + "or the means for creating it.");
     }
     Relationship relationship=relationship(relationshipOrNull);
-    UniqueRelationshipFactory factory=new UniqueRelationshipFactory(indexName,relationship.getStartNode(),relationship.getEndNode(),relationship.getType().name(),properties);
-    UniqueEntity<Relationship> entity=factory.getOrCreateWithOutcome(key,value);
-    created=entity.entity().getId() == relationship.getId() || entity.wasCreated();
-    result=entity.entity();
+    result=graphDb.index().forRelationships(indexName).putIfAbsent(relationship,key,value);
+    if (created=result == null) {
+      UniqueRelationshipFactory factory=new UniqueRelationshipFactory(indexName,relationship.getStartNode(),relationship.getEndNode(),relationship.getType().name(),properties);
+      UniqueEntity<Relationship> entity=factory.getOrCreateWithOutcome(key,value);
+      created=entity.entity().getId() == relationship.getId() || entity.wasCreated();
+      result=entity.entity();
+    }
   }
  else   if (startNode == null || type == null || endNode == null) {
     throw new BadInputException("Either specify a relationship to index uniquely, " + "or the means for creating it.");

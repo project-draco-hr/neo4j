@@ -7,10 +7,14 @@
       throw new BadInputException("Cannot specify properties for a new node, " + "when a node to index is specified.");
     }
     Node node=node(nodeOrNull);
-    UniqueNodeFactory factory=new UniqueNodeFactory(indexName,properties);
-    UniqueEntity<Node> entity=factory.getOrCreateWithOutcome(key,value);
-    created=entity.entity().getId() == node.getId() || entity.wasCreated();
-    result=entity.entity();
+    result=graphDb.index().forNodes(indexName).putIfAbsent(node,key,value);
+    created=result == null;
+    if (created) {
+      UniqueNodeFactory factory=new UniqueNodeFactory(indexName,properties);
+      UniqueEntity<Node> entity=factory.getOrCreateWithOutcome(key,value);
+      created=entity.entity().getId() == node.getId() || entity.wasCreated();
+      result=entity.entity();
+    }
   }
  else {
     if (properties != null) {
