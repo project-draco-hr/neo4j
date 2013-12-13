@@ -1,0 +1,22 @@
+{
+  if (currentRange < 0) {
+    return;
+  }
+  Map<Long,Bitmap> fields=readLabelBitMapsInRange(searcher,currentRange);
+  updateFields(updates,fields);
+  Document document=new Document();
+  document.add(format.rangeField(currentRange));
+  for (  Map.Entry<Long,Bitmap> field : fields.entrySet()) {
+    Bitmap value=field.getValue();
+    if (value.hasContent()) {
+      format.addLabelField(document,field.getKey(),value);
+    }
+  }
+  if (isEmpty(document)) {
+    storage.deleteDocuments(format.rangeTerm(document));
+  }
+ else {
+    storage.updateDocument(format.rangeTerm(document),document);
+  }
+  updates.clear();
+}
