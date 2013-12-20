@@ -3,22 +3,18 @@
   IdAllocation secondResult=new IdAllocation(new IdRange(new long[]{},1042,223),1042 + 223,0);
   Response<IdAllocation> toReturn=mock(Response.class);
   when(toReturn.response()).thenReturn(firstResult,secondResult);
-  Master returning=mock(Master.class);
-  when(returning.allocateIds(Matchers.<IdType>any())).thenReturn(toReturn);
-  FileSystemAbstraction fs=new EphemeralFileSystemAbstraction();
-  HaIdGeneratorFactory fac=new HaIdGeneratorFactory(returning,new DevNullLoggingService());
-  fac.switchToSlave();
-  IdGenerator gen=fac.open(fs,new File("someFile"),10,IdType.NODE,1);
+  when(master.allocateIds(Matchers.<IdType>any())).thenReturn(toReturn);
+  IdGenerator gen=switchToSlave();
   long startAt=firstResult.getIdRange().getRangeStart();
   long forThatMany=firstResult.getIdRange().getRangeLength();
   for (long i=startAt; i < startAt + forThatMany; i++) {
     assertEquals(i,gen.nextId());
   }
-  verify(returning,times(1)).allocateIds(IdType.NODE);
+  verify(master,times(1)).allocateIds(IdType.NODE);
   startAt=secondResult.getIdRange().getRangeStart();
   forThatMany=secondResult.getIdRange().getRangeLength();
   for (long i=startAt; i < startAt + forThatMany; i++) {
     assertEquals(i,gen.nextId());
   }
-  verify(returning,times(2)).allocateIds(IdType.NODE);
+  verify(master,times(2)).allocateIds(IdType.NODE);
 }
