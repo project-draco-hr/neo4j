@@ -1,12 +1,14 @@
 {
-  Collection<String> result=new ArrayList<String>();
-  for (  IndexDefinition index : graph.indexes()) {
-    StringBuilder keys=new StringBuilder();
-    for (    String key : index.getPropertyKeys()) {
-      if (keys.length() > 0)       keys.append(", ");
-      keys.append(quote(key));
+  final List<String> result=new ArrayList<>();
+  for (  IndexDefinition index : graph.getIndexes()) {
+    if (!index.isConstraintIndex()) {
+      List<String> keys=IteratorUtil.asList(index.getPropertyKeys());
+      if (keys.size() > 1) {
+        throw new RuntimeException("Exporting compound indexes is not implented yet");
+      }
+      result.add("create index on :" + quote(index.getLabel().name()) + "("+ quote(keys.get(0))+ ")");
     }
-    result.add("create index on :" + quote(index.getLabel().name()) + "("+ keys+ ")");
   }
+  Collections.sort(result);
   return result;
 }
