@@ -5,56 +5,23 @@
   if (status == Status.STATUS_ACTIVE || status == Status.STATUS_PREPARING) {
     try {
       if (resourceList.size() == 0) {
-        if (!globalStartRecordWritten) {
-          txManager.writeStartRecord(globalId);
-          globalStartRecordWritten=true;
-        }
-        byte branchId[]=txManager.getBranchId(xaRes);
-        Xid xid=new XidImpl(globalId,branchId);
-        resourceList.add(new ResourceElement(xid,xaRes));
-        xaRes.start(xid,XAResource.TMNOFLAGS);
-        try {
-          txManager.getTxLog().addBranch(globalId,branchId);
-        }
- catch (        IOException e) {
-          logger.error("Error writing transaction log",e);
-          txManager.setTmNotOk(e);
-          throw Exceptions.withCause(new SystemException("TM encountered a problem, " + " error writing transaction log"),e);
-        }
-        return true;
-      }
-      Xid sameRmXid=null;
-      for (      ResourceElement re : resourceList) {
-        if (sameRmXid == null && re.getResource().isSameRM(xaRes)) {
-          sameRmXid=re.getXid();
-        }
-        if (xaRes == re.getResource()) {
-          if (re.getStatus() == RS_SUSPENDED) {
-            xaRes.start(re.getXid(),XAResource.TMRESUME);
-          }
- else {
-            xaRes.start(re.getXid(),XAResource.TMJOIN);
-          }
-          re.setStatus(RS_ENLISTED);
-          return true;
-        }
-      }
-      if (sameRmXid != null) {
-        addResourceToList(sameRmXid,xaRes);
-        xaRes.start(sameRmXid,XAResource.TMJOIN);
+        ensureGlobalTxStartRecordWritten();
+        registerAndStartResource(xaRes);
       }
  else {
-        byte branchId[]=txManager.getBranchId(xaRes);
-        Xid xid=new XidImpl(globalId,branchId);
-        addResourceToList(xid,xaRes);
-        xaRes.start(xid,XAResource.TMNOFLAGS);
-        try {
-          txManager.getTxLog().addBranch(globalId,branchId);
+        Pair<Xid,ResourceElement> similarResource=findAlreadyRegisteredSimilarResource(xaRes);
+        if (similarResource.other() != null) {
+          ResourceElement resource=similarResource.other();
+          xaRes.start(resource.getXid(),resource.getStatus() == RS_SUSPENDED ? XAResource.TMRESUME : XAResource.TMJOIN);
+          resource.setStatus(RS_ENLISTED);
         }
- catch (        IOException e) {
-          logger.error("Error writing transaction log",e);
-          txManager.setTmNotOk(e);
-          throw Exceptions.withCause(new SystemException("TM encountered a problem, " + " error writing transaction log"),e);
+ else         if (similarResource.first() != null) {
+          Xid xid=similarResource.first();
+          addResourceToList(xid,xaRes);
+          xaRes.start(xid,XAResource.TMJOIN);
+        }
+ else {
+          registerAndStartResource(xaRes);
         }
       }
       return true;
