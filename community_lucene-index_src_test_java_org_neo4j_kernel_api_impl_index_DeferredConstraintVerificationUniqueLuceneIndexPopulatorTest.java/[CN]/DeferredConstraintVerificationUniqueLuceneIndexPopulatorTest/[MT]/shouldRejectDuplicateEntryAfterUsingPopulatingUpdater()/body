@@ -1,0 +1,18 @@
+{
+  File indexDirectory=new File("target/whatever");
+  final LuceneDocumentStructure documentLogic=new LuceneDocumentStructure();
+  DeferredConstraintVerificationUniqueLuceneIndexPopulator populator=new DeferredConstraintVerificationUniqueLuceneIndexPopulator(documentLogic,standard(),new IndexWriterStatus(),directoryFactory,indexDirectory,failureStorage,indexId);
+  populator.create();
+  IndexUpdater updater=populator.newPopulatingUpdater();
+  updater.process(NodePropertyUpdate.add(1,1,"value1",new long[]{}));
+  populator.add(2,"value1");
+  try {
+    populator.verifyDeferredConstraints();
+    fail("should have thrown exception");
+  }
+ catch (  PreexistingIndexEntryConflictException conflict) {
+    assertEquals(1,conflict.getExistingNodeId());
+    assertEquals("value1",conflict.getPropertyValue());
+    assertEquals(2,conflict.getAddedNodeId());
+  }
+}

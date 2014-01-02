@@ -1,0 +1,36 @@
+{
+  return new IndexUpdater(){
+    @Override public void process(    NodePropertyUpdate update) throws IOException, IndexEntryConflictException {
+      long nodeId=update.getNodeId();
+      Object propertyValue=update.getValueAfter();
+      Long previousEntry=null;
+      searcherManager.maybeRefresh();
+      IndexSearcher searcher=searcherManager.acquire();
+      try {
+        TopDocs docs=searcher.search(documentStructure.newQuery(propertyValue),1);
+        if (docs.totalHits > 0) {
+          Document doc=searcher.getIndexReader().document(docs.scoreDocs[0].doc);
+          previousEntry=documentStructure.getNodeId(doc);
+        }
+      }
+  finally {
+        searcherManager.release(searcher);
+      }
+      if (previousEntry != null) {
+        if (previousEntry != nodeId) {
+          throw new PreexistingIndexEntryConflictException(propertyValue,previousEntry,nodeId);
+        }
+      }
+ else {
+        writer.addDocument(documentStructure.newDocumentRepresentingProperty(nodeId,propertyValue));
+        entryCount++;
+      }
+    }
+    @Override public void close() throws IOException, IndexEntryConflictException {
+    }
+    @Override public void remove(    Iterable<Long> nodeIds){
+      throw new UnsupportedOperationException("should not remove() from populating index");
+    }
+  }
+;
+}

@@ -1,0 +1,21 @@
+{
+  searcherManager.maybeRefresh();
+  try (IndexSearcher searcher=searcherManager.acquire()){
+    if (duplicateEntriesExist(searcher)) {
+      IndexReader indexReader=searcher.getIndexReader();
+      TermEnum terms=indexReader.terms();
+      while (terms.next()) {
+        Term term=terms.term();
+        if (documentStructure.isPropertyTerm(term)) {
+          if (indexReader.docFreq(term) > 1) {
+            Object propertyValue=documentStructure.propertyValue(term);
+            TopDocs duplicateEntries=searcher.search(documentStructure.newQuery(propertyValue),2);
+            long nodeId1=getNodeId(indexReader,duplicateEntries,0);
+            long nodeId2=getNodeId(indexReader,duplicateEntries,1);
+            throw new PreexistingIndexEntryConflictException(propertyValue,nodeId1,nodeId2);
+          }
+        }
+      }
+    }
+  }
+ }
