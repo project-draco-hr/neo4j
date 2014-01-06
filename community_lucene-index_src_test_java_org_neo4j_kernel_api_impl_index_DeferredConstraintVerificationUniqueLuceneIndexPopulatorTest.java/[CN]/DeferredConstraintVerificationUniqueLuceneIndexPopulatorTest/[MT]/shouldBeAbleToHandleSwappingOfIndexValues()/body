@@ -5,15 +5,10 @@
   populator.create();
   populator.add(1,"value1");
   populator.add(2,"value2");
-  try {
-    IndexUpdater updater=populator.newPopulatingUpdater();
-    updater.process(NodePropertyUpdate.add(3,1,"value1",new long[]{}));
-    updater.close();
-    fail("should have thrown exception");
-  }
- catch (  PreexistingIndexEntryConflictException conflict) {
-    assertEquals(1,conflict.getExistingNodeId());
-    assertEquals("value1",conflict.getPropertyValue());
-    assertEquals(3,conflict.getAddedNodeId());
-  }
+  IndexUpdater updater=populator.newPopulatingUpdater();
+  updater.process(NodePropertyUpdate.change(1,1,"value1",new long[]{},"value2",new long[]{}));
+  updater.process(NodePropertyUpdate.change(2,1,"value2",new long[]{},"value1",new long[]{}));
+  populator.close(true);
+  assertEquals(asList(2l),getAllNodes(directoryFactory,indexDirectory,"value1"));
+  assertEquals(asList(1l),getAllNodes(directoryFactory,indexDirectory,"value2"));
 }
