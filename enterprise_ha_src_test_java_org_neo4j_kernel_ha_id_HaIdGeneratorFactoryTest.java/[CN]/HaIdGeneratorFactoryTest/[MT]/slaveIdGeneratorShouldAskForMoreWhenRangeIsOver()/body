@@ -1,20 +1,19 @@
 {
   IdAllocation firstResult=new IdAllocation(new IdRange(new long[]{},42,123),42 + 123,0);
   IdAllocation secondResult=new IdAllocation(new IdRange(new long[]{},1042,223),1042 + 223,0);
-  Response<IdAllocation> toReturn=mock(Response.class);
-  when(toReturn.response()).thenReturn(firstResult,secondResult);
-  when(master.allocateIds(Matchers.<IdType>any())).thenReturn(toReturn);
+  Response<IdAllocation> response=response(firstResult,secondResult);
+  when(master.allocateIds(any(RequestContext.class),any(IdType.class))).thenReturn(response);
   IdGenerator gen=switchToSlave();
   long startAt=firstResult.getIdRange().getRangeStart();
   long forThatMany=firstResult.getIdRange().getRangeLength();
   for (long i=startAt; i < startAt + forThatMany; i++) {
     assertEquals(i,gen.nextId());
   }
-  verify(master,times(1)).allocateIds(IdType.NODE);
+  verify(master,times(1)).allocateIds(any(RequestContext.class),eq(IdType.NODE));
   startAt=secondResult.getIdRange().getRangeStart();
   forThatMany=secondResult.getIdRange().getRangeLength();
   for (long i=startAt; i < startAt + forThatMany; i++) {
     assertEquals(i,gen.nextId());
   }
-  verify(master,times(2)).allocateIds(IdType.NODE);
+  verify(master,times(2)).allocateIds(any(RequestContext.class),eq(IdType.NODE));
 }
