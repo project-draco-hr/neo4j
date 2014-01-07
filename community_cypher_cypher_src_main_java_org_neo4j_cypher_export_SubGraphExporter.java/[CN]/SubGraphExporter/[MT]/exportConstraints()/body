@@ -1,14 +1,19 @@
 {
   final List<String> result=new ArrayList<>();
   for (  ConstraintDefinition constraint : graph.getConstraints()) {
-    if (constraint.isConstraintType(ConstraintType.UNIQUENESS)) {
-      for (      String key : constraint.getPropertyKeys()) {
-        result.add("create constraint on (n:" + quote(constraint.getLabel().name()) + ") "+ "assert n."+ quote(key)+ " is unique");
-      }
+    if (!constraint.isConstraintType(ConstraintType.UNIQUENESS)) {
+      throw new RuntimeException("Exporting constraints other than uniqueness is not implemented yet");
     }
- else {
-      throw new RuntimeException("Exporting constraints other than uniqueness is not implementd yet");
+    Iterator<String> propertyKeys=constraint.getPropertyKeys().iterator();
+    if (!propertyKeys.hasNext()) {
+      throw new ThisShouldNotHappenError("Chris","constraints should have at least one property key");
     }
+    String key=quote(propertyKeys.next());
+    if (propertyKeys.hasNext()) {
+      throw new RuntimeException("Exporting compound constraints is not implemented yet");
+    }
+    String label=quote(constraint.getLabel().name());
+    result.add("create constraint on (n:" + label + ") assert n."+ key+ " is unique");
   }
   Collections.sort(result);
   return result;
