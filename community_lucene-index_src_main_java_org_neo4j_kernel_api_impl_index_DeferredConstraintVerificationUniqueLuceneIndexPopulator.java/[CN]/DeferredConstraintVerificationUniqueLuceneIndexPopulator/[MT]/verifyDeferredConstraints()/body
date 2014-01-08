@@ -1,19 +1,17 @@
 {
   searcherManager.maybeRefresh();
   try (IndexSearcher searcher=searcherManager.acquire()){
-    if (duplicateEntriesExist(searcher)) {
-      IndexReader indexReader=searcher.getIndexReader();
-      TermEnum terms=indexReader.terms();
-      while (terms.next()) {
-        Term term=terms.term();
-        if (documentStructure.isPropertyTerm(term)) {
-          if (indexReader.docFreq(term) > 1) {
-            Object propertyValue=documentStructure.propertyValue(term);
-            TopDocs duplicateEntries=searcher.search(documentStructure.newQuery(propertyValue),2);
-            long nodeId1=getNodeId(indexReader,duplicateEntries,0);
-            long nodeId2=getNodeId(indexReader,duplicateEntries,1);
-            throw new PreexistingIndexEntryConflictException(propertyValue,nodeId1,nodeId2);
-          }
+    IndexReader indexReader=searcher.getIndexReader();
+    TermEnum terms=indexReader.terms();
+    while (terms.next()) {
+      Term term=terms.term();
+      if (!NODE_ID_KEY.equals(term.field()) && terms.docFreq() > 1) {
+        TopDocs duplicateEntries=searcher.search(new TermQuery(term),2);
+        if (duplicateEntries.totalHits > 1) {
+          long nodeId1=getNodeId(indexReader,duplicateEntries,0);
+          long nodeId2=getNodeId(indexReader,duplicateEntries,1);
+          Object propertyValue=documentStructure.propertyValue(term);
+          throw new PreexistingIndexEntryConflictException(propertyValue,nodeId1,nodeId2);
         }
       }
     }
