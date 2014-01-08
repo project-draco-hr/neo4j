@@ -4,20 +4,14 @@
   inserter.createDeferredSchemaIndex(LABEL).on("name").create();
   inserter.createNode(map("name","Mattias"),LABEL);
   inserter.shutdown();
-  Config config=new Config(stringMap(GraphDatabaseSettings.store_dir.name(),storeDir));
-  LifeSupport life=new LifeSupport();
-  LuceneSchemaIndexProvider provider=life.add(new LuceneSchemaIndexProvider(DirectoryFactory.PERSISTENT,config));
-  StoreFactory storeFactory=new StoreFactory(config,new DefaultIdGeneratorFactory(),new DefaultWindowPoolFactory(),new DefaultFileSystemAbstraction(),StringLogger.DEV_NULL,new DefaultTxHook());
-  NeoStore neoStore=storeFactory.newNeoStore(new File(storeDir,NeoStore.DEFAULT_NAME));
-  life.start();
-  SchemaRule rule=single(filter(new Predicate<SchemaRule>(){
-    @Override public boolean accept(    SchemaRule item){
-      return item.getKind() == Kind.INDEX_RULE;
-    }
+  GraphDatabaseFactory graphDatabaseFactory=new GraphDatabaseFactory();
+  GraphDatabaseAPI db=(GraphDatabaseAPI)graphDatabaseFactory.newEmbeddedDatabase(storeDir);
+  DependencyResolver dependencyResolver=db.getDependencyResolver();
+  SchemaIndexProvider schemaIndexProvider=dependencyResolver.resolveDependency(SchemaIndexProvider.class,SchemaIndexProvider.HIGHEST_PRIORITIZED_OR_NONE);
+  try (Transaction ignore=db.beginTx()){
+    IndexDefinition indexDefinition=single(db.schema().getIndexes(LABEL));
+    assertThat(db.schema().getIndexState(indexDefinition),is(Schema.IndexState.ONLINE));
+    assertThat(schemaIndexProvider,instanceOf(LuceneSchemaIndexProvider.class));
   }
-,neoStore.getSchemaStore()));
-  InternalIndexState initialState=provider.getInitialState(rule.getId());
-  assertEquals(InternalIndexState.ONLINE,initialState);
-  life.shutdown();
-  neoStore.close();
+   db.shutdown();
 }
