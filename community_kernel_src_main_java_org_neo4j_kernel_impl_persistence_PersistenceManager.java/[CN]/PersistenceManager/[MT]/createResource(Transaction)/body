@@ -1,22 +1,16 @@
 {
   try {
     XaConnection xaConnection=persistenceSource.getXaDataSource().getXaConnection();
-    XAResource xaResource=xaConnection.getXaResource();
-    if (!tx.enlistResource(xaResource)) {
-      throw new ResourceAcquisitionFailedException("Unable to enlist '" + xaResource + "' in "+ "transaction");
-    }
-    NeoStoreTransaction con=persistenceSource.createTransaction(xaConnection);
+    NeoStoreTransaction resource=persistenceSource.createTransaction(xaConnection);
+    ResourceHolder result=new ResourceHolder(syncHookFactory,tx,xaConnection,resource);
     TransactionState state=transactionManager.getTransactionState();
-    tx.registerSynchronization(new TxCommitHook(tx,state));
-    registerTransactionEventHookIfNeeded(tx);
-    return con;
+    tx.registerSynchronization(new ResourceCleanupHook(tx,state,result));
+    return result;
   }
- catch (  RollbackException re) {
-    String msg="The transaction is marked for rollback only.";
-    throw new ResourceAcquisitionFailedException(msg,re);
+ catch (  RollbackException e) {
+    throw new ResourceAcquisitionFailedException(e);
   }
-catch (  SystemException se) {
-    String msg="TM encountered an unexpected error condition.";
-    throw new ResourceAcquisitionFailedException(msg,se);
+catch (  SystemException e) {
+    throw new ResourceAcquisitionFailedException(e);
   }
 }
