@@ -15,11 +15,12 @@ catch (  IOException e) {
 catch (  Exception e) {
     throw new BranchedDataException("Exception while getting master ID for txId " + myLastCommittedTx + ".",e);
   }
-  Response<Pair<Integer,Long>> response=null;
-  Pair<Integer,Long> mastersMaster;
+  HandshakeResult handshake;
+  Response<HandshakeResult> response=null;
   try {
-    response=master.getMasterIdForCommittedTx(myLastCommittedTx,nioneoDataSource.getStoreId());
-    mastersMaster=response.response();
+    response=master.handshake(myLastCommittedTx,nioneoDataSource.getStoreId());
+    handshake=response.response();
+    requestContextFactory.setEpoch(handshake.epoch());
   }
  catch (  RuntimeException e) {
     if (e.getCause() instanceof MissingLogDataException) {
@@ -32,8 +33,8 @@ catch (  Exception e) {
       response.close();
     }
   }
-  if (myMaster.first() != XaLogicalLog.MASTER_ID_REPRESENTING_NO_MASTER && !myMaster.equals(mastersMaster)) {
-    String msg="Branched data, I (machineId:" + config.get(ClusterSettings.server_id) + ") think machineId for"+ " txId ("+ myLastCommittedTx+ ") is "+ myMaster+ ", but master (machineId:"+ getServerId(availableMasterId)+ ") says that it's "+ mastersMaster;
+  if (myMaster.first() != XaLogicalLog.MASTER_ID_REPRESENTING_NO_MASTER && (myMaster.first() != handshake.txAuthor() || myMaster.other() != handshake.txChecksum())) {
+    String msg="Branched data, I (machineId:" + config.get(ClusterSettings.server_id) + ") think machineId for"+ " txId ("+ myLastCommittedTx+ ") is "+ myMaster+ ", but master (machineId:"+ getServerId(availableMasterId)+ ") says that it's "+ handshake;
     throw new BranchedDataException(msg);
   }
   msgLog.logMessage("Master id for last committed tx ok with highestTxId=" + myLastCommittedTx + " with masterId="+ myMaster,true);
