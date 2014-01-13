@@ -1,31 +1,30 @@
 {
   char active='1';
   File activeLog=new File(logBaseFileName.getPath() + ".active");
-  FileChannel af=fileSystem.open(activeLog,"r");
   ByteBuffer buffer=ByteBuffer.allocate(1024);
-  af.read(buffer);
-  buffer.flip();
-  File activeLogBackup=new File(logBaseFileName.getPath() + ".bak.active");
-  FileChannel activeCopy=fileSystem.open(activeLogBackup,"rw");
-  activeCopy.write(buffer);
-  activeCopy.close();
-  af.close();
-  buffer.flip();
+  File activeLogBackup;
+  try (FileChannel af=fileSystem.open(activeLog,"r")){
+    af.read(buffer);
+    buffer.flip();
+    activeLogBackup=new File(logBaseFileName.getPath() + ".bak.active");
+    try (FileChannel activeCopy=fileSystem.open(activeLogBackup,"rw")){
+      activeCopy.write(buffer);
+    }
+   }
+   buffer.flip();
   active=buffer.asCharBuffer().get();
   buffer.clear();
   File currentLog=new File(logBaseFileName.getPath() + "." + active);
-  FileChannel source=fileSystem.open(currentLog,"r");
   File currentLogBackup=new File(logBaseFileName.getPath() + ".bak." + active);
-  FileChannel dest=fileSystem.open(currentLogBackup,"rw");
-  int read=-1;
-  do {
-    read=source.read(buffer);
-    buffer.flip();
-    dest.write(buffer);
-    buffer.clear();
-  }
+  try (FileChannel source=fileSystem.open(currentLog,"r");FileChannel dest=fileSystem.open(currentLogBackup,"rw")){
+    int read=-1;
+    do {
+      read=source.read(buffer);
+      buffer.flip();
+      dest.write(buffer);
+      buffer.clear();
+    }
  while (read == 1024);
-  source.close();
-  dest.close();
-  return new NonCleanLogCopy(new FileBackup(activeLog,activeLogBackup,fileSystem),new FileBackup(currentLog,currentLogBackup,fileSystem));
+  }
+   return new NonCleanLogCopy(new FileBackup(activeLog,activeLogBackup,fileSystem),new FileBackup(currentLog,currentLogBackup,fileSystem));
 }
