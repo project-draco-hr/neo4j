@@ -1,0 +1,33 @@
+{
+  ensureAllRelationshipsAreLoaded(nm);
+  Set<Integer> types=new HashSet<>();
+  TransactionState transactionState=nm.getTransactionState();
+  ArrayMap<Integer,SetAndDirectionCounter> allRemoved=transactionState.getCowRelationshipRemoveMap(this);
+  for (  RelIdArray ids : relationships) {
+    SetAndDirectionCounter removed=allRemoved != null ? allRemoved.get(ids.getType()) : null;
+    if (removed == null || removed.totalCount() < ids.length(DirectionWrapper.BOTH)) {
+      types.add(ids.getType());
+    }
+  }
+  ArrayMap<Integer,RelIdArray> add=transactionState.getCowRelationshipAddMap(this);
+  if (add != null) {
+    for (    Map.Entry<Integer,RelIdArray> addedType : add.entrySet()) {
+      RelIdArray ids=addedType.getValue();
+      SetAndDirectionCounter removed=allRemoved != null ? allRemoved.get(ids.getType()) : null;
+      if (removed == null || removed.totalCount() < ids.length(DirectionWrapper.BOTH)) {
+        types.add(addedType.getKey());
+      }
+    }
+  }
+  return new IterableWrapper<RelationshipType,Integer>(types){
+    @Override protected RelationshipType underlyingObjectToObject(    Integer type){
+      try {
+        return nm.getRelationshipTypeById(type);
+      }
+ catch (      TokenNotFoundException e) {
+        throw new ThisShouldNotHappenError("Mattias","The relationship type should exist at this point");
+      }
+    }
+  }
+;
+}

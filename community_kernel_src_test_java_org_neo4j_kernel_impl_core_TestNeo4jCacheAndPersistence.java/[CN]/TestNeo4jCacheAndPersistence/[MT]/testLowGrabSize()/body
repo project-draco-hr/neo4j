@@ -4,65 +4,34 @@
   String storePath=getStorePath("neo2");
   deleteFileOrDirectory(storePath);
   GraphDatabaseService graphDb=new TestGraphDatabaseFactory().newImpermanentDatabaseBuilder().setConfig(config).newGraphDatabase();
-  Transaction tx=graphDb.beginTx();
-  Node node1=graphDb.createNode();
-  Node node2=graphDb.createNode();
-  node1.createRelationshipTo(node2,MyRelTypes.TEST);
-  node2.createRelationshipTo(node1,MyRelTypes.TEST2);
-  node1.createRelationshipTo(node2,MyRelTypes.TEST_TRAVERSAL);
-  tx.success();
-  tx.finish();
-  tx=graphDb.beginTx();
-  Set<Relationship> rels=new HashSet<Relationship>();
-  RelationshipType types[]=new RelationshipType[]{MyRelTypes.TEST,MyRelTypes.TEST2,MyRelTypes.TEST_TRAVERSAL};
-  clearCache();
-  for (  Relationship rel : node1.getRelationships(types)) {
-    assertTrue(rels.add(rel));
+  Node node1, node2;
+  try (Transaction tx=graphDb.beginTx()){
+    node1=graphDb.createNode();
+    node2=graphDb.createNode();
+    node1.createRelationshipTo(node2,MyRelTypes.TEST);
+    node2.createRelationshipTo(node1,MyRelTypes.TEST2);
+    node1.createRelationshipTo(node2,MyRelTypes.TEST_TRAVERSAL);
+    tx.success();
   }
-  assertEquals(3,rels.size());
-  rels.clear();
-  clearCache();
-  for (  Relationship rel : node1.getRelationships()) {
-    assertTrue(rels.add(rel));
+   try (Transaction tx=graphDb.beginTx()){
+    RelationshipType types[]=new RelationshipType[]{MyRelTypes.TEST,MyRelTypes.TEST2,MyRelTypes.TEST_TRAVERSAL};
+    clearCache();
+    assertEquals(3,count(node1.getRelationships(types)));
+    clearCache();
+    assertEquals(3,count(node1.getRelationships()));
+    clearCache();
+    assertEquals(3,count(node2.getRelationships(types)));
+    clearCache();
+    assertEquals(3,count(node2.getRelationships()));
+    clearCache();
+    assertEquals(2,count(node1.getRelationships(OUTGOING)));
+    clearCache();
+    assertEquals(1,count(node1.getRelationships(INCOMING)));
+    clearCache();
+    assertEquals(1,count(node2.getRelationships(OUTGOING)));
+    clearCache();
+    assertEquals(2,count(node2.getRelationships(INCOMING)));
+    tx.success();
   }
-  assertEquals(3,rels.size());
-  rels.clear();
-  clearCache();
-  for (  Relationship rel : node2.getRelationships(types)) {
-    assertTrue(rels.add(rel));
-  }
-  assertEquals(3,rels.size());
-  rels.clear();
-  clearCache();
-  for (  Relationship rel : node2.getRelationships()) {
-    assertTrue(rels.add(rel));
-  }
-  assertEquals(3,rels.size());
-  rels.clear();
-  clearCache();
-  for (  Relationship rel : node1.getRelationships(Direction.OUTGOING)) {
-    assertTrue(rels.add(rel));
-  }
-  assertEquals(2,rels.size());
-  rels.clear();
-  clearCache();
-  for (  Relationship rel : node1.getRelationships(Direction.INCOMING)) {
-    assertTrue(rels.add(rel));
-  }
-  assertEquals(1,rels.size());
-  rels.clear();
-  clearCache();
-  for (  Relationship rel : node2.getRelationships(Direction.OUTGOING)) {
-    assertTrue(rels.add(rel));
-  }
-  assertEquals(1,rels.size());
-  rels.clear();
-  clearCache();
-  for (  Relationship rel : node2.getRelationships(Direction.INCOMING)) {
-    assertTrue(rels.add(rel));
-  }
-  assertEquals(2,rels.size());
-  tx.success();
-  tx.finish();
-  graphDb.shutdown();
+   graphDb.shutdown();
 }

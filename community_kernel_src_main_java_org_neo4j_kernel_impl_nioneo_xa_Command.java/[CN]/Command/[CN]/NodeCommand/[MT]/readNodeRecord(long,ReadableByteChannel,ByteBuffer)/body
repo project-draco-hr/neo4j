@@ -12,17 +12,18 @@
   }
   NodeRecord record;
   if (inUse) {
-    if (!readAndFlip(byteChannel,buffer,8 * 3)) {
+    if (!readAndFlip(byteChannel,buffer,8 * 3 + 1)) {
       return null;
     }
-    record=new NodeRecord(id,buffer.getLong(),buffer.getLong());
+    boolean dense=buffer.get() == 1;
+    record=new NodeRecord(id,dense,buffer.getLong(),buffer.getLong());
     long labelField=buffer.getLong();
     Collection<DynamicRecord> dynamicLabelRecords=new ArrayList<>();
     readDynamicRecords(byteChannel,buffer,dynamicLabelRecords,COLLECTION_DYNAMIC_RECORD_ADDER);
     record.setLabelField(labelField,dynamicLabelRecords);
   }
  else {
-    record=new NodeRecord(id,Record.NO_NEXT_RELATIONSHIP.intValue(),Record.NO_NEXT_PROPERTY.intValue());
+    record=new NodeRecord(id,false,Record.NO_NEXT_RELATIONSHIP.intValue(),Record.NO_NEXT_PROPERTY.intValue());
   }
   record.setInUse(inUse);
   return record;

@@ -1,0 +1,30 @@
+{
+  Buffer buffer=window.getOffsettedBuffer(id);
+  long inUseByte=buffer.get();
+  boolean inUse=(inUseByte & 0x1) > 0;
+  if (!inUse) {
+switch (load) {
+case NORMAL:
+      throw new InvalidRecordException("Record[" + id + "] not in use");
+case CHECK:
+    return null;
+}
+}
+long highByte=buffer.get();
+int type=buffer.getShort();
+long nextLowBits=buffer.getUnsignedInt();
+long nextOutLowBits=buffer.getUnsignedInt();
+long nextInLowBits=buffer.getUnsignedInt();
+long nextLoopLowBits=buffer.getUnsignedInt();
+long nextMod=(inUseByte & 0xE) << 31;
+long nextOutMod=(inUseByte & 0x70) << 28;
+long nextInMod=(highByte & 0xE) << 31;
+long nextLoopMod=(highByte & 0x70) << 28;
+RelationshipGroupRecord record=new RelationshipGroupRecord(id,type);
+record.setInUse(true);
+record.setNext(longFromIntAndMod(nextLowBits,nextMod));
+record.setFirstOut(longFromIntAndMod(nextOutLowBits,nextOutMod));
+record.setFirstIn(longFromIntAndMod(nextInLowBits,nextInMod));
+record.setFirstLoop(longFromIntAndMod(nextLoopLowBits,nextLoopMod));
+return record;
+}

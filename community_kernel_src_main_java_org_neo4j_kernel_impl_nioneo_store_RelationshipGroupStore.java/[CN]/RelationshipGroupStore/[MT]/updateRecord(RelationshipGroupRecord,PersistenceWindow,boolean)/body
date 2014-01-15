@@ -1,0 +1,18 @@
+{
+  long id=record.getId();
+  registerIdFromUpdateRecord(id);
+  Buffer buffer=window.getOffsettedBuffer(id);
+  if (record.inUse() || force) {
+    long nextMod=record.getNext() == Record.NO_NEXT_RELATIONSHIP.intValue() ? 0 : (record.getNext() & 0x700000000L) >> 31;
+    long nextOutMod=record.getFirstOut() == Record.NO_NEXT_RELATIONSHIP.intValue() ? 0 : (record.getFirstOut() & 0x700000000L) >> 28;
+    long nextInMod=record.getFirstIn() == Record.NO_NEXT_RELATIONSHIP.intValue() ? 0 : (record.getFirstIn() & 0x700000000L) >> 31;
+    long nextLoopMod=record.getFirstLoop() == Record.NO_NEXT_RELATIONSHIP.intValue() ? 0 : (record.getFirstLoop() & 0x700000000L) >> 28;
+    buffer.put((byte)(nextOutMod | nextMod | 1)).put((byte)(nextLoopMod | nextInMod)).putShort((short)record.getType()).putInt((int)record.getNext()).putInt((int)record.getFirstOut()).putInt((int)record.getFirstIn()).putInt((int)record.getFirstLoop());
+  }
+ else {
+    buffer.put(Record.NOT_IN_USE.byteValue());
+    if (!isInRecoveryMode()) {
+      freeId(id);
+    }
+  }
+}

@@ -14,7 +14,7 @@
       if (currentTypeIndex + 1 < rels.length) {
         currentTypeIterator=rels[++currentTypeIndex];
       }
- else       if ((status=fromNode.getMoreRelationships(nodeManager)).loaded() || lastTimeILookedThereWasMoreToLoad) {
+ else       if ((status=fromNode.getMoreRelationships(nodeManager,direction,types)).loaded() || lastTimeILookedThereWasMoreToLoad) {
         lastTimeILookedThereWasMoreToLoad=status.hasMoreToLoad();
         Map<Integer,RelIdIterator> newRels=new HashMap<>();
         for (        RelIdIterator itr : rels) {
@@ -27,13 +27,13 @@
           newRels.put(type,itr);
         }
         if (allTypes) {
-          ArrayMap<Integer,Collection<Long>> skipMap=nodeManager.getTransactionState().getCowRelationshipRemoveMap(fromNode);
+          ArrayMap<Integer,SetAndDirectionCounter> skipMap=nodeManager.getTransactionState().getCowRelationshipRemoveMap(fromNode);
           for (          RelIdArray ids : fromNode.getRelationshipIds()) {
             int type=ids.getType();
             RelIdIterator itr=newRels.get(type);
             if (itr == null) {
-              Collection<Long> remove=skipMap != null ? skipMap.get(type) : null;
-              itr=remove == null ? ids.iterator(direction) : RelIdArray.from(ids,null,remove).iterator(direction);
+              SetAndDirectionCounter remove=skipMap != null ? skipMap.get(type) : null;
+              itr=remove == null ? ids.iterator(direction) : new CombinedRelIdIterator(type,direction,ids,null,remove.set);
               newRels.put(type,itr);
             }
  else {

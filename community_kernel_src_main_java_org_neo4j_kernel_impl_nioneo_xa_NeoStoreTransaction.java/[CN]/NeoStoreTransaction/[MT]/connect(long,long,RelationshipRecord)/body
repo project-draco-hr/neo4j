@@ -1,0 +1,32 @@
+{
+  long newCount=1;
+  if (firstRelId != Record.NO_NEXT_RELATIONSHIP.intValue()) {
+    Relationship lockableRel=new LockableRelationship(firstRelId);
+    getWriteLock(lockableRel);
+    RelationshipRecord firstRel=relRecords.getOrLoad(firstRelId,null).forChangingLinkage();
+    boolean changed=false;
+    if (firstRel.getFirstNode() == nodeId) {
+      newCount=firstRel.getFirstPrevRel() + 1;
+      firstRel.setFirstPrevRel(rel.getId());
+      firstRel.setFirstInFirstChain(false);
+      changed=true;
+    }
+    if (firstRel.getSecondNode() == nodeId) {
+      newCount=firstRel.getSecondPrevRel() + 1;
+      firstRel.setSecondPrevRel(rel.getId());
+      firstRel.setFirstInSecondChain(false);
+      changed=true;
+    }
+    if (!changed) {
+      throw new InvalidRecordException(nodeId + " doesn't match " + firstRel);
+    }
+  }
+  if (rel.getFirstNode() == nodeId) {
+    rel.setFirstPrevRel(newCount);
+    rel.setFirstInFirstChain(true);
+  }
+  if (rel.getSecondNode() == nodeId) {
+    rel.setSecondPrevRel(newCount);
+    rel.setFirstInSecondChain(true);
+  }
+}

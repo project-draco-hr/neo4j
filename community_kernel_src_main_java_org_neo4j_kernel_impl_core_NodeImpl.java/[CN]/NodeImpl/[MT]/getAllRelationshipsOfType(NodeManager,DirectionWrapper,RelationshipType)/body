@@ -1,11 +1,10 @@
 {
-  types=deduplicate(types);
-  ensureRelationshipMapNotNull(nodeManager);
-  boolean hasMore=hasMoreRelationshipsToLoad();
+  ensureRelationshipMapNotNull(nodeManager,direction,types);
+  boolean hasMore=hasMoreRelationshipsToLoad(direction,types);
   RelIdIterator[] result=new RelIdIterator[types.length];
   TransactionState tx=nodeManager.getTransactionState();
   ArrayMap<Integer,RelIdArray> addMap=null;
-  ArrayMap<Integer,Collection<Long>> skipMap=null;
+  ArrayMap<Integer,SetAndDirectionCounter> skipMap=null;
   if (tx.hasChanges()) {
     addMap=tx.getCowRelationshipAddMap(this);
     skipMap=tx.getCowRelationshipRemoveMap(this);
@@ -13,10 +12,11 @@
   int actualLength=0;
   for (  RelationshipType type : types) {
     int typeId=nodeManager.getRelationshipTypeIdFor(type);
-    if (typeId == TokenHolder.NO_ID) {
+    if (typeId == TokenHolder.NO_ID || typeIn(typeId,actualLength,result)) {
       continue;
     }
-    result[actualLength++]=getRelationshipsIterator(direction,addMap != null ? addMap.get(typeId) : null,skipMap != null ? skipMap.get(typeId) : null,typeId);
+    SetAndDirectionCounter remove=skipMap != null ? skipMap.get(typeId) : null;
+    result[actualLength++]=getRelationshipsIterator(direction,addMap != null ? addMap.get(typeId) : null,remove != null ? remove.set : null,typeId);
   }
   if (actualLength < result.length) {
     RelIdIterator[] compacted=new RelIdIterator[actualLength];
@@ -26,5 +26,5 @@
   if (result.length == 0) {
     return Collections.emptyList();
   }
-  return new RelationshipIterator(result,this,direction,nodeManager,hasMore,false);
+  return new RelationshipIterator(result,this,direction,types,nodeManager,hasMore,false);
 }

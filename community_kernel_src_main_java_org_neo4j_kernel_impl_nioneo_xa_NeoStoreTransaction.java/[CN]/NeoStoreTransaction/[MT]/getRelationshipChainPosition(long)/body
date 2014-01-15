@@ -1,3 +1,17 @@
 {
-  return nodeRecords.getOrLoad(nodeId,null).getBefore().getNextRel();
+  RecordChange<Long,NodeRecord,Void> nodeChange=nodeRecords.getIfLoaded(id);
+  if (nodeChange != null && nodeChange.isCreated()) {
+    return RelationshipLoadingPosition.EMPTY_DEFINITION;
+  }
+  NodeRecord node=getNodeStore().getRecord(id);
+  if (node.isDense()) {
+    long firstGroup=node.getNextRel();
+    if (firstGroup == Record.NO_NEXT_RELATIONSHIP.intValue()) {
+      return RelationshipLoadingPosition.EMPTY_DEFINITION;
+    }
+    Map<Integer,RelationshipGroupRecord> groups=loadRelationshipGroups(firstGroup,neoStore.getRelationshipGroupStore());
+    return new DenseNodeChainPosition.Definition(groups);
+  }
+  long firstRel=node.getNextRel();
+  return firstRel == Record.NO_NEXT_RELATIONSHIP.intValue() ? RelationshipLoadingPosition.EMPTY_DEFINITION : new SingleChainPosition(firstRel);
 }

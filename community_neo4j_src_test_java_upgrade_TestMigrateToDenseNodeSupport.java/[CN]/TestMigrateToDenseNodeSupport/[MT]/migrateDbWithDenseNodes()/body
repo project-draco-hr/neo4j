@@ -1,0 +1,20 @@
+{
+  GraphDatabaseService db=new GraphDatabaseFactory().newEmbeddedDatabaseBuilder(dir.getAbsolutePath()).setConfig(allow_store_upgrade,"true").newGraphDatabase();
+  try (Transaction tx=db.beginTx()){
+    Node refNode=single(at(db).getAllNodesWithLabel(referenceNode));
+    int sparseCount=0;
+    for (    Relationship relationship : refNode.getRelationships(Types.SPARSE,OUTGOING)) {
+      verifySparseNode(db,relationship.getEndNode());
+      sparseCount++;
+    }
+    int denseCount=0;
+    for (    Relationship relationship : refNode.getRelationships(Types.DENSE,OUTGOING)) {
+      verifyDenseNode(db,relationship.getEndNode());
+      denseCount++;
+    }
+    assertEquals(10,sparseCount);
+    assertEquals(10,denseCount);
+    tx.success();
+  }
+   db.shutdown();
+}

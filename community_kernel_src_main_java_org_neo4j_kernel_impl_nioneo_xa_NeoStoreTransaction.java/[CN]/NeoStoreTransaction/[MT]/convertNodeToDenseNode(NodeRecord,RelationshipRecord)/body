@@ -1,0 +1,20 @@
+{
+  firstRel=relRecords.getOrLoad(firstRel.getId(),null).forChangingLinkage();
+  node.setDense(true);
+  node.setNextRel(Record.NO_NEXT_RELATIONSHIP.intValue());
+  long relId=firstRel.getId();
+  RelationshipRecord relRecord=firstRel;
+  while (relId != Record.NO_NEXT_RELATIONSHIP.intValue()) {
+    getWriteLock(new LockableRelationship(relId));
+    relId=relChain(relRecord,node.getId()).get(relRecord);
+    connectRelationshipToDenseNode(node,relRecord);
+    if (relId == Record.NO_NEXT_RELATIONSHIP.intValue()) {
+      break;
+    }
+    relRecord=relRecords.getOrLoad(relId,null).forChangingLinkage();
+  }
+  if (upgradedDenseNodes == null) {
+    upgradedDenseNodes=new ArrayList<>();
+  }
+  upgradedDenseNodes.add(node);
+}

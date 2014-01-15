@@ -1,0 +1,32 @@
+{
+  if (fileName == null) {
+    throw new IllegalArgumentException("Null filename");
+  }
+  if (fileSystemAbstraction.fileExists(fileName)) {
+    throw new IllegalStateException("Can't create store[" + fileName + "], file already exists");
+  }
+  try {
+    FileChannel channel=fileSystemAbstraction.create(fileName);
+    int endHeaderSize=UTF8.encode(typeAndVersionDescriptor).length;
+    if (firstRecordData != null) {
+      endHeaderSize+=firstRecordData.limit();
+    }
+    ByteBuffer buffer=ByteBuffer.allocate(endHeaderSize);
+    if (firstRecordData != null) {
+      buffer.put(firstRecordData);
+    }
+    buffer.put(UTF8.encode(typeAndVersionDescriptor)).flip();
+    channel.write(buffer);
+    channel.force(false);
+    channel.close();
+  }
+ catch (  IOException e) {
+    throw new UnderlyingStorageException("Unable to create store " + fileName,e);
+  }
+  idGeneratorFactory.create(fileSystemAbstraction,new File(fileName.getPath() + ".id"),0);
+  if (firstRecordData != null) {
+    IdGenerator idGenerator=idGeneratorFactory.open(fileSystemAbstraction,new File(fileName.getPath() + ".id"),1,idType,1);
+    idGenerator.nextId();
+    idGenerator.close();
+  }
+}

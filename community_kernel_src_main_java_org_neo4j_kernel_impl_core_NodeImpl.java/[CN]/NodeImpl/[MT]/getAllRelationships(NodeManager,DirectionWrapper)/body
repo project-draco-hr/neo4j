@@ -1,11 +1,11 @@
 {
-  ensureRelationshipMapNotNull(nodeManager);
-  boolean hasMore=hasMoreRelationshipsToLoad();
+  ensureRelationshipMapNotNull(nodeManager,direction,NO_RELATIONSHIP_TYPES);
+  boolean hasMore=hasMoreRelationshipsToLoad(direction,NO_RELATIONSHIP_TYPES);
   RelIdArray[] localRelationships=relationships;
   RelIdIterator[] result=new RelIdIterator[localRelationships.length];
   TransactionState tx=nodeManager.getTransactionState();
   ArrayMap<Integer,RelIdArray> addMap=null;
-  ArrayMap<Integer,Collection<Long>> skipMap=null;
+  ArrayMap<Integer,SetAndDirectionCounter> skipMap=null;
   if (tx.hasChanges()) {
     addMap=tx.getCowRelationshipAddMap(this);
     skipMap=tx.getCowRelationshipRemoveMap(this);
@@ -15,7 +15,8 @@
     int type=src.getType();
     RelIdIterator iterator;
     if (addMap != null || skipMap != null) {
-      iterator=new CombinedRelIdIterator(type,direction,src,addMap != null ? addMap.get(type) : null,skipMap != null ? skipMap.get(type) : null);
+      SetAndDirectionCounter remove=skipMap != null ? skipMap.get(type) : null;
+      iterator=new CombinedRelIdIterator(type,direction,src,addMap != null ? addMap.get(type) : null,remove != null ? remove.set : null);
     }
  else {
       iterator=src.iterator(direction);
@@ -28,7 +29,8 @@
     for (    int type : addMap.keySet()) {
       if (getRelIdArray(type) == null) {
         RelIdArray add=addMap.get(type);
-        additional[additionalSize++]=new CombinedRelIdIterator(type,direction,null,add,skipMap != null ? skipMap.get(type) : null);
+        SetAndDirectionCounter remove=skipMap != null ? skipMap.get(type) : null;
+        additional[additionalSize++]=new CombinedRelIdIterator(type,direction,null,add,remove != null ? remove.set : null);
       }
     }
     RelIdIterator[] newResult=new RelIdIterator[result.length + additionalSize];
@@ -39,5 +41,5 @@
   if (result.length == 0) {
     return Collections.emptyList();
   }
-  return new RelationshipIterator(result,this,direction,nodeManager,hasMore,true);
+  return new RelationshipIterator(result,this,direction,NO_RELATIONSHIP_TYPES,nodeManager,hasMore,true);
 }

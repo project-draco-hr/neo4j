@@ -13,16 +13,19 @@
           long relModifier=(inUseByte & 0xEL) << 31;
           long nextProp=LegacyStore.getUnsignedInt(buffer);
           long propModifier=(inUseByte & 0xF0L) << 28;
-          nodeRecord=new NodeRecord(id,longFromIntAndMod(nextRel,relModifier),longFromIntAndMod(nextProp,propModifier));
+          long lsbLabels=LegacyStore.getUnsignedInt(buffer);
+          long hsbLabels=buffer.get() & 0xFF;
+          long labels=lsbLabels | (hsbLabels << 32);
+          nodeRecord=new NodeRecord(id,false,longFromIntAndMod(nextRel,relModifier),longFromIntAndMod(nextProp,propModifier));
+          nodeRecord.setLabelField(labels,Collections.<DynamicRecord>emptyList());
         }
- else         nodeRecord=new NodeRecord(id,Record.NO_NEXT_RELATIONSHIP.intValue(),Record.NO_NEXT_PROPERTY.intValue());
+ else {
+          nodeRecord=new NodeRecord(id,false,Record.NO_NEXT_RELATIONSHIP.intValue(),Record.NO_NEXT_PROPERTY.intValue());
+        }
         nodeRecord.setInUse(inUse);
         id++;
       }
       return nodeRecord;
-    }
-    @Override public void remove(){
-      throw new UnsupportedOperationException();
     }
   }
 ;

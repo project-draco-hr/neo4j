@@ -1,0 +1,28 @@
+{
+  NodeStore nodeStore=neoStore.getNodeStore();
+  RelationshipStore relationshipStore=neoStore.getRelationshipStore();
+  RelationshipGroupStore relGroupStore=neoStore.getRelationshipGroupStore();
+  LegacyNodeStoreReader nodeReader=legacyStore.getNodeStoreReader();
+  LegacyRelationshipStoreReader relReader=legacyStore.getRelStoreReader();
+  nodeStore.setHighId(nodeReader.getMaxId());
+  int denseNodeThreshold=neoStore.getDenseNodeThreshold();
+  relationshipStore.setHighId(relReader.getMaxId());
+  try {
+    for (    NodeRecord node : loop(nodeReader.readNodeStore())) {
+      reportProgress(node.getId());
+      Collection<RelationshipRecord> relationships=loadRelationships(node,relReader);
+      if (relationships.size() >= denseNodeThreshold) {
+        migrateDenseNode(nodeStore,relationshipStore,relGroupStore,node,relationships);
+      }
+ else {
+        migrateNormalNode(nodeStore,relationshipStore,node,relationships);
+      }
+    }
+    legacyStore.copyNodeStoreIdFile(neoStore);
+    legacyStore.copyRelationshipStoreIdFile(neoStore);
+  }
+  finally {
+    nodeReader.close();
+    relReader.close();
+  }
+}
