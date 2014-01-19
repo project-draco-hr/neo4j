@@ -1,14 +1,15 @@
 {
-  commit();
 class MyFancyException extends Exception {
   }
   ExceptionThrowingEventHandler handler=new ExceptionThrowingEventHandler(new MyFancyException(),null,null);
-  getGraphDb().registerTransactionEventHandler(handler);
+  GraphDatabaseService db=dbRule.getGraphDatabaseService();
+  db.registerTransactionEventHandler(handler);
   try {
-    newTransaction();
-    getGraphDb().createNode().delete();
+    Transaction tx=db.beginTx();
     try {
-      commit();
+      db.createNode().delete();
+      tx.success();
+      tx.close();
       fail("Should fail commit");
     }
  catch (    TransactionFailureException e) {
@@ -24,6 +25,6 @@ class MyFancyException extends Exception {
     }
   }
   finally {
-    getGraphDb().unregisterTransactionEventHandler(handler);
+    db.unregisterTransactionEventHandler(handler);
   }
 }
