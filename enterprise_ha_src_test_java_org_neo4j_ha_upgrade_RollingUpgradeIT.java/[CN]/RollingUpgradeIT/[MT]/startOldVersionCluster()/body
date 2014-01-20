@@ -1,0 +1,28 @@
+{
+  debug("Downloading " + OLD_VERSION + " package");
+  File oneEightPackage=downloadAndUnpack("http://download.neo4j.org/artifact?edition=enterprise&version=" + OLD_VERSION + "&distribution=zip",DIR.directory("download"),OLD_VERSION + "-enterprise");
+  String classpath=assembleClassPathFromPackage(oneEightPackage);
+  debug("Starting " + OLD_VERSION + " cluster in separate jvms");
+  @SuppressWarnings("rawtypes") Future[] legacyDbFutures=new Future[3];
+  for (int i=0; i < legacyDbFutures.length; i++) {
+    legacyDbFutures[i]=LegacyDatabaseImpl.start(classpath,new File(DBS_DIR,"" + i),config(i));
+    debug("  Started " + i);
+  }
+  legacyDbs=new LegacyDatabase[legacyDbFutures.length];
+  for (int i=0; i < legacyDbFutures.length; i++) {
+    legacyDbs[i]=(LegacyDatabase)legacyDbFutures[i].get();
+  }
+  for (  LegacyDatabase db : legacyDbs) {
+    debug("  Awaiting " + db.getStoreDir() + " to start");
+    db.awaitStarted(10,TimeUnit.SECONDS);
+    debug("  " + db.getStoreDir() + " fully started");
+  }
+  for (int i=0; i < legacyDbs.length; i++) {
+    String name="initial-" + i;
+    long node=legacyDbs[i].createNode(name);
+    for (    LegacyDatabase db : legacyDbs) {
+      db.verifyNodeExists(node,name);
+    }
+  }
+  debug(OLD_VERSION + " cluster fully operational");
+}

@@ -4,18 +4,26 @@
   int rmiPort=7000 + parseInt(config.get("ha.server_id"));
   args.add("" + rmiPort);
   args.addAll(asList(new Args(config).asArgs()));
-  Process process=execJava(appendNecessaryTestClasses(classpath),LegacyDatabaseImpl.class.getName(),args.toArray(new String[0]));
+  final Process process=execJava(appendNecessaryTestClasses(classpath),LegacyDatabaseImpl.class.getName(),args.toArray(new String[0]));
   new ProcessStreamHandler(process,false).launch();
-  RmiLocation rmiLocation=rmiLocation(rmiPort);
-  long endTime=currentTimeMillis() + SECONDS.toMillis(10000);
-  while (currentTimeMillis() < endTime) {
-    try {
-      return (LegacyDatabase)rmiLocation.getBoundObject();
-    }
- catch (    RemoteException e) {
-      sleep(100);
+  final RmiLocation rmiLocation=rmiLocation(rmiPort);
+  ExecutorService executor=newSingleThreadExecutor();
+  Future<LegacyDatabase> future=executor.submit(new Callable<LegacyDatabase>(){
+    @Override public LegacyDatabase call() throws Exception {
+      long endTime=currentTimeMillis() + SECONDS.toMillis(10000);
+      while (currentTimeMillis() < endTime) {
+        try {
+          return (LegacyDatabase)rmiLocation.getBoundObject();
+        }
+ catch (        RemoteException e) {
+          sleep(100);
+        }
+      }
+      process.destroy();
+      throw new IllegalStateException("Couldn't get remote to legacy database");
     }
   }
-  process.destroy();
-  throw new IllegalStateException("Couldn't get remote to legacy database");
+);
+  executor.shutdown();
+  return future;
 }
