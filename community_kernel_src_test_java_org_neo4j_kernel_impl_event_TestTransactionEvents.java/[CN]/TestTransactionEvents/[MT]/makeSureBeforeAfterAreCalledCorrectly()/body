@@ -1,35 +1,37 @@
 {
-  commit();
   List<TransactionEventHandler<Object>> handlers=new ArrayList<>();
   handlers.add(new FailingEventHandler<>(new DummyTransactionEventHandler<>(null),false));
   handlers.add(new FailingEventHandler<>(new DummyTransactionEventHandler<>(null),false));
   handlers.add(new FailingEventHandler<>(new DummyTransactionEventHandler<>(null),true));
   handlers.add(new FailingEventHandler<>(new DummyTransactionEventHandler<>(null),false));
+  GraphDatabaseService db=dbRule.getGraphDatabaseService();
   for (  TransactionEventHandler<Object> handler : handlers) {
-    getGraphDb().registerTransactionEventHandler(handler);
+    db.registerTransactionEventHandler(handler);
   }
   try {
-    newTransaction();
-    getGraphDb().createNode().delete();
+    Transaction tx=db.beginTx();
     try {
-      commit();
+      db.createNode().delete();
+      tx.success();
+      tx.close();
       fail("Should fail commit");
     }
  catch (    TransactionFailureException e) {
     }
     verifyHandlerCalls(handlers,false);
-    getGraphDb().unregisterTransactionEventHandler(handlers.remove(2));
+    db.unregisterTransactionEventHandler(handlers.remove(2));
     for (    TransactionEventHandler<Object> handler : handlers) {
       ((DummyTransactionEventHandler<Object>)((FailingEventHandler<Object>)handler).source).reset();
     }
-    newTransaction();
-    getGraphDb().createNode().delete();
-    commit();
-    verifyHandlerCalls(handlers,true);
+    try (Transaction transaction=db.beginTx()){
+      db.createNode().delete();
+      transaction.success();
+    }
+     verifyHandlerCalls(handlers,true);
   }
   finally {
     for (    TransactionEventHandler<Object> handler : handlers) {
-      getGraphDb().unregisterTransactionEventHandler(handler);
+      db.unregisterTransactionEventHandler(handler);
     }
   }
 }

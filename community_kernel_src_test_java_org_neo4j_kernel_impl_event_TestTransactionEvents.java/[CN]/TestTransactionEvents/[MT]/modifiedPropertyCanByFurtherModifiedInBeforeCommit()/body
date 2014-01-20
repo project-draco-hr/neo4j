@@ -1,11 +1,15 @@
 {
+  GraphDatabaseService db=dbRule.getGraphDatabaseService();
   final String key="key";
   final Object value1="the old value";
   final Object value2="the new value";
-  final Node node=getGraphDb().createNode();
-  node.setProperty(key,"initial value");
-  commit();
-  TransactionEventHandler<Void> handler=new TransactionEventHandler.Adapter<Void>(){
+  final Node node;
+  try (Transaction tx=db.beginTx()){
+    node=db.createNode();
+    node.setProperty(key,"initial value");
+    tx.success();
+  }
+   TransactionEventHandler<Void> handler=new TransactionEventHandler.Adapter<Void>(){
     @Override public Void beforeCommit(    TransactionData data) throws Exception {
       Node modifiedNode=data.assignedNodeProperties().iterator().next().entity();
       assertEquals(node,modifiedNode);
@@ -14,10 +18,11 @@
     }
   }
 ;
-  getGraphDb().registerTransactionEventHandler(handler);
-  newTransaction();
-  node.setProperty(key,value1);
-  commit();
-  assertThat(node,inTx(getGraphDb(),hasProperty(key).withValue(value2)));
-  getGraphDb().unregisterTransactionEventHandler(handler);
+  db.registerTransactionEventHandler(handler);
+  try (Transaction tx=db.beginTx()){
+    node.setProperty(key,value1);
+    tx.success();
+  }
+   assertThat(node,inTx(db,hasProperty(key).withValue(value2)));
+  db.unregisterTransactionEventHandler(handler);
 }
