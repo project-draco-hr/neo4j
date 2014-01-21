@@ -1,4 +1,15 @@
 {
-  assertInTransaction();
-  return nodeLookup.lookup(nodeId).getSingleRelationship(nodeLookup.getNodeManager(),type,dir);
-}
+  try (ResourceIterator<Relationship> rels=getRelationships(dir,type).iterator()){
+    if (!rels.hasNext()) {
+      return null;
+    }
+    Relationship rel=rels.next();
+    while (rels.hasNext()) {
+      Relationship other=rels.next();
+      if (!other.equals(rel)) {
+        throw new NotFoundException("More than one relationship[" + type + ", "+ dir+ "] found for "+ this);
+      }
+    }
+    return rel;
+  }
+ }

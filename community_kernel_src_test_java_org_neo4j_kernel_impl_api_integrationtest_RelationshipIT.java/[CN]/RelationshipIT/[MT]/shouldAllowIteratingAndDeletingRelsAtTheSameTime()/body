@@ -1,0 +1,21 @@
+{
+  long refNode, fromRefToOther1, fromRefToOther2;
+  int relType1, relType2;
+{
+    DataWriteOperations statement=dataWriteOperationsInNewTransaction();
+    relType1=statement.relationshipTypeGetOrCreateForName("Type1");
+    relType2=statement.relationshipTypeGetOrCreateForName("Type2");
+    refNode=statement.nodeCreate();
+    long otherNode=statement.nodeCreate();
+    fromRefToOther1=statement.relationshipCreate(relType1,refNode,otherNode);
+    fromRefToOther2=statement.relationshipCreate(relType2,refNode,otherNode);
+    commit();
+  }
+{
+    DataWriteOperations statement=dataWriteOperationsInNewTransaction();
+    statement.relationshipDelete(fromRefToOther1);
+    long localTxRel=statement.relationshipCreate(relType1,refNode,statement.nodeCreate());
+    assertRels(statement.nodeGetRelationships(refNode,BOTH),fromRefToOther2,localTxRel);
+    assertRelsInSeparateTx(refNode,BOTH,fromRefToOther1,fromRefToOther2);
+  }
+}
