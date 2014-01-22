@@ -2,15 +2,10 @@
   clusterContext.getLogger(getClass()).info("Doing elections for role " + role);
   elections.put(role,new Election(new WinnerStrategy(){
     @Override public org.neo4j.cluster.InstanceId pickWinner(    Collection<Vote> voteList){
-      List<Vote> filteredVoteList=toList(filter(new Predicate<Vote>(){
-        @Override public boolean accept(        Vote item){
-          return !(item.getCredentials() instanceof NotElectableElectionCredentials);
-        }
-      }
-,voteList));
+      List<Vote> filteredVoteList=removeBlankVotes(voteList);
       Collections.sort(filteredVoteList);
       Collections.reverse(filteredVoteList);
-      clusterContext.getLogger(getClass()).debug("Elections ended up with list " + filteredVoteList);
+      clusterContext.getLogger(getClass()).debug("Election started with " + voteList + ", ended up with "+ filteredVoteList);
       for (      Vote vote : filteredVoteList) {
         return vote.getSuggestedNode();
       }
