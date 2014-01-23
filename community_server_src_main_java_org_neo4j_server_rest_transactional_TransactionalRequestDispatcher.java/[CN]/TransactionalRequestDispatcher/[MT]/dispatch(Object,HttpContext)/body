@@ -1,23 +1,24 @@
 {
+  RepresentationWriteHandler representationWriteHandler=DO_NOTHING;
   if (o instanceof RestfulGraphDatabase) {
     RestfulGraphDatabase restfulGraphDatabase=(RestfulGraphDatabase)o;
     final Transaction transaction=database.getGraph().beginTx();
-    restfulGraphDatabase.getOutputFormat().setRepresentationWriteHandler(new CommitOnSuccessfulStatusCodeRepresentationWriteHandler(httpContext,transaction));
+    restfulGraphDatabase.getOutputFormat().setRepresentationWriteHandler(representationWriteHandler=new CommitOnSuccessfulStatusCodeRepresentationWriteHandler(httpContext,transaction));
   }
  else   if (o instanceof BatchOperationService) {
     BatchOperationService batchOperationService=(BatchOperationService)o;
     final Transaction transaction=database.getGraph().beginTx();
-    batchOperationService.setRepresentationWriteHandler(new CommitOnSuccessfulStatusCodeRepresentationWriteHandler(httpContext,transaction));
+    batchOperationService.setRepresentationWriteHandler(representationWriteHandler=new CommitOnSuccessfulStatusCodeRepresentationWriteHandler(httpContext,transaction));
   }
  else   if (o instanceof CypherService) {
     CypherService cypherService=(CypherService)o;
     final Transaction transaction=database.getGraph().beginTx();
-    cypherService.getOutputFormat().setRepresentationWriteHandler(new CommitOnSuccessfulStatusCodeRepresentationWriteHandler(httpContext,transaction));
+    cypherService.getOutputFormat().setRepresentationWriteHandler(representationWriteHandler=new CommitOnSuccessfulStatusCodeRepresentationWriteHandler(httpContext,transaction));
   }
  else   if (o instanceof DatabaseMetadataService) {
     DatabaseMetadataService databaseMetadataService=(DatabaseMetadataService)o;
     final Transaction transaction=database.getGraph().beginTx();
-    databaseMetadataService.setRepresentationWriteHandler(new RepresentationWriteHandler(){
+    databaseMetadataService.setRepresentationWriteHandler(representationWriteHandler=new RepresentationWriteHandler(){
       @Override public void onRepresentationStartWriting(){
       }
       @Override public void onRepresentationWritten(){
@@ -30,7 +31,7 @@
   }
  else   if (o instanceof ExtensionService) {
     ExtensionService extensionService=(ExtensionService)o;
-    extensionService.getOutputFormat().setRepresentationWriteHandler(new RepresentationWriteHandler(){
+    extensionService.getOutputFormat().setRepresentationWriteHandler(representationWriteHandler=new RepresentationWriteHandler(){
       Transaction transaction;
       @Override public void onRepresentationStartWriting(){
         transaction=database.getGraph().beginTx();
@@ -45,5 +46,11 @@
     }
 );
   }
-  requestDispatcher.dispatch(o,httpContext);
+  try {
+    requestDispatcher.dispatch(o,httpContext);
+  }
+ catch (  RuntimeException e) {
+    representationWriteHandler.onRepresentationFinal();
+    throw e;
+  }
 }
