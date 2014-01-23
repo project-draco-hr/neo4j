@@ -1,16 +1,22 @@
 {
-  IndexPopulator populator=indexProvider.getPopulator(17,new IndexConfiguration(true));
+  String value="value1";
+  int nodeId1=1;
+  int nodeId2=2;
+  IndexPopulator populator=indexProvider.getPopulator(17,descriptor,new IndexConfiguration(true));
   populator.create();
-  populator.add(1,"value1");
+  populator.add(nodeId1,value);
+  populator.add(nodeId2,value);
   try {
-    populator.add(2,"value1");
-    populator.verifyDeferredConstraints();
-    populator.close(true);
+    PropertyAccessor propertyAccessor=mock(PropertyAccessor.class);
+    int propertyKeyId=descriptor.getPropertyKeyId();
+    when(propertyAccessor.getProperty(nodeId1,propertyKeyId)).thenReturn(stringProperty(propertyKeyId,value));
+    when(propertyAccessor.getProperty(nodeId2,propertyKeyId)).thenReturn(stringProperty(propertyKeyId,value));
+    populator.verifyDeferredConstraints(propertyAccessor);
     fail("expected exception");
   }
  catch (  PreexistingIndexEntryConflictException conflict) {
-    assertEquals(1,conflict.getExistingNodeId());
-    assertEquals("value1",conflict.getPropertyValue());
-    assertEquals(2,conflict.getAddedNodeId());
+    assertEquals(nodeId1,conflict.getExistingNodeId());
+    assertEquals(value,conflict.getPropertyValue());
+    assertEquals(nodeId2,conflict.getAddedNodeId());
   }
 }

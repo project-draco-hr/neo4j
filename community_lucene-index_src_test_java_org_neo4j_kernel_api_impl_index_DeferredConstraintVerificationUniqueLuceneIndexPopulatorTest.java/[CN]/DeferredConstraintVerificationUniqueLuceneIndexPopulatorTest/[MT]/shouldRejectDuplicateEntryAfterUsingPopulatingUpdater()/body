@@ -1,18 +1,17 @@
 {
-  File indexDirectory=new File("target/whatever");
-  final LuceneDocumentStructure documentLogic=new LuceneDocumentStructure();
-  DeferredConstraintVerificationUniqueLuceneIndexPopulator populator=new DeferredConstraintVerificationUniqueLuceneIndexPopulator(documentLogic,standard(),new IndexWriterStatus(),directoryFactory,indexDirectory,failureStorage,indexId);
-  populator.create();
-  IndexUpdater updater=populator.newPopulatingUpdater();
-  updater.process(NodePropertyUpdate.add(1,1,"value1",new long[]{}));
-  populator.add(2,"value1");
+  String value="value1";
+  IndexUpdater updater=populator.newPopulatingUpdater(propertyAccessor);
+  updater.process(NodePropertyUpdate.add(1,PROPERTY_KEY_ID,value,new long[]{}));
+  populator.add(2,value);
+  when(propertyAccessor.getProperty(1,PROPERTY_KEY_ID)).thenReturn(stringProperty(PROPERTY_KEY_ID,value));
+  when(propertyAccessor.getProperty(2,PROPERTY_KEY_ID)).thenReturn(stringProperty(PROPERTY_KEY_ID,value));
   try {
-    populator.verifyDeferredConstraints();
+    populator.verifyDeferredConstraints(propertyAccessor);
     fail("should have thrown exception");
   }
  catch (  PreexistingIndexEntryConflictException conflict) {
     assertEquals(1,conflict.getExistingNodeId());
-    assertEquals("value1",conflict.getPropertyValue());
+    assertEquals(value,conflict.getPropertyValue());
     assertEquals(2,conflict.getAddedNodeId());
   }
 }

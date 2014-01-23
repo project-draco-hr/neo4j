@@ -1,30 +1,6 @@
 {
-  if (state.hasTxStateWithChanges()) {
-    TxState txState=state.txState();
-    DiffSets<Long> diff=nodesWithLabelAndPropertyDiffSet(state,index,value);
-    long indexNode=storeLayer.nodeGetUniqueFromIndexLookup(state,index,value);
-    if (diff.isEmpty()) {
-      if (NO_SUCH_NODE == indexNode) {
-        return NO_SUCH_NODE;
-      }
- else {
-        return nodeIfNotDeleted(indexNode,txState);
-      }
-    }
- else {
-      if (NO_SUCH_NODE == indexNode) {
-        Iterator<Long> iterator=diff.getAdded().iterator();
-        if (iterator.hasNext()) {
-          return single(txState.nodesDeletedInTx().apply(iterator),NO_SUCH_NODE);
-        }
- else {
-          return NO_SUCH_NODE;
-        }
-      }
- else {
-        return single(txState.nodesDeletedInTx().applyPrimitiveLongIterator(diff.applyPrimitiveLongIterator(asPrimitiveIterator(indexNode))),NO_SUCH_NODE);
-      }
-    }
-  }
-  return storeLayer.nodeGetUniqueFromIndexLookup(state,index,value);
+  PrimitiveLongIterator committed=storeLayer.nodeGetUniqueFromIndexLookup(state,index,value);
+  PrimitiveLongIterator exactMatches=filterExactIndexMatches(state,index,value,committed);
+  PrimitiveLongIterator changeFilteredMatches=filterIndexStateChanges(state,index,value,exactMatches);
+  return single(changeFilteredMatches,NO_SUCH_NODE);
 }

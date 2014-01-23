@@ -3,9 +3,15 @@
   populator.create();
   populator.add(1,"value1");
   populator.add(2,"value2");
+  int propertyKeyId=100;
+  PropertyAccessor propertyAccessor=mock(PropertyAccessor.class);
+  when(propertyAccessor.getProperty(1,propertyKeyId)).thenReturn(stringProperty(propertyKeyId,"value1"));
+  when(propertyAccessor.getProperty(2,propertyKeyId)).thenReturn(stringProperty(propertyKeyId,"value2"));
   try {
-    updatePopulator(populator,asList(NodePropertyUpdate.add(2,100,"value1",new long[]{1000})));
-    fail("should have thrown exception");
+    try (IndexUpdater updater=populator.newPopulatingUpdater(propertyAccessor)){
+      updater.process(add(2,propertyKeyId,"value1",new long[]{1000}));
+    }
+     fail("should have thrown exception");
   }
  catch (  PreexistingIndexEntryConflictException conflict) {
     assertEquals(1,conflict.getExistingNodeId());
