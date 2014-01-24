@@ -1,0 +1,15 @@
+{
+  try {
+    ChannelBuffer message=(ChannelBuffer)event.getMessage();
+    handleRequest(message,event.getChannel());
+  }
+ catch (  Throwable e) {
+    msgLog.error("Error handling request",e);
+    ChunkingChannelBuffer buffer=newChunkingBuffer(event.getChannel());
+    buffer.clear(true);
+    writeFailureResponse(e,buffer);
+    ctx.getChannel().close();
+    tryToFinishOffChannel(ctx.getChannel());
+    throw Exceptions.launderedException(e);
+  }
+}

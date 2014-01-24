@@ -4,26 +4,19 @@
   try {
     channelContext=getChannel(type);
     Channel channel=channelContext.first();
-    channelContext.second().clear();
-    ChunkingChannelBuffer chunkingBuffer=new ChunkingChannelBuffer(channelContext.second(),channel,chunkSize,getInternalProtocolVersion(),applicationProtocolVersion);
-    chunkingBuffer.writeByte(type.id());
-    writeContext(type,context,chunkingBuffer);
-    serializer.write(chunkingBuffer,channelContext.third());
-    chunkingBuffer.done();
-    @SuppressWarnings("unchecked") BlockingReadHandler<ChannelBuffer> reader=(BlockingReadHandler<ChannelBuffer>)channel.getPipeline().get("blockingHandler");
-    DechunkingChannelBuffer dechunkingBuffer=new DechunkingChannelBuffer(reader,getReadTimeout(type,readTimeout),getInternalProtocolVersion(),applicationProtocolVersion);
-    R response=deserializer.read(dechunkingBuffer,channelContext.third());
-    StoreId storeId=readStoreId(dechunkingBuffer,channelContext.third());
+    ChannelBuffer output=channelContext.second();
+    ByteBuffer input=channelContext.third();
+    protocol.serializeRequest(channel,output,type,context,serializer);
+    @SuppressWarnings("unchecked") Response<R> response=protocol.deserializeResponse((BlockingReadHandler<ChannelBuffer>)channel.getPipeline().get("blockingHandler"),input,getReadTimeout(type,readTimeout),deserializer,resourcePoolReleaser);
     if (shouldCheckStoreId(type)) {
       if (specificStoreId != null) {
-        assertCorrectStoreId(storeId,specificStoreId);
+        assertCorrectStoreId(response.getStoreId(),specificStoreId);
       }
  else {
-        assertCorrectStoreId(storeId,this.storeId);
+        assertCorrectStoreId(response.getStoreId(),storeId);
       }
     }
-    TransactionStream txStreams=readTransactionStreams(dechunkingBuffer,channelPool);
-    return new Response<R>(response,storeId,txStreams,resourcePoolReleaser);
+    return response;
   }
  catch (  IllegalProtocolVersionException e) {
     success=false;
@@ -41,7 +34,7 @@ catch (  Throwable e) {
   }
  finally {
     if (!success) {
-      releaseChannel(type,channelContext);
+      releaseChannel();
     }
   }
 }
