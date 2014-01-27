@@ -1,21 +1,20 @@
 {
   try {
-    MasterClient master=newMasterClient(masterUri,nioneoDataSource.getStoreId(),life);
+    MasterClient master=newMasterClient(masterUri,nioneoDataSource.getStoreId(),haCommunicationLife);
     Slave slaveImpl=new SlaveImpl(nioneoDataSource.getStoreId(),master,new RequestContextFactory(getServerId(masterUri),xaDataSourceManager,graphDb.getDependencyResolver()),xaDataSourceManager);
     SlaveServer server=new SlaveServer(slaveImpl,serverConfig(),logging);
     assignMaster(master);
-    life.add(slaveImpl);
-    life.add(server);
-    life.start();
+    haCommunicationLife.add(slaveImpl);
+    haCommunicationLife.add(server);
+    haCommunicationLife.start();
     slaveHaURI=createHaURI(server);
     clusterMemberAvailability.memberIsAvailable(SLAVE,slaveHaURI);
     return true;
   }
  catch (  Throwable t) {
     msgLog.logMessage("Got exception while starting HA communication",t);
-    life.shutdown();
-    life=new LifeSupport();
-    nioneoDataSource.stop();
+    haCommunicationLife.shutdown();
+    haCommunicationLife=new LifeSupport();
   }
   return false;
 }
