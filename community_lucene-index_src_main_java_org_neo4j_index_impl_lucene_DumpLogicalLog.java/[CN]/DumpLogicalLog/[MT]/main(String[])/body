@@ -1,10 +1,13 @@
 {
   FileSystemAbstraction fs=new DefaultFileSystemAbstraction();
-  Pair<Iterable<String>,TimeZone> config=parseConfig(args);
-  for (  String file : config.first()) {
-    int dumped=new DumpLogicalLog(fs).dump(file,config.other());
-    if (dumped == 0 && isAGraphDatabaseDirectory(file)) {
-      new DumpLogicalLog(fs).dump(new File(file,"index").getAbsolutePath(),config.other());
+  Args arguments=new Args(args);
+  TimeZone timeZome=parseTimeZoneConfig(arguments);
+  try (Printer printer=getPrinter(arguments)){
+    for (    String file : arguments.orphans()) {
+      int dumped=new DumpLogicalLog(fs).dump(file,printer.getFor(file),timeZome);
+      if (dumped == 0 && isAGraphDatabaseDirectory(file)) {
+        new DumpLogicalLog(fs).dump(new File(file,"index").getAbsolutePath(),printer.getFor(file),timeZome);
+      }
     }
   }
-}
+ }
