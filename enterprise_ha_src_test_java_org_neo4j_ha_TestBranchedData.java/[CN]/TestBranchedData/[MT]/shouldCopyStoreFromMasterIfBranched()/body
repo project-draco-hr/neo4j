@@ -1,0 +1,20 @@
+{
+  ClusterManager clusterManager=life.add(new ClusterManager(clusterOfSize(3),dir,stringMap()));
+  life.start();
+  ManagedCluster cluster=clusterManager.getDefaultCluster();
+  cluster.await(allSeesAllAsAvailable());
+  createNode(cluster.getMaster(),"A");
+  cluster.sync();
+  HighlyAvailableGraphDatabase slave=cluster.getAnySlave();
+  String storeDir=slave.getStoreDir();
+  RepairKit starter=cluster.shutdown(slave);
+  HighlyAvailableGraphDatabase master=cluster.getMaster();
+  HighlyAvailableGraphDatabase otherSlave=cluster.getAnySlave();
+  createNode(master,"B1");
+  createNode(master,"C");
+  createTransaction(storeDir,"B2");
+  starter.repair();
+  cluster.await(allSeesAllAsAvailable());
+  slave=cluster.getAnySlave(otherSlave);
+  slave.beginTx().finish();
+}
