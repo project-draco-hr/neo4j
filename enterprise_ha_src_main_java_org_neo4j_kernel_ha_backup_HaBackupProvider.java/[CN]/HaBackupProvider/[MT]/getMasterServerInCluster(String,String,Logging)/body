@@ -9,10 +9,10 @@
   final Config config=new Config(params,ClusterSettings.class,OnlineBackupSettings.class);
   ObjectStreamFactory objectStreamFactory=new ObjectStreamFactory();
   final ClusterClient clusterClient=life.add(new ClusterClient(ClusterClient.adapt(config),logging,new NotElectableElectionCredentialsProvider(),objectStreamFactory,objectStreamFactory));
-  ClusterMemberEvents events=life.add(new PaxosClusterMemberEvents(clusterClient,clusterClient,clusterClient,clusterClient,new SystemOutLogging(),Predicates.<PaxosClusterMemberEvents.ClusterMembersSnapshot>TRUE(),null,objectStreamFactory,objectStreamFactory));
+  ClusterMemberEvents events=life.add(new PaxosClusterMemberEvents(clusterClient,clusterClient,clusterClient,clusterClient,new SystemOutLogging(),Predicates.<PaxosClusterMemberEvents.ClusterMembersSnapshot>TRUE(),new HANewSnapshotFunction(),objectStreamFactory,objectStreamFactory));
   clusterClient.addClusterListener(new ClusterListener.Adapter(){
     @Override public void enteredCluster(    ClusterConfiguration clusterConfiguration){
-      clusterClient.refreshSnapshot();
+      clusterClient.performRoleElections();
       clusterClient.removeClusterListener(this);
     }
   }
