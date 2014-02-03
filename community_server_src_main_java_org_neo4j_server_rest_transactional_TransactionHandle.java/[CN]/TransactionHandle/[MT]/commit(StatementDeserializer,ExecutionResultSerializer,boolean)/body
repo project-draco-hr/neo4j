@@ -1,0 +1,33 @@
+{
+  List<Neo4jError> errors=new LinkedList<>();
+  try {
+    try {
+      boolean autocommit;
+      try {
+        autocommit=pristine && engine.isAutoCommitQuery(statements.peek().statement());
+      }
+ catch (      CypherException e) {
+        errors.add(new Neo4jError(EXCEPTION_MAPPING.apply(e),e));
+        throw e;
+      }
+      if (autocommit) {
+        executeStatements(statements,output,errors);
+      }
+ else {
+        ensureActiveTransaction();
+        executeStatements(statements,output,errors);
+        closeContextAndCollectErrors(errors);
+      }
+    }
+  finally {
+      registry.forget(id);
+    }
+  }
+ catch (  InternalBeginTransactionError e) {
+    errors.add(e.toNeo4jError());
+  }
+ finally {
+    output.errors(errors);
+    output.finish();
+  }
+}
