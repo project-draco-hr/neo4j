@@ -1,0 +1,32 @@
+{
+  File dir=TargetDirectory.forTest(testClass).graphDbDir(true);
+  try (InputStream source=testClass.getResourceAsStream(resource)){
+    if (source == null) {
+      throw new FileNotFoundException("Could not find resource '" + resource + "' to unzip");
+    }
+    ZipInputStream zipStream=new ZipInputStream(source);
+    ZipEntry entry=null;
+    byte[] scratch=new byte[8096];
+    while ((entry=zipStream.getNextEntry()) != null) {
+      if (entry.isDirectory()) {
+        new File(dir,entry.getName()).mkdirs();
+      }
+ else {
+        OutputStream file=new BufferedOutputStream(new FileOutputStream(new File(dir,entry.getName())));
+        try {
+          long toCopy=entry.getSize();
+          while (toCopy > 0) {
+            int read=zipStream.read(scratch);
+            file.write(scratch,0,read);
+            toCopy-=read;
+          }
+        }
+  finally {
+          file.close();
+        }
+      }
+      zipStream.closeEntry();
+    }
+  }
+   return dir;
+}
