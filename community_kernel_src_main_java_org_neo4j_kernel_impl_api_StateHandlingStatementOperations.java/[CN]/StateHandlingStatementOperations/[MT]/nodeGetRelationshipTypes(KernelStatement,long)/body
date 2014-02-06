@@ -1,0 +1,27 @@
+{
+  if (statement.hasTxStateWithChanges() && statement.txState().nodeModifiedInThisTx(nodeId)) {
+    TxState tx=statement.txState();
+    if (tx.nodeIsDeletedInThisTx(nodeId)) {
+      return IteratorUtil.emptyPrimitiveIntIterator();
+    }
+    if (tx.nodeIsAddedInThisTx(nodeId)) {
+      return tx.nodeRelationshipTypes(nodeId);
+    }
+    Set<Integer> types=new HashSet<>();
+    PrimitiveIntIterator typesInTx=tx.nodeRelationshipTypes(nodeId);
+    while (typesInTx.hasNext()) {
+      types.add(typesInTx.next());
+    }
+    PrimitiveIntIterator committedTypes=storeLayer.nodeGetRelationshipTypes(nodeId);
+    while (committedTypes.hasNext()) {
+      int current=committedTypes.next();
+      if (!types.contains(current) && nodeGetDegree(statement,nodeId,Direction.BOTH,current) > 0) {
+        types.add(current);
+      }
+    }
+    return IteratorUtil.toPrimitiveIntIterator(types.iterator());
+  }
+ else {
+    return storeLayer.nodeGetRelationshipTypes(nodeId);
+  }
+}
