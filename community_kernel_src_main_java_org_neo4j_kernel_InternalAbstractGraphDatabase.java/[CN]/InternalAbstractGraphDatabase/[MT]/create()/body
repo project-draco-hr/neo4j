@@ -62,13 +62,11 @@
   }
   life.add(txManager);
   cleanupService=life.add(createCleanupService());
-  transactionEventHandlers=new TransactionEventHandlers(txManager);
   txIdGenerator=life.add(createTxIdGenerator());
   lockManager=createLockManager();
   idGeneratorFactory=createIdGeneratorFactory();
   persistenceSource=life.add(new NioNeoDbPersistenceSource(xaDataSourceManager));
-  syncHook=new DefaultTxEventSyncHookFactory();
-  persistenceManager=new PersistenceManager(logging.getMessagesLog(PersistenceManager.class),txManager,persistenceSource,syncHook);
+  persistenceManager=new PersistenceManager(logging.getMessagesLog(PersistenceManager.class),txManager,persistenceSource);
   propertyKeyTokenHolder=life.add(new PropertyKeyTokenHolder(txManager,persistenceManager,persistenceSource,createPropertyKeyCreator()));
   labelTokenHolder=life.add(new LabelTokenHolder(txManager,persistenceManager,persistenceSource,createLabelIdCreator()));
   relationshipTypeTokenHolder=life.add(new RelationshipTypeTokenHolder(txManager,persistenceManager,persistenceSource,createRelationshipTypeCreator()));
@@ -77,6 +75,7 @@
   Cache<RelationshipImpl> relCache=diagnosticsManager.tryAppendProvider(caches.relationship());
   statementContextProvider=life.add(new ThreadToStatementContextBridge(persistenceManager));
   nodeManager=guard != null ? createGuardedNodeManager(readOnly,cacheProvider,nodeCache,relCache) : createNodeManager(readOnly,cacheProvider,nodeCache,relCache);
+  transactionEventHandlers=new TransactionEventHandlers(createNodeLookup(),createRelationshipLookups(),statementContextProvider,cleanupService);
   stateFactory.setDependencies(lockManager,nodeManager,txHook,txIdGenerator);
   indexStore=life.add(new IndexStore(this.storeDir,fileSystem));
   diagnosticsManager.prependProvider(config);

@@ -2,7 +2,46 @@
   if (hasTxStateWithChanges()) {
     final AtomicBoolean clearState=new AtomicBoolean(false);
     txState().accept(new TxState.Visitor(){
-      @Override public void visitNodeLabelChanges(      long id,      Set<Integer> added,      Set<Integer> removed){
+      @Override public void visitNodePropertyChanges(      long id,      Iterator<DefinedProperty> added,      Iterator<DefinedProperty> changed,      Iterator<Integer> removed){
+        while (removed.hasNext()) {
+          persistenceManager.nodeRemoveProperty(id,removed.next());
+        }
+        while (changed.hasNext()) {
+          DefinedProperty prop=changed.next();
+          persistenceManager.nodeChangeProperty(id,prop.propertyKeyId(),prop.value());
+        }
+        while (added.hasNext()) {
+          DefinedProperty prop=added.next();
+          persistenceManager.nodeAddProperty(id,prop.propertyKeyId(),prop.value());
+        }
+      }
+      @Override public void visitRelPropertyChanges(      long id,      Iterator<DefinedProperty> added,      Iterator<DefinedProperty> changed,      Iterator<Integer> removed){
+        while (removed.hasNext()) {
+          persistenceManager.relRemoveProperty(id,removed.next());
+        }
+        while (changed.hasNext()) {
+          DefinedProperty prop=changed.next();
+          persistenceManager.relChangeProperty(id,prop.propertyKeyId(),prop.value());
+        }
+        while (added.hasNext()) {
+          DefinedProperty prop=added.next();
+          persistenceManager.relAddProperty(id,prop.propertyKeyId(),prop.value());
+        }
+      }
+      @Override public void visitGraphPropertyChanges(      Iterator<DefinedProperty> added,      Iterator<DefinedProperty> changed,      Iterator<Integer> removed){
+        while (removed.hasNext()) {
+          persistenceManager.graphRemoveProperty(removed.next());
+        }
+        while (changed.hasNext()) {
+          DefinedProperty prop=changed.next();
+          persistenceManager.graphChangeProperty(prop.propertyKeyId(),prop.value());
+        }
+        while (added.hasNext()) {
+          DefinedProperty prop=added.next();
+          persistenceManager.graphAddProperty(prop.propertyKeyId(),prop.value());
+        }
+      }
+      @Override public void visitNodeLabelChanges(      long id,      Iterator<Integer> added,      Iterator<Integer> removed){
       }
       @Override public void visitAddedIndex(      IndexDescriptor element,      boolean isConstraintIndex){
         SchemaIndexProvider.Descriptor providerDescriptor=providerMap.getDefaultProvider().getProviderDescriptor();

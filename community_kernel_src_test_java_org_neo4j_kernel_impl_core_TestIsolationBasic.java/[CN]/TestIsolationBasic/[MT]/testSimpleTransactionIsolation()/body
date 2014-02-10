@@ -30,10 +30,10 @@
   assertPropertyEqual(rel1,"key","old");
   assertRelationshipCount(node1,1);
   assertRelationshipCount(node2,1);
+  final AtomicReference<Exception> t1Exception=new AtomicReference<>();
   Thread t1=new Thread(new Runnable(){
     public void run(){
-      Transaction tx=getGraphDb().beginTx();
-      try {
+      try (Transaction tx=getGraphDb().beginTx()){
         node1.setProperty("key","new");
         rel1.setProperty("key","new");
         node1.createRelationshipTo(node2,DynamicRelationshipType.withName("TEST"));
@@ -48,16 +48,21 @@
         assertRelationshipCount(node1,2);
         assertRelationshipCount(node2,2);
       }
- catch (      InterruptedException e) {
+ catch (      Exception e) {
         e.printStackTrace();
         Thread.interrupted();
+        t1Exception.set(e);
       }
  finally {
-        tx.finish();
-        assertPropertyEqual(node1,"key","old");
-        assertPropertyEqual(rel1,"key","old");
-        assertRelationshipCount(node1,1);
-        assertRelationshipCount(node2,1);
+        try {
+          assertPropertyEqual(node1,"key","old");
+          assertPropertyEqual(rel1,"key","old");
+          assertRelationshipCount(node1,1);
+          assertRelationshipCount(node2,1);
+        }
+ catch (        Exception e) {
+          t1Exception.compareAndSet(null,e);
+        }
       }
     }
   }
@@ -74,6 +79,9 @@
   assertPropertyEqual(rel1,"key","old");
   assertRelationshipCount(node1,1);
   assertRelationshipCount(node2,1);
+  if (t1Exception.get() != null) {
+    throw t1Exception.get();
+  }
   tx=getGraphDb().beginTx();
   try {
     for (    Relationship rel : node1.getRelationships()) {

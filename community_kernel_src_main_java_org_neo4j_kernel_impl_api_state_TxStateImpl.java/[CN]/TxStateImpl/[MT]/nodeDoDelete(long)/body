@@ -1,5 +1,17 @@
 {
   legacyState.deleteNode(nodeId);
-  nodesDeletedInTx().remove(nodeId);
+  if (addedAndRemovedNodes().remove(nodeId)) {
+    nodesCreatedAndDeletedInTx.add(nodeId);
+  }
+  if (hasNodeStatesMap()) {
+    NodeState nodeState=nodeStatesMap.remove(nodeId);
+    if (nodeState != null) {
+      DiffSets<Integer> diff=nodeState.labelDiffSets();
+      for (      Integer label : diff.getAdded()) {
+        labelStateNodeDiffSets(label).remove(nodeId);
+      }
+      nodeState.clear();
+    }
+  }
   hasChanges=true;
 }
