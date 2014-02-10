@@ -1,43 +1,5 @@
 {
   givenUniqueDataset();
-  final CountDownLatch createNodeReadyLatch=new CountDownLatch(1);
-  final CountDownLatch createNodeCommitLatch=new CountDownLatch(1);
-  Future<?> creatingNodeTransaction=executor.submit(new Runnable(){
-    @Override public void run(){
-      try (Transaction tx=db.beginTx()){
-        a.setProperty(property,"a1");
-        tx.success();
-        createNodeReadyLatch.countDown();
-        awaitUninterruptibly(createNodeCommitLatch);
-      }
-     }
-  }
-);
-  createNodeReadyLatch.await();
-  final CountDownLatch readLockAcquireLatch=new CountDownLatch(1);
-  final CountDownLatch readLockReleaseLatch=new CountDownLatch(1);
-  Future<?> readLockHolder=executor.submit(new Runnable(){
-    @Override public void run(){
-      Lock nodeReadLock=getLockService().acquireNodeLock(a.getId(),LockType.READ_LOCK);
-      readLockAcquireLatch.countDown();
-      awaitUninterruptibly(readLockReleaseLatch);
-      nodeReadLock.release();
-    }
-  }
-);
-  readLockAcquireLatch.await();
-  createNodeCommitLatch.countDown();
-  Lock nodeWriteLock=getLockService().acquireNodeLock(d.getId(),LockType.WRITE_LOCK);
-  Future<?> createConstraintTransaction=executor.submit(new Runnable(){
-    @Override public void run(){
-      createUniqueConstraint();
-    }
-  }
-);
-  readLockReleaseLatch.countDown();
-  readLockHolder.get();
-  creatingNodeTransaction.get();
-  LockServiceTestUtil.spinFindThreadBlockedByNodeLock(d.getId(),10000);
-  nodeWriteLock.release();
+  Future<?> createConstraintTransaction=applyChangesToPopulatingUpdater(d.getId(),a.getId(),setProperty(d,"d1"));
   createConstraintTransaction.get();
 }
