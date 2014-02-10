@@ -1,4 +1,20 @@
 {
   legacyPropertyTrackers.relationshipDelete(relationshipId);
-  state.txState().relationshipDoDelete(relationshipId);
+  final TxState txState=state.txState();
+  if (txState.relationshipIsAddedInThisTx(relationshipId)) {
+    txState.relationshipDoDeleteAddedInThisTx(relationshipId);
+  }
+ else {
+    try {
+      storeLayer.visit(relationshipId,new StoreReadLayer.RelationshipVisitor(){
+        @Override public void visit(        long relId,        long startNode,        long endNode,        int type){
+          txState.relationshipDoDelete(relId,startNode,endNode,type);
+        }
+      }
+);
+    }
+ catch (    EntityNotFoundException e) {
+      return;
+    }
+  }
 }

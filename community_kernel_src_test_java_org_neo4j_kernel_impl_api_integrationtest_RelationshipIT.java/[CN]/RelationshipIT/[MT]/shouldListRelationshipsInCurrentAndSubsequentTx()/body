@@ -1,0 +1,32 @@
+{
+  long refNode, fromRefToOther1, fromRefToOther2, fromOtherToRef, fromRefToRef, fromRefToThird;
+  int relType1, relType2;
+{
+    DataWriteOperations statement=dataWriteOperationsInNewTransaction();
+    relType1=statement.relationshipTypeGetOrCreateForName("Type1");
+    relType2=statement.relationshipTypeGetOrCreateForName("Type2");
+    refNode=statement.nodeCreate();
+    long otherNode=statement.nodeCreate();
+    fromRefToOther1=statement.relationshipCreate(relType1,refNode,otherNode);
+    fromRefToOther2=statement.relationshipCreate(relType2,refNode,otherNode);
+    fromOtherToRef=statement.relationshipCreate(relType1,otherNode,refNode);
+    fromRefToRef=statement.relationshipCreate(relType2,refNode,refNode);
+    fromRefToThird=statement.relationshipCreate(relType2,refNode,statement.nodeCreate());
+    assertRels(statement.nodeGetRelationships(refNode,BOTH),fromRefToOther1,fromRefToOther2,fromRefToRef,fromRefToThird,fromOtherToRef);
+    assertRels(statement.nodeGetRelationships(refNode,BOTH,relType1),fromRefToOther1,fromOtherToRef);
+    assertRels(statement.nodeGetRelationships(refNode,BOTH,new int[]{relType1,relType2}),fromRefToOther1,fromRefToOther2,fromRefToRef,fromRefToThird,fromOtherToRef);
+    assertRels(statement.nodeGetRelationships(refNode,INCOMING),fromOtherToRef);
+    assertRels(statement.nodeGetRelationships(refNode,INCOMING,relType1));
+    assertRels(statement.nodeGetRelationships(refNode,OUTGOING,new int[]{relType1,relType2}),fromRefToOther1,fromRefToOther2,fromRefToThird,fromRefToRef);
+    commit();
+  }
+{
+    DataWriteOperations statement=dataWriteOperationsInNewTransaction();
+    assertRels(statement.nodeGetRelationships(refNode,BOTH),fromRefToOther1,fromRefToOther2,fromRefToRef,fromRefToThird,fromOtherToRef);
+    assertRels(statement.nodeGetRelationships(refNode,BOTH,relType1),fromRefToOther1,fromOtherToRef);
+    assertRels(statement.nodeGetRelationships(refNode,BOTH,new int[]{relType1,relType2}),fromRefToOther1,fromRefToOther2,fromRefToRef,fromRefToThird,fromOtherToRef);
+    assertRels(statement.nodeGetRelationships(refNode,INCOMING),fromOtherToRef);
+    assertRels(statement.nodeGetRelationships(refNode,INCOMING,relType1));
+    assertRels(statement.nodeGetRelationships(refNode,OUTGOING,new int[]{relType1,relType2}),fromRefToOther1,fromRefToOther2,fromRefToThird,fromRefToRef);
+  }
+}

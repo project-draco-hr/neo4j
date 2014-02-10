@@ -1,0 +1,25 @@
+{
+  if (numBuckets >= MAX_BUCKETS) {
+    resizeThreshold=Integer.MAX_VALUE;
+    return;
+  }
+  Record<K,V>[] oldBuckets=buckets;
+  buckets=new Record[numBuckets];
+  bitwiseModByBuckets=numBuckets - 1;
+  resizeThreshold=(int)(numBuckets * resizeAtCapacity);
+  for (  Record<K,V> record : oldBuckets) {
+    while (record != null) {
+      Record<K,V> next=record.next;
+      if (next != null && liveIterators > 0) {
+        record=record.copy();
+      }
+ else       if (liveIterators == 0 && record instanceof CopiedRecord) {
+        record=((CopiedRecord)record).original;
+      }
+      int bucket=record.hashCode & bitwiseModByBuckets;
+      record.next=buckets[bucket];
+      buckets[bucket]=record;
+      record=next;
+    }
+  }
+}

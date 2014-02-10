@@ -1,0 +1,21 @@
+{
+  ThreadToStatementContextBridge stmCtxBridge=mock(ThreadToStatementContextBridge.class);
+  NodeProxy.NodeLookup nodeLookup=mock(NodeProxy.NodeLookup.class);
+  GraphDatabaseService gds=mock(GraphDatabaseService.class);
+  when(gds.getRelationshipById(REL_ID)).thenReturn(mock(Relationship.class));
+  when(gds.getRelationshipById(REL_ID + 1)).thenReturn(mock(Relationship.class));
+  when(nodeLookup.getGraphDatabase()).thenReturn(gds);
+  NodeProxy nodeImpl=new NodeProxy(1,nodeLookup,mock(RelationshipProxy.RelationshipLookups.class),stmCtxBridge,new CleanupService(new TestLogging()){
+    @Override public <T>ResourceIterator<T> resourceIterator(    Iterator<T> iterator,    Resource resource){
+      return IteratorUtil.asResourceIterator(iterator);
+    }
+  }
+);
+  Statement stmt=mock(Statement.class);
+  ReadOperations readOps=mock(ReadOperations.class);
+  when(stmt.readOperations()).thenReturn(readOps);
+  when(stmCtxBridge.instance()).thenReturn(stmt);
+  when(readOps.relationshipTypeGetForName(loves.name())).thenReturn(2);
+  when(readOps.nodeGetRelationships(1,Direction.OUTGOING,2)).thenReturn(primitiveLongIterator(relIds));
+  return nodeImpl;
+}

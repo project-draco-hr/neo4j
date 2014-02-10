@@ -1,25 +1,33 @@
 {
-  XidStatus status=xidMap.get(xid);
-  if (status == null) {
-    throw new XAException("Unknown xid[" + xid + "]");
-  }
-  TransactionStatus txStatus=status.getTransactionStatus();
-  XaTransaction xaTransaction=txStatus.getTransaction();
-  checkStartWritten(txStatus,xaTransaction);
-  if (xaTransaction.isReadOnly()) {
-    commitKernelTx(xaTransaction);
-    log.done(xaTransaction.getIdentifier());
-    xidMap.remove(xid);
-    if (xaTransaction.isRecovered()) {
-      recoveredTxCount--;
-      checkIfRecoveryComplete();
+  XidStatus status;
+  XaTransaction xaTransaction;
+  TransactionStatus txStatus;
+synchronized (this) {
+    status=xidMap.get(xid);
+    if (status == null) {
+      throw new XAException("Unknown xid[" + xid + "]");
     }
-    return XAResource.XA_RDONLY;
+    txStatus=status.getTransactionStatus();
+    xaTransaction=txStatus.getTransaction();
   }
+  prepareKernelTx(xaTransaction);
+synchronized (this) {
+    checkStartWritten(txStatus,xaTransaction);
+    if (xaTransaction.isReadOnly()) {
+      commitKernelTx(xaTransaction);
+      log.done(xaTransaction.getIdentifier());
+      xidMap.remove(xid);
+      if (xaTransaction.isRecovered()) {
+        recoveredTxCount--;
+        checkIfRecoveryComplete();
+      }
+      return XAResource.XA_RDONLY;
+    }
  else {
-    xaTransaction.prepare();
-    log.prepare(xaTransaction.getIdentifier());
-    txStatus.markAsPrepared();
-    return XAResource.XA_OK;
+      xaTransaction.prepare();
+      log.prepare(xaTransaction.getIdentifier());
+      txStatus.markAsPrepared();
+      return XAResource.XA_OK;
+    }
   }
 }
