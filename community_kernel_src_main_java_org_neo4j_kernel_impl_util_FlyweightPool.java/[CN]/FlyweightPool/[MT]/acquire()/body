@@ -1,0 +1,20 @@
+{
+  R resource=unused.poll();
+  if (resource == null) {
+    resource=create();
+    allocated.incrementAndGet();
+    monitor.created(resource);
+  }
+ else {
+    queueSize.decrementAndGet();
+  }
+  currentPeakSize=Math.max(currentPeakSize,allocated.get() - queueSize.get());
+  if (checkStrategy.shouldCheck()) {
+    targetSize=Math.max(minSize,currentPeakSize);
+    monitor.updatedCurrentPeakSize(currentPeakSize);
+    currentPeakSize=0;
+    monitor.updatedTargetSize(targetSize);
+  }
+  monitor.acquired(resource);
+  return resource;
+}

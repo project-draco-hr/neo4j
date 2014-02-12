@@ -2,47 +2,47 @@
   try (LockGroup lockGroup=new LockGroup()){
     committed=true;
     CommandSorter sorter=new CommandSorter();
-    if (relationshipTypeTokenCommands != null) {
-      java.util.Collections.sort(relationshipTypeTokenCommands,sorter);
-      for (      Command.RelationshipTypeTokenCommand command : relationshipTypeTokenCommands) {
+    if (context.getRelationshipTypeTokenCommands().size() != 0) {
+      java.util.Collections.sort(context.getRelationshipTypeTokenCommands(),sorter);
+      for (      Command.RelationshipTypeTokenCommand command : context.getRelationshipTypeTokenCommands()) {
         command.execute();
         if (isRecovered) {
           addRelationshipType((int)command.getKey());
         }
       }
     }
-    if (labelTokenCommands != null) {
-      java.util.Collections.sort(labelTokenCommands,sorter);
-      for (      Command.LabelTokenCommand command : labelTokenCommands) {
+    if (context.getLabelTokenCommands().size() != 0) {
+      java.util.Collections.sort(context.getLabelTokenCommands(),sorter);
+      for (      Command.LabelTokenCommand command : context.getLabelTokenCommands()) {
         command.execute();
         if (isRecovered) {
           addLabel((int)command.getKey());
         }
       }
     }
-    if (propertyKeyTokenCommands != null) {
-      java.util.Collections.sort(propertyKeyTokenCommands,sorter);
-      for (      Command.PropertyKeyTokenCommand command : propertyKeyTokenCommands) {
+    if (context.getPropertyKeyTokenCommands().size() != 0) {
+      java.util.Collections.sort(context.getPropertyKeyTokenCommands(),sorter);
+      for (      Command.PropertyKeyTokenCommand command : context.getPropertyKeyTokenCommands()) {
         command.execute();
         if (isRecovered) {
           addPropertyKey((int)command.getKey());
         }
       }
     }
-    java.util.Collections.sort(relCommands,sorter);
-    java.util.Collections.sort(propCommands,sorter);
-    executeCreated(lockGroup,isRecovered,propCommands,relCommands,nodeCommands.values(),relGroupCommands);
-    executeModified(lockGroup,isRecovered,propCommands,relCommands,nodeCommands.values(),relGroupCommands);
-    executeDeleted(lockGroup,propCommands,relCommands,nodeCommands.values(),relGroupCommands);
+    java.util.Collections.sort(context.getRelCommands(),sorter);
+    java.util.Collections.sort(context.getPropCommands(),sorter);
+    executeCreated(lockGroup,isRecovered,context.getPropCommands(),context.getRelCommands(),context.getNodeCommands().values(),context.getRelGroupCommands());
+    executeModified(lockGroup,isRecovered,context.getPropCommands(),context.getRelCommands(),context.getNodeCommands().values(),context.getRelGroupCommands());
+    executeDeleted(lockGroup,context.getPropCommands(),context.getRelCommands(),context.getNodeCommands().values(),context.getRelGroupCommands());
     Collection<NodeLabelUpdate> labelUpdates=gatherLabelUpdatesSortedByNodeId();
     if (!labelUpdates.isEmpty()) {
       updateLabelScanStore(labelUpdates);
       cacheAccess.applyLabelUpdates(labelUpdates);
     }
-    if (!nodeCommands.isEmpty() || !propCommands.isEmpty()) {
-      indexes.updateIndexes(new LazyIndexUpdates(getNodeStore(),getPropertyStore(),new ArrayList<>(propCommands),new HashMap<>(nodeCommands)));
+    if (!context.getNodeCommands().isEmpty() || !context.getPropCommands().isEmpty()) {
+      indexes.updateIndexes(new LazyIndexUpdates(getNodeStore(),getPropertyStore(),new ArrayList<>(context.getPropCommands()),new HashMap<>(context.getNodeCommands())));
     }
-    for (    SchemaRuleCommand command : schemaRuleCommands) {
+    for (    SchemaRuleCommand command : context.getSchemaRuleCommands()) {
       command.setTxId(getCommitTxId());
       command.execute();
 switch (command.getMode()) {
@@ -53,15 +53,15 @@ default :
     cacheAccess.addSchemaRule(command.getSchemaRule());
 }
 }
-if (neoStoreCommand != null) {
-neoStoreCommand.execute();
+if (context.getNeoStoreCommand() != null) {
+context.getNeoStoreCommand().execute();
 if (isRecovered) {
   removeGraphPropertiesFromCache();
 }
 }
 if (!isRecovered) {
-updateFirstRelationships();
-state.commitCows();
+context.updateFirstRelationships();
+context.commitCows();
 }
 neoStore.setLastCommittedTx(getCommitTxId());
 if (isRecovered) {

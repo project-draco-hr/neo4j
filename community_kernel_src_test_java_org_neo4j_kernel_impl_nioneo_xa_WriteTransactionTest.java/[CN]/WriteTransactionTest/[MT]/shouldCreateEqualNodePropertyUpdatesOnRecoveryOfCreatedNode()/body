@@ -3,7 +3,7 @@
   int labelId=5, propertyKeyId=7;
   NodePropertyUpdate expectedUpdate=NodePropertyUpdate.add(nodeId,propertyKeyId,"Neo",new long[]{labelId});
   long ruleId=0;
-  NeoStoreTransaction tx=newWriteTransaction(mockIndexing);
+  NeoStoreTransaction tx=newWriteTransaction(mockIndexing).first();
   SchemaRule rule=indexRule(ruleId,labelId,propertyKeyId,PROVIDER_DESCRIPTOR);
   tx.createSchemaRule(rule);
   prepareAndCommit(tx);
@@ -11,7 +11,7 @@
   IteratorCollector<NodePropertyUpdate> indexUpdates=new IteratorCollector<>(0);
   doAnswer(indexUpdates).when(index).updateIndexes(any(IndexUpdates.class));
   CommandCapturingVisitor commandCapturingVisitor=new CommandCapturingVisitor();
-  tx=newWriteTransaction(index,commandCapturingVisitor);
+  tx=newWriteTransaction(index,commandCapturingVisitor).first();
   tx.nodeCreate(nodeId);
   tx.addLabelToNode(labelId,nodeId);
   tx.nodeAddProperty(nodeId,propertyKeyId,"Neo");
@@ -21,7 +21,7 @@
   reset(index);
   indexUpdates=new IteratorCollector<>(0);
   doAnswer(indexUpdates).when(index).updateIndexes(any(IndexUpdates.class));
-  tx=newWriteTransaction(index);
+  tx=newWriteTransaction(index).first();
   commandCapturingVisitor.injectInto(tx);
   prepareAndCommitRecovered(tx);
   verify(index,times(1)).updateIndexes(any(IndexUpdates.class));
