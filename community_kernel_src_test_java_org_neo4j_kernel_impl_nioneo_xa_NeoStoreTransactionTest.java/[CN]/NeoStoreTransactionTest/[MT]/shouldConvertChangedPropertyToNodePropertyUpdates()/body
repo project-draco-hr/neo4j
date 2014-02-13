@@ -1,0 +1,17 @@
+{
+  int nodeId=0;
+  NeoStoreTransaction writeTransaction=newWriteTransaction(mockIndexing).first();
+  int propertyKey1=1, propertyKey2=2;
+  Object value1="first", value2=4;
+  writeTransaction.nodeCreate(nodeId);
+  DefinedProperty property1=writeTransaction.nodeAddProperty(nodeId,propertyKey1,value1);
+  DefinedProperty property2=writeTransaction.nodeAddProperty(nodeId,propertyKey2,value2);
+  prepareAndCommit(writeTransaction);
+  CapturingIndexingService indexingService=new CapturingIndexingService();
+  Object newValue1="new", newValue2="new 2";
+  writeTransaction=newWriteTransaction(indexingService).first();
+  writeTransaction.nodeChangeProperty(nodeId,property1.propertyKeyId(),newValue1);
+  writeTransaction.nodeChangeProperty(nodeId,property2.propertyKeyId(),newValue2);
+  prepareAndCommit(writeTransaction);
+  assertEquals(asSet(change(nodeId,propertyKey1,value1,none,newValue1,none),change(nodeId,propertyKey2,value2,none,newValue2,none)),indexingService.updates);
+}

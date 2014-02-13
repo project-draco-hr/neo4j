@@ -1,0 +1,22 @@
+{
+  long otherRelId=pointer.otherSide().get(rel);
+  if (otherRelId == Record.NO_NEXT_RELATIONSHIP.intValue()) {
+    return;
+  }
+  locker.getWriteLock(otherRelId);
+  RelationshipRecord otherRel=relChanges.getOrLoad(otherRelId,null).forChangingLinkage();
+  boolean changed=false;
+  long newId=pointer.get(rel);
+  boolean newIsFirst=pointer.isFirstInChain(rel);
+  if (otherRel.getFirstNode() == pointer.compareNode(rel)) {
+    pointer.start().set(otherRel,newId,newIsFirst);
+    changed=true;
+  }
+  if (otherRel.getSecondNode() == pointer.compareNode(rel)) {
+    pointer.end().set(otherRel,newId,newIsFirst);
+    changed=true;
+  }
+  if (!changed) {
+    throw new InvalidRecordException(otherRel + " don't match " + rel);
+  }
+}
