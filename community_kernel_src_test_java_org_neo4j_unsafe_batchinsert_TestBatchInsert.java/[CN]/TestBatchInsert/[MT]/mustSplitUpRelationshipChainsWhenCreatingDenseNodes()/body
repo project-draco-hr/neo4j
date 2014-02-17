@@ -1,0 +1,22 @@
+{
+  BatchInserter inserter=newBatchInserter();
+  inserter.createNode(1,null);
+  inserter.createNode(2,null);
+  for (int i=0; i < 1000; i++) {
+    for (    MyRelTypes relType : MyRelTypes.values()) {
+      inserter.createRelationship(1,2,relType,null);
+    }
+  }
+  GraphDatabaseAPI db=(GraphDatabaseAPI)switchToEmbeddedGraphDatabaseService(inserter);
+  try {
+    DependencyResolver dependencyResolver=db.getDependencyResolver();
+    NeoStoreProvider neoStoreProvider=dependencyResolver.resolveDependency(NeoStoreProvider.class);
+    NeoStore neoStore=neoStoreProvider.evaluate();
+    NodeStore nodeStore=neoStore.getNodeStore();
+    NodeRecord record=nodeStore.getRecord(1);
+    assertTrue("Node " + record + " should have been dense",record.isDense());
+  }
+  finally {
+    db.shutdown();
+  }
+}

@@ -1,0 +1,35 @@
+{
+  PrimitiveRecord primitive=primitiveProxy.forReadingLinkage();
+  long nextProp=primitive.getNextProp();
+  PropertyBlock block=new PropertyBlock();
+  propertyStore.encodeValue(block,key,value);
+  int size=block.getSize();
+  RecordProxy<Long,PropertyRecord,PrimitiveRecord> current, thatFits=null, thatHas=null;
+  while (!(nextProp == Record.NO_NEXT_PROPERTY.intValue() || (thatHas != null && thatFits != null))) {
+    current=propertyRecords.getOrLoad(nextProp,primitive);
+    if (thatHas == null && current.forReadingLinkage().getPropertyBlock(key) != null) {
+      thatHas=current;
+      PropertyBlock removed=thatHas.forChangingData().removePropertyBlock(key);
+      for (      DynamicRecord dynRec : removed.getValueRecords()) {
+        dynRec.setInUse(false);
+        thatHas.forChangingData().addDeletedRecord(dynRec);
+      }
+    }
+    if (thatFits == null && (PropertyType.getPayloadSize() - current.forReadingLinkage().size() >= size)) {
+      thatFits=current;
+    }
+    nextProp=current.forReadingLinkage().getNextProp();
+  }
+  if (thatFits == null) {
+    thatFits=propertyRecords.create(propertyStore.nextId(),primitive);
+    PropertyRecord thatFitsRecord=thatFits.forChangingData();
+    thatFitsRecord.setInUse(true);
+    if (primitive.getNextProp() != Record.NO_NEXT_PROPERTY.intValue()) {
+      PropertyRecord first=propertyRecords.getOrLoad(primitive.getNextProp(),primitive).forChangingLinkage();
+      thatFitsRecord.setNextProp(first.getId());
+      first.setPrevProp(thatFitsRecord.getId());
+    }
+    primitiveProxy.forChangingLinkage().setNextProp(thatFitsRecord.getId());
+  }
+  thatFits.forChangingData().addPropertyBlock(block);
+}

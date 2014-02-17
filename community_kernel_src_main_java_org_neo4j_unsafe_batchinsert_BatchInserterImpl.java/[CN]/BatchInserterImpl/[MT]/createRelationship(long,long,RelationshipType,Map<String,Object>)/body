@@ -1,22 +1,11 @@
 {
-  NodeRecord firstNode=getNodeRecord(node1);
-  NodeRecord secondNode=getNodeRecord(node2);
-  int typeId=relationshipTypeTokens.idOf(type.name());
-  if (typeId == -1) {
-    typeId=createNewRelationshipType(type.name());
+  long id=neoStore.getRelationshipStore().nextId();
+  int typeId=getOrCreateRelationshipTypeToken(type);
+  relationshipCreator.relationshipCreate(id,typeId,node1,node2,recordAccess);
+  if (properties != null && !properties.isEmpty()) {
+    RelationshipRecord record=recordAccess.getRelRecords().getOrLoad(id,null).forChangingData();
+    record.setNextProp(propertyCreator.createPropertyChain(record,propertiesIterator(properties),recordAccess.getPropertyRecords()));
   }
-  long id=getRelationshipStore().nextId();
-  RelationshipRecord record=new RelationshipRecord(id,node1,node2,typeId);
-  record.setInUse(true);
-  record.setCreated();
-  record.setFirstPrevRel(Record.NO_PREV_RELATIONSHIP.intValue());
-  record.setSecondPrevRel(Record.NO_PREV_RELATIONSHIP.intValue());
-  record.setFirstInFirstChain(false);
-  record.setFirstInSecondChain(false);
-  connectRelationship(firstNode,secondNode,record);
-  getNodeStore().updateRecord(firstNode);
-  getNodeStore().updateRecord(secondNode);
-  record.setNextProp(createPropertyChain(properties));
-  getRelationshipStore().updateRecord(record);
+  recordAccess.commit();
   return id;
 }
