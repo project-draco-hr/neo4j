@@ -1,0 +1,33 @@
+{
+  final CountDownLatch createNodeReadyLatch=new CountDownLatch(1);
+  final CountDownLatch createNodeCommitLatch=new CountDownLatch(1);
+  Future<?> updatingTransaction=executor.submit(new Runnable(){
+    @Override public void run(){
+      try (Transaction tx=db.beginTx()){
+        for (        Action action : actions) {
+          action.apply(tx);
+        }
+        tx.success();
+        createNodeReadyLatch.countDown();
+        awaitUninterruptibly(createNodeCommitLatch);
+      }
+     }
+  }
+);
+  createNodeReadyLatch.await();
+  Lock lockBlockingDataChangeTransaction=getLockService().acquireNodeLock(blockDataChangeTransactionOnLockOnId,LockType.WRITE_LOCK);
+  Lock lockBlockingIndexPopulator=getLockService().acquireNodeLock(blockPopulatorOnLockOnId,LockType.WRITE_LOCK);
+  final CountDownLatch createConstraintTransactionStarted=new CountDownLatch(1);
+  Future<?> createConstraintTransaction=executor.submit(new Runnable(){
+    @Override public void run(){
+      createUniqueConstraint(createConstraintTransactionStarted);
+    }
+  }
+);
+  createConstraintTransactionStarted.await();
+  createNodeCommitLatch.countDown();
+  lockBlockingDataChangeTransaction.release();
+  updatingTransaction.get();
+  lockBlockingIndexPopulator.release();
+  return createConstraintTransaction;
+}
