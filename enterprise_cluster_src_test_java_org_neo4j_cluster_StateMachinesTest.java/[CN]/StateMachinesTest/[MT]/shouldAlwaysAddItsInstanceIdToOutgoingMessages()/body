@@ -1,0 +1,41 @@
+{
+  InstanceId me=new InstanceId(42);
+  final List<Message> sentOut=new LinkedList<Message>();
+  MessageSender sender=mock(MessageSender.class);
+  doAnswer(new Answer(){
+    @Override public Object answer(    InvocationOnMock invocation) throws Throwable {
+      sentOut.addAll((Collection<? extends Message>)invocation.getArguments()[0]);
+      return null;
+    }
+  }
+).when(sender).process(Matchers.<List<Message<? extends MessageType>>>any());
+  StateMachines stateMachines=new StateMachines(mock(MessageSource.class),sender,mock(TimeoutStrategy.class),mock(DelayedDirectExecutor.class),new Executor(){
+    @Override public void execute(    Runnable command){
+      command.run();
+    }
+  }
+,me);
+  StateMachine machine=mock(StateMachine.class);
+  when(machine.getMessageType()).then(new Answer<Object>(){
+    @Override public Object answer(    InvocationOnMock invocation) throws Throwable {
+      return TestMessage.class;
+    }
+  }
+);
+  doAnswer(new Answer<Object>(){
+    @Override public Object answer(    InvocationOnMock invocation) throws Throwable {
+      Message message=(Message)invocation.getArguments()[0];
+      MessageHolder holder=(MessageHolder)invocation.getArguments()[1];
+      message.setHeader(Message.TO,"to://neverland");
+      holder.offer(message);
+      return null;
+    }
+  }
+).when(machine).handle(any(Message.class),any(MessageHolder.class));
+  stateMachines.addStateMachine(machine);
+  stateMachines.process(Message.internal(TestMessage.message1));
+  assertEquals("StateMachines should not make up messages from thin air",1,sentOut.size());
+  Message sent=sentOut.get(0);
+  assertTrue("StateMachines should add the instance-id header",sent.hasHeader(Message.INSTANCE_ID));
+  assertEquals("StateMachines should add instance-id header that has the correct value",me.toString(),sent.getHeader(Message.INSTANCE_ID));
+}
