@@ -8,11 +8,15 @@
   if (readOnly) {
     log=new NoOpLogicalLog(logging);
   }
- else   if (providers.shouldInterceptDeserialized() && providers.hasAnyInterceptorConfigured()) {
-    log=new InterceptingXaLogicalLog(logicalLog,rm,cf,tf,providers,monitors,fileSystemAbstraction,logging,pruneStrategy,stateFactory,rotateAtSize,injectedTxValidator);
-  }
  else {
-    log=new XaLogicalLog(logicalLog,rm,cf,tf,fileSystemAbstraction,monitors,logging,pruneStrategy,stateFactory,rotateAtSize,injectedTxValidator);
+    Function<List<LogEntry>,List<LogEntry>> interceptor=null;
+    if (providers.shouldInterceptDeserialized() && providers.hasAnyInterceptorConfigured()) {
+      interceptor=new LogEntryVisitorAdapter(providers.resolveChain(xaDataSource));
+    }
+ else {
+      interceptor=Functions.identity();
+    }
+    log=new XaLogicalLog(logicalLog,rm,cf,tf,fileSystemAbstraction,monitors,logging,pruneStrategy,stateFactory,rotateAtSize,injectedTxValidator,interceptor);
   }
   rm.setLogicalLog(log);
   tf.setLogicalLog(log);

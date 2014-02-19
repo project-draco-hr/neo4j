@@ -1,0 +1,20 @@
+{
+  final Id nodeId=id(), relationshipId=id(), type=id();
+  RecordAccessSet existingStore=existingStore(new ExistingContents(){
+    @Override public void fill(    NeoStore neoStore,    TransactionDataBuilder transaction){
+      type.get(neoStore.getRelationshipTypeStore());
+      relationshipId.get(neoStore.getRelationshipStore());
+      transaction.create(node(nodeId.get(neoStore.getNodeStore())));
+    }
+  }
+);
+  List<LogEntry> transaction=transaction(new TransactionContents(){
+    @Override public void fill(    TransactionDataBuilder transaction){
+      transaction.create(node(nodeId.get()).asInUse().withNextRel(relationshipId.get()));
+      transaction.create(relationship(relationshipId.get(),nodeId.get(),nodeId.get(),(int)type.get()).asInUse());
+    }
+  }
+);
+  List<LogEntry> translated=translate(existingStore,transaction);
+  assertEquals(translated,transaction);
+}
