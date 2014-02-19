@@ -1,0 +1,16 @@
+{
+  GraphDatabaseAPI db=newDeadlockProneDb();
+  cleanup.add(closeable(db));
+  Node node=createCleanNode(db);
+  DoubleLatch deadlockLatch=testStateFactory.installDeadlockLatch();
+  OtherThreadExecutor<Void> committer=cleanup.add(new OtherThreadExecutor<Void>("Committer",5,SECONDS,null));
+  Future<Object> commitFuture=committer.executeDontWait(setProperty(db,node));
+  deadlockLatch.awaitStart();
+  OtherThreadExecutor<Void> reader=cleanup.add(new OtherThreadExecutor<Void>("Reader",5,SECONDS,null));
+  Future<Object> readerFuture=reader.executeDontWait(readRelationships(db,node));
+  reader.waitUntil(reader.orExecutionCompleted(anyThreadState(BLOCKED)));
+  deadlockLatch.finish();
+  tryAwait(readerFuture,5,SECONDS);
+  tryAwait(commitFuture,5,SECONDS);
+  assertFalse("Should not have dead locked the JVM",jvmLevelDeadlockFound());
+}
