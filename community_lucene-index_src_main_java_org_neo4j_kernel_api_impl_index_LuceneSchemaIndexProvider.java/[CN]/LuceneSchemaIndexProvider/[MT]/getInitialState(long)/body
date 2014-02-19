@@ -2,6 +2,7 @@
   try {
     String failure=failureStorage.loadIndexFailure(indexId);
     if (failure != null) {
+      failures.put(indexId,failure);
       return InternalIndexState.FAILED;
     }
     try (Directory directory=directoryFactory.open(folderLayout.getFolder(indexId))){
@@ -10,6 +11,14 @@
     }
    }
  catch (  CorruptIndexException e) {
+    return InternalIndexState.FAILED;
+  }
+catch (  FileNotFoundException e) {
+    failures.put(indexId,"File not found: " + e.getMessage());
+    return InternalIndexState.FAILED;
+  }
+catch (  EOFException e) {
+    failures.put(indexId,"EOF encountered: " + e.getMessage());
     return InternalIndexState.FAILED;
   }
 catch (  IOException e) {
