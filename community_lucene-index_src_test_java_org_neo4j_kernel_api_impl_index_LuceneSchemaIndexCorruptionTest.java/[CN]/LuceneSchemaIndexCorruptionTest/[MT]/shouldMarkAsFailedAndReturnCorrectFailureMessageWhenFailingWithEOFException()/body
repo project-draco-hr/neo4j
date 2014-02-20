@@ -1,0 +1,9 @@
+{
+  DirectoryFactory dirFactory=mock(DirectoryFactory.class);
+  EOFException toThrow=new EOFException("/some/path/somewhere");
+  when(dirFactory.open(any(File.class))).thenThrow(toThrow);
+  LuceneSchemaIndexProvider p=new LuceneSchemaIndexProvider(dirFactory,new Config(stringMap("store_dir",forTest(getClass()).graphDbDir(true).getAbsolutePath())));
+  InternalIndexState initialState=p.getInitialState(1l);
+  assertThat(initialState,equalTo(InternalIndexState.FAILED));
+  assertThat(p.getPopulationFailure(1l),equalTo("EOF encountered: " + toThrow.getMessage()));
+}
