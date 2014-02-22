@@ -1,0 +1,42 @@
+{
+  ConcurrentMap<Long,ForsetiLockManager.Lock> lockMap=lockMaps[resourceType.typeId()];
+  Map<Long,Integer> heldShareLocks=sharedLockCounts[resourceType.typeId()];
+  Map<Long,Integer> heldExclusiveLocks=exclusiveLockCounts[resourceType.typeId()];
+  for (  long resourceId : resourceIds) {
+    Integer heldCount=heldShareLocks.get(resourceId);
+    if (heldCount != null) {
+      heldShareLocks.put(resourceId,heldCount + 1);
+      continue;
+    }
+    if (heldExclusiveLocks.containsKey(resourceId)) {
+      heldShareLocks.put(resourceId,1);
+      continue;
+    }
+    int tries=0;
+    while (true) {
+      ForsetiLockManager.Lock existingLock=lockMap.get(resourceId);
+      if (existingLock == null) {
+        if (lockMap.putIfAbsent(resourceId,new SharedLock(this)) == null) {
+          break;
+        }
+ else {
+          continue;
+        }
+      }
+ else       if (existingLock instanceof SharedLock) {
+        if (((SharedLock)existingLock).acquire(this)) {
+          break;
+        }
+      }
+ else       if (existingLock instanceof ExclusiveLock) {
+      }
+ else {
+        throw new UnsupportedOperationException("Unknown lock type: " + existingLock);
+      }
+      waitStrategies[resourceType.typeId()].apply(tries++);
+      markAsWaitingFor(existingLock,resourceType,resourceId);
+    }
+    clearWaitList();
+    heldShareLocks.put(resourceId,1);
+  }
+}

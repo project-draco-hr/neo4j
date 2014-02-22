@@ -1,0 +1,24 @@
+{
+  for (int i=0; i < StressThread.resources.length; i++) {
+    StressThread.resources[i]=i;
+  }
+  StressThread stressThreads[]=new StressThread[50];
+  PlaceboTm tm=new PlaceboTm(null,null);
+  LockManager lm=new LockManagerImpl(new RagManager());
+  tm.setLockManager(lm);
+  CountDownLatch startSignal=new CountDownLatch(1);
+  for (int i=0; i < stressThreads.length; i++) {
+    int numberOfIterations=100;
+    int depthCount=10;
+    float readWriteRatio=0.80f;
+    stressThreads[i]=new StressThread("T" + i,numberOfIterations,depthCount,readWriteRatio,lm,startSignal);
+  }
+  for (  Thread thread : stressThreads) {
+    thread.start();
+  }
+  startSignal.countDown();
+  while (anyAliveAndAllWell(stressThreads)) {
+    throwErrorsIfAny(stressThreads);
+    sleepALittle();
+  }
+}

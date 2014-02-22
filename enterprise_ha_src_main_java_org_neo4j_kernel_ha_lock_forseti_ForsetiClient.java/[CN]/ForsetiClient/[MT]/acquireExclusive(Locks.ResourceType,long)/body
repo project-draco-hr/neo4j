@@ -1,0 +1,25 @@
+{
+  ConcurrentMap<Long,ForsetiLockManager.Lock> lockMap=lockMaps[resourceType.typeId()];
+  Map<Long,Integer> heldLocks=exclusiveLockCounts[resourceType.typeId()];
+  for (  long resourceId : resourceIds) {
+    Integer heldCount=heldLocks.get(resourceId);
+    if (heldCount != null) {
+      heldLocks.put(resourceId,heldCount + 1);
+      continue;
+    }
+    ForsetiLockManager.Lock existingLock;
+    int tries=0;
+    while ((existingLock=lockMap.putIfAbsent(resourceId,myExclusiveLock)) != null) {
+      if (tries > 50 && existingLock instanceof SharedLock) {
+        SharedLock sharedLock=(SharedLock)existingLock;
+        if (tryUpgradeSharedToExclusive(resourceType,lockMap,resourceId,sharedLock)) {
+          break;
+        }
+      }
+      waitStrategies[resourceType.typeId()].apply(tries++);
+      markAsWaitingFor(existingLock,resourceType,resourceId);
+    }
+    clearWaitList();
+    heldLocks.put(resourceId,1);
+  }
+}

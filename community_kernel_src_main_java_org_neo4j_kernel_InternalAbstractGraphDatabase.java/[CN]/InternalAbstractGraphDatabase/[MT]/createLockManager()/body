@@ -1,3 +1,21 @@
 {
-  return new LockManagerImpl(new RagManager());
+  String key=config.get(Configuration.lock_manager);
+  for (  Locks.Factory candidate : Service.load(Locks.Factory.class)) {
+    String candidateId=candidate.getKeys().iterator().next();
+    if (candidateId.equals(key)) {
+      return candidate.newInstance(ResourceTypes.values());
+    }
+ else     if (key.equals("")) {
+      logging.getMessagesLog(InternalAbstractGraphDatabase.class).info("No locking implementation specified, defaulting to '" + candidateId + "'");
+      return candidate.newInstance(ResourceTypes.values());
+    }
+  }
+  if (key.equals("community")) {
+    return new CommunityLockManger();
+  }
+ else   if (key.equals("")) {
+    logging.getMessagesLog(InternalAbstractGraphDatabase.class).info("No locking implementation specified, defaulting to 'community'");
+    return new CommunityLockManger();
+  }
+  throw new IllegalArgumentException("No lock manager found with the name '" + key + "'.");
 }

@@ -1,10 +1,9 @@
 {
   when(readOps.nodeGetUniqueFromIndexLookup(state,indexDescriptor,value)).thenReturn(NO_SUCH_NODE);
-  LockAnswer readLocks=new LockAnswer(), writeLocks=new LockAnswer();
-  when(locks.getReleasableIndexEntryReadLock(labelId,propertyKeyId,value)).then(readLocks);
-  when(locks.getReleasableIndexEntryWriteLock(labelId,propertyKeyId,value)).then(writeLocks);
   long nodeId=ops.nodeGetUniqueFromIndexLookup(state,indexDescriptor,value);
   assertEquals(NO_SUCH_NODE,nodeId);
-  assertEquals(0,readLocks.held());
-  assertEquals(1,writeLocks.held());
+  verify(locks).acquireShared(INDEX_ENTRY,indexEntryResourceId(labelId,propertyKeyId,value));
+  verify(locks).acquireExclusive(INDEX_ENTRY,indexEntryResourceId(labelId,propertyKeyId,value));
+  verify(locks).releaseShared(INDEX_ENTRY,indexEntryResourceId(labelId,propertyKeyId,value));
+  verifyNoMoreInteractions(locks);
 }
