@@ -11,41 +11,33 @@
     releaseFileLockAndCloseFileChannel();
     return;
   }
-  long highId=idGenerator.getHighId();
-  int recordSize=-1;
-  if (this instanceof AbstractDynamicStore) {
-    recordSize=((AbstractDynamicStore)this).getBlockSize();
-  }
- else   if (this instanceof AbstractStore) {
-    recordSize=((AbstractStore)this).getRecordSize();
-  }
+  final long highId=idGenerator.getHighId();
+  final int recordSize=getEffectiveRecordSize();
   idGenerator.close();
-  boolean success=false;
   IOException storedIoe=null;
   if (!readOnly || backupSlave) {
-    for (int i=0; i < 10; i++) {
-      try {
-        fileChannel.position(highId * recordSize);
-        ByteBuffer buffer=ByteBuffer.wrap(UTF8.encode(getTypeAndVersionDescriptor()));
-        fileChannel.write(buffer);
-        stringLogger.debug("Closing " + storageFileName + ", truncating at "+ fileChannel.position()+ " vs file size "+ fileChannel.size());
-        fileChannel.truncate(fileChannel.position());
-        fileChannel.force(false);
-        releaseFileLockAndCloseFileChannel();
-        success=true;
-        break;
+    try {
+      windowsSafeIOOperation(new FileOperation(){
+        @Override public void perform() throws IOException {
+          fileChannel.position(highId * recordSize);
+          ByteBuffer buffer=wrap(encode(getTypeAndVersionDescriptor()));
+          fileChannel.write(buffer);
+          stringLogger.debug("Closing " + storageFileName + ", truncating at "+ fileChannel.position()+ " vs file size "+ fileChannel.size());
+          fileChannel.truncate(fileChannel.position());
+          fileChannel.force(false);
+          releaseFileLockAndCloseFileChannel();
+        }
       }
- catch (      IOException e) {
-        storedIoe=e;
-        System.gc();
-      }
+);
+    }
+ catch (    IOException e) {
+      storedIoe=e;
     }
   }
  else {
     releaseFileLockAndCloseFileChannel();
-    success=true;
   }
-  if (!success) {
+  if (storedIoe != null) {
     throw new UnderlyingStorageException("Unable to close store " + getStorageFileName(),storedIoe);
   }
 }
