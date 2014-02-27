@@ -1,0 +1,93 @@
+{
+  Map<String,String> params=defaultBackupPortHostParams();
+  params.put(OnlineBackupSettings.online_backup_enabled.name(),"false");
+  final List<String> storesThatHaveBeenStreamed=new ArrayList<String>();
+  final CountDownLatch firstStoreFinishedStreaming=new CountDownLatch(1);
+  final CountDownLatch transactionCommitted=new CountDownLatch(1);
+  final GraphDatabaseAPI db=(GraphDatabaseAPI)new GraphDatabaseFactory().newEmbeddedDatabaseBuilder(storeDir.getAbsolutePath()).setConfig(params).newGraphDatabase();
+  Config config=new Config(defaultBackupPortHostParams());
+  Monitors monitors=new Monitors();
+  monitors.addMonitorListener(new BackupMonitor(){
+    @Override public void startCopyingFiles(){
+    }
+    @Override public void finishedCopyingStoreFiles(){
+    }
+    @Override public void finishedRotatingLogicalLogs(){
+    }
+    @Override public void streamedFile(    File storefile){
+      if (neitherStoreHasBeenStreamed()) {
+        if (storefile.getAbsolutePath().contains(NODE_STORE)) {
+          storesThatHaveBeenStreamed.add(NODE_STORE);
+          firstStoreFinishedStreaming.countDown();
+        }
+ else         if (storefile.getAbsolutePath().contains(RELATIONSHIP_STORE)) {
+          storesThatHaveBeenStreamed.add(RELATIONSHIP_STORE);
+          firstStoreFinishedStreaming.countDown();
+        }
+      }
+    }
+    private boolean neitherStoreHasBeenStreamed(){
+      return storesThatHaveBeenStreamed.isEmpty();
+    }
+    @Override public void streamingFile(    File storefile){
+      if (storefile.getAbsolutePath().contains(RELATIONSHIP_STORE)) {
+        if (streamedFirst(NODE_STORE)) {
+          try {
+            transactionCommitted.await();
+          }
+ catch (          InterruptedException e) {
+            e.printStackTrace();
+          }
+        }
+      }
+ else       if (storefile.getAbsolutePath().contains(NODE_STORE)) {
+        if (streamedFirst(RELATIONSHIP_STORE)) {
+          try {
+            transactionCommitted.await();
+          }
+ catch (          InterruptedException e) {
+            e.printStackTrace();
+          }
+        }
+      }
+    }
+    private boolean streamedFirst(    String store){
+      return !storesThatHaveBeenStreamed.isEmpty() && storesThatHaveBeenStreamed.get(0).equals(store);
+    }
+  }
+);
+  OnlineBackupKernelExtension backup=new OnlineBackupKernelExtension(config,db,db.getDependencyResolver().resolveDependency(XaDataSourceManager.class),db.getDependencyResolver().resolveDependency(KernelPanicEventGenerator.class),new DevNullLoggingService(),monitors);
+  backup.start();
+  BackupService backupService=new BackupService(fileSystem);
+  ExecutorService executor=Executors.newSingleThreadExecutor();
+  executor.execute(new Runnable(){
+    @Override public void run(){
+      try {
+        firstStoreFinishedStreaming.await();
+        Transaction tx=db.beginTx();
+        try {
+          Node node1=db.createNode();
+          Node node2=db.createNode();
+          node1.createRelationshipTo(node2,DynamicRelationshipType.withName("foobydoo"));
+          tx.success();
+        }
+  finally {
+          tx.finish();
+          db.getDependencyResolver().resolveDependency(XaDataSourceManager.class).getNeoStoreDataSource().getNeoStore().flushAll();
+          transactionCommitted.countDown();
+        }
+      }
+ catch (      Exception e) {
+        e.printStackTrace();
+      }
+    }
+  }
+);
+  BackupService.BackupOutcome backupOutcome=backupService.doFullBackup(BACKUP_HOST,backupPort,backupDir.getAbsolutePath(),true,new Config(params));
+  backup.stop();
+  executor.shutdown();
+  executor.awaitTermination(30,TimeUnit.SECONDS);
+  db.shutdown();
+  assertEquals(DbRepresentation.of(storeDir),DbRepresentation.of(backupDir));
+  assertTrue(backupOutcome.isConsistent());
+}
