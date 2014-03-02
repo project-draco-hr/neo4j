@@ -1,0 +1,15 @@
+{
+  File logFile=single(iterator(oneOrTwo(fs,new File(storeDir,LOGICAL_LOG_DEFAULT_NAME))));
+  final AtomicInteger lastIdentifier=new AtomicInteger();
+  filterNeostoreLogicalLog(fs,logFile,LogTestUtils.findLastTransactionIdentifier(lastIdentifier));
+  LogHook<LogEntry> prune=new LogHookAdapter<LogEntry>(){
+    @Override public boolean accept(    LogEntry item){
+      boolean shouldPruneEntry=item.getIdentifier() == lastIdentifier.get() && (item instanceof LogEntry.Commit || item instanceof LogEntry.Done);
+      return !shouldPruneEntry;
+    }
+  }
+;
+  File tempFile=filterNeostoreLogicalLog(fs,logFile,prune);
+  fs.deleteFile(logFile);
+  fs.renameFile(tempFile,logFile);
+}
