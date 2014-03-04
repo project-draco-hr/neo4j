@@ -1,0 +1,33 @@
+{
+  if (args.length < 3) {
+    throw new IllegalArgumentException("Destination directory, public URL and at least one source must be specified.");
+  }
+  File destinationDir=getDestinationDir(args[0]);
+  String destinationUrl=args[1];
+  for (int i=2; i < args.length; i++) {
+    String name=args[i];
+    File file=FileUtils.getFile(name);
+    if (destinationDir == null) {
+      if (file.exists() && !file.isDirectory()) {
+        throw new IllegalArgumentException("Destination directory must either not exist or be a directory.");
+      }
+      destinationDir=file;
+    }
+ else {
+      if (file.isFile()) {
+        executeFile(file,file.getName(),destinationDir,destinationUrl);
+      }
+ else       if (file.isDirectory()) {
+        for (        File fileInDir : FileUtils.listFiles(file,EXTENSIONS,true)) {
+          String fileInDirName=fileInDir.getAbsolutePath().substring(file.getAbsolutePath().length() + 1).replace('/','-').replace('\\','-');
+          try {
+            executeFile(fileInDir,fileInDirName,destinationDir,destinationUrl);
+          }
+ catch (          Throwable e) {
+            throw new RuntimeException(String.format("Failed while executing file: %s in the " + "directory %s",fileInDirName,destinationDir.getAbsolutePath()));
+          }
+        }
+      }
+    }
+  }
+}
