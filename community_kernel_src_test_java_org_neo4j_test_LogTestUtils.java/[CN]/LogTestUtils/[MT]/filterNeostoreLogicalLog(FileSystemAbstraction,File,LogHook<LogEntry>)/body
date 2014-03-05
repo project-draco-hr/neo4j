@@ -6,14 +6,15 @@
   LogBuffer outBuffer=new DirectMappedLogBuffer(out,new Monitors().newMonitor(ByteCounterMonitor.class));
   ByteBuffer buffer=ByteBuffer.allocate(1024 * 1024);
   transferLogicalLogHeader(in,outBuffer,buffer);
-  CommandFactory cf=new CommandFactory();
+  XaCommandReader commandReader=new PhysicalLogNeoXaCommandReader(buffer);
+  XaCommandWriter commandWriter=new PhysicalLogNeoXaCommandWriter();
   try {
     LogEntry entry=null;
-    while ((entry=readEntry(buffer,in,cf)) != null) {
+    while ((entry=readEntry(buffer,in,commandReader)) != null) {
       if (!filter.accept(entry)) {
         continue;
       }
-      writeLogEntry(entry,outBuffer);
+      writeLogEntry(entry,outBuffer,commandWriter);
     }
   }
   finally {

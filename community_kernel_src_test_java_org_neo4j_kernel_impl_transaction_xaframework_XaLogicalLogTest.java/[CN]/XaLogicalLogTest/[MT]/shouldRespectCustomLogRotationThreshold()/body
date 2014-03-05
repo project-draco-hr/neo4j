@@ -1,6 +1,16 @@
 {
   long maxSize=1000;
-  XaLogicalLog log=new XaLogicalLog(new File("log"),mock(XaResourceManager.class),new FixedSizeXaCommandFactory(),new VersionRespectingXaTransactionFactory(),ephemeralFs.get(),new Monitors(),new DevNullLoggingService(),NO_PRUNING,mock(TransactionStateFactory.class),maxSize,ALLOW_ALL,Functions.<List<LogEntry>>identity());
+  XaLogicalLog log=new XaLogicalLog(new File("log"),mock(XaResourceManager.class),new XaCommandReaderFactory(){
+    @Override public XaCommandReader newInstance(    ByteBuffer scratch){
+      return new FixedSizeXaCommandReader(scratch);
+    }
+  }
+,new XaCommandWriterFactory(){
+    @Override public XaCommandWriter newInstance(){
+      return new FixedSizeXaCommandWriter();
+    }
+  }
+,new VersionRespectingXaTransactionFactory(),ephemeralFs.get(),new Monitors(),new DevNullLoggingService(),NO_PRUNING,mock(TransactionStateFactory.class),maxSize,ALLOW_ALL,Functions.<List<LogEntry>>identity());
   log.open();
   long initialLogVersion=log.getHighestLogVersion();
   for (int i=0; i < 10; i++) {

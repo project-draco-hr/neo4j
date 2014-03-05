@@ -1,0 +1,24 @@
+{
+  if (logicalLog == null || commandReaderFactory == null || commandWriterFactory == null || tf == null) {
+    throw new IllegalArgumentException("Null parameter, " + "LogicalLog[" + logicalLog + "], CommandReaderFactory["+ commandReaderFactory+ "CommandWriterFactory["+ commandWriterFactory+ "], TransactionFactory["+ tf+ "]");
+  }
+  XaResourceManager rm=new XaResourceManager(xaDataSource,tf,txIdGenerator,txManager,recoveryVerifier,logicalLog.getName(),monitors);
+  long rotateAtSize=config.get(logical_log_rotation_threshold);
+  XaLogicalLog log;
+  if (readOnly) {
+    log=new NoOpLogicalLog(logging);
+  }
+ else {
+    Function<List<LogEntry>,List<LogEntry>> interceptor=null;
+    if (providers.shouldInterceptDeserialized() && providers.hasAnyInterceptorConfigured()) {
+      interceptor=new LogEntryVisitorAdapter(providers,xaDataSource);
+    }
+ else {
+      interceptor=Functions.identity();
+    }
+    log=new XaLogicalLog(logicalLog,rm,commandReaderFactory,commandWriterFactory,tf,fileSystemAbstraction,monitors,logging,pruneStrategy,stateFactory,rotateAtSize,injectedTxValidator,interceptor);
+  }
+  rm.setLogicalLog(log);
+  tf.setLogicalLog(log);
+  return new XaContainer(rm,log);
+}

@@ -1,0 +1,28 @@
+{
+  if (startEntry == null) {
+    throw new IOException("Unable to find start entry");
+  }
+  try {
+    injectedTxValidator.assertInjectionAllowed(startEntry.getLastCommittedTxWhenTransactionStarted());
+  }
+ catch (  XAException e) {
+    throw new IOException(e);
+  }
+  LogEntry.OnePhaseCommit commit=new LogEntry.OnePhaseCommit(startEntry.getIdentifier(),nextTxId,System.currentTimeMillis());
+  LogIoUtils.writeLogEntry(commit,writeBuffer,commandWriter);
+  forceMode.force(writeBuffer);
+  Xid xid=startEntry.getXid();
+  try {
+    XaTransaction xaTx=xaRm.getXaTransaction(xid);
+    xaTx.setCommitTxId(nextTxId);
+    positionCache.cacheStartPosition(nextTxId,startEntry,logVersion);
+    xaRm.commit(xid,true);
+    LogEntry doneEntry=new LogEntry.Done(startEntry.getIdentifier());
+    LogIoUtils.writeLogEntry(doneEntry,writeBuffer,commandWriter);
+    xidIdentMap.remove(startEntry.getIdentifier());
+    recoveredTxMap.remove(startEntry.getIdentifier());
+  }
+ catch (  XAException e) {
+    throw new IOException(e);
+  }
+}

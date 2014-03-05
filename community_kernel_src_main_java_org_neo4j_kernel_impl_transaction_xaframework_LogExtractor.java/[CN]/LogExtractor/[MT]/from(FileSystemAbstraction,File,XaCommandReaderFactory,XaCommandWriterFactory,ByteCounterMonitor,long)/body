@@ -1,0 +1,51 @@
+{
+  LogLoader loader=new LogLoader(){
+    private final Map<Long,File> activeLogFiles=getActiveLogs(storeDir);
+    private final long highestLogVersion=max(getHighestHistoryLogVersion(fileSystem,storeDir,LOGICAL_LOG_DEFAULT_NAME),maxKey(activeLogFiles));
+    @Override public ReadableByteChannel getLogicalLogOrMyselfCommitted(    long version,    long position) throws IOException {
+      File name=getFileName(version);
+      if (!fileSystem.fileExists(name)) {
+        name=activeLogFiles.get(version);
+        if (name == null)         throw new NoSuchLogVersionException(version);
+      }
+      FileChannel channel=fileSystem.open(name,"r");
+      channel.position(position);
+      return new BufferedFileChannel(channel);
+    }
+    private long maxKey(    Map<Long,File> activeLogFiles){
+      long max=0;
+      for (      Long key : activeLogFiles.keySet())       max=max(max,key);
+      return max;
+    }
+    private Map<Long,File> getActiveLogs(    File storeDir) throws IOException {
+      Map<Long,File> result=new HashMap<Long,File>();
+      for (      String postfix : ACTIVE_POSTFIXES) {
+        File candidateFile=new File(storeDir,LOGICAL_LOG_DEFAULT_NAME + postfix);
+        if (!fileSystem.fileExists(candidateFile))         continue;
+        long[] header=LogIoUtils.readLogHeader(fileSystem,candidateFile);
+        result.put(header[0],candidateFile);
+      }
+      return result;
+    }
+    @Override public File getFileName(    long version){
+      return new File(storeDir,LOGICAL_LOG_DEFAULT_NAME + ".v" + version);
+    }
+    @Override public long getHighestLogVersion(){
+      return highestLogVersion;
+    }
+    @Override public Long getFirstCommittedTxId(    long version){
+      throw new UnsupportedOperationException();
+    }
+    @Override public Long getFirstStartRecordTimestamp(    long version){
+      throw new UnsupportedOperationException();
+    }
+    @Override public long getLastCommittedTxId(){
+      throw new UnsupportedOperationException();
+    }
+    @Override public String toString(){
+      return getClass().getSimpleName() + "[" + storeDir+ "]";
+    }
+  }
+;
+  return new LogExtractor(new LogPositionCache(),loader,monitor,commandReaderFactory,commandWriterFactory,startTxId,Long.MAX_VALUE);
+}

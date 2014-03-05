@@ -28,7 +28,17 @@
     DefaultSchemaIndexProviderMap providerMap=new DefaultSchemaIndexProviderMap(indexProvider);
     indexingService=life.add(new IndexingService(scheduler,providerMap,new NeoStoreIndexStoreView(locks,neoStore),tokenNameLookup,updateableSchemaState,logging));
     integrityValidator=new IntegrityValidator(neoStore,indexingService);
-    xaContainer=xaFactory.newXaContainer(this,config.get(Configuration.logical_log),new CommandFactory(neoStore,indexingService),new NeoStoreInjectedTransactionValidator(integrityValidator),tf,stateFactory,providers,readOnly);
+    xaContainer=xaFactory.newXaContainer(this,config.get(Configuration.logical_log),new XaCommandReaderFactory(){
+      @Override public XaCommandReader newInstance(      ByteBuffer scratch){
+        return new PhysicalLogNeoXaCommandReader(scratch);
+      }
+    }
+,new XaCommandWriterFactory(){
+      @Override public XaCommandWriter newInstance(){
+        return new PhysicalLogNeoXaCommandWriter();
+      }
+    }
+,new NeoStoreInjectedTransactionValidator(integrityValidator),tf,stateFactory,providers,readOnly);
     labelScanStore=life.add(dependencyResolver.resolveDependency(LabelScanStoreProvider.class,LabelScanStoreProvider.HIGHEST_PRIORITIZED).getLabelScanStore());
     fileListing=new NeoStoreFileListing(xaContainer,storeDir,labelScanStore,indexingService);
     kernel=life.add(new Kernel(txManager,propertyKeyTokens,labelTokens,relationshipTypeTokens,persistenceManager,lockManager,updateableSchemaState,schemaWriteGuard,indexingService,nodeManager,neoStore,persistenceCache,schemaCache,providerMap,labelScanStore,readOnly));

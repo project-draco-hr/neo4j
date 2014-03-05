@@ -1,0 +1,23 @@
+{
+  try {
+    long startedAtPosition=scratch.position();
+    LogEntry entry=LogIoUtils.readEntry(scratch,channel,xaCommandReader);
+    monitor.bytesRead(scratch.position() - startedAtPosition);
+    if (entry == null || !(entry instanceof LogEntry.Start)) {
+      throw new IOException("Unable to find start entry");
+    }
+    handler.startLog();
+    while (entry != null) {
+      entry.setIdentifier(xidIdentifier);
+      entry.accept(handler);
+      startedAtPosition=scratch.position();
+      entry=LogIoUtils.readEntry(scratch,channel,xaCommandReader);
+      monitor.bytesRead(scratch.position() - startedAtPosition);
+    }
+  }
+ catch (  IOException e) {
+    handler.endLog(false);
+    throw e;
+  }
+  handler.endLog(true);
+}

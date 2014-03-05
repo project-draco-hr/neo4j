@@ -1,13 +1,13 @@
 {
   RandomAccessFile file=new RandomAccessFile(new File(storeDir,"nioneo_logical.log.v0"),"r");
-  CommandFactory cf=new CommandFactory();
+  ByteBuffer buffer=allocate(10000);
+  XaCommandReader reader=new PhysicalLogNeoXaCommandReader(buffer);
   try {
     FileChannel channel=file.getChannel();
-    ByteBuffer buffer=allocate(10000);
     readLogHeader(buffer,channel,true);
     long lastOne=-1;
     int counted=0;
-    for (LogEntry entry; (entry=readEntry(buffer,channel,cf)) != null; ) {
+    for (LogEntry entry; (entry=readEntry(buffer,channel,reader)) != null; ) {
       if (entry instanceof TwoPhaseCommit) {
         long txId=((TwoPhaseCommit)entry).getTxId();
         if (lastOne != -1) {

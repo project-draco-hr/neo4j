@@ -17,18 +17,16 @@
   previousLogLastCommittedTx=lastCommittedTx;
   positionCache.putHeader(logVersion,previousLogLastCommittedTx);
   msgLog.logMessage("[" + logFileName + "] logVersion="+ logVersion+ " with committed tx="+ lastCommittedTx,true);
-  long logEntriesFound=0;
-  long lastEntryPos=fileChannel.position();
   fileChannel=new BufferedFileChannel(fileChannel);
-  LogEntry entry;
-  while ((entry=readEntry()) != null) {
-    applyEntry(entry);
-    logEntriesFound++;
-    lastEntryPos=fileChannel.position();
-  }
+  RecoveryLogDeserializer reader=new RecoveryLogDeserializer(sharedBuffer);
+  reader.setXaCommandReader(commandReader);
+  EntryCountingLogHandler counter=new EntryCountingLogHandler(new LogApplier());
+  reader.setLogHandler(counter);
+  reader.read(fileChannel);
+  long lastEntryPos=fileChannel.position();
   fileChannel=((BufferedFileChannel)fileChannel).getSource();
   fileChannel.position(lastEntryPos);
-  msgLog.logMessage("[" + logFileName + "] entries found="+ logEntriesFound+ " lastEntryPos="+ lastEntryPos,true);
+  msgLog.logMessage("[" + logFileName + "] entries found="+ counter.getEntriesFound()+ " lastEntryPos="+ lastEntryPos,true);
   sharedBuffer.clear();
   while (sharedBuffer.hasRemaining()) {
     sharedBuffer.put((byte)0);

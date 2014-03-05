@@ -1,0 +1,23 @@
+{
+  this.cache=cache;
+  this.logLoader=logLoader;
+  this.monitor=monitor;
+  this.commandReader=commandReaderFactory.newInstance(localBuffer);
+  this.commandWriter=commandWriterFactory.newInstance();
+  this.startTxId=startTxId;
+  this.nextExpectedTxId=startTxId;
+  long diff=endTxIdHint - startTxId + 1;
+  if (diff < CACHE_FIND_THRESHOLD) {
+    TxPosition earliestPosition=getEarliestStartPosition(startTxId,endTxIdHint);
+    if (earliestPosition != null) {
+      this.version=earliestPosition.version;
+      this.source=logLoader.getLogicalLogOrMyselfCommitted(version,earliestPosition.position);
+    }
+  }
+  if (source == null) {
+    this.version=findLogContainingTxId(startTxId)[0];
+    this.source=logLoader.getLogicalLogOrMyselfCommitted(version,0);
+    readAndAssertLogHeader(localBuffer,source,version);
+  }
+  this.collector=new KnownTxIdCollector(startTxId,commandWriter);
+}
