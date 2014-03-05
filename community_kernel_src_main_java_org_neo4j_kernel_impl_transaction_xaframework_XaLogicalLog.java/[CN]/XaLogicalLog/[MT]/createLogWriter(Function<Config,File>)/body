@@ -1,0 +1,16 @@
+{
+  return new LogWriter(){
+    @Override public LogBuffer createActiveLogFile(    Config config,    long prevCommittedId) throws IllegalStateException, IOException {
+      File activeLogFile=new XaLogicalLogFiles(logBasePath.apply(config),fileSystem).getLog1FileName();
+      FileChannel channel=fileSystem.create(activeLogFile);
+      ByteBuffer scratch=ByteBuffer.allocateDirect(128);
+      LogIoUtils.writeLogHeader(scratch,0,prevCommittedId);
+      while (scratch.hasRemaining()) {
+        channel.write(scratch);
+      }
+      scratch.clear();
+      return new DirectLogBuffer(channel,scratch);
+    }
+  }
+;
+}

@@ -1,0 +1,66 @@
+{
+  Set<String> noTxPresent=new HashSet<>();
+  XaDataSourceManager dsManager=targetDb.getDependencyResolver().resolveDependency(XaDataSourceManager.class);
+  for (  XaDataSource ds : dsManager.getAllRegisteredDataSources()) {
+    long lastTx=ds.getLastCommittedTxId();
+    try {
+      ds.getMasterForCommittedTx(lastTx);
+    }
+ catch (    NoSuchLogVersionException e) {
+      noTxPresent.add(ds.getName());
+    }
+catch (    IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
+  if (!noTxPresent.isEmpty()) {
+    BackupClient recoveryClient=new BackupClient(sourceHostNameOrIp,sourcePort,targetDb.getDependencyResolver().resolveDependency(Logging.class),targetDb.getDependencyResolver().resolveDependency(Monitors.class),targetDb.storeId());
+    recoveryClient.start();
+    Response<Void> recoveryResponse=null;
+    Map<String,Long> recoveryDiff=new HashMap<>();
+    for (    String ds : noTxPresent) {
+      recoveryDiff.put(ds,-1L);
+    }
+    RequestContext recoveryCtx=addDiffToSlaveContext(slaveContextOf(dsManager),recoveryDiff);
+    try {
+      recoveryResponse=recoveryClient.incrementalBackup(recoveryCtx);
+      TransactionStream txs=recoveryResponse.transactions();
+      ByteBuffer scratch=ByteBuffer.allocate(64);
+      while (txs.hasNext()) {
+        Triplet<String,Long,TxExtractor> tx=txs.next();
+        scratch.clear();
+        XaDataSource ds=dsManager.getXaDataSource(tx.first());
+        long logVersion=ds.getCurrentLogVersion() - 1;
+        FileChannel newLog=new RandomAccessFile(ds.getFileName(logVersion),"rw").getChannel();
+        newLog.truncate(0);
+        LogIoUtils.writeLogHeader(scratch,logVersion,-1);
+        newLog.write(scratch);
+        ReadableByteChannel received=tx.third().extract();
+        scratch.flip();
+        while (received.read(scratch) > 0) {
+          scratch.flip();
+          newLog.write(scratch);
+          scratch.flip();
+        }
+        newLog.force(false);
+        newLog.close();
+        received.close();
+      }
+    }
+ catch (    IOException e) {
+      throw new RuntimeException(e);
+    }
+ finally {
+      try {
+        recoveryClient.stop();
+      }
+ catch (      Throwable throwable) {
+        throw new RuntimeException(throwable);
+      }
+      if (recoveryResponse != null) {
+        recoveryResponse.close();
+      }
+      targetDb.shutdown();
+    }
+  }
+}

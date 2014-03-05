@@ -1,0 +1,35 @@
+{
+  final String copyDir=new File(testDir.directory(),"copy").getAbsolutePath();
+  final String originalDir=new File(testDir.directory(),"original").getAbsolutePath();
+  Config config=new Config(MapUtil.stringMap(store_dir.name(),copyDir));
+  RemoteStoreCopier copier=new RemoteStoreCopier(config,loadKernelExtensions(),new ConsoleLogger(StringLogger.SYSTEM),fs);
+  copier.copyStore(new RemoteStoreCopier.StoreCopyRequester(){
+    @Override public Response<?> copyStore(    StoreWriter writer){
+      GraphDatabaseAPI original=(GraphDatabaseAPI)new GraphDatabaseFactory().newEmbeddedDatabase(originalDir);
+      try {
+        try (Transaction tx=original.beginTx()){
+          original.createNode(label("BeforeCopyBegins"));
+          tx.success();
+        }
+         XaDataSourceManager dsManager=original.getDependencyResolver().resolveDependency(XaDataSourceManager.class);
+        RequestContext ctx=ServerUtil.rotateLogsAndStreamStoreFiles(originalDir,dsManager,original.getDependencyResolver().resolveDependency(KernelPanicEventGenerator.class),StringLogger.SYSTEM,false,writer,fs,original.getDependencyResolver().resolveDependency(Monitors.class).newMonitor(BackupMonitor.class));
+        try (Transaction tx=original.beginTx()){
+          original.createNode(label("AfterCopy"));
+          tx.success();
+        }
+         return ServerUtil.packResponse(original.storeId(),dsManager,ctx,null,ServerUtil.ALL);
+      }
+  finally {
+        original.shutdown();
+      }
+    }
+  }
+);
+  GraphDatabaseService copy=new GraphDatabaseFactory().newEmbeddedDatabase(copyDir);
+  try (Transaction tx=copy.beginTx()){
+    GlobalGraphOperations globalOps=GlobalGraphOperations.at(copy);
+    assertThat(Iterables.single(globalOps.getAllNodesWithLabel(label("BeforeCopyBegins"))).getId(),equalTo(0l));
+    assertThat(Iterables.single(globalOps.getAllNodesWithLabel(label("AfterCopy"))).getId(),equalTo(1l));
+    tx.success();
+  }
+ }
