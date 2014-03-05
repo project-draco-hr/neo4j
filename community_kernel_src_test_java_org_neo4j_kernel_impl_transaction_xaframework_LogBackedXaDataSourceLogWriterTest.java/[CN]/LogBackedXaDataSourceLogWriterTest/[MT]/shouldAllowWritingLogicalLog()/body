@@ -16,16 +16,22 @@
   }
 ;
   LogWriter logWriter=ds.createLogWriter();
-  LogBuffer logFile=logWriter.createActiveLogFile(new Config(stringMap(store_dir.name(),testDir.absolutePath())),-1);
-  logFile.putLong(1337l);
-  logFile.force();
-  FileChannel channel=logFile.getFileChannel();
-  channel.position(0);
-  long[] headerLongs=LogIoUtils.readLogHeader(scratch,channel,true);
-  assertThat(headerLongs[0],equalTo(0l));
-  assertThat(headerLongs[1],equalTo(-1l));
-  scratch.clear();
-  channel.read(scratch);
-  scratch.flip();
-  assertThat(scratch.getLong(),equalTo(1337l));
+  LogBuffer logFile=null;
+  try {
+    logFile=logWriter.createActiveLogFile(new Config(stringMap(store_dir.name(),testDir.absolutePath())),-1);
+    logFile.putLong(1337l);
+    logFile.force();
+    FileChannel channel=logFile.getFileChannel();
+    channel.position(0);
+    long[] headerLongs=LogIoUtils.readLogHeader(scratch,channel,true);
+    assertThat(headerLongs[0],equalTo(0l));
+    assertThat(headerLongs[1],equalTo(-1l));
+    scratch.clear();
+    channel.read(scratch);
+    scratch.flip();
+    assertThat(scratch.getLong(),equalTo(1337l));
+  }
+  finally {
+    if (logFile != null)     logFile.getFileChannel().close();
+  }
 }
