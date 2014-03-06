@@ -1,7 +1,12 @@
 {
-  long nodesInDatabaseBeforeTransaction=countNodes();
-  Response response=http.POST("/db/data/transaction/commit",quotedJson("{ 'statements': [ { 'statement': 'USING PERIODIC COMMIT CREATE ()' } ] }"));
-  assertThat(response.status(),equalTo(200));
-  assertThat(response,containsNoErrors());
-  assertThat(countNodes(),equalTo(nodesInDatabaseBeforeTransaction + 1));
+  ServerTestUtils.withCSVFile(1,new ServerTestUtils.BlockWithCSVFileURL(){
+    @Override public void execute(    String url){
+      long nodesInDatabaseBeforeTransaction=countNodes();
+      Response response=http.POST("/db/data/transaction/commit",quotedJson("{ 'statements': [ { 'statement': 'USING PERIODIC COMMIT LOAD CSV FROM \\\"" + url + "\\\" AS line CREATE ()' } ] }"));
+      assertThat(response.status(),equalTo(200));
+      assertThat(response,containsNoErrors());
+      assertThat(countNodes(),equalTo(nodesInDatabaseBeforeTransaction + 1));
+    }
+  }
+);
 }
