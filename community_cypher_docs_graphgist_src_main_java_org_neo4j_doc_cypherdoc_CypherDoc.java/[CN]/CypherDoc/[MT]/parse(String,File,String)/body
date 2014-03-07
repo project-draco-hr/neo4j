@@ -1,0 +1,20 @@
+{
+  List<Block> blocks=parseBlocks(input);
+  EphemeralFileSystemAbstraction fs=new EphemeralFileSystemAbstraction();
+  GraphDatabaseService database=new TestGraphDatabaseFactory().setFileSystem(fs).newImpermanentDatabase();
+  TestFailureException failure=null;
+  try {
+    ExecutionEngine engine=new ExecutionEngine(database);
+    return executeBlocks(blocks,new State(engine,database,parentDirectory,url));
+  }
+ catch (  TestFailureException exception) {
+    dumpStoreFiles(fs,failure=exception,"before-shutdown");
+    throw exception;
+  }
+ finally {
+    database.shutdown();
+    if (failure != null) {
+      dumpStoreFiles(fs,failure,"after-shutdown");
+    }
+  }
+}
