@@ -1,0 +1,20 @@
+{
+  final int typeId=0;
+  fixture.apply(new GraphStoreFixture.Transaction(){
+    @Override protected void transactionData(    GraphStoreFixture.TransactionDataBuilder tx,    GraphStoreFixture.IdGenerator next){
+      long node=next.node();
+      long otherNode=next.node();
+      long group=next.relationshipGroup();
+      long relA=next.relationship();
+      long relB=next.relationship();
+      tx.create(new NodeRecord(node,true,group,NO_NEXT_PROPERTY.intValue()));
+      tx.create(new NodeRecord(otherNode,false,relA,NO_NEXT_PROPERTY.intValue()));
+      tx.create(withNext(new RelationshipRecord(relA,otherNode,otherNode,typeId),relB));
+      tx.create(withPrev(new RelationshipRecord(relB,otherNode,otherNode,typeId),relA));
+      tx.create(withRelationships(new RelationshipGroupRecord(group,typeId),relB,relB,relB));
+    }
+  }
+);
+  ConsistencySummaryStatistics stats=check();
+  verifyInconsistency(stats,3,RecordType.RELATIONSHIP_GROUP);
+}

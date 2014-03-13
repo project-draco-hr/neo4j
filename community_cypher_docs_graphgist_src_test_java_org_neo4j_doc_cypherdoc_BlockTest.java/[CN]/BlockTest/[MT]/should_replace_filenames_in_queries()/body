@@ -1,0 +1,15 @@
+{
+  assumeFalse(System.getProperty("os.name").toLowerCase().startsWith("win"));
+  List<String> myQuery=Arrays.asList("[source, cypher]","----","LOAD CSV FROM \"my_file.csv\" AS line","RETURN line;","----");
+  Block block=new Block(myQuery,BlockType.QUERY);
+  ExecutionEngine engine=mock(ExecutionEngine.class);
+  ArgumentCaptor<String> fileQuery=ArgumentCaptor.forClass(String.class);
+  ArgumentCaptor<String> httpQuery=ArgumentCaptor.forClass(String.class);
+  when(engine.profile(fileQuery.capture())).thenReturn(mock(ExecutionResult.class));
+  when(engine.prettify(httpQuery.capture())).thenReturn("apa");
+  state=new State(engine,database,new File("/dev/null"),"http://myurl");
+  state.knownFiles.add("my_file.csv");
+  block.process(state);
+  assertThat(fileQuery.getValue(),containsString("file:/dev/null/my_file.csv"));
+  assertThat(httpQuery.getValue(),containsString("http://myurl/my_file.csv"));
+}
