@@ -5,13 +5,23 @@
   logRecoveryMessage("applyTxWithoutTxId log version: " + logVersion + ", committing tx="+ nextTxId+ ") @ pos "+ writeBuffer.getFileChannelPosition());
   scanIsComplete=false;
   logWriterSPI.bind(forceMode,nextTxId);
-  LogReader<ReadableByteChannel> reader=new LogDeserializer(logDeserializerMonitor,sharedBuffer);
-  reader.setXidIdentifier(getNextIdentifier());
-  reader.setLogHandler(new LogFilter(interceptor,new MasterLogWriter(new LogApplier(),logWriterSPI,injectedTxValidator)));
-  reader.setXaCommandReader(commandReader);
-  reader.read(byteChannel);
-  byteChannel.close();
-  scanIsComplete=true;
+  LogReader<ReadableByteChannel> reader=new LogDeserializer(logDeserializerMonitor,sharedBuffer,commandReader);
+  LogFilter handler=new LogFilter(interceptor,new MasterLogWriter(new LogApplier(),logWriterSPI,injectedTxValidator,logEntryWriter));
+  LogEntryConsumer consumer=new LogEntryConsumer();
+  consumer.setXidIdentifier(getNextIdentifier());
+  consumer.setHandler(handler);
+  boolean success=true;
+  handler.startLog();
+  try (Cursor<LogEntry,IOException> cursor=reader.cursor(byteChannel)){
+    while (cursor.next(consumer))     ;
+  }
+ catch (  IOException e) {
+    success=false;
+  }
+ finally {
+    handler.endLog(success);
+    scanIsComplete=true;
+  }
   logRecoveryMessage("Applied external tx and generated tx id=" + nextTxId);
   checkLogRotation();
 }

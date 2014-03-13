@@ -5,19 +5,26 @@
   try {
     FileChannel channel=file.getChannel();
     readLogHeader(buffer,channel,true);
-    long lastOne=-1;
-    int counted=0;
-    for (LogEntry entry; (entry=readEntry(buffer,channel,reader)) != null; ) {
-      if (entry instanceof TwoPhaseCommit) {
-        long txId=((TwoPhaseCommit)entry).getTxId();
-        if (lastOne != -1) {
-          assertEquals(lastOne + 1,txId);
+    final AtomicInteger counted=new AtomicInteger();
+    LogDeserializer deserializer=new LogDeserializer(new Monitors().newMonitor(ByteCounterMonitor.class),buffer,reader);
+    Consumer<LogEntry,IOException> consumer=new Consumer<LogEntry,IOException>(){
+      long lastOne=-1;
+      @Override public boolean accept(      LogEntry entry) throws IOException {
+        if (entry instanceof LogEntry.TwoPhaseCommit) {
+          long txId=((LogEntry.TwoPhaseCommit)entry).getTxId();
+          if (lastOne != -1) {
+            assertEquals(lastOne + 1,txId);
+          }
+          lastOne=txId;
+          counted.incrementAndGet();
         }
-        lastOne=txId;
-        counted++;
+        return true;
       }
     }
-    assertEquals(expectedCount,counted);
+;
+    Cursor<LogEntry,IOException> c=deserializer.cursor(channel);
+    while (c.next(consumer))     ;
+    assertEquals(expectedCount,counted.get());
   }
   finally {
     file.close();

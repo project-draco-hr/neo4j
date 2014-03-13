@@ -1,18 +1,24 @@
 {
+  Cursor<LogEntry,IOException> cursor=deserializer.cursor(source);
+  LogEntryCollectingConsumer consumer=new LogEntryCollectingConsumer();
+  long lastCommitEntryTxId=-1;
   LogEntry entry=null;
-  long startingPosition=localBuffer.position();
-  while (collector.hasInFutureQueue() || (entry=LogIoUtils.readEntry(localBuffer,source,commandReader)) != null) {
-    long readUpTo=localBuffer.position();
-    long bytesRead=readUpTo - startingPosition;
-    startingPosition=readUpTo;
-    monitor.bytesRead(bytesRead);
+  while (true) {
+    if (!collector.hasInFutureQueue()) {
+      cursor.next(consumer);
+      entry=consumer.getLastEntry();
+    }
+    if (entry == null) {
+      break;
+    }
     LogEntry foundEntry=collector.collect(entry,target);
     if (foundEntry != null) {
       previousCommitEntry=lastCommitEntry;
-      LogIoUtils.writeLogEntry(new LogEntry.Done(collector.getIdentifier()),target,commandWriter);
+      logEntryWriter.writeLogEntry(new LogEntry.Done(collector.getIdentifier()),target);
       lastCommitEntry=(LogEntry.Commit)foundEntry;
-      return lastCommitEntry.getTxId();
+      lastCommitEntryTxId=lastCommitEntry.getTxId();
+      break;
     }
   }
-  return -1;
+  return lastCommitEntryTxId;
 }

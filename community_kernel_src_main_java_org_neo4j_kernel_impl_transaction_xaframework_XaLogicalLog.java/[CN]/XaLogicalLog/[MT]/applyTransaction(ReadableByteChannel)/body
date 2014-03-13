@@ -1,14 +1,25 @@
 {
   scanIsComplete=false;
-  LogReader<ReadableByteChannel> logApplier=new LogDeserializer(logDeserializerMonitor,sharedBuffer);
-  logApplier.setXidIdentifier(getNextIdentifier());
-  logApplier.setLogHandler(new FuckingUglyHackDoesNotDoNothing(new SlaveLogWriter(new LogApplier(),logWriterSPI)));
-  logApplier.setXaCommandReader(commandReader);
-  try {
-    logApplier.read(byteChannel);
+  LogEntryConsumer consumer=new LogEntryConsumer();
+  consumer.setXidIdentifier(getNextIdentifier());
+  FuckingUglyHackDoesNotDoNothing handler=new FuckingUglyHackDoesNotDoNothing(new SlaveLogWriter(new LogApplier(),logWriterSPI,logEntryWriter));
+  consumer.setHandler(handler);
+  LogReader<ReadableByteChannel> logDeserializer=new SlaveLogDeserializer(logDeserializerMonitor,sharedBuffer,commandReader);
+  boolean success=true;
+  handler.startLog();
+  try (Cursor<LogEntry,IOException> cursor=logDeserializer.cursor(byteChannel)){
+    while (cursor.next(consumer))     ;
   }
-  finally {
-    byteChannel.close();
+ catch (  IOException e) {
+    success=false;
+    throw e;
+  }
+catch (  RuntimeException e) {
+    e.printStackTrace();
+    throw e;
+  }
+ finally {
+    handler.endLog(success);
     scanIsComplete=true;
   }
   checkLogRotation();

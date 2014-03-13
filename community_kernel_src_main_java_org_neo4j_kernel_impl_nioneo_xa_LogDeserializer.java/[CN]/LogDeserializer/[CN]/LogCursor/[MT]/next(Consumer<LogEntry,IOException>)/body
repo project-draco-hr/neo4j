@@ -1,0 +1,25 @@
+{
+  long startedAtPosition=scratch.position();
+  scratch.clear();
+  scratch.limit(1);
+  if (channel.read(scratch) != scratch.limit()) {
+    return false;
+  }
+  scratch.flip();
+  byte type=scratch.get();
+  if (type < 0) {
+    scratch.clear();
+    scratch.limit(1);
+    if (channel.read(scratch) != scratch.limit()) {
+      return false;
+    }
+    scratch.flip();
+    type=scratch.get();
+  }
+  LogEntry entry=logEntryReader.readLogEntry(type,channel);
+  monitor.bytesRead(scratch.position() - startedAtPosition);
+  if (entry == null) {
+    return false;
+  }
+  return consumer.accept(entry);
+}

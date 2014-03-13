@@ -1,0 +1,34 @@
+{
+  ClusterManager clusterManager=new ClusterManager(fromXml(getClass().getResource("/threeinstances.xml").toURI()),TargetDirectory.forTest(getClass()).directory("testCluster",true),MapUtil.stringMap(HaSettings.ha_server.name(),":6001-6005",HaSettings.tx_push_factor.name(),"2"));
+  EideticRequestMonitor masterMonitor=new EideticRequestMonitor();
+  EideticRequestMonitor firstSlaveMonitor=new EideticRequestMonitor();
+  EideticRequestMonitor secondSlaveMonitor=new EideticRequestMonitor();
+  try {
+    clusterManager.start();
+    clusterManager.getDefaultCluster().await(allSeesAllAsAvailable());
+    GraphDatabaseAPI master=clusterManager.getDefaultCluster().getMaster();
+    master.getDependencyResolver().resolveDependency(Monitors.class).addMonitorListener(masterMonitor);
+    HighlyAvailableGraphDatabase firstSlave=clusterManager.getDefaultCluster().getAnySlave();
+    firstSlave.getDependencyResolver().resolveDependency(Monitors.class).addMonitorListener(firstSlaveMonitor);
+    HighlyAvailableGraphDatabase secondSlave=clusterManager.getDefaultCluster().getAnySlave(firstSlave);
+    secondSlave.getDependencyResolver().resolveDependency(Monitors.class).addMonitorListener(secondSlaveMonitor);
+    Transaction tx=master.beginTx();
+    master.createNode();
+    tx.success();
+    tx.finish();
+    tx=firstSlave.beginTx();
+    firstSlave.createNode();
+    tx.success();
+    tx.finish();
+    tx=secondSlave.beginTx();
+    secondSlave.createNode();
+    tx.success();
+    tx.finish();
+  }
+  finally {
+    clusterManager.stop();
+  }
+  assertEquals(masterMonitor.getRequests().size(),masterMonitor.getRequestsEnded());
+  assertEquals(firstSlaveMonitor.getRequests().size(),firstSlaveMonitor.getRequestsEnded());
+  assertEquals(secondSlaveMonitor.getRequests().size(),secondSlaveMonitor.getRequestsEnded());
+}

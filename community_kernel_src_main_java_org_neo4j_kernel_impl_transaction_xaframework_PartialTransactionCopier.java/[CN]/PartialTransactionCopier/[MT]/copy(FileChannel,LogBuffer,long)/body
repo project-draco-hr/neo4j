@@ -1,35 +1,6 @@
 {
-  boolean foundFirstActiveTx=false;
-  Map<Integer,LogEntry.Start> startEntriesEncountered=new HashMap<Integer,LogEntry.Start>();
-  for (LogEntry entry=null; (entry=LogIoUtils.readEntry(sharedBuffer,sourceLog,commandReader)) != null; ) {
-    Integer identifier=entry.getIdentifier();
-    boolean isActive=xidIdentMap.get(identifier) != null;
-    if (!foundFirstActiveTx && isActive) {
-      foundFirstActiveTx=true;
-    }
-    if (foundFirstActiveTx) {
-      if (entry instanceof LogEntry.Start) {
-        LogEntry.Start startEntry=(LogEntry.Start)entry;
-        startEntriesEncountered.put(identifier,startEntry);
-        startEntry.setStartPosition(targetLog.getFileChannelPosition());
-        if (isActive)         xidIdentMap.put(identifier,startEntry);
-      }
- else       if (entry instanceof LogEntry.Commit) {
-        LogEntry.Commit commitEntry=(LogEntry.Commit)entry;
-        LogEntry.Start startEntry=startEntriesEncountered.get(identifier);
-        if (startEntry == null) {
-          startEntry=fetchTransactionBulkFromLogExtractor(commitEntry.getTxId(),targetLog);
-          startEntriesEncountered.put(identifier,startEntry);
-        }
- else {
-          LogExtractor.TxPosition oldPos=positionCache.getStartPosition(commitEntry.getTxId());
-          LogExtractor.TxPosition newPos=positionCache.cacheStartPosition(commitEntry.getTxId(),startEntry,targetLogVersion);
-          log.logMessage("Updated tx " + ((LogEntry.Commit)entry).getTxId() + " from "+ oldPos+ " to "+ newPos);
-        }
-      }
-      if (startEntriesEncountered.containsKey(identifier)) {
-        LogIoUtils.writeLogEntry(entry,targetLog,commandWriter);
-      }
-    }
-  }
+  LogDeserializer deserializer=new LogDeserializer(monitor,sharedBuffer,commandReaderFactory.newInstance(sharedBuffer));
+  consumer.init(targetLog,targetLogVersion);
+  Cursor<LogEntry,IOException> cursor=deserializer.cursor(sourceLog);
+  while (cursor.next(consumer))   ;
 }

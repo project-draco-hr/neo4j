@@ -1,14 +1,20 @@
 {
   ByteBuffer buffer=ByteBuffer.allocateDirect(9 + Xid.MAXGTRIDSIZE + Xid.MAXBQUALSIZE * 10);
   try (FileChannel fileChannel=fileSystem.open(new File(logPath),"r")){
-    LogIoUtils.readLogHeader(buffer,fileChannel,true);
-    List<LogEntry> entries=new ArrayList<>();
-    XaCommandReader commandReader=new PhysicalLogNeoXaCommandReader(buffer);
-    LogEntry entry;
-    while ((entry=LogIoUtils.readEntry(buffer,fileChannel,commandReader)) != null) {
-      entries.add(entry);
+    LogEntryReaderv1.readLogHeader(buffer,fileChannel,true);
+    final List<LogEntry> entries=new ArrayList<>();
+    LogDeserializer deserializer=new LogDeserializer(new Monitors().newMonitor(ByteCounterMonitor.class,LogTestUtils.class),buffer,new PhysicalLogNeoXaCommandReader(buffer));
+    Consumer<LogEntry,IOException> consumer=new Consumer<LogEntry,IOException>(){
+      @Override public boolean accept(      LogEntry entry) throws IOException {
+        entries.add(entry);
+        return true;
+      }
     }
-    for (int entryNo=0; entryNo < expectedEntries.length; entryNo++) {
+;
+    try (Cursor<LogEntry,IOException> cursor=deserializer.cursor(fileChannel)){
+      cursor.next(consumer);
+    }
+     for (int entryNo=0; entryNo < expectedEntries.length; entryNo++) {
       LogEntry expectedEntry=expectedEntries[entryNo];
       if (entries.size() <= entryNo) {
         fail("Log ended prematurely. Expected to find '" + expectedEntry.toString() + "' as log entry number "+ entryNo+ ", instead there were no more log entries.");

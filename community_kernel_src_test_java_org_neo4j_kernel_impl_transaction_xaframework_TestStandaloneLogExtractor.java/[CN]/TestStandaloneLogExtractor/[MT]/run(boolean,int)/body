@@ -15,7 +15,9 @@
   }
   GraphDatabaseAPI newDb=(GraphDatabaseAPI)new TestGraphDatabaseFactory().setFileSystem(snapshot).newImpermanentDatabase(storeDir);
   XaDataSource ds=newDb.getDependencyResolver().resolveDependency(XaDataSourceManager.class).getNeoStoreDataSource();
-  LogExtractor extractor=LogExtractor.from(snapshot,new File(storeDir),new XaCommandReaderFactory(){
+  LogEntryWriterv1 logEntryWriter=new LogEntryWriterv1();
+  logEntryWriter.setCommandWriter(new PhysicalLogNeoXaCommandWriter());
+  LogExtractor extractor=LogExtractor.from(snapshot,new XaCommandReaderFactory(){
     @Override public XaCommandReader newInstance(    ByteBuffer scratch){
       return new PhysicalLogNeoXaCommandReader(scratch);
     }
@@ -25,7 +27,7 @@
       return new PhysicalLogNeoXaCommandWriter();
     }
   }
-,new Monitors().newMonitor(ByteCounterMonitor.class),2);
+,logEntryWriter,new File(storeDir),new Monitors().newMonitor(ByteCounterMonitor.class));
   long expectedTxId=2;
   while (true) {
     InMemoryLogBuffer buffer=new InMemoryLogBuffer();

@@ -7,22 +7,22 @@
     ByteBuffer buffer=ByteBuffer.allocateDirect(9 + Xid.MAXGTRIDSIZE + Xid.MAXBQUALSIZE * 10);
     long logVersion, prevLastCommittedTx;
     try {
-      long[] header=LogIoUtils.readLogHeader(buffer,fileChannel,true);
+      long[] header=LogEntryReaderv1.readLogHeader(buffer,fileChannel,true);
       logVersion=header[0];
       prevLastCommittedTx=header[1];
     }
  catch (    IOException ex) {
-      out.println("Unable to read timestamp information, " + "no records in logical log.");
+      out.println("Unable to read timestamp information, no records in logical log.");
       out.println(ex.getMessage());
       fileChannel.close();
       throw ex;
     }
     out.println("Logical log version: " + logVersion + " with prev committed tx["+ prevLastCommittedTx+ "]");
-    XaCommandReader commandReader=instantiateCommandReader(buffer);
-    while (readAndPrintEntry(fileChannel,buffer,commandReader,out,timeZone)) {
-      ;
+    LogDeserializer deserializer=new LogDeserializer(new Monitors().newMonitor(ByteCounterMonitor.class,getClass()),buffer,instantiateCommandReader(buffer));
+    PrintingConsumer consumer=new PrintingConsumer(out,timeZone);
+    try (Cursor<LogEntry,IOException> cursor=deserializer.cursor(fileChannel)){
+      while (cursor.next(consumer))       ;
     }
-    fileChannel.close();
-  }
+   }
   return logsFound;
 }

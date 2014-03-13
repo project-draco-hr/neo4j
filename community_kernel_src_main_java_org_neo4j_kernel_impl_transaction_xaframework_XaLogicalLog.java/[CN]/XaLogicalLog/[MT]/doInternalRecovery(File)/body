@@ -21,8 +21,19 @@
   RecoveryLogDeserializer reader=new RecoveryLogDeserializer(sharedBuffer);
   reader.setXaCommandReader(commandReader);
   EntryCountingLogHandler counter=new EntryCountingLogHandler(new LogApplier());
-  reader.setLogHandler(counter);
-  reader.read(fileChannel);
+  RecoveryConsumer consumer=new RecoveryConsumer(counter);
+  boolean success=true;
+  consumer.startLog();
+  Cursor<LogEntry,IOException> cursor=reader.cursor(fileChannel);
+  try {
+    while (cursor.next(consumer))     ;
+  }
+ catch (  IOException e) {
+    success=false;
+  }
+ finally {
+    counter.endLog(success);
+  }
   long lastEntryPos=fileChannel.position();
   fileChannel=((BufferedFileChannel)fileChannel).getSource();
   fileChannel.position(lastEntryPos);

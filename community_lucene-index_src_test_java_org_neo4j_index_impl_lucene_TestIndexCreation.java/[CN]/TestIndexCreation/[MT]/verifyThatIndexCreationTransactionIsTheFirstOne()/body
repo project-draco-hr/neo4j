@@ -11,17 +11,29 @@
     }
   }
 ;
-  int creationIdentifier=-1;
-  for (LogEntry entry; (entry=LogIoUtils.readEntry(buffer,log,commandReader)) != null; ) {
-    if (entry instanceof LogEntry.Command && ((LogEntry.Command)entry).getXaCommand() instanceof LuceneCommand.CreateIndexCommand) {
-      if (creationIdentifier != -1)       throw new IllegalArgumentException("More than one creation command");
-      creationIdentifier=entry.getIdentifier();
-    }
-    if (entry instanceof LogEntry.Commit) {
-      assertTrue("Index creation transaction wasn't the first one",creationIdentifier != -1);
-      assertEquals("Index creation transaction wasn't the first one",creationIdentifier,entry.getIdentifier());
-      return;
+  LogDeserializer deserializer=new LogDeserializer(new Monitors().newMonitor(ByteCounterMonitor.class),buffer,commandReader);
+  final AtomicBoolean success=new AtomicBoolean(false);
+  Consumer<LogEntry,IOException> consumer=new Consumer<LogEntry,IOException>(){
+    int creationIdentifier=-1;
+    @Override public boolean accept(    LogEntry entry) throws IOException {
+      if (entry instanceof LogEntry.Command && ((LogEntry.Command)entry).getXaCommand() instanceof LuceneCommand.CreateIndexCommand) {
+        if (creationIdentifier != -1) {
+          throw new IllegalArgumentException("More than one creation command");
+        }
+        creationIdentifier=entry.getIdentifier();
+      }
+      if (entry instanceof LogEntry.Commit) {
+        assertTrue("Index creation transaction wasn't the first one",creationIdentifier != -1);
+        assertEquals("Index creation transaction wasn't the first one",creationIdentifier,entry.getIdentifier());
+        success.set(true);
+        return false;
+      }
+      return true;
     }
   }
-  fail("Didn't find any commit record in log " + version);
+;
+  try (Cursor<LogEntry,IOException> cursor=deserializer.cursor(log)){
+    while (cursor.next(consumer))     ;
+  }
+   assertTrue("Didn't find any commit record in log " + version,success.get());
 }
