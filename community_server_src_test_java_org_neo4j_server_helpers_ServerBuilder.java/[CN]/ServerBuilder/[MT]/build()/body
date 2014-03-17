@@ -1,2 +1,23 @@
 {
+  if (dbDir == null && persistent) {
+    throw new IllegalStateException("Must specify path");
+  }
+  File configFile=buildBefore();
+  BufferingConsoleLogger console=new BufferingConsoleLogger();
+  Validator validator=new Validator(new DatabaseLocationMustBeSpecifiedRule());
+  Configurator configurator=new PropertyFileConfigurator(validator,configFile,console);
+  Logging logging=loggingFactory().create(configurator);
+  console.replayInto(logging.getConsoleLog(getClass()));
+  return new CommunityNeoServer(configurator,logging){
+    @Override protected PreFlightTasks createPreflightTasks(){
+      return preflightTasks;
+    }
+    @Override protected Database createDatabase(){
+      return persistent ? new CommunityDatabase(configurator,logging) : new EphemeralDatabase(configurator);
+    }
+    @Override protected DatabaseActions createDatabaseActions(){
+      return createDatabaseActionsObject(database,configurator);
+    }
+  }
+;
 }
