@@ -1,0 +1,27 @@
+{
+  final String copyDir=new File(testDir.directory(),"copy").getAbsolutePath();
+  final String originalDir=new File(testDir.directory(),"original").getAbsolutePath();
+  Config config=new Config(MapUtil.stringMap(store_dir.name(),copyDir));
+  RemoteStoreCopier copier=new RemoteStoreCopier(config,loadKernelExtensions(),new ConsoleLogger(StringLogger.DEV_NULL),fs);
+  copier.copyStore(new RemoteStoreCopier.StoreCopyRequester(){
+    @Override public Response<?> copyStore(    StoreWriter writer){
+      GraphDatabaseAPI original=(GraphDatabaseAPI)new GraphDatabaseFactory().addKernelExtension(new MyDSExtension.Factory(new File(testDir.directory(),"irrelephant.log"))).newEmbeddedDatabase(originalDir);
+      try {
+        XaDataSourceManager dsManager=original.getDependencyResolver().resolveDependency(XaDataSourceManager.class);
+        RequestContext ctx=ServerUtil.rotateLogsAndStreamStoreFiles(originalDir,dsManager,original.getDependencyResolver().resolveDependency(KernelPanicEventGenerator.class),StringLogger.SYSTEM,false,writer,fs,original.getDependencyResolver().resolveDependency(Monitors.class).newMonitor(BackupMonitor.class));
+        return ServerUtil.packResponse(original.storeId(),dsManager,ctx,null,ServerUtil.ALL);
+      }
+  finally {
+        original.shutdown();
+      }
+    }
+  }
+);
+  FileChannel activeLog=FileChannel.open(generatedLogFile().toPath(),READ);
+  ByteBuffer buffer=ByteBuffer.allocate(512);
+  activeLog.read(buffer);
+  activeLog.close();
+  buffer.flip();
+  assertThat(buffer.getLong(),equalTo(1338l));
+  assertThat(buffer.getLong(),equalTo(1339l));
+}
