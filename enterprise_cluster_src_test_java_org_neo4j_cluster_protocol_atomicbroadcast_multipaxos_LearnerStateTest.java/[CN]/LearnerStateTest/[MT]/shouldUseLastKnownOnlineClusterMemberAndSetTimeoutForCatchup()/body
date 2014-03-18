@@ -1,0 +1,16 @@
+{
+  LearnerState state=LearnerState.learner;
+  LearnerContext ctx=mock(LearnerContext.class);
+  MessageHolder outgoing=mock(MessageHolder.class);
+  org.neo4j.cluster.InstanceId upToDateClusterMember=new org.neo4j.cluster.InstanceId(1);
+  when(ctx.getLastLearnedInstanceId()).thenReturn(0l);
+  when(ctx.getPaxosInstance(new org.neo4j.cluster.protocol.atomicbroadcast.multipaxos.InstanceId(1l))).thenReturn(new PaxosInstance(null,new org.neo4j.cluster.protocol.atomicbroadcast.multipaxos.InstanceId(1l)));
+  when(ctx.getLastKnownAliveUpToDateInstance()).thenReturn(upToDateClusterMember);
+  when(ctx.getUriForId(upToDateClusterMember)).thenReturn(new URI("c:/1"));
+  when(ctx.getLastKnownLearnedInstanceInCluster()).thenReturn(1l);
+  Message<LearnerMessage> message=Message.to(LearnerMessage.catchUp,new URI("c:/2"),2l).setHeader(Message.FROM,"c:/2");
+  State newState=state.handle(ctx,message,outgoing);
+  assertThat(newState,equalTo((State)LearnerState.learner));
+  verify(outgoing).offer(Message.to(LearnerMessage.learnRequest,new URI("c:/1"),new LearnerMessage.LearnRequestState()).setHeader(org.neo4j.cluster.protocol.atomicbroadcast.multipaxos.InstanceId.INSTANCE,Long.toString(1l)));
+  verify(ctx).setTimeout("learn",Message.timeout(LearnerMessage.learnTimedout,message));
+}
