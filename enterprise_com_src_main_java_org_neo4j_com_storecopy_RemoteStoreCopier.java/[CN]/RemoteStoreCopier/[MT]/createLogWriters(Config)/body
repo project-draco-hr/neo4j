@@ -1,0 +1,17 @@
+{
+  Map<String,LogBufferFactory> writers=new HashMap<>();
+  File tempStore=new File(config.get(GraphDatabaseSettings.store_dir).getAbsolutePath() + ".tmp");
+  GraphDatabaseAPI db=newTempDatabase(tempStore);
+  try {
+    XaDataSourceManager dsManager=db.getDependencyResolver().resolveDependency(XaDataSourceManager.class);
+    for (    XaDataSource xaDataSource : dsManager.getAllRegisteredDataSources()) {
+      writers.put(xaDataSource.getName(),xaDataSource.createLogBufferFactory());
+    }
+    return writers;
+  }
+  finally {
+    db.shutdown();
+    FileUtils.deleteRecursively(tempStore);
+    tempStore.mkdirs();
+  }
+}
