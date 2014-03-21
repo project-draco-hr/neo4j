@@ -1,13 +1,7 @@
 {
-  timer.schedule(new TimerTask(){
-    @Override public void run(){
-      try {
-        runnable.run();
-      }
- catch (      RuntimeException e) {
-        log.error("Failed running recurring job.",e);
-      }
-    }
+  ScheduledFuture<?> scheduled=scheduledExecutor.scheduleAtFixedRate(runnable,0,period,timeUnit);
+  if (recurringJobs.putIfAbsent(runnable,scheduled) != null) {
+    scheduled.cancel(true);
+    throw new IllegalArgumentException(runnable + " is already scheduled. Please implement a unique " + ".equals() method for each runnable you would like to execute.");
   }
-,0,timeUnit.toMillis(period));
 }
