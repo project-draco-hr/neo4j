@@ -1,13 +1,7 @@
 {
   String path="target/var/testdb";
-  final AtomicReference<BufferingLogger> logger=new AtomicReference<BufferingLogger>();
-  GraphDatabaseService graphDb=new ImpermanentGraphDatabase(){
-    @Override protected Logging createLogging(){
-      logger.set(new BufferingLogger());
-      return new SingleLoggingService(logger.get());
-    }
-  }
-;
+  BufferingLogger logger=new BufferingLogger();
+  GraphDatabaseService graphDb=new TestGraphDatabaseFactory().setLogging(new SingleLoggingService(logger)).newImpermanentDatabase();
   XaDataSourceManager xaDs=((GraphDatabaseAPI)graphDb).getXaDataSourceManager();
   IllBehavingXaDataSource noob=new IllBehavingXaDataSource(UTF8.encode("554342"),"noob");
   xaDs.registerDataSource(noob);
@@ -32,6 +26,6 @@
     graphDb.unregisterKernelEventHandler(panic);
   }
   assertTrue(panic.panic);
-  assertTrue("Log didn't contain expected string",logger.get().toString().contains("at org.neo4j.kernel.impl.event.TestKernelPanic.panicTest"));
+  assertTrue("Log didn't contain expected string",logger.toString().contains("at org.neo4j.kernel.impl.event.TestKernelPanic.panicTest"));
   graphDb.shutdown();
 }

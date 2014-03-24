@@ -1,0 +1,19 @@
+{
+  this.params=params;
+  dependencyResolver=new DependencyResolverImpl();
+  params.put(Configuration.store_dir.name(),storeDir);
+  this.cacheProviders=mapCacheProviders(dependencies.cacheProviders());
+  config=new Config(params,getSettingsClasses(dependencies.settingsClasses(),dependencies.kernelExtensions(),dependencies.cacheProviders()));
+  this.logging=dependencies.logging();
+  Iterable<KernelExtensionFactory<?>> indexProviderKernelExtensions=Iterables.map(new Function<IndexProvider,KernelExtensionFactory<?>>(){
+    @Override public KernelExtensionFactory<?> apply(    IndexProvider from){
+      return new IndexProviderKernelExtensionFactory(from);
+    }
+  }
+,dependencies.indexProviders());
+  Iterable<KernelExtensionFactory<?>> kernelExtensions=Iterables.concat(dependencies.kernelExtensions(),indexProviderKernelExtensions);
+  this.kernelExtensions=new KernelExtensions(kernelExtensions,config,getDependencyResolver());
+  this.transactionInterceptorProviders=new TransactionInterceptorProviders(dependencies.transactionInterceptorProviders(),dependencyResolver);
+  this.storeDir=config.get(Configuration.store_dir);
+  accessTimeout=1 * 1000;
+}

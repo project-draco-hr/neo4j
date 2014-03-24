@@ -2,16 +2,13 @@
   if (dbDir == null) {
     this.dbDir=createTempDir().getAbsolutePath();
   }
-  File configFile=createPropertiesFiles();
-  if (preflightTasks == null) {
-    preflightTasks=new PreFlightTasks(){
-      @Override public boolean run(){
-        return true;
-      }
-    }
-;
-  }
-  return new EnterpriseNeoServer(new PropertyFileConfigurator(new Validator(new DatabaseLocationMustBeSpecifiedRule()),configFile)){
+  File configFile=buildBefore();
+  BufferingConsoleLogger console=new BufferingConsoleLogger();
+  Validator validator=new Validator(new DatabaseLocationMustBeSpecifiedRule());
+  Configurator configurator=new PropertyFileConfigurator(validator,configFile,console);
+  Logging logging=loggingFactory.create(configurator);
+  console.replayInto(logging.getConsoleLog(getClass()));
+  return new EnterpriseNeoServer(configurator,logging){
     @Override protected PreFlightTasks createPreflightTasks(){
       return preflightTasks;
     }
@@ -19,8 +16,7 @@
       return persistent ? super.createDatabase() : new EphemeralDatabase(configurator);
     }
     @Override protected DatabaseActions createDatabaseActions(){
-      Clock clockToUse=(clock != null) ? clock : Clock.REAL_CLOCK;
-      return new DatabaseActions(database,new LeaseManager(clockToUse),ForceMode.forced,configurator.configuration().getBoolean(Configurator.SCRIPT_SANDBOXING_ENABLED_KEY,Configurator.DEFAULT_SCRIPT_SANDBOXING_ENABLED));
+      return createDatabaseActionsObject(database,configurator);
     }
   }
 ;
