@@ -1,6 +1,7 @@
 {
   String filename=new File(directory.directory(),"mapped.file").getAbsolutePath();
   RandomAccessFile file=resources.add(new RandomAccessFile(filename,"rw"));
+  StoreChannel channel=new StoreFileChannel(file.getChannel());
   file.setLength(8 * 10);
   final AtomicInteger lockedCount=new AtomicInteger(), unlockedCount=new AtomicInteger();
   BrickElementFactory brickFactory=new BrickElementFactory(){
@@ -21,7 +22,7 @@
     }
   }
 ;
-  PersistenceWindowPool pool=new PersistenceWindowPool(new File("test.store"),8,file.getChannel(),10000,false,false,new ConcurrentHashMap<Long,PersistenceRow>(),brickFactory,StringLogger.DEV_NULL);
+  PersistenceWindowPool pool=new PersistenceWindowPool(new File("test.store"),8,channel,10000,false,false,new ConcurrentHashMap<Long,PersistenceRow>(),brickFactory,StringLogger.DEV_NULL);
   try {
     pool.release(pool.acquire(0,OperationType.READ));
     assertEquals(1,lockedCount.get());
