@@ -6,14 +6,16 @@
     FileUtils.deleteRecursively(tempStore);
     tempStore.mkdir();
   }
-  Response response=requester.copyStore(decorateWithProgressIndicator(new ToFileStoreWriter(tempStore)));
-  long highestLogVersion=XaLogicalLog.getHighestHistoryLogVersion(fs,tempStore,LOGICAL_LOG_DEFAULT_NAME);
-  if (highestLogVersion > -1) {
-    NeoStore.setVersion(fs,tempStore,highestLogVersion + 1);
+  try (Response response=requester.copyStore(decorateWithProgressIndicator(new ToFileStoreWriter(tempStore)))){
+    long highestLogVersion=XaLogicalLog.getHighestHistoryLogVersion(fs,tempStore,LOGICAL_LOG_DEFAULT_NAME);
+    if (highestLogVersion > -1) {
+      NeoStore.setVersion(fs,tempStore,highestLogVersion + 1);
+    }
+    writeTransactionsToActiveLogFile(tempConfig,response.transactions());
   }
-  writeTransactionsToActiveLogFile(tempConfig,response.transactions());
-  response.close();
-  requester.done();
+  finally {
+    requester.done();
+  }
   GraphDatabaseAPI copiedDb=newTempDatabase(tempStore);
   copiedDb.shutdown();
   for (  File candidate : tempStore.listFiles(new FileFilter(){
