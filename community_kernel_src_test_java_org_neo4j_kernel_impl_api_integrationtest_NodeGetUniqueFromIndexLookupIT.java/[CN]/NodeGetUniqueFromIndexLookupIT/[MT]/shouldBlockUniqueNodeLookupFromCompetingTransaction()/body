@@ -1,7 +1,7 @@
 {
   final DoubleLatch latch=new DoubleLatch();
   DependencyResolver resolver=db.getDependencyResolver();
-  LockManager manager=resolver.resolveDependency(LockManager.class);
+  Locks manager=resolver.resolveDependency(Locks.class);
   final IndexDescriptor index=createUniquenessConstraint();
   final String value="value";
   DataWriteOperations dataStatement=dataWriteOperationsInNewTransaction();
@@ -30,18 +30,10 @@
   thread2.start();
   latch.start();
   spinUntilBlocking:   for (; ; ) {
-    for (    LockInfo info : manager.getAllLocks()) {
-      for (      WaitingThread waiter : info.getWaitingThreads()) {
-        if (waiter.getThreadId() == thread2.getId()) {
-          assertThat(info.getReadCount(),equalTo(0));
-          assertThat(info.getWriteCount(),equalTo(1));
-          assertThat(info.getResourceType(),equalTo(ResourceType.OTHER));
-          assertThat(info.getResourceId(),equalTo("IndexEntryLock{labelId=0, propertyKeyId=0, propertyValue=value}"));
-          break spinUntilBlocking;
-        }
-        Thread.yield();
-      }
+    if (thread2.getState() == Thread.State.TIMED_WAITING || thread2.getState() == Thread.State.WAITING) {
+      break;
     }
+    Thread.yield();
   }
   commit();
   latch.awaitFinish();

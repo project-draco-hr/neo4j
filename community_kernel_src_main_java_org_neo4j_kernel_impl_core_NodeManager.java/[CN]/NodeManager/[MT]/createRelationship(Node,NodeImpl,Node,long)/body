@@ -12,9 +12,8 @@
   }
   long id=idGenerator.nextId(Relationship.class);
   RelationshipImpl rel=new RelationshipImpl(id,startNodeId,endNodeId,typeId,true);
-  RelationshipProxy proxy=new RelationshipProxy(id,relationshipLookups,statementCtxProvider);
   TransactionState tx=getTransactionState();
-  tx.acquireWriteLock(proxy);
+  tx.locks().acquireExclusive(ResourceTypes.RELATIONSHIP,id);
   boolean success=false;
   try {
     tx.createRelationship(id);
@@ -27,7 +26,7 @@
     }
     relCache.put(rel);
     success=true;
-    return proxy;
+    return id;
   }
   finally {
     if (!success) {

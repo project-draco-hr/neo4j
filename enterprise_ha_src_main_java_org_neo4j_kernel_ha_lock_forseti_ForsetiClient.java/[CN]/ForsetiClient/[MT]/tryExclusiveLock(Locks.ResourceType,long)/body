@@ -1,0 +1,30 @@
+{
+  ConcurrentMap<Long,ForsetiLockManager.Lock> lockMap=lockMaps[resourceType.typeId()];
+  Map<Long,Integer> heldLocks=exclusiveLockCounts[resourceType.typeId()];
+  for (  long resourceId : resourceIds) {
+    Integer heldCount=heldLocks.get(resourceId);
+    if (heldCount != null) {
+      heldLocks.put(resourceId,heldCount + 1);
+      continue;
+    }
+    ForsetiLockManager.Lock lock;
+    if ((lock=lockMap.putIfAbsent(resourceId,myExclusiveLock)) != null) {
+      if (lock instanceof SharedLock && sharedLockCounts[resourceType.typeId()].containsKey(resourceId)) {
+        SharedLock sharedLock=(SharedLock)lock;
+        if (sharedLock.tryAcquireUpdateLock(this)) {
+          if (sharedLock.numberOfHolders() == 1) {
+            lockMap.put(resourceId,myExclusiveLock);
+            return true;
+          }
+ else {
+            sharedLock.releaseUpdateLock(this);
+            return false;
+          }
+        }
+      }
+      return false;
+    }
+    heldLocks.put(resourceId,1);
+  }
+  return true;
+}

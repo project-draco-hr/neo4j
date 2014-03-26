@@ -1,0 +1,46 @@
+{
+  try {
+    startSignal.await();
+    java.util.Stack<Object> lockStack=new java.util.Stack<Object>();
+    for (int i=0; i < numberOfIterations; i++) {
+      try {
+        int depth=depthCount;
+        do {
+          float f=rand.nextFloat();
+          if (f < readWriteRatio) {
+            client.acquireShared(NODE,nodeId);
+            lockStack.push(READ);
+          }
+ else {
+            client.acquireExclusive(NODE,nodeId);
+            lockStack.push(WRITE);
+          }
+        }
+ while (--depth > 0);
+        while (!lockStack.isEmpty()) {
+          if (lockStack.pop() == READ) {
+            client.releaseShared(NODE,nodeId);
+          }
+ else {
+            client.releaseExclusive(NODE,nodeId);
+          }
+        }
+      }
+ catch (      DeadlockDetectedException e) {
+      }
+ finally {
+        while (!lockStack.isEmpty()) {
+          if (lockStack.pop() == READ) {
+            client.releaseShared(NODE,nodeId);
+          }
+ else {
+            client.releaseExclusive(NODE,nodeId);
+          }
+        }
+      }
+    }
+  }
+ catch (  Exception e) {
+    error=e;
+  }
+}

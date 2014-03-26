@@ -7,19 +7,18 @@
     DefinedProperty property=Property.property(propertyKeyId,value);
     stringVal=property.valueAsString();
   }
-  LockHolder holder=state.locks();
-  try (ReleasableLock r=holder.getReleasableIndexEntryReadLock(labelId,propertyKeyId,stringVal)){
-    long nodeId=entityReadOperations.nodeGetUniqueFromIndexLookup(state,index,value);
-    if (NO_SUCH_NODE == nodeId) {
-      r.release();
-      try (ReleasableLock w=holder.getReleasableIndexEntryWriteLock(labelId,propertyKeyId,stringVal)){
-        nodeId=entityReadOperations.nodeGetUniqueFromIndexLookup(state,index,value);
-        if (NO_SUCH_NODE != nodeId) {
-          holder.getReleasableIndexEntryReadLock(labelId,propertyKeyId,stringVal).registerWithTransaction();
-          w.release();
-        }
-      }
-     }
-    return nodeId;
+  Locks.Client locks=state.locks();
+  long indexEntryId=indexEntryResourceId(labelId,propertyKeyId,stringVal);
+  locks.acquireShared(INDEX_ENTRY,indexEntryId);
+  long nodeId=entityReadOperations.nodeGetUniqueFromIndexLookup(state,index,value);
+  if (NO_SUCH_NODE == nodeId) {
+    locks.releaseShared(INDEX_ENTRY,indexEntryId);
+    locks.acquireExclusive(INDEX_ENTRY,indexEntryId);
+    nodeId=entityReadOperations.nodeGetUniqueFromIndexLookup(state,index,value);
+    if (NO_SUCH_NODE != nodeId) {
+      locks.acquireShared(INDEX_ENTRY,indexEntryId);
+      locks.releaseExclusive(INDEX_ENTRY,indexEntryId);
+    }
   }
- }
+  return nodeId;
+}
