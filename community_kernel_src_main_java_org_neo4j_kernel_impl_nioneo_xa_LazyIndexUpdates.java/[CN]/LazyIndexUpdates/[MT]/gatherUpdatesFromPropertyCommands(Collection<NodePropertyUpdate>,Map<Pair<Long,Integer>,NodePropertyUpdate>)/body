@@ -1,24 +1,25 @@
 {
-  for (  PropertyCommand propertyCommand : propCommands) {
-    PropertyRecord after=propertyCommand.getAfter();
-    if (!after.isNodeSet()) {
+  for (  List<PropertyCommand> propertyCommands : propCommands) {
+    PropertyRecord representative=propertyCommands.get(0).getAfter();
+    if (!representative.isNodeSet()) {
       continue;
     }
+    long nodeId=representative.getNodeId();
     long[] nodeLabelsBefore, nodeLabelsAfter;
-    NodeCommand nodeChanges=nodeCommands.get(after.getNodeId());
+    NodeCommand nodeChanges=nodeCommands.get(nodeId);
     if (nodeChanges != null) {
       nodeLabelsBefore=parseLabelsField(nodeChanges.getBefore()).get(nodeStore);
       nodeLabelsAfter=parseLabelsField(nodeChanges.getAfter()).get(nodeStore);
     }
  else {
-      NodeRecord nodeRecord=nodeStore.getRecord(after.getNodeId());
+      NodeRecord nodeRecord=nodeStore.getRecord(nodeId);
       nodeLabelsBefore=nodeLabelsAfter=parseLabelsField(nodeRecord).get(nodeStore);
     }
-    for (    NodePropertyUpdate update : propertyStore.toLogicalUpdates(propertyCommand.getBefore(),nodeLabelsBefore,after,nodeLabelsAfter)) {
-      updates.add(update);
-      if (update.getUpdateMode() == UpdateMode.CHANGED) {
-        propertyLookup.put(Pair.of(update.getNodeId(),update.getPropertyKeyId()),update);
-      }
+    propertyStore.toLogicalUpdates(updates,Iterables.<PropertyRecordChange,PropertyCommand>cast(propertyCommands),nodeLabelsBefore,nodeLabelsAfter);
+  }
+  for (  NodePropertyUpdate update : updates) {
+    if (update.getUpdateMode() == UpdateMode.CHANGED) {
+      propertyLookup.put(Pair.of(update.getNodeId(),update.getPropertyKeyId()),update);
     }
   }
 }

@@ -1,0 +1,30 @@
+{
+  Map<Integer,PropertyBlock> beforeMap=new HashMap<>(), afterMap=new HashMap<>();
+  long nodeId=mapBlocks(changes,beforeMap,afterMap);
+  for (  int key : union(beforeMap.keySet(),afterMap.keySet())) {
+    PropertyBlock beforeBlock=beforeMap.get(key);
+    PropertyBlock afterBlock=afterMap.get(key);
+    NodePropertyUpdate update=null;
+    if (beforeBlock != null && afterBlock != null) {
+      if (!beforeBlock.hasSameContentsAs(afterBlock)) {
+        Object beforeVal=valueOf(beforeBlock);
+        Object afterVal=valueOf(afterBlock);
+        update=NodePropertyUpdate.change(nodeId,key,beforeVal,labelsBefore,afterVal,labelsAfter);
+      }
+    }
+ else {
+      if (afterBlock != null) {
+        update=NodePropertyUpdate.add(nodeId,key,valueOf(afterBlock),labelsAfter);
+      }
+ else       if (beforeBlock != null) {
+        update=NodePropertyUpdate.remove(nodeId,key,valueOf(beforeBlock),labelsBefore);
+      }
+ else {
+        throw new IllegalStateException("Weird, an update with no property value for before or after");
+      }
+    }
+    if (update != null) {
+      target.add(update);
+    }
+  }
+}
