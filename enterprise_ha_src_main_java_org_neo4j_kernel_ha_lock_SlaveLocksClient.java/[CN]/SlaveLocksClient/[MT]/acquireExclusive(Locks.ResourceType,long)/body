@@ -1,0 +1,14 @@
+{
+  Map<Long,AtomicInteger> lockMap=getLockMap(exclusiveLocks,resourceType);
+  long[] untakenIds=incrementAndRemoveAlreadyTakenLocks(lockMap,resourceIds);
+  if (untakenIds.length > 0 && acquireExclusiveOnMaster(resourceType,untakenIds)) {
+    if (client.tryExclusiveLock(resourceType,untakenIds)) {
+      for (int i=0; i < untakenIds.length; i++) {
+        lockMap.put(untakenIds[i],new AtomicInteger(1));
+      }
+    }
+ else {
+      throw new LocalDeadlockDetectedException(client,localLockManager,resourceType,resourceIds,WRITE);
+    }
+  }
+}
