@@ -1,34 +1,19 @@
 {
-  Stack<File> stack=new Stack<>();
-  List<File> temp=new LinkedList<>();
-  stack.push(directory.getAbsoluteFile());
-  while (!stack.isEmpty()) {
-    File top=stack.pop();
-    File[] files=top.listFiles();
-    if (files != null) {
-      for (      File child : files) {
-        if (child.isFile()) {
-          if (!deleteFile(child)) {
-            throw new IOException("Failed to delete " + child.getCanonicalPath());
-          }
-        }
- else {
-          temp.add(child);
-        }
-      }
-    }
-    files=top.listFiles();
-    if (files == null || files.length == 0) {
-      if (!deleteFile(top)) {
-        throw new IOException("Failed to delete " + top.getCanonicalPath());
-      }
-    }
- else {
-      stack.push(top);
-      for (      File f : temp) {
-        stack.push(f);
-      }
-    }
-    temp.clear();
+  if (!directory.exists()) {
+    return;
   }
+  Files.walkFileTree(directory.toPath(),new SimpleFileVisitor<Path>(){
+    @Override public FileVisitResult visitFile(    Path file,    BasicFileAttributes attrs) throws IOException {
+      Files.delete(file);
+      return FileVisitResult.CONTINUE;
+    }
+    @Override public FileVisitResult postVisitDirectory(    Path dir,    IOException e) throws IOException {
+      if (e != null) {
+        throw e;
+      }
+      Files.delete(dir);
+      return FileVisitResult.CONTINUE;
+    }
+  }
+);
 }
