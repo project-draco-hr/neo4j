@@ -1,5 +1,4 @@
 {
-  System.out.println("Preparing to copy the store");
   File storeDir=config.get(InternalAbstractGraphDatabase.Configuration.store_dir);
   File tempStore=new File(storeDir,COPY_FROM_MASTER_TEMP);
   Config tempConfig=configForTempStore(tempStore);
@@ -7,17 +6,16 @@
     FileUtils.deleteRecursively(tempStore);
     tempStore.mkdir();
   }
-  System.out.println("Starting to copy the store");
-  Response response=requester.copyStore(decorateWithProgressIndicator(new ToFileStoreWriter(tempStore)));
-  System.out.println("Done copying store, moving on to apply received transactions");
-  long highestLogVersion=XaLogicalLog.getHighestHistoryLogVersion(fs,tempStore,LOGICAL_LOG_DEFAULT_NAME);
-  if (highestLogVersion > -1) {
-    NeoStore.setVersion(fs,tempStore,highestLogVersion + 1);
+  try (Response response=requester.copyStore(decorateWithProgressIndicator(new ToFileStoreWriter(tempStore)))){
+    long highestLogVersion=XaLogicalLog.getHighestHistoryLogVersion(fs,tempStore,LOGICAL_LOG_DEFAULT_NAME);
+    if (highestLogVersion > -1) {
+      NeoStore.setVersion(fs,tempStore,highestLogVersion + 1);
+    }
+    writeTransactionsToActiveLogFile(tempConfig,response.transactions());
   }
-  System.out.println("Copied store and updated transaction information, moving to apply transactions");
-  writeTransactionsToActiveLogFile(tempConfig,response.transactions());
-  response.close();
-  System.out.println("Wrote transactions out, proceeding to apply them");
+  finally {
+    requester.done();
+  }
   GraphDatabaseAPI copiedDb=newTempDatabase(tempStore);
   copiedDb.shutdown();
   for (  File candidate : tempStore.listFiles(new FileFilter(){
