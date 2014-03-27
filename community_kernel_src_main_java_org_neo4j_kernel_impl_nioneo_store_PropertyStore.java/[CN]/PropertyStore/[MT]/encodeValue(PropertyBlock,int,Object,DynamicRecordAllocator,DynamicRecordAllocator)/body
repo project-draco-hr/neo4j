@@ -1,0 +1,61 @@
+{
+  if (value instanceof String) {
+    String string=(String)value;
+    if (LongerShortString.encode(keyId,string,block,PropertyType.getPayloadSize())) {
+      return;
+    }
+    byte[] encodedString=encodeString(string);
+    Collection<DynamicRecord> valueRecords=new ArrayList<>();
+    allocateStringRecords(valueRecords,encodedString,stringAllocator);
+    setSingleBlockValue(block,keyId,PropertyType.STRING,first(valueRecords).getId());
+    for (    DynamicRecord valueRecord : valueRecords) {
+      valueRecord.setType(PropertyType.STRING.intValue());
+      block.addValueRecord(valueRecord);
+    }
+  }
+ else   if (value instanceof Integer) {
+    setSingleBlockValue(block,keyId,PropertyType.INT,((Integer)value).longValue());
+  }
+ else   if (value instanceof Boolean) {
+    setSingleBlockValue(block,keyId,PropertyType.BOOL,((Boolean)value ? 1L : 0L));
+  }
+ else   if (value instanceof Float) {
+    setSingleBlockValue(block,keyId,PropertyType.FLOAT,Float.floatToRawIntBits((Float)value));
+  }
+ else   if (value instanceof Long) {
+    long keyAndType=keyId | (((long)PropertyType.LONG.intValue()) << 24);
+    if (ShortArray.LONG.getRequiredBits((Long)value) <= 35) {
+      block.setSingleBlock(keyAndType | (1L << 28) | ((Long)value << 29));
+    }
+ else {
+      block.setValueBlocks(new long[]{keyAndType,(Long)value});
+    }
+  }
+ else   if (value instanceof Double) {
+    block.setValueBlocks(new long[]{keyId | (((long)PropertyType.DOUBLE.intValue()) << 24),Double.doubleToRawLongBits((Double)value)});
+  }
+ else   if (value instanceof Byte) {
+    setSingleBlockValue(block,keyId,PropertyType.BYTE,((Byte)value).longValue());
+  }
+ else   if (value instanceof Character) {
+    setSingleBlockValue(block,keyId,PropertyType.CHAR,(Character)value);
+  }
+ else   if (value instanceof Short) {
+    setSingleBlockValue(block,keyId,PropertyType.SHORT,((Short)value).longValue());
+  }
+ else   if (value.getClass().isArray()) {
+    if (ShortArray.encode(keyId,value,block,PropertyType.getPayloadSize())) {
+      return;
+    }
+    Collection<DynamicRecord> arrayRecords=new ArrayList<>();
+    allocateArrayRecords(arrayRecords,value,arrayAllocator);
+    setSingleBlockValue(block,keyId,PropertyType.ARRAY,first(arrayRecords).getId());
+    for (    DynamicRecord valueRecord : arrayRecords) {
+      valueRecord.setType(PropertyType.ARRAY.intValue());
+      block.addValueRecord(valueRecord);
+    }
+  }
+ else {
+    throw new IllegalArgumentException("Unknown property type on: " + value + ", "+ value.getClass());
+  }
+}

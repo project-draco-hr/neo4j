@@ -1,0 +1,36 @@
+{
+  int recordSize=20;
+  int bufferedRecords=10;
+  int numberOfReservedLowIds=0;
+  int numberOfRecords=50;
+  File file=new File("store");
+  FileSystemAbstraction fsa=fs.get();
+  try (StoreChannel channel=fsa.open(file,"rw")){
+    channel.write(wrap(ladderBytes(recordSize * numberOfRecords)));
+    WindowPoolFactory factory=new ReverseBatchUpdatingWindowPoolFactory(recordSize * bufferedRecords + recordSize / 2,Monitor.NO_MONITOR);
+    WindowPool pool=factory.create(file,recordSize,channel,new Config(),DEV_NULL,numberOfReservedLowIds);
+    long[] firstLongs=new long[numberOfRecords];
+    for (int i=numberOfRecords - 1; i >= 0; i--) {
+      PersistenceWindow window=pool.acquire(i,OperationType.READ);
+      try {
+        Buffer buffer=window.getOffsettedBuffer(i);
+        firstLongs[i]=buffer.getLong();
+      }
+  finally {
+        pool.release(window);
+      }
+      window=pool.acquire(i,OperationType.WRITE);
+      try {
+        Buffer buffer=window.getOffsettedBuffer(i);
+        buffer.getLong();
+        buffer.put((byte)1);
+      }
+  finally {
+        pool.release(window);
+      }
+    }
+    pool.close();
+    channel.position(recordSize * numberOfReservedLowIds);
+    verifyChannel(channel,recordSize,numberOfRecords,firstLongs);
+  }
+ }

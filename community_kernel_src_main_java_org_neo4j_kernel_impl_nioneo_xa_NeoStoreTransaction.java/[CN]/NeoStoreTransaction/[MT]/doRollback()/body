@@ -4,21 +4,6 @@
   }
   try {
     boolean freeIds=neoStore.freeIdsDuringRollback();
-    if (relationshipTypeTokenRecords != null) {
-      for (      RelationshipTypeTokenRecord record : relationshipTypeTokenRecords.values()) {
-        if (record.isCreated()) {
-          if (freeIds) {
-            getRelationshipTypeStore().freeId(record.getId());
-          }
-          for (          DynamicRecord dynamicRecord : record.getNameRecords()) {
-            if (dynamicRecord.isCreated()) {
-              getRelationshipTypeStore().freeId((int)dynamicRecord.getId());
-            }
-          }
-        }
-        removeRelationshipTypeFromCache(record.getId());
-      }
-    }
     for (    RecordProxy<Long,NodeRecord,Void> change : context.getNodeRecords().changes()) {
       NodeRecord record=change.forReadingLinkage();
       if (freeIds && record.isCreated()) {
@@ -38,20 +23,9 @@
     if (neoStoreRecord != null) {
       removeGraphPropertiesFromCache();
     }
-    if (propertyKeyTokenRecords != null) {
-      for (      PropertyKeyTokenRecord record : propertyKeyTokenRecords.values()) {
-        if (record.isCreated()) {
-          if (freeIds) {
-            getPropertyStore().getPropertyKeyTokenStore().freeId(record.getId());
-          }
-          for (          DynamicRecord dynamicRecord : record.getNameRecords()) {
-            if (dynamicRecord.isCreated()) {
-              getPropertyStore().getPropertyKeyTokenStore().freeId((int)dynamicRecord.getId());
-            }
-          }
-        }
-      }
-    }
+    rollbackTokenRecordChanges(context.getPropertyKeyTokenRecords(),getPropertyKeyTokenStore(),freeIds,PROPERTY_KEY_CACHE_REMOVER);
+    rollbackTokenRecordChanges(context.getLabelTokenRecords(),getLabelTokenStore(),freeIds,LABEL_CACHE_REMOVER);
+    rollbackTokenRecordChanges(context.getRelationshipTypeTokenRecords(),getRelationshipTypeStore(),freeIds,RELATIONSHIP_TYPE_CACHE_REMOVER);
     for (    RecordProxy<Long,PropertyRecord,PrimitiveRecord> change : context.getPropertyRecords().changes()) {
       PropertyRecord record=change.forReadingLinkage();
       if (record.getNodeId() != -1) {
