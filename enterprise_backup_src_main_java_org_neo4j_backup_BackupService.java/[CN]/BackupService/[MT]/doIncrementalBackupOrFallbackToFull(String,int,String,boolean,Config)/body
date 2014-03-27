@@ -1,0 +1,20 @@
+{
+  if (!directoryContainsDb(targetDirectory)) {
+    return doFullBackup(sourceHostNameOrIp,sourcePort,targetDirectory,verification,config);
+  }
+  try {
+    return doIncrementalBackup(sourceHostNameOrIp,sourcePort,targetDirectory,verification);
+  }
+ catch (  IncrementalBackupNotPossibleException e) {
+    try {
+      File targetDirFile=new File(targetDirectory);
+      File oldBackupFile=new File(targetDirectory,"backup.old");
+      prepareForFullBackup(targetDirFile,oldBackupFile);
+      BackupOutcome outcome=doFullBackup(sourceHostNameOrIp,sourcePort,targetDirFile.getAbsolutePath(),verification,config);
+      return outcome;
+    }
+ catch (    IOException fullBackupFailure) {
+      throw new RuntimeException("Failed to perform incremental backup, fell back to full backup, " + "but that failed as well: '" + fullBackupFailure.getMessage() + "'.",fullBackupFailure);
+    }
+  }
+}
