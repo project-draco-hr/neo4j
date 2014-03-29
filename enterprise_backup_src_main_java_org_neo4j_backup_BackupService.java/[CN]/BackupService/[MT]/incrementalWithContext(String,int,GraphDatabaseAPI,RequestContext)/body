@@ -8,7 +8,15 @@
     trimLogicalLogCount(targetDb);
     consistent=true;
   }
-  finally {
+ catch (  RuntimeException e) {
+    if (e.getCause() instanceof NoSuchLogVersionException) {
+      throw new IncrementalBackupNotPossibleException("It's been too long since this backup was last updated, and it has " + "fallen too far behind the database transaction stream for incremental backup to be possible. " + "You need to perform a full backup at this point. You can modify this time interval by setting "+ "the '" + GraphDatabaseSettings.keep_logical_logs.name() + "' configuration on the database to a "+ "higher value.",e);
+    }
+ else {
+      throw e;
+    }
+  }
+ finally {
     try {
       client.stop();
     }
