@@ -1,3 +1,13 @@
 {
-  client.releaseShared(resourceType,resourceIds);
+  Map<Long,AtomicInteger> lockMap=getLockMap(sharedLocks,resourceType);
+  for (  long resourceId : resourceIds) {
+    AtomicInteger counter=lockMap.get(resourceId);
+    if (counter == null) {
+      throw new IllegalStateException(this + " cannot release lock it does not hold: EXCLUSIVE " + resourceType+ "["+ resourceId+ "]");
+    }
+    if (counter.decrementAndGet() == 0) {
+      lockMap.remove(resourceId);
+      client.releaseShared(resourceType,resourceId);
+    }
+  }
 }
