@@ -2,23 +2,16 @@
   scanIsComplete=false;
   LogEntryConsumer consumer=new LogEntryConsumer();
   consumer.setXidIdentifier(getNextIdentifier());
-  FuckingUglyHackDoesNotDoNothing handler=new FuckingUglyHackDoesNotDoNothing(new SlaveLogWriter(new LogApplier(),logWriterSPI,logEntryWriter));
+  ForgetUnsuccessfulReceivedTransaction handler=new ForgetUnsuccessfulReceivedTransaction(new SlaveLogWriter(new LogApplier(),logWriterSPI,logEntryWriter));
   consumer.setHandler(handler);
-  LogReader<ReadableByteChannel> logDeserializer=new SlaveLogDeserializer(logDeserializerMonitor,sharedBuffer,commandReader);
-  boolean success=true;
+  LogReader<ReadableByteChannel> logDeserializer=new SlaveLogDeserializer(sharedBuffer,commandReaderFactory);
+  boolean success=false;
   handler.startLog();
   try (Cursor<LogEntry,IOException> cursor=logDeserializer.cursor(byteChannel)){
     while (cursor.next(consumer))     ;
+    success=true;
   }
- catch (  IOException e) {
-    success=false;
-    throw e;
-  }
-catch (  RuntimeException e) {
-    e.printStackTrace();
-    throw e;
-  }
- finally {
+  finally {
     handler.endLog(success);
     scanIsComplete=true;
   }

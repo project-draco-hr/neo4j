@@ -7,7 +7,7 @@
     ByteBuffer buffer=ByteBuffer.allocateDirect(9 + Xid.MAXGTRIDSIZE + Xid.MAXBQUALSIZE * 10);
     long logVersion, prevLastCommittedTx;
     try {
-      long[] header=LogEntryReaderv1.readLogHeader(buffer,fileChannel,true);
+      long[] header=VersionAwareLogEntryReader.readLogHeader(buffer,fileChannel,true);
       logVersion=header[0];
       prevLastCommittedTx=header[1];
     }
@@ -18,7 +18,7 @@
       throw ex;
     }
     out.println("Logical log version: " + logVersion + " with prev committed tx["+ prevLastCommittedTx+ "]");
-    LogDeserializer deserializer=new LogDeserializer(new Monitors().newMonitor(ByteCounterMonitor.class,getClass()),buffer,instantiateCommandReader(buffer));
+    LogDeserializer deserializer=new LogDeserializer(buffer,instantiateCommandReaderFactory());
     PrintingConsumer consumer=new PrintingConsumer(out,timeZone);
     try (Cursor<LogEntry,IOException> cursor=deserializer.cursor(fileChannel)){
       while (cursor.next(consumer))       ;

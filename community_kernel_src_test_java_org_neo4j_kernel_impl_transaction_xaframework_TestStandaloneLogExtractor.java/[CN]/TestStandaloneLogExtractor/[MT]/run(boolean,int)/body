@@ -17,17 +17,12 @@
   XaDataSource ds=newDb.getDependencyResolver().resolveDependency(XaDataSourceManager.class).getNeoStoreDataSource();
   LogEntryWriterv1 logEntryWriter=new LogEntryWriterv1();
   logEntryWriter.setCommandWriter(new PhysicalLogNeoXaCommandWriter());
-  LogExtractor extractor=LogExtractor.from(snapshot,new XaCommandReaderFactory(){
-    @Override public XaCommandReader newInstance(    ByteBuffer scratch){
-      return new PhysicalLogNeoXaCommandReader(scratch);
-    }
-  }
-,new XaCommandWriterFactory(){
+  LogExtractor extractor=LogExtractor.from(snapshot,XaCommandReaderFactory.DEFAULT,new XaCommandWriterFactory(){
     @Override public XaCommandWriter newInstance(){
       return new PhysicalLogNeoXaCommandWriter();
     }
   }
-,logEntryWriter,new File(storeDir),new Monitors().newMonitor(ByteCounterMonitor.class));
+,logEntryWriter,new File(storeDir));
   long expectedTxId=2;
   while (true) {
     InMemoryLogBuffer buffer=new InMemoryLogBuffer();
