@@ -1,18 +1,16 @@
 {
+  kernelHealth.assertHealthy(IOException.class);
   int xidIdent=0;
   LogEntry.Start startEntry=null;
   if (nextTxId != (xaTf.getLastCommittedTx() + 1)) {
     throw new IllegalStateException("Tried to apply tx " + nextTxId + " but expected transaction "+ (xaTf.getCurrentVersion() + 1));
   }
   logRecoveryMessage("applyTxWithoutTxId log version: " + logVersion + ", committing tx="+ nextTxId+ ") @ pos "+ writeBuffer.getFileChannelPosition());
-  long logEntriesFound=0;
   scanIsComplete=false;
   LogDeserializer logApplier=getLogDeserializer(byteChannel);
   xidIdent=getNextIdentifier();
   long startEntryPosition=writeBuffer.getFileChannelPosition();
-  while (logApplier.readAndWriteAndApplyEntry(xidIdent)) {
-    logEntriesFound++;
-  }
+  exhaust(logApplier,xidIdent);
   byteChannel.close();
   startEntry=logApplier.getStartEntry();
   if (startEntry == null) {
