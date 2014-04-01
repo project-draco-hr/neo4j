@@ -1,14 +1,13 @@
 {
   String propertyToIndex="programmatic-property";
-  startCluster(2);
-  HighlyAvailableGraphDatabase originalMaster=cluster.getMaster();
-  AutoIndexer<Node> originalAutoIndex=originalMaster.index().getNodeAutoIndexer();
+  startCluster(3);
+  HighlyAvailableGraphDatabase slave=cluster.getAnySlave();
+  AutoIndexer<Node> originalAutoIndex=slave.index().getNodeAutoIndexer();
   originalAutoIndex.setEnabled(true);
   originalAutoIndex.startAutoIndexingProperty(propertyToIndex);
-  ClusterManager.RepairKit originalMasterRepairKit=cluster.shutdown(originalMaster);
+  cluster.shutdown(cluster.getMaster());
   cluster.await(masterAvailable());
-  originalMasterRepairKit.repair();
-  AutoIndexer<Node> newAutoIndex=originalMaster.index().getNodeAutoIndexer();
+  AutoIndexer<Node> newAutoIndex=slave.index().getNodeAutoIndexer();
   assertThat(newAutoIndex.isEnabled(),is(true));
   assertThat(newAutoIndex.getAutoIndexedProperties(),hasItem(propertyToIndex));
 }
