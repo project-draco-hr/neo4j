@@ -3,14 +3,14 @@
   if (existing != null) {
     return existing;
   }
-  IndexLock lock=new IndexLock(index.getName(),key);
-  TransactionState state=getTransactionState();
-  LockElement writeLock=state.acquireWriteLock(lock);
-  existing=index.get(key,value).getSingle();
-  if (existing != null) {
-    writeLock.release();
-    return existing;
+  try (Statement statement=statementCtxProvider.instance()){
+    statement.readOperations().acquireExclusive(ResourceTypes.LEGACY_INDEX,legacyIndexResourceId(index.getName(),key));
+    existing=index.get(key,value).getSingle();
+    if (existing != null) {
+      statement.readOperations().releaseExclusive(ResourceTypes.LEGACY_INDEX,legacyIndexResourceId(index.getName(),key));
+      return existing;
+    }
+    index.add(entity,key,value);
+    return null;
   }
-  index.add(entity,key,value);
-  return null;
-}
+ }

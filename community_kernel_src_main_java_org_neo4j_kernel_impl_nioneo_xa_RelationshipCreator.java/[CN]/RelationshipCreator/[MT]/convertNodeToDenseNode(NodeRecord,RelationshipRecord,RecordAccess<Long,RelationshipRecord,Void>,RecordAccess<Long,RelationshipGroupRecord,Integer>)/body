@@ -1,17 +1,15 @@
 {
-  firstRel=relRecords.getOrLoad(firstRel.getId(),null).forChangingLinkage();
   node.setDense(true);
   node.setNextRel(Record.NO_NEXT_RELATIONSHIP.intValue());
   long relId=firstRel.getId();
   RelationshipRecord relRecord=firstRel;
   while (relId != Record.NO_NEXT_RELATIONSHIP.intValue()) {
-    locker.getWriteLock(relId);
     relId=relChain(relRecord,node.getId()).get(relRecord);
     connectRelationshipToDenseNode(node,relRecord,relRecords,relGroupRecords);
-    if (relId == Record.NO_NEXT_RELATIONSHIP.intValue()) {
-      break;
+    if (relId != Record.NO_NEXT_RELATIONSHIP.intValue()) {
+      locker.getWriteLock(relId);
+      relRecord=relRecords.getOrLoad(relId,null).forChangingLinkage();
     }
-    relRecord=relRecords.getOrLoad(relId,null).forChangingLinkage();
   }
   if (upgradedDenseNodes == null) {
     upgradedDenseNodes=new ArrayList<>();

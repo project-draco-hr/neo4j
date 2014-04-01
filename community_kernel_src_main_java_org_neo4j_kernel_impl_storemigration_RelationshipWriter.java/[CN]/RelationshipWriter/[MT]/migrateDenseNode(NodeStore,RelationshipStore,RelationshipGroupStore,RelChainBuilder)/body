@@ -1,0 +1,41 @@
+{
+  Map<Integer,Relationships> byType=splitUp(relChain.nodeId(),relChain);
+  List<RelationshipGroupRecord> groupRecords=new ArrayList<>();
+  for (  Map.Entry<Integer,Relationships> entry : byType.entrySet()) {
+    Relationships relationships=entry.getValue();
+    applyLinks(relChain.nodeId(),relationships.out,relationshipStore,Direction.OUTGOING);
+    applyLinks(relChain.nodeId(),relationships.in,relationshipStore,Direction.INCOMING);
+    applyLinks(relChain.nodeId(),relationships.loop,relationshipStore,Direction.BOTH);
+    RelationshipGroupRecord groupRecord=new RelationshipGroupRecord(relGroupStore.nextId(),entry.getKey());
+    groupRecords.add(groupRecord);
+    groupRecord.setInUse(true);
+    if (!relationships.out.isEmpty()) {
+      groupRecord.setFirstOut(first(relationships.out).getId());
+    }
+    if (!relationships.in.isEmpty()) {
+      groupRecord.setFirstIn(first(relationships.in).getId());
+    }
+    if (!relationships.loop.isEmpty()) {
+      groupRecord.setFirstLoop(first(relationships.loop).getId());
+    }
+  }
+  RelationshipGroupRecord previousGroup=null;
+  for (int i=0; i < groupRecords.size(); i++) {
+    RelationshipGroupRecord groupRecord=groupRecords.get(i);
+    if (i + 1 < groupRecords.size()) {
+      RelationshipGroupRecord nextRecord=groupRecords.get(i + 1);
+      groupRecord.setNext(nextRecord.getId());
+    }
+    if (previousGroup != null) {
+      groupRecord.setPrev(previousGroup.getId());
+    }
+    previousGroup=groupRecord;
+  }
+  for (  RelationshipGroupRecord groupRecord : groupRecords) {
+    relGroupStore.forceUpdateRecord(groupRecord);
+  }
+  NodeRecord node=nodeReader.readNodeStore(relChain.nodeId());
+  node.setNextRel(groupRecords.get(0).getId());
+  node.setDense(true);
+  nodeStore.forceUpdateRecord(node);
+}

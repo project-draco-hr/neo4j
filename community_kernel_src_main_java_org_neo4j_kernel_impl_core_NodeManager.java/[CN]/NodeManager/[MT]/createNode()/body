@@ -1,16 +1,15 @@
 {
   long id=idGenerator.nextId(Node.class);
   NodeImpl node=new NodeImpl(id,true);
-  NodeProxy proxy=new NodeProxy(id,nodeLookup,relationshipLookups,statementCtxProvider);
   TransactionState transactionState=getTransactionState();
-  transactionState.acquireWriteLock(proxy);
+  transactionState.locks().acquireExclusive(ResourceTypes.NODE,id);
   boolean success=false;
   try {
     persistenceManager.nodeCreate(id);
     transactionState.createNode(id);
     nodeCache.put(node);
     success=true;
-    return proxy;
+    return id;
   }
   finally {
     if (!success) {

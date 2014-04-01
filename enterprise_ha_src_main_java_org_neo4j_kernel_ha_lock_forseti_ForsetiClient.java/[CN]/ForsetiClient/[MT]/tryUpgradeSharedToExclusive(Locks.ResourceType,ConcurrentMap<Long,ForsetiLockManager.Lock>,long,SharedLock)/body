@@ -1,0 +1,24 @@
+{
+  int tries=0;
+  if (!sharedLockCounts[resourceType.typeId()].containsKey(resourceId)) {
+    if (!sharedLock.acquire(this)) {
+      return false;
+    }
+    try {
+      if (tryUpgradeToExclusiveWithShareLockHeld(resourceType,lockMap,resourceId,sharedLock,tries)) {
+        return true;
+      }
+ else {
+        releaseGlobalLock(lockMap,resourceId);
+        return false;
+      }
+    }
+ catch (    Throwable e) {
+      releaseGlobalLock(lockMap,resourceId);
+      throw e;
+    }
+  }
+ else {
+    return tryUpgradeToExclusiveWithShareLockHeld(resourceType,lockMap,resourceId,sharedLock,tries);
+  }
+}

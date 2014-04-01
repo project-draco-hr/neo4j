@@ -1,0 +1,39 @@
+{
+  final int numThreads=1, numLocks=8, iterations=1000000, numResources=1024;
+  final Object[] resources=newResources(numResources);
+  final LockManagerImpl lockManager=new LockManagerImpl(new RagManager());
+  ExecutorService executor=Executors.newFixedThreadPool(numThreads);
+  long start=System.currentTimeMillis();
+  for (int i=numThreads; i-- > 0; ) {
+    executor.execute(new Runnable(){
+      private final FastRandom rand=new FastRandom();
+      private final Transaction tx=new NoOpTransaction();
+      final Object[] localResources=newResources(numResources);
+      @Override public void run(){
+        Object[] acquired=new Object[numLocks];
+        for (int i=iterations; i-- > 0; ) {
+          int currentLock=0;
+          try {
+            for (; currentLock < numLocks; currentLock++) {
+              Object resource=localResources[(int)rand.next(numResources)];
+              lockManager.getWriteLock(resource,tx);
+              acquired[currentLock]=resource;
+            }
+          }
+ catch (          DeadlockDetectedException e) {
+          }
+          for (; currentLock-- > 0; ) {
+            lockManager.releaseWriteLock(acquired[currentLock],tx);
+          }
+        }
+      }
+    }
+);
+  }
+  executor.shutdown();
+  executor.awaitTermination(1,TimeUnit.HOURS);
+  long delta=System.currentTimeMillis() - start;
+  double locksPerSecond=((double)numLocks * numThreads * iterations) / (delta / 1000.0);
+  System.out.println("Locks per second: " + locksPerSecond);
+  System.out.println("Deadlocks: " + lockManager.getDetectedDeadlockCount());
+}

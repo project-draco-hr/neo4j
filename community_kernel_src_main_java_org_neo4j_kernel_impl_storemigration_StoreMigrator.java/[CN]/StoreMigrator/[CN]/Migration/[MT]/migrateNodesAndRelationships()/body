@@ -1,25 +1,63 @@
 {
-  NodeStore nodeStore=neoStore.getNodeStore();
-  RelationshipStore relationshipStore=neoStore.getRelationshipStore();
-  RelationshipGroupStore relGroupStore=neoStore.getRelationshipGroupStore();
-  LegacyNodeStoreReader nodeReader=legacyStore.getNodeStoreReader();
-  LegacyRelationshipStoreReader relReader=legacyStore.getRelStoreReader();
+  final NodeStore nodeStore=neoStore.getNodeStore();
+  final RelationshipStore relationshipStore=neoStore.getRelationshipStore();
+  final RelationshipGroupStore relGroupStore=neoStore.getRelationshipGroupStore();
+  final LegacyNodeStoreReader nodeReader=legacyStore.getNodeStoreReader();
+  final LegacyRelationshipStoreReader relReader=legacyStore.getRelStoreReader();
   nodeStore.setHighId(nodeReader.getMaxId());
-  int denseNodeThreshold=neoStore.getDenseNodeThreshold();
   relationshipStore.setHighId(relReader.getMaxId());
+  final ArrayBlockingQueue<RelChainBuilder> chainsToWrite=new ArrayBlockingQueue<>(24);
+  final AtomicReference<Throwable> writerException=new AtomicReference<>();
+  Thread writerThread=new RelationshipWriter(chainsToWrite,neoStore.getDenseNodeThreshold(),nodeStore,relationshipStore,relGroupStore,nodeReader,writerException);
+  writerThread.start();
   try {
-    for (    NodeRecord node : loop(nodeReader.readNodeStore())) {
-      reportProgress(node.getId());
-      Collection<RelationshipRecord> relationships=loadRelationships(node,relReader);
-      if (relationships.size() >= denseNodeThreshold) {
-        migrateDenseNode(nodeStore,relationshipStore,relGroupStore,node,relationships);
+    final Map<Long,RelChainBuilder> relChains=new HashMap<>();
+    relReader.accept(new LegacyRelationshipStoreReader.Visitor(){
+      @Override public void visit(      long id,      RelationshipRecord record){
+        reportProgress(id);
+        if (record.inUse()) {
+          appendToRelChain(record.getFirstNode(),record.getFirstPrevRel(),record.getFirstNextRel(),record);
+          appendToRelChain(record.getSecondNode(),record.getSecondPrevRel(),record.getSecondNextRel(),record);
+        }
       }
- else {
-        migrateNormalNode(nodeStore,relationshipStore,node,relationships);
+      private void appendToRelChain(      long nodeId,      long prevRel,      long nextRel,      RelationshipRecord record){
+        RelChainBuilder chain=relChains.get(nodeId);
+        if (chain == null) {
+          chain=new RelChainBuilder(nodeId);
+          relChains.put(nodeId,chain);
+        }
+        chain.append(record,prevRel,nextRel);
+        if (chain.isComplete()) {
+          assertNoWriterException(writerException);
+          try {
+            chainsToWrite.put(relChains.remove(nodeId));
+          }
+ catch (          InterruptedException e) {
+            Thread.interrupted();
+            throw new RuntimeException("Interrupted while reading relationships.",e);
+          }
+        }
       }
+    }
+);
+    try {
+      chainsToWrite.put(new RelChainBuilder(-1));
+      writerThread.join();
+      assertNoWriterException(writerException);
+    }
+ catch (    InterruptedException e) {
+      throw new RuntimeException("Interrupted.",e);
     }
     legacyStore.copyNodeStoreIdFile(neoStore);
     legacyStore.copyRelationshipStoreIdFile(neoStore);
+    nodeReader.accept(new LegacyNodeStoreReader.Visitor(){
+      @Override public void visit(      NodeRecord record){
+        if (record.inUse() && record.getNextRel() == Record.NO_NEXT_RELATIONSHIP.intValue()) {
+          nodeStore.forceUpdateRecord(record);
+        }
+      }
+    }
+);
   }
   finally {
     nodeReader.close();

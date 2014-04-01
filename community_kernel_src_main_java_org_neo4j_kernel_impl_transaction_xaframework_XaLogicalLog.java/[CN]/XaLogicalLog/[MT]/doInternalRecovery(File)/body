@@ -12,12 +12,17 @@
     return;
   }
   logVersion=header[0];
-  xaTf.setVersion(logVersion);
+  determineLogVersionFromArchivedFiles();
+  if (header[0] != logVersion) {
+    ByteBuffer buff=ByteBuffer.allocate(64);
+    VersionAwareLogEntryReader.writeLogHeader(buff,logVersion,header[1]);
+    fileChannel.write(buff,0);
+  }
   long lastCommittedTx=header[1];
   previousLogLastCommittedTx=lastCommittedTx;
   positionCache.putHeader(logVersion,previousLogLastCommittedTx);
   msgLog.logMessage("[" + logFileName + "] logVersion="+ logVersion+ " with committed tx="+ lastCommittedTx,true);
-  fileChannel=new BufferedFileChannel(fileChannel);
+  fileChannel=new BufferedFileChannel(fileChannel,bufferMonitor);
   RecoveryLogDeserializer reader=new RecoveryLogDeserializer(sharedBuffer,commandReaderFactory);
   EntryCountingLogHandler counter=new EntryCountingLogHandler(new LogApplier());
   RecoveryConsumer consumer=new RecoveryConsumer(counter);

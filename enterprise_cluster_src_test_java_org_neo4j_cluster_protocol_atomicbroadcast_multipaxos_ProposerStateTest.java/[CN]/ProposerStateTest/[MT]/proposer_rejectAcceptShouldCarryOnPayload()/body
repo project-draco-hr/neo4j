@@ -1,16 +1,16 @@
 {
   String instanceId="1";
-  PaxosInstance instance=new PaxosInstance(mock(PaxosInstanceStore.class),new InstanceId(instanceId));
+  PaxosInstance instance=new PaxosInstance(mock(PaxosInstanceStore.class),new org.neo4j.cluster.protocol.atomicbroadcast.multipaxos.InstanceId(instanceId));
   Serializable payload="myPayload";
   instance.propose(1,asList(create("http://some-guy")));
   instance.ready(payload,true);
   instance.pending();
   ProposerContext context=mock(ProposerContext.class);
   when(context.getLogger(any(Class.class))).thenReturn(StringLogger.DEV_NULL);
-  when(context.getPaxosInstance(any(InstanceId.class))).thenReturn(instance);
+  when(context.getPaxosInstance(any(org.neo4j.cluster.protocol.atomicbroadcast.multipaxos.InstanceId.class))).thenReturn(instance);
   when(context.getMyId()).thenReturn(new org.neo4j.cluster.InstanceId(parseInt(instanceId)));
   TrackingMessageHolder outgoing=new TrackingMessageHolder();
   Message<ProposerMessage> message=to(rejectAccept,create("http://something"),new ProposerMessage.RejectAcceptState()).setHeader(INSTANCE,instanceId);
   ProposerState.proposer.handle(context,message,outgoing);
-  verify(context).setTimeout(eq(new InstanceId(instanceId)),argThat(new MessageArgumentMatcher<>().withPayload(payload)));
+  verify(context).setTimeout(eq(new org.neo4j.cluster.protocol.atomicbroadcast.multipaxos.InstanceId(instanceId)),argThat(new MessageArgumentMatcher<>().withPayload(payload)));
 }

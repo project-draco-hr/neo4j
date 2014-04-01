@@ -5,7 +5,7 @@
   Pair<File,Integer> broken=createBrokenLogFile(storeDir);
   File brokenLogFile=broken.first();
   Integer brokenTxIdentifier=broken.other();
-  FileChannel brokenLog=fs.get().open(brokenLogFile,"rw");
+  StoreChannel brokenLog=fs.get().open(brokenLogFile,"rw");
   ByteBuffer buffer=allocate(9 + Xid.MAXGTRIDSIZE + Xid.MAXBQUALSIZE * 10);
   readLogHeader(buffer,brokenLog,true);
   LogEntryWriterv1 logEntryWriter=new LogEntryWriterv1();
@@ -15,7 +15,7 @@
       return new PhysicalLogNeoXaCommandWriter();
     }
   }
-,StringLogger.DEV_NULL,new LogExtractor.LogPositionCache(),null,logEntryWriter,createXidMapWithOneStartEntry(masterId,brokenTxIdentifier),new Monitors().newMonitor(ByteCounterMonitor.class));
+,StringLogger.DEV_NULL,new LogExtractor.LogPositionCache(),null,logEntryWriter,createXidMapWithOneStartEntry(masterId,brokenTxIdentifier));
   File newLogFile=new File("new.log");
   copier.copy(brokenLog,createNewLogWithHeader(newLogFile),1);
   assertThat(logEntries(fs.get(),newLogFile),containsExactly(startEntry(brokenTxIdentifier,masterId,meId),nodeCommandEntry(brokenTxIdentifier,1),onePhaseCommitEntry(brokenTxIdentifier,3),startEntry(5,masterId,meId),nodeCommandEntry(5,2),onePhaseCommitEntry(5,4),doneEntry(5),startEntry(6,masterId,meId),nodeCommandEntry(6,3),onePhaseCommitEntry(6,5),doneEntry(6)));

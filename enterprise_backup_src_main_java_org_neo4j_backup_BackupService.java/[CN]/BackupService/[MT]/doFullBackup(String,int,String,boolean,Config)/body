@@ -2,103 +2,51 @@
   if (directoryContainsDb(targetDirectory)) {
     throw new RuntimeException(targetDirectory + " already contains a database");
   }
-  BackupClient client=new BackupClient(sourceHostNameOrIp,sourcePort,new DevNullLoggingService(),new Monitors(),null);
-  client.start();
+  Map<String,String> params=tuningConfiguration.getParams();
+  params.put(GraphDatabaseSettings.store_dir.name(),targetDirectory);
+  tuningConfiguration.applyChanges(params);
   long timestamp=System.currentTimeMillis();
-  Map<String,Long> lastCommittedTxs=emptyMap();
+  Map<String,Long> lastCommittedTxs=new TreeMap<>();
   boolean consistent=!checkConsistency;
+  GraphDatabaseAPI targetDb=null;
   try {
-    Response<Void> response=client.fullBackup(decorateWithProgressIndicator(new ToFileStoreWriter(new File(targetDirectory))));
-    GraphDatabaseAPI targetDb=startTemporaryDb(targetDirectory,VerificationLevel.NONE);
-    try {
-      lastCommittedTxs=unpackResponse(response,targetDb.getDependencyResolver().resolveDependency(XaDataSourceManager.class),ServerUtil.txHandlerForFullCopy());
-      Set<String> noTxPresent=new HashSet<String>();
-      for (      XaDataSource ds : dsManager(targetDb).getAllRegisteredDataSources()) {
-        long lastTx=ds.getLastCommittedTxId();
+    RemoteStoreCopier storeCopier=new RemoteStoreCopier(tuningConfiguration,loadKernelExtensions(),new ConsoleLogger(StringLogger.SYSTEM),new DefaultFileSystemAbstraction());
+    storeCopier.copyStore(new RemoteStoreCopier.StoreCopyRequester(){
+      @Override public Response<?> copyStore(      StoreWriter writer){
+        BackupClient client=new BackupClient(sourceHostNameOrIp,sourcePort,new DevNullLoggingService(),new Monitors(),null);
+        System.out.println("Backup client starting up");
+        client.start();
         try {
-          ds.getMasterForCommittedTx(lastTx);
+          return client.fullBackup(writer);
         }
- catch (        NoSuchLogVersionException e) {
-          noTxPresent.add(ds.getName());
-        }
-catch (        IOException e) {
-          throw new RuntimeException(e);
-        }
-      }
-      if (!noTxPresent.isEmpty()) {
-        BackupClient recoveryClient=new BackupClient(sourceHostNameOrIp,sourcePort,targetDb.getDependencyResolver().resolveDependency(Logging.class),targetDb.getDependencyResolver().resolveDependency(Monitors.class),targetDb.storeId());
-        recoveryClient.start();
-        Response<Void> recoveryResponse=null;
-        Map<String,Long> recoveryDiff=new HashMap<String,Long>();
-        for (        String ds : noTxPresent) {
-          recoveryDiff.put(ds,-1L);
-        }
-        RequestContext recoveryCtx=addDiffToSlaveContext(slaveContextOf(targetDb),recoveryDiff);
-        try {
-          recoveryResponse=recoveryClient.incrementalBackup(recoveryCtx);
-          TransactionStream txs=recoveryResponse.transactions();
-          ByteBuffer scratch=ByteBuffer.allocate(64);
-          while (txs.hasNext()) {
-            Triplet<String,Long,TxExtractor> tx=txs.next();
-            scratch.clear();
-            XaDataSource ds=dsManager(targetDb).getXaDataSource(tx.first());
-            long logVersion=ds.getCurrentLogVersion() - 1;
-            FileChannel newLog=new RandomAccessFile(ds.getFileName(logVersion),"rw").getChannel();
-            newLog.truncate(0);
-            VersionAwareLogEntryReader.writeLogHeader(scratch,logVersion,-1);
-            newLog.write(scratch);
-            ReadableByteChannel received=tx.third().extract();
-            scratch.flip();
-            while (received.read(scratch) > 0) {
-              scratch.flip();
-              newLog.write(scratch);
-              scratch.flip();
-            }
-            newLog.force(false);
-            newLog.close();
-            received.close();
-          }
-        }
- catch (        IOException e) {
-          throw new RuntimeException(e);
-        }
- finally {
-          try {
-            recoveryClient.stop();
-          }
- catch (          Throwable throwable) {
-            throw new RuntimeException(throwable);
-          }
-          if (recoveryResponse != null) {
-            recoveryResponse.close();
-          }
-          targetDb.shutdown();
+  finally {
+          client.stop();
         }
       }
     }
-  finally {
+);
+    targetDb=startTemporaryDb(targetDirectory,VerificationLevel.NONE);
+    new LogicalLogSeeder().ensureAtLeastOneLogicalLogPresent(sourceHostNameOrIp,sourcePort,targetDb);
+  }
+ catch (  IOException e) {
+    throw new RuntimeException(e);
+  }
+ finally {
+    if (targetDb != null) {
       targetDb.shutdown();
     }
-    bumpLogFile(targetDirectory,timestamp);
-    if (checkConsistency) {
-      StringLogger logger=StringLogger.SYSTEM;
-      try {
-        consistent=new ConsistencyCheckService().runFullConsistencyCheck(targetDirectory,tuningConfiguration,ProgressMonitorFactory.textual(System.err),logger).isSuccessful();
-      }
- catch (      ConsistencyCheckIncompleteException e) {
-        e.printStackTrace(System.err);
-      }
- finally {
-        logger.flush();
-      }
-    }
   }
-  finally {
+  bumpLogFile(targetDirectory,timestamp);
+  if (checkConsistency) {
+    StringLogger logger=StringLogger.SYSTEM;
     try {
-      client.stop();
+      consistent=new ConsistencyCheckService().runFullConsistencyCheck(targetDirectory,tuningConfiguration,ProgressMonitorFactory.textual(System.err),logger).isSuccessful();
     }
- catch (    Throwable throwable) {
-      throw new RuntimeException(throwable);
+ catch (    ConsistencyCheckIncompleteException e) {
+      e.printStackTrace(System.err);
+    }
+ finally {
+      logger.flush();
     }
   }
   return new BackupOutcome(lastCommittedTxs,consistent);
