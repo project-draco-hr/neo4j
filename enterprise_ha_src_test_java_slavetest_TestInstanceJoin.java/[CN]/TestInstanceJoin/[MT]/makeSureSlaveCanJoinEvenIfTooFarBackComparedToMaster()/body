@@ -4,16 +4,16 @@
   HighlyAvailableGraphDatabase master=null;
   HighlyAvailableGraphDatabase slave=null;
   try {
-    master=start(dir.directory("master",true).getAbsolutePath(),0,stringMap(keep_logical_logs.name(),"1 files",ClusterSettings.initial_hosts.name(),"127.0.0.1:5001"));
+    master=start(dir.cleanDirectory("master").getAbsolutePath(),0,stringMap(keep_logical_logs.name(),"1 files",ClusterSettings.initial_hosts.name(),"127.0.0.1:5001"));
     createNode(master,"something","unimportant");
-    slave=start(dir.directory("slave",true).getAbsolutePath(),1,stringMap(ClusterSettings.initial_hosts.name(),"127.0.0.1:5001,127.0.0.1:5002"));
+    slave=start(dir.cleanDirectory("slave").getAbsolutePath(),1,stringMap(ClusterSettings.initial_hosts.name(),"127.0.0.1:5001,127.0.0.1:5002"));
     slave.shutdown();
     long nodeId=createNode(master,key,value);
     createNode(master,"something","unimportant");
     rotateLogs(getXaDataSourceManager(master),getKernelPanicGenerator(master),master.getDependencyResolver().resolveDependency(StringLogger.class));
     master.shutdown();
-    master=start(dir.directory("master",false).getAbsolutePath(),0,stringMap(keep_logical_logs.name(),"1 files",ClusterSettings.initial_hosts.name(),"127.0.0.1:5001"));
-    slave=start(dir.directory("slave",false).getAbsolutePath(),1,stringMap(ClusterSettings.initial_hosts.name(),"127.0.0.1:5001,127.0.0.1:5002"));
+    master=start(dir.existingDirectory("master").getAbsolutePath(),0,stringMap(keep_logical_logs.name(),"1 files",ClusterSettings.initial_hosts.name(),"127.0.0.1:5001"));
+    slave=start(dir.existingDirectory("slave").getAbsolutePath(),1,stringMap(ClusterSettings.initial_hosts.name(),"127.0.0.1:5001,127.0.0.1:5002"));
     slave.getDependencyResolver().resolveDependency(UpdatePuller.class).pullUpdates();
     try (Transaction ignore=slave.beginTx()){
       assertEquals("store contents differ",value,slave.getNodeById(nodeId).getProperty(key));
