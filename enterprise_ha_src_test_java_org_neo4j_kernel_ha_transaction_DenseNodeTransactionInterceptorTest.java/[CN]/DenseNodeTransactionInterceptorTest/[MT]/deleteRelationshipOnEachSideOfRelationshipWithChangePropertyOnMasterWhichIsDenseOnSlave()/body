@@ -5,7 +5,7 @@
   final Id groupAId=id(), groupBId=id(), groupCId=id();
   final Id typeA=id(), typeB=id(), typeC=id();
   final Id propId=id();
-  RecordAccessSet existingStore=existingStore(new ExistingContents(){
+  NeoStore existingStore=existingStore(new ExistingContents(){
     @Override public void fill(    NeoStore neoStore,    TransactionDataBuilder transaction){
       groupAId.get(neoStore.getRelationshipGroupStore());
       groupBId.get(neoStore.getRelationshipGroupStore());
@@ -29,11 +29,11 @@
       transaction.create(node(target3.get()).asInUse().withNextRel(rel3Id.get()));
       transaction.create(node(target4.get()).asInUse().withNextRel(rel4Id.get()));
       transaction.create(group(groupAId.get(),(int)typeA.get()).asInUse().withFirstOut(rel1Id.get()).withNextGroup(groupBId.get()));
-      transaction.create(group(groupBId.get(),(int)typeB.get()).asInUse().withFirstOut(rel3Id.get()).withNextGroup(groupCId.get()));
-      transaction.create(group(groupBId.get(),(int)typeC.get()).asInUse().withFirstOut(rel4Id.get()));
-      transaction.create(relationship(rel1Id.get(),denseNodeId.get(),target1.get(),(int)typeA.get()).asInUse().withStartPointers(Record.NO_PREV_RELATIONSHIP.intValue(),rel2Id.get()).withEndPointers(Record.NO_PREV_RELATIONSHIP.intValue(),Record.NO_NEXT_RELATIONSHIP.intValue()));
-      transaction.create(relationship(rel2Id.get(),denseNodeId.get(),target2.get(),(int)typeA.get()).asInUse().withStartPointers(rel1Id.get(),Record.NO_NEXT_RELATIONSHIP.intValue()).withEndPointers(Record.NO_PREV_RELATIONSHIP.intValue(),Record.NO_NEXT_RELATIONSHIP.intValue()));
-      transaction.create(relationship(rel3Id.get(),denseNodeId.get(),target3.get(),(int)typeB.get()).asInUse().withStartPointers(Record.NO_PREV_RELATIONSHIP.intValue(),Record.NO_NEXT_RELATIONSHIP.intValue()).withEndPointers(Record.NO_PREV_RELATIONSHIP.intValue(),Record.NO_NEXT_RELATIONSHIP.intValue()).withNextProperty(propId.get()));
+      transaction.create(group(groupBId.get(),(int)typeB.get()).asInUse().withFirstOut(rel2Id.get()).withNextGroup(groupCId.get()));
+      transaction.create(group(groupCId.get(),(int)typeC.get()).asInUse().withFirstOut(rel4Id.get()));
+      transaction.create(relationship(rel1Id.get(),denseNodeId.get(),target1.get(),(int)typeA.get()).asInUse().withStartPointers(Record.NO_PREV_RELATIONSHIP.intValue(),rel3Id.get()).withEndPointers(Record.NO_PREV_RELATIONSHIP.intValue(),Record.NO_NEXT_RELATIONSHIP.intValue()));
+      transaction.create(relationship(rel2Id.get(),denseNodeId.get(),target2.get(),(int)typeB.get()).asInUse().withStartPointers(Record.NO_PREV_RELATIONSHIP.intValue(),Record.NO_NEXT_RELATIONSHIP.intValue()).withEndPointers(Record.NO_PREV_RELATIONSHIP.intValue(),Record.NO_NEXT_RELATIONSHIP.intValue()));
+      transaction.create(relationship(rel3Id.get(),denseNodeId.get(),target3.get(),(int)typeA.get()).asInUse().withStartPointers(rel1Id.get(),Record.NO_NEXT_RELATIONSHIP.intValue()).withEndPointers(Record.NO_PREV_RELATIONSHIP.intValue(),Record.NO_NEXT_RELATIONSHIP.intValue()).withNextProperty(propId.get()));
       transaction.create(relationship(rel4Id.get(),denseNodeId.get(),target4.get(),(int)typeC.get()).asInUse().withStartPointers(Record.NO_PREV_RELATIONSHIP.intValue(),Record.NO_NEXT_RELATIONSHIP.intValue()).withEndPointers(Record.NO_PREV_RELATIONSHIP.intValue(),Record.NO_NEXT_RELATIONSHIP.intValue()));
       transaction.create(property(propId.get()).asInUse().withRelId(rel3Id.get()));
     }
@@ -41,25 +41,26 @@
 );
   List<LogEntry> translated=translate(existingStore,transaction(new TransactionContents(){
     @Override public void fill(    TransactionDataBuilder transaction){
-      transaction.create(node(target2.get()).asInUse().withNextRel(Record.NO_NEXT_RELATIONSHIP.intValue()));
-      transaction.create(node(target4.get()).asInUse().withNextRel(Record.NO_NEXT_RELATIONSHIP.intValue()));
-      transaction.create(relationship(rel2Id.get(),denseNodeId.get(),target2.get(),(int)typeA.get()));
-      transaction.create(relationship(rel4Id.get(),denseNodeId.get(),target4.get(),(int)typeC.get()));
-      transaction.create(relationship(rel1Id.get(),denseNodeId.get(),target1.get(),(int)typeA.get()).asInUse().withStartPointers(Record.NO_PREV_RELATIONSHIP.intValue(),rel3Id.get()).withEndPointers(Record.NO_PREV_RELATIONSHIP.intValue(),Record.NO_NEXT_RELATIONSHIP.intValue()));
-      transaction.create(relationship(rel3Id.get(),denseNodeId.get(),target3.get(),(int)typeB.get()).asInUse().withStartPointers(rel1Id.get(),Record.NO_NEXT_RELATIONSHIP.intValue()).withEndPointers(Record.NO_PREV_RELATIONSHIP.intValue(),Record.NO_NEXT_RELATIONSHIP.intValue()).withNextProperty(Record.NO_NEXT_PROPERTY.intValue()));
+      transaction.update(node(target2.get()).asInUse().withNextRel(rel2Id.get()),node(target2.get()).asInUse().withNextRel(Record.NO_NEXT_RELATIONSHIP.intValue()));
+      transaction.update(node(target4.get()).asInUse().withNextRel(rel4Id.get()),node(target4.get()).asInUse().withNextRel(Record.NO_NEXT_RELATIONSHIP.intValue()));
+      transaction.delete(relationship(rel2Id.get(),denseNodeId.get(),target2.get(),(int)typeB.get()));
+      transaction.delete(relationship(rel4Id.get(),denseNodeId.get(),target4.get(),(int)typeC.get()));
+      transaction.update(relationship(rel1Id.get(),denseNodeId.get(),target1.get(),(int)typeA.get()).asInUse().withStartPointers(Record.NO_PREV_RELATIONSHIP.intValue(),rel3Id.get()).withEndPointers(Record.NO_PREV_RELATIONSHIP.intValue(),Record.NO_NEXT_RELATIONSHIP.intValue()));
+      transaction.update(relationship(rel3Id.get(),denseNodeId.get(),target3.get(),(int)typeA.get()).asInUse().withStartPointers(rel1Id.get(),Record.NO_NEXT_RELATIONSHIP.intValue()).withEndPointers(Record.NO_PREV_RELATIONSHIP.intValue(),Record.NO_NEXT_RELATIONSHIP.intValue()).withNextProperty(Record.NO_NEXT_PROPERTY.intValue()));
+      transaction.delete(property(propId.get()).asInUse().withRelId(rel3Id.get()),property(propId.get()).withRelId(rel3Id.get()));
     }
   }
 ));
   assertTranslatedTransaction(translated,new TransactionContents(){
     @Override public void fill(    TransactionDataBuilder transaction){
-      transaction.create(relationship(rel1Id.get(),denseNodeId.get(),target1.get(),(int)typeA.get()).asInUse().withStartPointers(Record.NO_PREV_RELATIONSHIP.intValue(),Record.NO_NEXT_RELATIONSHIP.intValue()).withEndPointers(Record.NO_PREV_RELATIONSHIP.intValue(),Record.NO_NEXT_RELATIONSHIP.intValue()));
-      transaction.create(relationship(rel2Id.get(),denseNodeId.get(),target2.get(),(int)typeA.get()));
-      transaction.create(relationship(rel3Id.get(),denseNodeId.get(),target3.get(),(int)typeB.get()).asInUse().withStartPointers(Record.NO_PREV_RELATIONSHIP.intValue(),Record.NO_NEXT_RELATIONSHIP.intValue()).withEndPointers(Record.NO_PREV_RELATIONSHIP.intValue(),Record.NO_NEXT_RELATIONSHIP.intValue()).withNextProperty(Record.NO_NEXT_PROPERTY.intValue()));
-      transaction.create(relationship(rel4Id.get(),denseNodeId.get(),target4.get(),(int)typeC.get()));
-      transaction.create(node(target2.get()).withNextRel(Record.NO_NEXT_RELATIONSHIP.intValue()));
-      transaction.create(node(target4.get()).withNextRel(Record.NO_NEXT_RELATIONSHIP.intValue()));
-      transaction.create(group(groupBId.get(),(int)typeB.get()).asInUse().withNextGroup(Record.NO_NEXT_RELATIONSHIP.intValue()).withFirstOut(rel3Id.get()));
-      transaction.create(group(groupCId.get(),(int)typeC.get()));
+      transaction.update(node(target2.get()).asInUse().withNextRel(rel2Id.get()),node(target2.get()).asInUse().withNextRel(Record.NO_NEXT_RELATIONSHIP.intValue()));
+      transaction.update(node(target4.get()).asInUse().withNextRel(rel4Id.get()),node(target4.get()).asInUse().withNextRel(Record.NO_NEXT_RELATIONSHIP.intValue()));
+      transaction.update(relationship(rel3Id.get(),denseNodeId.get(),target3.get(),(int)typeA.get()).asInUse().withStartPointers(rel1Id.get(),Record.NO_NEXT_RELATIONSHIP.intValue()).withEndPointers(Record.NO_PREV_RELATIONSHIP.intValue(),Record.NO_NEXT_RELATIONSHIP.intValue()).withNextProperty(Record.NO_NEXT_PROPERTY.intValue()).asFirstInFirstChain(false).asFirstInSecondChain(false));
+      transaction.delete(relationship(rel2Id.get(),denseNodeId.get(),target2.get(),(int)typeB.get()));
+      transaction.delete(relationship(rel4Id.get(),denseNodeId.get(),target4.get(),(int)typeC.get()));
+      transaction.update(group(groupBId.get(),(int)typeB.get()).asInUse().withNextGroup(groupCId.get()).withFirstOut(Record.NO_NEXT_RELATIONSHIP.intValue()));
+      transaction.update(group(groupCId.get(),(int)typeC.get()).asInUse().withNextGroup(Record.NO_NEXT_RELATIONSHIP.intValue()).withFirstOut(Record.NO_NEXT_RELATIONSHIP.intValue()));
+      transaction.delete(property(propId.get()).asInUse().withRelId(rel3Id.get()),property(propId.get()).withRelId(rel3Id.get()));
     }
   }
 );

@@ -1,3 +1,40 @@
 {
-  return from;
+  List<LogEntry> result=new LinkedList<>();
+  List<LogEntry.Command> commands=new LinkedList<>();
+  LogEntry commit=null;
+  LogEntry prepare=null;
+  LogEntry done=null;
+  for (  LogEntry logEntry : from) {
+switch (logEntry.getType()) {
+case LogEntry.TX_START:
+      result.add(logEntry);
+    break;
+case LogEntry.TX_1P_COMMIT:
+case LogEntry.TX_2P_COMMIT:
+  commit=logEntry;
+break;
+case LogEntry.TX_PREPARE:
+prepare=logEntry;
+break;
+case LogEntry.DONE:
+done=logEntry;
+break;
+case LogEntry.COMMAND:
+handleCommand((LogEntry.Command)logEntry,commands);
+break;
+default :
+throw new IllegalStateException("Log Entry type " + logEntry.getType() + " is not recognizable");
+}
+}
+translateRecordChangeSetToEntries(result,commands);
+if (commit != null) {
+result.add(commit);
+}
+if (prepare != null) {
+result.add(prepare);
+}
+if (done != null) {
+result.add(done);
+}
+return result;
 }
