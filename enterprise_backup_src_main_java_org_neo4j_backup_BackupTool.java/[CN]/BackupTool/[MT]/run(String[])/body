@@ -41,5 +41,23 @@
       throw new ToolFailureException(e.getMessage());
     }
   }
-  doBackup(backupURI,to,verify,tuningConfiguration);
+  try {
+    systemOut.println("Performing backup from '" + backupURI.toASCIIString() + "'");
+    doBackup(backupURI,to,verify,tuningConfiguration);
+  }
+ catch (  TransactionFailureException e) {
+    if (e.getCause() instanceof UpgradeNotAllowedByConfigurationException) {
+      try {
+        systemOut.println("The database present in the target directory is of an older version. " + "Backing that up in target and performing a full backup from source");
+        moveExistingDatabase(fs,to);
+      }
+ catch (      IOException e1) {
+        throw new ToolFailureException("There was a problem moving the old database out of the way" + " - cannot continue, aborting.",e);
+      }
+      doBackup(backupURI,to,verify,tuningConfiguration);
+    }
+ else {
+      throw new ToolFailureException("TransactionFailureException from existing backup at '" + from + "'"+ ".",e);
+    }
+  }
 }
