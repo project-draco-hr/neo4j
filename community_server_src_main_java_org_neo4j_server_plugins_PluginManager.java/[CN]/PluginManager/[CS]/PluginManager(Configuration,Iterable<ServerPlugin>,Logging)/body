@@ -1,0 +1,30 @@
+{
+  Map<String,Pair<ServerPlugin,ServerExtender>> extensions=new HashMap<String,Pair<ServerPlugin,ServerExtender>>();
+  ConsoleLogger log=logging.getConsoleLog(getClass());
+  for (  ServerPlugin plugin : plugins) {
+    PluginPointFactory factory=new PluginPointFactoryImpl();
+    final ServerExtender extender=new ServerExtender(factory);
+    try {
+      plugin.loadServerExtender(extender);
+    }
+ catch (    Exception ex) {
+      log.warn("Failed to load plugin [%s]: %s",plugin.toString(),ex.getMessage());
+      continue;
+    }
+catch (    LinkageError err) {
+      log.warn("Failed to load plugin [%s]: %s",plugin.toString(),err.getMessage());
+      continue;
+    }
+    Pair<ServerPlugin,ServerExtender> old=extensions.put(plugin.name,Pair.of(plugin,extender));
+    if (old != null) {
+      log.warn(String.format("Extension naming conflict \"%s\" between \"%s\" and \"%s\"",plugin.name,old.first().getClass(),plugin.getClass()));
+    }
+  }
+  for (  Pair<ServerPlugin,ServerExtender> extension : extensions.values()) {
+    log.log(String.format("Loaded server plugin \"%s\"",extension.first().name));
+    for (    PluginPoint point : extension.other().all()) {
+      log.log(String.format("  %s.%s: %s",point.forType().getSimpleName(),point.name(),point.getDescription()));
+    }
+    this.extensions.put(extension.first().name,extension.other());
+  }
+}

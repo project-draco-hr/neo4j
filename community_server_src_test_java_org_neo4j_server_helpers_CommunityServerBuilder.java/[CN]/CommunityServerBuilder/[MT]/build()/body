@@ -2,14 +2,11 @@
   if (dbDir == null && persistent) {
     throw new IllegalStateException("Must specify path");
   }
-  final File configFile=createPropertiesFiles();
-  if (preflightTasks == null) {
-    preflightTasks=new PreFlightTasks(){
-      @Override public boolean run(){
-        return true;
-      }
-    }
-;
-  }
-  return new TestCommunityNeoServer(new PropertyFileConfigurator(new Validator(new DatabaseLocationMustBeSpecifiedRule()),configFile),configFile);
+  final File configFile=buildBefore();
+  BufferingConsoleLogger console=new BufferingConsoleLogger();
+  Validator validator=new Validator(new DatabaseLocationMustBeSpecifiedRule());
+  Configurator configurator=new PropertyFileConfigurator(validator,configFile,console);
+  Logging logging=loggingFactory().create(configurator);
+  console.replayInto(logging.getConsoleLog(getClass()));
+  return build(configFile,configurator,logging);
 }
