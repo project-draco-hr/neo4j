@@ -1,0 +1,34 @@
+{
+  XaDataSource ds;
+  File archivedLogFilename;
+  File originStoreDir=new File(new File("base"),"origin");
+  String logicalLogFilename="logicallog";
+  final GraphDatabaseAPI db1=(GraphDatabaseAPI)new TestGraphDatabaseFactory().setFileSystem(fs.get()).newImpermanentDatabaseBuilder(originStoreDir.getPath()).setConfig(InternalAbstractGraphDatabase.Configuration.logical_log,logicalLogFilename).newGraphDatabase();
+  for (int i=0; i < 100; i++) {
+    Transaction tx=db1.beginTx();
+    db1.createNode();
+    tx.success();
+    tx.finish();
+  }
+  ds=xaDs(db1);
+  archivedLogFilename=ds.getFileName(ds.getCurrentLogVersion());
+  fs.snapshot(new Runnable(){
+    @Override public void run(){
+      db1.shutdown();
+    }
+  }
+);
+  removeDoneEntriesFromLog(new File(archivedLogFilename.getParent(),logicalLogFilename + ".1"));
+  GraphDatabaseAPI db2=(GraphDatabaseAPI)new TestGraphDatabaseFactory().setFileSystem(fs.get()).newImpermanentDatabaseBuilder(originStoreDir.getPath()).setConfig(InternalAbstractGraphDatabase.Configuration.logical_log,logicalLogFilename).newGraphDatabase();
+  ds=xaDs(db2);
+  archivedLogFilename=ds.getFileName(ds.getCurrentLogVersion());
+  db2.shutdown();
+  List<LogEntry> logEntries=filterDoneEntries(logEntries(fs.get(),archivedLogFilename));
+  String errorMessage="DONE entries should be in order: " + logEntries;
+  int prev=0;
+  for (  LogEntry entry : logEntries) {
+    int current=entry.getIdentifier();
+    assertThat(errorMessage,current,greaterThan(prev));
+    prev=current;
+  }
+}

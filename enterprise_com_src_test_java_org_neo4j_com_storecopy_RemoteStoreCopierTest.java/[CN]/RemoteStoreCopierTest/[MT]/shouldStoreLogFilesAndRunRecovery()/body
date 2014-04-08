@@ -4,7 +4,8 @@
   Config config=new Config(MapUtil.stringMap(store_dir.name(),copyDir));
   RemoteStoreCopier copier=new RemoteStoreCopier(config,loadKernelExtensions(),new ConsoleLogger(StringLogger.SYSTEM),fs);
   final GraphDatabaseAPI original=(GraphDatabaseAPI)new GraphDatabaseFactory().newEmbeddedDatabase(originalDir);
-  copier.copyStore(new RemoteStoreCopier.StoreCopyRequester(){
+  RemoteStoreCopier.StoreCopyRequester requester=spy(new RemoteStoreCopier.StoreCopyRequester(){
+    public Response<Object> response;
     @Override public Response<?> copyStore(    StoreWriter writer){
       try (Transaction tx=original.beginTx()){
         original.createNode(label("BeforeCopyBegins"));
@@ -16,10 +17,16 @@
         original.createNode(label("AfterCopy"));
         tx.success();
       }
-       return ServerUtil.packResponse(original.storeId(),dsManager,ctx,null,ServerUtil.ALL);
+       response=spy(ServerUtil.packResponse(original.storeId(),dsManager,ctx,null,ServerUtil.ALL));
+      return response;
+    }
+    @Override public void done(){
+      assertNotNull(response);
+      verify(response,times(1)).close();
     }
   }
 );
+  copier.copyStore(requester);
   GraphDatabaseService copy=new GraphDatabaseFactory().newEmbeddedDatabase(copyDir);
   try (Transaction tx=copy.beginTx()){
     GlobalGraphOperations globalOps=GlobalGraphOperations.at(copy);
@@ -31,4 +38,5 @@
     copy.shutdown();
     original.shutdown();
   }
+  verify(requester,times(1)).done();
 }

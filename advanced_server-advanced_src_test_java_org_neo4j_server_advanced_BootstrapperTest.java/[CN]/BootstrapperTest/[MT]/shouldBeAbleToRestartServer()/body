@@ -1,14 +1,14 @@
 {
   TargetDirectory target=TargetDirectory.forTest(getClass());
-  String dbDir1=target.directory("db1",true).getAbsolutePath();
-  Configurator config=new PropertyFileConfigurator(AdvancedServerBuilder.server().usingDatabaseDir(dbDir1).createPropertiesFiles());
+  String dbDir1=target.cleanDirectory("db1").getAbsolutePath();
+  Configurator config=new PropertyFileConfigurator(Validator.NO_VALIDATION,AdvancedServerBuilder.server().usingDatabaseDir(dbDir1).createPropertiesFiles(),ConsoleLogger.DEV_NULL);
   File irrelevant=target.file("irrelevant");
   irrelevant.createNewFile();
   config.configuration().setProperty("org.neo4j.server.properties",irrelevant.getAbsolutePath());
-  AdvancedNeoServer server=new AdvancedNeoServer(config);
+  AdvancedNeoServer server=new AdvancedNeoServer(config,new SingleLoggingService(StringLogger.SYSTEM));
   server.start();
   assertNotNull(server.getDatabase().getGraph());
-  String dbDir2=target.directory("db2",true).getAbsolutePath();
+  String dbDir2=target.cleanDirectory("db2").getAbsolutePath();
   Configuration conf=config.configuration();
   conf.setProperty(Configurator.DATABASE_LOCATION_PROPERTY_KEY,dbDir2);
   ServerManagement bean=new ServerManagement(server);

@@ -1,16 +1,13 @@
 {
-  if (backupService.directoryContainsDb(to)) {
-    try {
-      doBackupIncremental(from,to,checkConsistency,tuningConfiguration);
-      systemOut.println("Done");
-    }
- catch (    MismatchingStoreIdException e) {
-      systemOut.println("Backup failed.");
-      throw new ToolFailureException(String.format(MISMATCHED_STORE_ID,e.getExpected(),e.getEncountered()));
-    }
-  }
- else {
-    doBackupFull(from,to,checkConsistency,tuningConfiguration);
+  try {
+    backupService.doIncrementalBackupOrFallbackToFull(from.getHost(),extractPort(from),to,checkConsistency,tuningConfiguration);
     systemOut.println("Done");
+  }
+ catch (  MismatchingStoreIdException e) {
+    systemOut.println("Backup failed.");
+    throw new ToolFailureException(String.format(MISMATCHED_STORE_ID,e.getExpected(),e.getEncountered()));
+  }
+catch (  ComException e) {
+    throw new ToolFailureException("Couldn't connect to '" + from + "'",e);
   }
 }

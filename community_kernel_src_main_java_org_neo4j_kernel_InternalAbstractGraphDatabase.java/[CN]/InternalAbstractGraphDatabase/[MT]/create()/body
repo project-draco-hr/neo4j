@@ -10,7 +10,9 @@
   }
 );
   fileSystem=createFileSystemAbstraction();
-  this.logging=createLogging();
+  if (this.logging == null) {
+    this.logging=createLogging();
+  }
   this.monitors=createMonitors();
   AutoConfigurator autoConfigurator=new AutoConfigurator(fileSystem,config.get(NeoStoreXaDataSource.Configuration.store_dir),config.get(Configuration.use_memory_mapped_buffers),logging.getConsoleLog(AutoConfigurator.class));
   if (config.get(GraphDatabaseSettings.dump_configuration)) {
@@ -40,6 +42,7 @@
   caches=createCaches();
   diagnosticsManager=life.add(new DiagnosticsManager(logging.getMessagesLog(DiagnosticsManager.class)));
   kernelPanicEventGenerator=new KernelPanicEventGenerator(kernelEventHandlers);
+  kernelHealth=new KernelHealth(kernelPanicEventGenerator,logging);
   xaDataSourceManager=life.add(createXaDataSourceManager());
   txHook=createTxHook();
   guard=config.get(Configuration.execution_guard_enabled) ? new Guard(msgLog) : null;
@@ -52,7 +55,7 @@
  else {
     String serviceName=config.get(GraphDatabaseSettings.tx_manager_impl);
     if (GraphDatabaseSettings.tx_manager_impl.getDefaultValue().equals(serviceName)) {
-      txManager=new TxManager(this.storeDir,xaDataSourceManager,kernelPanicEventGenerator,logging.getMessagesLog(TxManager.class),fileSystem,stateFactory,xidGlobalIdFactory,monitors);
+      txManager=new TxManager(this.storeDir,xaDataSourceManager,logging.getMessagesLog(TxManager.class),fileSystem,stateFactory,xidGlobalIdFactory,kernelHealth,monitors);
     }
  else {
       TransactionManagerProvider provider;
@@ -89,7 +92,7 @@
   recoveryVerifier=createRecoveryVerifier();
   storeFactory=createStoreFactory();
   String keepLogicalLogsConfig=config.get(GraphDatabaseSettings.keep_logical_logs);
-  xaFactory=new XaFactory(config,txIdGenerator,txManager,fileSystem,monitors,logging,recoveryVerifier,LogPruneStrategies.fromConfigValue(fileSystem,keepLogicalLogsConfig));
+  xaFactory=new XaFactory(config,txIdGenerator,txManager,fileSystem,monitors,logging,recoveryVerifier,LogPruneStrategies.fromConfigValue(fileSystem,keepLogicalLogsConfig),kernelHealth);
   createNeoDataSource();
   life.add(new MonitorGc(config,msgLog));
   life.add(nodeManager);

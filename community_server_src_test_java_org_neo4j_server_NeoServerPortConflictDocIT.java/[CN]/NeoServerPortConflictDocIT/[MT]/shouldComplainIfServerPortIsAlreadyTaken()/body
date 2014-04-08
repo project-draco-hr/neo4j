@@ -1,8 +1,8 @@
 {
   int contestedPort=9999;
   try (ServerSocket ignored=new ServerSocket(contestedPort,0,InetAddress.getByName(Jetty9WebServer.DEFAULT_ADDRESS))){
-    InMemoryAppender appender=new InMemoryAppender(AbstractNeoServer.log);
-    CommunityNeoServer server=CommunityServerBuilder.server().onPort(contestedPort).usingDatabaseDir(folder.getRoot().getAbsolutePath()).onHost(Jetty9WebServer.DEFAULT_ADDRESS).build();
+    Logging logging=bufferingLogging();
+    CommunityNeoServer server=CommunityServerBuilder.server().onPort(contestedPort).usingDatabaseDir(folder.getRoot().getAbsolutePath()).onHost(Jetty9WebServer.DEFAULT_ADDRESS).withLogging(logging).build();
     try {
       server.start();
       fail("Should have reported failure to start");
@@ -10,7 +10,7 @@
  catch (    ServerStartupException e) {
       assertThat(e.getMessage(),containsString("Starting Neo4j Server failed"));
     }
-    assertThat(appender.toString(),containsString(String.format(": Failed to start Neo Server")));
+    assertThat(logging.toString(),containsString(String.format("Failed to start Neo Server")));
     server.stop();
   }
  }
