@@ -8,7 +8,10 @@
     try {
       tx.doCommit();
     }
- catch (    XAException e) {
+ catch (    CommitNotificationFailedException e) {
+      log.warn("Commit notification failed: " + e);
+    }
+catch (    XAException e) {
 switch (e.errorCode) {
 case XAException.XA_RBINTEGRITY:
 case XAException.XA_HEURCOM:
@@ -32,13 +35,7 @@ tx.doRollback();
 }
  catch (Throwable e) {
 setTmNotOk(e);
-String commitError;
-if (commitFailureCause != null) {
-commitError="error in commit: " + commitFailureCause;
-}
- else {
-commitError="error code in commit: " + xaErrorCode;
-}
+String commitError=commitFailureCause != null ? "error in commit: " + commitFailureCause : "error code in commit: " + xaErrorCode;
 String rollbackErrorCode="Unknown error code";
 if (e instanceof XAException) {
 rollbackErrorCode=Integer.toString(((XAException)e).errorCode);
