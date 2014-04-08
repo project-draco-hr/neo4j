@@ -31,7 +31,13 @@
     xaContainer=xaFactory.newXaContainer(this,config.get(Configuration.logical_log),new CommandFactory(neoStore,indexingService),new NeoStoreInjectedTransactionValidator(integrityValidator),tf,stateFactory,providers,readOnly);
     labelScanStore=life.add(dependencyResolver.resolveDependency(LabelScanStoreProvider.class,LabelScanStoreProvider.HIGHEST_PRIORITIZED).getLabelScanStore());
     fileListing=new NeoStoreFileListing(xaContainer,storeDir,labelScanStore,indexingService);
-    kernel=life.add(new Kernel(txManager,propertyKeyTokens,persistenceManager,updateableSchemaState,schemaWriteGuard,indexingService,nodeManager,neoStore,schemaCache,providerMap,fs,config,labelScanStore,new CacheLayer(new DiskLayer(propertyKeyTokens,labelTokens,relationshipTypeTokens,new SchemaStorage(neoStore.getSchemaStore()),neoStore,indexingService),persistenceCache,indexingService,schemaCache,nodeManager),scheduler,readOnly));
+    Provider<NeoStore> neoStoreProvider=new Provider<NeoStore>(){
+      @Override public NeoStore instance(){
+        return getNeoStore();
+      }
+    }
+;
+    kernel=life.add(new Kernel(txManager,propertyKeyTokens,labelTokens,relationshipTypeTokens,persistenceManager,updateableSchemaState,schemaWriteGuard,indexingService,nodeManager,neoStoreProvider,persistenceCache,schemaCache,providerMap,fs,config,labelScanStore,new CacheLayer(new DiskLayer(propertyKeyTokens,labelTokens,relationshipTypeTokens,new SchemaStorage(neoStore.getSchemaStore()),neoStoreProvider,indexingService),persistenceCache,indexingService,schemaCache,nodeManager),scheduler,readOnly));
     kernel.registerTransactionHook(transactionEventHandlers);
     life.init();
     if (!readOnly) {

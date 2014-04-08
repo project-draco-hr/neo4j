@@ -1,24 +1,25 @@
 {
-  File logDirectory=TargetDirectory.forTest(this.getClass()).directory("givenExplicitlyEnabledServerLoggingConfigurationShouldLogAccess-logdir",true);
+  final File logDirectory=TargetDirectory.forTest(this.getClass()).cleanDirectory("givenExplicitlyEnabledServerLoggingConfigurationShouldLogAccess-logdir");
   FileUtils.forceMkdir(logDirectory);
-  final File confDir=TargetDirectory.forTest(this.getClass()).directory("givenExplicitlyEnabledServerLoggingConfigurationShouldLogAccess-confdir",true);
+  final File confDir=TargetDirectory.forTest(this.getClass()).cleanDirectory("givenExplicitlyEnabledServerLoggingConfigurationShouldLogAccess-confdir");
   FileUtils.forceMkdir(confDir);
   final File configFile=HTTPLoggingPreparednessRuleTest.createConfigFile(HTTPLoggingPreparednessRuleTest.createLogbackConfigXml(logDirectory),confDir);
-  String query="?explicitlyEnabled=" + UUID.randomUUID().toString();
-  NeoServer server=CommunityServerBuilder.server().withDefaultDatabaseTuning().withProperty(Configurator.HTTP_LOGGING,"true").withProperty(Configurator.HTTP_LOG_CONFIG_LOCATION,configFile.getPath()).usingDatabaseDir(TargetDirectory.forTest(this.getClass()).directory("givenExplicitlyEnabledServerLoggingConfigurationShouldLogAccess-dbdir",true).getAbsolutePath()).build();
+  final String query="?explicitlyEnabled=" + UUID.randomUUID().toString();
+  NeoServer server=CommunityServerBuilder.server().withDefaultDatabaseTuning().withProperty(Configurator.HTTP_LOGGING,"true").withProperty(Configurator.HTTP_LOG_CONFIG_LOCATION,configFile.getPath()).usingDatabaseDir(TargetDirectory.forTest(this.getClass()).cleanDirectory("givenExplicitlyEnabledServerLoggingConfigurationShouldLogAccess-dbdir").getAbsolutePath()).build();
   try {
     server.start();
     FunctionalTestHelper functionalTestHelper=new FunctionalTestHelper(server);
     JaxRsResponse response=new RestRequest().get(functionalTestHelper.webAdminUri() + query);
     assertEquals(200,response.getStatus());
     response.close();
-    final File outputLog=new File(logDirectory,"http.log");
-    assertTrue(occursIn(query,outputLog));
+    assertEventually("request appears in log",5,new Condition(){
+      public boolean evaluate(){
+        return occursIn(query,new File(logDirectory,"http.log"));
+      }
+    }
+);
   }
- catch (  Throwable t) {
-    t.printStackTrace();
-  }
- finally {
+  finally {
     server.stop();
   }
 }

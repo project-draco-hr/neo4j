@@ -1,25 +1,27 @@
 {
   try {
+    BufferingConsoleLogger consoleBuffer=new BufferingConsoleLogger();
+    configurator=createConfigurator(consoleBuffer);
+    logging=createLogging(configurator);
+    log=logging.getConsoleLog(getClass());
+    consoleBuffer.replayInto(log);
+    life.start();
     checkCompatibility();
-    configurator=createConfigurator();
     server=createNeoServer();
     server.start();
     addShutdownHook();
     return OK;
   }
  catch (  TransactionFailureException tfe) {
-    log.error(tfe);
-    log.error(String.format("Failed to start Neo Server on port [%d], because ",configurator.configuration().getInt(Configurator.WEBSERVER_PORT_PROPERTY_KEY,Configurator.DEFAULT_WEBSERVER_PORT)) + tfe + ". Another process may be using database location "+ server.getDatabase().getLocation());
+    log.error(format("Failed to start Neo Server on port [%d], because ",configurator.configuration().getInt(Configurator.WEBSERVER_PORT_PROPERTY_KEY,Configurator.DEFAULT_WEBSERVER_PORT)) + tfe + ". Another process may be using database location "+ server.getDatabase().getLocation(),tfe);
     return GRAPH_DATABASE_STARTUP_ERROR_CODE;
   }
 catch (  IllegalArgumentException e) {
-    log.error(e.getMessage());
-    log.error("Failed to start Neo Server on port [%s]",configurator.configuration().getInt(Configurator.WEBSERVER_PORT_PROPERTY_KEY,Configurator.DEFAULT_WEBSERVER_PORT));
+    log.error(format("Failed to start Neo Server on port [%s]",configurator.configuration().getInt(Configurator.WEBSERVER_PORT_PROPERTY_KEY,Configurator.DEFAULT_WEBSERVER_PORT)),e);
     return WEB_SERVER_STARTUP_ERROR_CODE;
   }
 catch (  Exception e) {
-    log.error(e);
-    log.error("Failed to start Neo Server on port [%s]",configurator.configuration().getInt(Configurator.WEBSERVER_PORT_PROPERTY_KEY,Configurator.DEFAULT_WEBSERVER_PORT));
+    log.error(format("Failed to start Neo Server on port [%s]",configurator.configuration().getInt(Configurator.WEBSERVER_PORT_PROPERTY_KEY,Configurator.DEFAULT_WEBSERVER_PORT)),e);
     return WEB_SERVER_STARTUP_ERROR_CODE;
   }
 }
