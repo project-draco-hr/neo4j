@@ -1,18 +1,14 @@
 {
+  long period=10;
   scheduler=new Neo4jJobScheduler(StringLogger.DEV_NULL);
-  final AtomicInteger invocations=new AtomicInteger(0);
   scheduler.start();
-  scheduler.scheduleRecurring(indexPopulation,new Runnable(){
-    public void run(){
-      invocations.incrementAndGet();
-    }
-  }
-,500,MILLISECONDS);
-  sleep(1500);
+  scheduler.scheduleRecurring(indexPopulation,countInvocationsJob,period,MILLISECONDS);
+  awaitFirstInvocation();
+  sleep(period * 2);
   scheduler.stop();
   int actualInvocations=invocations.get();
-  assertTrue(actualInvocations >= 2);
-  assertTrue(actualInvocations < 6);
-  sleep(1000);
+  assertThat(actualInvocations,greaterThanOrEqualTo(2));
+  assertThat(actualInvocations,lessThan(10));
+  sleep(period);
   assertThat(invocations.get(),equalTo(actualInvocations));
 }
