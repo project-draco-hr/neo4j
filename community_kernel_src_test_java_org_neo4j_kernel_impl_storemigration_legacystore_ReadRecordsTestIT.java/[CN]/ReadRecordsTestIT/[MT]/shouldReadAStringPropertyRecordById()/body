@@ -1,10 +1,15 @@
 {
-  URL propertyStoreFile=getClass().getResource("exampledb/neostore.propertystore.db");
-  URL stringStoreFile=getClass().getResource("exampledb/neostore.propertystore.db.strings");
-  URL arrayStoreFile=getClass().getResource("exampledb/neostore.propertystore.db.arrays");
-  LegacyPropertyRecord propertyRecord=new LegacyPropertyStoreReader(fs,new File(propertyStoreFile.getFile())).readPropertyRecord(25);
+  File legacyStoreDir=exampleDbStore();
+  File propertyStoreFile=new File(legacyStoreDir,"neostore.propertystore.db");
+  File stringStoreFile=new File(legacyStoreDir,"neostore.propertystore.db.strings");
+  File arrayStoreFile=new File(legacyStoreDir,"neostore.propertystore.db.arrays");
+  LegacyPropertyStoreReader reader=new LegacyPropertyStoreReader(fs,propertyStoreFile);
+  LegacyPropertyRecord propertyRecord=reader.readPropertyRecord(25);
   int keyIndexId=propertyRecord.getKeyIndexId();
   assertEquals(3,keyIndexId);
-  Object value=propertyRecord.getType().getValue(propertyRecord,new LegacyDynamicRecordFetcher(fs,new File(stringStoreFile.getFile()),new File(arrayStoreFile.getFile())));
+  LegacyDynamicRecordFetcher dynamicRecordReader=new LegacyDynamicRecordFetcher(fs,stringStoreFile,arrayStoreFile);
+  Object value=propertyRecord.getType().getValue(propertyRecord,dynamicRecordReader);
   assertEquals(1000,((String)value).length());
+  reader.close();
+  dynamicRecordReader.close();
 }
