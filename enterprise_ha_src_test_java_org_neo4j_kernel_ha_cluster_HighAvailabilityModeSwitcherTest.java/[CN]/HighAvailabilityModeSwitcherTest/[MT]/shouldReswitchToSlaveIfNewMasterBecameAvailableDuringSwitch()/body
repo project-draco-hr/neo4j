@@ -1,0 +1,28 @@
+{
+  final CountDownLatch switching=new CountDownLatch(1);
+  final CountDownLatch latch=new CountDownLatch(1);
+  final CountDownLatch slaveAvailable=new CountDownLatch(2);
+  ClusterMemberAvailability availability=mock(ClusterMemberAvailability.class);
+  SwitchToSlave switchToSlave=mock(SwitchToSlave.class);
+  SwitchToMaster switchToMaster=mock(SwitchToMaster.class);
+  when(switchToSlave.switchToSlave(any(LifeSupport.class),any(URI.class),any(URI.class))).thenAnswer(new Answer<URI>(){
+    @Override public URI answer(    InvocationOnMock invocationOnMock) throws Throwable {
+      switching.countDown();
+      latch.await();
+      slaveAvailable.countDown();
+      return URI.create("ha://slave");
+    }
+  }
+);
+  Logging logging=mock(Logging.class);
+  doReturn(new ConsoleLogger(StringLogger.DEV_NULL)).when(logging).getConsoleLog(HighAvailabilityModeSwitcher.class);
+  HighAvailabilityModeSwitcher toTest=new HighAvailabilityModeSwitcher(switchToSlave,switchToMaster,mock(Election.class),availability,StringLogger.DEV_NULL);
+  toTest.init();
+  toTest.start();
+  toTest.masterIsAvailable(new HighAvailabilityMemberChangeEvent(PENDING,TO_SLAVE,new InstanceId(1),URI.create("ha://server1")));
+  switching.await();
+  toTest.masterIsElected(new HighAvailabilityMemberChangeEvent(TO_SLAVE,PENDING,new InstanceId(2),URI.create("ha://server2")));
+  toTest.masterIsAvailable(new HighAvailabilityMemberChangeEvent(PENDING,TO_SLAVE,new InstanceId(2),URI.create("ha://server2")));
+  latch.countDown();
+  slaveAvailable.await();
+}
