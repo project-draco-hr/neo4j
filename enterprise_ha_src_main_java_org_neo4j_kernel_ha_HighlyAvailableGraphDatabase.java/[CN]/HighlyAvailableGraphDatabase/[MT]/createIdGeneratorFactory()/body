@@ -1,6 +1,8 @@
 {
   idGeneratorFactory=new HaIdGeneratorFactory(masterDelegateInvocationHandler,logging,requestContextFactory);
-  highAvailabilityModeSwitcher=new HighAvailabilityModeSwitcher(clusterClient,clusterClient,masterDelegateInvocationHandler,clusterMemberAvailability,memberStateMachine,this,(HaIdGeneratorFactory)idGeneratorFactory,config,logging,requestContextFactory);
+  highAvailabilityModeSwitcher=new HighAvailabilityModeSwitcher(new SwitchToSlave(logging.getConsoleLog(HighAvailabilityModeSwitcher.class),config,getDependencyResolver(),(HaIdGeneratorFactory)idGeneratorFactory,logging,masterDelegateInvocationHandler,clusterMemberAvailability,requestContextFactory),new SwitchToMaster(logging,msgLog,this,(HaIdGeneratorFactory)idGeneratorFactory,config,getDependencyResolver(),masterDelegateInvocationHandler,clusterMemberAvailability),clusterClient,clusterMemberAvailability,logging.getMessagesLog(HighAvailabilityModeSwitcher.class));
+  clusterClient.addBindingListener(highAvailabilityModeSwitcher);
+  memberStateMachine.addHighAvailabilityMemberListener(highAvailabilityModeSwitcher);
   paxosLife.add(highAvailabilityModeSwitcher);
   if (compatibilityMode) {
     compatibilityLifecycle.add(1,highAvailabilityModeSwitcher);
