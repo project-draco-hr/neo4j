@@ -6,23 +6,17 @@
       state=state.masterIsElected(context,coordinatorId);
       context.setElectedMasterId(coordinatorId);
       final HighAvailabilityMemberChangeEvent event=new HighAvailabilityMemberChangeEvent(oldState,state,coordinatorId,null);
-      boolean successful=Listeners.notifyListeners(memberListeners,new Listeners.Notification<HighAvailabilityMemberListener>(){
+      Listeners.notifyListeners(memberListeners,new Listeners.Notification<HighAvailabilityMemberListener>(){
         @Override public void notify(        HighAvailabilityMemberListener listener){
           listener.masterIsElected(event);
         }
       }
 );
-      if (successful) {
-        context.setAvailableHaMasterId(null);
-        if (oldState.isAccessAllowed() && oldState != state) {
-          availabilityGuard.deny(HighAvailabilityMemberStateMachine.this);
-        }
-        logger.debug("Got masterIsElected(" + coordinatorId + "), changed "+ oldState+ " -> "+ state+ ". Previous elected master is "+ previousElected);
+      context.setAvailableHaMasterId(null);
+      if (oldState.isAccessAllowed() && oldState != state) {
+        availabilityGuard.deny(HighAvailabilityMemberStateMachine.this);
       }
- else {
-        logger.debug("Got masterIsElected(" + coordinatorId + "), but applying it was not successful so keeps state "+ oldState+ " even though the desired state transaction would have been to "+ state);
-        state=oldState;
-      }
+      logger.debug("Got masterIsElected(" + coordinatorId + "), changed "+ oldState+ " -> "+ state+ ". Previous elected master is "+ previousElected);
     }
   }
  catch (  Throwable t) {

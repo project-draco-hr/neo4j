@@ -7,20 +7,14 @@
         state=state.masterIsAvailable(context,instanceId,roleUri);
         logger.debug("Got masterIsAvailable(" + instanceId + "), moved to "+ state+ " from "+ oldState);
         final HighAvailabilityMemberChangeEvent event=new HighAvailabilityMemberChangeEvent(oldState,state,instanceId,roleUri);
-        boolean successful=Listeners.notifyListeners(memberListeners,new Listeners.Notification<HighAvailabilityMemberListener>(){
+        Listeners.notifyListeners(memberListeners,new Listeners.Notification<HighAvailabilityMemberListener>(){
           @Override public void notify(          HighAvailabilityMemberListener listener){
             listener.masterIsAvailable(event);
           }
         }
 );
-        if (successful) {
-          if (oldState == HighAvailabilityMemberState.TO_MASTER && state == HighAvailabilityMemberState.MASTER) {
-            availabilityGuard.grant(HighAvailabilityMemberStateMachine.this);
-          }
-        }
- else {
-          logger.debug("Got masterIsAvailable(" + instanceId + "), but applying it was not successful so keeps state "+ oldState+ " even though the desired state transaction would have been to "+ state);
-          state=oldState;
+        if (oldState == HighAvailabilityMemberState.TO_MASTER && state == HighAvailabilityMemberState.MASTER) {
+          availabilityGuard.grant(HighAvailabilityMemberStateMachine.this);
         }
       }
     }
@@ -29,20 +23,14 @@
       state=state.slaveIsAvailable(context,instanceId,roleUri);
       logger.debug("Got slaveIsAvailable(" + instanceId + "), "+ "moved to "+ state+ " from "+ oldState);
       final HighAvailabilityMemberChangeEvent event=new HighAvailabilityMemberChangeEvent(oldState,state,instanceId,roleUri);
-      boolean successful=Listeners.notifyListeners(memberListeners,new Listeners.Notification<HighAvailabilityMemberListener>(){
+      Listeners.notifyListeners(memberListeners,new Listeners.Notification<HighAvailabilityMemberListener>(){
         @Override public void notify(        HighAvailabilityMemberListener listener){
           listener.slaveIsAvailable(event);
         }
       }
 );
-      if (successful) {
-        if (oldState == HighAvailabilityMemberState.TO_SLAVE && state == HighAvailabilityMemberState.SLAVE) {
-          availabilityGuard.grant(HighAvailabilityMemberStateMachine.this);
-        }
-      }
- else {
-        logger.debug("Got slaveIsAvailable(" + instanceId + "), but applying it was not successful so keeps state "+ oldState+ " even though the desired state transaction would have been to "+ state);
-        state=oldState;
+      if (oldState == HighAvailabilityMemberState.TO_SLAVE && state == HighAvailabilityMemberState.SLAVE) {
+        availabilityGuard.grant(HighAvailabilityMemberStateMachine.this);
       }
     }
   }

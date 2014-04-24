@@ -1,8 +1,9 @@
 {
+  kernelHealth.assertHealthy(IOException.class);
   scanIsComplete=false;
   LogEntryConsumer consumer=new LogEntryConsumer(transactionTranslator);
   consumer.setXidIdentifier(getNextIdentifier());
-  ForgetUnsuccessfulReceivedTransaction handler=new ForgetUnsuccessfulReceivedTransaction(new SlaveLogWriter(new LogApplier(),logWriterSPI,logEntryWriter));
+  LogHandler handler=new LogFilter(interceptor,new ForgetUnsuccessfulReceivedTransaction(new SlaveLogWriter(new LogApplier(),logWriterSPI,logEntryWriter)));
   consumer.setHandler(handler);
   LogReader<ReadableByteChannel> logDeserializer=new SlaveLogDeserializer(sharedBuffer,commandReaderFactory);
   boolean success=false;
@@ -11,8 +12,18 @@
     while (cursor.next(consumer))     ;
     success=true;
   }
-  finally {
-    handler.endLog(success);
+ catch (  Exception e) {
+    kernelHealth.panic(e);
+    throw launderedException(IOException.class,"Failure applying transaction",e);
+  }
+ finally {
+    try {
+      handler.endLog(success);
+    }
+ catch (    Exception e) {
+      kernelHealth.panic(e);
+      throw launderedException(IOException.class,"Failure applying transaction",e);
+    }
     scanIsComplete=true;
   }
   checkLogRotation();

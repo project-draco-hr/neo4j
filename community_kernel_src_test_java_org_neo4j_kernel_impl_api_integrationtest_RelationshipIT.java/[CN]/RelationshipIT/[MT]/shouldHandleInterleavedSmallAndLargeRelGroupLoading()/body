@@ -1,0 +1,33 @@
+{
+  int grabSize=Integer.parseInt(GraphDatabaseSettings.relationship_grab_size.getDefaultValue());
+  long[] largeRelGroup=new long[grabSize + 1];
+  long[] smallRelGroup=new long[1];
+  long refNode;
+  int largeGroupType, smallGroupType;
+{
+    DataWriteOperations statement=dataWriteOperationsInNewTransaction();
+    largeGroupType=statement.relationshipTypeGetOrCreateForName("Type1");
+    smallGroupType=statement.relationshipTypeGetOrCreateForName("Type2");
+    refNode=statement.nodeCreate();
+    long otherNode=statement.nodeCreate();
+    for (int i=0; i < largeRelGroup.length; i++) {
+      largeRelGroup[i]=statement.relationshipCreate(largeGroupType,refNode,otherNode);
+    }
+    for (int i=0; i < smallRelGroup.length; i++) {
+      smallRelGroup[i]=statement.relationshipCreate(smallGroupType,refNode,otherNode);
+    }
+    commit();
+  }
+  this.db.getDependencyResolver().resolveDependency(NodeManager.class).clearCache();
+{
+    ReadOperations stmt=readOperationsInNewTransaction();
+    PrimitiveLongIterator iter=stmt.nodeGetRelationships(refNode,Direction.BOTH,largeGroupType);
+    for (int i=0; i < grabSize - 1; i++) {
+      assertTrue(iter.hasNext());
+      iter.next();
+    }
+    assertRels(stmt.nodeGetRelationships(refNode,Direction.BOTH,smallGroupType));
+    assertThat(count(toJavaIterator(iter)),equalTo(2));
+    assertRels(stmt.nodeGetRelationships(refNode,Direction.BOTH,largeGroupType),largeRelGroup);
+  }
+}
