@@ -1,2 +1,27 @@
 {
+  final URI masterUri=availableMasterId;
+  final AtomicLong wait=new AtomicLong();
+  startModeSwitching(new Runnable(){
+    @Override public void run(){
+      if (currentTargetState != HighAvailabilityMemberState.TO_SLAVE) {
+        return;
+      }
+      try {
+        haCommunicationLife.shutdown();
+        haCommunicationLife=new LifeSupport();
+        slaveHaURI=switchToSlave.switchToSlave(haCommunicationLife,me,masterUri);
+      }
+ catch (      MismatchingStoreIdException e) {
+        run();
+      }
+catch (      Throwable t) {
+        msgLog.logMessage("Error while trying to switch to slave",t);
+        wait.set((1 + wait.get() * 2));
+        wait.set(Math.min(wait.get(),5 * 60));
+        modeSwitcherFuture=modeSwitcherExecutor.schedule(this,wait.get(),TimeUnit.SECONDS);
+        msgLog.logMessage("Attempting to switch to slave in " + wait.get() + "s");
+      }
+    }
+  }
+);
 }
