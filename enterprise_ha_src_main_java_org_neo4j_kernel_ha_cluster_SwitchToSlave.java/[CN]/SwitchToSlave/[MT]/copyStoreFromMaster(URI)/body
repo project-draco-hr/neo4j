@@ -1,0 +1,23 @@
+{
+  FileSystemAbstraction fs=resolver.resolveDependency(FileSystemAbstraction.class);
+  LifeSupport life=new LifeSupport();
+  try {
+    stopServicesAndHandleBranchedStore(BranchedDataPolicy.keep_none);
+    final MasterClient copyMaster=newMasterClient(masterUri,null,life);
+    life.start();
+    console.log("Copying store from master");
+    new RemoteStoreCopier(config,kernelExtensions,console,fs).copyStore(new RemoteStoreCopier.StoreCopyRequester(){
+      @Override public Response<?> copyStore(      StoreWriter writer){
+        return copyMaster.copyStore(new RequestContext(0,config.get(ClusterSettings.server_id),0,new RequestContext.Tx[0],0,0),writer);
+      }
+      @Override public void done(){
+      }
+    }
+);
+    startServicesAgain();
+    console.log("Finished copying store from master");
+  }
+  finally {
+    life.stop();
+  }
+}

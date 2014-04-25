@@ -6,15 +6,12 @@
   currentTargetState=event.getNewState();
 switch (event.getNewState()) {
 case TO_MASTER:
-    haCommunicationLife.shutdown();
-  haCommunicationLife=new LifeSupport();
-if (event.getOldState().equals(HighAvailabilityMemberState.SLAVE)) {
-  clusterMemberAvailability.memberIsUnavailable(SLAVE);
-}
-switchToMaster();
+    if (event.getOldState().equals(HighAvailabilityMemberState.SLAVE)) {
+      clusterMemberAvailability.memberIsUnavailable(SLAVE);
+    }
+  switchToMaster();
 break;
 case TO_SLAVE:
-haCommunicationLife.shutdown();
 switchToSlave();
 break;
 case PENDING:
@@ -24,8 +21,18 @@ clusterMemberAvailability.memberIsUnavailable(SLAVE);
  else if (event.getOldState().equals(HighAvailabilityMemberState.MASTER)) {
 clusterMemberAvailability.memberIsUnavailable(MASTER);
 }
+startModeSwitching(new Runnable(){
+@Override public void run(){
 haCommunicationLife.shutdown();
 haCommunicationLife=new LifeSupport();
+}
+}
+);
+try {
+modeSwitcherFuture.get(10,TimeUnit.SECONDS);
+}
+ catch (Exception e) {
+}
 break;
 default :
 }
