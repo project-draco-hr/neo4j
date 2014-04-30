@@ -2,12 +2,22 @@
   return new Threshold(){
     private Long highest;
     @Override public boolean reached(    File file,    long version,    LogLoader source){
-      long tx=source.getFirstCommittedTxId(version).longValue();
-      if (highest == null) {
-        highest=source.getLastCommittedTxId();
-        return false;
+      try {
+        long tx=source.getFirstCommittedTxId(version);
+        if (highest == null) {
+          highest=source.getLastCommittedTxId();
+          return false;
+        }
+        return highest - tx >= maxTransactionCount;
       }
-      return highest.longValue() - tx >= maxTransactionCount;
+ catch (      RuntimeException e) {
+        if (e.getCause() != null && e.getCause() instanceof IllegalLogFormatException) {
+          return decidePruneForIllegalLogFormat((IllegalLogFormatException)e.getCause());
+        }
+ else {
+          throw e;
+        }
+      }
     }
   }
 ;
