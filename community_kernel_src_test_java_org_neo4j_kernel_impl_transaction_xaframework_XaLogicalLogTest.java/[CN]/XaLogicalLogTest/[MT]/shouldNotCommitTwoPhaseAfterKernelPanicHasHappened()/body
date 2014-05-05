@@ -1,14 +1,15 @@
 {
+  File directory=TargetDirectory.forTest(getClass()).directory("shouldNotPrepareAfterKernelPanicHasHappened",true);
+  Logging mockLogging=mock(Logging.class);
+  when(mockLogging.getMessagesLog(Matchers.<Class>any())).thenReturn(mock(StringLogger.class));
+  KernelHealth health=new KernelHealth(mock(KernelPanicEventGenerator.class),mockLogging);
+  long maxSize=1000;
+  File logFile=new File(directory,"log");
   RandomAccessFile forCheckingSize=null;
+  XaLogicalLog log=null;
   try {
-    File directory=TargetDirectory.forTest(getClass()).directory("shouldNotPrepareAfterKernelPanicHasHappened",true);
-    Logging mockLogging=mock(Logging.class);
-    when(mockLogging.getMessagesLog(Matchers.<Class>any())).thenReturn(mock(StringLogger.class));
-    KernelHealth health=new KernelHealth(mock(KernelPanicEventGenerator.class),mockLogging);
-    long maxSize=1000;
-    File logFile=new File(directory,"log");
     forCheckingSize=new RandomAccessFile(logFile,"rw");
-    XaLogicalLog log=new XaLogicalLog(logFile,mock(XaResourceManager.class),new FixedSizeXaCommandFactory(),new VersionRespectingXaTransactionFactory(),new DefaultFileSystemAbstraction(),new Monitors(),new DevNullLoggingService(),NO_PRUNING,mock(TransactionStateFactory.class),health,maxSize);
+    log=new XaLogicalLog(logFile,mock(XaResourceManager.class),new FixedSizeXaCommandFactory(),new VersionRespectingXaTransactionFactory(),new DefaultFileSystemAbstraction(),new Monitors(),new DevNullLoggingService(),NO_PRUNING,mock(TransactionStateFactory.class),health,maxSize);
     log.open();
     int identifier=log.start(new XidImpl(XidImpl.getNewGlobalId(DEFAULT_SEED,1),NeoStoreXaDataSource.BRANCH_ID),-1,-1);
     log.writeStartEntry(identifier);
@@ -24,6 +25,9 @@
     assertEquals(sizeBeforePanic,forCheckingSize.getChannel().size());
   }
   finally {
+    if (log != null) {
+      log.close();
+    }
     if (forCheckingSize != null) {
       forCheckingSize.close();
     }
