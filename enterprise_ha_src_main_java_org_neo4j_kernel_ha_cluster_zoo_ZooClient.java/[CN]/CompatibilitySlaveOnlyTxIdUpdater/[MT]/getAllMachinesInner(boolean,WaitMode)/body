@@ -9,25 +9,25 @@
     }
  catch (    NumberFormatException e) {
     }
-    writeFlush(getMyMachineId());
+    writeFlush(getMyMachineId().toIntegerIndex());
     long endTime=System.currentTimeMillis() + sessionTimeout;
     OUTER:     do {
       Thread.sleep(100);
-      Map<Integer,ZooKeeperMachine> result=new HashMap<Integer,ZooKeeperMachine>();
+      Map<InstanceId,ZooKeeperMachine> result=new HashMap<InstanceId,ZooKeeperMachine>();
       String root=getRoot();
       List<String> children=getZooKeeper(true).getChildren(root,false);
       for (      String child : children) {
-        Pair<Integer,Integer> parsedChild=parseChild(child);
+        Pair<InstanceId,Integer> parsedChild=parseChild(child);
         if (parsedChild == null) {
           continue;
         }
         try {
-          int id=parsedChild.first();
+          InstanceId id=parsedChild.first();
           int seq=parsedChild.other();
           Pair<Long,Integer> instanceData=readDataRepresentingInstance(root + "/" + child);
           long lastCommittedTxId=instanceData.first();
           int masterId=instanceData.other();
-          if (id == getMyMachineId() && mySequenceNumber == -1) {
+          if (id.equals(getMyMachineId()) && mySequenceNumber == -1) {
             continue;
           }
           if (lastCommittedTxId == -2) {

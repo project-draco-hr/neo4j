@@ -4,29 +4,14 @@
       if (currentTargetState != HighAvailabilityMemberState.TO_MASTER) {
         return;
       }
-      msgLog.logMessage("I am " + config.get(ClusterSettings.server_id) + ", moving to master");
+      haCommunicationLife.shutdown();
+      haCommunicationLife=new LifeSupport();
       try {
-        DependencyResolver resolver=graphDb.getDependencyResolver();
-        HaXaDataSourceManager xaDataSourceManager=resolver.resolveDependency(HaXaDataSourceManager.class);
-synchronized (xaDataSourceManager) {
-          final TransactionManager txManager=graphDb.getDependencyResolver().resolveDependency(TransactionManager.class);
-          idGeneratorFactory.switchToMaster();
-          Monitors monitors=graphDb.getDependencyResolver().resolveDependency(Monitors.class);
-          MasterImpl.SPI spi=new DefaultMasterImplSPI(graphDb,logging,txManager,monitors);
-          MasterImpl masterImpl=new MasterImpl(spi,logging,config);
-          MasterServer masterServer=new MasterServer(masterImpl,logging,serverConfig(),new BranchDetectingTxVerifier(graphDb),monitors);
-          haCommunicationLife.add(masterImpl);
-          haCommunicationLife.add(masterServer);
-          assignMaster(masterImpl);
-          haCommunicationLife.start();
-          masterHaURI=URI.create("ha://" + (ServerUtil.getHostString(masterServer.getSocketAddress()).contains("0.0.0.0") ? me.getHost() : ServerUtil.getHostString(masterServer.getSocketAddress())) + ":"+ masterServer.getSocketAddress().getPort()+ "?serverId="+ config.get(ClusterSettings.server_id));
-          clusterMemberAvailability.memberIsAvailable(MASTER,masterHaURI);
-          msgLog.logMessage("I am " + config.get(ClusterSettings.server_id) + ", successfully moved to master");
-        }
+        masterHaURI=switchToMaster.switchToMaster(haCommunicationLife,me);
       }
  catch (      Throwable e) {
         msgLog.logMessage("Failed to switch to master",e);
-        election.demote(new InstanceId(getServerId(me)));
+        election.demote(getServerId(me));
         return;
       }
     }
