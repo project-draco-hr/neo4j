@@ -1,8 +1,8 @@
 {
-  Function translator=mock(Function.class);
+  Function translator=Functions.identity();
   LogEntryConsumer consumer=new LogEntryConsumer(translator);
   LogHandler handler=mock(LogHandler.class);
-  consumer.setHandler(handler);
+  consumer.bind(0,handler);
   LogEntry.Start start=new LogEntry.Start(mock(Xid.class),1,(byte)(LogEntry.CURRENT_LOG_VERSION + 1),2,3,4,5,6);
   consumer.accept(start);
   LogEntry.Command command=new LogEntry.Command(1,(byte)(LogEntry.CURRENT_LOG_VERSION + 1),null);
@@ -13,7 +13,13 @@
   consumer.accept(twoPC);
   LogEntry.Prepare prepare=new LogEntry.Prepare(1,(byte)(LogEntry.CURRENT_LOG_VERSION + 1),2);
   consumer.accept(prepare);
-  verifyZeroInteractions(translator,handler);
+  verifyZeroInteractions(handler);
   LogEntry.Done done=new LogEntry.Done(1,(byte)(LogEntry.CURRENT_LOG_VERSION + 1));
   consumer.accept(done);
+  verify(handler,times(1)).startEntry(start);
+  verify(handler,times(1)).commandEntry(command);
+  verify(handler,times(1)).onePhaseCommitEntry(onePC);
+  verify(handler,times(1)).twoPhaseCommitEntry(twoPC);
+  verify(handler,times(1)).prepareEntry(prepare);
+  verify(handler,times(1)).doneEntry(done);
 }

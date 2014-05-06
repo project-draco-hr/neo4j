@@ -21,4 +21,13 @@
   this.injectedTxValidator=injectedTxValidator;
   logWriterSPI=new SomethingOrOtherSPI();
   logEntryWriter.setCommandWriter(commandWriterFactory.newInstance());
+  LogApplier applier=new LogApplier();
+  PositionCacheLogHandler.SPI positionCacheSPI=new PositionCacheLogHandler.SPI(){
+    @Override public long getLogVersion(){
+      return XaLogicalLog.this.logVersion;
+    }
+  }
+;
+  masterHandler=new LogFilter(interceptor,new MasterLogWriter(new PositionCacheLogHandler(applier,positionCache,positionCacheSPI),logWriterSPI,injectedTxValidator,logEntryWriter));
+  slaveHandler=new LogFilter(interceptor,new ForgetUnsuccessfulReceivedTransaction(new SlaveLogWriter(new PositionCacheLogHandler(applier,positionCache,positionCacheSPI),logWriterSPI,logEntryWriter)));
 }

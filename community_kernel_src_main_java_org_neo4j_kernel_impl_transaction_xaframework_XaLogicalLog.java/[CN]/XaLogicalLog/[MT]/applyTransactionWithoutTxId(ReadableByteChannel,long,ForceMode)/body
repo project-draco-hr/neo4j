@@ -7,12 +7,10 @@
   scanIsComplete=false;
   logWriterSPI.bind(forceMode,nextTxId);
   LogReader<ReadableByteChannel> reader=new LogDeserializer(sharedBuffer,commandReaderFactory);
-  LogFilter handler=new LogFilter(interceptor,new MasterLogWriter(new LogApplier(),logWriterSPI,injectedTxValidator,logEntryWriter));
   LogEntryConsumer consumer=new LogEntryConsumer(transactionTranslator);
-  consumer.setXidIdentifier(getNextIdentifier());
-  consumer.setHandler(handler);
+  consumer.bind(getNextIdentifier(),masterHandler);
   boolean success=true;
-  handler.startLog();
+  masterHandler.startLog();
   try (Cursor<LogEntry,IOException> cursor=reader.cursor(byteChannel)){
     while (cursor.next(consumer))     ;
   }
@@ -22,7 +20,7 @@
     throw launderedException(IOException.class,"Failure applying transaction",e);
   }
  finally {
-    handler.endLog(success);
+    masterHandler.endLog(success);
     scanIsComplete=true;
   }
   logRecoveryMessage("Applied external tx and generated tx id=" + nextTxId);
