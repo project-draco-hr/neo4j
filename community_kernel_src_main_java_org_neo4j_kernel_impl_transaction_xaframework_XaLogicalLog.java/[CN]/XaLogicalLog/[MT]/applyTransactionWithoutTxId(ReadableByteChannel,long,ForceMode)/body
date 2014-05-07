@@ -6,13 +6,11 @@
   logRecoveryMessage("applyTxWithoutTxId log version: " + logVersion + ", committing tx="+ nextTxId+ ") @ pos "+ writeBuffer.getFileChannelPosition());
   scanIsComplete=false;
   logWriterSPI.bind(forceMode,nextTxId);
-  LogReader<ReadableByteChannel> reader=new LogDeserializer(sharedBuffer,commandReaderFactory);
-  LogEntryConsumer consumer=new LogEntryConsumer(transactionTranslator);
-  consumer.bind(getNextIdentifier(),masterHandler);
+  translatingEntryConsumer.reset(getNextIdentifier(),masterHandler);
   boolean success=true;
   masterHandler.startLog();
   try (Cursor<LogEntry,IOException> cursor=reader.cursor(byteChannel)){
-    while (cursor.next(consumer))     ;
+    while (cursor.next(translatingEntryConsumer))     ;
   }
  catch (  IOException e) {
     kernelHealth.panic(e);

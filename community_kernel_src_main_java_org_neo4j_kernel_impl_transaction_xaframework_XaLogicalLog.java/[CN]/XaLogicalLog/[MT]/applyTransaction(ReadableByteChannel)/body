@@ -1,13 +1,11 @@
 {
   kernelHealth.assertHealthy(IOException.class);
   scanIsComplete=false;
-  LogEntryConsumer consumer=new LogEntryConsumer(transactionTranslator);
-  consumer.bind(getNextIdentifier(),slaveHandler);
-  LogReader<ReadableByteChannel> logDeserializer=new SlaveLogDeserializer(sharedBuffer,commandReaderFactory);
+  translatingEntryConsumer.reset(getNextIdentifier(),slaveHandler);
   boolean success=false;
   slaveHandler.startLog();
-  try (Cursor<LogEntry,IOException> cursor=logDeserializer.cursor(byteChannel)){
-    while (cursor.next(consumer))     ;
+  try (Cursor<LogEntry,IOException> cursor=slaveLogReader.cursor(byteChannel)){
+    while (cursor.next(translatingEntryConsumer))     ;
     success=true;
   }
  catch (  Exception e) {
