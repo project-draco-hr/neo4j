@@ -1,22 +1,22 @@
 {
-  File workingDirectory=new File("target/" + StoreUpgraderInterruptionTestIT.class.getSimpleName());
+  File workingDirectory=directory.directory();
   MigrationTestUtils.prepareSampleLegacyDatabase(fileSystem,workingDirectory);
-  StoreMigrator failingStoreMigrator=new StoreMigrator(new SilentMigrationProgressMonitor()){
-    @Override public void migrate(    LegacyStore legacyStore,    NeoStore neoStore) throws IOException {
-      super.migrate(legacyStore,neoStore);
+  StoreMigrator failingStoreMigrator=new StoreMigrator(new SilentMigrationProgressMonitor(),fileSystem,idGeneratorFactory){
+    @Override public void migrate(    FileSystemAbstraction fileSystem,    File sourceStoreDir,    File targetStoreDir,    DependencyResolver dependencyResolver) throws IOException {
+      super.migrate(fileSystem,sourceStoreDir,targetStoreDir,dependencyResolver);
       throw new RuntimeException("This upgrade is failing");
     }
   }
 ;
   assertTrue(allStoreFilesHaveVersion(fileSystem,workingDirectory,LEGACY_VERSION));
   try {
-    newUpgrader(failingStoreMigrator,new DatabaseFiles(fileSystem)).attemptUpgrade(new File(workingDirectory,NeoStore.DEFAULT_NAME));
+    newUpgrader(failingStoreMigrator).migrateIfNeeded(workingDirectory);
     fail("Should throw exception");
   }
  catch (  RuntimeException e) {
     assertEquals("This upgrade is failing",e.getMessage());
   }
   assertTrue(allStoreFilesHaveVersion(fileSystem,workingDirectory,LEGACY_VERSION));
-  newUpgrader(new StoreMigrator(new SilentMigrationProgressMonitor()),new DatabaseFiles(fileSystem)).attemptUpgrade(new File(workingDirectory,NeoStore.DEFAULT_NAME));
+  newUpgrader(new StoreMigrator(new SilentMigrationProgressMonitor(),fileSystem,idGeneratorFactory)).migrateIfNeeded(workingDirectory);
   assertTrue(allStoreFilesHaveVersion(fileSystem,workingDirectory,ALL_STORES_VERSION));
 }

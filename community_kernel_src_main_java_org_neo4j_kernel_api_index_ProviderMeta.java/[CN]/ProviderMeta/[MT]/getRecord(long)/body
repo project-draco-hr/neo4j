@@ -1,0 +1,32 @@
+{
+  if (snapshotCount > 0) {
+    Record record=snapshotRecords.get(id);
+    if (record != null) {
+      return record;
+    }
+  }
+  try {
+    channel.position(id * RECORD_SIZE);
+    buffer.clear();
+    int bytesRead=channel.read(buffer);
+    buffer.flip();
+    if (bytesRead == -1) {
+      throw new InvalidRecordException("No such record " + id);
+    }
+    if (bytesRead != RECORD_SIZE) {
+      throw new Error("Urgh");
+    }
+    byte inUseByte=buffer.get();
+    boolean inUse=inUseByte == 1;
+    if (!inUse) {
+      throw new InvalidRecordException("Record " + id + " not in use");
+    }
+    long value=buffer.getLong();
+    Record record=new Record(id,value);
+    record.setInUse(true);
+    return record;
+  }
+ catch (  IOException e) {
+    throw new UnderlyingStorageException("Error reading channel",e);
+  }
+}

@@ -1,0 +1,33 @@
+{
+  List<StoreMigrationParticipant> participantsNeedingMigration=getParticipantsEagerToMigrate(storeDirectory);
+  if (participantsNeedingMigration.isEmpty()) {
+    return;
+  }
+  monitor.migrationNeeded();
+  try {
+    upgradeConfiguration.checkConfigurationAllowsAutomaticUpgrade();
+  }
+ catch (  UpgradeNotAllowedByConfigurationException e) {
+    monitor.migrationNotAllowed();
+    throw e;
+  }
+  File migrationDirectory=new File(storeDirectory,MIGRATION_DIRECTORY);
+  try {
+    File migrationStateFile=new File(migrationDirectory,MIGRATION_STATUS_FILE);
+    File leftOversDirectory=new File(storeDirectory,MIGRATION_LEFT_OVERS_DIRECTORY);
+    if (!migrationStatusIs(migrationStateFile,MigrationStatus.moving)) {
+      cleanMigrationDirectory(migrationDirectory);
+      setMigrationStatus(migrationStateFile,MigrationStatus.migrating);
+      migrateToIsolatedDirectory(participantsNeedingMigration,storeDirectory,migrationDirectory);
+      setMigrationStatus(migrationStateFile,MigrationStatus.moving);
+    }
+    closeParticipants();
+    moveMigratedFilesToWorkingDirectory(participantsNeedingMigration,migrationDirectory,storeDirectory,leftOversDirectory);
+    setMigrationStatus(migrationStateFile,MigrationStatus.completed);
+    cleanup(participantsNeedingMigration,migrationDirectory);
+    monitor.migrationCompleted();
+  }
+  finally {
+    closeParticipants();
+  }
+}
