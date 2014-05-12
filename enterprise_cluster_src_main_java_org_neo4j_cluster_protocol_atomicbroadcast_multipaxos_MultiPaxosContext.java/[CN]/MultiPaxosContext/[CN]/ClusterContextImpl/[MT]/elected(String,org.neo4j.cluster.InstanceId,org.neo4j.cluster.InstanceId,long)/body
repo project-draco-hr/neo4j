@@ -1,0 +1,24 @@
+{
+  if (electorId.equals(clusterContext.getMyId())) {
+    getLogger(getClass()).debug("I elected instance " + instanceId + " for role "+ roleName+ " at version "+ version);
+    if (version < electorVersion) {
+      return;
+    }
+  }
+ else   if (version < electorVersion && electorId.equals(lastElector)) {
+    getLogger(getClass()).warn("Election result for role " + roleName + " received from elector instance "+ electorId+ " with version "+ version+ ". I had version "+ electorVersion+ " for elector "+ lastElector);
+    return;
+  }
+ else {
+    getLogger(getClass()).debug("Setting elector to " + electorId + " and its version to "+ version);
+  }
+  this.electorVersion=version;
+  this.lastElector=electorId;
+  configuration.elected(roleName,instanceId);
+  Listeners.notifyListeners(clusterListeners,executor,new Listeners.Notification<ClusterListener>(){
+    @Override public void notify(    ClusterListener listener){
+      listener.elected(roleName,instanceId,configuration.getUriForId(instanceId));
+    }
+  }
+);
+}
