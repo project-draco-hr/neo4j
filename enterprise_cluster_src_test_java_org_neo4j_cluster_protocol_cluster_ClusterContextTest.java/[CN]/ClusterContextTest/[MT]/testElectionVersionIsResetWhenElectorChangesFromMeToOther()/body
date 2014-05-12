@@ -1,0 +1,31 @@
+{
+  final String coordinatorRole="coordinator";
+  final InstanceId me=new InstanceId(1);
+  final InstanceId winner=new InstanceId(2);
+  final InstanceId elector=new InstanceId(2);
+  HeartbeatContext heartbeatContext=mock(HeartbeatContext.class);
+  when(heartbeatContext.getFailed()).thenReturn(Collections.<InstanceId>emptySet());
+  Logging logging=Mockito.mock(Logging.class);
+  when(logging.getMessagesLog(Matchers.<Class>any())).thenReturn(mock(StringLogger.class));
+  MultiPaxosContext multiPaxosContext=new MultiPaxosContext(me,Iterables.<ElectionRole,ElectionRole>iterable(new ElectionRole(coordinatorRole)),mock(ClusterConfiguration.class),new Executor(){
+    @Override public void execute(    Runnable command){
+      command.run();
+    }
+  }
+,logging,Mockito.mock(ObjectInputStreamFactory.class),Mockito.mock(ObjectOutputStreamFactory.class),Mockito.mock(AcceptorInstanceStore.class),Mockito.mock(Timeouts.class));
+  ClusterContext context=multiPaxosContext.getClusterContext();
+  ElectionContext electionContext=multiPaxosContext.getElectionContext();
+  ClusterListener listener=mock(ClusterListener.class);
+  context.setLastElectorVersion(5);
+  context.setLastElector(me);
+  context.addClusterListener(listener);
+  long expectedVersion=electionContext.newConfigurationStateChange().getVersion();
+  context.elected(coordinatorRole,winner,me,expectedVersion);
+  verify(listener,times(1)).elected(coordinatorRole,winner,null);
+  context.elected(coordinatorRole,winner,elector,2);
+  verify(listener,times(2)).elected(coordinatorRole,winner,null);
+  context.elected(coordinatorRole,winner,elector,3);
+  verify(listener,times(3)).elected(coordinatorRole,winner,null);
+  context.elected(coordinatorRole,winner,elector,2);
+  verifyNoMoreInteractions(listener);
+}
