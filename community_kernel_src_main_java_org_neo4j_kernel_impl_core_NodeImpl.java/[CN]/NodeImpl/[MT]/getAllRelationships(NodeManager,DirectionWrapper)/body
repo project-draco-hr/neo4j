@@ -1,43 +1,53 @@
 {
   ensureRelationshipMapNotNull(nodeManager);
-  boolean hasMore=hasMoreRelationshipsToLoad();
-  RelIdArray[] localRelationships=relationships;
-  RelIdIterator[] result=new RelIdIterator[localRelationships.length];
-  TransactionState tx=nodeManager.getTransactionState();
-  ArrayMap<Integer,RelIdArray> addMap=null;
-  ArrayMap<Integer,Collection<Long>> skipMap=null;
-  if (tx.hasChanges()) {
-    addMap=tx.getCowRelationshipAddMap(this);
-    skipMap=tx.getCowRelationshipRemoveMap(this);
-  }
-  for (int i=0; i < localRelationships.length; i++) {
-    RelIdArray src=localRelationships[i];
-    int type=src.getType();
-    RelIdIterator iterator;
-    if (addMap != null || skipMap != null) {
-      iterator=new CombinedRelIdIterator(type,direction,src,addMap != null ? addMap.get(type) : null,skipMap != null ? skipMap.get(type) : null);
-    }
- else {
-      iterator=src.iterator(direction);
-    }
-    result[i]=iterator;
-  }
-  if (addMap != null) {
-    RelIdIterator[] additional=new RelIdIterator[addMap.size()];
-    int additionalSize=0;
-    for (    int type : addMap.keySet()) {
-      if (getRelIdArray(type) == null) {
-        RelIdArray add=addMap.get(type);
-        additional[additionalSize++]=new CombinedRelIdIterator(type,direction,null,add,skipMap != null ? skipMap.get(type) : null);
+  final NodeImpl nodeImpl=this;
+  return new Iterable<Relationship>(){
+    public Iterator<Relationship> iterator(){
+      final boolean hasMore=hasMoreRelationshipsToLoad();
+      RelIdArray[] localRelationships=relationships;
+      final RelIdIterator[] relIdIterators=new RelIdIterator[localRelationships.length];
+      TransactionState tx=nodeManager.getTransactionState();
+      ArrayMap<Integer,RelIdArray> addMap=null;
+      ArrayMap<Integer,Collection<Long>> skipMap=null;
+      if (tx.hasChanges()) {
+        addMap=tx.getCowRelationshipAddMap(nodeImpl);
+        skipMap=tx.getCowRelationshipRemoveMap(nodeImpl);
       }
+      for (int i=0; i < localRelationships.length; i++) {
+        RelIdArray src=localRelationships[i];
+        int type=src.getType();
+        RelIdIterator iterator;
+        if (addMap != null || skipMap != null) {
+          iterator=new CombinedRelIdIterator(type,direction,src,addMap != null ? addMap.get(type) : null,skipMap != null ? skipMap.get(type) : null);
+        }
+ else {
+          iterator=src.iterator(direction);
+        }
+        relIdIterators[i]=iterator;
+      }
+      final RelIdIterator[] result;
+      if (addMap != null) {
+        RelIdIterator[] additional=new RelIdIterator[addMap.size()];
+        int additionalSize=0;
+        for (        int type : addMap.keySet()) {
+          if (getRelIdArray(type) == null) {
+            RelIdArray add=addMap.get(type);
+            additional[additionalSize++]=new CombinedRelIdIterator(type,direction,null,add,skipMap != null ? skipMap.get(type) : null);
+          }
+        }
+        RelIdIterator[] newResult=new RelIdIterator[relIdIterators.length + additionalSize];
+        arraycopy(relIdIterators,0,newResult,0,relIdIterators.length);
+        arraycopy(additional,0,newResult,relIdIterators.length,additionalSize);
+        result=newResult;
+      }
+ else {
+        result=relIdIterators;
+      }
+      if (result.length == 0) {
+        return Collections.emptyIterator();
+      }
+      return new RelationshipIterator(result,nodeImpl,direction,nodeManager,hasMore,true);
     }
-    RelIdIterator[] newResult=new RelIdIterator[result.length + additionalSize];
-    arraycopy(result,0,newResult,0,result.length);
-    arraycopy(additional,0,newResult,result.length,additionalSize);
-    result=newResult;
   }
-  if (result.length == 0) {
-    return Collections.emptyList();
-  }
-  return new RelationshipIterator(result,this,direction,nodeManager,hasMore,true);
+;
 }
