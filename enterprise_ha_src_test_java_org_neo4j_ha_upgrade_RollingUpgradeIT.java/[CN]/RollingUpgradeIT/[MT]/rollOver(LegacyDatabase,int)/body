@@ -1,23 +1,30 @@
 {
   String storeDir=legacyDb.getStoreDir();
+  if (i == 0) {
+    storeDir+="new";
+  }
   stop(i);
   Thread.sleep(30000);
   debug("Starting " + i + " as current version");
   newDbs[i]=(GraphDatabaseAPI)new HighlyAvailableGraphDatabaseFactory().newHighlyAvailableDatabaseBuilder(storeDir).setConfig(config(i)).newGraphDatabase();
   debug("Started " + i + " as current version");
   legacyDbs[i]=null;
-  String name="upgraded-" + i;
-  long node=createNodeWithRetry(newDbs[i],name);
-  debug("Node created on " + i);
-  for (int j=0; j < i; j++) {
-    if (legacyDbs[i] != null) {
-      legacyDbs[j].verifyNodeExists(node,name);
+  if (i == 2 || i == 1) {
+    legacyDbs[0].doComplexLoad(centralNode);
+    debug("Node created on " + i);
+  }
+ else {
+    doComplexLoad(newDbs[1],centralNode);
+  }
+  for (int j=0; j < legacyDbs.length; j++) {
+    if (legacyDbs[j] != null) {
+      legacyDbs[j].verifyComplexLoad(centralNode);
       debug("Verified on legacy db " + j);
     }
   }
   for (int j=0; j < newDbs.length; j++) {
     if (newDbs[j] != null) {
-      verifyNodeExists(newDbs[j],node,name);
+      verifyComplexLoad(newDbs[j],centralNode);
       debug("Verified on new db " + j);
     }
   }
