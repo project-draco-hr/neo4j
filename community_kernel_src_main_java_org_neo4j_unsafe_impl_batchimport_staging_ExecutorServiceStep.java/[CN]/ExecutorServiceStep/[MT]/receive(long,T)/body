@@ -1,0 +1,21 @@
+{
+  long idleTime=awaitDownstreamToCatchUp(workAheadSize) + awaitTicket(ticket);
+  executor.submit(new Runnable(){
+    @Override public void run(){
+      assertHealthy();
+      long startTime=startProcessingTimer();
+      try {
+        Object result=process(ticket,batch);
+        endProcessingTimer(startTime);
+        doneBatches.incrementAndGet();
+        sendDownstream(ticket,result);
+      }
+ catch (      Throwable e) {
+        issuePanic(e);
+      }
+    }
+  }
+);
+  ticketReceived(ticket);
+  return idleTime;
+}
