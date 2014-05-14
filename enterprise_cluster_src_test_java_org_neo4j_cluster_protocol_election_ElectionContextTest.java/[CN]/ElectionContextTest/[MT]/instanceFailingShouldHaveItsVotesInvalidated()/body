@@ -1,0 +1,32 @@
+{
+  final String role1="coordinator1";
+  final String role2="coordinator2";
+  InstanceId me=new InstanceId(1);
+  InstanceId failingInstance=new InstanceId(2);
+  InstanceId otherInstance=new InstanceId(3);
+  Logging logging=Mockito.mock(Logging.class);
+  when(logging.getMessagesLog(Matchers.<Class>any())).thenReturn(mock(StringLogger.class));
+  ClusterConfiguration clusterConfiguration=mock(ClusterConfiguration.class);
+  List<InstanceId> clusterMemberIds=new LinkedList<InstanceId>();
+  clusterMemberIds.add(failingInstance);
+  clusterMemberIds.add(otherInstance);
+  clusterMemberIds.add(me);
+  when(clusterConfiguration.getMemberIds()).thenReturn(clusterMemberIds);
+  MultiPaxosContext context=new MultiPaxosContext(me,Iterables.<ElectionRole,ElectionRole>iterable(new ElectionRole(role1),new ElectionRole(role2)),clusterConfiguration,new Executor(){
+    @Override public void execute(    Runnable command){
+      command.run();
+    }
+  }
+,logging,Mockito.mock(ObjectInputStreamFactory.class),Mockito.mock(ObjectOutputStreamFactory.class),Mockito.mock(AcceptorInstanceStore.class),Mockito.mock(Timeouts.class),mock(ElectionCredentialsProvider.class));
+  HeartbeatContext heartbeatContext=context.getHeartbeatContext();
+  ElectionContext electionContext=context.getElectionContext();
+  electionContext.startElectionProcess(role1);
+  electionContext.startElectionProcess(role2);
+  electionContext.voted(role1,failingInstance,mock(Comparable.class),2);
+  electionContext.voted(role2,failingInstance,mock(Comparable.class),2);
+  electionContext.voted(role1,otherInstance,mock(Comparable.class),2);
+  electionContext.voted(role2,otherInstance,mock(Comparable.class),2);
+  heartbeatContext.suspect(failingInstance);
+  assertEquals(1,electionContext.getVoteCount(role1));
+  assertEquals(1,electionContext.getVoteCount(role2));
+}
