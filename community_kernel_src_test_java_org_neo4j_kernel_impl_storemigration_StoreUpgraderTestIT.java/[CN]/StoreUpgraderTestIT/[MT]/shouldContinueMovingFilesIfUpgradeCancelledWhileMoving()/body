@@ -1,0 +1,24 @@
+{
+  StoreUpgrader upgrader=new StoreUpgrader(ALLOW_UPGRADE,fileSystem,StoreUpgrader.NO_MONITOR);
+  String failureMessage="Just failing";
+  upgrader.addParticipant(participant("p1","one","two"));
+  upgrader.addParticipant(participantThatWillFailWhenMoving(failureMessage));
+  try {
+    upgrader.migrateIfNeeded(dbDirectory);
+  }
+ catch (  UnableToUpgradeException e) {
+    assertTrue(e.getCause() instanceof IOException);
+    assertEquals(failureMessage,e.getCause().getMessage());
+  }
+  Monitor monitor=mock(Monitor.class);
+  upgrader=new StoreUpgrader(ALLOW_UPGRADE,fileSystem,monitor);
+  upgrader.addParticipant(participant("p1","one","two"));
+  StoreMigrationParticipant observingParticipant=mock(StoreMigrationParticipant.class);
+  when(observingParticipant.needsMigration(any(FileSystemAbstraction.class),any(File.class))).thenReturn(true);
+  upgrader.addParticipant(observingParticipant);
+  upgrader.migrateIfNeeded(dbDirectory);
+  verify(observingParticipant,times(0)).migrate(any(FileSystemAbstraction.class),any(File.class),any(File.class),any(DependencyResolver.class));
+  verify(observingParticipant,times(1)).moveMigratedFiles(eq(fileSystem),any(File.class),any(File.class),any(File.class));
+  verify(observingParticipant,times(1)).cleanup(eq(fileSystem),any(File.class));
+  verify(monitor).migrationCompleted();
+}

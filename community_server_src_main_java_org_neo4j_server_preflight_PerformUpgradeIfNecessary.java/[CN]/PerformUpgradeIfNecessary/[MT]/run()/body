@@ -4,22 +4,18 @@
     if (new CurrentDatabase(new StoreVersionCheck(new DefaultFileSystemAbstraction())).storeFilesAtCurrentVersion(new File(dbLocation))) {
       return true;
     }
-    File store=new File(dbLocation,NeoStore.DEFAULT_NAME);
-    dbConfig.put("store_dir",dbLocation);
-    dbConfig.put("neo_store",store.getPath());
+    File storeDir=new File(dbLocation);
     FileSystemAbstraction fileSystem=new DefaultFileSystemAbstraction();
     UpgradableDatabase upgradableDatabase=new UpgradableDatabase(new StoreVersionCheck(fileSystem));
-    if (!upgradableDatabase.storeFilesUpgradeable(store)) {
+    if (!upgradableDatabase.storeFilesUpgradeable(storeDir)) {
       return true;
     }
-    Config conf=new Config(dbConfig,GraphDatabaseSettings.class);
-    StoreUpgrader storeUpgrader=new StoreUpgrader(conf,new ConfigMapUpgradeConfiguration(conf),upgradableDatabase,new StoreMigrator(new VisibleMigrationProgressMonitor(StringLogger.DEV_NULL,out)),new DatabaseFiles(fileSystem),new DefaultIdGeneratorFactory(),fileSystem);
     try {
-      storeUpgrader.attemptUpgrade(store);
+      new StoreMigrationTool().run(dbLocation,configForStoreDir(new Config(dbConfig),storeDir),StringLogger.SYSTEM,monitor);
     }
  catch (    UpgradeNotAllowedByConfigurationException e) {
       log.log(e.getMessage());
-      out.println(e.getMessage());
+      System.out.println(e.getMessage());
       failureMessage=e.getMessage();
       return false;
     }

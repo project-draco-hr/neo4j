@@ -1,10 +1,11 @@
 {
   Configuration serverProperties=buildProperties(false);
   prepareSampleLegacyDatabase(STORE_DIRECTORY);
-  ByteArrayOutputStream outputStream=new ByteArrayOutputStream();
-  PerformUpgradeIfNecessary upgrader=new PerformUpgradeIfNecessary(serverProperties,loadNeo4jProperties(),new PrintStream(outputStream),DEV_NULL);
+  Monitor monitor=mock(Monitor.class);
+  PerformUpgradeIfNecessary upgrader=new PerformUpgradeIfNecessary(serverProperties,loadNeo4jProperties(),DEV_NULL,monitor);
   boolean exit=upgrader.run();
   assertEquals(false,exit);
-  String[] lines=new String(outputStream.toByteArray()).split("\\r?\\n");
-  assertThat("'" + lines[0] + "' contains '"+ "To enable automatic upgrade, please set configuration parameter "+ "\"allow_store_upgrade=true\"",lines[0].contains("To enable automatic upgrade, please set configuration parameter " + "\"allow_store_upgrade=true\""),is(true));
+  verify(monitor,times(1)).migrationNeeded();
+  verify(monitor,times(1)).migrationNotAllowed();
+  verifyNoMoreInteractions(monitor);
 }
