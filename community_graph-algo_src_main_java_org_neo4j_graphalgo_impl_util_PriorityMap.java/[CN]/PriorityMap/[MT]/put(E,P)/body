@@ -3,14 +3,39 @@
   Node<E,P> node=map.get(key);
   boolean result=false;
   if (node != null) {
-    if (priority.equals(node.priority)) {
-      node.head=new Link<E>(entity,node.head);
-      result=true;
+    if (onlyKeepBestPriorities) {
+      if (priority.equals(node.head.priority)) {
+        node.head=new Link<E,P>(entity,priority,node.head);
+        result=true;
+      }
+ else       if (order.compare(priority,node.head.priority) < 0) {
+        queue.remove(node);
+        put(entity,priority,key);
+        result=true;
+      }
     }
- else     if (order.compare(priority,node.priority) < 0) {
-      queue.remove(node);
-      put(entity,priority,key);
-      result=true;
+ else {
+      if (order.compare(priority,node.head.priority) < 0) {
+        node.head=new Link<E,P>(entity,priority,node.head);
+        result=true;
+      }
+ else {
+        Link<E,P> link=node.head, prev=link;
+        link=link.next;
+        while (link != null) {
+          if (order.compare(priority,link.priority) <= 0) {
+            prev.next=new Link<E,P>(entity,priority,link);
+            result=true;
+            break;
+          }
+          prev=link;
+          link=link.next;
+        }
+        if (!result) {
+          prev.next=new Link<E,P>(entity,priority,null);
+          result=true;
+        }
+      }
     }
   }
  else {
