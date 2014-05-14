@@ -1,0 +1,41 @@
+{
+  final ByteBuffer buffer=ByteBuffer.allocateDirect(4 * 1024 * RECORD_SIZE);
+  final long fileSize=fileChannel.size();
+  return new PrefetchingIterator<NodeRecord>(){
+    private long position=0;
+    private final Collection<NodeRecord> pageRecords=new ArrayList<>();
+    private Iterator<NodeRecord> pageRecordsIterator=IteratorUtil.emptyIterator();
+    @Override protected NodeRecord fetchNextOrNull(){
+      if (pageRecordsIterator.hasNext()) {
+        return pageRecordsIterator.next();
+      }
+      while (position < fileSize) {
+        int pageOffset=0;
+        buffer.clear();
+        try {
+          fileChannel.read(buffer,position);
+        }
+ catch (        IOException e) {
+          throw new RuntimeException(e);
+        }
+        pageRecords.clear();
+        while (pageOffset < buffer.capacity() && (pageOffset + position) < fileSize) {
+          buffer.position(pageOffset);
+          long id=(position + pageOffset) / RECORD_SIZE;
+          NodeRecord record=readRecord(buffer,id);
+          if (record.inUse()) {
+            pageRecords.add(record);
+          }
+          pageOffset+=RECORD_SIZE;
+        }
+        position+=buffer.capacity();
+        pageRecordsIterator=pageRecords.iterator();
+        if (pageRecordsIterator.hasNext()) {
+          return pageRecordsIterator.next();
+        }
+      }
+      return null;
+    }
+  }
+;
+}
