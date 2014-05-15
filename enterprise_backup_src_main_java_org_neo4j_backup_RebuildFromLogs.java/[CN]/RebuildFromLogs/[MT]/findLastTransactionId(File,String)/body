@@ -1,16 +1,22 @@
 {
-  long txId;
+  final AtomicLong txId=new AtomicLong();
   try {
     FileChannel channel=new RandomAccessFile(new File(storeDir,logFileName),"r").getChannel();
     try {
       ByteBuffer buffer=ByteBuffer.allocateDirect(9 + Xid.MAXGTRIDSIZE + Xid.MAXBQUALSIZE * 10);
-      txId=LogIoUtils.readLogHeader(buffer,channel,true)[1];
-      XaCommandFactory cf=new CommandFactory();
-      for (LogEntry entry; (entry=LogIoUtils.readEntry(buffer,channel,cf)) != null; ) {
-        if (entry instanceof LogEntry.Commit) {
-          txId=((LogEntry.Commit)entry).getTxId();
+      txId.set(VersionAwareLogEntryReader.readLogHeader(buffer,channel,true)[1]);
+      LogDeserializer deserializer=new LogDeserializer(buffer,XaCommandReaderFactory.DEFAULT);
+      Cursor<LogEntry,IOException> cursor=deserializer.cursor(channel);
+      Consumer<LogEntry,IOException> consumer=new Consumer<LogEntry,IOException>(){
+        @Override public boolean accept(        LogEntry entry) throws IOException {
+          if (entry instanceof LogEntry.Commit) {
+            txId.set(((LogEntry.Commit)entry).getTxId());
+          }
+          return true;
         }
       }
+;
+      while (cursor.next(consumer))       ;
     }
   finally {
       if (channel != null) {
@@ -21,5 +27,5 @@
  catch (  IOException e) {
     return -1;
   }
-  return txId;
+  return txId.get();
 }

@@ -1,0 +1,27 @@
+{
+  super(branchId,name);
+  try {
+    TransactionStateFactory stateFactory=new TransactionStateFactory(new DevNullLoggingService()){
+      @Override public TransactionState create(      Transaction tx){
+        return new NoTransactionState(){
+          @Override @SuppressWarnings("deprecation") public TxIdGenerator getTxIdGenerator(){
+            return getGraphDbAPI().getDependencyResolver().resolveDependency(TxIdGenerator.class);
+          }
+        }
+;
+      }
+    }
+;
+    map.put("store_dir",path().getPath());
+    xaContainer=xaFactory.newXaContainer(this,resourceFile(),new DummyCommandReaderFactory(),new DummyCommandWriterFactory(),ALLOW_ALL,new DummyTransactionFactory(),stateFactory,new TransactionInterceptorProviders(Iterables.<TransactionInterceptorProvider>empty(),new DependencyResolver.Adapter(){
+      @Override public <T>T resolveDependency(      Class<T> type,      SelectionStrategy selector){
+        return type.cast(new Config(MapUtil.stringMap(GraphDatabaseSettings.intercept_committing_transactions.name(),Settings.FALSE,GraphDatabaseSettings.intercept_deserialized_transactions.name(),Settings.FALSE)));
+      }
+    }
+),false,Functions.<List<LogEntry>>identity());
+    xaContainer.openLogicalLog();
+  }
+ catch (  IOException e) {
+    throw new InstantiationException("" + e);
+  }
+}

@@ -1,0 +1,40 @@
+{
+  final Id keyTokenId=id();
+  final Set<DynamicRecord> schemaBefore=new HashSet<DynamicRecord>();
+  final Set<DynamicRecord> schemaAfter=new HashSet<DynamicRecord>();
+  schemaBefore.add(new DynamicRecord(10));
+  schemaBefore.add(new DynamicRecord(11));
+  schemaAfter.add(new DynamicRecord(10));
+  schemaAfter.add(new DynamicRecord(11));
+  schemaAfter.add(new DynamicRecord(13));
+  NeoStore existingStore=existingStore(new ExistingContents(){
+    @Override public void fill(    NeoStore neoStore,    TransactionDataBuilder transaction){
+      keyTokenId.get(neoStore.getLabelTokenStore());
+    }
+  }
+);
+  List<LogEntry> translated=translate(existingStore,transaction(new TransactionContents(){
+    @Override public void fill(    TransactionDataBuilder transaction){
+      transaction.create(propertyKeyToken((int)keyTokenId.get()));
+      transaction.update(neoStore());
+      transaction.update(schemaRule(schemaBefore,schemaAfter,IndexRule.indexRule(19,14,2,new SchemaIndexProvider.Descriptor("lucene","2.1"))));
+      Command.RelationshipTypeTokenCommand typeCommand=new Command.RelationshipTypeTokenCommand();
+      typeCommand.init(new RelationshipTypeTokenRecord(12));
+      transaction.create(typeCommand);
+      transaction.create(new LabelTokenRecord(12));
+    }
+  }
+));
+  assertTranslatedTransaction(translated,new TransactionContents(){
+    @Override public void fill(    TransactionDataBuilder transaction){
+      transaction.create(propertyKeyToken((int)keyTokenId.get()));
+      transaction.update(neoStore());
+      transaction.update(schemaRule(schemaBefore,schemaAfter,IndexRule.indexRule(19,14,2,new SchemaIndexProvider.Descriptor("lucene","2.1"))));
+      Command.RelationshipTypeTokenCommand typeCommand=new Command.RelationshipTypeTokenCommand();
+      typeCommand.init(new RelationshipTypeTokenRecord(12));
+      transaction.create(typeCommand);
+      transaction.create(new LabelTokenRecord(12));
+    }
+  }
+);
+}

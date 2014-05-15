@@ -1,10 +1,19 @@
 {
+  LogEntryWriterv1 writer=new LogEntryWriterv1();
+  writer.setCommandWriter(new XaCommandWriter(){
+    @Override public void write(    XaCommand command,    LogBuffer buffer) throws IOException {
+      TestXaCommand test=(TestXaCommand)command;
+      buffer.putInt(test.getTotalSize());
+      buffer.put(new byte[test.getTotalSize() - 4]);
+    }
+  }
+);
   InMemoryLogBuffer tempLogBuffer=new InMemoryLogBuffer();
   XidImpl xid=new XidImpl(getNewGlobalId(DEFAULT_SEED,0),RESOURCE_XID);
-  LogIoUtils.writeStart(tempLogBuffer,identifier,xid,-1,-1,date,Long.MAX_VALUE);
-  LogIoUtils.writeCommand(tempLogBuffer,identifier,new TestXaCommand(commandSize));
-  LogIoUtils.writeCommit(false,tempLogBuffer,identifier,++tx,date);
-  LogIoUtils.writeDone(tempLogBuffer,identifier);
+  writer.writeLogEntry(new LogEntry.Start(xid,identifier,-1,-1,date,-1,Long.MAX_VALUE),tempLogBuffer);
+  writer.writeLogEntry(new LogEntry.Command(identifier,new TestXaCommand(commandSize)),tempLogBuffer);
+  writer.writeLogEntry(new LogEntry.OnePhaseCommit(identifier,++tx,date),tempLogBuffer);
+  writer.writeLogEntry(new LogEntry.Done(identifier),tempLogBuffer);
   tempLogBuffer.read(activeBuffer);
   if (!timestamps.containsKey(version)) {
     timestamps.put(version,date);

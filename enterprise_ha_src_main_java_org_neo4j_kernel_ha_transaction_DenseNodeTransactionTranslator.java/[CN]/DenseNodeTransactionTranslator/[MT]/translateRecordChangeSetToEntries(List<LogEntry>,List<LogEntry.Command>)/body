@@ -1,0 +1,40 @@
+{
+  for (  RecordChanges.RecordChange<Long,NodeRecord,Void> nodeChange : recordChangeSet.getNodeRecords().changes()) {
+    Command.NodeCommand newCommand=new Command.NodeCommand();
+    newCommand.init(nodeChange.getBefore(),nodeChange.forChangingData());
+    result.add(new LogEntry.Command(result.get(0).getIdentifier(),newCommand));
+  }
+  for (  RecordChanges.RecordChange<Long,RelationshipRecord,Void> relChange : recordChangeSet.getRelRecords().changes()) {
+    Command.RelationshipCommand newCommand=new Command.RelationshipCommand();
+    newCommand.init(relChange.forChangingData());
+    result.add(new LogEntry.Command(result.get(0).getIdentifier(),newCommand));
+  }
+  for (  RecordChanges.RecordChange<Long,RelationshipGroupRecord,Integer> relGroupChange : recordChangeSet.getRelGroupRecords().changes()) {
+    Command.RelationshipGroupCommand newCommand=new Command.RelationshipGroupCommand();
+    newCommand.init(relGroupChange.forChangingData());
+    result.add(new LogEntry.Command(result.get(0).getIdentifier(),newCommand));
+  }
+  for (  RecordChanges.RecordChange<Long,PropertyRecord,PrimitiveRecord> propChange : recordChangeSet.getPropertyRecords().changes()) {
+    Command.PropertyCommand newCommand=new Command.PropertyCommand();
+    newCommand.init(propChange.getBefore(),propChange.forChangingData());
+    result.add(new LogEntry.Command(result.get(0).getIdentifier(),newCommand));
+  }
+  for (  LogEntry.Command commandEntry : commands) {
+    Command command=(Command)commandEntry.getXaCommand();
+    if (command instanceof Command.RelationshipCommand) {
+      long id=((Command.RelationshipCommand)command).getRecord().getId();
+      if (recordChangeSet.getRelRecords().getIfLoaded(id) == null) {
+        result.add(commandEntry);
+      }
+    }
+ else     if (command instanceof Command.NodeCommand) {
+      long id=((Command.NodeCommand)command).getAfter().getId();
+      if (recordChangeSet.getNodeRecords().getIfLoaded(id) == null) {
+        result.add(commandEntry);
+      }
+    }
+ else {
+      result.add(commandEntry);
+    }
+  }
+}

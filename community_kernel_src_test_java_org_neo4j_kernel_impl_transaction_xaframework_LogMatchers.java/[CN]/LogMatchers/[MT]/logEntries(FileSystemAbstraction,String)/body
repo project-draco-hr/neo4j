@@ -2,14 +2,20 @@
   StoreChannel fileChannel=fileSystem.open(new File(logPath),"r");
   ByteBuffer buffer=ByteBuffer.allocateDirect(9 + Xid.MAXGTRIDSIZE + Xid.MAXBQUALSIZE * 10);
   try {
-    LogIoUtils.readLogHeader(buffer,fileChannel,true);
-    List<LogEntry> entries=new ArrayList<LogEntry>();
-    DumpLogicalLog.CommandFactory cmdFactory=new DumpLogicalLog.CommandFactory();
-    LogEntry entry;
-    while ((entry=LogIoUtils.readEntry(buffer,fileChannel,cmdFactory)) != null) {
-      entries.add(entry);
+    VersionAwareLogEntryReader.readLogHeader(buffer,fileChannel,true);
+    final List<LogEntry> entries=new ArrayList<>();
+    LogDeserializer deserializer=new LogDeserializer(buffer,XaCommandReaderFactory.DEFAULT);
+    Consumer<LogEntry,IOException> consumer=new Consumer<LogEntry,IOException>(){
+      @Override public boolean accept(      LogEntry entry) throws IOException {
+        entries.add(entry);
+        return true;
+      }
     }
-    return entries;
+;
+    try (Cursor<LogEntry,IOException> cursor=deserializer.cursor(fileChannel)){
+      while (cursor.next(consumer))       ;
+    }
+     return entries;
   }
   finally {
     fileChannel.close();

@@ -1,0 +1,32 @@
+{
+  final List<LogEntry> newEntries=new ArrayList<>();
+  for (  LogEntry logEntry : logEntries) {
+    try {
+      logEntry.accept(new LogHandler.Filter(null){
+        @Override public void startEntry(        LogEntry.Start startEntry) throws IOException {
+          newEntries.add(new LogEntry.Start(startEntry.getXid(),startEntry.getIdentifier(),LogEntry.CURRENT_LOG_ENTRY_VERSION,startEntry.getMasterId(),startEntry.getStartPosition(),startEntry.getTimeWritten(),startEntry.getLastCommittedTxWhenTransactionStarted()));
+        }
+        @Override public void prepareEntry(        LogEntry.Prepare prepareEntry) throws IOException {
+          newEntries.add(new LogEntry.Prepare(prepareEntry.getIdentifier(),LogEntry.CURRENT_LOG_ENTRY_VERSION,prepareEntry.getTimeWritten()));
+        }
+        @Override public void onePhaseCommitEntry(        LogEntry.OnePhaseCommit onePhaseCommitEntry) throws IOException {
+          newEntries.add(new LogEntry.OnePhaseCommit(onePhaseCommitEntry.getIdentifier(),LogEntry.CURRENT_LOG_ENTRY_VERSION,onePhaseCommitEntry.getTxId(),onePhaseCommitEntry.getTimeWritten()));
+        }
+        @Override public void twoPhaseCommitEntry(        LogEntry.TwoPhaseCommit twoPhaseCommitEntry) throws IOException {
+          newEntries.add(new LogEntry.TwoPhaseCommit(twoPhaseCommitEntry.getIdentifier(),LogEntry.CURRENT_LOG_ENTRY_VERSION,twoPhaseCommitEntry.getTxId(),twoPhaseCommitEntry.getTimeWritten()));
+        }
+        @Override public void doneEntry(        LogEntry.Done doneEntry) throws IOException {
+          newEntries.add(new LogEntry.Done(doneEntry.getIdentifier(),LogEntry.CURRENT_LOG_ENTRY_VERSION));
+        }
+        @Override public void commandEntry(        LogEntry.Command commandEntry) throws IOException {
+          newEntries.add(new LogEntry.Command(commandEntry.getIdentifier(),LogEntry.CURRENT_LOG_ENTRY_VERSION,commandEntry.getXaCommand()));
+        }
+      }
+);
+    }
+ catch (    IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
+  return newEntries;
+}

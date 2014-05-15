@@ -1,0 +1,30 @@
+{
+  final Id startNodeId=id();
+  final Id endNodeId=id();
+  final Id relationshipId=id();
+  final Id typeId=id();
+  NeoStore existingStore=existingStore(new ExistingContents(){
+    @Override public void fill(    NeoStore neoStore,    TransactionDataBuilder transaction){
+      startNodeId.get(neoStore.getNodeStore());
+      endNodeId.get(neoStore.getNodeStore());
+      relationshipId.get(neoStore.getRelationshipStore());
+      typeId.get(neoStore.getRelationshipTypeStore());
+      transaction.create(node(startNodeId.get()).asInUse().withNextRel(relationshipId.get()));
+      transaction.create(node(endNodeId.get()).asInUse().withNextRel(relationshipId.get()));
+      transaction.create(relationship(relationshipId.get(),startNodeId.get(),endNodeId.get(),(int)typeId.get()).asInUse());
+    }
+  }
+);
+  List<LogEntry> translated=translate(existingStore,transaction(new TransactionContents(){
+    @Override public void fill(    TransactionDataBuilder transaction){
+      transaction.update(relationship(relationshipId.get(),startNodeId.get(),endNodeId.get(),(int)typeId.get()).asInUse().withNextProperty(12));
+    }
+  }
+));
+  assertTranslatedTransaction(translated,new TransactionContents(){
+    @Override public void fill(    TransactionDataBuilder transaction){
+      transaction.update(relationship(relationshipId.get(),startNodeId.get(),endNodeId.get(),(int)typeId.get()).asInUse().withNextProperty(12));
+    }
+  }
+);
+}

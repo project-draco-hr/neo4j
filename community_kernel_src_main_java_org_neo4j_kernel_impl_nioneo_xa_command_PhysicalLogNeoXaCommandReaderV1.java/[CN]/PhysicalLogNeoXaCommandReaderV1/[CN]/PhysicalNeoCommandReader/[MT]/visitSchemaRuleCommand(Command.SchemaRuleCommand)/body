@@ -1,0 +1,22 @@
+{
+  Collection<DynamicRecord> recordsBefore=new ArrayList<>();
+  readDynamicRecords(recordsBefore,COLLECTION_DYNAMIC_RECORD_ADDER);
+  Collection<DynamicRecord> recordsAfter=new ArrayList<>();
+  readDynamicRecords(recordsAfter,COLLECTION_DYNAMIC_RECORD_ADDER);
+  if (!readAndFlip(byteChannel,scratch,1)) {
+    return false;
+  }
+  byte isCreated=scratch.get();
+  if (1 == isCreated) {
+    for (    DynamicRecord record : recordsAfter) {
+      record.setCreated();
+    }
+  }
+  if (!readAndFlip(byteChannel,scratch,8)) {
+    return false;
+  }
+  long txId=scratch.getLong();
+  SchemaRule rule=first(recordsAfter).inUse() ? readSchemaRule(recordsAfter) : readSchemaRule(recordsBefore);
+  command.init(recordsBefore,recordsAfter,rule,txId);
+  return true;
+}
