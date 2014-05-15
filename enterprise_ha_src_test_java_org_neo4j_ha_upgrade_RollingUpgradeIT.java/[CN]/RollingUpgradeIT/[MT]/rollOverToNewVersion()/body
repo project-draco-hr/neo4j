@@ -2,13 +2,17 @@
   debug("Starting to roll over to current version");
   Pair<LegacyDatabase,Integer> master=findOutWhoIsMaster();
   newDbs=new GraphDatabaseAPI[legacyDbs.length];
+  int authorativeSlaveId=-1;
   for (int i=0; i < legacyDbs.length; i++) {
     LegacyDatabase legacyDb=legacyDbs[i];
     if (legacyDb == master.first()) {
       System.out.println("master is " + master.first().getStoreDir());
       continue;
     }
-    rollOver(legacyDb,i);
+    rollOver(legacyDb,i,master.other(),authorativeSlaveId);
+    if (authorativeSlaveId == -1) {
+      authorativeSlaveId=i;
+    }
   }
-  rollOver(master.first(),master.other());
+  rollOver(master.first(),master.other(),master.other(),-2);
 }
