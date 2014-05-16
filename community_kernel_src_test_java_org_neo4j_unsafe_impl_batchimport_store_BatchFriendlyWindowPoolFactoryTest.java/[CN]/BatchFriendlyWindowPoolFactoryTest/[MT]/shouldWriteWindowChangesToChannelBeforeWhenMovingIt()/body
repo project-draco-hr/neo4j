@@ -1,0 +1,22 @@
+{
+  byte[] someBytes=new byte[]{1,2,3,4,5};
+  byte[] someOtherBytes=new byte[]{6,7,8,9,10};
+  Monitor monitor=mock(Monitor.class);
+  WindowPool pool=pool(monitor,Mode.APPEND_ONLY);
+{
+    PersistenceWindow window=pool.acquire(recordId(0,0),OperationType.WRITE);
+    window.getOffsettedBuffer(recordId(0,0)).put(someBytes);
+    verify(monitor,times(0)).dataWritten(anyInt());
+  }
+{
+    PersistenceWindow window=pool.acquire(recordId(0,3),OperationType.WRITE);
+    window.getOffsettedBuffer(recordId(0,3)).put(someOtherBytes);
+    verify(monitor,times(0)).dataWritten(anyInt());
+  }
+{
+    PersistenceWindow window=pool.acquire(recordId(1,0),OperationType.WRITE);
+    verify(monitor,times(1)).dataWritten(anyInt());
+  }
+  verifyData(recordId(0,0),someBytes);
+  verifyData(recordId(0,3),someOtherBytes);
+}
