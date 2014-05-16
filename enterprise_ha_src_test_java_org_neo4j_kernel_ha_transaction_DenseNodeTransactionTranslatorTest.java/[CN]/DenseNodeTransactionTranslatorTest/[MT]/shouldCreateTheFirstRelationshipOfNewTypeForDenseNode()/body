@@ -1,0 +1,37 @@
+{
+  final Id denseNodeId=id(), otherNodeId=id(), thirdNodeId=id();
+  final Id firstRelationshipId=id(), otherRelationshipId=id();
+  final Id groupAId=id();
+  final Id typeA=id(), typeB=id();
+  NeoStore existingStore=existingStore(new ExistingContents(){
+    @Override public void fill(    NeoStore neoStore,    TransactionDataBuilder transaction){
+      transaction.create(group(groupAId.get(neoStore.getRelationshipGroupStore()),(int)typeA.get(neoStore.getRelationshipTypeStore())).asInUse().withFirstOut(firstRelationshipId.get(neoStore.getRelationshipStore())));
+      transaction.create(node(denseNodeId.get(neoStore.getNodeStore())).asInUse().asDense().withNextRel(groupAId.get()));
+      otherRelationshipId.get(neoStore.getRelationshipStore());
+      typeB.get(neoStore.getRelationshipTypeStore());
+      transaction.create(node(otherNodeId.get(neoStore.getNodeStore())).asInUse());
+      transaction.create(node(thirdNodeId.get(neoStore.getNodeStore())).asInUse());
+    }
+  }
+);
+  List<LogEntry> translated=translate(existingStore,transaction(new TransactionContents(){
+    @Override public void fill(    TransactionDataBuilder transaction){
+      transaction.update(node(denseNodeId.get()).asInUse().asDense().withNextRel(groupAId.get()),node(denseNodeId.get()).asInUse().withNextRel(otherRelationshipId.get()));
+      transaction.create(relationship(otherRelationshipId.get(),thirdNodeId.get(),denseNodeId.get(),(int)typeB.get()).asInUse().withEndPointers(-1,firstRelationshipId.get()));
+      transaction.create(relationship(firstRelationshipId.get(),denseNodeId.get(),otherNodeId.get(),(int)typeA.get()).asInUse().withStartPointers(otherRelationshipId.get(),-1));
+    }
+  }
+));
+  assertTranslatedTransaction(translated,new TransactionContents(){
+    @Override public void fill(    TransactionDataBuilder transaction){
+      transaction.update(node(denseNodeId.get()).asInUse().asDense().withNextRel(groupAId.get()),node(denseNodeId.get()).asInUse().asDense().withNextRel(groupAId.get()));
+      transaction.update(node(otherNodeId.get()).asInUse(),node(otherNodeId.get()).asInUse().withNextRel(firstRelationshipId.get()));
+      transaction.update(node(thirdNodeId.get()).asInUse(),node(thirdNodeId.get()).asInUse().withNextRel(otherRelationshipId.get()));
+      transaction.update(relationship(firstRelationshipId.get(),denseNodeId.get(),otherNodeId.get(),(int)typeA.get()).asInUse().withStartPointers(otherRelationshipId.get(),-1));
+      transaction.update(relationship(otherRelationshipId.get(),thirdNodeId.get(),denseNodeId.get(),(int)typeB.get()).asInUse().withEndPointers(-1,firstRelationshipId.get()));
+      transaction.update(group(groupAId.get(),(int)typeA.get()).asInUse().withNextGroup(groupAId.get() + 1).withFirstOut(firstRelationshipId.get()));
+      transaction.update(group(groupAId.get() + 1,(int)typeB.get()).asInUse().withFirstIn(otherRelationshipId.get()));
+    }
+  }
+);
+}

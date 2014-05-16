@@ -1,0 +1,27 @@
+{
+  if (!readAndFlip(byteChannel,scratch,13)) {
+    return false;
+  }
+  int id=scratch.getInt();
+  byte inUseFlag=scratch.get();
+  boolean inUse=false;
+  if ((inUseFlag & Record.IN_USE.byteValue()) == Record.IN_USE.byteValue()) {
+    inUse=true;
+  }
+ else   if (inUseFlag != Record.NOT_IN_USE.byteValue()) {
+    throw new IOException("Illegal in use flag: " + inUseFlag);
+  }
+  LabelTokenRecord record=new LabelTokenRecord(id);
+  record.setInUse(inUse);
+  record.setNameId(scratch.getInt());
+  int nrTypeRecords=scratch.getInt();
+  for (int i=0; i < nrTypeRecords; i++) {
+    DynamicRecord dr=readDynamicRecord();
+    if (dr == null) {
+      return false;
+    }
+    record.addNameRecord(dr);
+  }
+  command.init(record);
+  return true;
+}

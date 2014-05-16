@@ -33,7 +33,7 @@ catch (    IOException e) {
         long logVersion=ds.getCurrentLogVersion() - 1;
         FileChannel newLog=new RandomAccessFile(ds.getFileName(logVersion),"rw").getChannel();
         newLog.truncate(0);
-        LogIoUtils.writeLogHeader(scratch,logVersion,-1);
+        VersionAwareLogEntryReader.writeLogHeader(scratch,logVersion,-1);
         newLog.write(scratch);
         ReadableByteChannel received=tx.third().extract();
         scratch.flip();
@@ -47,7 +47,12 @@ catch (    IOException e) {
         received.close();
       }
     }
- catch (    IOException e) {
+ catch (    RuntimeException e) {
+      if (e.getCause() != null && e.getCause() instanceof NoSuchLogVersionException) {
+        logger.warn("Important: There are no available transaction logs on the target database, which " + "means the backup could not save a point-in-time reference. This means you cannot use this " + "backup for incremental backups, and it means you cannot use it directly to seed an HA "+ "cluster. The next time you perform a backup, a full backup will be done. If you wish to "+ "use this backup as a seed for a cluster, you need to start a stand-alone database on "+ "it, and commit one write transaction, to create the transaction log needed to seed the "+ "cluster. To avoid this happening, make sure you never manually delete transaction log "+ "files (nioneo_logical.log.vXXX), and that you configure the database to keep at least a "+ "few days worth of transaction logs.");
+      }
+    }
+catch (    IOException e) {
       throw new RuntimeException(e);
     }
  finally {

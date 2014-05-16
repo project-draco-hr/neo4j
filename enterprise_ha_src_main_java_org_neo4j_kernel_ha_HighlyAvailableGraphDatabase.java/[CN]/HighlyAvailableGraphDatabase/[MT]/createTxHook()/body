@@ -17,7 +17,7 @@
     @Override public boolean accept(    PaxosClusterMemberEvents.ClusterMembersSnapshot item){
       for (      MemberIsAvailable member : item.getCurrentAvailableMembers()) {
         if (member.getRoleUri().getScheme().equals("ha")) {
-          if (HighAvailabilityModeSwitcher.getServerId(member.getRoleUri()) == config.get(ClusterSettings.server_id)) {
+          if (HighAvailabilityModeSwitcher.getServerId(member.getRoleUri()).equals(config.get(ClusterSettings.server_id))) {
             msgLog.error(String.format("Instance %s has the same serverId as ours (%d) - will not " + "join this cluster",member.getRoleUri(),config.get(ClusterSettings.server_id)));
             return true;
           }
@@ -39,14 +39,14 @@
     }
   }
 );
-  HighAvailabilityMemberContext localMemberContext=new SimpleHighAvailabilityMemberContext(clusterClient.getServerId());
+  HighAvailabilityMemberContext localMemberContext=new SimpleHighAvailabilityMemberContext(clusterClient.getServerId(),config.get(HaSettings.slave_only));
   PaxosClusterMemberAvailability localClusterMemberAvailability=new PaxosClusterMemberAvailability(clusterClient.getServerId(),clusterClient,clusterClient,logging,objectStreamFactory,objectStreamFactory);
   memberContextDelegateInvocationHandler.setDelegate(localMemberContext);
   clusterEventsDelegateInvocationHandler.setDelegate(localClusterEvents);
   clusterMemberAvailabilityDelegateInvocationHandler.setDelegate(localClusterMemberAvailability);
-  members=new ClusterMembers(clusterClient,clusterClient,clusterEvents,new InstanceId(config.get(ClusterSettings.server_id)));
+  members=new ClusterMembers(clusterClient,clusterClient,clusterEvents,config.get(ClusterSettings.server_id));
   memberStateMachine=new HighAvailabilityMemberStateMachine(memberContext,availabilityGuard,members,clusterEvents,clusterClient,logging.getMessagesLog(HighAvailabilityMemberStateMachine.class));
-  HighAvailabilityConsoleLogger highAvailabilityConsoleLogger=new HighAvailabilityConsoleLogger(logging.getConsoleLog(HighAvailabilityConsoleLogger.class),new InstanceId(config.get(ClusterSettings.server_id)));
+  HighAvailabilityConsoleLogger highAvailabilityConsoleLogger=new HighAvailabilityConsoleLogger(logging.getConsoleLog(HighAvailabilityConsoleLogger.class),config.get(ClusterSettings.server_id));
   availabilityGuard.addListener(highAvailabilityConsoleLogger);
   clusterEvents.addClusterMemberListener(highAvailabilityConsoleLogger);
   clusterClient.addClusterListener(highAvailabilityConsoleLogger);

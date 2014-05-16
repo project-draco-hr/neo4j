@@ -1,0 +1,24 @@
+{
+  FileSystemAbstraction fs=new DefaultFileSystemAbstraction();
+  StoreUpgrader migrationProcess=new StoreUpgrader(new ConfigMapUpgradeConfiguration(config),fs,monitor);
+  config=StoreFactory.configForStoreDir(config,new File(legacyStoreDirectory));
+  migrationProcess.addParticipant(new StoreMigrator(new VisibleMigrationProgressMonitor(log,System.out),new UpgradableDatabase(new StoreVersionCheck(fs)),config));
+  LifeSupport life=new LifeSupport();
+  KernelExtensions kernelExtensions=life.add(new KernelExtensions(new DefaultGraphDatabaseDependencies().kernelExtensions(),config,kernelExtensionDependencyResolver(fs,config),ignore()));
+  life.start();
+  try {
+    SchemaIndexProvider schemaIndexProvider=kernelExtensions.resolveDependency(SchemaIndexProvider.class,SchemaIndexProvider.HIGHEST_PRIORITIZED_OR_NONE);
+    migrationProcess.addParticipant(schemaIndexProvider.storeMigrationParticipant());
+  }
+ catch (  IllegalArgumentException e) {
+  }
+  try {
+    long startTime=System.currentTimeMillis();
+    migrationProcess.migrateIfNeeded(new File(legacyStoreDirectory));
+    long duration=System.currentTimeMillis() - startTime;
+    log.info(format("Migration completed in %d s%n",duration / 1000));
+  }
+  finally {
+    life.shutdown();
+  }
+}

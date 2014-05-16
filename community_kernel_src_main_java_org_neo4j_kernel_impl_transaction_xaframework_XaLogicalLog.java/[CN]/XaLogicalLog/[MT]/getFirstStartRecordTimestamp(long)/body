@@ -3,14 +3,13 @@
   try {
     ByteBuffer buffer=LogExtractor.newLogReaderBuffer();
     log=getLogicalLog(version);
-    LogIoUtils.readLogHeader(buffer,log,true);
-    LogEntry entry=null;
-    while ((entry=LogIoUtils.readEntry(buffer,log,cf)) != null) {
-      if (entry instanceof LogEntry.Start) {
-        return ((LogEntry.Start)entry).getTimeWritten();
-      }
+    VersionAwareLogEntryReader.readLogHeader(buffer,log,true);
+    LogDeserializer deserializer=new LogDeserializer(buffer,commandReaderFactory);
+    TimeWrittenConsumer consumer=new TimeWrittenConsumer();
+    try (Cursor<LogEntry,IOException> cursor=deserializer.cursor(log)){
+      while (cursor.next(consumer))       ;
     }
-    return -1L;
+     return consumer.getTimeWritten();
   }
   finally {
     if (log != null) {

@@ -1,7 +1,12 @@
 {
   LogExtractor extractor=null;
   try {
-    extractor=LogExtractor.from(FS,sourceDir,new Monitors().newMonitor(ByteCounterMonitor.class));
+    extractor=LogExtractor.from(FS,XaCommandReaderFactory.DEFAULT,new XaCommandWriterFactory(){
+      @Override public XaCommandWriter newInstance(){
+        return new PhysicalLogNeoXaCommandWriter();
+      }
+    }
+,new Monitors().newMonitor(ByteCounterMonitor.class),new LogEntryWriterv1(),sourceDir);
     for (InMemoryLogBuffer buffer=new InMemoryLogBuffer(); ; buffer.reset()) {
       long txId=extractor.extractNext(buffer);
       if (txId == -1) {

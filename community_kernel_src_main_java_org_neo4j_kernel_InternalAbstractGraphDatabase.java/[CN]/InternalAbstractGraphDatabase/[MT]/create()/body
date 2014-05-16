@@ -14,6 +14,7 @@
     this.logging=createLogging();
   }
   this.monitors=createMonitors();
+  storeMigrationProcess=new StoreUpgrader(new ConfigMapUpgradeConfiguration(config),fileSystem,monitors.newMonitor(StoreUpgrader.Monitor.class));
   AutoConfigurator autoConfigurator=new AutoConfigurator(fileSystem,config.get(NeoStoreXaDataSource.Configuration.store_dir),config.get(Configuration.use_memory_mapped_buffers),logging.getConsoleLog(AutoConfigurator.class));
   if (config.get(GraphDatabaseSettings.dump_configuration)) {
     System.out.println(autoConfigurator.getNiceMemoryInformation());
@@ -67,6 +68,7 @@
   txIdGenerator=life.add(createTxIdGenerator());
   lockManager=createLockManager();
   idGeneratorFactory=createIdGeneratorFactory();
+  storeMigrationProcess.addParticipant(new StoreMigrator(new VisibleMigrationProgressMonitor(logging.getMessagesLog(StoreMigrator.class),System.out),new UpgradableDatabase(new StoreVersionCheck(fileSystem)),config));
   persistenceSource=life.add(new NioNeoDbPersistenceSource(xaDataSourceManager));
   persistenceManager=new PersistenceManager(logging.getMessagesLog(PersistenceManager.class),txManager,persistenceSource);
   propertyKeyTokenHolder=life.add(new PropertyKeyTokenHolder(txManager,persistenceManager,persistenceSource,createPropertyKeyCreator()));

@@ -1,0 +1,41 @@
+{
+  try (Transaction tx=db.beginTx()){
+    Node central=db.getNodeById(center);
+    long type1RelCount=central.getDegree(type1);
+    long type2RelCount=central.getDegree(type2);
+    long[] type1RelId=new long[(int)type1RelCount];
+    long[] type2RelId=new long[(int)type2RelCount];
+    int index=0;
+    for (    Relationship relationship : central.getRelationships(type1)) {
+      type1RelId[index++]=relationship.getId();
+    }
+    index=0;
+    for (    Relationship relationship : central.getRelationships(type2)) {
+      type2RelId[index++]=relationship.getId();
+    }
+    Arrays.sort(type1RelId);
+    Arrays.sort(type2RelId);
+    for (int i=0; i < type1RelId.length / 2; i++) {
+      db.getRelationshipById(type1RelId[i]).delete();
+    }
+    for (int i=0; i < type2RelId.length / 2; i++) {
+      db.getRelationshipById(type2RelId[i]).delete();
+    }
+    for (int i=0; i < type1RelId.length / 2; i++) {
+      central.createRelationshipTo(db.createNode(),type1);
+    }
+    long largestCreated=0;
+    for (int i=0; i < type2RelId.length / 2; i++) {
+      long current=central.createRelationshipTo(db.createNode(),type2).getId();
+      if (current > largestCreated) {
+        largestCreated=current;
+      }
+    }
+    for (    Relationship relationship : central.getRelationships()) {
+      relationship.setProperty("relProp","relProp" + relationship.getId() + "-"+ largestCreated);
+      Node end=relationship.getEndNode();
+      end.setProperty("nodeProp","nodeProp" + end.getId() + "-"+ largestCreated);
+    }
+    tx.success();
+  }
+ }

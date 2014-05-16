@@ -11,6 +11,10 @@
  else {
     tf=new TransactionFactory();
   }
+  indexProvider=dependencyResolver.resolveDependency(SchemaIndexProvider.class,SchemaIndexProvider.HIGHEST_PRIORITIZED_OR_NONE);
+  storeMigrationProcess.addParticipant(indexProvider.storeMigrationParticipant());
+  DefaultSchemaIndexProviderMap providerMap=new DefaultSchemaIndexProviderMap(indexProvider);
+  storeMigrationProcess.migrateIfNeeded(store.getParentFile());
   neoStore=storeFactory.newNeoStore(store);
   neoStoreTransactionContextSupplier=new NeoStoreTransactionContextSupplier(neoStore);
   schemaCache=new SchemaCache(Collections.<SchemaRule>emptyList());
@@ -24,11 +28,14 @@
 ,nodeManager);
   cacheAccess=new BridgingCacheAccess(nodeManager,schemaCache,updateableSchemaState,persistenceCache);
   try {
-    indexProvider=dependencyResolver.resolveDependency(SchemaIndexProvider.class,SchemaIndexProvider.HIGHEST_PRIORITIZED_OR_NONE);
-    DefaultSchemaIndexProviderMap providerMap=new DefaultSchemaIndexProviderMap(indexProvider);
     indexingService=life.add(new IndexingService(scheduler,providerMap,new NeoStoreIndexStoreView(locks,neoStore),tokenNameLookup,updateableSchemaState,logging,indexingServiceMonitor));
     integrityValidator=new IntegrityValidator(neoStore,indexingService);
-    xaContainer=xaFactory.newXaContainer(this,config.get(Configuration.logical_log),new CommandFactory(neoStore,indexingService),new NeoStoreInjectedTransactionValidator(integrityValidator),tf,stateFactory,providers,readOnly);
+    xaContainer=xaFactory.newXaContainer(this,config.get(Configuration.logical_log),XaCommandReaderFactory.DEFAULT,new XaCommandWriterFactory(){
+      @Override public XaCommandWriter newInstance(){
+        return new PhysicalLogNeoXaCommandWriter();
+      }
+    }
+,new NeoStoreInjectedTransactionValidator(integrityValidator),tf,stateFactory,providers,readOnly,translatorFactory.apply(neoStore));
     labelScanStore=life.add(dependencyResolver.resolveDependency(LabelScanStoreProvider.class,LabelScanStoreProvider.HIGHEST_PRIORITIZED).getLabelScanStore());
     fileListing=new NeoStoreFileListing(xaContainer,storeDir,labelScanStore,indexingService);
     Provider<NeoStore> neoStoreProvider=new Provider<NeoStore>(){
@@ -62,7 +69,7 @@
     this.idGenerators.put(RelationshipType.class,neoStore.getRelationshipTypeStore());
     this.idGenerators.put(Label.class,neoStore.getLabelTokenStore());
     this.idGenerators.put(PropertyStore.class,neoStore.getPropertyStore());
-    this.idGenerators.put(PropertyKeyTokenRecord.class,neoStore.getPropertyStore().getPropertyKeyTokenStore());
+    this.idGenerators.put(PropertyKeyTokenRecord.class,neoStore.getPropertyKeyTokenStore());
     setLogicalLogAtCreationTime(xaContainer.getLogicalLog());
     life.start();
   }

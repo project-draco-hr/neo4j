@@ -1,0 +1,20 @@
+{
+  final Id nodeId=id(), relationshipId=id(), type=id();
+  NeoStore existingStore=existingStore(new ExistingContents(){
+    @Override public void fill(    NeoStore neoStore,    TransactionDataBuilder transaction){
+      type.get(neoStore.getRelationshipTypeStore());
+      relationshipId.get(neoStore.getRelationshipStore());
+      transaction.create(node(nodeId.get(neoStore.getNodeStore())).asInUse());
+    }
+  }
+);
+  List<LogEntry> transaction=transaction(new TransactionContents(){
+    @Override public void fill(    TransactionDataBuilder transaction){
+      transaction.update(node(nodeId.get()),node(nodeId.get()).asInUse().withNextRel(relationshipId.get()));
+      transaction.create(relationship(relationshipId.get(),nodeId.get(),nodeId.get(),(int)type.get()).asInUse());
+    }
+  }
+);
+  List<LogEntry> translated=translate(existingStore,transaction);
+  assertThat(translated,matchesLogEntriesIn(transaction));
+}
