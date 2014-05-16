@@ -1,0 +1,18 @@
+{
+  byte[] someBytes=new byte[]{1,2,3,4,5};
+  prepopulateChannel(data(0,0,someBytes));
+  prepopulateChannel(data(1,0,someBytes));
+  Monitor monitor=mock(Monitor.class);
+  WindowPool pool=pool(monitor,Mode.APPEND_ONLY);
+  PersistenceWindow window=pool.acquire(recordId(0,0),OperationType.READ);
+  Buffer buffer=window.getOffsettedBuffer(0);
+  byte[] readData=new byte[someBytes.length];
+  buffer.get(readData);
+  assertArrayEquals(someBytes,readData);
+  try {
+    pool.acquire(recordId(1,0),OperationType.READ);
+    fail("Shouldn't be able to read from window other than 0");
+  }
+ catch (  Throwable e) {
+  }
+}
