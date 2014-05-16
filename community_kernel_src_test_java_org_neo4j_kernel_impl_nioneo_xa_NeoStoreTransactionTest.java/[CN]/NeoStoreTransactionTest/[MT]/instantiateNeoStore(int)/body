@@ -5,11 +5,22 @@
   config=new Config(stringMap(GraphDatabaseSettings.dense_node_threshold.name(),"" + denseNodeThreshold));
   @SuppressWarnings("deprecation") StoreFactory storeFactory=new StoreFactory(config,idGeneratorFactory,windowPoolFactory,fs.get(),DEV_NULL,new DefaultTxHook());
   neoStore=storeFactory.createNeoStore(new File("neostore"));
+  lockMocks.clear();
   locks=mock(LockService.class,new Answer(){
-    @Override public synchronized Object answer(    InvocationOnMock invocation) throws Throwable {
-      Lock mock=mock(Lock.class);
-      lockMocks.add(mock);
-      return mock;
+    @Override public synchronized Object answer(    final InvocationOnMock invocation) throws Throwable {
+      if (invocation.getMethod().getName().equals("acquireNodeLock")) {
+        final Lock mock=mock(Lock.class,new Answer(){
+          @Override public Object answer(          InvocationOnMock invocationOnMock) throws Throwable {
+            return null;
+          }
+        }
+);
+        lockMocks.add(mock);
+        return mock;
+      }
+ else {
+        return null;
+      }
     }
   }
 );
