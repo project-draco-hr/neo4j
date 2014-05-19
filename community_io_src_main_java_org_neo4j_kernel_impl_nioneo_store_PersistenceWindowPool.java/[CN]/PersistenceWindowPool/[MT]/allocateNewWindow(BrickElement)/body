@@ -1,0 +1,33 @@
+{
+  try {
+    int maxWindowMappingAttempts=5;
+    for (int attempt=0; attempt < maxWindowMappingAttempts; attempt++) {
+synchronized (brick) {
+        if (brick.lockCount.get() == 0) {
+          if (useMemoryMapped) {
+            LockableWindow window=new MappedPersistenceWindow(brickIndexToPosition(brick.index()),blockSize,brickSize,fileChannel,mapMode);
+            brick.setWindow(window);
+          }
+ else {
+            PlainPersistenceWindow window=new PlainPersistenceWindow(brickIndexToPosition(brick.index()),blockSize,brickSize,fileChannel);
+            window.readFullWindow();
+            brick.setWindow(window);
+          }
+          memUsed+=brickSize;
+          return true;
+        }
+      }
+      Thread.yield();
+    }
+    return false;
+  }
+ catch (  MappedMemException e) {
+    ooe++;
+    monitor.allocationError(storeName,e,"Unable to memory map");
+  }
+catch (  OutOfMemoryError e) {
+    ooe++;
+    monitor.allocationError(storeName,e,"Unable to allocate direct buffer");
+  }
+  return false;
+}

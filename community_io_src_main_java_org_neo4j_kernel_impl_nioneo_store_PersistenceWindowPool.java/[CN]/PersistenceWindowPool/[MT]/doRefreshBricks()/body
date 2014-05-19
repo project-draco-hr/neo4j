@@ -1,0 +1,30 @@
+{
+  brickMiss=0;
+  List<BrickElement> mappedBricks=new ArrayList<>();
+  List<BrickElement> unmappedBricks=new ArrayList<>();
+  gatherMappedVersusUnmappedWindows(mappedBricks,unmappedBricks);
+  int unmappedIndex=unmappedBricks.size() - 1;
+  while (memUsed + brickSize <= availableMem && unmappedIndex >= 0) {
+    BrickElement unmappedBrick=unmappedBricks.get(unmappedIndex--);
+    if (unmappedBrick.getHit() == 0) {
+      return;
+    }
+    allocateNewWindow(unmappedBrick);
+  }
+  int mappedIndex=0;
+  while (unmappedIndex >= 0 && mappedIndex < mappedBricks.size()) {
+    BrickElement mappedBrick=mappedBricks.get(mappedIndex++);
+    BrickElement unmappedBrick=unmappedBricks.get(unmappedIndex--);
+    if (mappedBrick.getHit() >= unmappedBrick.getHit()) {
+      break;
+    }
+    LockableWindow window=mappedBrick.getWindow();
+    if (window.writeOutAndCloseIfFree(readOnly)) {
+      mappedBrick.setWindow(null);
+      memUsed-=brickSize;
+      if (allocateNewWindow(unmappedBrick)) {
+        switches++;
+      }
+    }
+  }
+}

@@ -1,9 +1,17 @@
 {
   File dataFile=TargetDirectory.forTest(getClass()).file("dataFile");
   StoreChannel dataFileChannel=new StoreFileChannel(new RandomAccessFile(dataFile,"rw").getChannel());
-  final PersistenceWindowPool pool=new PersistenceWindowPool(dataFile,4,dataFileChannel,50000,true,false,new ConcurrentHashMap<Long,PersistenceRow>(),BrickElementFactory.DEFAULT,StringLogger.DEV_NULL);
+  final PersistenceWindowPool pool=new PersistenceWindowPool(dataFile,4,dataFileChannel,50000,true,false,new ConcurrentHashMap<Long,PersistenceRow>(),BrickElementFactory.DEFAULT,PersistenceWindowPool.Monitor.NULL);
   Thread theTriggeringOne=new Thread(new Runnable(){
     @Override public void run(){
+      try {
+        doWork();
+      }
+ catch (      IOException e) {
+        throw new RuntimeException(e);
+      }
+    }
+    private void doWork() throws IOException {
       pool.release(pool.acquire(13,OperationType.READ));
       for (int i=0; i < PersistenceWindowPool.REFRESH_BRICK_COUNT - 3; i++) {
         pool.release(pool.acquire(1,OperationType.READ));
