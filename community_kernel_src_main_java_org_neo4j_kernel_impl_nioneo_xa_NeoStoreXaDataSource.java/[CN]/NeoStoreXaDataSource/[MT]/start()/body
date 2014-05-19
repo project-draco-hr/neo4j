@@ -4,19 +4,11 @@
   storeDir=config.get(Configuration.store_dir);
   File store=config.get(Configuration.neo_store);
   storeFactory.ensureStoreExists();
-  final TransactionFactory tf;
-  if (providers.shouldInterceptCommitting()) {
-    tf=new InterceptingTransactionFactory();
-  }
- else {
-    tf=new TransactionFactory();
-  }
   indexProvider=dependencyResolver.resolveDependency(SchemaIndexProvider.class,SchemaIndexProvider.HIGHEST_PRIORITIZED_OR_NONE);
   storeMigrationProcess.addParticipant(indexProvider.storeMigrationParticipant());
   DefaultSchemaIndexProviderMap providerMap=new DefaultSchemaIndexProviderMap(indexProvider);
   storeMigrationProcess.migrateIfNeeded(store.getParentFile());
   neoStore=storeFactory.newNeoStore(store);
-  neoStoreTransactionContextSupplier=new NeoStoreTransactionContextSupplier(neoStore);
   schemaCache=new SchemaCache(Collections.<SchemaRule>emptyList());
   final NodeManager nodeManager=dependencyResolver.resolveDependency(NodeManager.class);
   Iterator<? extends Cache<?>> caches=nodeManager.caches().iterator();
@@ -28,50 +20,21 @@
 ,nodeManager);
   cacheAccess=new BridgingCacheAccess(nodeManager,schemaCache,updateableSchemaState,persistenceCache);
   try {
-    indexingService=life.add(new IndexingService(scheduler,providerMap,new NeoStoreIndexStoreView(locks,neoStore),tokenNameLookup,updateableSchemaState,logging,indexingServiceMonitor));
+    indexingService=life.add(new IndexingService(scheduler,providerMap,new NeoStoreIndexStoreView(lockService,neoStore),tokenNameLookup,updateableSchemaState,logging,indexingServiceMonitor));
     integrityValidator=new IntegrityValidator(neoStore,indexingService);
-    xaContainer=xaFactory.newXaContainer(this,config.get(Configuration.logical_log),XaCommandReaderFactory.DEFAULT,new XaCommandWriterFactory(){
-      @Override public XaCommandWriter newInstance(){
-        return new PhysicalLogNeoXaCommandWriter();
-      }
-    }
-,new NeoStoreInjectedTransactionValidator(integrityValidator),tf,stateFactory,providers,readOnly,translatorFactory.apply(neoStore));
     labelScanStore=life.add(dependencyResolver.resolveDependency(LabelScanStoreProvider.class,LabelScanStoreProvider.HIGHEST_PRIORITIZED).getLabelScanStore());
-    fileListing=new NeoStoreFileListing(xaContainer,storeDir,labelScanStore,indexingService);
+    fileListing=new NeoStoreFileListing(storeDir,labelScanStore,indexingService);
     Provider<NeoStore> neoStoreProvider=new Provider<NeoStore>(){
       @Override public NeoStore instance(){
         return getNeoStore();
       }
     }
 ;
-    kernel=life.add(new Kernel(txManager,propertyKeyTokens,labelTokens,relationshipTypeTokens,persistenceManager,updateableSchemaState,schemaWriteGuard,indexingService,nodeManager,neoStoreProvider,persistenceCache,schemaCache,providerMap,fs,config,labelScanStore,new CacheLayer(new DiskLayer(propertyKeyTokens,labelTokens,relationshipTypeTokens,new SchemaStorage(neoStore.getSchemaStore()),neoStoreProvider,indexingService),persistenceCache,indexingService,schemaCache,nodeManager),scheduler,readOnly));
+    kernel=life.add(new Kernel(propertyKeyTokenHolder,updateableSchemaState,schemaWriteGuard,indexingService,nodeManager,neoStoreProvider,persistenceCache,schemaCache,providerMap,fs,config,labelScanStore,new CacheLayer(new DiskLayer(propertyKeyTokenHolder,labelTokens,relationshipTypeTokens,new SchemaStorage(neoStore.getSchemaStore()),neoStoreProvider,indexingService),persistenceCache,indexingService,schemaCache,nodeManager),scheduler,transactionMonitor,kernelHealth,readOnly,cacheAccess,integrityValidator,locks,lockService,remoteTxHook,txIdGenerator,transactionHeaderInformation,this,logging));
     kernel.registerTransactionHook(transactionEventHandlers);
     life.init();
-    if (!readOnly) {
-      neoStore.setRecoveredStatus(true);
-      try {
-        indexingService.initIndexes(loadIndexRules());
-        xaContainer.openLogicalLog();
-      }
-  finally {
-        neoStore.setRecoveredStatus(false);
-      }
-    }
-    if (!xaContainer.getResourceManager().hasRecoveredTransactions()) {
-      neoStore.makeStoreOk();
-    }
- else {
-      msgLog.debug("Waiting for TM to take care of recovered " + "transactions.");
-    }
-    idGenerators=new ArrayMap<>((byte)5,false,false);
-    this.idGenerators.put(Node.class,neoStore.getNodeStore());
-    this.idGenerators.put(Relationship.class,neoStore.getRelationshipStore());
-    this.idGenerators.put(RelationshipType.class,neoStore.getRelationshipTypeStore());
-    this.idGenerators.put(Label.class,neoStore.getLabelTokenStore());
-    this.idGenerators.put(PropertyStore.class,neoStore.getPropertyStore());
-    this.idGenerators.put(PropertyKeyTokenRecord.class,neoStore.getPropertyKeyTokenStore());
-    setLogicalLogAtCreationTime(xaContainer.getLogicalLog());
     life.start();
+    propertyKeyTokenHolder.addTokens(((TokenStore<?>)neoStore.getPropertyKeyTokenStore()).getTokens(Integer.MAX_VALUE));
   }
  catch (  Throwable e) {
     try {

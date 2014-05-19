@@ -1,0 +1,23 @@
+{
+  List<Object> lockingTxList=resourceMap.get(resource);
+  if (lockingTxList == null) {
+    throw new LockException("Illegal resource[" + resource + "], not found in map");
+  }
+  if (waitingTxMap.get(tx) != null) {
+    throw new LockException(tx + " already waiting for resource");
+  }
+  Iterator<Object> itr=lockingTxList.iterator();
+  List<Object> checkedTransactions=new LinkedList<>();
+  Stack<Object> graphStack=new Stack<>();
+  graphStack.push(resource);
+  while (itr.hasNext()) {
+    Object lockingTx=itr.next();
+    if (lockingTx.equals(tx)) {
+      continue;
+    }
+    graphStack.push(lockingTx);
+    checkWaitOnRecursive(lockingTx,tx,checkedTransactions,graphStack);
+    graphStack.pop();
+  }
+  waitingTxMap.put(tx,resource);
+}

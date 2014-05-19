@@ -1,13 +1,12 @@
 {
-  String provider=config.get(PROVIDER);
-  String dataSourceName=getIndexProvider(provider).getDataSourceName();
-  try (Transaction tx=graphDatabaseAPI.tx().begin()){
-    XaDataSource dataSource=xaDataSourceManager.getXaDataSource(dataSourceName);
-    IndexXaConnection connection=(IndexXaConnection)dataSource.getXaConnection();
-    javax.transaction.Transaction javaxTx=txManager.getTransaction();
-    connection.enlistResource(javaxTx);
-    connection.createIndex(cls,indexName,config);
-    tx.success();
+  KernelAPI kernel=kernelProvider.instance();
+  KernelTransaction transaction=kernel.newTransaction();
+  boolean success=false;
+  try {
+    success=true;
   }
-   return null;
+  finally {
+    kernel.finish(transaction,success);
+  }
+  return null;
 }

@@ -1,0 +1,41 @@
+{
+  Future<Long> commitFuture;
+  try {
+    commitFuture=transactionAppender.append(representation);
+  }
+ catch (  IOException e) {
+    kernelHealth.panic(e);
+    throw new TransactionFailureException(Status.Transaction.CouldNotWriteToLog,e,"Could not write transaction representation to log");
+  }
+  long transactionId;
+  try {
+    transactionId=commitFuture.get();
+  }
+ catch (  InterruptedException|ExecutionException e) {
+    throw new TransactionFailureException(Status.Transaction.CouldNotWriteToLog,e,"");
+  }
+  try {
+    NeoTransactionStoreApplier storeApplier=new NeoTransactionStoreApplier(neoStore,indexingService,cacheAccess,lockService,transactionId,recovery);
+    try {
+      representation.execute(storeApplier);
+    }
+  finally {
+      storeApplier.done();
+    }
+    NeoTransactionIndexApplier indexApplier=new NeoTransactionIndexApplier(indexingService,labelScanStore,neoStore.getNodeStore(),neoStore.getPropertyStore(),cacheAccess);
+    try {
+      representation.execute(indexApplier);
+    }
+  finally {
+      indexApplier.done();
+    }
+    neoStore.transactionIdApplied(transactionId);
+    if (recovery) {
+      neoStore.updateIdGenerators();
+    }
+  }
+ catch (  IOException e) {
+    kernelHealth.panic(e);
+    throw new TransactionFailureException(Status.Transaction.CouldNotCommit,e,"Could not apply the transaction to the store after written to log");
+  }
+}

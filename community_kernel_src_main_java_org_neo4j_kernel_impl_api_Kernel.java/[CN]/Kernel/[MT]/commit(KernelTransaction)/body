@@ -1,0 +1,23 @@
+{
+  boolean success=false;
+  try {
+    transaction.prepare();
+    KernelTransactionImplementation transactionImplementation=(KernelTransactionImplementation)transaction;
+    if (!transactionImplementation.isReadOnly()) {
+      PhysicalTransactionRepresentation transactionRepresentation=transactionImplementation.getTransactionRecordState().doPrepare();
+      transactionRepresentation.setHeader(transactionHeaderInformation.getAdditionalHeader(),transactionHeaderInformation.getMasterId(),transactionHeaderInformation.getAuthorId(),currentTimeMillis(),neoStore.getLastCommittingTransactionId());
+      commitProcess.commit(transactionRepresentation);
+      TransactionState transactionState=transactionImplementation.getLegacyTransactionState();
+      transactionState.commitCows();
+      success=true;
+    }
+  }
+  finally {
+    try {
+      transaction.commit();
+    }
+  finally {
+      transactionMonitor.transactionFinished(success);
+    }
+  }
+}

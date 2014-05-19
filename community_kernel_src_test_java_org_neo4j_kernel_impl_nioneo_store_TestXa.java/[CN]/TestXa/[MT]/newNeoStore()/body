@@ -1,7 +1,6 @@
 {
   final Config config=new Config(MapUtil.stringMap(InternalAbstractGraphDatabase.Configuration.store_dir.name(),path().getPath(),InternalAbstractGraphDatabase.Configuration.neo_store.name(),file("neo").getPath(),InternalAbstractGraphDatabase.Configuration.logical_log.name(),file(LOGICAL_LOG_DEFAULT_NAME).getPath()),GraphDatabaseSettings.class);
   StoreFactory sf=new StoreFactory(config,new DefaultIdGeneratorFactory(),new DefaultWindowPoolFactory(),fileSystem,StringLogger.DEV_NULL,null);
-  PlaceboTm txManager=new PlaceboTm(null,TxIdGenerator.DEFAULT);
   for (  File file : fileSystem.listFiles(path())) {
     if (file.isFile() && file.getName().startsWith(LOGICAL_LOG_DEFAULT_NAME + ".v")) {
       fileSystem.deleteFile(file);
@@ -11,12 +10,12 @@
   @SuppressWarnings("rawtypes") List caches=Arrays.asList((Cache)mock(AutoLoadingCache.class),(Cache)mock(AutoLoadingCache.class));
   when(nodeManager.caches()).thenReturn(caches);
   KernelHealth kernelHealth=mock(KernelHealth.class);
-  NeoStoreXaDataSource neoStoreXaDataSource=new NeoStoreXaDataSource(config,sf,StringLogger.DEV_NULL,new XaFactory(config,TxIdGenerator.DEFAULT,txManager,fileSystem,new Monitors(),new DevNullLoggingService(),RecoveryVerifier.ALWAYS_VALID,LogPruneStrategies.NO_PRUNING,kernelHealth),TransactionStateFactory.noStateFactory(new DevNullLoggingService()),new TransactionInterceptorProviders(Collections.<TransactionInterceptorProvider>emptyList(),dependencyResolverForConfig(config)),null,new SingleLoggingService(DEV_NULL),new KernelSchemaStateStore(),mock(TokenNameLookup.class),dependencyResolverForNoIndexProvider(nodeManager),txManager,mock(PropertyKeyTokenHolder.class),mock(LabelTokenHolder.class),mock(RelationshipTypeTokenHolder.class),mock(PersistenceManager.class),mock(Locks.class),mock(SchemaWriteGuard.class),mock(TransactionEventHandlers.class),IndexingService.NO_MONITOR,fileSystem,new Function<NeoStore,Function<List<LogEntry>,List<LogEntry>>>(){
+  NeoStoreXaDataSource neoStoreXaDataSource=new NeoStoreXaDataSource(config,sf,StringLogger.DEV_NULL,null,new SingleLoggingService(DEV_NULL),new KernelSchemaStateStore(),mock(TokenNameLookup.class),dependencyResolverForNoIndexProvider(nodeManager),mock(PropertyKeyTokenHolder.class),mock(LabelTokenHolder.class),mock(RelationshipTypeTokenHolder.class),mock(Locks.class),mock(SchemaWriteGuard.class),mock(TransactionEventHandlers.class),IndexingService.NO_MONITOR,fileSystem,new Function<NeoStore,Function<List<LogEntry>,List<LogEntry>>>(){
     @Override public Function<List<LogEntry>,List<LogEntry>> apply(    NeoStore neoStore){
       return Functions.identity();
     }
   }
-,mock(StoreUpgrader.class));
+,mock(StoreUpgrader.class),mock(TransactionMonitor.class),kernelHealth,mock(TransactionAppender.class),mock(NeoTransactionStoreApplier.class),mock(RemoteTxHook.class),mock(TxIdGenerator.class),mock(TransactionHeaderInformation.class));
   neoStoreXaDataSource.init();
   neoStoreXaDataSource.start();
   return neoStoreXaDataSource;

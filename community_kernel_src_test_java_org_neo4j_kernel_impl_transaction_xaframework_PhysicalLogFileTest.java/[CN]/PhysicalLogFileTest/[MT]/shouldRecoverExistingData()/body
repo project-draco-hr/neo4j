@@ -1,0 +1,32 @@
+{
+  String name="log";
+  File file=new File(directory.directory(),name + ".1");
+  writeSomeData(file,new Visitor<ByteBuffer,IOException>(){
+    @Override public boolean visit(    ByteBuffer buffer) throws IOException {
+      VersionAwareLogEntryReader.writeLogHeader(buffer,1,3);
+      buffer.clear();
+      buffer.position(VersionAwareLogEntryReader.LOG_HEADER_SIZE);
+      buffer.put((byte)2);
+      buffer.putInt(23324);
+      return true;
+    }
+  }
+);
+  LogRotationControl logRotationControl=mock(LogRotationControl.class);
+  LogFile logFile=new PhysicalLogFile(fs,directory.directory(),name,50,LogPruneStrategies.NO_PRUNING,transactionIdStore,mock(Monitor.class),logRotationControl);
+  logFile.open(new Visitor<ReadableLogChannel,IOException>(){
+    @Override public boolean visit(    ReadableLogChannel element) throws IOException {
+      assertEquals((byte)2,element.get());
+      assertEquals(23324,element.getInt());
+      try {
+        element.get();
+        fail("There should be no more");
+      }
+ catch (      ReadPastEndException e) {
+      }
+      return true;
+    }
+  }
+);
+  logFile.close();
+}

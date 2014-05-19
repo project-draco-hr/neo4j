@@ -1,4 +1,9 @@
 {
   checkIfShutdown();
-  return new KernelTransactionImplementation(statementOperations,readOnly,schemaWriteGuard,labelScanStore,indexService,transactionManager,nodeManager,schemaState,persistenceManager,providerMap,neoStore,getLegacyTxState(),hooks);
+  NeoStoreTransactionContext context=neoStoreTransactionContextSupplier.acquire();
+  TransactionState legacyState=new WritableTransactionState(locks.newClient(),nodeManager,remoteTxHook,txIdGenerator);
+  context.bind(legacyState);
+  TransactionRecordState neoStoreTransaction=new TransactionRecordState(neoStore.getLastCommittingTransactionId(),neoStore,cacheAccess,integrityValidator,context);
+  ConstraintIndexCreator constraintIndexCreator=new ConstraintIndexCreator(this,indexService);
+  return new KernelTransactionImplementation(statementOperations,readOnly,schemaWriteGuard,labelScanStore,indexService,nodeManager,schemaState,neoStoreTransaction,providerMap,neoStore,legacyState,hooks,constraintIndexCreator);
 }

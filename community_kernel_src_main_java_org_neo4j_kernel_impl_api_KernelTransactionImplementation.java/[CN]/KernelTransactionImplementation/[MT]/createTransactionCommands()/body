@@ -4,41 +4,41 @@
     txState().accept(new TxState.Visitor(){
       @Override public void visitNodePropertyChanges(      long id,      Iterator<DefinedProperty> added,      Iterator<DefinedProperty> changed,      Iterator<Integer> removed){
         while (removed.hasNext()) {
-          persistenceManager.nodeRemoveProperty(id,removed.next());
+          neoStoreTransaction.nodeRemoveProperty(id,removed.next());
         }
         while (changed.hasNext()) {
           DefinedProperty prop=changed.next();
-          persistenceManager.nodeChangeProperty(id,prop.propertyKeyId(),prop.value());
+          neoStoreTransaction.nodeChangeProperty(id,prop.propertyKeyId(),prop.value());
         }
         while (added.hasNext()) {
           DefinedProperty prop=added.next();
-          persistenceManager.nodeAddProperty(id,prop.propertyKeyId(),prop.value());
+          neoStoreTransaction.nodeAddProperty(id,prop.propertyKeyId(),prop.value());
         }
       }
       @Override public void visitRelPropertyChanges(      long id,      Iterator<DefinedProperty> added,      Iterator<DefinedProperty> changed,      Iterator<Integer> removed){
         while (removed.hasNext()) {
-          persistenceManager.relRemoveProperty(id,removed.next());
+          neoStoreTransaction.relRemoveProperty(id,removed.next());
         }
         while (changed.hasNext()) {
           DefinedProperty prop=changed.next();
-          persistenceManager.relChangeProperty(id,prop.propertyKeyId(),prop.value());
+          neoStoreTransaction.relChangeProperty(id,prop.propertyKeyId(),prop.value());
         }
         while (added.hasNext()) {
           DefinedProperty prop=added.next();
-          persistenceManager.relAddProperty(id,prop.propertyKeyId(),prop.value());
+          neoStoreTransaction.relAddProperty(id,prop.propertyKeyId(),prop.value());
         }
       }
       @Override public void visitGraphPropertyChanges(      Iterator<DefinedProperty> added,      Iterator<DefinedProperty> changed,      Iterator<Integer> removed){
         while (removed.hasNext()) {
-          persistenceManager.graphRemoveProperty(removed.next());
+          neoStoreTransaction.graphRemoveProperty(removed.next());
         }
         while (changed.hasNext()) {
           DefinedProperty prop=changed.next();
-          persistenceManager.graphChangeProperty(prop.propertyKeyId(),prop.value());
+          neoStoreTransaction.graphChangeProperty(prop.propertyKeyId(),prop.value());
         }
         while (added.hasNext()) {
           DefinedProperty prop=added.next();
-          persistenceManager.graphAddProperty(prop.propertyKeyId(),prop.value());
+          neoStoreTransaction.graphAddProperty(prop.propertyKeyId(),prop.value());
         }
       }
       @Override public void visitNodeLabelChanges(      long id,      Iterator<Integer> added,      Iterator<Integer> removed){
@@ -52,13 +52,13 @@
  else {
           rule=IndexRule.indexRule(schemaStorage.newRuleId(),element.getLabelId(),element.getPropertyKeyId(),providerDescriptor);
         }
-        persistenceManager.createSchemaRule(rule);
+        neoStoreTransaction.createSchemaRule(rule);
       }
       @Override public void visitRemovedIndex(      IndexDescriptor element,      boolean isConstraintIndex){
         try {
           SchemaStorage.IndexRuleKind kind=isConstraintIndex ? SchemaStorage.IndexRuleKind.CONSTRAINT : SchemaStorage.IndexRuleKind.INDEX;
           IndexRule rule=schemaStorage.indexRule(element.getLabelId(),element.getPropertyKeyId(),kind);
-          persistenceManager.dropSchemaRule(rule);
+          neoStoreTransaction.dropSchemaRule(rule);
         }
  catch (        SchemaRuleNotFoundException e) {
           throw new ThisShouldNotHappenError("Tobias Lindaaker","Index to be removed should exist, since its existence should have " + "been validated earlier and the schema should have been locked.",e);
@@ -74,14 +74,14 @@
  catch (        SchemaRuleNotFoundException e) {
           throw new ThisShouldNotHappenError("Jacob Hansson","Index is always created for the constraint before this point.",e);
         }
-        persistenceManager.createSchemaRule(UniquenessConstraintRule.uniquenessConstraintRule(constraintId,element.label(),element.propertyKeyId(),indexRule.getId()));
-        persistenceManager.setConstraintIndexOwner(indexRule,constraintId);
+        neoStoreTransaction.createSchemaRule(UniquenessConstraintRule.uniquenessConstraintRule(constraintId,element.label(),element.propertyKeyId(),indexRule.getId()));
+        neoStoreTransaction.setConstraintIndexOwner(indexRule,constraintId);
       }
       @Override public void visitRemovedConstraint(      UniquenessConstraint element){
         try {
           clearState.set(true);
           UniquenessConstraintRule rule=schemaStorage.uniquenessConstraint(element.label(),element.propertyKeyId());
-          persistenceManager.dropSchemaRule(rule);
+          neoStoreTransaction.dropSchemaRule(rule);
         }
  catch (        SchemaRuleNotFoundException e) {
           throw new ThisShouldNotHappenError("Tobias Lindaaker","Constraint to be removed should exist, since its existence should " + "have been validated earlier and the schema should have been locked.");

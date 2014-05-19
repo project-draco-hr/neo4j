@@ -1,0 +1,51 @@
+{
+  File activeFileName=new File(logBaseName.getPath() + ACTIVE_FILE_SUFFIX);
+  if (!fileSystem.fileExists(activeFileName)) {
+    if (fileSystem.fileExists(logBaseName)) {
+      throw new UnsupportedOperationException("Unsupported old format");
+    }
+    return State.NO_ACTIVE_FILE;
+  }
+  StoreChannel fc=null;
+  byte bytes[]=new byte[256];
+  ByteBuffer buf=ByteBuffer.wrap(bytes);
+  int read=0;
+  try {
+    fc=fileSystem.open(activeFileName,"rw");
+    read=fc.read(buf);
+  }
+  finally {
+    if (fc != null) {
+      fc.close();
+    }
+  }
+  if (read != 4) {
+    throw new IllegalStateException("Read " + read + " bytes from "+ activeFileName+ " but expected 4");
+  }
+  buf.flip();
+  char c=buf.asCharBuffer().get();
+  if (c == CLEAN) {
+    return State.CLEAN;
+  }
+ else   if (c == LOG1) {
+    if (!fileSystem.fileExists(getLog1FileName())) {
+      throw new IllegalStateException("Active marked as 1 but no " + getLog1FileName() + " exist");
+    }
+    if (fileSystem.fileExists(getLog2FileName())) {
+      return State.DUAL_LOGS_LOG_1_ACTIVE;
+    }
+    return State.LOG_1_ACTIVE;
+  }
+ else   if (c == LOG2) {
+    if (!fileSystem.fileExists(getLog2FileName())) {
+      throw new IllegalStateException("Active marked as 2 but no " + getLog2FileName() + " exist");
+    }
+    if (fileSystem.fileExists(getLog1FileName())) {
+      return State.DUAL_LOGS_LOG_2_ACTIVE;
+    }
+    return State.LOG_2_ACTIVE;
+  }
+ else {
+    throw new IllegalStateException("Unknown active log: " + c);
+  }
+}

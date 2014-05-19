@@ -2,17 +2,11 @@
   if (!availabilityGuard.isAvailable(accessTimeout)) {
     throw new TransactionFailureException("Database is currently not available. " + availabilityGuard.describeWhoIsBlocking());
   }
-  try {
-    if (transactionRunning()) {
-      return new PlaceboTransaction(txManager,statementContextProvider);
-    }
-    txManager.begin(forceMode);
-    return new TopLevelTransaction(txManager,statementContextProvider);
+  KernelAPI kernel=neoDataSource.getKernel();
+  TopLevelTransaction runningTransaction=threadToTransactionBridge.getTopLevelTransactionBoundToThisThread(false);
+  if (runningTransaction != null) {
+    return new PlaceboTransaction(runningTransaction);
   }
- catch (  SystemException e) {
-    throw new TransactionFailureException("Couldn't get transaction",e);
-  }
-catch (  NotSupportedException e) {
-    throw new TransactionFailureException("Couldn't begin transaction",e);
-  }
+  KernelTransaction transaction=kernel.newTransaction();
+  return new TopLevelTransaction(kernel,transaction,threadToTransactionBridge);
 }

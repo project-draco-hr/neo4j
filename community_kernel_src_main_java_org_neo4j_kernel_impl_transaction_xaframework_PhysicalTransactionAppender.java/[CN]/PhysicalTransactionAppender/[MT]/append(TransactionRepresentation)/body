@@ -1,0 +1,10 @@
+{
+  LogPosition logPosition=channel.getCurrentPosition();
+  logEntryWriter.writeStartEntry(transaction.getMasterId(),transaction.getAuthorId(),transaction.getTimeWritten(),transaction.getLatestCommittedTxWhenStarted(),transaction.additionalHeader());
+  transaction.execute(logEntryWriter);
+  long transactionId=txIdGenerator.generate(transaction);
+  logEntryWriter.writeCommitEntry(transaction.getTimeWritten(),transactionId);
+  positionCache.putStartPosition(transactionId,logPosition);
+  channel.force();
+  return FutureAdapter.present(transactionId);
+}
