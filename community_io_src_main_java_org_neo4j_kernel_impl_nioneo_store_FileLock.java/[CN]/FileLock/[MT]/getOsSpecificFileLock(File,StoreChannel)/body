@@ -1,0 +1,25 @@
+{
+  if (RenameThis.osIsWindows()) {
+    if (fileName.getName().equals(STORE_LOCK_FILENAME)) {
+      return getLockFileBasedFileLock(fileName.getParentFile());
+    }
+    return new PlaceboFileLock();
+  }
+ else   if (fileName.getName().equals(NEO_STORE_NAME)) {
+    FileLock regular=wrapFileChannelLock(channel);
+    boolean success=false;
+    try {
+      FileLock extra=getLockFileBasedFileLock(fileName.getParentFile());
+      success=true;
+      return new DoubleFileLock(regular,extra);
+    }
+  finally {
+      if (!success) {
+        regular.release();
+      }
+    }
+  }
+ else {
+    return wrapFileChannelLock(channel);
+  }
+}
