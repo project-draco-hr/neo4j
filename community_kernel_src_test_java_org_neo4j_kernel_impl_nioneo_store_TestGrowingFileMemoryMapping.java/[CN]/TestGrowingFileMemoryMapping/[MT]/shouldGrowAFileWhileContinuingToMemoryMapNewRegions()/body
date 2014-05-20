@@ -4,10 +4,11 @@
   File storeDir=TargetDirectory.forTest(getClass()).makeGraphDbDir();
   Config config=new Config(stringMap(nodestore_mapped_memory_size.name(),mmapSize(NUMBER_OF_RECORDS,NodeStore.RECORD_SIZE),Configuration.use_memory_mapped_buffers.name(),"true",Configuration.store_dir.name(),storeDir.getPath()),NodeStore.Configuration.class);
   DefaultIdGeneratorFactory idGeneratorFactory=new DefaultIdGeneratorFactory();
-  StoreFactory storeFactory=new StoreFactory(config,idGeneratorFactory,new DefaultWindowPoolFactory(),new DefaultFileSystemAbstraction(),StringLogger.DEV_NULL,new DefaultTxHook(),new Monitors());
+  Monitors monitors=new Monitors();
+  StoreFactory storeFactory=new StoreFactory(config,idGeneratorFactory,new DefaultWindowPoolFactory(monitors,config),new DefaultFileSystemAbstraction(),StringLogger.DEV_NULL,new DefaultTxHook(),monitors);
   File fileName=new File(storeDir,NeoStore.DEFAULT_NAME + ".nodestore.db");
   storeFactory.createEmptyStore(fileName,storeFactory.buildTypeDescriptorAndVersion(NodeStore.TYPE_DESCRIPTOR));
-  NodeStore nodeStore=new NodeStore(fileName,config,idGeneratorFactory,new DefaultWindowPoolFactory(),new DefaultFileSystemAbstraction(),StringLogger.DEV_NULL,null,StoreVersionMismatchHandler.THROW_EXCEPTION,new Monitors());
+  NodeStore nodeStore=new NodeStore(fileName,config,idGeneratorFactory,new DefaultWindowPoolFactory(monitors,config),new DefaultFileSystemAbstraction(),StringLogger.DEV_NULL,null,StoreVersionMismatchHandler.THROW_EXCEPTION,monitors);
   for (int i=0; i < 2 * NUMBER_OF_RECORDS; i++) {
     NodeRecord record=new NodeRecord(nodeStore.nextId(),false,0,0);
     record.setInUse(true);

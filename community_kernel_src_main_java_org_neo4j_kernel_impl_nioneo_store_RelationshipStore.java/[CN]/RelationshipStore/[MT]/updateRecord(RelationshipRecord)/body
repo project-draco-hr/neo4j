@@ -1,9 +1,15 @@
 {
-  PersistenceWindow window=acquireWindow(record.getId(),OperationType.WRITE);
+  PageCursor cursor=pageCache.newCursor();
   try {
-    updateRecord(record,window,false);
+    storeFile.pin(cursor,PageLock.WRITE,pageIdForRecord(record.getId()));
+  }
+ catch (  IOException e) {
+    throw new UnderlyingStorageException(e);
+  }
+  try {
+    updateRecord(record,cursor,false);
   }
   finally {
-    releaseWindow(window);
+    storeFile.unpin(cursor);
   }
 }
