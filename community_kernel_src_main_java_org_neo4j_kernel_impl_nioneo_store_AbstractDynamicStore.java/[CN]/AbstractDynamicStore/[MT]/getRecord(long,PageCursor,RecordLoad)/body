@@ -1,7 +1,7 @@
 {
   DynamicRecord record=new DynamicRecord(blockId);
-  Buffer buffer=window.getOffsettedBuffer(blockId);
-  long firstInteger=buffer.getUnsignedInt();
+  cursor.setOffset((int)(blockId * getRecordSize() % pageSize));
+  long firstInteger=cursor.getUnsignedInt();
   boolean isStartRecord=(firstInteger & 0x80000000) == 0;
   long maskedInteger=firstInteger & ~0x80000000;
   int highNibbleInMaskedInteger=(int)((maskedInteger) >> 28);
@@ -11,7 +11,7 @@
   }
   int dataSize=getBlockSize() - BLOCK_HEADER_SIZE;
   int nrOfBytes=(int)(firstInteger & 0xFFFFFF);
-  long nextBlock=buffer.getUnsignedInt();
+  long nextBlock=cursor.getUnsignedInt();
   long nextModifier=(firstInteger & 0xF000000L) << 8;
   long longNextBlock=longFromIntAndMod(nextBlock,nextModifier);
   boolean readData=load != RecordLoad.CHECK;
@@ -27,7 +27,7 @@
   record.setNextBlock(longNextBlock);
   if (readData) {
     byte byteArrayElement[]=new byte[nrOfBytes];
-    buffer.get(byteArrayElement);
+    cursor.getBytes(byteArrayElement);
     record.setData(byteArrayElement);
   }
   return record;
