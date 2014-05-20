@@ -1,18 +1,19 @@
 {
   long id=record.getId();
   registerIdFromUpdateRecord(id);
-  Buffer buffer=window.getOffsettedBuffer(id);
+  cursor.setOffset((int)(id * RECORD_SIZE % pageSize));
   if (record.inUse()) {
     short prevModifier=record.getPrevProp() == Record.NO_NEXT_RELATIONSHIP.intValue() ? 0 : (short)((record.getPrevProp() & 0xF00000000L) >> 28);
     short nextModifier=record.getNextProp() == Record.NO_NEXT_RELATIONSHIP.intValue() ? 0 : (short)((record.getNextProp() & 0xF00000000L) >> 32);
     byte modifiers=(byte)(prevModifier | nextModifier);
-    buffer.put(modifiers);
-    buffer.putInt((int)record.getPrevProp()).putInt((int)record.getNextProp());
+    cursor.putByte(modifiers);
+    cursor.putInt((int)record.getPrevProp());
+    cursor.putInt((int)record.getNextProp());
     int longsAppended=0;
     for (    PropertyBlock block : record.getPropertyBlocks()) {
       long[] propBlockValues=block.getValueBlocks();
       for (      long propBlockValue : propBlockValues) {
-        buffer.putLong(propBlockValue);
+        cursor.putLong(propBlockValue);
       }
       longsAppended+=propBlockValues.length;
       if (!block.isLight() && block.getValueRecords().get(0).isCreated()) {
@@ -20,15 +21,15 @@
       }
     }
     if (longsAppended < PropertyType.getPayloadSizeLongs()) {
-      buffer.putLong(0);
+      cursor.putLong(0);
     }
   }
  else {
     if (!isInRecoveryMode()) {
       freeId(id);
     }
-    buffer.setOffset(buffer.getOffset() + 9);
-    buffer.putLong(0);
+    cursor.setOffset(cursor.getOffset() + 9);
+    cursor.putLong(0);
   }
   updateDynamicRecords(record.getDeletedRecords());
 }
