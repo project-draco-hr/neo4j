@@ -1,7 +1,7 @@
 {
   long id=record.getId();
+  cursor.setOffset((int)(id * RECORD_SIZE % pageSize));
   registerIdFromUpdateRecord(id);
-  Buffer buffer=window.getOffsettedBuffer(id);
   if (record.inUse() || force) {
     long nextRel=record.getNextRel();
     long nextProp=record.getNextProp();
@@ -9,15 +9,17 @@
     short propModifier=nextProp == Record.NO_NEXT_PROPERTY.intValue() ? 0 : (short)((nextProp & 0xF00000000L) >> 28);
     short inUseUnsignedByte=(record.inUse() ? Record.IN_USE : Record.NOT_IN_USE).byteValue();
     inUseUnsignedByte=(short)(inUseUnsignedByte | relModifier | propModifier);
-    buffer.put((byte)inUseUnsignedByte).putInt((int)nextRel).putInt((int)nextProp);
+    cursor.putByte((byte)inUseUnsignedByte);
+    cursor.putInt((int)nextRel);
+    cursor.putInt((int)nextProp);
     long labelField=record.getLabelField();
-    buffer.putInt((int)labelField);
-    buffer.put((byte)((labelField & 0xFF00000000L) >> 32));
+    cursor.putInt((int)labelField);
+    cursor.putByte((byte)((labelField & 0xFF00000000L) >> 32));
     byte extra=record.isDense() ? (byte)1 : (byte)0;
-    buffer.put(extra);
+    cursor.putByte(extra);
   }
  else {
-    buffer.put(Record.NOT_IN_USE.byteValue());
+    cursor.putByte(Record.NOT_IN_USE.byteValue());
     if (!isInRecoveryMode()) {
       freeId(id);
     }
