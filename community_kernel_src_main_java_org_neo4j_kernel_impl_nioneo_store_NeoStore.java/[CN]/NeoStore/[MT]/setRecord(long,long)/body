@@ -1,11 +1,17 @@
 {
-  PersistenceWindow window=acquireWindow(id,OperationType.WRITE);
+  PageCursor cursor=pageCache.newCursor();
   try {
-    Buffer buffer=window.getOffsettedBuffer(id);
-    buffer.put(Record.IN_USE.byteValue()).putLong(value);
-    registerIdFromUpdateRecord(id);
+    storeFile.pin(cursor,PageLock.WRITE,pageIdForRecord(id));
+  }
+ catch (  IOException e) {
+    throw new UnderlyingStorageException(e);
+  }
+  try {
+    cursor.setOffset((int)(id * RECORD_SIZE % pageSize));
+    cursor.putByte(Record.IN_USE.byteValue());
+    cursor.putLong(value);
   }
   finally {
-    releaseWindow(window);
+    storeFile.unpin(cursor);
   }
 }
