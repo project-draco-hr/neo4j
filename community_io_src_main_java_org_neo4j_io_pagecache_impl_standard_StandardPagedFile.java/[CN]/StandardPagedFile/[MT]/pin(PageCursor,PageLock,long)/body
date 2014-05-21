@@ -1,15 +1,16 @@
 {
   for (; ; ) {
-    Object pageRef=addressTranslationTable.get(pageId);
+    Object pageRef=filePages.get(pageId);
     if (pageRef == null) {
-      addressTranslationTable.putIfAbsent(pageId,NULL);
+      filePages.putIfAbsent(pageId,NULL);
     }
  else     if (pageRef == NULL) {
       CountDownLatch latch=new CountDownLatch(1);
-      if (addressTranslationTable.replace(pageId,pageRef,latch)) {
+      if (filePages.replace(pageId,pageRef,latch)) {
         PinnablePage page=table.load(pageIO,pageId,lock);
-        addressTranslationTable.put(pageId,page);
+        filePages.put(pageId,page);
         latch.countDown();
+        ((StandardPageCursor)cursor).reset(page,lock);
         return;
       }
     }
@@ -25,9 +26,10 @@
  else {
       PinnablePage page=(PinnablePage)pageRef;
       if (page.pin(pageIO,pageId,lock)) {
+        ((StandardPageCursor)cursor).reset(page,lock);
         return;
       }
-      addressTranslationTable.replace(pageId,page,NULL);
+      filePages.replace(pageId,page,NULL);
     }
   }
 }
