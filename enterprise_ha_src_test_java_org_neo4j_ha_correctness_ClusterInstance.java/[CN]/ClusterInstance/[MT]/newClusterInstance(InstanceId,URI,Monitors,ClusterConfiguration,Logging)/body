@@ -1,0 +1,14 @@
+{
+  MultiPaxosServerFactory factory=new MultiPaxosServerFactory(monitors,configuration,logging);
+  ClusterInstanceInput input=new ClusterInstanceInput();
+  ClusterInstanceOutput output=new ClusterInstanceOutput(uri);
+  ObjectStreamFactory objStreamFactory=new ObjectStreamFactory();
+  ProverTimeouts timeouts=new ProverTimeouts(uri);
+  InMemoryAcceptorInstanceStore acceptorInstances=new InMemoryAcceptorInstanceStore();
+  DelayedDirectExecutor executor=new DelayedDirectExecutor();
+  final MultiPaxosContext context=new MultiPaxosContext(id,Iterables.<ElectionRole,ElectionRole>iterable(new ElectionRole(ClusterConfiguration.COORDINATOR)),new ClusterConfiguration(configuration.getName(),logging.getMessagesLog(ClusterConfiguration.class),configuration.getMemberURIs()),executor,logging,objStreamFactory,objStreamFactory,acceptorInstances,timeouts,new DefaultElectionCredentialsProvider(id,new StateVerifierLastTxIdGetter(),new MemberInfoProvider()));
+  context.getClusterContext().setBoundAt(uri);
+  SnapshotContext snapshotContext=new SnapshotContext(context.getClusterContext(),context.getLearnerContext());
+  ProtocolServer ps=factory.newProtocolServer(id,input,output,DIRECT_EXECUTOR,new DelayedDirectExecutor(),timeouts,context,snapshotContext);
+  return new ClusterInstance(DIRECT_EXECUTOR,logging,factory,ps,context,acceptorInstances,timeouts,input,output,uri);
+}

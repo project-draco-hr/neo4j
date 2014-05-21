@@ -8,7 +8,7 @@
   params.put(ClusterClient.clusterJoinTimeout.name(),"20s");
   final Config config=new Config(params,ClusterSettings.class,OnlineBackupSettings.class);
   ObjectStreamFactory objectStreamFactory=new ObjectStreamFactory();
-  final ClusterClient clusterClient=life.add(new ClusterClient(ClusterClient.adapt(config),logging,new NotElectableElectionCredentialsProvider(),objectStreamFactory,objectStreamFactory));
+  final ClusterClient clusterClient=life.add(new ClusterClient(new Monitors(),ClusterClient.adapt(config),logging,new NotElectableElectionCredentialsProvider(),objectStreamFactory,objectStreamFactory));
   ClusterMemberEvents events=life.add(new PaxosClusterMemberEvents(clusterClient,clusterClient,clusterClient,clusterClient,new SystemOutLogging(),Predicates.<PaxosClusterMemberEvents.ClusterMembersSnapshot>TRUE(),new HANewSnapshotFunction(),objectStreamFactory,objectStreamFactory));
   clusterClient.addClusterListener(new ClusterListener.Adapter(){
     @Override public void enteredCluster(    ClusterConfiguration clusterConfiguration){
@@ -57,7 +57,7 @@
 catch (  LifecycleException e) {
     Throwable ex=Exceptions.peel(e,Exceptions.exceptionsOfType(LifecycleException.class));
     if (ex != null && ex instanceof ClusterEntryDeniedException) {
-      throw new RuntimeException("Another backup client is currently performing backup; concurrent backups are not allowed");
+      throw new RuntimeException("Another backup client is currently performing backup; concurrent backups" + " are not allowed");
     }
     ex=Exceptions.peel(e,Exceptions.exceptionsOfType(TimeoutException.class));
     if (ex != null) {
