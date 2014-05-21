@@ -1,23 +1,26 @@
 {
   while (!Thread.interrupted()) {
-    int useSumTotal=0;
-    for (    StandardPinnablePage page : pages) {
-      if (page.grabUnpinned()) {
-        try {
-          byte stamp=page.usageStamp;
-          useSumTotal+=stamp;
-          if (stamp == 0) {
-            evict(page);
-          }
+    try {
+      for (      StandardPinnablePage page : pages) {
+        if (page.loaded && page.grabUnpinned()) {
+          try {
+            byte stamp=page.usageStamp;
+            if (stamp == 0) {
+              evict(page);
+            }
  else {
-            page.usageStamp=(byte)(stamp - 1);
+              page.usageStamp=(byte)(stamp - 1);
+            }
           }
-        }
   finally {
-          page.releaseUnpinned();
+            page.releaseUnpinned();
+          }
         }
       }
+      LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(10));
     }
-    LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(10));
+ catch (    Exception e) {
+      e.printStackTrace();
+    }
   }
 }
