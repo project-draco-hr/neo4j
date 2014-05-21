@@ -1,0 +1,30 @@
+{
+  for (; ; ) {
+    Object pageRef=addressTranslationTable.get(pageId);
+    if (pageRef instanceof CountDownLatch) {
+      try {
+        ((CountDownLatch)pageRef).await();
+      }
+ catch (      InterruptedException e) {
+        Thread.interrupted();
+        throw new IOException("Interrupted while waiting for page load.",e);
+      }
+    }
+ else     if (pageRef == null || pageRef == NULL) {
+      pageRef=new CountDownLatch(1);
+      Object existing=addressTranslationTable.putIfAbsent(pageId,pageRef);
+      if (existing == null) {
+        PinnablePage page=table.load(pageIO,pageId,lock);
+        addressTranslationTable.put(pageId,page);
+        ((CountDownLatch)pageRef).countDown();
+      }
+    }
+ else {
+      PinnablePage page=(PinnablePage)pageRef;
+      if (page.pin(pageIO,pageId,lock)) {
+        return;
+      }
+      addressTranslationTable.replace(pageId,page,NULL);
+    }
+  }
+}
