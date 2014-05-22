@@ -1,0 +1,21 @@
+{
+  final byte[] expectedBytes="expected".getBytes("UTF-8");
+  BufferPageIO io=spy(new BufferPageIO(ByteBuffer.wrap(expectedBytes)));
+  PinnablePage page=table.load(io,12,PageLock.SHARED);
+  page.unpin(PageLock.SHARED);
+  Thread thread=new Thread(new Runnable(){
+    @Override public void run(){
+      BufferPageIO io=new BufferPageIO(ByteBuffer.allocate(1024));
+      try {
+        table.load(io,3,PageLock.SHARED).unpin(PageLock.SHARED);
+      }
+ catch (      IOException e) {
+        e.printStackTrace();
+      }
+    }
+  }
+);
+  thread.start();
+  thread.join();
+  verify(io).evicted(12);
+}

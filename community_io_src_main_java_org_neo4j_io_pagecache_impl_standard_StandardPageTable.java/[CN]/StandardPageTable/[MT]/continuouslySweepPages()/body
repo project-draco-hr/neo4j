@@ -1,23 +1,42 @@
 {
+  final int minLoadedPages=(int)Math.round(pages.length * 0.96);
+  int maxPagesToEvict=Math.max(pages.length - minLoadedPages,1);
+  int clockHand=0;
   while (!Thread.interrupted()) {
     try {
-      for (      StandardPinnablePage page : pages) {
-        if (page.loaded && page.grabUnpinned()) {
-          try {
-            byte stamp=page.usageStamp;
-            if (stamp == 0) {
-              evict(page);
-            }
+      int loadedPages=0;
+      for (; clockHand < pages.length; clockHand++) {
+        StandardPinnablePage page=pages[clockHand];
+        if (page.loaded) {
+          loadedPages++;
+          if (page.tryExclusiveLock()) {
+            try {
+              byte stamp=page.usageStamp;
+              if (stamp == 0) {
+                evict(page);
+                maxPagesToEvict--;
+                loadedPages--;
+                if (maxPagesToEvict <= 0) {
+                  break;
+                }
+              }
  else {
-              page.usageStamp=(byte)(stamp - 1);
+                page.usageStamp=(byte)(stamp - 1);
+              }
             }
-          }
   finally {
-            page.releaseUnpinned();
+              page.releaseExclusiveLock();
+            }
           }
         }
       }
-      LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(10));
+      if (clockHand >= pages.length) {
+        clockHand=0;
+      }
+      if (loadedPages <= minLoadedPages) {
+        parkUntilEvictionRequired(minLoadedPages);
+      }
+      maxPagesToEvict=loadedPages - minLoadedPages;
     }
  catch (    Exception e) {
       e.printStackTrace();
