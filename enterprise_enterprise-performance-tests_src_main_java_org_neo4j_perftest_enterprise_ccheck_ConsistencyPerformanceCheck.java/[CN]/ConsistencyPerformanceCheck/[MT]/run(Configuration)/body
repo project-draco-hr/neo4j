@@ -15,8 +15,19 @@
     System.in.read();
   }
   Config tuningConfiguration=buildTuningConfiguration(configuration);
+  jobScheduler=new Neo4jJobScheduler();
+  fileSystem=new DefaultFileSystemAbstraction();
+  pageCache=new LifecycledPageCache(fileSystem,jobScheduler,tuningConfiguration);
+  jobScheduler.start();
+  pageCache.start();
   DirectStoreAccess directStoreAccess=createScannableStores(configuration.get(DataGenerator.store_dir),tuningConfiguration);
   JsonReportWriter reportWriter=new JsonReportWriter(configuration,tuningConfiguration);
   TimingProgress progressMonitor=new TimingProgress(new TimeLogger(reportWriter),progress);
-  configuration.get(checker_version).run(progressMonitor,directStoreAccess,tuningConfiguration);
+  try {
+    configuration.get(checker_version).run(progressMonitor,directStoreAccess,tuningConfiguration);
+  }
+  finally {
+    pageCache.stop();
+    jobScheduler.stop();
+  }
 }
