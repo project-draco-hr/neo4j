@@ -1,0 +1,16 @@
+{
+  TransactionIdStore transactionIdStore=new DeadSimpleTransactionIdStore(0,0);
+  LogRotationControl logRotationControl=mock(LogRotationControl.class);
+  LogPositionCache positionCache=new LogPositionCache(10,1000);
+  LogFile logFile=new PhysicalLogFile(fs,directory.directory(),DEFAULT_NAME,1000,NO_PRUNING,transactionIdStore,new Monitors().newMonitor(PhysicalLogFile.Monitor.class),logRotationControl,positionCache);
+  TxIdGenerator txIdGenerator=new DefaultTxIdGenerator(singletonProvider(transactionIdStore));
+  try (TransactionStore store=new PhysicalTransactionStore(logFile,txIdGenerator,positionCache,new VersionAwareLogEntryReader(XaCommandReaderFactory.DEFAULT))){
+    store.open(new Visitor<TransactionRepresentation,IOException>(){
+      @Override public boolean visit(      TransactionRepresentation transaction) throws IOException {
+        fail("Should be nothing to recover");
+        return false;
+      }
+    }
+);
+  }
+ }

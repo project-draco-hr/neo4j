@@ -1,0 +1,27 @@
+{
+  InMemoryLogChannel channel=new InMemoryLogChannel();
+  TransactionIdStore transactionIdStore=new DeadSimpleTransactionIdStore(0,0);
+  TxIdGenerator txIdGenerator=new DefaultTxIdGenerator(singletonProvider(transactionIdStore));
+  LogPositionCache positionCache=new LogPositionCache(10,100);
+  final byte[] additionalHeader=new byte[]{1,2,5};
+  final int masterId=2, authorId=1;
+  final long timeWritten=12345, latestCommittedTxWhenStarted=4545;
+  addATransactionAndRewind(channel,txIdGenerator,positionCache,additionalHeader,masterId,authorId,timeWritten,latestCommittedTxWhenStarted);
+  LogFile logFile=new InMemoryLogFile(channel);
+  final AtomicInteger recoveredTransactions=new AtomicInteger();
+  try (TransactionStore store=new PhysicalTransactionStore(logFile,txIdGenerator,positionCache,new VersionAwareLogEntryReader(XaCommandReaderFactory.DEFAULT))){
+    store.open(new Visitor<TransactionRepresentation,IOException>(){
+      @Override public boolean visit(      TransactionRepresentation transaction) throws IOException {
+        assertArrayEquals(additionalHeader,transaction.additionalHeader());
+        assertEquals(masterId,transaction.getMasterId());
+        assertEquals(authorId,transaction.getAuthorId());
+        assertEquals(timeWritten,transaction.getTimeWritten());
+        assertEquals(latestCommittedTxWhenStarted,transaction.getLatestCommittedTxWhenStarted());
+        recoveredTransactions.incrementAndGet();
+        return true;
+      }
+    }
+);
+  }
+   assertEquals(1,recoveredTransactions.get());
+}

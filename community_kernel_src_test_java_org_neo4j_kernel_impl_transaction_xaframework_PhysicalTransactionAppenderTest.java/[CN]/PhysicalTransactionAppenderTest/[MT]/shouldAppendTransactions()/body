@@ -1,0 +1,27 @@
+{
+  InMemoryLogChannel channel=new InMemoryLogChannel();
+  TxIdGenerator txIdGenerator=mock(TxIdGenerator.class);
+  LogPositionCache positionCache=new LogPositionCache(10,100);
+  TransactionAppender appender=new PhysicalTransactionAppender(channel,txIdGenerator,positionCache);
+  PhysicalTransactionRepresentation transaction=new PhysicalTransactionRepresentation(singleCreateNodeCommand(),false);
+  final byte[] additionalHeader=new byte[]{1,2,5};
+  final int masterId=2, authorId=1;
+  final long timeWritten=12345, latestCommittedTxWhenStarted=4545;
+  transaction.setHeader(additionalHeader,masterId,authorId,timeWritten,latestCommittedTxWhenStarted);
+  appender.append(transaction);
+  TransactionCursor reader=new PhysicalTransactionCursor(channel,new VersionAwareLogEntryReader(XaCommandReaderFactory.DEFAULT));
+  final AtomicInteger visited=new AtomicInteger();
+  reader.next(new Consumer<TransactionRepresentation,IOException>(){
+    @Override public boolean accept(    TransactionRepresentation transaction) throws IOException {
+      assertArrayEquals(additionalHeader,transaction.additionalHeader());
+      assertEquals(masterId,transaction.getMasterId());
+      assertEquals(authorId,transaction.getAuthorId());
+      assertEquals(timeWritten,transaction.getTimeWritten());
+      assertEquals(latestCommittedTxWhenStarted,transaction.getLatestCommittedTxWhenStarted());
+      visited.incrementAndGet();
+      return true;
+    }
+  }
+);
+  assertEquals(1,visited.get());
+}
