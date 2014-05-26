@@ -1,8 +1,18 @@
 {
   KernelTransaction transaction=kernel.newTransaction();
+  boolean success=false;
   try (Statement statement=transaction.acquireStatement()){
     IndexDescriptor descriptor=new IndexDescriptor(labelId,propertyKeyId);
     ((KernelStatement)statement).txState().constraintIndexRuleDoAdd(descriptor);
+    success=true;
     return descriptor;
   }
- }
+  finally {
+    try {
+      kernel.finish(transaction,success);
+    }
+ catch (    TransactionFailureException e) {
+      throw new RuntimeException(e);
+    }
+  }
+}

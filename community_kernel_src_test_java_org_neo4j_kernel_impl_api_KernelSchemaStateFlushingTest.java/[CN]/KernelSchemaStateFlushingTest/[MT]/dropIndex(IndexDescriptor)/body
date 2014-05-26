@@ -1,8 +1,11 @@
 {
-  try (Transaction tx=db.beginTx()){
-    try (Statement statement=ctxProvider.instance()){
-      statement.schemaWriteOperations().indexDrop(descriptor);
-    }
-     tx.success();
+  KernelTransaction transaction=kernel.newTransaction();
+  boolean success=false;
+  try (Statement statement=transaction.acquireStatement()){
+    statement.schemaWriteOperations().indexDrop(descriptor);
+    success=true;
   }
- }
+  finally {
+    kernel.finish(transaction,success);
+  }
+}

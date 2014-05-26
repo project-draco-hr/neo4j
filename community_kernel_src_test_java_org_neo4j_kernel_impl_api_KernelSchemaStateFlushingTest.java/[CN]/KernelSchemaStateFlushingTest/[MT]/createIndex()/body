@@ -1,10 +1,12 @@
 {
-  try (Transaction tx=db.beginTx()){
-    IndexDescriptor descriptor;
-    try (Statement statement=ctxProvider.instance()){
-      descriptor=statement.schemaWriteOperations().indexCreate(1,1);
-    }
-     tx.success();
+  KernelTransaction transaction=kernel.newTransaction();
+  boolean success=false;
+  try (Statement statement=transaction.acquireStatement()){
+    IndexDescriptor descriptor=statement.schemaWriteOperations().indexCreate(1,1);
+    success=true;
     return descriptor;
   }
- }
+  finally {
+    kernel.finish(transaction,success);
+  }
+}

@@ -1,8 +1,10 @@
 {
-  try (Transaction tx=db.beginTx()){
-    try (Statement statement=ctxProvider.instance()){
-      statement.schemaWriteOperations().constraintDrop(descriptor);
-    }
-     tx.success();
+  KernelTransaction transaction=kernel.newTransaction();
+  boolean success=true;
+  try (Statement statement=transaction.acquireStatement()){
+    statement.schemaWriteOperations().constraintDrop(descriptor);
   }
- }
+  finally {
+    kernel.finish(transaction,success);
+  }
+}
