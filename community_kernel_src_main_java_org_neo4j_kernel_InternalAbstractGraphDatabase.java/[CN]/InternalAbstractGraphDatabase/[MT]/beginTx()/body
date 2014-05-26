@@ -1,3 +1,14 @@
 {
-  return tx().begin();
+  if (!availabilityGuard.isAvailable(accessTimeout)) {
+    throw new TransactionFailureException("Database is currently not available. " + availabilityGuard.describeWhoIsBlocking());
+  }
+  KernelAPI kernel=neoDataSource.getKernel();
+  TopLevelTransaction topLevelTransaction=threadToTransactionBridge.getTopLevelTransactionBoundToThisThread(false);
+  if (topLevelTransaction != null) {
+    return new PlaceboTransaction(topLevelTransaction);
+  }
+  KernelTransaction transaction=kernel.newTransaction();
+  topLevelTransaction=new TopLevelTransaction(kernel,transaction,threadToTransactionBridge);
+  threadToTransactionBridge.bindTransactionToCurrentThread(topLevelTransaction);
+  return topLevelTransaction;
 }
