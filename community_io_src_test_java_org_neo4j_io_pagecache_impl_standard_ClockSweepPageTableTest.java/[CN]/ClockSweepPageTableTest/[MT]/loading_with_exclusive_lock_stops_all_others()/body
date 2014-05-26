@@ -1,16 +1,15 @@
 {
-  ClockSweepPageTable table=new ClockSweepPageTable(1,1024,StandardPageCache.NO_MONITOR);
-  final BufferPageIO io=new BufferPageIO(ByteBuffer.wrap("expected".getBytes("UTF-8")));
+  ClockSweepPageTable table=new ClockSweepPageTable(1,TEST_PAGE_SIZE,StandardPageCache.NO_MONITOR);
+  final BufferPageIO io=new BufferPageIO(bytesA);
   final PinnablePage page=table.load(io,12,PageLock.EXCLUSIVE);
   final AtomicBoolean acquiredPage=new AtomicBoolean(false);
-  Thread otherThread=new Thread(new Runnable(){
+  Thread otherThread=fork(new Runnable(){
     @Override public void run(){
       page.pin(io,12,PageLock.SHARED);
       acquiredPage.set(true);
     }
   }
 );
-  otherThread.start();
   awaitThreadState(otherThread,Thread.State.WAITING);
   assertFalse(acquiredPage.get());
   page.unpin(PageLock.EXCLUSIVE);
