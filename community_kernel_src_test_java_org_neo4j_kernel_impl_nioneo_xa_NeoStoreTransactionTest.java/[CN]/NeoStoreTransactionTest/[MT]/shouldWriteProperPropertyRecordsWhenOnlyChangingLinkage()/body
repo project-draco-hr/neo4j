@@ -1,12 +1,12 @@
 {
-  NeoStoreTransaction tx=newWriteTransaction(mockIndexing).first();
+  TransactionRecordState tx=newWriteTransaction(mockIndexing).first();
   int nodeId=0;
   tx.nodeCreate(nodeId);
   int index=0;
   tx.nodeAddProperty(nodeId,index,string(70));
-  prepareAndCommit(tx);
-  Visitor<XaCommand,RuntimeException> verifier=new Visitor<XaCommand,RuntimeException>(){
-    @Override public boolean visit(    XaCommand element){
+  commitProcess.commit(tx.doPrepare());
+  Visitor<Command,RuntimeException> verifier=new Visitor<Command,RuntimeException>(){
+    @Override public boolean visit(    Command element){
       if (element instanceof PropertyCommand) {
         PropertyCommand propertyCommand=(PropertyCommand)element;
         verifyPropertyRecord(propertyCommand.getBefore());
@@ -24,8 +24,7 @@
     }
   }
 ;
-  tx=newWriteTransaction(mockIndexing,verifier).first();
   int index2=1;
   tx.nodeAddProperty(nodeId,index2,string(40));
-  prepareAndCommit(tx);
+  commitProcess.commit(tx.doPrepare());
 }
