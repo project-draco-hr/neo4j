@@ -3,23 +3,23 @@
   int labelId=5, propertyKeyId=7;
   NodePropertyUpdate expectedUpdate=NodePropertyUpdate.add(nodeId,propertyKeyId,"Neo",new long[]{labelId});
   long ruleId=0;
-  TransactionRecordState tx=newWriteTransaction(mockIndexing).first();
+  TransactionRecordState tx=newWriteTransaction().first();
   SchemaRule rule=indexRule(ruleId,labelId,propertyKeyId,PROVIDER_DESCRIPTOR);
   tx.createSchemaRule(rule);
-  commitProcess.commit(tx.doPrepare());
+  commitProcess().commit(tx.doPrepare());
   IteratorCollector<NodePropertyUpdate> indexUpdates=new IteratorCollector<>(0);
   doAnswer(indexUpdates).when(mockIndexing).updateIndexes(any(IndexUpdates.class));
-  tx=newWriteTransaction(mockIndexing).first();
+  tx=newWriteTransaction().first();
   tx.nodeCreate(nodeId);
   tx.addLabelToNode(labelId,nodeId);
   tx.nodeAddProperty(nodeId,propertyKeyId,"Neo");
-  commitProcess.commit(tx.doPrepare());
+  commitProcess().commit(tx.doPrepare());
   verify(mockIndexing,times(1)).updateIndexes(any(IndexUpdates.class));
   indexUpdates.assertContent(expectedUpdate);
   reset(mockIndexing);
   indexUpdates=new IteratorCollector<>(0);
   doAnswer(indexUpdates).when(mockIndexing).updateIndexes(any(IndexUpdates.class));
-  prepareAndCommitRecovered(tx);
+  prepareAndCommitRecovered(tx,2);
   verify(mockIndexing,times(1)).updateIndexes(any(IndexUpdates.class));
   indexUpdates.assertContent(expectedUpdate);
 }

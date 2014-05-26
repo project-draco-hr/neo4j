@@ -1,0 +1,31 @@
+{
+  final long nodeId=neoStore.getNodeStore().nextId();
+  TransactionRecordState writeTransaction=newWriteTransaction().first();
+  writeTransaction.nodeCreate(nodeId);
+  writeTransaction.addLabelToNode(7,nodeId);
+  writeTransaction.addLabelToNode(11,nodeId);
+  writeTransaction.addLabelToNode(12,nodeId);
+  writeTransaction.addLabelToNode(15,nodeId);
+  writeTransaction.addLabelToNode(23,nodeId);
+  writeTransaction.addLabelToNode(27,nodeId);
+  writeTransaction.addLabelToNode(50,nodeId);
+  PhysicalTransactionRepresentation transactionCommands=writeTransaction.doPrepare();
+  commitProcess().commit(transactionCommands);
+  writeTransaction=newWriteTransaction().first();
+  writeTransaction.removeLabelFromNode(11,nodeId);
+  writeTransaction.removeLabelFromNode(23,nodeId);
+  transactionCommands=writeTransaction.doPrepare();
+  commitProcess().commit(transactionCommands);
+  final AtomicBoolean nodeCommandsExist=new AtomicBoolean(false);
+  transactionCommands.execute(new NeoCommandVisitor.Adapter(){
+    @Override public boolean visitNodeCommand(    NodeCommand command) throws IOException {
+      nodeCommandsExist.set(true);
+      Collection<DynamicRecord> beforeDynLabels=command.getAfter().getDynamicLabelRecords();
+      assertThat(beforeDynLabels.size(),equalTo(1));
+      assertThat(beforeDynLabels.iterator().next().inUse(),equalTo(false));
+      return true;
+    }
+  }
+);
+  assertTrue("No node commands found",nodeCommandsExist.get());
+}

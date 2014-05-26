@@ -1,0 +1,17 @@
+{
+  TransactionRecordState tx=newWriteTransaction().first();
+  long ruleId=0;
+  int labelId=5, propertyKeyId=7;
+  SchemaRule rule=indexRule(ruleId,labelId,propertyKeyId,PROVIDER_DESCRIPTOR);
+  tx.createSchemaRule(rule);
+  PhysicalTransactionRepresentation transactionCommands=tx.doPrepare();
+  transactionCommands.execute(new NeoCommandVisitor.Adapter(){
+    @Override public boolean visitSchemaRuleCommand(    SchemaRuleCommand command) throws IOException {
+      for (      DynamicRecord record : command.getRecordsAfter()) {
+        assertFalse(record + " should have been heavy",record.isLight());
+      }
+      return true;
+    }
+  }
+);
+}
