@@ -1,0 +1,26 @@
+{
+  LimitedFilesystemAbstraction fs=new LimitedFilesystemAbstraction(new DefaultFileSystemAbstraction());
+  StandardPageCache cache=new StandardPageCache(fs,2,512);
+  PagedFile file=cache.map(new File(testDir.directory(),"storefile"),512);
+  PageCursor cursor=cache.newCursor();
+  Thread sweeperThread=new Thread(cache);
+  sweeperThread.start();
+  file.pin(cursor,PageLock.EXCLUSIVE,1);
+  file.unpin(cursor);
+  file.pin(cursor,PageLock.EXCLUSIVE,2);
+  file.unpin(cursor);
+  file.pin(cursor,PageLock.EXCLUSIVE,3);
+  file.unpin(cursor);
+  fs.runOutOfDiskSpace();
+  try {
+    file.flush();
+    fail("Should've thrown out of disk.");
+  }
+ catch (  IOException e) {
+  }
+  while (sweeperThread.isAlive()) {
+    Thread.sleep(10);
+    file.pin(cursor,PageLock.EXCLUSIVE,1);
+    file.unpin(cursor);
+  }
+}
