@@ -1,8 +1,18 @@
 {
   assertInTransaction();
-  return new Iterable<Node>(){
-    @Override public Iterator<Node> iterator(){
-      return nodeManager.getAllNodes();
+  return new ResourceIterable<Node>(){
+    @Override public ResourceIterator<Node> iterator(){
+      final Statement statement=statementCtxProvider.instance();
+      final PrimitiveLongIterator ids=statement.readOperations().nodesGetAll();
+      return new PrefetchingResourceIterator<Node>(){
+        @Override public void close(){
+          statement.close();
+        }
+        @Override protected Node fetchNextOrNull(){
+          return ids.hasNext() ? nodeManager.getNodeById(ids.next()) : null;
+        }
+      }
+;
     }
   }
 ;

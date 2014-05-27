@@ -1,0 +1,36 @@
+{
+  return new PrimitiveLongBaseIterator(){
+    private final NodeStore store=neoStore.getNodeStore();
+    private long highId=store.getHighestPossibleIdInUse();
+    private long currentId;
+    private final NodeRecord reusableNodeRecord=new NodeRecord(-1);
+    @Override protected boolean fetchNext(){
+      while (true) {
+        while (currentId <= highId) {
+          try {
+            try {
+              NodeRecord record=store.getRecord(currentId,reusableNodeRecord,CHECK);
+              if (record != null && record.inUse()) {
+                return next(record.getId());
+              }
+            }
+ catch (            InvalidRecordException e) {
+            }
+          }
+  finally {
+            currentId++;
+          }
+        }
+        long newHighId=store.getHighestPossibleIdInUse();
+        if (newHighId > highId) {
+          highId=newHighId;
+        }
+ else {
+          break;
+        }
+      }
+      return false;
+    }
+  }
+;
+}

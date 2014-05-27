@@ -1,0 +1,35 @@
+{
+  if (primitiveElement == null) {
+    return;
+  }
+  ArrayMap<Long,CowNodeElement> cowNodeElements=primitiveElement.nodes;
+  Set<Entry<Long,CowNodeElement>> nodeEntrySet=cowNodeElements.entrySet();
+  for (  Entry<Long,CowNodeElement> entry : nodeEntrySet) {
+    NodeImpl node=nodeManager.getNodeIfCached(entry.getKey());
+    if (node != null) {
+      CowNodeElement nodeElement=entry.getValue();
+      if (success) {
+        node.commitRelationshipMaps(nodeElement.relationshipAddMap,nodeElement.relationshipRemoveMap);
+        node.commitPropertyMaps(nodeElement.propertyAddMap,nodeElement.propertyRemoveMap);
+      }
+      int sizeAfter=node.sizeOfObjectInBytesIncludingOverhead();
+      nodeManager.updateCacheSize(node,sizeAfter);
+    }
+  }
+  ArrayMap<Long,CowRelElement> cowRelElements=primitiveElement.relationships;
+  Set<Entry<Long,CowRelElement>> relEntrySet=cowRelElements.entrySet();
+  for (  Entry<Long,CowRelElement> entry : relEntrySet) {
+    RelationshipImpl rel=nodeManager.getRelIfCached(entry.getKey());
+    if (rel != null) {
+      CowRelElement relElement=entry.getValue();
+      if (success) {
+        rel.commitPropertyMaps(relElement.propertyAddMap,relElement.propertyRemoveMap);
+      }
+      int sizeAfter=rel.sizeOfObjectInBytesIncludingOverhead();
+      nodeManager.updateCacheSize(rel,sizeAfter);
+    }
+  }
+  if (primitiveElement.graph != null && success) {
+    nodeManager.getGraphProperties().commitPropertyMaps(primitiveElement.graph.getPropertyAddMap(false),primitiveElement.graph.getPropertyRemoveMap(false));
+  }
+}
