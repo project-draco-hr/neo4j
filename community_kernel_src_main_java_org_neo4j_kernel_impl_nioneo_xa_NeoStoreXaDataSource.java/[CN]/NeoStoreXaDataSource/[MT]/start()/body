@@ -13,14 +13,11 @@
   neoStore=storeFactory.newNeoStore(false);
   schemaCache=new SchemaCache(Collections.<SchemaRule>emptyList());
   final NodeManager nodeManager=dependencyResolver.resolveDependency(NodeManager.class);
-  Iterator<? extends Cache<?>> caches=nodeManager.caches().iterator();
-  persistenceCache=new PersistenceCache((AutoLoadingCache<NodeImpl>)caches.next(),(AutoLoadingCache<RelationshipImpl>)caches.next(),new Thunk<GraphPropertiesImpl>(){
-    @Override public GraphPropertiesImpl evaluate(){
-      return nodeManager.getGraphProperties();
-    }
-  }
-,nodeManager);
-  cacheAccess=new BridgingCacheAccess(nodeManager,schemaCache,updateableSchemaState,persistenceCache);
+  AutoLoadingCache<NodeImpl> nodeCache=new AutoLoadingCache<>(cacheProvider.newNodeCache(msgLog,config,monitors),nodeLoader(neoStore.getNodeStore()));
+  AutoLoadingCache<RelationshipImpl> relationshipCache=new AutoLoadingCache<>(cacheProvider.newRelationshipCache(msgLog,config,monitors),relationshipLoader(neoStore.getRelationshipStore()));
+  RelationshipLoader relationshipLoader=new RelationshipLoader(relationshipCache,new RelationshipChainLoader(neoStore));
+  persistenceCache=new PersistenceCache(nodeCache,relationshipCache,nodeManager.newGraphProperties(),relationshipLoader,propertyKeyTokenHolder,relationshipTypeTokens,labelTokens);
+  cacheAccess=new BridgingCacheAccess(schemaCache,updateableSchemaState,persistenceCache);
   try {
     indexingService=life.add(new IndexingService(scheduler,providerMap,new NeoStoreIndexStoreView(lockService,neoStore),tokenNameLookup,updateableSchemaState,logging,indexingServiceMonitor));
     integrityValidator=new IntegrityValidator(neoStore,indexingService);
@@ -32,11 +29,14 @@
       }
     }
 ;
-    kernel=life.add(new Kernel(propertyKeyTokenHolder,updateableSchemaState,schemaWriteGuard,indexingService,nodeManager,neoStoreProvider,persistenceCache,schemaCache,providerMap,fs,config,labelScanStore,new CacheLayer(new DiskLayer(propertyKeyTokenHolder,labelTokens,relationshipTypeTokens,new SchemaStorage(neoStore.getSchemaStore()),neoStoreProvider,indexingService),persistenceCache,indexingService,schemaCache,nodeManager),scheduler,transactionMonitor,kernelHealth,readOnly,cacheAccess,integrityValidator,locks,lockService,remoteTxHook,txIdGenerator,transactionHeaderInformation,this,startupStatistics,logging));
+    storeLayer=new CacheLayer(new DiskLayer(propertyKeyTokenHolder,labelTokens,relationshipTypeTokens,new SchemaStorage(neoStore.getSchemaStore()),neoStoreProvider,indexingService),persistenceCache,indexingService,schemaCache);
+    kernel=life.add(new Kernel(propertyKeyTokenHolder,updateableSchemaState,schemaWriteGuard,indexingService,nodeManager,neoStoreProvider,persistenceCache,schemaCache,providerMap,fs,config,labelScanStore,storeLayer,scheduler,transactionMonitor,kernelHealth,readOnly,cacheAccess,integrityValidator,locks,lockService,remoteTxHook,txIdGenerator,transactionHeaderInformation,this,startupStatistics,logging));
     kernel.registerTransactionHook(transactionEventHandlers);
     life.init();
     life.start();
     propertyKeyTokenHolder.addTokens(((TokenStore<?>)neoStore.getPropertyKeyTokenStore()).getTokens(Integer.MAX_VALUE));
+    relationshipTypeTokens.addTokens(((TokenStore<?>)neoStore.getRelationshipTypeTokenStore()).getTokens(Integer.MAX_VALUE));
+    labelTokens.addTokens(((TokenStore<?>)neoStore.getLabelTokenStore()).getTokens(Integer.MAX_VALUE));
   }
  catch (  Throwable e) {
     try {

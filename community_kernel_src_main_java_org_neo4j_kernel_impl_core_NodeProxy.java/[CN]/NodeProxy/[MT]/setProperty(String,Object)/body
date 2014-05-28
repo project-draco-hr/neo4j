@@ -1,15 +1,12 @@
 {
-  boolean requireRollback=true;
   try (Statement statement=statementContextProvider.instance()){
     int propertyKeyId=statement.tokenWriteOperations().propertyKeyGetOrCreateForName(key);
     try {
       statement.dataWriteOperations().nodeSetProperty(nodeId,Property.property(propertyKeyId,value));
     }
  catch (    ConstraintValidationKernelException e) {
-      requireRollback=false;
       throw new ConstraintViolationException(e.getUserMessage(new StatementTokenNameLookup(statement.readOperations())),e);
     }
-    requireRollback=false;
   }
  catch (  EntityNotFoundException e) {
     throw new NotFoundException(e);
@@ -22,10 +19,5 @@ catch (  InvalidTransactionTypeKernelException e) {
   }
 catch (  ReadOnlyDatabaseKernelException e) {
     throw new ReadOnlyDbException();
-  }
- finally {
-    if (requireRollback) {
-      nodeLookup.getNodeManager().setRollbackOnly();
-    }
   }
 }

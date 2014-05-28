@@ -1,7 +1,7 @@
 {
   boolean success=false;
   try {
-    if ((hooksState=hooks.beforeCommit(txState,this)) != null && hooksState.failed()) {
+    if ((hooksState=hooks.beforeCommit(txState,this,storeLayer)) != null && hooksState.failed()) {
       throw new TransactionFailureException(Status.Transaction.HookFailed,hooksState.failure(),"");
     }
     prepareRecordChangesFromTransactionState();
@@ -10,7 +10,9 @@
       transactionRepresentation.setHeader(headerInformation.getAdditionalHeader(),headerInformation.getMasterId(),headerInformation.getAuthorId(),currentTimeMillis(),transactionIdStore.getLastCommittingTransactionId());
       commitProcess.commit(transactionRepresentation);
     }
-    legacyTxState.applyChangesToCache(true);
+    if (hasTxStateWithChanges()) {
+      persistenceCache.apply(txState);
+    }
     success=true;
   }
   finally {

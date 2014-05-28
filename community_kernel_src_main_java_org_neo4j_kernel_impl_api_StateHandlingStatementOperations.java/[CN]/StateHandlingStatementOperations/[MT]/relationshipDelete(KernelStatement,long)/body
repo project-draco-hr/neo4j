@@ -2,12 +2,19 @@
   legacyPropertyTrackers.relationshipDelete(relationshipId);
   final TxState txState=state.txState();
   if (txState.relationshipIsAddedInThisTx(relationshipId)) {
+    txState.relationshipVisit(relationshipId,new RelationshipVisitor(){
+      @Override public void visit(      long relId,      long startNode,      long endNode,      int type){
+        state.recordState.relDelete(relId);
+      }
+    }
+);
     txState.relationshipDoDeleteAddedInThisTx(relationshipId);
   }
  else {
     try {
-      storeLayer.visit(relationshipId,new StoreReadLayer.RelationshipVisitor(){
+      storeLayer.visit(relationshipId,new RelationshipVisitor(){
         @Override public void visit(        long relId,        long startNode,        long endNode,        int type){
+          state.recordState.relDelete(relId);
           txState.relationshipDoDelete(relId,startNode,endNode,type);
         }
       }
