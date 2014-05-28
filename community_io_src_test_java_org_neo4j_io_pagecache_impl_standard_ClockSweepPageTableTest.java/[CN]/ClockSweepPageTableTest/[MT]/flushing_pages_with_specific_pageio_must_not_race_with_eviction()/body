@@ -2,7 +2,10 @@
   PageIO io=new BufferPageIO(ByteBuffer.allocate(TEST_PAGE_SIZE));
   long pageId=12;
   PinnablePage page=table.load(io,pageId,PageLock.EXCLUSIVE);
+  monitor.observe(Fault.class);
   page.unpin(PageLock.EXCLUSIVE);
-  assertThat(monitor.observe(Fault.class),is(new Fault(io,pageId)));
-  assertThat(monitor.observe(Evict.class),is(new Evict(io,pageId)));
+  LockSupport.unpark(sweeperThread);
+  while (monitor.tryObserve(Evict.class) == null) {
+    table.flush(io);
+  }
 }
