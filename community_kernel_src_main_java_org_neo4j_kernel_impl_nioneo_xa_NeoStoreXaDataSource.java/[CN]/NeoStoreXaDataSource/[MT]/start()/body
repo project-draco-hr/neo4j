@@ -3,12 +3,14 @@
   readOnly=config.get(Configuration.read_only);
   storeDir=config.get(Configuration.store_dir);
   File store=config.get(Configuration.neo_store);
-  storeFactory.ensureStoreExists();
+  if (!storeFactory.storeExists()) {
+    storeFactory.createNeoStore().close();
+  }
   indexProvider=dependencyResolver.resolveDependency(SchemaIndexProvider.class,SchemaIndexProvider.HIGHEST_PRIORITIZED_OR_NONE);
   storeMigrationProcess.addParticipant(indexProvider.storeMigrationParticipant());
   DefaultSchemaIndexProviderMap providerMap=new DefaultSchemaIndexProviderMap(indexProvider);
   storeMigrationProcess.migrateIfNeeded(store.getParentFile());
-  neoStore=storeFactory.newNeoStore(store);
+  neoStore=storeFactory.newNeoStore(false);
   schemaCache=new SchemaCache(Collections.<SchemaRule>emptyList());
   final NodeManager nodeManager=dependencyResolver.resolveDependency(NodeManager.class);
   Iterator<? extends Cache<?>> caches=nodeManager.caches().iterator();
