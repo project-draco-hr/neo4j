@@ -1,0 +1,14 @@
+{
+  File toOpen=logFiles.getHistoryFileName(forVersion);
+  PhysicalLogVersionedStoreChannel channel=openFileChannel(toOpen,"rw");
+  long[] header=readLogHeader(headerBuffer,channel,false);
+  if (header == null) {
+    long lastTxId=transactionIdStore.getLastCommittingTransactionId();
+    writeLogHeader(headerBuffer,forVersion,lastTxId);
+    positionCache.putHeader(forVersion,lastTxId);
+    channel.writeAll(headerBuffer);
+    channel.setVersion(forVersion);
+    monitor.opened(toOpen,forVersion,lastTxId,true);
+  }
+  return channel;
+}

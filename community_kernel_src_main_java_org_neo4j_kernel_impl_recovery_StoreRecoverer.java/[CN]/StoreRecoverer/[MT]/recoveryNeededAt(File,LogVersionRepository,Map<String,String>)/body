@@ -1,0 +1,17 @@
+{
+  params.put(GraphDatabaseSettings.store_dir.name(),dataDir.getPath());
+  Config config=new Config(params,GraphDatabaseSettings.class);
+  File baseLogPath=config.get(GraphDatabaseSettings.logical_log);
+  PhysicalLogFiles logFiles=new PhysicalLogFiles(baseLogPath,fs);
+  File log=logFiles.getHistoryFileName(logVersionRepository.getCurrentLogVersion());
+  StoreChannel logChannel=null;
+  try {
+    logChannel=fs.open(log,"r");
+    return new XaLogicalLogRecoveryCheck(logChannel).recoveryRequired();
+  }
+  finally {
+    if (logChannel != null) {
+      logChannel.close();
+    }
+  }
+}
