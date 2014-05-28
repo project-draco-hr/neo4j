@@ -1,8 +1,21 @@
 {
-  assertOpen();
-  closed=true;
-  if (currentStatement != null) {
-    currentStatement.forceClose();
-    currentStatement=null;
+  assertTransactionOpen();
+  assertTransactionNotClosing();
+  closeCurrentStatementIfAny();
+  closing=true;
+  try {
+    if (failure || !success) {
+      rollback();
+      if (success) {
+        throw new TransactionFailureException(Status.Transaction.MarkedAsFailed,"");
+      }
+    }
+ else {
+      commit();
+    }
+  }
+  finally {
+    closed=true;
+    closing=false;
   }
 }

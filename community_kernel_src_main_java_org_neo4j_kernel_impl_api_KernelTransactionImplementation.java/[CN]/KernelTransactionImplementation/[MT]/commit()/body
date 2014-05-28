@@ -1,13 +1,19 @@
 {
+  boolean success=false;
   try {
-    release();
-    close();
-    hooks.afterCommit(txState,this,hooksState);
+    if ((hooksState=hooks.beforeCommit(txState,this)) != null && hooksState.failed()) {
+      throw new TransactionFailureException(Status.Transaction.HookFailed,hooksState.failure(),"");
+    }
+    prepareRecordChangesFromTransactionState();
+    if (!isReadOnly()) {
+      PhysicalTransactionRepresentation transactionRepresentation=recordState.doPrepare();
+      transactionRepresentation.setHeader(headerInformation.getAdditionalHeader(),headerInformation.getMasterId(),headerInformation.getAuthorId(),currentTimeMillis(),transactionIdStore.getLastCommittingTransactionId());
+      commitProcess.commit(transactionRepresentation);
+    }
+    legacyTxState.applyChangesToCache(true);
+    success=true;
   }
- catch (  ReleaseLocksFailedKernelException e) {
-    throw new TransactionFailureException(Status.Transaction.CouldNotCommit,e,"Failure to release after commit");
-  }
- finally {
-    closing=false;
+  finally {
+    afterCommit(success);
   }
 }

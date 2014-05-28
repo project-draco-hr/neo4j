@@ -1,24 +1,13 @@
 {
-  KernelTransaction transaction=kernel.newTransaction();
-  boolean success=false;
-  try (Statement statement=transaction.acquireStatement()){
+  try (KernelTransaction transaction=kernel.newTransaction();Statement statement=transaction.acquireStatement()){
     for (Iterator<IndexDescriptor> indexes=statement.readOperations().uniqueIndexesGetAll(); indexes.hasNext(); ) {
       IndexDescriptor index=indexes.next();
       if (statement.readOperations().indexGetOwningUniquenessConstraintId(index) == null) {
         statement.schemaWriteOperations().uniqueIndexDrop(index);
       }
     }
-    success=true;
   }
  catch (  KernelException e) {
     log.error("Failed to execute orphan index checking transaction.",e);
-  }
- finally {
-    try {
-      kernel.finish(transaction,success);
-    }
- catch (    TransactionFailureException e) {
-      throw new RuntimeException(e);
-    }
   }
 }

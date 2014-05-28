@@ -1,5 +1,4 @@
 {
-  beginClose();
   try {
     try {
       dropCreatedConstraintIndexes();
@@ -7,18 +6,9 @@
  catch (    IllegalStateException|SecurityException e) {
       throw new TransactionFailureException(Status.Transaction.CouldNotRollback,e,"Could not drop created constraint indexes");
     }
- finally {
-      try {
-        release();
-      }
- catch (      ReleaseLocksFailedKernelException e) {
-        throw new TransactionFailureException(Status.Transaction.ReleaseLocksFailed,e,"");
-      }
-    }
-    close();
-    hooks.afterRollback(txState,this,hooksState);
+    legacyTxState.applyChangesToCache(false);
   }
   finally {
-    closing=false;
+    afterRollback();
   }
 }
