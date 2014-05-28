@@ -7,18 +7,24 @@
     }
  else {
       log.log("No database tuning properties (org.neo4j.server.db.tuning.properties) found in [%s], using defaults.",configFile.getPath());
-      return;
     }
   }
-  File databaseTuningPropertyFile=new File(databaseTuningPropertyFileLocation);
-  if (!databaseTuningPropertyFile.exists()) {
-    log.warn("The specified file for database performance tuning properties [%s] does not exist.",databaseTuningPropertyFileLocation);
-    return;
+  if (databaseTuningPropertyFileLocation != null) {
+    File databaseTuningPropertyFile=new File(databaseTuningPropertyFileLocation);
+    if (!databaseTuningPropertyFile.exists()) {
+      log.warn("The specified file for database performance tuning properties [%s] does not exist.",databaseTuningPropertyFileLocation);
+    }
+ else {
+      try {
+        databaseTuningProperties=MapUtil.load(databaseTuningPropertyFile);
+      }
+ catch (      IOException e) {
+        log.warn("Unable to load database tuning file: " + e.getMessage());
+      }
+    }
   }
-  try {
-    databaseTuningProperties=MapUtil.load(databaseTuningPropertyFile);
-  }
- catch (  IOException e) {
+  if (databaseTuningProperties == null) {
     databaseTuningProperties=new HashMap<>();
   }
+  databaseTuningProperties.put(GraphDatabaseSettings.store_dir.name(),serverConfiguration.getString(Configurator.DATABASE_LOCATION_PROPERTY_KEY));
 }
