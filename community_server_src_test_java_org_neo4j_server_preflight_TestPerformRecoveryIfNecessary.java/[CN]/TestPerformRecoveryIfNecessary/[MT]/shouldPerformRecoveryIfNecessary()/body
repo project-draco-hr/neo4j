@@ -1,13 +1,15 @@
 {
+  TestLogging logging=new TestLogging();
   StoreRecoverer recoverer=new StoreRecoverer();
   Configuration config=buildProperties();
   ByteArrayOutputStream outputStream=new ByteArrayOutputStream();
-  new GraphDatabaseFactory().newEmbeddedDatabase(STORE_DIRECTORY).shutdown();
-  new File(STORE_DIRECTORY,"nioneo_logical.log.active").delete();
-  assertThat("Store should not be recovered",recoverer.recoveryNeededAt(new File(STORE_DIRECTORY),new HashMap<String,String>()),is(true));
-  PerformRecoveryIfNecessary task=new PerformRecoveryIfNecessary(config,new HashMap<String,String>(),new PrintStream(outputStream),DevNullLoggingService.DEV_NULL);
+  new GraphDatabaseFactory().newEmbeddedDatabase(storeDirectory).shutdown();
+  new File(storeDirectory,"nioneo_logical.log.active").delete();
+  assertThat("Store should not be recovered",recoverer.recoveryNeededAt(new File(storeDirectory),new HashMap<String,String>()),is(true));
+  PerformRecoveryIfNecessary task=new PerformRecoveryIfNecessary(config,new HashMap<String,String>(),new PrintStream(outputStream),logging);
   assertThat("Recovery task should run successfully.",task.run(),is(true));
-  assertThat("Database should exist.",new File(STORE_DIRECTORY).exists(),is(true));
+  assertThat("Database should exist.",new File(storeDirectory).exists(),is(true));
   assertThat("Recovery should print status message.",outputStream.toString(),is("Detected incorrectly shut down database, performing recovery.." + LINEBREAK));
-  assertThat("Store should be recovered",recoverer.recoveryNeededAt(new File(STORE_DIRECTORY),new HashMap<String,String>()),is(false));
+  assertThat("Store should be recovered",recoverer.recoveryNeededAt(new File(storeDirectory),new HashMap<String,String>()),is(false));
+  logging.getMessagesLog(EmbeddedGraphDatabase.class).assertAtLeastOnce(info("Database is now ready"));
 }
