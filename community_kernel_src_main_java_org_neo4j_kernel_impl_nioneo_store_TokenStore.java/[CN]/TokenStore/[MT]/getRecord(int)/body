@@ -1,11 +1,17 @@
 {
   T record;
-  PersistenceWindow window=acquireWindow(id,OperationType.READ);
+  PageCursor cursor=pageCache.newCursor();
   try {
-    record=getRecord(id,window,false);
+    storeFile.pin(cursor,PageLock.SHARED,pageIdForRecord(id));
+  }
+ catch (  IOException e) {
+    throw new UnderlyingStorageException(e);
+  }
+  try {
+    record=getRecord(id,cursor,false);
   }
   finally {
-    releaseWindow(window);
+    storeFile.unpin(cursor);
   }
   record.addNameRecords(nameStore.getLightRecords(record.getNameId()));
   return record;

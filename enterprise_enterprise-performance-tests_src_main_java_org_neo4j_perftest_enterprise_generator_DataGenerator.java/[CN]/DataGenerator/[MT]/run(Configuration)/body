@@ -9,7 +9,11 @@
   finally {
     batchInserter.shutdown();
   }
-  StoreAccess stores=new StoreAccess(storeDir);
+  Neo4jJobScheduler jobScheduler=new Neo4jJobScheduler();
+  jobScheduler.start();
+  LifecycledPageCache pageCache=new LifecycledPageCache(new DefaultFileSystemAbstraction(),jobScheduler,new Config());
+  pageCache.start();
+  StoreAccess stores=new StoreAccess(pageCache,storeDir);
   try {
     printCount(stores.getNodeStore());
     printCount(stores.getRelationshipStore());
@@ -24,5 +28,9 @@
   }
   finally {
     stores.close();
+    pageCache.flush();
+    pageCache.close();
+    pageCache.stop();
+    jobScheduler.stop();
   }
 }

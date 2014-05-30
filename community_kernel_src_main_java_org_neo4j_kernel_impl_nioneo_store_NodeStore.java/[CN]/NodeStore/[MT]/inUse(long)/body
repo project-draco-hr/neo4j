@@ -1,16 +1,16 @@
 {
-  PersistenceWindow window;
+  PageCursor cursor=pageCache.newCursor();
   try {
-    window=acquireWindow(id,OperationType.READ);
+    storeFile.pin(cursor,PageLock.SHARED,pageIdForRecord(id));
   }
- catch (  InvalidRecordException e) {
-    return false;
+ catch (  IOException e) {
+    throw new UnderlyingStorageException(e);
   }
   try {
-    Buffer buffer=window.getOffsettedBuffer(id);
-    return ((long)buffer.get() & 0x1) == Record.IN_USE.intValue();
+    cursor.setOffset(offsetForId(id));
+    return ((long)cursor.getByte() & 0x1) == Record.IN_USE.intValue();
   }
   finally {
-    releaseWindow(window);
+    storeFile.unpin(cursor);
   }
 }

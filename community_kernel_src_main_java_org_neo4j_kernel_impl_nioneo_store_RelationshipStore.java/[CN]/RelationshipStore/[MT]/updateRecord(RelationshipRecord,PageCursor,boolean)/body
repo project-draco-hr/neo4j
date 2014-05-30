@@ -1,0 +1,42 @@
+{
+  long id=record.getId();
+  cursor.setOffset(offsetForId(id));
+  registerIdFromUpdateRecord(id);
+  if (record.inUse() || force) {
+    long firstNode=record.getFirstNode();
+    short firstNodeMod=(short)((firstNode & 0x700000000L) >> 31);
+    long secondNode=record.getSecondNode();
+    long secondNodeMod=(secondNode & 0x700000000L) >> 4;
+    long firstPrevRel=record.getFirstPrevRel();
+    long firstPrevRelMod=firstPrevRel == Record.NO_NEXT_RELATIONSHIP.intValue() ? 0 : (firstPrevRel & 0x700000000L) >> 7;
+    long firstNextRel=record.getFirstNextRel();
+    long firstNextRelMod=firstNextRel == Record.NO_NEXT_RELATIONSHIP.intValue() ? 0 : (firstNextRel & 0x700000000L) >> 10;
+    long secondPrevRel=record.getSecondPrevRel();
+    long secondPrevRelMod=secondPrevRel == Record.NO_NEXT_RELATIONSHIP.intValue() ? 0 : (secondPrevRel & 0x700000000L) >> 13;
+    long secondNextRel=record.getSecondNextRel();
+    long secondNextRelMod=secondNextRel == Record.NO_NEXT_RELATIONSHIP.intValue() ? 0 : (secondNextRel & 0x700000000L) >> 16;
+    long nextProp=record.getNextProp();
+    long nextPropMod=nextProp == Record.NO_NEXT_PROPERTY.intValue() ? 0 : (nextProp & 0xF00000000L) >> 28;
+    short inUseUnsignedByte=(short)((record.inUse() ? Record.IN_USE : Record.NOT_IN_USE).byteValue() | firstNodeMod | nextPropMod);
+    int typeInt=(int)(record.getType() | secondNodeMod | firstPrevRelMod| firstNextRelMod| secondPrevRelMod| secondNextRelMod);
+    long firstInStartNodeChain=record.isFirstInFirstChain() ? 0x1 : 0;
+    long firstInEndNodeChain=record.isFirstInSecondChain() ? 0x2 : 0;
+    byte extraByte=(byte)(firstInEndNodeChain | firstInStartNodeChain);
+    cursor.putByte((byte)inUseUnsignedByte);
+    cursor.putInt((int)firstNode);
+    cursor.putInt((int)secondNode);
+    cursor.putInt(typeInt);
+    cursor.putInt((int)firstPrevRel);
+    cursor.putInt((int)firstNextRel);
+    cursor.putInt((int)secondPrevRel);
+    cursor.putInt((int)secondNextRel);
+    cursor.putInt((int)nextProp);
+    cursor.putByte(extraByte);
+  }
+ else {
+    cursor.putByte(Record.NOT_IN_USE.byteValue());
+    if (!isInRecoveryMode()) {
+      freeId(id);
+    }
+  }
+}

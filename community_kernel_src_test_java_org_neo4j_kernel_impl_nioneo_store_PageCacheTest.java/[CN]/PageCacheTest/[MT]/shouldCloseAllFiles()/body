@@ -1,0 +1,21 @@
+{
+  FileSystemAbstraction fs=mock(FileSystemAbstraction.class);
+  StandardPageCache cache=new StandardPageCache(fs,16,512);
+  File file1Name=new File("file1");
+  File file2Name=new File("file2");
+  StoreChannel channel1=mock(StoreChannel.class);
+  StoreChannel channel2=mock(StoreChannel.class);
+  when(fs.open(file1Name,"rw")).thenReturn(channel1);
+  when(fs.open(file2Name,"rw")).thenReturn(channel2);
+  PagedFile file1=cache.map(file1Name,64);
+  PagedFile file1Again=cache.map(file1Name,64);
+  PagedFile file2=cache.map(file2Name,64);
+  cache.unmap(file2Name);
+  verify(fs).open(file1Name,"rw");
+  verify(fs).open(file2Name,"rw");
+  verify(channel2).close();
+  verifyNoMoreInteractions(channel1,channel2,fs);
+  cache.close();
+  verify(channel1).close();
+  verifyNoMoreInteractions(channel1,channel2,fs);
+}

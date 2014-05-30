@@ -1,0 +1,20 @@
+{
+  BufferPageIO io=new BufferPageIO(bytesA);
+  PinnablePage page=table.load(io,12,PageLock.SHARED);
+  page.unpin(PageLock.SHARED);
+  Thread thread=new Thread(new Runnable(){
+    @Override public void run(){
+      BufferPageIO io=new BufferPageIO(ByteBuffer.wrap(bytesB));
+      try {
+        table.load(io,3,PageLock.SHARED).unpin(PageLock.SHARED);
+      }
+ catch (      IOException e) {
+        e.printStackTrace();
+      }
+    }
+  }
+);
+  thread.start();
+  thread.join();
+  assertFalse(page.pin(io,12,PageLock.SHARED));
+}
