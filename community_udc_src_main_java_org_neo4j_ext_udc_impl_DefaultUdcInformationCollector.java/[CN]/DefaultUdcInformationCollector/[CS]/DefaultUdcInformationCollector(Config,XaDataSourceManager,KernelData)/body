@@ -1,19 +1,22 @@
 {
   this.config=config;
   this.kernel=kernel;
-  if (xadsm != null)   xadsm.addDataSourceRegistrationListener(new DataSourceRegistrationListener(){
-    @Override public void registeredDataSource(    XaDataSource ds){
-      if (ds instanceof NeoStoreXaDataSource) {
-        crashPing=ds.getXaContainer().getLogicalLog().wasNonClean();
-        storeId=Long.toHexString(ds.getRandomIdentifier());
+  nodeManager=kernel.graphDatabase().getDependencyResolver().resolveDependency(NodeManager.class);
+  if (xadsm != null) {
+    xadsm.addDataSourceRegistrationListener(new DataSourceRegistrationListener(){
+      @Override public void registeredDataSource(      XaDataSource ds){
+        if (ds instanceof NeoStoreXaDataSource) {
+          crashPing=ds.getXaContainer().getLogicalLog().wasNonClean();
+          storeId=Long.toHexString(ds.getRandomIdentifier());
+        }
+      }
+      @Override public void unregisteredDataSource(      XaDataSource ds){
+        if (ds instanceof NeoStoreXaDataSource) {
+          crashPing=false;
+          storeId=null;
+        }
       }
     }
-    @Override public void unregisteredDataSource(    XaDataSource ds){
-      if (ds instanceof NeoStoreXaDataSource) {
-        crashPing=false;
-        storeId=null;
-      }
-    }
-  }
 );
+  }
 }
