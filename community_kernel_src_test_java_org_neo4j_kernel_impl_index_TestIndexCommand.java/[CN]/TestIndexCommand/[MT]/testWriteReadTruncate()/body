@@ -1,20 +1,18 @@
 {
-  List<XaCommand> commands=createSomeCommands();
-  Pair<File,List<Long>> writtenCommands=writeCommandsToFile(commands);
-  List<XaCommand> readCommands=readCommandsFromFile(writtenCommands.first());
-  Iterator<XaCommand> commandIterator=commands.iterator();
-  for (  XaCommand readCommand : readCommands) {
+  List<Command> commands=createSomeCommands();
+  List<Long> writtenCommands=writeCommandsToFile(commands);
+  List<Command> readCommands=readCommandsFromChannel();
+  Iterator<Command> commandIterator=commands.iterator();
+  for (  Command readCommand : readCommands) {
     assertEquals(commandIterator.next(),readCommand);
   }
   for (int i=0; i < commands.size(); i++) {
-    long startPosition=writtenCommands.other().get(i);
-    long nextStartPosition=i + 1 < commands.size() ? writtenCommands.other().get(i + 1) : writtenCommands.first().length();
+    long startPosition=writtenCommands.get(i);
+    long nextStartPosition=i + 1 < commands.size() ? writtenCommands.get(i + 1) : channel.writerPosition();
     for (long p=startPosition; p < nextStartPosition; p++) {
-      File copy=copyAndTruncateFile(writtenCommands.first(),p);
-      List<XaCommand> readTruncatedCommands=readCommandsFromFile(copy);
+      channel.truncateTo((int)p);
+      List<Command> readTruncatedCommands=readCommandsFromChannel();
       assertEquals(i,readTruncatedCommands.size());
-      FileUtils.deleteFile(copy);
     }
   }
-  writtenCommands.first().delete();
 }

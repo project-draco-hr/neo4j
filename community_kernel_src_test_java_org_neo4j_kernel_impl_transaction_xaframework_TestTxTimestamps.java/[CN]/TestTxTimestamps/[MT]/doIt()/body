@@ -10,13 +10,13 @@
     tx.finish();
     expectedCommitTimestamps[i]=System.currentTimeMillis();
   }
-  db.getDependencyResolver().resolveDependency(XaDataSourceManager.class).getNeoStoreDataSource().rotateLogicalLog();
+  db.shutdown();
   ByteBuffer buffer=ByteBuffer.allocate(1024 * 500);
-  StoreChannel channel=fileSystem.open(new File(db.getStoreDir(),NeoStoreXaDataSource.LOGICAL_LOG_DEFAULT_NAME + ".v0"),"r");
+  StoreChannel channel=fileSystem.open(new File(db.getStoreDir(),GraphDatabaseSettings.logical_log.getDefaultValue() + ".v0"),"r");
   try {
     VersionAwareLogEntryReader.readLogHeader(buffer,channel,true);
     AConsumer consumer=new AConsumer(expectedCommitTimestamps,expectedStartTimestamps);
-    LogDeserializer deserializer=new LogDeserializer(buffer,XaCommandReaderFactory.DEFAULT);
+    LogDeserializer deserializer=new LogDeserializer(XaCommandReaderFactory.DEFAULT);
     try (Cursor<LogEntry,IOException> cursor=deserializer.cursor(channel)){
       while (cursor.next(consumer))       ;
     }
