@@ -7,29 +7,5 @@
   final LogBuffer outBuffer=new DirectMappedLogBuffer(out,new Monitors().newMonitor(ByteCounterMonitor.class));
   ByteBuffer buffer=ByteBuffer.allocate(1024 * 1024);
   transferLogicalLogHeader(in,outBuffer,buffer);
-  final LogEntryWriterv1 writer=new LogEntryWriterv1();
-  writer.setCommandWriter(new PhysicalLogNeoXaCommandWriter());
-  LogDeserializer deserializer=new LogDeserializer(XaCommandReaderFactory.DEFAULT);
-  Consumer<LogEntry,IOException> consumer=new Consumer<LogEntry,IOException>(){
-    @Override public boolean accept(    LogEntry entry) throws IOException {
-      boolean accepted=filter.accept(entry);
-      if (accepted) {
-        writer.writeLogEntry(entry,outBuffer);
-      }
-      return true;
-    }
-  }
-;
-  try (Cursor<LogEntry,IOException> cursor=deserializer.cursor(in)){
-    while (cursor.next(consumer)) {
-      ;
-    }
-  }
-  finally {
-    safeClose(in);
-    outBuffer.force();
-    safeClose(out);
-    filter.done(file);
-  }
   return tempFile;
 }

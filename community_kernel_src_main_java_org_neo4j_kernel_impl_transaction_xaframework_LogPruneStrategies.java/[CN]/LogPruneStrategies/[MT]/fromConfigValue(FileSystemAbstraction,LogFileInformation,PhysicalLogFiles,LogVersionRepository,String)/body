@@ -1,0 +1,40 @@
+{
+  String[] tokens=configValue.split(" ");
+  if (tokens.length == 0) {
+    throw new IllegalArgumentException("Invalid log pruning configuration value '" + configValue + "'");
+  }
+  String numberWithUnit=tokens[0];
+  if (tokens.length == 1) {
+    if (numberWithUnit.equals("true")) {
+      return NO_PRUNING;
+    }
+ else     if (numberWithUnit.equals("false")) {
+      return transactionCount(fileSystem,logFileInformation,files,versionRepo,1);
+    }
+ else {
+      throw new IllegalArgumentException("Invalid log pruning configuration value '" + configValue + "'. The form is 'all' or '<number><unit> <type>' for example '100k txs' "+ "for the latest 100 000 transactions");
+    }
+  }
+  String[] types=new String[]{"files","size","txs","hours","days"};
+  String type=tokens[1];
+  int number=(int)parseLongWithUnit(numberWithUnit);
+  int typeIndex=0;
+  if (type.equals(types[typeIndex++])) {
+    return nonEmptyFileCount(fileSystem,logFileInformation,files,versionRepo,number);
+  }
+ else   if (type.equals(types[typeIndex++])) {
+    return totalFileSize(fileSystem,logFileInformation,files,versionRepo,number);
+  }
+ else   if (type.equals(types[typeIndex++])) {
+    return transactionCount(fileSystem,logFileInformation,files,versionRepo,number);
+  }
+ else   if (type.equals(types[typeIndex++])) {
+    return transactionTimeSpan(fileSystem,logFileInformation,files,versionRepo,number,TimeUnit.HOURS);
+  }
+ else   if (type.equals(types[typeIndex++])) {
+    return transactionTimeSpan(fileSystem,logFileInformation,files,versionRepo,number,TimeUnit.DAYS);
+  }
+ else {
+    throw new IllegalArgumentException("Invalid log pruning configuration value '" + configValue + "'. Invalid type '"+ type+ "', valid are "+ Arrays.asList(types));
+  }
+}
