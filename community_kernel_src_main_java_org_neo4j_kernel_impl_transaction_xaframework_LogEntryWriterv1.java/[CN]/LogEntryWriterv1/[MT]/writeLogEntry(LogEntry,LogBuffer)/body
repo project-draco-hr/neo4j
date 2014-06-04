@@ -1,0 +1,29 @@
+{
+  if (entry.getVersion() == LogEntry.CURRENT_LOG_ENTRY_VERSION) {
+    buffer.put(entry.getVersion());
+  }
+switch (entry.getType()) {
+case LogEntry.TX_START:
+    writeStart(entry.getIdentifier(),((LogEntry.Start)entry).getXid(),((LogEntry.Start)entry).getMasterId(),((LogEntry.Start)entry).getLocalId(),((LogEntry.Start)entry).getTimeWritten(),((LogEntry.Start)entry).getLastCommittedTxWhenTransactionStarted(),buffer);
+  break;
+case LogEntry.COMMAND:
+writeCommand(entry.getIdentifier(),((LogEntry.Command)entry).getXaCommand(),buffer);
+break;
+case LogEntry.TX_PREPARE:
+writePrepare(entry.getIdentifier(),((LogEntry.Prepare)entry).getTimeWritten(),buffer);
+break;
+case LogEntry.TX_1P_COMMIT:
+LogEntry.Commit commit1PC=(LogEntry.Commit)entry;
+writeCommit(false,commit1PC.getIdentifier(),commit1PC.getTxId(),((LogEntry.OnePhaseCommit)entry).getTimeWritten(),buffer);
+break;
+case LogEntry.TX_2P_COMMIT:
+LogEntry.Commit commit2PC=(LogEntry.Commit)entry;
+writeCommit(true,commit2PC.getIdentifier(),commit2PC.getTxId(),((LogEntry.TwoPhaseCommit)entry).getTimeWritten(),buffer);
+break;
+case LogEntry.DONE:
+writeDone(entry.getIdentifier(),buffer);
+break;
+default :
+throw new IllegalArgumentException("Unknown entry type " + entry.getType());
+}
+}

@@ -1,0 +1,19 @@
+{
+  int identifier=onePhaseCommitEntry.getIdentifier();
+  long txId=onePhaseCommitEntry.getTxId();
+  LogEntry.Start startEntry=xidIdentMap.get(identifier);
+  if (startEntry == null) {
+    throw new IOException("Unknown xid for identifier " + identifier);
+  }
+  Xid xid=startEntry.getXid();
+  try {
+    XaTransaction xaTx=xaRm.getXaTransaction(xid);
+    xaTx.setCommitTxId(txId);
+    positionCache.cacheStartPosition(txId,startEntry,logVersion);
+    xaRm.injectOnePhaseCommit(xid);
+    registerRecoveredTransaction(txId);
+  }
+ catch (  XAException e) {
+    throw new IOException(e);
+  }
+}

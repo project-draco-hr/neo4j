@@ -1,34 +1,26 @@
 {
   kernelHealth.assertHealthy(IOException.class);
   scanIsComplete=false;
-  LogDeserializer logApplier=getLogDeserializer(byteChannel);
-  int xidIdent=getNextIdentifier();
-  long startEntryPosition=writeBuffer.getFileChannelPosition();
-  boolean successfullyApplied=false;
-  try {
-    exhaust(logApplier,xidIdent);
-    successfullyApplied=true;
+  translatingEntryConsumer.bind(getNextIdentifier(),slaveHandler);
+  boolean success=false;
+  slaveHandler.startLog();
+  try (Cursor<LogEntry,IOException> cursor=slaveLogReader.cursor(byteChannel)){
+    while (cursor.next(translatingEntryConsumer))     ;
+    success=true;
   }
-  finally {
-    if (!successfullyApplied && logApplier.getStartEntry() != null && xidIdentMap.get(xidIdent) != null) {
-      try {
-        xaRm.forget(logApplier.getStartEntry().getXid());
-      }
- catch (      XAException e) {
-        throw new IOException(e);
-      }
+ catch (  Exception e) {
+    kernelHealth.panic(e);
+    throw launderedException(IOException.class,"Failure applying transaction",e);
+  }
  finally {
-        xidIdentMap.remove(xidIdent);
-      }
+    try {
+      slaveHandler.endLog(success);
     }
+ catch (    Exception e) {
+      kernelHealth.panic(e);
+      throw launderedException(IOException.class,"Failure applying transaction",e);
+    }
+    scanIsComplete=true;
   }
-  byteChannel.close();
-  scanIsComplete=true;
-  LogEntry.Start startEntry=logApplier.getStartEntry();
-  if (startEntry == null) {
-    throw new IOException("Unable to find start entry");
-  }
-  startEntry.setStartPosition(startEntryPosition);
-  positionCache.cacheStartPosition(logApplier.getCommitEntry().getTxId(),startEntry,logVersion);
   checkLogRotation();
 }

@@ -1,46 +1,26 @@
 {
   kernelHealth.assertHealthy(IOException.class);
-  int xidIdent=0;
-  LogEntry.Start startEntry=null;
   if (nextTxId != (xaTf.getLastCommittedTx() + 1)) {
     throw new IllegalStateException("Tried to apply tx " + nextTxId + " but expected transaction "+ (xaTf.getCurrentVersion() + 1));
   }
   logRecoveryMessage("applyTxWithoutTxId log version: " + logVersion + ", committing tx="+ nextTxId+ ") @ pos "+ writeBuffer.getFileChannelPosition());
   scanIsComplete=false;
-  LogDeserializer logApplier=getLogDeserializer(byteChannel);
-  xidIdent=getNextIdentifier();
-  long startEntryPosition=writeBuffer.getFileChannelPosition();
-  exhaust(logApplier,xidIdent);
-  byteChannel.close();
-  startEntry=logApplier.getStartEntry();
-  if (startEntry == null) {
-    throw new IOException("Unable to find start entry");
+  logWriterSPI.bind(forceMode,nextTxId);
+  translatingEntryConsumer.bind(getNextIdentifier(),masterHandler);
+  boolean success=true;
+  masterHandler.startLog();
+  try (Cursor<LogEntry,IOException> cursor=reader.cursor(byteChannel)){
+    while (cursor.next(translatingEntryConsumer))     ;
   }
-  try {
-    injectedTxValidator.assertInjectionAllowed(startEntry.getLastCommittedTxWhenTransactionStarted());
+ catch (  IOException e) {
+    kernelHealth.panic(e);
+    success=false;
+    throw launderedException(IOException.class,"Failure applying transaction",e);
   }
- catch (  XAException e) {
-    throw new IOException(e);
+ finally {
+    masterHandler.endLog(success);
+    scanIsComplete=true;
   }
-  startEntry.setStartPosition(startEntryPosition);
-  LogEntry.OnePhaseCommit commit=new LogEntry.OnePhaseCommit(xidIdent,nextTxId,System.currentTimeMillis());
-  LogIoUtils.writeLogEntry(commit,writeBuffer);
-  forceMode.force(writeBuffer);
-  Xid xid=startEntry.getXid();
-  try {
-    XaTransaction xaTx=xaRm.getXaTransaction(xid);
-    xaTx.setCommitTxId(nextTxId);
-    positionCache.cacheStartPosition(nextTxId,startEntry,logVersion);
-    xaRm.commit(xid,true);
-    LogEntry doneEntry=new LogEntry.Done(startEntry.getIdentifier());
-    LogIoUtils.writeLogEntry(doneEntry,writeBuffer);
-    xidIdentMap.remove(startEntry.getIdentifier());
-    recoveredTxMap.remove(startEntry.getIdentifier());
-  }
- catch (  XAException e) {
-    throw new IOException(e);
-  }
-  scanIsComplete=true;
   logRecoveryMessage("Applied external tx and generated tx id=" + nextTxId);
   checkLogRotation();
 }

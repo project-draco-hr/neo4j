@@ -1,0 +1,34 @@
+{
+  this.fileName=fileName;
+  this.xaRm=xaRm;
+  this.commandReaderFactory=commandReaderFactory;
+  this.commandWriterFactory=commandWriterFactory;
+  this.xaTf=xaTf;
+  this.fileSystem=fileSystem;
+  this.kernelHealth=kernelHealth;
+  this.bufferMonitor=monitors.newMonitor(ByteCounterMonitor.class,XaLogicalLog.class);
+  this.logDeserializerMonitor=monitors.newMonitor(ByteCounterMonitor.class,"logdeserializer");
+  this.pruneStrategy=pruneStrategy;
+  this.stateFactory=stateFactory;
+  this.rotateAtSize=rotateAtSize;
+  this.autoRotate=rotateAtSize > 0;
+  this.logFiles=new XaLogicalLogFiles(fileName,fileSystem);
+  sharedBuffer=ByteBuffer.allocateDirect(9 + Xid.MAXGTRIDSIZE + Xid.MAXBQUALSIZE * 10);
+  msgLog=logging.getMessagesLog(getClass());
+  this.partialTransactionCopier=new PartialTransactionCopier(sharedBuffer,commandReaderFactory,commandWriterFactory,msgLog,positionCache,this,logEntryWriter,xidIdentMap);
+  this.injectedTxValidator=injectedTxValidator;
+  logWriterSPI=new PhysicalLogWriterSPI();
+  reader=new LogDeserializer(sharedBuffer,commandReaderFactory);
+  slaveLogReader=new SlaveLogDeserializer(sharedBuffer,commandReaderFactory);
+  logEntryWriter.setCommandWriter(commandWriterFactory.newInstance());
+  LogApplier applier=new LogApplier();
+  PositionCacheLogHandler.SPI positionCacheSPI=new PositionCacheLogHandler.SPI(){
+    @Override public long getLogVersion(){
+      return XaLogicalLog.this.logVersion;
+    }
+  }
+;
+  masterHandler=new LogFilter(interceptor,new MasterLogWriter(new PositionCacheLogHandler(applier,positionCache,positionCacheSPI),logWriterSPI,injectedTxValidator,logEntryWriter));
+  slaveHandler=new LogFilter(interceptor,new ForgetUnsuccessfulReceivedTransaction(new SlaveLogWriter(new PositionCacheLogHandler(applier,positionCache,positionCacheSPI),logWriterSPI,logEntryWriter)));
+  translatingEntryConsumer=new TranslatingEntryConsumer(transactionTranslator);
+}

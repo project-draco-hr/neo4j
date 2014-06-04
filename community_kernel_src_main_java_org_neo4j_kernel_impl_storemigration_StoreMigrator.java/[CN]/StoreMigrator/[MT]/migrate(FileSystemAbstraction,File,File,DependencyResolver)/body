@@ -1,11 +1,15 @@
 {
-  File upgradeFileName=new File(migrationDir,NeoStore.DEFAULT_NAME);
-  IndividualNeoStores stores=new IndividualNeoStores(fileSystem,upgradeFileName,config,idGeneratorFactory);
   LegacyStore legacyStore=new LegacyStore(fileSystem,new File(storeDir,NeoStore.DEFAULT_NAME));
+  ExecutionMonitor executionMonitor=new CoarseBoundedProgressExecutionMonitor(legacyStore.getNodeStoreReader().getMaxId(),legacyStore.getRelStoreReader().getMaxId()){
+    @Override protected void percent(    int percent){
+      progressMonitor.percentComplete(percent);
+    }
+  }
+;
+  BatchImporter importer=new ParallellBatchImporter(migrationDir.getAbsolutePath(),fileSystem,new Configuration.OverrideFromConfig(config),Collections.<KernelExtensionFactory<?>>emptyList(),executionMonitor);
   progressMonitor.started();
-  new Migration(legacyStore,stores).migrateNodesAndRelationships();
+  importer.doImport(legacyNodesAsInput(legacyStore),legacyRelationshipsAsInput(legacyStore),NodeIdMapping.actual);
   progressMonitor.finished();
-  stores.close();
+  importer.shutdown();
   legacyStore.close();
-  StoreFile.deleteIdFile(fileSystem,migrationDir,StoreFile.NODE_STORE,StoreFile.RELATIONSHIP_STORE);
 }

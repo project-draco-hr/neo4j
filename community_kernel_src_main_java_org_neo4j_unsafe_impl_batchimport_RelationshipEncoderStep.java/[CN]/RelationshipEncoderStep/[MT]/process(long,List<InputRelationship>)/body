@@ -1,0 +1,33 @@
+{
+  BatchingPropertyRecordAccess propertyRecords=new BatchingPropertyRecordAccess();
+  List<RelationshipRecord> relationshipRecords=new ArrayList<>(batch.size());
+  for (  InputRelationship batchRelationship : batch) {
+    long relationshipId=batchRelationship.id();
+    relationshipStore.setHighId(relationshipId + 1);
+    int typeId=batchRelationship.hasTypeId() ? batchRelationship.typeId() : relationshipTypeRepository.getOrCreateId(batchRelationship.type());
+    RelationshipRecord relationshipRecord=new RelationshipRecord(relationshipId,batchRelationship.startNode(),batchRelationship.endNode(),typeId);
+    relationshipRecord.setInUse(true);
+    long firstNextRel=nodeRelationshipLink.getAndPutRelationship(batchRelationship.startNode(),typeId,batchRelationship.startDirection(),relationshipId,true);
+    relationshipRecord.setFirstNextRel(firstNextRel);
+    if (batchRelationship.isLoop()) {
+      relationshipRecord.setSecondNextRel(firstNextRel);
+    }
+ else {
+      relationshipRecord.setSecondNextRel(nodeRelationshipLink.getAndPutRelationship(batchRelationship.endNode(),typeId,INCOMING,relationshipId,true));
+    }
+    relationshipRecord.setFirstInFirstChain(false);
+    relationshipRecord.setFirstInSecondChain(false);
+    relationshipRecord.setFirstPrevRel(Record.NO_NEXT_RELATIONSHIP.intValue());
+    relationshipRecord.setSecondPrevRel(Record.NO_NEXT_RELATIONSHIP.intValue());
+    relationshipRecords.add(relationshipRecord);
+    long nextProp;
+    if (batchRelationship.hasFirstPropertyId()) {
+      nextProp=batchRelationship.firstPropertyId();
+    }
+ else {
+      nextProp=propertyCreator.createPropertyChain(relationshipRecord,propertyKeysAndValues(batchRelationship.properties(),propertyKeyRepository,propertyCreator),propertyRecords);
+    }
+    relationshipRecord.setNextProp(nextProp);
+  }
+  return new RecordBatch<>(relationshipRecords,propertyRecords.records());
+}

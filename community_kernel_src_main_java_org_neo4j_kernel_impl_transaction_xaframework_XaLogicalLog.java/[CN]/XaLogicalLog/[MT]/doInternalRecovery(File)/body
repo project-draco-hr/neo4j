@@ -1,6 +1,6 @@
 {
   msgLog.info("Non clean shutdown detected on log [" + logFileName + "]. Recovery started ...");
-  long[] header=readLogHeader(fileChannel,"Tried to do recovery on log with illegal format version");
+  long[] header=readLogHeader(fileChannel,"Tried to do recovery on log with illegal format version",true);
   if (header == null) {
     msgLog.info("Unable to read header information, " + "no records in logical log.");
     msgLog.logMessage("No log version found for " + logFileName,true);
@@ -15,25 +15,33 @@
   determineLogVersionFromArchivedFiles();
   if (header[0] != logVersion) {
     ByteBuffer buff=ByteBuffer.allocate(64);
-    LogIoUtils.writeLogHeader(buff,logVersion,header[1]);
-    fileChannel.write(buff,0);
+    VersionAwareLogEntryReader.writeLogHeader(buff,logVersion,header[1]);
+    fileChannel.writeAll(buff,0);
   }
   long lastCommittedTx=header[1];
   previousLogLastCommittedTx=lastCommittedTx;
   positionCache.putHeader(logVersion,previousLogLastCommittedTx);
   msgLog.logMessage("[" + logFileName + "] logVersion="+ logVersion+ " with committed tx="+ lastCommittedTx,true);
-  long logEntriesFound=0;
-  long lastEntryPos=fileChannel.position();
   fileChannel=new BufferedFileChannel(fileChannel,bufferMonitor);
-  LogEntry entry;
-  while ((entry=readEntry()) != null) {
-    applyEntry(entry);
-    logEntriesFound++;
-    lastEntryPos=fileChannel.position();
+  RecoveryLogDeserializer reader=new RecoveryLogDeserializer(sharedBuffer,commandReaderFactory);
+  EntryCountingLogHandler counter=new EntryCountingLogHandler(new LogApplier());
+  RecoveryConsumer consumer=new RecoveryConsumer(counter);
+  boolean success=true;
+  consumer.startLog();
+  Cursor<LogEntry,IOException> cursor=reader.cursor(fileChannel);
+  try {
+    while (cursor.next(consumer))     ;
   }
+ catch (  IOException e) {
+    success=false;
+  }
+ finally {
+    consumer.endLog(success);
+  }
+  long lastEntryPos=fileChannel.position();
   fileChannel=((BufferedFileChannel)fileChannel).getSource();
   fileChannel.position(lastEntryPos);
-  msgLog.logMessage("[" + logFileName + "] entries found="+ logEntriesFound+ " lastEntryPos="+ lastEntryPos,true);
+  msgLog.logMessage("[" + logFileName + "] entries found="+ counter.getEntriesFound()+ " lastEntryPos="+ lastEntryPos,true);
   sharedBuffer.clear();
   while (sharedBuffer.hasRemaining()) {
     sharedBuffer.put((byte)0);
@@ -45,7 +53,7 @@
     if (bytesLeft < sharedBuffer.capacity()) {
       sharedBuffer.limit((int)bytesLeft);
     }
-    fileChannel.write(sharedBuffer);
+    fileChannel.writeAll(sharedBuffer);
     sharedBuffer.flip();
   }
  while (fileChannel.position() < endPosition);

@@ -1,11 +1,12 @@
 {
   Collection<DynamicRecord> beforeRecords=serialize(rule,id,false,false);
   Collection<DynamicRecord> afterRecords=serialize(rule,id,true,true);
-  SchemaRuleCommand command=new SchemaRuleCommand(neoStore,store,indexes,beforeRecords,afterRecords,rule,txId);
+  SchemaRuleCommand command=new SchemaRuleCommand();
+  command.init(beforeRecords,afterRecords,rule,txId);
   InMemoryLogBuffer buffer=new InMemoryLogBuffer();
   when(neoStore.getSchemaStore()).thenReturn(store);
-  command.writeToFile(buffer);
-  Command readCommand=readCommand(neoStore,indexes,buffer,allocate(1000));
+  writer.write(command,buffer);
+  XaCommand readCommand=reader.read(buffer);
   assertThat(readCommand,instanceOf(SchemaRuleCommand.class));
   SchemaRuleCommand readSchemaCommand=(SchemaRuleCommand)readCommand;
   assertThat(readSchemaCommand.getTxId(),equalTo(txId));

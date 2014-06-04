@@ -1,0 +1,23 @@
+{
+  if (properties == null || !properties.hasNext()) {
+    return Record.NO_NEXT_PROPERTY.intValue();
+  }
+  PropertyRecord currentRecord=propertyRecords.create(propertyRecordIdGenerator.nextId(),owner).forChangingData();
+  currentRecord.setInUse(true);
+  currentRecord.setCreated();
+  PropertyRecord firstRecord=currentRecord;
+  while (properties.hasNext()) {
+    PropertyBlock block=properties.next();
+    if (currentRecord.size() + block.getSize() > PropertyType.getPayloadSize()) {
+      PropertyRecord prevRecord=currentRecord;
+      long propertyId=propertyRecordIdGenerator.nextId();
+      currentRecord=propertyRecords.create(propertyId,owner).forChangingData();
+      currentRecord.setInUse(true);
+      currentRecord.setCreated();
+      prevRecord.setNextProp(propertyId);
+      currentRecord.setPrevProp(prevRecord.getId());
+    }
+    currentRecord.addPropertyBlock(block);
+  }
+  return firstRecord.getId();
+}

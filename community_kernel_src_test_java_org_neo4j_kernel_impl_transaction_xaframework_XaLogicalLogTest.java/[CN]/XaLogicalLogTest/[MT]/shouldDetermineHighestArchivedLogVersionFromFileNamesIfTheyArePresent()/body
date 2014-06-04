@@ -7,11 +7,16 @@
   fs.create(new File(dir,"log.v101")).close();
   StoreChannel active=fs.create(new File(dir,"log.1"));
   ByteBuffer buff=ByteBuffer.allocate(128);
-  LogIoUtils.writeLogHeader(buff,lowAndIncorrectLogVersion,0);
+  VersionAwareLogEntryReader.writeLogHeader(buff,lowAndIncorrectLogVersion,0);
   active.write(buff);
   active.force(false);
   active.close();
-  XaLogicalLog log=new XaLogicalLog(new File(dir,"log"),mock(XaResourceManager.class),new FixedSizeXaCommandFactory(),new VersionRespectingXaTransactionFactory(),ephemeralFs.get(),new Monitors(),new DevNullLoggingService(),NO_PRUNING,mock(TransactionStateFactory.class),mock(KernelHealth.class),10,ALLOW_ALL);
+  XaLogicalLog log=new XaLogicalLog(new File(dir,"log"),mock(XaResourceManager.class),XaCommandReaderFactory.DEFAULT,new XaCommandWriterFactory(){
+    @Override public XaCommandWriter newInstance(){
+      return new FixedSizeXaCommandWriter();
+    }
+  }
+,new VersionRespectingXaTransactionFactory(),ephemeralFs.get(),new Monitors(),new DevNullLoggingService(),NO_PRUNING,mock(TransactionStateFactory.class),mock(KernelHealth.class),10,ALLOW_ALL,Functions.<List<LogEntry>>identity(),Functions.<List<LogEntry>>identity());
   log.open();
   log.rotate();
   assertThat(fs.fileExists(new File(dir,"log.v102")),equalTo(true));

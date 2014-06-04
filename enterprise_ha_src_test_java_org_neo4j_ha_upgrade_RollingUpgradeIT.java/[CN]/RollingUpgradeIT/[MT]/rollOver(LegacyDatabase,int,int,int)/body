@@ -1,0 +1,46 @@
+{
+  String storeDir=legacyDb.getStoreDir();
+  if (i == 0) {
+    storeDir+="new";
+  }
+  stop(i);
+  Thread.sleep(30000);
+  File storeDirFile=new File(storeDir);
+  debug("Starting " + i + " as current version");
+switch (authorativeSlaveId) {
+case -1:
+    break;
+case -2:
+  debug("At last master starting, deleteing store so that it fetches from the new master");
+FileUtils.deleteRecursively(storeDirFile);
+break;
+default :
+debug("Consecutive slave starting, making it so that I will copy store from " + authorativeSlaveId);
+FileUtils.deleteRecursively(storeDirFile);
+storeDirFile.mkdirs();
+backup(authorativeSlaveId,storeDirFile);
+break;
+}
+newDbs[i]=(GraphDatabaseAPI)new HighlyAvailableGraphDatabaseFactory().newHighlyAvailableDatabaseBuilder(storeDir).setConfig(config(i)).newGraphDatabase();
+debug("Started " + i + " as current version");
+legacyDbs[i]=null;
+if (i != masterServerId) {
+legacyDbs[masterServerId].doComplexLoad(centralNode);
+debug("Node created on " + i);
+}
+ else {
+doComplexLoad(newDbs[1],centralNode);
+}
+for (int j=0; j < legacyDbs.length; j++) {
+if (legacyDbs[j] != null) {
+legacyDbs[j].verifyComplexLoad(centralNode);
+debug("Verified on legacy db " + j);
+}
+}
+for (int j=0; j < newDbs.length; j++) {
+if (newDbs[j] != null) {
+verifyComplexLoad(newDbs[j],centralNode);
+debug("Verified on new db " + j);
+}
+}
+}
