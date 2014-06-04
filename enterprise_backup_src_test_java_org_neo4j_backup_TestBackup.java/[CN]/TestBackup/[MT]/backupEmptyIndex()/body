@@ -2,36 +2,40 @@
   String key="name";
   String value="Neo";
   GraphDatabaseService db=new GraphDatabaseFactory().newEmbeddedDatabaseBuilder(serverPath.getPath()).setConfig(OnlineBackupSettings.online_backup_enabled,Settings.TRUE).newGraphDatabase();
-  Transaction tx=db.beginTx();
-  Index<Node> index;
-  Node node;
   try {
-    index=db.index().forNodes(key);
-    node=db.createNode();
-    node.setProperty(key,value);
-    tx.success();
+    Transaction tx=db.beginTx();
+    Index<Node> index;
+    Node node;
+    try {
+      index=db.index().forNodes(key);
+      node=db.createNode();
+      node.setProperty(key,value);
+      tx.success();
+    }
+  finally {
+      tx.finish();
+    }
+    OnlineBackup backup=OnlineBackup.from("127.0.0.1").full(backupPath.getPath());
+    assertTrue("Should be consistent",backup.isConsistent());
+    assertEquals(DbRepresentation.of(db),DbRepresentation.of(backupPath));
+    FileUtils.deleteDirectory(new File(backupPath.getPath()));
+    backup=OnlineBackup.from("127.0.0.1").full(backupPath.getPath());
+    assertTrue("Should be consistent",backup.isConsistent());
+    assertEquals(DbRepresentation.of(db),DbRepresentation.of(backupPath));
+    tx=db.beginTx();
+    try {
+      index.add(node,key,value);
+      tx.success();
+    }
+  finally {
+      tx.finish();
+    }
+    FileUtils.deleteDirectory(new File(backupPath.getPath()));
+    backup=OnlineBackup.from("127.0.0.1").full(backupPath.getPath());
+    assertTrue("Should be consistent",backup.isConsistent());
+    assertEquals(DbRepresentation.of(db),DbRepresentation.of(backupPath));
   }
   finally {
-    tx.finish();
+    db.shutdown();
   }
-  OnlineBackup backup=OnlineBackup.from("127.0.0.1").full(backupPath.getPath());
-  assertTrue("Should be consistent",backup.isConsistent());
-  assertEquals(DbRepresentation.of(db),DbRepresentation.of(backupPath));
-  FileUtils.deleteDirectory(new File(backupPath.getPath()));
-  backup=OnlineBackup.from("127.0.0.1").full(backupPath.getPath());
-  assertTrue("Should be consistent",backup.isConsistent());
-  assertEquals(DbRepresentation.of(db),DbRepresentation.of(backupPath));
-  tx=db.beginTx();
-  try {
-    index.add(node,key,value);
-    tx.success();
-  }
-  finally {
-    tx.finish();
-  }
-  FileUtils.deleteDirectory(new File(backupPath.getPath()));
-  backup=OnlineBackup.from("127.0.0.1").full(backupPath.getPath());
-  assertTrue("Should be consistent",backup.isConsistent());
-  assertEquals(DbRepresentation.of(db),DbRepresentation.of(backupPath));
-  db.shutdown();
 }

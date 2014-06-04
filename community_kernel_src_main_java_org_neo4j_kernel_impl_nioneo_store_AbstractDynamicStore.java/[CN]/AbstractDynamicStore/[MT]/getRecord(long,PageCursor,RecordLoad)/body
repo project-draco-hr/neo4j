@@ -1,0 +1,34 @@
+{
+  DynamicRecord record=new DynamicRecord(blockId);
+  cursor.setOffset(offsetForId(blockId));
+  long firstInteger=cursor.getUnsignedInt();
+  boolean isStartRecord=(firstInteger & 0x80000000) == 0;
+  long maskedInteger=firstInteger & ~0x80000000;
+  int highNibbleInMaskedInteger=(int)((maskedInteger) >> 28);
+  boolean inUse=highNibbleInMaskedInteger == Record.IN_USE.intValue();
+  if (!inUse && load != RecordLoad.FORCE) {
+    throw new InvalidRecordException("DynamicRecord Not in use, blockId[" + blockId + "]");
+  }
+  int dataSize=getBlockSize() - BLOCK_HEADER_SIZE;
+  int nrOfBytes=(int)(firstInteger & 0xFFFFFF);
+  long nextBlock=cursor.getUnsignedInt();
+  long nextModifier=(firstInteger & 0xF000000L) << 8;
+  long longNextBlock=longFromIntAndMod(nextBlock,nextModifier);
+  boolean readData=load != RecordLoad.CHECK;
+  if (longNextBlock != Record.NO_NEXT_BLOCK.intValue() && nrOfBytes < dataSize || nrOfBytes > dataSize) {
+    readData=false;
+    if (load != RecordLoad.FORCE) {
+      throw new InvalidRecordException("Next block set[" + nextBlock + "] current block illegal size["+ nrOfBytes+ "/"+ dataSize+ "]");
+    }
+  }
+  record.setInUse(inUse);
+  record.setStartRecord(isStartRecord);
+  record.setLength(nrOfBytes);
+  record.setNextBlock(longNextBlock);
+  if (readData) {
+    byte byteArrayElement[]=new byte[nrOfBytes];
+    cursor.getBytes(byteArrayElement);
+    record.setData(byteArrayElement);
+  }
+  return record;
+}

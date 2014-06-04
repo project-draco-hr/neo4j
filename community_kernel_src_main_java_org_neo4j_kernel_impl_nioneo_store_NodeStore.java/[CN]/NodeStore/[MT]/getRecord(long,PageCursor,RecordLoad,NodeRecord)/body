@@ -1,0 +1,31 @@
+{
+  cursor.setOffset(offsetForId(id));
+  long inUseByte=cursor.getByte();
+  boolean inUse=(inUseByte & 0x1) == Record.IN_USE.intValue();
+  if (!inUse) {
+switch (load) {
+case NORMAL:
+      throw new InvalidRecordException("NodeRecord[" + id + "] not in use");
+case CHECK:
+    return null;
+case FORCE:
+  break;
+}
+}
+long nextRel=cursor.getUnsignedInt();
+long nextProp=cursor.getUnsignedInt();
+long relModifier=(inUseByte & 0xEL) << 31;
+long propModifier=(inUseByte & 0xF0L) << 28;
+long lsbLabels=cursor.getUnsignedInt();
+long hsbLabels=cursor.getByte() & 0xFF;
+long labels=lsbLabels | (hsbLabels << 32);
+byte extra=cursor.getByte();
+boolean dense=(extra & 0x1) > 0;
+record.setId(id);
+record.setDense(dense);
+record.setNextRel(longFromIntAndMod(nextRel,relModifier));
+record.setNextProp(longFromIntAndMod(nextProp,propModifier));
+record.setInUse(inUse);
+record.setLabelField(labels,Collections.<DynamicRecord>emptyList());
+return record;
+}
