@@ -1,0 +1,17 @@
+{
+  EphemeralFileSystemAbstraction fs=fsRule.get();
+  GraphDatabaseService db=newDB(fs);
+  try (Transaction tx=db.beginTx()){
+    db.createNode();
+    tx.success();
+  }
+   EphemeralFileSystemAbstraction crashedFs=fs.snapshot();
+  db.shutdown();
+  db=newDB(crashedFs);
+  try (Transaction tx=db.beginTx()){
+    db.createNode();
+    tx.success();
+  }
+   db.shutdown();
+  assertThat(logEntries(crashedFs,new File("target/test-data/impermanent-db/nioneo_logical.log.v0")),containsExactly(startEntry(3,-1,-1),commandEntry(3),onePhaseCommitEntry(3,2),doneEntry(3),startEntry(6,-1,-1),commandEntry(6),onePhaseCommitEntry(6,3),doneEntry(6)));
+}
