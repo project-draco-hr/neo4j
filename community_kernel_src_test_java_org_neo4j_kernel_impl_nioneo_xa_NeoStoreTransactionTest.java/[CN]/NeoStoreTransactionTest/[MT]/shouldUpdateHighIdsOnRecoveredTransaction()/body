@@ -11,7 +11,10 @@
     tx.addLabelToNode(10000 + i,nodeId);
   }
   tx.createSchemaRule(indexRule(ruleId,100,propertyKeyId,PROVIDER_DESCRIPTOR));
-  prepareAndCommitRecovered(tx,3);
+  PhysicalTransactionRepresentation toCommit=tx.doPrepare();
+  RecoveryCreatingCopyingNeoCommandHandler recoverer=new RecoveryCreatingCopyingNeoCommandHandler();
+  toCommit.accept(recoverer);
+  commitRecovered(recoverer.getAsRecovered(),3);
   assertEquals("NodeStore",nodeId + 1,neoStore.getNodeStore().getHighId());
   assertEquals("DynamicNodeLabelStore",2,neoStore.getNodeStore().getDynamicLabelStore().getHighId());
   assertEquals("RelationshipStore",relId + 1,neoStore.getRelationshipStore().getHighId());

@@ -13,13 +13,16 @@
   tx.nodeCreate(nodeId);
   tx.addLabelToNode(labelId,nodeId);
   tx.nodeAddProperty(nodeId,propertyKeyId,"Neo");
-  commitProcess().commit(tx.doPrepare());
+  PhysicalTransactionRepresentation representation=tx.doPrepare();
+  RecoveryCreatingCopyingNeoCommandHandler recoverer=new RecoveryCreatingCopyingNeoCommandHandler();
+  representation.accept(recoverer);
+  commitProcess().commit(representation);
   verify(mockIndexing,times(1)).updateIndexes(any(IndexUpdates.class));
   indexUpdates.assertContent(expectedUpdate);
   reset(mockIndexing);
   indexUpdates=new IteratorCollector<>(0);
   doAnswer(indexUpdates).when(mockIndexing).updateIndexes(any(IndexUpdates.class));
-  prepareAndCommitRecovered(tx,2);
+  commitRecovered(recoverer.getAsRecovered(),2);
   verify(mockIndexing,times(1)).updateIndexes(any(IndexUpdates.class));
   indexUpdates.assertContent(expectedUpdate);
 }

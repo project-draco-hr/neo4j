@@ -5,15 +5,11 @@
   int index=0;
   tx.nodeAddProperty(nodeId,index,string(70));
   commitProcess().commit(tx.doPrepare());
-  Visitor<Command,RuntimeException> verifier=new Visitor<Command,RuntimeException>(){
-    @Override public boolean visit(    Command element){
-      if (element instanceof PropertyCommand) {
-        PropertyCommand propertyCommand=(PropertyCommand)element;
-        verifyPropertyRecord(propertyCommand.getBefore());
-        verifyPropertyRecord(propertyCommand.getAfter());
-        return true;
-      }
-      return false;
+  Visitor<Command,IOException> verifier=new NeoCommandHandler.HandlerVisitor(new NeoCommandHandler.Adapter(){
+    @Override public boolean visitPropertyCommand(    PropertyCommand command) throws IOException {
+      verifyPropertyRecord(command.getBefore());
+      verifyPropertyRecord(command.getAfter());
+      return true;
     }
     private void verifyPropertyRecord(    PropertyRecord record){
       if (record.getPrevProp() != Record.NO_NEXT_PROPERTY.intValue()) {
@@ -23,8 +19,11 @@
       }
     }
   }
-;
+);
+  tx=newWriteTransaction(mockIndexing).first();
   int index2=1;
   tx.nodeAddProperty(nodeId,index2,string(40));
-  commitProcess().commit(tx.doPrepare());
+  PhysicalTransactionRepresentation representation=tx.doPrepare();
+  representation.accept(verifier);
+  commitProcess().commit(representation);
 }
