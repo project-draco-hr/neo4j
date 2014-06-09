@@ -1,0 +1,24 @@
+{
+  OnDemandCallScheduler scheduler=new OnDemandCallScheduler();
+  Config config=mock(Config.class);
+  InstanceId myId=new InstanceId(1);
+  when(config.get(HaSettings.pull_interval)).thenReturn(1000l);
+  when(config.get(ClusterSettings.server_id)).thenReturn(myId);
+  LastUpdateTime lastUpdateTime=mock(LastUpdateTime.class);
+  AvailabilityGuard availabilityGuard=mock(AvailabilityGuard.class);
+  when(availabilityGuard.isAvailable(anyLong())).thenReturn(true);
+  HaXaDataSourceManager dataSourceManager=mock(HaXaDataSourceManager.class);
+  Master master=mock(Master.class);
+  UpdatePuller puller=new UpdatePuller(mock(HighAvailabilityMemberStateMachine.class),dataSourceManager,master,mock(RequestContextFactory.class),mock(AbstractTransactionManager.class),availabilityGuard,lastUpdateTime,config,scheduler,mock(StringLogger.class));
+  puller.init();
+  assertNotNull(scheduler.getJob());
+  puller.start();
+  scheduler.runJob();
+  verify(lastUpdateTime,times(1)).setLastUpdateTime(anyLong());
+  verify(availabilityGuard,times(1)).isAvailable(anyLong());
+  verify(dataSourceManager,times(1)).applyTransactions(Matchers.<Response>any());
+  verify(master,times(1)).pullUpdates(Matchers.<RequestContext>any());
+  puller.stop();
+  scheduler.runJob();
+  verifyNoMoreInteractions(lastUpdateTime,availabilityGuard,dataSourceManager);
+}
