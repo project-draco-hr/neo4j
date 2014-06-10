@@ -1,0 +1,19 @@
+{
+  List<DynamicRecord> recordList=new LinkedList<>();
+  long blockId=startBlockId;
+  while (blockId != Record.NO_NEXT_BLOCK.intValue()) {
+    DynamicRecord record=new DynamicRecord(blockId);
+    try (PageCursor cursor=storeFile.io(pageIdForRecord(blockId),PF_SHARED_LOCK,record,offsetForId(blockId),encodeBlockSizeFlags(getBlockSize(),io_flags))){
+      cursor.next();
+    }
+ catch (    IOException e) {
+      throw new UnderlyingStorageException(e);
+    }
+    if (!record.inUse()) {
+      return recordList;
+    }
+    recordList.add(record);
+    blockId=record.getNextBlock();
+  }
+  return recordList;
+}

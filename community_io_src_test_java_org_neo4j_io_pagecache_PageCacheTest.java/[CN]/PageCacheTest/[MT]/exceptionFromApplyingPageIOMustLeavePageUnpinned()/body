@@ -1,0 +1,24 @@
+{
+  int numberOfRecordsToGenerate=recordsPerFilePage;
+  generateFileWithRecords(file,numberOfRecordsToGenerate,recordSize);
+  PageCache cache=getPageCache(fs,maxPages,pageCachePageSize,PageCacheMonitor.NULL);
+  PagedFile pagedFile=cache.map(file,filePageSize);
+  final RuntimeException exception=new RuntimeException("boo!");
+  PageIO pageIO=new PageIO(){
+    @Override public void apply(    long pageId,    Page page,    long io_context,    long io_flags) throws IOException {
+      throw exception;
+    }
+  }
+;
+  try (PageCursor cursor=pagedFile.io(0,PF_EXCLUSIVE_LOCK,pageIO,0,0)){
+    cursor.next();
+    fail("Call to next() should have thrown");
+  }
+ catch (  RuntimeException e) {
+    assertThat(e,sameInstance(exception));
+  }
+  pageIO=new RecordPageIO(recordSize,recordsPerFilePage);
+  try (PageCursor cursor=pagedFile.io(0,PF_SHARED_LOCK,pageIO,0,RecordPageIO.IO_FLAGS_VERIFY_RECORDS)){
+    cursor.next();
+  }
+ }

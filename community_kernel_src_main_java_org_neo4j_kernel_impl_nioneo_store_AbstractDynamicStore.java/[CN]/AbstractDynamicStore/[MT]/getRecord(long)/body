@@ -1,15 +1,10 @@
 {
-  PageCursor cursor=pageCache.newCursor();
-  try {
-    storeFile.pin(cursor,PageLock.SHARED,pageIdForRecord(id));
+  DynamicRecord record=new DynamicRecord(id);
+  try (PageCursor cursor=storeFile.io(pageIdForRecord(id),PF_SHARED_LOCK,record,offsetForId(id),encodeBlockSizeFlags(getBlockSize(),IO_READ_HEADER | IO_READ_DATA))){
+    cursor.next();
+    return record;
   }
  catch (  IOException e) {
     throw new UnderlyingStorageException(e);
-  }
-  try {
-    return getRecord(id,cursor,RecordLoad.NORMAL);
-  }
-  finally {
-    storeFile.unpin(cursor);
   }
 }

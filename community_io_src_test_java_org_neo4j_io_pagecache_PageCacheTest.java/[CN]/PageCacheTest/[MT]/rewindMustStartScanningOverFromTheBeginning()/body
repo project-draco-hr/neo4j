@@ -1,0 +1,19 @@
+{
+  int numberOfRewindsToTest=10;
+  generateFileWithRecords(file,recordCount,recordSize);
+  int actualPageCounter=0;
+  int filePageCount=recordCount / recordsPerFilePage;
+  int expectedPageCounterResult=numberOfRewindsToTest * filePageCount;
+  PageCache cache=getPageCache(fs,maxPages,pageCachePageSize,PageCacheMonitor.NULL);
+  PagedFile pagedFile=cache.map(file,filePageSize);
+  RecordPageIO pageIO=new RecordPageIO(recordSize,recordsPerFilePage);
+  try (PageCursor cursor=pagedFile.io(0,PF_SHARED_LOCK | PF_NO_GROW,pageIO,0,RecordPageIO.IO_FLAGS_VERIFY_RECORDS)){
+    for (int i=0; i < numberOfRewindsToTest; i++) {
+      while (cursor.next()) {
+        actualPageCounter++;
+      }
+      cursor.rewind();
+    }
+  }
+   assertThat(actualPageCounter,is(expectedPageCounterResult));
+}

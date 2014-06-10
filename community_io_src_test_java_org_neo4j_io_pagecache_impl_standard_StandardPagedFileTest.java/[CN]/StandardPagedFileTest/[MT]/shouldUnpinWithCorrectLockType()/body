@@ -1,8 +1,10 @@
 {
-  when(table.load(io,12,PageLock.SHARED)).thenReturn(page);
-  when(page.pin(io,12,PageLock.SHARED)).thenReturn(true);
+  when(table.load(swapper,12,PageLock.SHARED)).thenReturn(page);
+  when(page.pin(swapper,12,PageLock.SHARED)).thenReturn(true);
+  when(swapper.getLastPageId()).thenReturn(512L);
   StandardPagedFile file=new StandardPagedFile(table,null,channel,512,PageCacheMonitor.NULL);
-  file.pin(cursor,PageLock.SHARED,12);
-  file.unpin(cursor);
-  verify(page).unpin(PageLock.SHARED);
+  try (PageCursor cursor=file.io(12,PF_SHARED_LOCK,pageIO,13,14)){
+    cursor.next();
+  }
+   verify(page).unpin(PageLock.SHARED);
 }

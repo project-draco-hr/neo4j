@@ -1,0 +1,28 @@
+{
+  long firstInteger=page.getUnsignedInt(offset);
+  boolean force=(io_flags & IO_READ_FORCE) != 0;
+  boolean isStartRecord=(firstInteger & 0x80000000) == 0;
+  long maskedInteger=firstInteger & ~0x80000000;
+  int highNibbleInMaskedInteger=(int)((maskedInteger) >> 28);
+  boolean inUse=highNibbleInMaskedInteger == Record.IN_USE.intValue();
+  if (!inUse && !force) {
+    throw new InvalidRecordException("DynamicRecord Not in use, blockId[" + getId() + "]");
+  }
+  int dataSize=decodeBlockSizeFlags(io_flags) - AbstractDynamicStore.BLOCK_HEADER_SIZE;
+  int nrOfBytes=(int)(firstInteger & 0xFFFFFF);
+  long nextBlock=page.getUnsignedInt(offset + 4);
+  long nextModifier=(firstInteger & 0xF000000L) << 8;
+  long longNextBlock=CommonAbstractStore.longFromIntAndMod(nextBlock,nextModifier);
+  boolean hasDataToRead=true;
+  if (longNextBlock != Record.NO_NEXT_BLOCK.intValue() && nrOfBytes < dataSize || nrOfBytes > dataSize) {
+    hasDataToRead=false;
+    if (!force) {
+      throw new InvalidRecordException("Next block set[" + nextBlock + "] current block illegal size["+ nrOfBytes+ "/"+ dataSize+ "]");
+    }
+  }
+  setInUse(inUse);
+  setStartRecord(isStartRecord);
+  setLength(nrOfBytes);
+  setNextBlock(longNextBlock);
+  return hasDataToRead;
+}
