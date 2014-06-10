@@ -3,7 +3,7 @@
   try (StoreChannel fileChannel=fileSystem.open(new File(logPath),"r")){
     VersionAwareLogEntryReader.readLogHeader(buffer,fileChannel,true);
     final List<LogEntry> entries=new ArrayList<>();
-    LogDeserializer deserializer=new LogDeserializer(XaCommandReaderFactory.DEFAULT);
+    LogDeserializer deserializer=new LogDeserializer(CommandReaderFactory.DEFAULT);
     Consumer<LogEntry,IOException> consumer=new Consumer<LogEntry,IOException>(){
       @Override public boolean accept(      LogEntry entry) throws IOException {
         entries.add(entry);
@@ -11,7 +11,8 @@
       }
     }
 ;
-    try (Cursor<LogEntry,IOException> cursor=deserializer.cursor(fileChannel)){
+    ReadableLogChannel logChannel=new ReadAheadLogChannel(new PhysicalLogVersionedStoreChannel(fileChannel),LogVersionBridge.NO_MORE_CHANNELS,4096);
+    try (Cursor<LogEntry,IOException> cursor=deserializer.cursor(logChannel)){
       cursor.next(consumer);
     }
      for (int entryNo=0; entryNo < expectedEntries.length; entryNo++) {

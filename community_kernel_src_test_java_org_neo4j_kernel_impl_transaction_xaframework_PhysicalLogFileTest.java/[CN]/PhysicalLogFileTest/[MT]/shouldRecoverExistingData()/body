@@ -13,8 +13,8 @@
   }
 );
   LogRotationControl logRotationControl=mock(LogRotationControl.class);
-  LogFile logFile=new PhysicalLogFile(fs,directory.directory(),name,50,LogPruneStrategies.NO_PRUNING,transactionIdStore,logVersionRepository,mock(Monitor.class),logRotationControl,new LogPositionCache(10,100));
-  logFile.open(new Visitor<ReadableLogChannel,IOException>(){
+  LifeSupport life=new LifeSupport();
+  LogFile logFile=life.add(new PhysicalLogFile(fs,directory.directory(),name,50,LogPruneStrategies.NO_PRUNING,transactionIdStore,logVersionRepository,mock(Monitor.class),logRotationControl,new LogPositionCache(10,100),new Visitor<ReadableLogChannel,IOException>(){
     @Override public boolean visit(    ReadableLogChannel element) throws IOException {
       assertEquals((byte)2,element.get());
       assertEquals(23324,element.getInt());
@@ -27,6 +27,11 @@
       return true;
     }
   }
-);
-  logFile.close();
+));
+  try {
+    life.start();
+  }
+  finally {
+    life.shutdown();
+  }
 }

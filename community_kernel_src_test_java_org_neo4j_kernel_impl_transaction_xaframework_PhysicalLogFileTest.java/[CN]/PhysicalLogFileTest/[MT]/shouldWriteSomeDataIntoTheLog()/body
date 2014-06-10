@@ -1,18 +1,23 @@
 {
   String name="log";
   LogRotationControl logRotationControl=mock(LogRotationControl.class);
-  LogFile logFile=new PhysicalLogFile(fs,directory.directory(),name,1000,LogPruneStrategies.NO_PRUNING,transactionIdStore,logVersionRepository,mock(Monitor.class),logRotationControl,new LogPositionCache(10,100));
-  logFile.open(NO_RECOVERY_EXPECTED);
-  WritableLogChannel writer=logFile.getWriter();
-  LogPosition position=writer.getCurrentPosition();
-  int intValue=45;
-  long longValue=4854587;
-  writer.putInt(intValue);
-  writer.putLong(longValue);
-  writer.force();
-  try (ReadableLogChannel reader=logFile.getReader(position)){
-    assertEquals(intValue,reader.getInt());
-    assertEquals(longValue,reader.getLong());
+  LifeSupport life=new LifeSupport();
+  LogFile logFile=life.add(new PhysicalLogFile(fs,directory.directory(),name,1000,LogPruneStrategies.NO_PRUNING,transactionIdStore,logVersionRepository,mock(Monitor.class),logRotationControl,new LogPositionCache(10,100),NO_RECOVERY_EXPECTED));
+  try {
+    life.start();
+    WritableLogChannel writer=logFile.getWriter();
+    LogPosition position=writer.getCurrentPosition();
+    int intValue=45;
+    long longValue=4854587;
+    writer.putInt(intValue);
+    writer.putLong(longValue);
+    writer.force();
+    try (ReadableLogChannel reader=logFile.getReader(position)){
+      assertEquals(intValue,reader.getInt());
+      assertEquals(longValue,reader.getLong());
+    }
+   }
+  finally {
+    life.shutdown();
   }
-   logFile.close();
 }

@@ -2,15 +2,20 @@
   TransactionIdStore transactionIdStore=new DeadSimpleTransactionIdStore(0l);
   LogRotationControl logRotationControl=mock(LogRotationControl.class);
   LogPositionCache positionCache=new LogPositionCache(10,1000);
-  LogFile logFile=new PhysicalLogFile(fs,directory.directory(),DEFAULT_NAME,1000,NO_PRUNING,transactionIdStore,mock(LogVersionRepository.class),new Monitors().newMonitor(PhysicalLogFile.Monitor.class),logRotationControl,positionCache);
-  TxIdGenerator txIdGenerator=new DefaultTxIdGenerator(singletonProvider(transactionIdStore));
-  try (TransactionStore store=new PhysicalTransactionStore(logFile,txIdGenerator,positionCache,new VersionAwareLogEntryReader(XaCommandReaderFactory.DEFAULT))){
-    store.open(new Visitor<TransactionRepresentation,IOException>(){
-      @Override public boolean visit(      TransactionRepresentation transaction) throws IOException {
-        fail("Should be nothing to recover");
-        return false;
-      }
+  LifeSupport life=new LifeSupport();
+  LogFile logFile=life.add(new PhysicalLogFile(fs,dir,DEFAULT_NAME,1000,NO_PRUNING,transactionIdStore,mock(LogVersionRepository.class),new Monitors().newMonitor(PhysicalLogFile.Monitor.class),logRotationControl,positionCache,new Visitor<ReadableLogChannel,IOException>(){
+    @Override public boolean visit(    ReadableLogChannel channel) throws IOException {
+      fail("Should be nothing to recover");
+      return false;
     }
-);
   }
- }
+));
+  TxIdGenerator txIdGenerator=new DefaultTxIdGenerator(singletonProvider(transactionIdStore));
+  TransactionStore store=life.add(new PhysicalTransactionStore(logFile,txIdGenerator,positionCache,new VersionAwareLogEntryReader(CommandReaderFactory.DEFAULT)));
+  try {
+    life.start();
+  }
+  finally {
+    life.shutdown();
+  }
+}
