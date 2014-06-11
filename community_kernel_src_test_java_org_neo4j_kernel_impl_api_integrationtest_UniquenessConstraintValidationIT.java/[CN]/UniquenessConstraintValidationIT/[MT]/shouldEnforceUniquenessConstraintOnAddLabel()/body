@@ -1,13 +1,12 @@
 {
   constrainedNode("Label1","key1","value1");
-  dataWriteOperationsInNewTransaction();
-  Node node=db.createNode();
-  node.setProperty("key1","value1");
+  DataWriteOperations statement=dataWriteOperationsInNewTransaction();
+  long node=createNode(statement,"key1","value1");
   try {
-    node.addLabel(label("Label1"));
+    statement.nodeAddLabel(node,statement.labelGetOrCreateForName("Label1"));
     fail("should have thrown exception");
   }
- catch (  ConstraintViolationException e) {
-    assertThat(e.getMessage(),containsString("\"key1\"=[value1]"));
+ catch (  UniqueConstraintViolationKernelException e) {
+    assertThat(e.getUserMessage(tokenLookup(statement)),containsString("\"key1\"=[value1]"));
   }
 }
