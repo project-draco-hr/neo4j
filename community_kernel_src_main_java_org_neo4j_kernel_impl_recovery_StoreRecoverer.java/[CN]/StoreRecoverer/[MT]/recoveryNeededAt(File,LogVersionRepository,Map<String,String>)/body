@@ -5,17 +5,9 @@
   if (!fs.fileExists(neoStorePath)) {
     return false;
   }
-  File baseLogPath=config.get(GraphDatabaseSettings.logical_log);
-  PhysicalLogFiles logFiles=new PhysicalLogFiles(baseLogPath,fs);
+  PhysicalLogFiles logFiles=new PhysicalLogFiles(dataDir,fs);
   File log=logFiles.getHistoryFileName(logVersionRepository.getCurrentLogVersion());
-  StoreChannel logChannel=null;
-  try {
-    logChannel=fs.open(log,"r");
-    return new XaLogicalLogRecoveryCheck(logChannel).recoveryRequired();
+  try (StoreChannel logChannel=fs.open(log,"r")){
+    return new LogRecoveryCheck(logChannel).recoveryRequired();
   }
-  finally {
-    if (logChannel != null) {
-      logChannel.close();
-    }
-  }
-}
+ }
