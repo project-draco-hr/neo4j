@@ -9,9 +9,8 @@
   final long timeWritten=12345, latestCommittedTxWhenStarted=4545;
   transaction.setHeader(additionalHeader,masterId,authorId,timeWritten,latestCommittedTxWhenStarted);
   appender.append(transaction);
-  TransactionCursor reader=new PhysicalTransactionCursor(channel,new VersionAwareLogEntryReader(CommandReaderFactory.DEFAULT));
   final AtomicInteger visited=new AtomicInteger();
-  reader.next(new Visitor<TransactionRepresentation,IOException>(){
+  Visitor<TransactionRepresentation,IOException> visitor=new Visitor<TransactionRepresentation,IOException>(){
     @Override public boolean visit(    TransactionRepresentation transaction) throws IOException {
       assertArrayEquals(additionalHeader,transaction.additionalHeader());
       assertEquals(masterId,transaction.getMasterId());
@@ -22,6 +21,8 @@
       return true;
     }
   }
-);
+;
+  TransactionCursor reader=new PhysicalTransactionCursor(channel,new VersionAwareLogEntryReader(CommandReaderFactory.DEFAULT),visitor);
+  reader.next();
   assertEquals(1,visited.get());
 }
