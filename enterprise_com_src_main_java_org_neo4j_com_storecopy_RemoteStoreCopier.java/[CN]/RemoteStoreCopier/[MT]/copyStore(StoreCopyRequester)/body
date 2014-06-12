@@ -7,11 +7,11 @@
     tempStore.mkdir();
   }
   try (Response response=requester.copyStore(decorateWithProgressIndicator(new ToFileStoreWriter(tempStore)))){
-    long highestLogVersion=XaLogicalLog.getHighestHistoryLogVersion(fs,tempStore,LOGICAL_LOG_DEFAULT_NAME);
+    long highestLogVersion=logVersionRepository.getCurrentLogVersion();
     if (highestLogVersion > -1) {
       NeoStore.setVersion(fs,new File(tempStore,NeoStore.DEFAULT_NAME),highestLogVersion + 1);
     }
-    writeTransactionsToActiveLogFile(tempConfig,response.transactions());
+    writeTransactionsToActiveLogFile(tempConfig,response.getTxStream());
   }
   finally {
     requester.done();
