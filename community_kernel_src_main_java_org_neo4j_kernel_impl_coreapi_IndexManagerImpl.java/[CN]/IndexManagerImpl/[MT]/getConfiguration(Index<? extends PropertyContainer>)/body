@@ -1,7 +1,14 @@
 {
-  Map<String,String> config=indexStore.get(index.getEntityType(),index.getName());
-  if (config == null) {
-    throw new NotFoundException("No " + index.getEntityType().getSimpleName() + " index '"+ index.getName()+ "' found");
+  try (Statement statement=transactionBridge.instance()){
+    if (index.equals(Node.class)) {
+      return statement.readOperations().nodeLegacyIndexGetConfiguration(index.getName());
+    }
+    if (index.equals(Relationship.class)) {
+      return statement.readOperations().relationshipLegacyIndexGetConfiguration(index.getName());
+    }
+    throw new IllegalArgumentException("Unknown entity type " + index.getEntityType().getSimpleName());
   }
-  return config;
+ catch (  LegacyIndexNotFoundKernelException e) {
+    throw new NotFoundException("No node index '" + index.getName() + "' found");
+  }
 }

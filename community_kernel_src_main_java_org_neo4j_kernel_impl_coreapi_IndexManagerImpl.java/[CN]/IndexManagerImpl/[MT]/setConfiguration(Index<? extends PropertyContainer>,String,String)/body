@@ -1,7 +1,17 @@
 {
-  assertLegalConfigKey(key);
-  Map<String,String> config=getMutableConfig(index);
-  String oldValue=config.put(key,value);
-  indexStore.set(index.getEntityType(),index.getName(),config);
-  return oldValue;
+  try (Statement statement=transactionBridge.instance()){
+    if (index.equals(Node.class)) {
+      return statement.dataWriteOperations().nodeLegacyIndexSetConfiguration(index.getName(),key,value);
+    }
+    if (index.equals(Relationship.class)) {
+      return statement.dataWriteOperations().relationshipLegacyIndexSetConfiguration(index.getName(),key,value);
+    }
+    throw new IllegalArgumentException("Unknown entity type " + index.getEntityType().getSimpleName());
+  }
+ catch (  InvalidTransactionTypeKernelException e) {
+    throw new ConstraintViolationException(e.getMessage(),e);
+  }
+catch (  ReadOnlyDatabaseKernelException e) {
+    throw new ReadOnlyDbException();
+  }
 }

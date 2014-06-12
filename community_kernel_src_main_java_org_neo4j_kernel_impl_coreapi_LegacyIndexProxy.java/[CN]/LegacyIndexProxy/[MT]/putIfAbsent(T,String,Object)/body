@@ -1,3 +1,14 @@
 {
-  return null;
+  try (Statement statement=statementContextBridge.instance()){
+    return entityOf(type.putIfAbsent(statement.dataWriteOperations(),entity.getId(),key,value));
+  }
+ catch (  EntityNotFoundException e) {
+    throw new NotFoundException(format("%s %d not found",type,entity.getId()),e);
+  }
+catch (  InvalidTransactionTypeKernelException e) {
+    throw new ConstraintViolationException(e.getMessage(),e);
+  }
+catch (  ReadOnlyDatabaseKernelException e) {
+    throw new ReadOnlyDbException();
+  }
 }

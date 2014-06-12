@@ -61,12 +61,13 @@
   threadToTransactionBridge=life.add(new ThreadToStatementContextBridge());
   nodeManager=createNodeManager(readOnly,cacheProvider,nodeCache,relCache);
   transactionEventHandlers=new TransactionEventHandlers(createNodeLookup(),createRelationshipLookups(),threadToTransactionBridge);
-  indexStore=life.add(new IndexStore(this.storeDir,fileSystem));
+  indexStore=life.add(new IndexConfigStore(this.storeDir,fileSystem));
   diagnosticsManager.prependProvider(config);
   extensions=life.add(createKernelData());
   life.add(kernelExtensions);
   schema=new SchemaImpl(threadToTransactionBridge);
-  indexManager=new IndexManagerImpl(config,indexStore,threadToTransactionBridge,dataSourceManager);
+  LegacyIndexProxy.Lookup indexLookup=createIndexLookup();
+  indexManager=new IndexManagerImpl(indexLookup,threadToTransactionBridge);
   nodeAutoIndexer=life.add(new NodeAutoIndexerImpl(config,indexManager,nodeManager));
   relAutoIndexer=life.add(new RelationshipAutoIndexerImpl(config,indexManager,nodeManager));
   indexManager.setNodeAutoIndexer(nodeAutoIndexer);
