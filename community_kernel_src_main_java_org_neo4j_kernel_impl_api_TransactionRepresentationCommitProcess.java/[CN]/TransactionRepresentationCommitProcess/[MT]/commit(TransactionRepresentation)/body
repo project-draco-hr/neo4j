@@ -16,26 +16,20 @@
   }
   try {
     NeoTransactionStoreApplier storeApplier=new NeoTransactionStoreApplier(neoStore,indexingService,cacheAccess,lockService,transactionId,recovery);
-    try {
-      representation.accept(storeApplier);
-    }
-  finally {
-      storeApplier.done();
-    }
     NeoTransactionIndexApplier indexApplier=new NeoTransactionIndexApplier(indexingService,labelScanStore,neoStore.getNodeStore(),neoStore.getPropertyStore(),cacheAccess,propertyLoader);
-    try {
-      representation.accept(indexApplier);
+    LegacyIndexApplier legacyIndexApplier=new LegacyIndexApplier(indexConfigStore,legacyIndexProviderLookup);
+    try (CommandApplierFacade applier=new CommandApplierFacade(storeApplier,indexApplier,legacyIndexApplier)){
+      representation.accept(applier);
     }
-  finally {
-      indexApplier.done();
-    }
-    neoStore.transactionClosed(transactionId);
-    if (recovery) {
+     if (recovery) {
       neoStore.updateIdGenerators();
     }
   }
  catch (  IOException e) {
     kernelHealth.panic(e);
     throw new TransactionFailureException(Status.Transaction.CouldNotCommit,e,"Could not apply the transaction to the store after written to log");
+  }
+ finally {
+    neoStore.transactionClosed(transactionId);
   }
 }
