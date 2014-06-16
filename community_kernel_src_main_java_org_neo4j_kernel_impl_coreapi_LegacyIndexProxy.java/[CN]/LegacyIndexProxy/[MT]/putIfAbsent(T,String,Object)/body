@@ -1,6 +1,17 @@
 {
   try (Statement statement=statementContextBridge.instance()){
-    return entityOf(type.putIfAbsent(statement.dataWriteOperations(),entity.getId(),key,value));
+    long existing=single(internalGet(key,value,statement),-1L);
+    if (existing != -1) {
+      return entityOf(existing);
+    }
+    statement.readOperations().acquireExclusive(LEGACY_INDEX,legacyIndexResourceId(name,key));
+    existing=single(internalGet(key,value,statement),-1L);
+    if (existing != -1) {
+      statement.readOperations().releaseExclusive(LEGACY_INDEX,legacyIndexResourceId(name,key));
+      return entityOf(existing);
+    }
+    internalAdd(entity,key,value,statement);
+    return null;
   }
  catch (  EntityNotFoundException e) {
     throw new NotFoundException(format("%s %d not found",type,entity.getId()),e);
@@ -10,5 +21,8 @@ catch (  InvalidTransactionTypeKernelException e) {
   }
 catch (  ReadOnlyDatabaseKernelException e) {
     throw new ReadOnlyDbException();
+  }
+catch (  LegacyIndexNotFoundKernelException e) {
+    throw new RuntimeException(e);
   }
 }
