@@ -1,34 +1,24 @@
 {
-  return new IndexHits<T>(){
-    @Override public boolean hasNext(){
-      return ids.hasNext();
-    }
-    @Override public T next(){
-      return entityOf(ids.next());
-    }
-    @Override public void remove(){
-      throw new UnsupportedOperationException();
-    }
-    @Override public ResourceIterator<T> iterator(){
-      return this;
-    }
+  return new AbstractIndexHits<T>(){
+    private final PrimitiveLongSet alreadyReturned=longSet(max(16,ids.size()));
     @Override public int size(){
       return ids.size();
     }
-    @Override public void close(){
-      ids.close();
-    }
-    @Override public T getSingle(){
-      try {
-        long singleId=PrimitiveLongCollections.single(ids,-1L);
-        return singleId == -1 ? null : entityOf(singleId);
-      }
-  finally {
-        close();
-      }
-    }
     @Override public float currentScore(){
-      return 0;
+      return ids.currentScore();
+    }
+    @Override protected T fetchNextOrNull(){
+      while (ids.hasNext()) {
+        long id=ids.next();
+        if (alreadyReturned.add(id)) {
+          try {
+            return entityOf(id);
+          }
+ catch (          NotFoundException e) {
+          }
+        }
+      }
+      return null;
     }
   }
 ;
