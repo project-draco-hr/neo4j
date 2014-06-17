@@ -1,14 +1,7 @@
 {
   final File firstFile=new File(directory.directory(),"file1");
   final File secondFile=new File(directory.directory(),"file2");
-  LogVersionBridge bridge=new LogVersionBridge(){
-    @Override public VersionedStoreChannel next(    VersionedStoreChannel channel) throws IOException {
-      channel.close();
-      return new PhysicalLogVersionedStoreChannel(fs.open(secondFile,"rw"),2);
-    }
-  }
-;
-  WritableLogChannel channel=new PhysicalWritableLogChannel(new PhysicalLogVersionedStoreChannel(fs.open(firstFile,"rw"),1),bridge);
+  PhysicalWritableLogChannel channel=new PhysicalWritableLogChannel(new PhysicalLogVersionedStoreChannel(fs.open(firstFile,"rw"),1));
   byte byteValue=(byte)4;
   short shortValue=(short)10;
   int intValue=3545;
@@ -22,6 +15,7 @@
   channel.putInt(intValue);
   channel.putLong(longValue);
   channel.force();
+  channel.setChannel(new PhysicalLogVersionedStoreChannel(fs.open(secondFile,"rw"),2));
   channel.putFloat(floatValue);
   channel.putDouble(doubleValue);
   channel.put(byteArrayValue,byteArrayValue.length);
