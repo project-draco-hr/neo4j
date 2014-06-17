@@ -2,11 +2,12 @@
   ByteBuffer buf=ByteBuffer.allocate(recordSize);
   PageCache cache=getPageCache(fs,maxPages,pageCachePageSize,PageCacheMonitor.NULL);
   PagedFile pagedFile=cache.map(file,filePageSize);
-  RecordPageIO pageIO=new RecordPageIO(recordSize,recordsPerFilePage);
   long startPageId=0;
   long endPageId=recordCount / recordsPerFilePage;
-  try (PageCursor cursor=pagedFile.io(startPageId,PF_EXCLUSIVE_LOCK,pageIO,0,RecordPageIO.IO_FLAGS_WRITE_RECORDS)){
-    while (pageIO.pageId < endPageId && cursor.next())     ;
+  try (PageCursor cursor=pagedFile.io(startPageId,PF_EXCLUSIVE_LOCK)){
+    while (cursor.getCurrentPageId() < endPageId && cursor.next()) {
+      writeRecords(cursor);
+    }
   }
    cache.close();
   StoreChannel channel=fs.open(file,"r");

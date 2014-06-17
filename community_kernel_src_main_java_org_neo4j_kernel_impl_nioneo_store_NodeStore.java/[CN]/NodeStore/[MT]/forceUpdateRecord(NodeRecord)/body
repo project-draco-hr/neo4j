@@ -1,15 +1,13 @@
 {
-  PageCursor cursor=pageCache.newPageCursor();
-  try {
-    storeFile.pin(cursor,PageLock.EXCLUSIVE,pageIdForRecord(record.getId()));
+  registerIdFromUpdateRecord(record.getId());
+  long recordId=record.getId();
+  long pageId=pageIdForRecord(recordId);
+  try (PageCursor cursor=storeFile.io(pageId,PF_EXCLUSIVE_LOCK | PF_SINGLE_PAGE)){
+    while (cursor.next()) {
+      writeRecord(cursor,record,true);
+    }
   }
  catch (  IOException e) {
     throw new UnderlyingStorageException(e);
-  }
-  try {
-    updateRecord(record,cursor,true);
-  }
-  finally {
-    storeFile.unpin(cursor);
   }
 }

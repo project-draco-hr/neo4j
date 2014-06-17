@@ -4,10 +4,10 @@
   generateFileWithRecords(file,recordCount,recordSize);
   PageCache cache=getPageCache(fs,maxPages,pageCachePageSize,PageCacheMonitor.NULL);
   PagedFile pagedFile=cache.map(file,filePageSize);
-  RecordPageIO pageIO=new RecordPageIO(recordSize,recordsPerFilePage);
   int recordId=(int)(startPage * recordsPerFilePage);
-  try (PageCursor cursor=pagedFile.io(startPage,PF_SHARED_LOCK,pageIO,0,RecordPageIO.IO_FLAGS_VERIFY_RECORDS)){
-    while (cursor.next() && pageIO.pageId < endPage) {
+  try (PageCursor cursor=pagedFile.io(startPage,PF_SHARED_LOCK)){
+    while (cursor.next() && cursor.getCurrentPageId() < endPage) {
+      verifyRecordsMatchExpected(cursor);
       recordId+=recordsPerFilePage;
     }
   }

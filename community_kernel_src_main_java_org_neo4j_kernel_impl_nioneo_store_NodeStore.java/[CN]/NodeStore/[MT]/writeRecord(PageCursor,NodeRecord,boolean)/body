@@ -1,0 +1,23 @@
+{
+  int offset=offsetForId(record.getId());
+  cursor.setOffset(offset);
+  if (record.inUse() || force) {
+    long nextRel=record.getNextRel();
+    long nextProp=record.getNextProp();
+    short relModifier=nextRel == Record.NO_NEXT_RELATIONSHIP.intValue() ? 0 : (short)((nextRel & 0x700000000L) >> 31);
+    short propModifier=nextProp == Record.NO_NEXT_PROPERTY.intValue() ? 0 : (short)((nextProp & 0xF00000000L) >> 28);
+    short inUseUnsignedByte=(record.inUse() ? Record.IN_USE : Record.NOT_IN_USE).byteValue();
+    inUseUnsignedByte=(short)(inUseUnsignedByte | relModifier | propModifier);
+    cursor.putByte((byte)inUseUnsignedByte);
+    cursor.putInt((int)nextRel);
+    cursor.putInt((int)nextProp);
+    long labelField=record.getLabelField();
+    cursor.putInt((int)labelField);
+    cursor.putByte((byte)((labelField & 0xFF00000000L) >> 32));
+    byte extra=record.isDense() ? (byte)1 : (byte)0;
+    cursor.putByte(extra);
+  }
+ else {
+    cursor.putByte(Record.NOT_IN_USE.byteValue());
+  }
+}
