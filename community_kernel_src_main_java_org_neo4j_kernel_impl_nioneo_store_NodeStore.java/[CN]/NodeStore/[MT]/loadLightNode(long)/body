@@ -5,5 +5,25 @@
  catch (  InvalidRecordException e) {
     return null;
   }
-  return getRecord(id,new NodeRecord(id),RecordLoad.CHECK);
+  long pageId=pageIdForRecord(id);
+  int offset=offsetForId(id);
+  try (PageCursor cursor=storeFile.io(pageId,PF_SHARED_LOCK | PF_SINGLE_PAGE | PF_NO_GROW)){
+    NodeRecord record=null;
+    boolean isInUse=false;
+    while (cursor.next()) {
+      cursor.setOffset(offset);
+      long inUseByte=cursor.getByte();
+      isInUse=recordIsInUse(inUseByte);
+      if (isInUse) {
+        if (record == null) {
+          record=new NodeRecord(id);
+        }
+        readIntoRecord(cursor,record,inUseByte,true);
+      }
+    }
+    return isInUse ? record : null;
+  }
+ catch (  IOException e) {
+    throw new UnderlyingStorageException(e);
+  }
 }

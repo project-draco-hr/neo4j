@@ -1,16 +1,15 @@
 {
-  PageCursor cursor=pageCache.newPageCursor();
-  try {
-    storeFile.pin(cursor,PageLock.SHARED,pageIdForRecord(id));
+  long pageId=pageIdForRecord(id);
+  int offset=offsetForId(id);
+  try (PageCursor cursor=storeFile.io(pageId,PF_SHARED_LOCK | PF_SINGLE_PAGE | PF_NO_GROW)){
+    boolean recordIsInUse=false;
+    while (cursor.next()) {
+      cursor.setOffset(offset);
+      recordIsInUse=recordIsInUse((long)cursor.getByte());
+    }
+    return recordIsInUse;
   }
  catch (  IOException e) {
     throw new UnderlyingStorageException(e);
-  }
-  try {
-    cursor.setOffset(offsetForId(id));
-    return ((long)cursor.getByte() & 0x1) == Record.IN_USE.intValue();
-  }
-  finally {
-    storeFile.unpin(cursor);
   }
 }
