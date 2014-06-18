@@ -11,7 +11,15 @@
     }
   }
    int pagesChecked=0;
-  try (PageCursor cursor=pagedFile.io(0L,PF_SHARED_LOCK | PF_NO_GROW)){
+  try (PageCursor cursor=pagedFile.io(0L,PF_EXCLUSIVE_LOCK | PF_NO_GROW)){
+    while (cursor.next()) {
+      verifyRecordsMatchExpected(cursor);
+      pagesChecked++;
+    }
+  }
+   assertThat(pagesChecked,is(initialPages + pagesToAdd));
+  pagesChecked=0;
+  try (PageCursor cursor=pagedFile.io(0L,PF_SHARED_LOCK)){
     while (cursor.next()) {
       verifyRecordsMatchExpected(cursor);
       pagesChecked++;
