@@ -2,18 +2,20 @@
   ClusterManager.ManagedCluster cluster=clusterRule.startCluster(stringMap(HaSettings.read_timeout.name(),"4000s"));
   HighlyAvailableGraphDatabase slave=cluster.getAnySlave();
   HighlyAvailableGraphDatabase master=cluster.getMaster();
-  TransactionManager txManager=slave.getDependencyResolver().resolveDependency(TransactionManager.class);
+  ThreadToStatementContextBridge txBridge=slave.getDependencyResolver().resolveDependency(ThreadToStatementContextBridge.class);
   createUser(master,"Bob");
   slave.beginTx();
   slave.createNode(label("User")).setProperty("name","Bob");
-  javax.transaction.Transaction slaveTx=txManager.suspend();
+  TopLevelTransaction slaveTx=txBridge.getTopLevelTransactionBoundToThisThread(true);
+  txBridge.unbindTransactionFromCurrentThread();
   try (Transaction tx=master.beginTx()){
     master.schema().constraintFor(label("User")).assertPropertyIsUnique("name").create();
     tx.success();
   }
-   txManager.resume(slaveTx);
+   txBridge.bindTransactionToCurrentThread(slaveTx);
   try {
-    slaveTx.commit();
+    slaveTx.success();
+    slaveTx.finish();
     fail("Expected this commit to fail :(");
   }
  catch (  Exception e) {
