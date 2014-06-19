@@ -1,0 +1,13 @@
+{
+  when(table.load(io,12,PageLock.SHARED)).thenReturn(page);
+  when(page.pin(io,12,PageLock.SHARED)).thenReturn(true);
+  StandardPagedFile file=new StandardPagedFile(table,null,channel,512,PageCacheMonitor.NULL);
+  file.pin(cursor,PageLock.SHARED,12);
+  try {
+    file.pin(cursor,PageLock.SHARED,12);
+    fail("Should have thrown when re-using an active cursor");
+  }
+ catch (  IOException e) {
+    assertThat(e.getMessage(),equalTo("The cursor is already in use, you need to unpin the cursor before using it again."));
+  }
+}

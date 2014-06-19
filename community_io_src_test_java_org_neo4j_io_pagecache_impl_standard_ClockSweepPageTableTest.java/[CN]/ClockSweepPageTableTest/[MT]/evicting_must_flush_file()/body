@@ -1,0 +1,23 @@
+{
+  ByteBuffer storageBuffer=ByteBuffer.allocate(TEST_PAGE_SIZE);
+  BufferPageIO io=new BufferPageIO(storageBuffer);
+  PinnablePage page=table.load(io,12,PageLock.EXCLUSIVE);
+  page.putBytes(bytesA,0);
+  page.unpin(PageLock.EXCLUSIVE);
+  fork(new Runnable(){
+    @Override public void run(){
+      BufferPageIO io=new BufferPageIO(ByteBuffer.allocate(1));
+      try {
+        table.load(io,3,PageLock.SHARED);
+      }
+ catch (      IOException e) {
+        e.printStackTrace();
+      }
+    }
+  }
+).join();
+  byte[] actual=new byte[bytesA.length];
+  storageBuffer.position(0);
+  storageBuffer.get(actual);
+  assertThat(actual,equalTo(bytesA));
+}
