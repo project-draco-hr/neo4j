@@ -1,15 +1,18 @@
 {
-  PageCursor cursor=pageCache.newPageCursor();
-  try {
-    storeFile.pin(cursor,PageLock.SHARED,pageIdForRecord(id));
+  try (PageCursor cursor=storeFile.io(pageIdForRecord(id),PF_SHARED_LOCK)){
+    if (cursor.next()) {
+      PropertyRecord record;
+      do {
+        record=getRecord(id,cursor,RecordLoad.NORMAL);
+      }
+ while (cursor.retry());
+      return record;
+    }
+ else {
+      throw new InvalidRecordException("PropertyRecord[" + id + "] not in use");
+    }
   }
  catch (  IOException e) {
     throw new UnderlyingStorageException(e);
-  }
-  try {
-    return getRecord(id,cursor,RecordLoad.NORMAL);
-  }
-  finally {
-    storeFile.unpin(cursor);
   }
 }

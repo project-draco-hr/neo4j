@@ -1,15 +1,17 @@
 {
-  PageCursor cursor=pageCache.newPageCursor();
-  try {
-    storeFile.pin(cursor,PageLock.EXCLUSIVE,pageIdForRecord(record.getId()));
+  long pageId=pageIdForRecord(record.getId());
+  try (PageCursor cursor=storeFile.io(pageId,PF_EXCLUSIVE_LOCK)){
+    if (cursor.next()) {
+      do {
+        updateRecord(record,cursor);
+      }
+ while (cursor.retry());
+    }
+ else {
+      throw new UnderlyingStorageException("Could not pin page[" + pageId + " exclusively for updateRecord: "+ record);
+    }
   }
  catch (  IOException e) {
     throw new UnderlyingStorageException(e);
-  }
-  try {
-    updateRecord(record,cursor);
-  }
-  finally {
-    storeFile.unpin(cursor);
   }
 }

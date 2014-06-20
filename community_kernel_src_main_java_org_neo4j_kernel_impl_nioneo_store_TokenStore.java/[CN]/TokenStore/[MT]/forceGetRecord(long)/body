@@ -1,15 +1,18 @@
 {
-  PageCursor cursor=pageCache.newPageCursor();
-  try {
-    storeFile.pin(cursor,PageLock.SHARED,pageIdForRecord(id));
+  try (PageCursor cursor=storeFile.io(pageIdForRecord(id),PF_SHARED_LOCK)){
+    if (cursor.next()) {
+      T record;
+      do {
+        record=getRecord((int)id,cursor,true);
+      }
+ while (cursor.retry());
+      return record;
+    }
+ else {
+      return newRecord((int)id);
+    }
   }
  catch (  IOException e) {
     return newRecord((int)id);
-  }
-  try {
-    return getRecord((int)id,cursor,true);
-  }
-  finally {
-    storeFile.unpin(cursor);
   }
 }
