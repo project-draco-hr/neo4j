@@ -1,13 +1,16 @@
 {
   DynamicRecord record=new DynamicRecord(id);
   long pageId=pageIdForRecord(id);
-  try (PageCursor cursor=storeFile.io(pageId,PF_SHARED_LOCK | PF_SINGLE_PAGE)){
-    while (cursor.next()) {
+  try (PageCursor cursor=storeFile.io(pageId,PF_SHARED_LOCK)){
+    if (cursor.next()) {
       int offset=offsetForId(record.getId());
-      cursor.setOffset(offset);
-      if (readRecordHeader(cursor,record,true)) {
-        readRecordData(cursor,record);
+      do {
+        cursor.setOffset(offset);
+        if (readRecordHeader(cursor,record,true)) {
+          readRecordData(cursor,record);
+        }
       }
+ while (cursor.retry());
     }
     return record;
   }

@@ -1,9 +1,18 @@
 {
+  ByteBuffer expectedPageContents=ByteBuffer.allocate(filePageSize);
+  ByteBuffer actualPageContents=ByteBuffer.allocate(filePageSize);
+  byte[] record=new byte[recordSize];
   long pageId=cursor.getCurrentPageId();
   for (int i=0; i < recordsPerFilePage; i++) {
     long recordId=(pageId * recordsPerFilePage) + i;
-    generateRecordForId(recordId,bufA);
-    cursor.getBytes(bufB.array());
-    assertThat("Record id: " + recordId,bufB.array(),byteArray(bufA.array()));
+    expectedPageContents.position(recordSize * i);
+    generateRecordForId(recordId,expectedPageContents.slice());
+    do {
+      cursor.getBytes(record);
+    }
+ while (cursor.retry());
+    actualPageContents.position(recordSize * i);
+    actualPageContents.put(record);
   }
+  assertThat("Page id: " + pageId,actualPageContents.array(),byteArray(expectedPageContents.array()));
 }

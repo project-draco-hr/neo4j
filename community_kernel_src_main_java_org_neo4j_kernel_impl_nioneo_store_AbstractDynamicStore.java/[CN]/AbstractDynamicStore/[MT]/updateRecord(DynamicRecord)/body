@@ -2,9 +2,12 @@
   long blockId=record.getId();
   long pageId=pageIdForRecord(blockId);
   registerIdFromUpdateRecord(blockId);
-  try (PageCursor cursor=storeFile.io(pageId,PF_EXCLUSIVE_LOCK | PF_SINGLE_PAGE)){
-    while (cursor.next()) {
-      writeRecord(cursor,record);
+  try (PageCursor cursor=storeFile.io(pageId,PF_EXCLUSIVE_LOCK)){
+    if (cursor.next()) {
+      do {
+        writeRecord(cursor,record);
+      }
+ while (cursor.retry());
     }
   }
  catch (  IOException e) {

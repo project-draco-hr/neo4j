@@ -2,11 +2,12 @@
   final CountDownLatch startLatch=new CountDownLatch(1);
   final CountDownLatch unpinLatch=new CountDownLatch(1);
   final AtomicReference<Exception> exceptionRef=new AtomicReference<>();
+  generateFileWithRecords(file,recordsPerFilePage,recordSize);
   final PageCache cache=getPageCache(fs,maxPages,pageCachePageSize,PageCacheMonitor.NULL);
   final PagedFile pagedFile=cache.map(file,filePageSize);
   Runnable runnable=new Runnable(){
     @Override public void run(){
-      try (PageCursor cursorA=pagedFile.io(0,PF_EXCLUSIVE_LOCK | PF_SINGLE_PAGE)){
+      try (PageCursor cursorA=pagedFile.io(0,PF_EXCLUSIVE_LOCK | PF_NO_GROW)){
         assertTrue(cursorA.next());
         assertFalse(cursorA.next());
         startLatch.countDown();
@@ -22,9 +23,8 @@
   Thread thread=new Thread(runnable);
   thread.start();
   startLatch.await();
-  try (PageCursor cursorB=pagedFile.io(1,PF_EXCLUSIVE_LOCK | PF_SINGLE_PAGE)){
+  try (PageCursor cursorB=pagedFile.io(1,PF_EXCLUSIVE_LOCK)){
     assertTrue(cursorB.next());
-    assertFalse(cursorB.next());
   }
    unpinLatch.countDown();
   Exception e=exceptionRef.get();

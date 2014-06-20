@@ -1,11 +1,14 @@
 {
   long pageId=pageIdForRecord(id);
-  try (PageCursor cursor=storeFile.io(pageId,PF_EXCLUSIVE_LOCK | PF_SINGLE_PAGE)){
-    while (cursor.next()) {
+  try (PageCursor cursor=storeFile.io(pageId,PF_EXCLUSIVE_LOCK)){
+    if (cursor.next()) {
       int offset=offsetForId(id);
-      cursor.setOffset(offset);
-      cursor.putByte(Record.IN_USE.byteValue());
-      cursor.putLong(value);
+      do {
+        cursor.setOffset(offset);
+        cursor.putByte(Record.IN_USE.byteValue());
+        cursor.putLong(value);
+      }
+ while (cursor.retry());
     }
   }
  catch (  IOException e) {

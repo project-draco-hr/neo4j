@@ -1,11 +1,14 @@
 {
   long pageId=pageIdForRecord(id);
   int offset=offsetForId(id);
-  try (PageCursor cursor=storeFile.io(pageId,PF_SHARED_LOCK | PF_SINGLE_PAGE)){
+  try (PageCursor cursor=storeFile.io(pageId,PF_SHARED_LOCK)){
     boolean recordIsInUse=false;
-    while (cursor.next()) {
-      cursor.setOffset(offset);
-      recordIsInUse=recordIsInUse((long)cursor.getByte());
+    if (cursor.next()) {
+      do {
+        cursor.setOffset(offset);
+        recordIsInUse=recordIsInUse((long)cursor.getByte());
+      }
+ while (cursor.retry());
     }
     return recordIsInUse;
   }

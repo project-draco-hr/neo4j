@@ -1,24 +1,7 @@
 {
-  long pageId=pageIdForRecord(id);
-  int offset=offsetForId(id);
-  NodeRecord result=null;
-  try (PageCursor cursor=storeFile.io(pageId,PF_SHARED_LOCK | PF_SINGLE_PAGE)){
-    while (cursor.next()) {
-      cursor.setOffset(offset);
-      long inUseByte=cursor.getByte();
-      if (!recordIsInUse(inUseByte)) {
-        result=null;
-        continue;
-      }
-      readIntoRecord(cursor,record,inUseByte,true);
-      result=record;
-    }
-  }
- catch (  IOException e) {
-    throw new UnderlyingStorageException(e);
-  }
+  NodeRecord result=loadRecord(id,record);
   if (result == null) {
     throw new InvalidRecordException("NodeRecord[" + id + "] not in use");
   }
-  return record;
+  return result;
 }
