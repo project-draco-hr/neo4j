@@ -1,0 +1,24 @@
+{
+  if (dynamicIds == null || dynamicIds.length == 0) {
+    throw new IllegalArgumentException("No dynamic records for storing the name.");
+  }
+  record.setInUse(true);
+  byte[] data=PropertyStore.encodeString(name);
+  if (data.length > dynamicIds.length * NAME_STORE_BLOCK_SIZE) {
+    throw new IllegalArgumentException(String.format("[%s] is too long to fit in %d blocks",name,dynamicIds.length));
+  }
+ else   if (data.length <= (dynamicIds.length - 1) * NAME_STORE_BLOCK_SIZE) {
+    throw new IllegalArgumentException(String.format("[%s] is to short to fill %d blocks",name,dynamicIds.length));
+  }
+  for (int i=0; i < dynamicIds.length; i++) {
+    byte[] part=new byte[Math.min(NAME_STORE_BLOCK_SIZE,data.length - i * NAME_STORE_BLOCK_SIZE)];
+    System.arraycopy(data,i * NAME_STORE_BLOCK_SIZE,part,0,part.length);
+    DynamicRecord dynamicRecord=new DynamicRecord(dynamicIds[i]);
+    dynamicRecord.setInUse(true);
+    dynamicRecord.setData(part);
+    dynamicRecord.setCreated();
+    record.addNameRecord(dynamicRecord);
+  }
+  record.setNameId(dynamicIds[0]);
+  return record;
+}
