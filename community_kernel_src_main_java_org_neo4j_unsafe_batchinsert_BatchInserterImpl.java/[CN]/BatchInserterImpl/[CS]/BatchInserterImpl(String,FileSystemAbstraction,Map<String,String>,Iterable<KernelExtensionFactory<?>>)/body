@@ -1,19 +1,22 @@
 {
-  life=new LifeSupport();
-  this.fileSystem=fileSystem;
-  this.storeDir=new File(FileUtils.fixSeparatorsInPath(storeDir));
   rejectAutoUpgrade(stringParams);
-  msgLog=StringLogger.loggerDirectory(fileSystem,this.storeDir);
-  logging=new SingleLoggingService(msgLog);
   Map<String,String> params=getDefaultParams();
   params.put(GraphDatabaseSettings.use_memory_mapped_buffers.name(),Settings.FALSE);
   params.putAll(stringParams);
+  config=StoreFactory.configForStoreDir(new Config(params,GraphDatabaseSettings.class),new File(storeDir));
+  life=new LifeSupport();
+  this.fileSystem=fileSystem;
+  this.storeDir=new File(FileUtils.fixSeparatorsInPath(storeDir));
+  Neo4jJobScheduler jobScheduler=life.add(new Neo4jJobScheduler());
+  LifecycledPageCache pageCache=life.add(new LifecycledPageCache(fileSystem,jobScheduler,config));
+  msgLog=StringLogger.loggerDirectory(fileSystem,this.storeDir);
+  logging=new SingleLoggingService(msgLog);
   storeLocker=new StoreLocker(fileSystem);
   storeLocker.checkLock(this.storeDir);
-  config=StoreFactory.configForStoreDir(new Config(params,GraphDatabaseSettings.class),new File(storeDir));
   boolean dump=config.get(GraphDatabaseSettings.dump_configuration);
   this.idGeneratorFactory=new DefaultIdGeneratorFactory();
-  StoreFactory sf=new StoreFactory(config,idGeneratorFactory,new DefaultWindowPoolFactory(),fileSystem,msgLog,null);
+  Monitors monitors=new Monitors();
+  StoreFactory sf=new StoreFactory(config,idGeneratorFactory,pageCache,fileSystem,msgLog,monitors);
   if (dump) {
     dumpConfiguration(params);
   }

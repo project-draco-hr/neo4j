@@ -1,12 +1,19 @@
 {
-  GraphDatabaseService db=new TestGraphDatabaseFactory().newImpermanentDatabase();
-  Monitors monitors=((GraphDatabaseAPI)db).getDependencyResolver().resolveDependency(Monitors.class);
-  EideticTransactionMonitor monitor=new EideticTransactionMonitor();
-  Transaction tx=db.beginTx();
-  db.createNode();
-  tx.success();
-  tx.finish();
-  assertEquals(1,monitor.getNumberOfStartedTransactions());
-  assertEquals(1,monitor.getNumberOfCommittedTransactions());
-  assertEquals(0,monitor.getNumberOfRolledbackTransactions());
+  GraphDatabaseAPI db=(GraphDatabaseAPI)new TestGraphDatabaseFactory().newImpermanentDatabase();
+  try {
+    TransactionMonitor monitor=db.getDependencyResolver().resolveDependency(TransactionMonitor.class);
+    int startedBefore=monitor.getNumberOfStartedTransactions();
+    long committedBefore=monitor.getNumberOfCommittedTransactions();
+    long rolledBackBefore=monitor.getNumberOfRolledbackTransactions();
+    try (Transaction tx=db.beginTx()){
+      db.createNode();
+      tx.success();
+    }
+     assertEquals(startedBefore + 1,monitor.getNumberOfStartedTransactions());
+    assertEquals(committedBefore + 1,monitor.getNumberOfCommittedTransactions());
+    assertEquals(rolledBackBefore,monitor.getNumberOfRolledbackTransactions());
+  }
+  finally {
+    db.shutdown();
+  }
 }

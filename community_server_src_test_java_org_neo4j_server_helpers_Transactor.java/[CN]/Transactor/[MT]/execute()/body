@@ -1,10 +1,13 @@
 {
-  Transaction tx=graphDb.beginTx();
-  try {
-    unitOfWork.doWork();
-    tx.success();
-  }
-  finally {
-    tx.finish();
+  for (int attemptsLeft=attempts - 1; attemptsLeft >= 0; attemptsLeft--) {
+    try (Transaction tx=graphDb.beginTx()){
+      unitOfWork.doWork();
+      tx.success();
+    }
+ catch (    RuntimeException e) {
+      if (attemptsLeft == 0) {
+        throw e;
+      }
+    }
   }
 }

@@ -1,7 +1,12 @@
 {
   DefaultFileSystemAbstraction fileSystem=new DefaultFileSystemAbstraction();
+  Monitors monitors=new Monitors();
   tuningConfiguration=configForStoreDir(tuningConfiguration,new File(storeDir));
-  StoreFactory factory=new StoreFactory(tuningConfiguration,new DefaultIdGeneratorFactory(),tuningConfiguration.get(ConsistencyCheckSettings.consistency_check_window_pool_implementation).windowPoolFactory(tuningConfiguration,logger),fileSystem,logger);
+  Neo4jJobScheduler jobScheduler=new Neo4jJobScheduler();
+  LifecycledPageCache pageCache=new LifecycledPageCache(fileSystem,jobScheduler,tuningConfiguration);
+  StoreFactory factory=new StoreFactory(tuningConfiguration,new DefaultIdGeneratorFactory(),pageCache,fileSystem,logger,monitors);
+  jobScheduler.init();
+  pageCache.start();
   ConsistencySummaryStatistics summary;
   File reportFile=chooseReportPath(tuningConfiguration);
   StringLogger report=StringLogger.lazyLogger(reportFile);
@@ -30,6 +35,8 @@
   finally {
     report.close();
     neoStore.close();
+    pageCache.stop();
+    jobScheduler.shutdown();
   }
   if (!summary.isConsistent()) {
     logger.logMessage(String.format("See '%s' for a detailed consistency report.",reportFile.getPath()));
