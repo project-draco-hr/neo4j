@@ -1,11 +1,14 @@
 {
-  LogPosition position=transactionMetadataCache.getTransactionMetadata(transactionIdToStartFrom).getStartPosition();
-  if (position != null) {
-    return new PhysicalTransactionCursor(logFile.getReader(position),logEntryReader,visitor);
+  TransactionMetadataCache.TransactionMetadata transactionMetadata=transactionMetadataCache.getTransactionMetadata(transactionIdToStartFrom);
+  if (transactionMetadata != null) {
+    return new PhysicalTransactionCursor(logFile.getReader(transactionMetadata.getStartPosition()),logEntryReader,visitor);
   }
-  TransactionPositionLocator transactionPositionLocator=new TransactionPositionLocator(transactionIdToStartFrom);
+  TransactionPositionLocator transactionPositionLocator=new TransactionPositionLocator(transactionIdToStartFrom,logEntryReader);
   logFile.accept(transactionPositionLocator);
-  position=transactionPositionLocator.getPosition();
+  LogPosition position=transactionPositionLocator.getPosition();
+  if (position == null) {
+    return null;
+  }
   IOCursor cursor=new PhysicalTransactionCursor(logFile.getReader(position),logEntryReader,visitor);
   return cursor;
 }
