@@ -1,0 +1,31 @@
+{
+  PageCache cache=getPageCache(fs,maxPages,pageCachePageSize,PageCacheMonitor.NULL);
+  PagedFile pagedFile=cache.map(file,filePageSize);
+  try (PageCursor cursor=pagedFile.io(0,PF_EXCLUSIVE_LOCK)){
+    assertTrue(cursor.next(2));
+    do {
+      writeRecords(cursor);
+    }
+ while (cursor.retry());
+    assertTrue(cursor.next(0));
+    do {
+      writeRecords(cursor);
+    }
+ while (cursor.retry());
+    assertTrue(cursor.next(1));
+    do {
+      writeRecords(cursor);
+    }
+ while (cursor.retry());
+  }
+   try (PageCursor cursor=pagedFile.io(0,PF_EXCLUSIVE_LOCK | PF_NO_GROW)){
+    while (cursor.next()) {
+      verifyRecordsMatchExpected(cursor);
+    }
+  }
+   try (PageCursor cursor=pagedFile.io(0,PF_SHARED_LOCK)){
+    while (cursor.next()) {
+      verifyRecordsMatchExpected(cursor);
+    }
+  }
+ }

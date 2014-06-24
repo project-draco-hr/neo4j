@@ -3,15 +3,14 @@
   RecordingPageCacheMonitor monitor=new RecordingPageCacheMonitor();
   StandardPageCache cache=new StandardPageCache(fs,2,512,monitor);
   PagedFile file=cache.map(new File(testDir.directory(),"storefile"),512);
-  PageCursor cursor=cache.newCursor();
   Thread sweeperThread=new Thread(cache);
   sweeperThread.start();
   CountDownLatch evictionThreadLatch=monitor.trap(any(RecordingPageCacheMonitor.Evict.class));
-  file.pin(cursor,PageLock.EXCLUSIVE,1);
-  file.unpin(cursor);
-  file.pin(cursor,PageLock.EXCLUSIVE,2);
-  file.unpin(cursor);
-  fs.runOutOfDiskSpace();
+  try (PageCursor cursor=file.io(1,PF_EXCLUSIVE_LOCK)){
+    cursor.next();
+    cursor.next();
+  }
+   fs.runOutOfDiskSpace();
   evictionThreadLatch.countDown();
   try {
     file.flush();

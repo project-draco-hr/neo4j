@@ -1,0 +1,26 @@
+{
+  long pageId=pageIdForRecord(id);
+  int offset=offsetForId(id);
+  try (PageCursor cursor=storeFile.io(pageId,PF_SHARED_LOCK)){
+    boolean isInUse=false;
+    if (cursor.next()) {
+      do {
+        cursor.setOffset(offset);
+        long inUseByte=cursor.getByte();
+        isInUse=recordIsInUse(inUseByte);
+        if (isInUse) {
+          if (record == null) {
+            record=new NodeRecord(id);
+          }
+          record.setId(id);
+          readIntoRecord(cursor,record,inUseByte,true);
+        }
+      }
+ while (cursor.retry());
+    }
+    return isInUse ? record : null;
+  }
+ catch (  IOException e) {
+    throw new UnderlyingStorageException(e);
+  }
+}

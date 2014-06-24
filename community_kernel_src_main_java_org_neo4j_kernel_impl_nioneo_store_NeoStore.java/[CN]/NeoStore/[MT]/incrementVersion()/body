@@ -1,5 +1,12 @@
 {
-  long current=getVersion();
-  setVersion(current + 1);
-  return current;
+  long pageId=pageIdForRecord(VERSION_POSITION);
+  try (PageCursor cursor=storeFile.io(pageId,PF_EXCLUSIVE_LOCK)){
+    if (cursor.next()) {
+      incrementVersion(cursor);
+    }
+    return versionField - 1;
+  }
+ catch (  IOException e) {
+    throw new UnderlyingStorageException(e);
+  }
 }
