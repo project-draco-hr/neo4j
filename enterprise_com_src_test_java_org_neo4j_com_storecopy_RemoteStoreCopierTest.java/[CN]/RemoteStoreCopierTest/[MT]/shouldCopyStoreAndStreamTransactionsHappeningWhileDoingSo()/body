@@ -1,0 +1,66 @@
+{
+  final File originalDir=new File(testDir.directory(),"original");
+  final File copyDir=new File(testDir.directory(),"copy");
+  Config config=new Config(stringMap(store_dir.name(),copyDir.getAbsolutePath()));
+  final GraphDatabaseAPI original=(GraphDatabaseAPI)new GraphDatabaseFactory().newEmbeddedDatabase(originalDir.getAbsolutePath());
+  final DependencyResolver resolver=original.getDependencyResolver();
+  final FileSystemAbstraction fileSystem=resolver.resolveDependency(FileSystemAbstraction.class);
+  LogVersionRepository logVersionRepository=original.getDependencyResolver().resolveDependency(LogVersionRepository.class);
+  RemoteStoreCopier copier=new RemoteStoreCopier(config,loadKernelExtensions(),new ConsoleLogger(StringLogger.SYSTEM),fs,logVersionRepository);
+  RemoteStoreCopier.StoreCopyRequester requester=spy(new RemoteStoreCopier.StoreCopyRequester(){
+    private Response<Object> response;
+    @Override public Response<?> copyStore(    StoreWriter writer) throws IOException {
+      try {
+        try (Transaction tx=original.beginTx()){
+          original.createNode(label("BeforeCopyBegins"));
+          tx.success();
+        }
+         TransactionIdStore transactionIdStore=resolver.resolveDependency(TransactionIdStore.class);
+        long transactionIdWhenStartingCopy=transactionIdStore.getLastCommittingTransactionId();
+        NeoStoreXaDataSource dataSource=resolver.resolveDependency(DataSourceManager.class).getDataSource();
+        dataSource.forceEverything();
+        File baseDir=getMostCanonicalFile(originalDir);
+        ByteBuffer temporaryBuffer=ByteBuffer.allocateDirect(1024 * 1024);
+        try (ResourceIterator<File> files=dataSource.listStoreFiles()){
+          while (files.hasNext()) {
+            File file=files.next();
+            try (StoreChannel fileChannel=fileSystem.open(file,"r")){
+              writer.write(relativePath(baseDir,file),fileChannel,temporaryBuffer,file.length() > 0);
+            }
+           }
+        }
+         try (Transaction tx=original.beginTx()){
+          original.createNode(label("AfterCopy"));
+          tx.success();
+        }
+         long highTransactionId=transactionIdStore.getLastCommittingTransactionId();
+        AccumulatorVisitor<CommittedTransactionRepresentation> accumulator=new AccumulatorVisitor<>(upAndIncluding(highTransactionId));
+        LogicalTransactionStore txStore=resolver.resolveDependency(LogicalTransactionStore.class);
+        exhaust(txStore.getCursor(transactionIdWhenStartingCopy + 1,accumulator));
+        return response=spy(new Response<>(null,original.storeId(),accumulator.getAccumulator(),NO_OP));
+      }
+ catch (      final Throwable t) {
+        t.printStackTrace();
+        throw t;
+      }
+    }
+    @Override public void done(){
+      assertNotNull(response);
+      verify(response,times(1)).close();
+    }
+  }
+);
+  copier.copyStore(requester);
+  GraphDatabaseService copy=new GraphDatabaseFactory().newEmbeddedDatabase(copyDir.getAbsolutePath());
+  try (Transaction tx=copy.beginTx()){
+    GlobalGraphOperations globalOps=GlobalGraphOperations.at(copy);
+    assertThat(single(globalOps.getAllNodesWithLabel(label("BeforeCopyBegins"))).getId(),equalTo(0l));
+    assertThat(single(globalOps.getAllNodesWithLabel(label("AfterCopy"))).getId(),equalTo(1l));
+    tx.success();
+  }
+  finally {
+    copy.shutdown();
+    original.shutdown();
+  }
+  verify(requester,times(1)).done();
+}

@@ -1,0 +1,17 @@
+{
+  LifeSupport life=new LifeSupport();
+  try {
+    PhysicalLogFiles logFiles=new PhysicalLogFiles(storeDir,fs);
+    TransactionMetadataCache transactionMetadataCache=new TransactionMetadataCache(10,100);
+    LogFile logFile=life.add(new PhysicalLogFile(fs,logFiles,Long.MAX_VALUE,NO_PRUNING,new ReadOnlyTransactionIdStore(fs,storeDir),new ReadOnlyLogVersionRepository(fs,storeDir),PhysicalLogFile.NO_MONITOR,LogRotationControl.NO_ROTATION_CONTROL,transactionMetadataCache,new NoRecoveryAssertingVisitor()));
+    life.start();
+    try (TransactionAppender appender=new PhysicalTransactionAppender(logFile,new TxIdGeneratorPreventor(),transactionMetadataCache)){
+      for (      CommittedTransactionRepresentation transaction : txs) {
+        appender.append(transaction);
+      }
+    }
+   }
+  finally {
+    life.shutdown();
+  }
+}

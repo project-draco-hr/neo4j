@@ -1,29 +1,19 @@
 {
   File storeDir=config.get(InternalAbstractGraphDatabase.Configuration.store_dir);
   File tempStore=new File(storeDir,COPY_FROM_MASTER_TEMP);
-  Config tempConfig=configForTempStore(tempStore);
-  if (!tempStore.mkdir()) {
-    FileUtils.deleteRecursively(tempStore);
-    tempStore.mkdir();
-  }
+  cleanDirectory(tempStore);
   try (Response response=requester.copyStore(decorateWithProgressIndicator(new ToFileStoreWriter(tempStore)))){
     long highestLogVersion=logVersionRepository.getCurrentLogVersion();
     if (highestLogVersion > -1) {
       NeoStore.setVersion(fs,new File(tempStore,NeoStore.DEFAULT_NAME),highestLogVersion + 1);
     }
-    writeTransactionsToActiveLogFile(tempConfig,response.getTxs());
+    writeTransactionsToActiveLogFile(tempStore,response.getTxs());
   }
   finally {
     requester.done();
   }
-  GraphDatabaseAPI copiedDb=newTempDatabase(tempStore);
-  copiedDb.shutdown();
-  for (  File candidate : tempStore.listFiles(new FileFilter(){
-    @Override public boolean accept(    File file){
-      return !file.getName().startsWith("metrics") && !file.getName().equals(StringLogger.DEFAULT_NAME) && !("active_tx_log tm_tx_log.1 tm_tx_log.2").contains(file.getName());
-    }
-  }
-)) {
+  newTempDatabase(tempStore).shutdown();
+  for (  File candidate : tempStore.listFiles(STORE_FILE_FILTER)) {
     FileUtils.moveFileToDirectory(candidate,storeDir);
   }
 }
