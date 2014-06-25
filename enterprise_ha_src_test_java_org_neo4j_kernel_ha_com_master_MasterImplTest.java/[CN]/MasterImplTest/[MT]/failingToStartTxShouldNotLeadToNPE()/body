@@ -2,6 +2,7 @@
   MasterImpl.SPI spi=mock(MasterImpl.SPI.class);
   Config config=config(20);
   when(spi.isAccessible()).thenReturn(true);
+  when(spi.acquireClient()).thenThrow(new RuntimeException("Nope"));
   when(spi.getMasterIdForCommittedTx(anyLong())).thenReturn(Pair.of(1,1L));
   MasterImpl instance=new MasterImpl(spi,mock(MasterImpl.Monitor.class),new DevNullLoggingService(),config);
   instance.start();
@@ -11,6 +12,7 @@
     fail("Should have failed.");
   }
  catch (  Exception e) {
-    assertThat(e.getCause().getMessage(),equalTo("Nope"));
+    assertThat(e,instanceOf(RuntimeException.class));
+    assertThat(e.getMessage(),equalTo("Nope"));
   }
 }
