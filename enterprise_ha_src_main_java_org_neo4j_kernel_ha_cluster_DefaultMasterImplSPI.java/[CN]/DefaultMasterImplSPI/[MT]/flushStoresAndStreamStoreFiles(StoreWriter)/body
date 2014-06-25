@@ -1,21 +1,5 @@
 {
-  try {
-    long transactionIdWhenStartingCopy=transactionIdStore.getLastCommittingTransactionId();
-    NeoStoreXaDataSource dataSource=graphDb.getDependencyResolver().resolveDependency(DataSourceManager.class).getDataSource();
-    dataSource.forceEverything();
-    File baseDir=getMostCanonicalFile(storeDir);
-    ByteBuffer temporaryBuffer=ByteBuffer.allocateDirect(1024 * 1024);
-    try (ResourceIterator<File> files=dataSource.listStoreFiles()){
-      while (files.hasNext()) {
-        File file=files.next();
-        try (StoreChannel fileChannel=fileSystem.open(file,"r")){
-          writer.write(relativePath(baseDir,file),fileChannel,temporaryBuffer,file.length() > 0);
-        }
-       }
-    }
-     return anonymous(figureOutTransactionIdToStartStreamFrom(transactionIdWhenStartingCopy));
-  }
- catch (  IOException e) {
-    throw new ServerFailureException(e);
-  }
+  NeoStoreXaDataSource dataSource=graphDb.getDependencyResolver().resolveDependency(DataSourceManager.class).getDataSource();
+  StoreCopyServer streamer=new StoreCopyServer(transactionIdStore,dataSource,fileSystem,10,storeDir);
+  return streamer.flushStoresAndStreamStoreFiles(writer);
 }

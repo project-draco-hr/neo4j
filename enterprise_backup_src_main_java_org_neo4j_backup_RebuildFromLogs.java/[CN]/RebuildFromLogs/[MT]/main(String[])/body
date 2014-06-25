@@ -25,9 +25,7 @@
         System.exit(-1);
         return;
       }
- else {
-        System.err.println("WARNING: the directory " + target + " already exists");
-      }
+      System.err.println("WARNING: the directory " + target + " already exists");
     }
  else {
       printUsage(target + " is a file");
@@ -35,38 +33,30 @@
       return;
     }
   }
-  long maxFileId=findMaxLogFileId(source);
-  if (maxFileId < 0) {
-    printUsage("Inconsistent number of log files found in " + source);
-    System.exit(-1);
-    return;
-  }
-  long txCount=findLastTransactionId(source,LOGICAL_LOG_DEFAULT_NAME + ".v" + maxFileId);
-  String txdifflog=params.get("txdifflog",null,new File(target,"txdiff.log").getAbsolutePath());
-  GraphDatabaseAPI graphdb=BackupService.startTemporaryDb(target.getAbsolutePath(),new TxDiffLogConfig(full ? VerificationLevel.FULL_WITH_LOGGING : VerificationLevel.LOGGING,txdifflog));
-  ProgressMonitorFactory progress;
-  if (txCount < 0) {
-    progress=ProgressMonitorFactory.NONE;
-    System.err.println("Unable to report progress, cannot find highest txId, attempting rebuild anyhow.");
-  }
- else {
-    progress=ProgressMonitorFactory.textual(System.err);
-  }
+  GraphDatabaseAPI graphdb=BackupService.startTemporaryDb(target.getAbsolutePath());
   try {
-    try {
-      ProgressListener listener=progress.singlePart(String.format("Rebuilding store from %s transactions ",txCount),txCount);
-      RebuildFromLogs rebuilder=new RebuildFromLogs(graphdb).applyTransactionsFrom(listener,source);
-      if (!full) {
-        rebuilder.checkConsistency();
-      }
+    PhysicalLogFiles logFiles=new PhysicalLogFiles(source,FS);
+    long highestVersion=logFiles.getHighestLogVersion();
+    if (highestVersion < 0) {
+      printUsage("Inconsistent number of log files found in " + source);
+      return;
     }
-  finally {
-      graphdb.shutdown();
+    long txCount=findLastTransactionId(logFiles,highestVersion);
+    ProgressMonitorFactory progress;
+    if (txCount < 0) {
+      progress=ProgressMonitorFactory.NONE;
+      System.err.println("Unable to report progress, cannot find highest txId, attempting rebuild anyhow.");
+    }
+ else {
+      progress=ProgressMonitorFactory.textual(System.err);
+    }
+    ProgressListener listener=progress.singlePart(format("Rebuilding store from %s transactions ",txCount),txCount);
+    RebuildFromLogs rebuilder=new RebuildFromLogs(graphdb).applyTransactionsFrom(listener,source);
+    if (!full) {
+      rebuilder.checkConsistency();
     }
   }
- catch (  Exception e) {
-    System.err.println();
-    e.printStackTrace(System.err);
-    System.exit(-1);
+  finally {
+    graphdb.shutdown();
   }
 }

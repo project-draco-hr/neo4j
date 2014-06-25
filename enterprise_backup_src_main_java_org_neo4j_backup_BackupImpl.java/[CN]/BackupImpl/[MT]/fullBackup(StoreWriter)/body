@@ -1,7 +1,10 @@
 {
-  backupMonitor.startCopyingFiles();
-  RequestContext context=ServerUtil.rotateLogsAndStreamStoreFiles(spi.getStoreDir(),kpeg,logger,false,writer,new DefaultFileSystemAbstraction(),backupMonitor);
-  writer.done();
-  backupMonitor.finishedCopyingStoreFiles();
-  return packResponse(context);
+  try (StoreWriter storeWriter=writer){
+    backupMonitor.startCopyingFiles();
+    RequestContext context=storeCopyServer.flushStoresAndStreamStoreFiles(storeWriter);
+    return responsePacker.packResponse(context,null);
+  }
+ catch (  IOException e) {
+    throw new ServerFailureException(e);
+  }
 }

@@ -1,0 +1,19 @@
+{
+  try {
+    long transactionIdWhenStartingCopy=transactionIdStore.getLastCommittingTransactionId();
+    dataSource.forceEverything();
+    ByteBuffer temporaryBuffer=ByteBuffer.allocateDirect(1024 * 1024);
+    try (ResourceIterator<File> files=dataSource.listStoreFiles()){
+      while (files.hasNext()) {
+        File file=files.next();
+        try (StoreChannel fileChannel=fileSystem.open(file,"r")){
+          writer.write(relativePath(storeDirectory,file),fileChannel,temporaryBuffer,file.length() > 0);
+        }
+       }
+    }
+     return anonymous(figureOutTransactionIdToStartStreamFrom(transactionIdWhenStartingCopy));
+  }
+ catch (  IOException e) {
+    throw new ServerFailureException(e);
+  }
+}

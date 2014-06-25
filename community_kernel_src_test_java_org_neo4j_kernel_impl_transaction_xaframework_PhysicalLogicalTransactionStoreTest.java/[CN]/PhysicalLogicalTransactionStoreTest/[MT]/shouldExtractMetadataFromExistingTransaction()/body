@@ -8,18 +8,18 @@
   final long timeWritten=12345, latestCommittedTxWhenStarted=4545;
   LifeSupport life=new LifeSupport();
   PhysicalLogFiles logFiles=new PhysicalLogFiles(testDir,DEFAULT_NAME,fs);
-  LogFile logFile=life.add(new PhysicalLogFile(fs,logFiles,1000,NO_PRUNING,transactionIdStore,mock(LogVersionRepository.class),new Monitors().newMonitor(PhysicalLogFile.Monitor.class),logRotationControl,positionCache,new Visitor<ReadableLogChannel,IOException>(){
-    @Override public boolean visit(    ReadableLogChannel element) throws IOException {
-      return false;
-    }
-  }
-));
+  Monitor monitor=new Monitors().newMonitor(PhysicalLogFile.Monitor.class);
+  LogFile logFile=life.add(new PhysicalLogFile(fs,logFiles,1000,NO_PRUNING,transactionIdStore,mock(LogVersionRepository.class),monitor,logRotationControl,positionCache,emptyRecoveryVisitor()));
   life.start();
-  addATransactionAndRewind(logFile,txIdGenerator,positionCache,additionalHeader,masterId,authorId,timeWritten,latestCommittedTxWhenStarted);
-  life.shutdown();
+  try {
+    addATransactionAndRewind(logFile,txIdGenerator,positionCache,transactionIdStore,additionalHeader,masterId,authorId,timeWritten,latestCommittedTxWhenStarted);
+  }
+  finally {
+    life.shutdown();
+  }
   life=new LifeSupport();
   final AtomicInteger recoveredTransactions=new AtomicInteger();
-  logFile=life.add(new PhysicalLogFile(fs,logFiles,1000,NO_PRUNING,transactionIdStore,mock(LogVersionRepository.class),new Monitors().newMonitor(PhysicalLogFile.Monitor.class),logRotationControl,positionCache,new LogFileRecoverer(new VersionAwareLogEntryReader(CommandReaderFactory.DEFAULT),new Visitor<CommittedTransactionRepresentation,IOException>(){
+  logFile=life.add(new PhysicalLogFile(fs,logFiles,1000,NO_PRUNING,transactionIdStore,mock(LogVersionRepository.class),monitor,logRotationControl,positionCache,new LogFileRecoverer(new VersionAwareLogEntryReader(CommandReaderFactory.DEFAULT),new Visitor<CommittedTransactionRepresentation,IOException>(){
     @Override public boolean visit(    CommittedTransactionRepresentation committedTx) throws IOException {
       TransactionRepresentation transaction=committedTx.getTransactionRepresentation();
       assertArrayEquals(additionalHeader,transaction.additionalHeader());
@@ -32,8 +32,13 @@
     }
   }
 )));
-  LogicalTransactionStore store=life.add(new PhysicalLogicalTransactionStore(logFile,txIdGenerator,positionCache,new VersionAwareLogEntryReader(CommandReaderFactory.DEFAULT)));
+  LogicalTransactionStore store=life.add(new PhysicalLogicalTransactionStore(logFile,txIdGenerator,positionCache,new VersionAwareLogEntryReader(CommandReaderFactory.DEFAULT),transactionIdStore));
   life.start();
-  positionCache.clear();
-  System.out.println(store.getMetadataFor(transactionIdStore.getLastCommittingTransactionId()));
+  try {
+    positionCache.clear();
+    System.out.println(store.getMetadataFor(transactionIdStore.getLastCommittingTransactionId()));
+  }
+  finally {
+    life.shutdown();
+  }
 }

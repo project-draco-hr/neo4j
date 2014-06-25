@@ -1,15 +1,10 @@
 {
   this(config,graphDatabaseAPI,new BackupProvider(){
     @Override public TheBackupInterface newBackup(){
-      return new BackupImpl(logging.getMessagesLog(BackupImpl.class),new BackupImpl.SPI(){
-        @Override public String getStoreDir(){
-          return graphDatabaseAPI.getStoreDir();
-        }
-        @Override public StoreId getStoreId(){
-          return graphDatabaseAPI.storeId();
-        }
-      }
-,kpeg,monitors);
+      DependencyResolver resolver=graphDatabaseAPI.getDependencyResolver();
+      StoreCopyServer copier=new StoreCopyServer(resolver.resolveDependency(TransactionIdStore.class),resolver.resolveDependency(DataSourceManager.class).getDataSource(),resolver.resolveDependency(FileSystemAbstraction.class),10,new File(graphDatabaseAPI.getStoreDir()));
+      ResponsePacker responsePacker=new ResponsePacker(resolver.resolveDependency(LogicalTransactionStore.class),graphDatabaseAPI);
+      return new BackupImpl(copier,responsePacker,monitors);
     }
   }
 ,monitors,logging);

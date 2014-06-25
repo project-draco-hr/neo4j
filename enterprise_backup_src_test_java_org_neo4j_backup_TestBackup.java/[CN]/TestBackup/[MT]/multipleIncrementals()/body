@@ -2,24 +2,26 @@
   GraphDatabaseService db=null;
   try {
     db=new GraphDatabaseFactory().newEmbeddedDatabaseBuilder(serverPath.getPath()).setConfig(OnlineBackupSettings.online_backup_enabled,Settings.TRUE).newGraphDatabase();
-    Transaction tx=db.beginTx();
-    Index<Node> index=db.index().forNodes("yo");
-    index.add(db.createNode(),"justTo","commitATx");
-    tx.success();
-    tx.finish();
-    OnlineBackup backup=OnlineBackup.from("127.0.0.1");
+    Index<Node> index;
+    try (Transaction tx=db.beginTx()){
+      index=db.index().forNodes("yo");
+      index.add(db.createNode(),"justTo","commitATx");
+      db.createNode();
+      tx.success();
+    }
+     OnlineBackup backup=OnlineBackup.from("127.0.0.1");
     backup.full(backupPath.getPath());
     assertTrue("Should be consistent",backup.isConsistent());
-    long lastCommittedTxForLucene=getLastCommittedTx(backupPath.getPath());
+    long lastCommittedTx=getLastCommittedTx(backupPath.getPath());
     for (int i=0; i < 5; i++) {
-      tx=db.beginTx();
-      Node node=db.createNode();
-      index.add(node,"key","value" + i);
-      tx.success();
-      tx.finish();
-      backup=backup.incremental(backupPath.getPath());
+      try (Transaction tx=db.beginTx()){
+        Node node=db.createNode();
+        index.add(node,"key","value" + i);
+        tx.success();
+      }
+       backup=backup.incremental(backupPath.getPath());
       assertTrue("Should be consistent",backup.isConsistent());
-      assertEquals(lastCommittedTxForLucene + i + 1,getLastCommittedTx(backupPath.getPath()));
+      assertEquals(lastCommittedTx + i + 1,getLastCommittedTx(backupPath.getPath()));
     }
   }
   finally {

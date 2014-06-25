@@ -6,12 +6,12 @@
   params.put(GraphDatabaseSettings.store_dir.name(),targetDirectory);
   tuningConfiguration.applyChanges(params);
   long timestamp=System.currentTimeMillis();
-  Map<String,Long> lastCommittedTxs=new TreeMap<>();
+  long lastCommittedTx=-1;
   boolean consistent=!checkConsistency;
   GraphDatabaseAPI targetDb=null;
   try {
-    RemoteStoreCopier storeCopier=new RemoteStoreCopier(tuningConfiguration,loadKernelExtensions(),new ConsoleLogger(StringLogger.SYSTEM),new DefaultFileSystemAbstraction());
-    storeCopier.copyStore(new RemoteStoreCopier.StoreCopyRequester(){
+    StoreCopyClient storeCopier=new StoreCopyClient(tuningConfiguration,loadKernelExtensions(),new ConsoleLogger(StringLogger.SYSTEM),new DefaultFileSystemAbstraction());
+    storeCopier.copyStore(new StoreCopyClient.StoreCopyRequester(){
       private BackupClient client;
       @Override public Response<?> copyStore(      StoreWriter writer){
         client=new BackupClient(sourceHostNameOrIp,sourcePort,new DevNullLoggingService(),new Monitors(),null);
@@ -23,7 +23,7 @@
       }
     }
 );
-    targetDb=startTemporaryDb(targetDirectory,VerificationLevel.NONE);
+    targetDb=startTemporaryDb(targetDirectory);
     new LogicalLogSeeder(logger).ensureAtLeastOneLogicalLogPresent(sourceHostNameOrIp,sourcePort,targetDb);
   }
  catch (  IOException e) {
@@ -34,7 +34,7 @@
       targetDb.shutdown();
     }
   }
-  bumpLogFile(targetDirectory,timestamp);
+  bumpMessagesDotLogFile(targetDirectory,timestamp);
   if (checkConsistency) {
     try {
       consistent=new ConsistencyCheckService().runFullConsistencyCheck(targetDirectory,tuningConfiguration,ProgressMonitorFactory.textual(System.err),logger).isSuccessful();
@@ -46,5 +46,5 @@
       logger.flush();
     }
   }
-  return new BackupOutcome(lastCommittedTxs,consistent);
+  return new BackupOutcome(lastCommittedTx,consistent);
 }

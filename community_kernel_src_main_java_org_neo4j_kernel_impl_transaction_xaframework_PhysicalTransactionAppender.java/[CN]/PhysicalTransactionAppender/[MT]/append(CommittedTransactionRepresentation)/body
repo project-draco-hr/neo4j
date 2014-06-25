@@ -1,4 +1,14 @@
 {
   logFile.checkRotation();
-  return append(transaction.getTransactionRepresentation(),transaction.getCommitEntry().getTxId());
+  long txId=transaction.getCommitEntry().getTxId();
+  long lastCommittedTxId=transactionIdStore.getLastCommittingTransactionId();
+  if (lastCommittedTxId + 1 == txId) {
+    txIdGenerator.generate(transaction.getTransactionRepresentation());
+    append(transaction.getTransactionRepresentation(),txId);
+    return true;
+  }
+ else   if (lastCommittedTxId + 1 < txId) {
+    throw new IOException("Tried to apply transaction with txId=" + txId + " but last committed txId="+ lastCommittedTxId);
+  }
+  return false;
 }

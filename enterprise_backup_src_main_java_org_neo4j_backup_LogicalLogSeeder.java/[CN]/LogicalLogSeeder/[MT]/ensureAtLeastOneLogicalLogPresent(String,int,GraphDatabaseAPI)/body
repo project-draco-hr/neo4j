@@ -1,71 +1,31 @@
 {
-  Set<String> noTxPresent=new HashSet<>();
-  XaDataSourceManager dsManager=targetDb.getDependencyResolver().resolveDependency(XaDataSourceManager.class);
-  for (  XaDataSource ds : dsManager.getAllRegisteredDataSources()) {
-    long lastTx=ds.getLastCommittedTxId();
-    try {
-      ds.getMasterForCommittedTx(lastTx);
-    }
- catch (    NoSuchLogVersionException e) {
-      noTxPresent.add(ds.getName());
-    }
-catch (    IOException e) {
-      throw new RuntimeException(e);
+  DependencyResolver resolver=targetDb.getDependencyResolver();
+  TransactionIdStore transactionIdStore=resolver.resolveDependency(TransactionIdStore.class);
+  LogicalTransactionStore transactionStore=resolver.resolveDependency(LogicalTransactionStore.class);
+  try {
+    transactionStore.getMetadataFor(transactionIdStore.getLastCommittingTransactionId());
+    return;
+  }
+ catch (  NoSuchTransactionException e) {
+  }
+catch (  IOException e) {
+    throw new RuntimeException(e);
+  }
+  LifeSupport life=new LifeSupport();
+  BackupClient recoveryClient=life.add(new BackupClient(sourceHostNameOrIp,sourcePort,resolver.resolveDependency(Logging.class),resolver.resolveDependency(Monitors.class),targetDb.storeId()));
+  life.start();
+  try (Response<Void> response=recoveryClient.incrementalBackup(anonymous(transactionIdStore.getLastCommittingTransactionId() - 1))){
+    TransactionAppender appender=transactionStore.getAppender();
+    for (    CommittedTransactionRepresentation transaction : response.getTxs()) {
+      appender.append(transaction);
     }
   }
-  if (!noTxPresent.isEmpty()) {
-    BackupClient recoveryClient=new BackupClient(sourceHostNameOrIp,sourcePort,targetDb.getDependencyResolver().resolveDependency(Logging.class),targetDb.getDependencyResolver().resolveDependency(Monitors.class),targetDb.storeId());
-    recoveryClient.start();
-    Response<Void> recoveryResponse=null;
-    Map<String,Long> recoveryDiff=new HashMap<>();
-    for (    String ds : noTxPresent) {
-      recoveryDiff.put(ds,-1L);
+ catch (  RuntimeException e) {
+    if (e.getCause() != null && e.getCause() instanceof MissingLogDataException) {
+      logger.warn("Important: There are no available transaction logs on the target database, which " + "means the backup could not save a point-in-time reference. This means you cannot use this " + "backup for incremental backups, and it means you cannot use it directly to seed an HA "+ "cluster. The next time you perform a backup, a full backup will be done. If you wish to "+ "use this backup as a seed for a cluster, you need to start a stand-alone database on "+ "it, and commit one write transaction, to create the transaction log needed to seed the "+ "cluster. To avoid this happening, make sure you never manually delete transaction log "+ "files (nioneo_logical.log.vXXX), and that you configure the database to keep at least a "+ "few days worth of transaction logs.");
     }
-    RequestContext recoveryCtx=addDiffToSlaveContext(slaveContextOf(dsManager),recoveryDiff);
-    try {
-      recoveryResponse=recoveryClient.incrementalBackup(recoveryCtx);
-      TransactionStream txs=recoveryResponse.transactions();
-      ByteBuffer scratch=ByteBuffer.allocate(64);
-      while (txs.hasNext()) {
-        Triplet<String,Long,TxExtractor> tx=txs.next();
-        scratch.clear();
-        XaDataSource ds=dsManager.getXaDataSource(tx.first());
-        long logVersion=ds.getCurrentLogVersion() - 1;
-        FileChannel newLog=new RandomAccessFile(ds.getFileName(logVersion),"rw").getChannel();
-        newLog.truncate(0);
-        VersionAwareLogEntryReader.writeLogHeader(scratch,logVersion,-1);
-        newLog.write(scratch);
-        ReadableByteChannel received=tx.third().extract();
-        scratch.flip();
-        while (received.read(scratch) > 0) {
-          scratch.flip();
-          newLog.write(scratch);
-          scratch.flip();
-        }
-        newLog.force(false);
-        newLog.close();
-        received.close();
-      }
-    }
- catch (    RuntimeException e) {
-      if (e.getCause() != null && e.getCause() instanceof NoSuchLogVersionException) {
-        logger.warn("Important: There are no available transaction logs on the target database, which " + "means the backup could not save a point-in-time reference. This means you cannot use this " + "backup for incremental backups, and it means you cannot use it directly to seed an HA "+ "cluster. The next time you perform a backup, a full backup will be done. If you wish to "+ "use this backup as a seed for a cluster, you need to start a stand-alone database on "+ "it, and commit one write transaction, to create the transaction log needed to seed the "+ "cluster. To avoid this happening, make sure you never manually delete transaction log "+ "files (nioneo_logical.log.vXXX), and that you configure the database to keep at least a "+ "few days worth of transaction logs.");
-      }
-    }
-catch (    IOException e) {
-      throw new RuntimeException(e);
-    }
+  }
  finally {
-      try {
-        recoveryClient.stop();
-      }
- catch (      Throwable throwable) {
-        throw new RuntimeException(throwable);
-      }
-      if (recoveryResponse != null) {
-        recoveryResponse.close();
-      }
-      targetDb.shutdown();
-    }
+    life.shutdown();
   }
 }
