@@ -2,8 +2,14 @@
   for (  CommittedTransactionRepresentation transaction : response.getTxs()) {
 synchronized (appender) {
       if (appender.append(transaction)) {
-        storeApplier.apply(transaction.getTransactionRepresentation(),transaction.getCommitEntry().getTxId(),true);
-        handler.accept(transaction);
+        long transactionId=transaction.getCommitEntry().getTxId();
+        try {
+          storeApplier.apply(transaction.getTransactionRepresentation(),transactionId,true);
+          handler.accept(transaction);
+        }
+  finally {
+          transactionIdStore.transactionClosed(transactionId);
+        }
       }
     }
   }
