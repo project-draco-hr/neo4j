@@ -3,13 +3,20 @@
   try {
     PhysicalLogFiles logFiles=new PhysicalLogFiles(storeDir,fs);
     TransactionMetadataCache transactionMetadataCache=new TransactionMetadataCache(10,100);
-    LogFile logFile=life.add(new PhysicalLogFile(fs,logFiles,Long.MAX_VALUE,NO_PRUNING,new ReadOnlyTransactionIdStore(fs,storeDir),new ReadOnlyLogVersionRepository(fs,storeDir),PhysicalLogFile.NO_MONITOR,LogRotationControl.NO_ROTATION_CONTROL,transactionMetadataCache,new NoRecoveryAssertingVisitor()));
+    ReadOnlyLogVersionRepository logVersionRepository=new ReadOnlyLogVersionRepository(fs,storeDir);
+    LogFile logFile=life.add(new PhysicalLogFile(fs,logFiles,Long.MAX_VALUE,NO_PRUNING,new ReadOnlyTransactionIdStore(fs,storeDir),logVersionRepository,PhysicalLogFile.NO_MONITOR,LogRotationControl.NO_ROTATION_CONTROL,transactionMetadataCache,new NoRecoveryAssertingVisitor()));
     life.start();
     WritableLogChannel channel=logFile.getWriter();
     TransactionLogWriter writer=new TransactionLogWriter(new LogEntryWriterv1(channel,new CommandWriter(channel)));
+    Long firstTxId=null;
     for (    CommittedTransactionRepresentation transaction : txs) {
-      writer.append(transaction.getTransactionRepresentation(),transaction.getCommitEntry().getTxId());
+      long txId=transaction.getCommitEntry().getTxId();
+      writer.append(transaction.getTransactionRepresentation(),txId);
+      if (firstTxId == null) {
+        firstTxId=txId;
+      }
     }
+    writeLogHeader(fs,logFiles.getVersionFileName(logVersionRepository.getCurrentLogVersion()),logVersionRepository.getCurrentLogVersion(),firstTxId != null ? firstTxId - 1 : 0);
   }
   finally {
     life.shutdown();

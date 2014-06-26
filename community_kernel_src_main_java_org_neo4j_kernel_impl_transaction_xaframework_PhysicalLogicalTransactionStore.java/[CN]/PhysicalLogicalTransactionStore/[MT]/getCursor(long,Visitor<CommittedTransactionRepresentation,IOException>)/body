@@ -3,8 +3,10 @@
   if (transactionMetadata != null) {
     return new PhysicalTransactionCursor(logFile.getReader(transactionMetadata.getStartPosition()),logEntryReader,visitor);
   }
+  LogVersionLocator headerVisitor=new LogVersionLocator(transactionIdToStartFrom);
+  logFile.accept(headerVisitor);
   TransactionPositionLocator transactionPositionLocator=new TransactionPositionLocator(transactionIdToStartFrom,logEntryReader);
-  logFile.accept(transactionPositionLocator);
+  logFile.accept(transactionPositionLocator,headerVisitor.getLogPosition());
   LogPosition position=transactionPositionLocator.getAndCacheFoundLogPosition(transactionMetadataCache);
   IOCursor cursor=new PhysicalTransactionCursor(logFile.getReader(position),logEntryReader,visitor);
   return cursor;
