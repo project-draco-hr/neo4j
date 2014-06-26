@@ -1,13 +1,18 @@
 {
-  TransactionMetadataCache.TransactionMetadata transactionMetadata=transactionMetadataCache.getTransactionMetadata(transactionIdToStartFrom);
-  if (transactionMetadata != null) {
-    return new PhysicalTransactionCursor(logFile.getReader(transactionMetadata.getStartPosition()),logEntryReader,visitor);
+  try {
+    TransactionMetadataCache.TransactionMetadata transactionMetadata=transactionMetadataCache.getTransactionMetadata(transactionIdToStartFrom);
+    if (transactionMetadata != null) {
+      return new PhysicalTransactionCursor(logFile.getReader(transactionMetadata.getStartPosition()),logEntryReader,visitor);
+    }
+    LogVersionLocator headerVisitor=new LogVersionLocator(transactionIdToStartFrom);
+    logFile.accept(headerVisitor);
+    TransactionPositionLocator transactionPositionLocator=new TransactionPositionLocator(transactionIdToStartFrom,logEntryReader);
+    logFile.accept(transactionPositionLocator,headerVisitor.getLogPosition());
+    LogPosition position=transactionPositionLocator.getAndCacheFoundLogPosition(transactionMetadataCache);
+    IOCursor cursor=new PhysicalTransactionCursor(logFile.getReader(position),logEntryReader,visitor);
+    return cursor;
   }
-  LogVersionLocator headerVisitor=new LogVersionLocator(transactionIdToStartFrom);
-  logFile.accept(headerVisitor);
-  TransactionPositionLocator transactionPositionLocator=new TransactionPositionLocator(transactionIdToStartFrom,logEntryReader);
-  logFile.accept(transactionPositionLocator,headerVisitor.getLogPosition());
-  LogPosition position=transactionPositionLocator.getAndCacheFoundLogPosition(transactionMetadataCache);
-  IOCursor cursor=new PhysicalTransactionCursor(logFile.getReader(position),logEntryReader,visitor);
-  return cursor;
+ catch (  FileNotFoundException e) {
+    throw new NoSuchTransactionException(transactionIdToStartFrom,"Log position acquired, but couldn't find the log file itself. Perhaps it just recently was deleted?");
+  }
 }
