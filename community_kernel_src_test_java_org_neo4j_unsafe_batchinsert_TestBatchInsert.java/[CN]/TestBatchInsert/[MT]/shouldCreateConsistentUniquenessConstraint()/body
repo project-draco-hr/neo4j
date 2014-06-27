@@ -1,0 +1,35 @@
+{
+  BatchInserter inserter=newBatchInserter();
+  inserter.createDeferredConstraint(label("Hacker")).assertPropertyIsUnique("handle").create();
+  GraphDatabaseAPI graphdb=(GraphDatabaseAPI)switchToEmbeddedGraphDatabaseService(inserter);
+  try {
+    NeoStore neoStore=graphdb.getDependencyResolver().resolveDependency(NeoStoreProvider.class).evaluate();
+    SchemaStore store=neoStore.getSchemaStore();
+    SchemaStorage storage=new SchemaStorage(store);
+    List<Long> inUse=new ArrayList<>();
+    for (long i=1, high=store.getHighestPossibleIdInUse(); i <= high; i++) {
+      DynamicRecord record=store.forceGetRecord(i);
+      if (record.inUse() && record.isStartRecord()) {
+        inUse.add(i);
+      }
+    }
+    assertEquals("records in use",2,inUse.size());
+    SchemaRule rule0=storage.loadSingleSchemaRule(inUse.get(0));
+    SchemaRule rule1=storage.loadSingleSchemaRule(inUse.get(1));
+    IndexRule indexRule;
+    UniquenessConstraintRule constraintRule;
+    if (rule0 instanceof IndexRule) {
+      indexRule=(IndexRule)rule0;
+      constraintRule=(UniquenessConstraintRule)rule1;
+    }
+ else {
+      constraintRule=(UniquenessConstraintRule)rule0;
+      indexRule=(IndexRule)rule1;
+    }
+    assertEquals("index should reference constraint",constraintRule.getId(),indexRule.getOwningConstraint().longValue());
+    assertEquals("constraint should reference index",indexRule.getId(),constraintRule.getOwnedIndex());
+  }
+  finally {
+    graphdb.shutdown();
+  }
+}
