@@ -2,9 +2,11 @@
   this(config,graphDatabaseAPI,new BackupProvider(){
     @Override public TheBackupInterface newBackup(){
       DependencyResolver resolver=graphDatabaseAPI.getDependencyResolver();
-      StoreCopyServer copier=new StoreCopyServer(resolver.resolveDependency(TransactionIdStore.class),resolver.resolveDependency(DataSourceManager.class).getDataSource(),resolver.resolveDependency(FileSystemAbstraction.class),new File(graphDatabaseAPI.getStoreDir()));
-      ResponsePacker responsePacker=new ResponsePacker(resolver.resolveDependency(LogicalTransactionStore.class),graphDatabaseAPI);
-      return new BackupImpl(copier,responsePacker,monitors);
+      TransactionIdStore transactionIdStore=resolver.resolveDependency(TransactionIdStore.class);
+      StoreCopyServer copier=new StoreCopyServer(transactionIdStore,resolver.resolveDependency(DataSourceManager.class).getDataSource(),resolver.resolveDependency(FileSystemAbstraction.class),new File(graphDatabaseAPI.getStoreDir()));
+      LogicalTransactionStore logicalTransactionStore=resolver.resolveDependency(LogicalTransactionStore.class);
+      LogFileInformation logFileInformation=resolver.resolveDependency(LogFileInformation.class);
+      return new BackupImpl(copier,monitors,logicalTransactionStore,transactionIdStore,logFileInformation,graphDatabaseAPI);
     }
   }
 ,monitors,logging);

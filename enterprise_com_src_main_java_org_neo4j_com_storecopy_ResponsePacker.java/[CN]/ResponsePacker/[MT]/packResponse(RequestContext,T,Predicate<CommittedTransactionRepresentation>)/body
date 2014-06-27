@@ -1,9 +1,8 @@
 {
   AccumulatorVisitor<CommittedTransactionRepresentation> accumulator=new AccumulatorVisitor<>(filter);
-  try {
-    exhaustAndClose(transactionStore.getCursor(context.lastAppliedTransaction() + 1,accumulator));
-  }
- catch (  NoSuchTransactionException e) {
+  long toStartFrom=context.lastAppliedTransaction() + 1;
+  if (toStartFrom < transactionIdStore.getLastCommittingTransactionId()) {
+    extractTransactions(toStartFrom,accumulator);
   }
   Iterable<CommittedTransactionRepresentation> txs=accumulator.getAccumulator();
   return new Response<>(response,db.storeId(),txs,ResourceReleaser.NO_OP);
