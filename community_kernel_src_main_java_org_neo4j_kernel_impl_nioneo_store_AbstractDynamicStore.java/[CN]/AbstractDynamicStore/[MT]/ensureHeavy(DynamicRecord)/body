@@ -4,22 +4,20 @@
   }
   if (record.getLength() == 0) {
     record.setData(NO_DATA);
+    return;
   }
-  long blockId=record.getId();
-  PageCursor cursor=pageCache.newCursor();
-  try {
-    storeFile.pin(cursor,PageLock.SHARED,pageIdForRecord(blockId));
+  long pageId=pageIdForRecord(record.getId());
+  try (PageCursor cursor=storeFile.io(pageId,PF_SHARED_LOCK)){
+    if (cursor.next()) {
+      int offset=offsetForId(record.getId());
+      do {
+        cursor.setOffset(offset + BLOCK_HEADER_SIZE);
+        readRecordData(cursor,record);
+      }
+ while (cursor.retry());
+    }
   }
  catch (  IOException e) {
     throw new UnderlyingStorageException(e);
-  }
-  try {
-    cursor.setOffset(offsetForId(blockId) + BLOCK_HEADER_SIZE);
-    byte bytes[]=new byte[record.getLength()];
-    cursor.getBytes(bytes);
-    record.setData(bytes);
-  }
-  finally {
-    storeFile.unpin(cursor);
   }
 }

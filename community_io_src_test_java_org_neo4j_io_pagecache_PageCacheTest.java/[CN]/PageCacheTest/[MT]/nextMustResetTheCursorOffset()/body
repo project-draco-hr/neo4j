@@ -1,0 +1,39 @@
+{
+  PageCache cache=getPageCache(fs,maxPages,pageCachePageSize,PageCacheMonitor.NULL);
+  PagedFile pagedFile=cache.map(file,filePageSize);
+  try (PageCursor cursor=pagedFile.io(0L,PF_EXCLUSIVE_LOCK)){
+    assertTrue(cursor.next());
+    do {
+      cursor.setOffset(0);
+      cursor.putByte((byte)1);
+      cursor.putByte((byte)2);
+      cursor.putByte((byte)3);
+      cursor.putByte((byte)4);
+    }
+ while (cursor.retry());
+    assertTrue(cursor.next());
+    do {
+      cursor.setOffset(0);
+      cursor.putByte((byte)5);
+      cursor.putByte((byte)6);
+      cursor.putByte((byte)7);
+      cursor.putByte((byte)8);
+    }
+ while (cursor.retry());
+  }
+   try (PageCursor cursor=pagedFile.io(0L,PF_EXCLUSIVE_LOCK)){
+    byte[] bytes=new byte[4];
+    assertTrue(cursor.next());
+    do {
+      cursor.getBytes(bytes);
+    }
+ while (cursor.retry());
+    assertThat(bytes,byteArray(new byte[]{1,2,3,4}));
+    assertTrue(cursor.next());
+    do {
+      cursor.getBytes(bytes);
+    }
+ while (cursor.retry());
+    assertThat(bytes,byteArray(new byte[]{5,6,7,8}));
+  }
+ }

@@ -1,17 +1,17 @@
 {
-  PageCursor cursor=pageCache.newCursor();
-  try {
-    storeFile.pin(cursor,PageLock.EXCLUSIVE,pageIdForRecord(id));
+  long pageId=pageIdForRecord(id);
+  try (PageCursor cursor=storeFile.io(pageId,PF_EXCLUSIVE_LOCK)){
+    if (cursor.next()) {
+      int offset=offsetForId(id);
+      do {
+        cursor.setOffset(offset);
+        cursor.putByte(Record.IN_USE.byteValue());
+        cursor.putLong(value);
+      }
+ while (cursor.retry());
+    }
   }
  catch (  IOException e) {
     throw new UnderlyingStorageException(e);
-  }
-  try {
-    cursor.setOffset(offsetForId(id));
-    cursor.putByte(Record.IN_USE.byteValue());
-    cursor.putLong(value);
-  }
-  finally {
-    storeFile.unpin(cursor);
   }
 }
