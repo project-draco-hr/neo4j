@@ -2,10 +2,18 @@
   filter.file(file);
   File tempFile=new File(file.getAbsolutePath() + ".tmp");
   fileSystem.deleteFile(tempFile);
-  StoreChannel in=fileSystem.open(file,"r");
-  StoreChannel out=fileSystem.open(tempFile,"rw");
-  final LogBuffer outBuffer=new DirectMappedLogBuffer(out,new Monitors().newMonitor(ByteCounterMonitor.class));
-  ByteBuffer buffer=ByteBuffer.allocate(1024 * 1024);
-  transferLogicalLogHeader(in,outBuffer,buffer);
-  return tempFile;
+  try (StoreChannel in=fileSystem.open(file,"r");StoreChannel out=fileSystem.open(tempFile,"rw")){
+    final WritableLogChannel outBuffer=new PhysicalWritableLogChannel(new PhysicalLogVersionedStoreChannel(out));
+    ByteBuffer buffer=ByteBuffer.allocate(1024 * 1024);
+    LogEntryWriter entryWriter=new LogEntryWriterv1(outBuffer,new CommandWriter(outBuffer));
+    transferLogicalLogHeader(in,outBuffer,buffer);
+    ReadableLogChannel inBuffer=new ReadAheadLogChannel(new PhysicalLogVersionedStoreChannel(in),LogVersionBridge.NO_MORE_CHANNELS,DEFAULT_READ_AHEAD_SIZE);
+    LogEntryReader<ReadableLogChannel> entryReader=new VersionAwareLogEntryReader(CommandReaderFactory.DEFAULT);
+    LogEntry entry;
+    while ((entry=entryReader.readLogEntry(inBuffer)) != null) {
+      if (filter.accept(entry)) {
+      }
+    }
+  }
+   return tempFile;
 }
