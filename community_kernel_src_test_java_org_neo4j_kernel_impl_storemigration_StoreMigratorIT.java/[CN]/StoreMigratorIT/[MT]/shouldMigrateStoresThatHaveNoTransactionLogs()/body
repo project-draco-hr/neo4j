@@ -1,0 +1,18 @@
+{
+  File unzippedStore=Unzip.unzip(LegacyStore.class,"legacy-store-without-transaction-logs.zip");
+  File legacyStoreDir=new File(unzippedStore,"legacystore");
+  LegacyStore legacyStore=new LegacyStore(fs,new File(legacyStoreDir,NeoStore.DEFAULT_NAME));
+  NeoStore neoStore=storeFactory.createNeoStore(storeFileName);
+  new StoreMigrator(monitor).migrate(legacyStore,neoStore);
+  legacyStore.close();
+  GraphDatabaseFactory factory=new GraphDatabaseFactory();
+  GraphDatabaseService db=factory.newEmbeddedDatabase(storeDir);
+  try (Transaction ignore=db.beginTx()){
+    Node a=db.getNodeById(2);
+    Node b=db.getNodeById(1);
+    assertThat((String)a.getProperty("a"),is("a"));
+    assertThat((String)b.getProperty("b"),is("b"));
+    DynamicRelationshipType relates=DynamicRelationshipType.withName("relates");
+    assertThat(a.getSingleRelationship(relates,Direction.OUTGOING).getEndNode(),is(b));
+  }
+ }

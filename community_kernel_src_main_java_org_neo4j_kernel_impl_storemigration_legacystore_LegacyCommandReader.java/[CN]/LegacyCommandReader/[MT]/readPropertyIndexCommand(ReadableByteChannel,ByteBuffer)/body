@@ -1,0 +1,30 @@
+{
+  buffer.clear();
+  buffer.limit(17);
+  if (byteChannel.read(buffer) != buffer.limit()) {
+    return null;
+  }
+  buffer.flip();
+  int id=buffer.getInt();
+  byte inUseFlag=buffer.get();
+  boolean inUse=false;
+  if ((inUseFlag & Record.IN_USE.byteValue()) == Record.IN_USE.byteValue()) {
+    inUse=true;
+  }
+ else   if (inUseFlag != Record.NOT_IN_USE.byteValue()) {
+    throw new IOException("Illegal in use flag: " + inUseFlag);
+  }
+  PropertyKeyTokenRecord record=new PropertyKeyTokenRecord(id);
+  record.setInUse(inUse);
+  record.setPropertyCount(buffer.getInt());
+  record.setNameId(buffer.getInt());
+  int nrKeyRecords=buffer.getInt();
+  for (int i=0; i < nrKeyRecords; i++) {
+    DynamicRecord dr=readDynamicRecord(byteChannel,buffer);
+    if (dr == null) {
+      return null;
+    }
+    record.addNameRecord(dr);
+  }
+  return new PropertyKeyTokenCommand(null,record);
+}
