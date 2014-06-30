@@ -1,17 +1,21 @@
 {
-  for (  CommittedTransactionRepresentation transaction : response.getTxs()) {
+  response.accept(new Visitor<CommittedTransactionRepresentation,IOException>(){
+    @Override public boolean visit(    CommittedTransactionRepresentation transaction) throws IOException {
 synchronized (appender) {
-      if (appender.append(transaction)) {
-        long transactionId=transaction.getCommitEntry().getTxId();
-        try {
-          storeApplier.apply(transaction.getTransactionRepresentation(),transactionId,true);
-          handler.accept(transaction);
-        }
+        if (appender.append(transaction)) {
+          long transactionId=transaction.getCommitEntry().getTxId();
+          try {
+            storeApplier.apply(transaction.getTransactionRepresentation(),transactionId,true);
+            handler.accept(transaction);
+          }
   finally {
-          transactionIdStore.transactionClosed(transactionId);
+            transactionIdStore.transactionClosed(transactionId);
+          }
         }
       }
+      return true;
     }
   }
+);
   return response.response();
 }

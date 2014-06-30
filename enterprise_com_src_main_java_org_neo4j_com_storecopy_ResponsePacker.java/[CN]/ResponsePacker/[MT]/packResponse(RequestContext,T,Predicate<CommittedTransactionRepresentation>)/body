@@ -1,9 +1,12 @@
 {
-  AccumulatorVisitor<CommittedTransactionRepresentation> accumulator=new AccumulatorVisitor<>(filter);
-  long toStartFrom=context.lastAppliedTransaction() + 1;
-  if (toStartFrom <= transactionIdStore.getLastCommittingTransactionId()) {
-    extractTransactions(toStartFrom,accumulator);
+  final long toStartFrom=context.lastAppliedTransaction() + 1;
+  TransactionStream transactions=new TransactionStream(){
+    @Override public void accept(    Visitor<CommittedTransactionRepresentation,IOException> visitor) throws IOException {
+      if (toStartFrom <= transactionIdStore.getLastCommittingTransactionId()) {
+        extractTransactions(toStartFrom,visitor);
+      }
+    }
   }
-  Iterable<CommittedTransactionRepresentation> txs=accumulator.getAccumulator();
-  return new Response<>(response,db.storeId(),txs,ResourceReleaser.NO_OP);
+;
+  return new Response<>(response,db.storeId(),transactions,ResourceReleaser.NO_OP);
 }

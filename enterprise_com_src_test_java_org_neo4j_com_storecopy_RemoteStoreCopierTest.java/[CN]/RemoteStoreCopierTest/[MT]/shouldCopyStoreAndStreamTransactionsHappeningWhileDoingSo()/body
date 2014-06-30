@@ -13,8 +13,8 @@
         original.createNode(label("BeforeCopyBegins"));
         tx.success();
       }
-       TransactionIdStore transactionIdStore=resolver.resolveDependency(TransactionIdStore.class);
-      long transactionIdWhenStartingCopy=transactionIdStore.getLastCommittingTransactionId();
+       final TransactionIdStore transactionIdStore=resolver.resolveDependency(TransactionIdStore.class);
+      final long transactionIdWhenStartingCopy=transactionIdStore.getLastCommittingTransactionId();
       NeoStoreXaDataSource dataSource=resolver.resolveDependency(DataSourceManager.class).getDataSource();
       dataSource.forceEverything();
       File baseDir=getMostCanonicalFile(originalDir);
@@ -31,11 +31,14 @@
         original.createNode(label("AfterCopy"));
         tx.success();
       }
-       long highTransactionId=transactionIdStore.getLastCommittingTransactionId();
-      AccumulatorVisitor<CommittedTransactionRepresentation> accumulator=new AccumulatorVisitor<>(upAndIncluding(highTransactionId));
-      LogicalTransactionStore txStore=resolver.resolveDependency(LogicalTransactionStore.class);
-      exhaustAndClose(txStore.getCursor(transactionIdWhenStartingCopy + 1,accumulator));
-      return response=spy(new Response<>(null,original.storeId(),accumulator.getAccumulator(),NO_OP));
+       TransactionStream transactions=new TransactionStream(){
+        @Override public void accept(        Visitor<CommittedTransactionRepresentation,IOException> visitor) throws IOException {
+          LogicalTransactionStore txStore=resolver.resolveDependency(LogicalTransactionStore.class);
+          exhaustAndClose(txStore.getCursor(transactionIdWhenStartingCopy + 1,visitor));
+        }
+      }
+;
+      return response=spy(new Response<>(null,original.storeId(),transactions,NO_OP));
     }
     @Override public void done(){
       assertNotNull(response);
