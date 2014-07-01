@@ -9,7 +9,7 @@
     checkDataConsistencyWithMaster(masterUri,checkConsistencyMaster,nioneoDataSource,txIdStore);
     console.log("Store is consistent");
     console.log("Catching up with master");
-    RequestContext context=requestContextFactory.newRequestContext(-1);
+    new TransactionCommittingResponseUnpacker(resolver.resolveDependency(LogicalTransactionStore.class).getAppender(),resolver.resolveDependency(TransactionRepresentationStoreApplier.class),resolver.resolveDependency(TransactionIdStore.class)).unpackResponse(checkConsistencyMaster.pullUpdates(requestContextFactory.newRequestContext()));
     console.log("Now consistent with master");
   }
  catch (  NoSuchLogVersionException e) {
@@ -35,7 +35,7 @@ catch (  StoreUnableToParticipateInClusterException upe) {
   }
 catch (  MismatchingStoreIdException e) {
     console.log("The store does not represent the same database as master. Will remove and fetch a new one from master");
-    if (txIdStore.getLastCommittingTransactionId() == 1) {
+    if (txIdStore.getLastCommittingTransactionId() == 0) {
       msgLog.warn("Found and deleting empty store with mismatching store id " + e.getMessage());
       stopServicesAndHandleBranchedStore(BranchedDataPolicy.keep_none);
     }

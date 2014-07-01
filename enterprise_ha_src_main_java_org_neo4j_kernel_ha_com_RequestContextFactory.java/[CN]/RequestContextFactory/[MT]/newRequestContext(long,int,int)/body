@@ -1,5 +1,14 @@
 {
+  try {
+    start();
+  }
+ catch (  Throwable throwable) {
+    throw new RuntimeException(throwable);
+  }
   long latestTxId=txIdStore.getLastCommittingTransactionId();
+  if (latestTxId == 0) {
+    return new RequestContext(sessionId,machineId,eventIdentifier,0,-1,-1);
+  }
   TransactionMetadataCache.TransactionMetadata txMetadata=null;
   try {
     txMetadata=txStore.getMetadataFor(latestTxId);
@@ -8,7 +17,7 @@
     throw new RuntimeException(e);
   }
   if (txMetadata != null) {
-    return new RequestContext(sessionId,machineId,eventIdentifier,latestTxId,txMetadata.getMasterId(),txMetadata.getAuthorId());
+    return new RequestContext(sessionId,machineId,eventIdentifier,latestTxId,txMetadata.getMasterId(),txMetadata.getChecksum());
   }
  else {
     return new RequestContext(sessionId,machineId,eventIdentifier,latestTxId,-1,-1);
