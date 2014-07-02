@@ -4,12 +4,13 @@
     throw new IllegalArgumentException("Invalid log pruning configuration value '" + configValue + "'");
   }
   String numberWithUnit=tokens[0];
+  Threshold thresholdToUse;
   if (tokens.length == 1) {
     if (numberWithUnit.equals("true")) {
       return NO_PRUNING;
     }
  else     if (numberWithUnit.equals("false")) {
-      return transactionCount(fileSystem,logFileInformation,files,versionRepo,1);
+      thresholdToUse=new TransactionCountThreshold(1);
     }
  else {
       throw new IllegalArgumentException("Invalid log pruning configuration value '" + configValue + "'. The form is 'all' or '<number><unit> <type>' for example '100k txs' "+ "for the latest 100 000 transactions");
@@ -20,21 +21,22 @@
   int number=(int)parseLongWithUnit(numberWithUnit);
   int typeIndex=0;
   if (type.equals(types[typeIndex++])) {
-    return nonEmptyFileCount(fileSystem,logFileInformation,files,versionRepo,number);
+    thresholdToUse=new FileCountThreshold(number);
   }
  else   if (type.equals(types[typeIndex++])) {
-    return totalFileSize(fileSystem,logFileInformation,files,versionRepo,number);
+    thresholdToUse=new FileSizeThreshold(fileSystem,number);
   }
  else   if (type.equals(types[typeIndex++])) {
-    return transactionCount(fileSystem,logFileInformation,files,versionRepo,number);
+    thresholdToUse=new TransactionCountThreshold(number);
   }
  else   if (type.equals(types[typeIndex++])) {
-    return transactionTimeSpan(fileSystem,logFileInformation,files,versionRepo,number,TimeUnit.HOURS);
+    thresholdToUse=new TransactionTimespanThreshold(TimeUnit.HOURS,number);
   }
  else   if (type.equals(types[typeIndex++])) {
-    return transactionTimeSpan(fileSystem,logFileInformation,files,versionRepo,number,TimeUnit.DAYS);
+    thresholdToUse=new TransactionTimespanThreshold(TimeUnit.DAYS,number);
   }
  else {
     throw new IllegalArgumentException("Invalid log pruning configuration value '" + configValue + "'. Invalid type '"+ type+ "', valid are "+ Arrays.asList(types));
   }
+  return new ThresholdBasedPruneStrategy(fileSystem,logFileInformation,files,versionRepo,thresholdToUse);
 }
