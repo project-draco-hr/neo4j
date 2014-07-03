@@ -1,2 +1,19 @@
 {
+  ClusterManager clusterManager=new ClusterManager(fromXml(getClass().getResource("/threeinstances.xml").toURI()),TargetDirectory.forTest(getClass()).cleanDirectory("testCluster"),MapUtil.stringMap(HaSettings.ha_server.name(),":6001-6005",HaSettings.tx_push_factor.name(),"0"));
+  try {
+    clusterManager.start();
+    clusterManager.getDefaultCluster().await(allSeesAllAsAvailable());
+    GraphDatabaseAPI master=clusterManager.getDefaultCluster().getMaster();
+    HighlyAvailableGraphDatabase firstSlave=clusterManager.getDefaultCluster().getAnySlave();
+    for (int i=0; i < 10; i++) {
+      Transaction tx=master.beginTx();
+      master.createNode();
+      tx.success();
+      tx.finish();
+    }
+    firstSlave.getDependencyResolver().resolveDependency(UpdatePuller.class).pullUpdates();
+  }
+  finally {
+    clusterManager.stop();
+  }
 }

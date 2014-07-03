@@ -3,10 +3,12 @@
   masterDelegateInvocationHandler=new DelegateInvocationHandler(Master.class);
   master=(Master)Proxy.newProxyInstance(Master.class.getClassLoader(),new Class[]{Master.class},masterDelegateInvocationHandler);
   requestContextFactory=new RequestContextFactory(config.get(ClusterSettings.server_id).toIntegerIndex(),getDependencyResolver());
+  this.unpacker=new TransactionCommittingResponseUnpacker(dependencyResolver);
   super.create();
   life.add(requestContextFactory);
+  life.add(unpacker);
   kernelEventHandlers.registerKernelEventHandler(new HaKernelPanicHandler(availabilityGuard,logging,masterDelegateInvocationHandler));
-  life.add(updatePuller=new UpdatePuller(memberStateMachine,master,requestContextFactory,availabilityGuard,lastUpdateTime,config,jobScheduler,dependencyResolver,msgLog));
+  life.add(updatePuller=new UpdatePuller(memberStateMachine,master,requestContextFactory,availabilityGuard,lastUpdateTime,config,jobScheduler,msgLog,unpacker));
   stateSwitchTimeoutMillis=config.get(HaSettings.state_switch_timeout);
   life.add(paxosLife);
   life.add(new DatabaseAvailability(availabilityGuard,transactionMonitor));
