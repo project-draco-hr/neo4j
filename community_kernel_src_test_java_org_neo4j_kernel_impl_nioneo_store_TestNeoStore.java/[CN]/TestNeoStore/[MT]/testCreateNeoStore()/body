@@ -1,35 +1,35 @@
 {
-  initializeStores();
+  initializeStores(stringMap());
   startTx();
-  long node1=ds.nextId(Node.class);
-  xaCon.getTransaction().nodeCreate(node1);
-  long node2=ds.nextId(Node.class);
-  xaCon.getTransaction().nodeCreate(node2);
-  DefinedProperty n1prop1=xaCon.getTransaction().nodeAddProperty(node1,index("prop1"),"string1");
-  DefinedProperty n1prop2=xaCon.getTransaction().nodeAddProperty(node1,index("prop2"),1);
-  DefinedProperty n1prop3=xaCon.getTransaction().nodeAddProperty(node1,index("prop3"),true);
-  DefinedProperty n2prop1=xaCon.getTransaction().nodeAddProperty(node2,index("prop1"),"string2");
-  DefinedProperty n2prop2=xaCon.getTransaction().nodeAddProperty(node2,index("prop2"),2);
-  DefinedProperty n2prop3=xaCon.getTransaction().nodeAddProperty(node2,index("prop3"),false);
-  int relType1=(int)ds.nextId(RelationshipType.class);
+  long node1=nextId(Node.class);
+  transaction.nodeCreate(node1);
+  long node2=nextId(Node.class);
+  transaction.nodeCreate(node2);
+  DefinedProperty n1prop1=transaction.nodeAddProperty(node1,index("prop1"),"string1");
+  DefinedProperty n1prop2=transaction.nodeAddProperty(node1,index("prop2"),1);
+  DefinedProperty n1prop3=transaction.nodeAddProperty(node1,index("prop3"),true);
+  DefinedProperty n2prop1=transaction.nodeAddProperty(node2,index("prop1"),"string2");
+  DefinedProperty n2prop2=transaction.nodeAddProperty(node2,index("prop2"),2);
+  DefinedProperty n2prop3=transaction.nodeAddProperty(node2,index("prop3"),false);
+  int relType1=(int)nextId(RelationshipType.class);
   String typeName1="relationshiptype1";
-  xaCon.getTransaction().createRelationshipTypeToken(relType1,typeName1);
-  int relType2=(int)ds.nextId(RelationshipType.class);
+  transaction.createRelationshipTypeToken(relType1,typeName1);
+  int relType2=(int)nextId(RelationshipType.class);
   String typeName2="relationshiptype2";
-  xaCon.getTransaction().createRelationshipTypeToken(relType2,typeName2);
-  long rel1=ds.nextId(Relationship.class);
-  xaCon.getTransaction().relationshipCreate(rel1,relType1,node1,node2);
-  long rel2=ds.nextId(Relationship.class);
-  xaCon.getTransaction().relationshipCreate(rel2,relType2,node2,node1);
-  DefinedProperty r1prop1=xaCon.getTransaction().relAddProperty(rel1,index("prop1"),"string1");
-  DefinedProperty r1prop2=xaCon.getTransaction().relAddProperty(rel1,index("prop2"),1);
-  DefinedProperty r1prop3=xaCon.getTransaction().relAddProperty(rel1,index("prop3"),true);
-  DefinedProperty r2prop1=xaCon.getTransaction().relAddProperty(rel2,index("prop1"),"string2");
-  DefinedProperty r2prop2=xaCon.getTransaction().relAddProperty(rel2,index("prop2"),2);
-  DefinedProperty r2prop3=xaCon.getTransaction().relAddProperty(rel2,index("prop3"),false);
+  transaction.createRelationshipTypeToken(relType2,typeName2);
+  long rel1=nextId(Relationship.class);
+  transaction.relationshipCreate(rel1,relType1,node1,node2);
+  long rel2=nextId(Relationship.class);
+  transaction.relationshipCreate(rel2,relType2,node2,node1);
+  DefinedProperty r1prop1=transaction.relAddProperty(rel1,index("prop1"),"string1");
+  DefinedProperty r1prop2=transaction.relAddProperty(rel1,index("prop2"),1);
+  DefinedProperty r1prop3=transaction.relAddProperty(rel1,index("prop3"),true);
+  DefinedProperty r2prop1=transaction.relAddProperty(rel2,index("prop1"),"string2");
+  DefinedProperty r2prop2=transaction.relAddProperty(rel2,index("prop2"),2);
+  DefinedProperty r2prop3=transaction.relAddProperty(rel2,index("prop3"),false);
   commitTx();
   ds.stop();
-  initializeStores();
+  initializeStores(stringMap());
   startTx();
   validateNodeRel1(node1,n1prop1,n1prop2,n1prop3,rel1,rel2,relType1,relType2);
   validateNodeRel2(node2,n2prop1,n2prop2,n2prop3,rel1,rel2,relType1,relType2);
@@ -39,7 +39,7 @@
   validateRelTypes(relType1,relType2);
   commitTx();
   ds.stop();
-  initializeStores();
+  initializeStores(stringMap());
   startTx();
   deleteRel1(rel1,r1prop1,r1prop2,r1prop3,node1,node2,relType1);
   deleteRel2(rel2,r2prop1,r2prop2,r2prop3,node2,node1,relType2);
@@ -47,28 +47,28 @@
   deleteNode2(node2,n2prop1,n2prop2,n2prop3);
   commitTx();
   ds.stop();
-  initializeStores();
+  initializeStores(stringMap());
   startTx();
-  assertNull(xaCon.getTransaction().nodeLoadLight(node1));
-  assertNull(xaCon.getTransaction().nodeLoadLight(node2));
+  assertFalse(storeLayer.nodeExists(node1));
+  assertFalse(storeLayer.nodeExists(node2));
   testGetRels(new long[]{rel1,rel2});
   long nodeIds[]=new long[10];
   for (int i=0; i < 3; i++) {
-    nodeIds[i]=ds.nextId(Node.class);
-    xaCon.getTransaction().nodeCreate(nodeIds[i]);
-    xaCon.getTransaction().nodeAddProperty(nodeIds[i],index("nisse"),new Integer(10 - i));
+    nodeIds[i]=nextId(Node.class);
+    transaction.nodeCreate(nodeIds[i]);
+    transaction.nodeAddProperty(nodeIds[i],index("nisse"),new Integer(10 - i));
   }
   for (int i=0; i < 2; i++) {
-    long id=ds.nextId(Relationship.class);
-    xaCon.getTransaction().relationshipCreate(id,relType1,nodeIds[i],nodeIds[i + 1]);
-    xaCon.getTransaction().relDelete(id);
+    long id=nextId(Relationship.class);
+    transaction.relationshipCreate(id,relType1,nodeIds[i],nodeIds[i + 1]);
+    transaction.relDelete(id);
   }
   for (int i=0; i < 3; i++) {
-    MutableRelationshipLoadingPosition pos=getPosition(xaCon,nodeIds[i]);
-    for (    RelationshipRecord rel : getMore(xaCon,nodeIds[i],pos)) {
-      xaCon.getTransaction().relDelete(rel.getId());
+    MutableRelationshipLoadingPosition pos=getPosition(nodeIds[i]);
+    for (    RelationshipRecord rel : getMore(nodeIds[i],pos)) {
+      transaction.relDelete(rel.getId());
     }
-    xaCon.getTransaction().nodeDelete(nodeIds[i]);
+    transaction.nodeDelete(nodeIds[i]);
   }
   commitTx();
   ds.stop();

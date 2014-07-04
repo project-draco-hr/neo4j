@@ -1,8 +1,18 @@
 {
   assertInTransaction();
-  return new Iterable<Relationship>(){
-    @Override public Iterator<Relationship> iterator(){
-      return nodeManager.getAllRelationships();
+  return new ResourceIterable<Relationship>(){
+    @Override public ResourceIterator<Relationship> iterator(){
+      final Statement statement=statementCtxProvider.instance();
+      final PrimitiveLongIterator ids=statement.readOperations().relationshipsGetAll();
+      return new PrefetchingResourceIterator<Relationship>(){
+        @Override public void close(){
+          statement.close();
+        }
+        @Override protected Relationship fetchNextOrNull(){
+          return ids.hasNext() ? nodeManager.newRelationshipProxyById(ids.next()) : null;
+        }
+      }
+;
     }
   }
 ;

@@ -1,3 +1,14 @@
 {
-  return acquireLock(context,EXCLUSIVE_LOCK_GRABBER,type,resourceIds);
+  assertCorrectEpoch(context);
+  try {
+    Locks.Client locks=slaveLockState.get(context).getLockClient();
+    locks.acquireExclusive(type,resourceIds);
+    return packResponse(context,new LockResult(LockStatus.OK_LOCKED));
+  }
+ catch (  DeadlockDetectedException e) {
+    return packResponse(context,new LockResult(e.getMessage()));
+  }
+catch (  IllegalResourceException e) {
+    return packResponse(context,new LockResult(LockStatus.NOT_LOCKED));
+  }
 }

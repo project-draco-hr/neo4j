@@ -1,0 +1,22 @@
+{
+  newDb(2);
+  Transaction tx=db.beginTx();
+  Node node=db.createNode();
+  Relationship rel1=node.createRelationshipTo(db.createNode(),MyRelTypes.TEST);
+  Relationship rel2=node.createRelationshipTo(db.createNode(),MyRelTypes.TEST);
+  Relationship rel3=node.createRelationshipTo(db.createNode(),MyRelTypes.TEST);
+  Relationship rel4=node.createRelationshipTo(db.createNode(),MyRelTypes.TEST2);
+  Relationship rel5=node.createRelationshipTo(db.createNode(),MyRelTypes.TEST2);
+  Relationship rel6=node.createRelationshipTo(db.createNode(),MyRelTypes.TEST2);
+  tx.success();
+  tx.finish();
+  NeoStore neoStore=db.getDependencyResolver().resolveDependency(NeoStoreProvider.class).evaluate();
+  NodeStore nodeStore=neoStore.getNodeStore();
+  NodeRecord nodeRecord=nodeStore.getRecord(node.getId());
+  long group=nodeRecord.getNextRel();
+  RelationshipGroupStore groupStore=neoStore.getRelationshipGroupStore();
+  RelationshipGroupRecord groupRecord=groupStore.getRecord(group);
+  assertFalse(groupRecord.getNext() == -1);
+  RelationshipGroupRecord otherGroupRecord=groupStore.getRecord(groupRecord.getNext());
+  assertEquals(-1,otherGroupRecord.getNext());
+}

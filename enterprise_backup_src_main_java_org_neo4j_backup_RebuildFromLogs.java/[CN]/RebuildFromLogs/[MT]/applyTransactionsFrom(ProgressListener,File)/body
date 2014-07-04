@@ -1,26 +1,16 @@
 {
-  LogExtractor extractor=null;
-  try {
-    extractor=LogExtractor.from(FS,XaCommandReaderFactory.DEFAULT,new XaCommandWriterFactory(){
-      @Override public XaCommandWriter newInstance(){
-        return new PhysicalLogNeoXaCommandWriter();
-      }
-    }
-,new Monitors().newMonitor(ByteCounterMonitor.class),new LogEntryWriterv1(),sourceDir);
-    for (InMemoryLogBuffer buffer=new InMemoryLogBuffer(); ; buffer.reset()) {
-      long txId=extractor.extractNext(buffer);
-      if (txId == -1) {
-        break;
-      }
-      applyTransaction(txId,buffer);
-      progress.set(txId);
+  PhysicalLogFiles logFiles=new PhysicalLogFiles(sourceDir,FS);
+  int startVersion=0;
+  File logFile=logFiles.getVersionFileName(startVersion);
+  LogVersionBridge versionBridge=new ReaderLogVersionBridge(FS,logFiles);
+  ReadableLogChannel logChannel=new ReadAheadLogChannel(new PhysicalLogVersionedStoreChannel(FS.open(logFile,"R"),startVersion),versionBridge,DEFAULT_READ_AHEAD_SIZE);
+  Visitor<CommittedTransactionRepresentation,IOException> visitor=new Visitor<CommittedTransactionRepresentation,IOException>(){
+    @Override public boolean visit(    CommittedTransactionRepresentation transaction) throws IOException {
+      storeApplier.apply(transaction.getTransactionRepresentation(),transaction.getCommitEntry().getTxId(),true);
+      return true;
     }
   }
-  finally {
-    if (extractor != null) {
-      extractor.close();
-    }
-    progress.done();
-  }
+;
+  exhaustAndClose(new PhysicalTransactionCursor(logChannel,new VersionAwareLogEntryReader(DEFAULT),visitor));
   return this;
 }

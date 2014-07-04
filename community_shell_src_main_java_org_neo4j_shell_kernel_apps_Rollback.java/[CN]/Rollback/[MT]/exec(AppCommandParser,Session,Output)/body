@@ -3,19 +3,18 @@
     out.println("Error: ROLLBACK should  be run without trailing arguments");
     return Continuation.INPUT_COMPLETE;
   }
-  Transaction tx=Begin.currentTransaction(getServer());
+  TopLevelTransaction tx=Begin.currentTransaction(getServer());
   if (tx == null) {
     throw Commit.fail(session,"Not in a transaction");
   }
- else {
-    try {
-      session.remove(Variables.TX_COUNT);
-      tx.rollback();
-      out.println("Transaction rolled back");
-      return Continuation.INPUT_COMPLETE;
-    }
- catch (    SystemException e) {
-      throw new ShellException(e.getMessage());
-    }
+  session.remove(Variables.TX_COUNT);
+  tx.failure();
+  try {
+    tx.close();
   }
+ catch (  TransactionFailureException e) {
+    throw new ShellException(e.getMessage());
+  }
+  out.println("Transaction rolled back");
+  return Continuation.INPUT_COMPLETE;
 }

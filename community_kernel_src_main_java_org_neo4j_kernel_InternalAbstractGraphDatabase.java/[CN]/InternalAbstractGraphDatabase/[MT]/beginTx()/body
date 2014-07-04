@@ -1,3 +1,19 @@
 {
-  return tx().begin();
+  if (!availabilityGuard.isAvailable(accessTimeout)) {
+    throw new TransactionFailureException("Database is currently not available. " + availabilityGuard.describeWhoIsBlocking());
+  }
+  KernelAPI kernel=neoDataSource.getKernel();
+  TopLevelTransaction topLevelTransaction=threadToTransactionBridge.getTopLevelTransactionBoundToThisThread(false);
+  if (topLevelTransaction != null) {
+    return new PlaceboTransaction(topLevelTransaction);
+  }
+  try {
+    KernelTransaction transaction=kernel.newTransaction();
+    topLevelTransaction=new TopLevelTransaction(transaction,threadToTransactionBridge);
+    threadToTransactionBridge.bindTransactionToCurrentThread(topLevelTransaction);
+    return topLevelTransaction;
+  }
+ catch (  org.neo4j.kernel.api.exceptions.TransactionFailureException e) {
+    throw new TransactionFailureException("Failure to begin transaction",e);
+  }
 }

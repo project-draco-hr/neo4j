@@ -1,0 +1,32 @@
+{
+  LogFile logFile=mock(LogFile.class);
+  InMemoryLogChannel channel=new InMemoryLogChannel();
+  when(logFile.getWriter()).thenReturn(channel);
+  TxIdGenerator txIdGenerator=mock(TxIdGenerator.class);
+  TransactionMetadataCache positionCache=new TransactionMetadataCache(10,100);
+  TransactionIdStore transactionIdStore=mock(TransactionIdStore.class);
+  TransactionAppender appender=new PhysicalTransactionAppender(logFile,txIdGenerator,positionCache,transactionIdStore);
+  PhysicalTransactionRepresentation transaction=new PhysicalTransactionRepresentation(singleCreateNodeCommand());
+  final byte[] additionalHeader=new byte[]{1,2,5};
+  final int masterId=2, authorId=1;
+  final long timeWritten=12345, latestCommittedTxWhenStarted=4545;
+  transaction.setHeader(additionalHeader,masterId,authorId,timeWritten,latestCommittedTxWhenStarted);
+  appender.append(transaction);
+  final AtomicInteger visited=new AtomicInteger();
+  Visitor<CommittedTransactionRepresentation,IOException> visitor=new Visitor<CommittedTransactionRepresentation,IOException>(){
+    @Override public boolean visit(    CommittedTransactionRepresentation committedTx) throws IOException {
+      TransactionRepresentation transaction=committedTx.getTransactionRepresentation();
+      assertArrayEquals(additionalHeader,transaction.additionalHeader());
+      assertEquals(masterId,transaction.getMasterId());
+      assertEquals(authorId,transaction.getAuthorId());
+      assertEquals(timeWritten,transaction.getTimeWritten());
+      assertEquals(latestCommittedTxWhenStarted,transaction.getLatestCommittedTxWhenStarted());
+      visited.incrementAndGet();
+      return true;
+    }
+  }
+;
+  IOCursor reader=new PhysicalTransactionCursor(channel,new VersionAwareLogEntryReader(CommandReaderFactory.DEFAULT),visitor);
+  reader.next();
+  assertEquals(1,visited.get());
+}

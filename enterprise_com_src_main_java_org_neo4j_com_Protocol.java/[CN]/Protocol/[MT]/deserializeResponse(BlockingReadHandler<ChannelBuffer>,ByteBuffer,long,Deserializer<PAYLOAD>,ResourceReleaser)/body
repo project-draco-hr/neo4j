@@ -1,7 +1,14 @@
 {
-  DechunkingChannelBuffer dechunkingBuffer=new DechunkingChannelBuffer(reader,timeout,internalProtocolVersion,applicationProtocolVersion);
+  final DechunkingChannelBuffer dechunkingBuffer=new DechunkingChannelBuffer(reader,timeout,internalProtocolVersion,applicationProtocolVersion);
   PAYLOAD response=payloadDeserializer.read(dechunkingBuffer,input);
   StoreId storeId=readStoreId(dechunkingBuffer,input);
-  TransactionStream txStreams=readTransactionStreams(dechunkingBuffer);
-  return new Response<PAYLOAD>(response,storeId,txStreams,channelReleaser);
+  TransactionStream transactions=new TransactionStream(){
+    @Override public void accept(    Visitor<CommittedTransactionRepresentation,IOException> visitor) throws IOException {
+      LogEntryReader<ReadableLogChannel> reader=new VersionAwareLogEntryReader(CommandReaderFactory.DEFAULT);
+      NetworkReadableLogChannel channel=new NetworkReadableLogChannel(dechunkingBuffer);
+      exhaustAndClose(new PhysicalTransactionCursor(channel,reader,visitor));
+    }
+  }
+;
+  return new Response<PAYLOAD>(response,storeId,transactions,channelReleaser);
 }

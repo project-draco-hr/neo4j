@@ -2,13 +2,14 @@
   GraphDatabaseAPI graphDatabaseAPI=getServer().getDb();
   ServerExecutionEngine engine=getEngine();
   if (engine.isPeriodicCommitQuery(query)) {
-    TransactionManager manager=graphDatabaseAPI.getDependencyResolver().resolveDependency(TransactionManager.class);
-    Transaction tx=manager.suspend();
+    ThreadToStatementContextBridge manager=graphDatabaseAPI.getDependencyResolver().resolveDependency(ThreadToStatementContextBridge.class);
+    TopLevelTransaction tx=manager.getTopLevelTransactionBoundToThisThread(true);
+    manager.unbindTransactionFromCurrentThread();
     try {
       return super.getResult(query,parameters);
     }
   finally {
-      manager.resume(tx);
+      manager.bindTransactionToCurrentThread(tx);
     }
   }
  else {

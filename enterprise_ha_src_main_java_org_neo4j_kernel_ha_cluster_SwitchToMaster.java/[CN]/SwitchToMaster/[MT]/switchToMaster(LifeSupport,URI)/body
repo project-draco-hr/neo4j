@@ -1,11 +1,9 @@
 {
   msgLog.logMessage("I am " + config.get(ClusterSettings.server_id) + ", moving to master");
-  HaXaDataSourceManager xaDataSourceManager=resolver.resolveDependency(HaXaDataSourceManager.class);
-synchronized (xaDataSourceManager) {
-    final TransactionManager txManager=resolver.resolveDependency(TransactionManager.class);
+{
     idGeneratorFactory.switchToMaster();
     Monitors monitors=resolver.resolveDependency(Monitors.class);
-    MasterImpl.SPI spi=new DefaultMasterImplSPI(graphDb,logging,txManager,monitors);
+    MasterImpl.SPI spi=new DefaultMasterImplSPI(graphDb,logging,monitors);
     MasterImpl masterImpl=new MasterImpl(spi,monitors.newMonitor(MasterImpl.Monitor.class),logging,config);
     MasterServer masterServer=new MasterServer(masterImpl,logging,serverConfig(),new BranchDetectingTxVerifier(resolver),monitors);
     haCommunicationLife.add(masterImpl);
@@ -15,6 +13,7 @@ synchronized (xaDataSourceManager) {
     URI masterHaURI=URI.create("ha://" + (ServerUtil.getHostString(masterServer.getSocketAddress()).contains("0.0.0.0") ? me.getHost() : ServerUtil.getHostString(masterServer.getSocketAddress())) + ":"+ masterServer.getSocketAddress().getPort()+ "?serverId="+ config.get(ClusterSettings.server_id));
     clusterMemberAvailability.memberIsAvailable(HighAvailabilityModeSwitcher.MASTER,masterHaURI);
     msgLog.logMessage("I am " + config.get(ClusterSettings.server_id) + ", successfully moved to master");
+    resolver.resolveDependency(SlaveFactory.class).setStoreId(resolver.resolveDependency(NeoStoreXaDataSource.class).getStoreId());
     return masterHaURI;
   }
 }

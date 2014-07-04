@@ -1,14 +1,17 @@
 {
-  AbstractTransactionManager mockTxManager=mock(AbstractTransactionManager.class);
-  mockTopLevelTx=mock(Transaction.class);
-  when(mockTxManager.getTransaction()).thenReturn(mockTopLevelTx);
-  persistenceManager=mock(PersistenceManager.class);
-  ThreadToStatementContextBridge stmtProvider=mock(ThreadToStatementContextBridge.class);
-  Statement stmt=mock(Statement.class);
-  readOps=mock(ReadOperations.class);
-  when(stmtProvider.instance()).thenReturn(stmt);
-  when(stmt.readOperations()).thenReturn(readOps);
-  placeboTx=new PlaceboTransaction(mockTxManager,stmtProvider);
+  ThreadToStatementContextBridge bridge=mock(ThreadToStatementContextBridge.class);
+  when(bridge.instance()).thenReturn(mock(Statement.class));
+  mockTopLevelTx=mock(TopLevelTransaction.class);
+  final TransactionOutcome outcome=new TransactionOutcome();
+  when(mockTopLevelTx.getTransactionOutcome()).thenReturn(outcome);
+  doAnswer(new Answer<Void>(){
+    @Override public Void answer(    InvocationOnMock invocation){
+      outcome.failed();
+      return null;
+    }
+  }
+).when(mockTopLevelTx).failure();
+  placeboTx=new PlaceboTransaction(mockTopLevelTx);
   resource=mock(Node.class);
   when(resource.getId()).thenReturn(1l);
 }

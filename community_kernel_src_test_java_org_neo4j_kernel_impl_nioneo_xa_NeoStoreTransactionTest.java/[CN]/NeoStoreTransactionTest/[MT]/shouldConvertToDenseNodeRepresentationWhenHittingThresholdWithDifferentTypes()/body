@@ -1,9 +1,10 @@
 {
   instantiateNeoStore(50);
-  Pair<NeoStoreTransaction,NeoStoreTransactionContext> transactionContextPair=newWriteTransaction();
-  NeoStoreTransaction tx=transactionContextPair.first();
+  Pair<TransactionRecordState,NeoStoreTransactionContext> transactionContextPair=newWriteTransaction();
+  TransactionRecordState tx=transactionContextPair.first();
   NeoStoreTransactionContext txCtx=transactionContextPair.other();
-  int nodeId=(int)nextId(NODE), typeA=0, typeB=1, typeC=2;
+  long nodeId=nextId(NODE);
+  int typeA=0, typeB=1, typeC=2;
   tx.nodeCreate(nodeId);
   tx.createRelationshipTypeToken(typeA,"A");
   createRelationships(tx,nodeId,typeA,OUTGOING,6);
@@ -14,9 +15,9 @@
   tx.createRelationshipTypeToken(typeC,"C");
   createRelationships(tx,nodeId,typeC,OUTGOING,10);
   createRelationships(tx,nodeId,typeC,INCOMING,10);
-  assertFalse(tx.nodeLoadLight(nodeId).isDense());
+  assertFalse(txCtx.getNodeRecords().getOrLoad(nodeId,null).forReadingData().isDense());
   createRelationships(tx,nodeId,typeC,INCOMING,1);
-  assertTrue(tx.nodeLoadLight(nodeId).isDense());
+  assertTrue(txCtx.getNodeRecords().getOrLoad(nodeId,null).forReadingData().isDense());
   assertDenseRelationshipCounts(tx,txCtx,nodeId,typeA,6,7);
   assertDenseRelationshipCounts(tx,txCtx,nodeId,typeB,8,9);
   assertDenseRelationshipCounts(tx,txCtx,nodeId,typeC,10,11);

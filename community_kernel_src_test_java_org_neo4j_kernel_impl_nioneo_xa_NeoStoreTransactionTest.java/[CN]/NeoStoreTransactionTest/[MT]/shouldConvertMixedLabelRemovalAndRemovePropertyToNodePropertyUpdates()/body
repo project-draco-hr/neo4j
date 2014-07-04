@@ -1,6 +1,6 @@
 {
   long nodeId=0;
-  NeoStoreTransaction writeTransaction=newWriteTransaction(mockIndexing).first();
+  TransactionRecordState writeTransaction=newWriteTransaction().first();
   int propertyKey1=1, propertyKey2=2, labelId1=3, labelId2=4;
   Object value1="first", value2=4;
   writeTransaction.nodeCreate(nodeId);
@@ -8,11 +8,13 @@
   writeTransaction.nodeAddProperty(nodeId,propertyKey2,value2);
   writeTransaction.addLabelToNode(labelId1,nodeId);
   writeTransaction.addLabelToNode(labelId2,nodeId);
-  prepareAndCommit(writeTransaction);
+  PhysicalTransactionRepresentation transactionCommands=transactionRepresentationOf(writeTransaction);
+  commitProcess().commit(transactionCommands);
   CapturingIndexingService indexingService=new CapturingIndexingService();
   writeTransaction=newWriteTransaction(indexingService).first();
   writeTransaction.nodeRemoveProperty(nodeId,property1.propertyKeyId());
   writeTransaction.removeLabelFromNode(labelId2,nodeId);
-  prepareAndCommit(writeTransaction);
+  transactionCommands=transactionRepresentationOf(writeTransaction);
+  commitProcess(indexingService).commit(transactionCommands);
   assertEquals(asSet(remove(nodeId,propertyKey1,value1,new long[]{labelId1,labelId2}),remove(nodeId,propertyKey2,value2,new long[]{labelId2})),indexingService.updates);
 }

@@ -1,24 +1,13 @@
 {
-  beginClose();
   try {
     try {
       dropCreatedConstraintIndexes();
     }
  catch (    IllegalStateException|SecurityException e) {
-      throw new TransactionFailureException(e);
+      throw new TransactionFailureException(Status.Transaction.CouldNotRollback,e,"Could not drop created constraint indexes");
     }
- finally {
-      try {
-        release();
-      }
- catch (      ReleaseLocksFailedKernelException e) {
-        throw new TransactionFailureException(Exceptions.withCause(new RollbackException(e.getMessage()),e));
-      }
-    }
-    close();
-    hooks.afterRollback(txState,this,hooksState);
   }
   finally {
-    closing=false;
+    afterRollback();
   }
 }

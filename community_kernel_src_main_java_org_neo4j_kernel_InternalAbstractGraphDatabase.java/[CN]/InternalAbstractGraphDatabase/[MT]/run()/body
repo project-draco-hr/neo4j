@@ -1,23 +1,17 @@
 {
   create();
+  boolean failed=false;
   try {
     registerRecovery();
     life.start();
-    Throwable recoveryError=txManager.getRecoveryError();
-    if (recoveryError != null) {
-      throw recoveryError;
-    }
   }
  catch (  final Throwable throwable) {
-    StringBuilder msg=new StringBuilder();
-    msg.append("Startup failed");
-    Throwable temporaryThrowable=throwable;
-    while (temporaryThrowable != null) {
-      msg.append(": ").append(temporaryThrowable.getMessage());
-      temporaryThrowable=temporaryThrowable.getCause();
-    }
-    msgLog.error(msg.toString());
-    shutdown();
+    failed=true;
     throw new RuntimeException("Error starting " + getClass().getName() + ", "+ storeDir.getAbsolutePath(),throwable);
+  }
+ finally {
+    if (failed) {
+      shutdown();
+    }
   }
 }

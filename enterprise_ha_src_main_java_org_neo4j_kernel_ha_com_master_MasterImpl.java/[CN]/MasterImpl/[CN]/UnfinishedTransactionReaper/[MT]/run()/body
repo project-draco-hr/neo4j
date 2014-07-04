@@ -1,22 +1,19 @@
 {
   try {
-    Map<RequestContext,MasterTransaction> safeTransactions;
-synchronized (transactions) {
-      safeTransactions=new HashMap<>(transactions);
+    Map<RequestContext,TimestampedLockClient> safeTransactions;
+synchronized (slaveLockState) {
+      safeTransactions=new HashMap<>(slaveLockState);
     }
-    for (    Map.Entry<RequestContext,MasterTransaction> entry : safeTransactions.entrySet()) {
+    for (    Map.Entry<RequestContext,TimestampedLockClient> entry : safeTransactions.entrySet()) {
       long time=entry.getValue().timeLastSuspended.get();
       if ((time != 0 && System.currentTimeMillis() - time >= unfinishedTransactionThresholdMillis) || entry.getValue().finishAsap()) {
         long displayableTime=(time == 0 ? 0 : (System.currentTimeMillis() - time));
-        String oldTxDescription=format("old tx %s: %s at age %s ms",entry.getKey(),entry.getValue().transaction,displayableTime);
+        String oldTxDescription=format("old tx %s: %s at age %s ms",entry.getKey(),entry.getValue().getLockClient(),displayableTime);
         try {
-          resumeTransaction(entry.getKey());
-          finishTransaction0(entry.getKey(),false);
+          finishTransaction0(entry.getKey());
           msgLog.info("Rolled back " + oldTxDescription);
         }
- catch (        TransactionAlreadyActiveException e) {
-        }
-catch (        Throwable t) {
+ catch (        Throwable t) {
           msgLog.warn("Unable to roll back " + oldTxDescription,t);
         }
       }

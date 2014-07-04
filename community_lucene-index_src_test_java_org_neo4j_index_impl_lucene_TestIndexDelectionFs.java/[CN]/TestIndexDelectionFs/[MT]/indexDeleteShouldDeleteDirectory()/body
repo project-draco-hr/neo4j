@@ -1,12 +1,11 @@
 {
   String indexName="index";
   String otherIndexName="other-index";
-  StringBuffer tempPath=new StringBuffer(((GraphDatabaseAPI)db).getStoreDir()).append(File.separator).append("index").append(File.separator).append("lucene").append(File.separator).append("node").append(File.separator);
-  File pathToLuceneIndex=new File(tempPath.toString() + indexName);
-  File pathToOtherLuceneIndex=new File(tempPath.toString() + otherIndexName);
-  Transaction tx=db.beginTx();
+  File indexBaseDir=new File(db.getStoreDir(),"index");
+  File pathToLuceneIndex=LuceneDataSource.getFileDirectory(indexBaseDir,new IndexIdentifier(IndexEntityType.Node,indexName));
+  File pathToOtherLuceneIndex=LuceneDataSource.getFileDirectory(indexBaseDir,new IndexIdentifier(IndexEntityType.Node,otherIndexName));
   Index<Node> index;
-  try {
+  try (Transaction tx=db.beginTx()){
     index=db.index().forNodes(indexName);
     Index<Node> otherIndex=db.index().forNodes(otherIndexName);
     Node node=db.createNode();
@@ -16,21 +15,14 @@
     assertFalse(pathToOtherLuceneIndex.exists());
     tx.success();
   }
-  finally {
-    tx.finish();
-  }
-  assertTrue(pathToLuceneIndex.exists());
+   assertTrue(pathToLuceneIndex.exists());
   assertTrue(pathToOtherLuceneIndex.exists());
-  tx=db.beginTx();
-  try {
+  try (Transaction tx=db.beginTx()){
     index.delete();
     assertTrue(pathToLuceneIndex.exists());
     assertTrue(pathToOtherLuceneIndex.exists());
     tx.success();
   }
-  finally {
-    tx.finish();
-  }
-  assertFalse(pathToLuceneIndex.exists());
+   assertFalse(pathToLuceneIndex.exists());
   assertTrue(pathToOtherLuceneIndex.exists());
 }

@@ -1,0 +1,62 @@
+{
+synchronized (this) {
+    DefinedProperty[] newArray=properties;
+    if (newArray == null) {
+      return;
+    }
+    int extraLength=0;
+    if (cowPropertyAddMap != null) {
+      extraLength+=cowPropertyAddMap.size();
+    }
+    int newArraySize=newArray.length;
+    if (extraLength > 0) {
+      DefinedProperty[] oldArray=newArray;
+      newArray=new DefinedProperty[oldArray.length + extraLength];
+      System.arraycopy(oldArray,0,newArray,0,oldArray.length);
+    }
+ else {
+      newArray=newArray.clone();
+    }
+    if (removed != null) {
+      while (removed.hasNext()) {
+        int key=removed.next();
+        for (int i=0; i < newArraySize; i++) {
+          Property existingProperty=newArray[i];
+          if (existingProperty.propertyKeyId() == key) {
+            int swapWith=--newArraySize;
+            newArray[i]=newArray[swapWith];
+            newArray[swapWith]=null;
+            break;
+          }
+        }
+      }
+    }
+    if (cowPropertyAddMap != null) {
+      PrimitiveIntIterator keyIterator=cowPropertyAddMap.iterator();
+      while (keyIterator.hasNext()) {
+        int key=keyIterator.next();
+        DefinedProperty addedProperty=cowPropertyAddMap.get(key);
+        for (int i=0; i < newArray.length; i++) {
+          Property existingProperty=newArray[i];
+          if (existingProperty == null || addedProperty.propertyKeyId() == existingProperty.propertyKeyId()) {
+            newArray[i]=Property.property(addedProperty.propertyKeyId(),addedProperty.value());
+            if (existingProperty == null) {
+              newArraySize++;
+            }
+            break;
+          }
+        }
+      }
+    }
+    if (newArraySize < newArray.length) {
+      DefinedProperty[] compactedNewArray=new DefinedProperty[newArraySize];
+      System.arraycopy(newArray,0,compactedNewArray,0,newArraySize);
+      sort(compactedNewArray);
+      properties=compactedNewArray;
+    }
+ else {
+      sort(newArray);
+      properties=newArray;
+    }
+  }
+}

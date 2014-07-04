@@ -1,0 +1,95 @@
+{
+  if (hasTxStateWithChanges()) {
+    final AtomicBoolean clearState=new AtomicBoolean(false);
+    txState().accept(new TxState.VisitorAdapter(){
+      @Override public void visitNodePropertyChanges(      long id,      Iterator<DefinedProperty> added,      Iterator<DefinedProperty> changed,      Iterator<Integer> removed){
+        while (removed.hasNext()) {
+          recordState.nodeRemoveProperty(id,removed.next());
+        }
+        while (changed.hasNext()) {
+          DefinedProperty prop=changed.next();
+          recordState.nodeChangeProperty(id,prop.propertyKeyId(),prop.value());
+        }
+        while (added.hasNext()) {
+          DefinedProperty prop=added.next();
+          recordState.nodeAddProperty(id,prop.propertyKeyId(),prop.value());
+        }
+      }
+      @Override public void visitRelPropertyChanges(      long id,      Iterator<DefinedProperty> added,      Iterator<DefinedProperty> changed,      Iterator<Integer> removed){
+        while (removed.hasNext()) {
+          recordState.relRemoveProperty(id,removed.next());
+        }
+        while (changed.hasNext()) {
+          DefinedProperty prop=changed.next();
+          recordState.relChangeProperty(id,prop.propertyKeyId(),prop.value());
+        }
+        while (added.hasNext()) {
+          DefinedProperty prop=added.next();
+          recordState.relAddProperty(id,prop.propertyKeyId(),prop.value());
+        }
+      }
+      @Override public void visitGraphPropertyChanges(      Iterator<DefinedProperty> added,      Iterator<DefinedProperty> changed,      Iterator<Integer> removed){
+        while (removed.hasNext()) {
+          recordState.graphRemoveProperty(removed.next());
+        }
+        while (changed.hasNext()) {
+          DefinedProperty prop=changed.next();
+          recordState.graphChangeProperty(prop.propertyKeyId(),prop.value());
+        }
+        while (added.hasNext()) {
+          DefinedProperty prop=added.next();
+          recordState.graphAddProperty(prop.propertyKeyId(),prop.value());
+        }
+      }
+      @Override public void visitAddedIndex(      IndexDescriptor element,      boolean isConstraintIndex){
+        SchemaIndexProvider.Descriptor providerDescriptor=providerMap.getDefaultProvider().getProviderDescriptor();
+        IndexRule rule;
+        if (isConstraintIndex) {
+          rule=IndexRule.constraintIndexRule(schemaStorage.newRuleId(),element.getLabelId(),element.getPropertyKeyId(),providerDescriptor,null);
+        }
+ else {
+          rule=IndexRule.indexRule(schemaStorage.newRuleId(),element.getLabelId(),element.getPropertyKeyId(),providerDescriptor);
+        }
+        recordState.createSchemaRule(rule);
+      }
+      @Override public void visitRemovedIndex(      IndexDescriptor element,      boolean isConstraintIndex){
+        try {
+          SchemaStorage.IndexRuleKind kind=isConstraintIndex ? SchemaStorage.IndexRuleKind.CONSTRAINT : SchemaStorage.IndexRuleKind.INDEX;
+          IndexRule rule=schemaStorage.indexRule(element.getLabelId(),element.getPropertyKeyId(),kind);
+          recordState.dropSchemaRule(rule);
+        }
+ catch (        SchemaRuleNotFoundException e) {
+          throw new ThisShouldNotHappenError("Tobias Lindaaker","Index to be removed should exist, since its existence should have " + "been validated earlier and the schema should have been locked.",e);
+        }
+      }
+      @Override public void visitAddedConstraint(      UniquenessConstraint element){
+        clearState.set(true);
+        long constraintId=schemaStorage.newRuleId();
+        IndexRule indexRule;
+        try {
+          indexRule=schemaStorage.indexRule(element.label(),element.propertyKeyId(),SchemaStorage.IndexRuleKind.CONSTRAINT);
+        }
+ catch (        SchemaRuleNotFoundException e) {
+          throw new ThisShouldNotHappenError("Jacob Hansson","Index is always created for the constraint before this point.",e);
+        }
+        recordState.createSchemaRule(UniquenessConstraintRule.uniquenessConstraintRule(constraintId,element.label(),element.propertyKeyId(),indexRule.getId()));
+        recordState.setConstraintIndexOwner(indexRule,constraintId);
+      }
+      @Override public void visitRemovedConstraint(      UniquenessConstraint element){
+        try {
+          clearState.set(true);
+          UniquenessConstraintRule rule=schemaStorage.uniquenessConstraint(element.label(),element.propertyKeyId());
+          recordState.dropSchemaRule(rule);
+        }
+ catch (        SchemaRuleNotFoundException e) {
+          throw new ThisShouldNotHappenError("Tobias Lindaaker","Constraint to be removed should exist, since its existence should " + "have been validated earlier and the schema should have been locked.");
+        }
+        visitRemovedIndex(new IndexDescriptor(element.label(),element.propertyKeyId()),true);
+      }
+    }
+);
+    if (clearState.get()) {
+      schemaState.clear();
+    }
+  }
+}

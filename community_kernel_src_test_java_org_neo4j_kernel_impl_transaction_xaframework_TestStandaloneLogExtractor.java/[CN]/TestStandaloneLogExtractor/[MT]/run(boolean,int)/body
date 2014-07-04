@@ -14,28 +14,6 @@
     db.shutdown();
   }
   GraphDatabaseAPI newDb=(GraphDatabaseAPI)new TestGraphDatabaseFactory().setFileSystem(snapshot).newImpermanentDatabase(storeDir);
-  XaDataSource ds=newDb.getDependencyResolver().resolveDependency(XaDataSourceManager.class).getNeoStoreDataSource();
-  LogEntryWriterv1 logEntryWriter=new LogEntryWriterv1();
-  logEntryWriter.setCommandWriter(new PhysicalLogNeoXaCommandWriter());
-  LogExtractor extractor=LogExtractor.from(snapshot,XaCommandReaderFactory.DEFAULT,new XaCommandWriterFactory(){
-    @Override public XaCommandWriter newInstance(){
-      return new PhysicalLogNeoXaCommandWriter();
-    }
-  }
-,new Monitors().newMonitor(ByteCounterMonitor.class),logEntryWriter,new File(storeDir));
-  long expectedTxId=2;
-  while (true) {
-    InMemoryLogBuffer buffer=new InMemoryLogBuffer();
-    long txId=extractor.extractNext(buffer);
-    assertEquals(expectedTxId++,txId);
-    if (expectedTxId == 11) {
-      expectedTxId=-1;
-    }
-    if (txId == -1) {
-      break;
-    }
-    ds.applyCommittedTransaction(txId,buffer);
-  }
   DbRepresentation newRep=DbRepresentation.of(newDb);
   newDb.shutdown();
   assertEquals(rep,newRep);
