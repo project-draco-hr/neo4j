@@ -1,0 +1,15 @@
+{
+  final NeoTransactionStoreApplier applier=new NeoTransactionStoreApplier(neoStore,indexingService,cacheAccess,lockService,transactionId,false);
+  doThrow(new IndexNotFoundKernelException("")).when(indexingService).activateIndex(anyLong());
+  final DynamicRecord record=DynamicRecord.dynamicRecord(21,true);
+  final Collection<DynamicRecord> recordsAfter=Arrays.asList(record);
+  final IndexRule rule=IndexRule.constraintIndexRule(0,1,2,new SchemaIndexProvider.Descriptor("K","X.Y"),42l);
+  final Command.SchemaRuleCommand command=new Command.SchemaRuleCommand().init(Collections.<DynamicRecord>emptyList(),recordsAfter,rule);
+  try {
+    applier.visitSchemaRuleCommand(command);
+    fail("should have thrown");
+  }
+ catch (  RuntimeException e) {
+    assertTrue(e.getCause() instanceof IndexNotFoundKernelException);
+  }
+}
