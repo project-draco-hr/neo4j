@@ -1,33 +1,6 @@
 {
-  File legacyTransactionLog=findLastTransactionLog();
-  final StoreChannel channel=fs.open(legacyTransactionLog,"r");
-  final ByteBuffer buffer=ByteBuffer.allocate(100000);
-  long[] header=LegacyLogIoUtil.readLogHeader(buffer,channel,false);
-  if (header != null) {
-    ByteBuffer headerBuf=ByteBuffer.allocate(16);
-    LogIoUtils.writeLogHeader(headerBuf,header[0],header[1]);
-    logBuffer.put(headerBuf.array());
-  }
-  Resource resource=new Resource(){
-    @Override public void close(){
-      try {
-        channel.close();
-      }
- catch (      IOException e) {
-        throw new RuntimeException("Failed to close legacy log channel",e);
-      }
-    }
-  }
-;
-  return newResourceIterator(resource,new PrefetchingIterator<LogEntry>(){
-    @Override protected LogEntry fetchNextOrNull(){
-      try {
-        return LegacyLogIoUtil.readEntry(buffer,channel);
-      }
- catch (      IOException e) {
-        throw new RuntimeException("Failed to read legacy log entry",e);
-      }
-    }
-  }
-);
+  File legacyDirectory=storageFileName.getParentFile();
+  String logFilenamePattern=NIONEO_LOGICAL_LOG_PATTERN;
+  final LegacyLogCommandReader commandReader=new LegacyLogicalLogCommandReader();
+  return iterateLogEntries(logBuffer,legacyDirectory,logFilenamePattern,commandReader);
 }

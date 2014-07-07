@@ -1,0 +1,24 @@
+{
+  File unzippedStore=Unzip.unzip(LegacyStore.class,"legacy-store-with-lucene-logs.zip");
+  File legacyStoreDir=new File(unzippedStore,"graph.db");
+  LegacyStore legacyStore=new LegacyStore(fs,new File(legacyStoreDir,NeoStore.DEFAULT_NAME));
+  NeoStore neoStore=storeFactory.createNeoStore(storeFileName);
+  new StoreMigrator(monitor).migrate(legacyStore,neoStore);
+  legacyStore.close();
+  XaCommandFactory commandFactory=new LuceneCommandFactory(null);
+  long txId=4;
+  long endTxId=4;
+  ByteBuffer buf=ByteBuffer.allocate(100000);
+  File logFile=new File(storeDir,"index/lucene.log.v1");
+  StoreChannel channel=fs.open(logFile,"r");
+  long[] header=LogIoUtils.readLogHeader(buf,channel,true);
+  assertThat(header[0],is(1L));
+  assertThat(header[1],is(3L));
+  LogEntry startEntry=LogIoUtils.readEntry(buf,channel,commandFactory);
+  LogEntry firstCommandEntry=LogIoUtils.readEntry(buf,channel,commandFactory);
+  LogEntry secondCommandEntry=LogIoUtils.readEntry(buf,channel,commandFactory);
+  LogEntry prepareEntry=LogIoUtils.readEntry(buf,channel,commandFactory);
+  LogEntry twoPcEntry=LogIoUtils.readEntry(buf,channel,commandFactory);
+  LogEntry doneEntry=LogIoUtils.readEntry(buf,channel,commandFactory);
+  assertThat(toStrings(startEntry,firstCommandEntry,secondCommandEntry,prepareEntry,twoPcEntry,doneEntry),array(containsString("Start[2,xid=GlobalId[NEOKERNL|3656877539012568704|0|-1], " + "BranchId[ 49 54 50 51 55 52 ],master=-1,me=-1,time=2014-07-02"),containsString("Command[2, Add[Index[node_auto_index,Node],4,name,c]]"),containsString("Command[2, Add[Index[node_auto_index,Node],4,age,1]]"),containsString("Prepare[2, 2014-07-02"),containsString("2PC[2, txId=4, 2014-07-02"),containsString("Done[2]")));
+}

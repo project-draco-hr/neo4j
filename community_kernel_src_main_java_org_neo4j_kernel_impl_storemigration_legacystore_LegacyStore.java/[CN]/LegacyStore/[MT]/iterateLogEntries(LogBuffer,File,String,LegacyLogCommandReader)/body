@@ -1,0 +1,23 @@
+{
+  File lastLegacyLog=findMostRecentLog(legacyDirectory,logFilenamePattern);
+  final StoreChannel channel=fs.open(lastLegacyLog,"r");
+  final ByteBuffer buffer=ByteBuffer.allocate(100000);
+  long[] header=LegacyLogIoUtil.readLogHeader(buffer,channel,false);
+  if (header != null) {
+    ByteBuffer headerBuf=ByteBuffer.allocate(16);
+    LogIoUtils.writeLogHeader(headerBuf,header[0],header[1]);
+    logBuffer.put(headerBuf.array());
+  }
+  Resource resource=channelAsResource(channel);
+  return newResourceIterator(resource,new PrefetchingIterator<LogEntry>(){
+    @Override protected LogEntry fetchNextOrNull(){
+      try {
+        return LegacyLogIoUtil.readEntry(buffer,channel,commandReader);
+      }
+ catch (      IOException e) {
+        throw new RuntimeException("Failed to read legacy log entry",e);
+      }
+    }
+  }
+);
+}
