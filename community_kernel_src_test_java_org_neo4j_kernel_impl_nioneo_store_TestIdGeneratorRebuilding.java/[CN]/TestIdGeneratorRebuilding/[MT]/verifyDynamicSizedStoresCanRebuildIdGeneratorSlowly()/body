@@ -1,0 +1,35 @@
+{
+  Config config=new Config(MapUtil.stringMap(GraphDatabaseSettings.rebuild_idgenerators_fast.name(),"false"));
+  config=StoreFactory.configForStoreDir(config,path());
+  File storeFile=file("strings");
+  StoreFactory storeFactory=new StoreFactory(config,new DefaultIdGeneratorFactory(),pageCacheRule.getPageCache(fs,config),fs,StringLogger.DEV_NULL,new Monitors());
+  storeFactory.createDynamicStringStore(storeFile,30,IdType.STRING_BLOCK);
+  DynamicStringStore store=storeFactory.newDynamicStringStore(storeFile,IdType.STRING_BLOCK);
+  DynamicRecord record=new DynamicRecord(1);
+  record.setInUse(true,PropertyType.STRING.intValue());
+  for (int i=1; i <= 50; i++) {
+    assertThat(store.nextId(),is((long)i));
+    record.setId(i);
+    StringBuilder sb=new StringBuilder(i);
+    for (int j=0; j < i; j++) {
+      sb.append('a');
+    }
+    record.setData(sb.toString().getBytes("UTF-16"));
+    store.updateRecord(record);
+  }
+  store.updateHighId();
+  Long[] idsToFree={2L,3L,5L,7L};
+  record.setInUse(false);
+  for (  long toDelete : idsToFree) {
+    record.setId(toDelete);
+    store.updateRecord(record);
+  }
+  store.rebuildIdGenerator();
+  List<Long> nextIds=new ArrayList<>();
+  nextIds.add(store.nextId());
+  nextIds.add(store.nextId());
+  nextIds.add(store.nextId());
+  nextIds.add(store.nextId());
+  nextIds.add(store.nextId());
+  assertThat(nextIds,contains(2L,3L,5L,7L,51L));
+}

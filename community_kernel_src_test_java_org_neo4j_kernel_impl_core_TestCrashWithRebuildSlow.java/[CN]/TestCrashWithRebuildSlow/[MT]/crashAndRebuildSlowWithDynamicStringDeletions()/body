@@ -1,11 +1,10 @@
 {
   String storeDir=new File("dir").getAbsolutePath();
   final GraphDatabaseAPI db=(GraphDatabaseAPI)new TestGraphDatabaseFactory().setFileSystem(fs.get()).newImpermanentDatabase(storeDir);
-  produceNonCleanDefraggedStringStore(db);
+  List<Long> deletedNodeIds=produceNonCleanDefraggedStringStore(db);
   EphemeralFileSystemAbstraction snapshot=fs.snapshot(shutdownDb(db));
   assertNumberOfFreeIdsEquals(storeDir,snapshot,0);
   GraphDatabaseAPI newDb=(GraphDatabaseAPI)new TestGraphDatabaseFactory().setFileSystem(snapshot).newImpermanentDatabaseBuilder(storeDir).setConfig(GraphDatabaseSettings.rebuild_idgenerators_fast,Settings.FALSE).newGraphDatabase();
-  assertNumberOfFreeIdsEquals(storeDir,snapshot,4);
   try (Transaction tx=newDb.beginTx()){
     int nameCount=0;
     int relCount=0;
@@ -16,6 +15,12 @@
     }
     assertEquals(16,nameCount);
     assertEquals(12,relCount);
+    List<Long> newIds=new ArrayList<>();
+    newIds.add(newDb.createNode().getId());
+    newIds.add(newDb.createNode().getId());
+    newIds.add(newDb.createNode().getId());
+    newIds.add(newDb.createNode().getId());
+    assertThat(newIds,is(deletedNodeIds));
     tx.success();
   }
   finally {
