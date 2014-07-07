@@ -1,25 +1,25 @@
 {
   instantiateNeoStore(10);
   final long nodeId=neoStore.getNodeStore().nextId();
-  NeoStoreTransaction writeTransaction=newWriteTransaction().first();
+  TransactionRecordState writeTransaction=newWriteTransaction().first();
   writeTransaction.nodeCreate(nodeId);
-  int typeA=0;
+  int typeA=(int)neoStore.getRelationshipTypeTokenStore().nextId();
   writeTransaction.createRelationshipTypeToken(typeA,"A");
   createRelationships(writeTransaction,nodeId,typeA,INCOMING,20);
-  prepareAndCommit(writeTransaction);
+  commitProcess().commit(transactionRepresentationOf(writeTransaction));
+  writeTransaction=newWriteTransaction().first();
   int typeB=1;
   writeTransaction.createRelationshipTypeToken(typeB,"B");
-  CommandCapturingVisitor commandCapture=new CommandCapturingVisitor();
-  writeTransaction=newWriteTransaction(mockIndexing,commandCapture).first();
   long[] relationshipsOfTypeB=createRelationships(writeTransaction,nodeId,typeB,OUTGOING,5);
   for (  long relationshipToDelete : relationshipsOfTypeB) {
     deleteRelationship(writeTransaction,relationshipToDelete);
   }
-  prepareAndCommit(writeTransaction);
+  PhysicalTransactionRepresentation tx=transactionRepresentationOf(writeTransaction);
+  commitProcess().commit(tx);
   final AtomicBoolean foundRelationshipGroupInUse=new AtomicBoolean();
-  commandCapture.visitCapturedCommands(new Visitor<XaCommand,RuntimeException>(){
-    @Override public boolean visit(    XaCommand element) throws RuntimeException {
-      if (element instanceof Command.RelationshipGroupCommand && ((Command.RelationshipGroupCommand)element).getRecord().inUse()) {
+  tx.accept(new NeoCommandHandler.HandlerVisitor(new NeoCommandHandler.Adapter(){
+    @Override public boolean visitRelationshipGroupCommand(    RelationshipGroupCommand command) throws IOException {
+      if (command.getRecord().inUse()) {
         if (!foundRelationshipGroupInUse.get()) {
           foundRelationshipGroupInUse.set(true);
         }
@@ -30,6 +30,6 @@
       return true;
     }
   }
-);
+));
   assertTrue("Did not create relationship group command",foundRelationshipGroupInUse.get());
 }

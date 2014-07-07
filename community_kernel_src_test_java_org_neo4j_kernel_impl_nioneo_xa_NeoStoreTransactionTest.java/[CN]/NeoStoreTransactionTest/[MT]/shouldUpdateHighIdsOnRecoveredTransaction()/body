@@ -1,5 +1,5 @@
 {
-  NeoStoreTransaction tx=newWriteTransaction(mockIndexing).first();
+  TransactionRecordState tx=newWriteTransaction().first();
   int nodeId=5, relId=10, relationshipType=3, propertyKeyId=4, ruleId=8;
   tx.nodeCreate(nodeId);
   tx.createRelationshipTypeToken(relationshipType,"type");
@@ -11,12 +11,15 @@
     tx.addLabelToNode(10000 + i,nodeId);
   }
   tx.createSchemaRule(indexRule(ruleId,100,propertyKeyId,PROVIDER_DESCRIPTOR));
-  prepareAndCommitRecovered(tx);
+  PhysicalTransactionRepresentation toCommit=transactionRepresentationOf(tx);
+  RecoveryCreatingCopyingNeoCommandHandler recoverer=new RecoveryCreatingCopyingNeoCommandHandler();
+  toCommit.accept(recoverer);
+  commitRecovered(recoverer.getAsRecovered(),3);
   assertEquals("NodeStore",nodeId + 1,neoStore.getNodeStore().getHighId());
   assertEquals("DynamicNodeLabelStore",2,neoStore.getNodeStore().getDynamicLabelStore().getHighId());
   assertEquals("RelationshipStore",relId + 1,neoStore.getRelationshipStore().getHighId());
-  assertEquals("RelationshipTypeStore",relationshipType + 1,neoStore.getRelationshipTypeStore().getHighId());
-  assertEquals("RelationshipType NameStore",2,neoStore.getRelationshipTypeStore().getNameStore().getHighId());
+  assertEquals("RelationshipTypeStore",relationshipType + 1,neoStore.getRelationshipTypeTokenStore().getHighId());
+  assertEquals("RelationshipType NameStore",2,neoStore.getRelationshipTypeTokenStore().getNameStore().getHighId());
   assertEquals("PropertyStore",2,neoStore.getPropertyStore().getHighId());
   assertEquals("PropertyStore DynamicStringStore",2,neoStore.getPropertyStore().getStringStore().getHighId());
   assertEquals("PropertyStore DynamicArrayStore",2,neoStore.getPropertyStore().getArrayStore().getHighId());

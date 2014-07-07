@@ -1,20 +1,27 @@
 {
-  BackupClient client=new BackupClient(sourceHostNameOrIp,sourcePort,targetDb.getDependencyResolver().resolveDependency(Logging.class),targetDb.getDependencyResolver().resolveDependency(Monitors.class),targetDb.storeId());
+  DependencyResolver resolver=targetDb.getDependencyResolver();
+  BackupClient client=new BackupClient(sourceHostNameOrIp,sourcePort,resolver.resolveDependency(Logging.class),resolver.resolveDependency(Monitors.class),targetDb.storeId());
   client.start();
-  Map<String,Long> lastCommittedTxs;
   boolean consistent=false;
+  ProgressTxHandler handler=new ProgressTxHandler();
   try {
-    lastCommittedTxs=unpackResponse(client.incrementalBackup(context),targetDb.getDependencyResolver().resolveDependency(XaDataSourceManager.class),new ProgressTxHandler());
-    trimLogicalLogCount(targetDb);
+    Response<Void> response=client.incrementalBackup(context);
+    TransactionCommittingResponseUnpacker unpacker=new TransactionCommittingResponseUnpacker(resolver);
+    unpacker.start();
+    unpacker.unpackResponse(response,handler);
     consistent=true;
   }
  catch (  RuntimeException e) {
-    if (e.getCause() != null && e.getCause() instanceof NoSuchLogVersionException) {
+    if (e.getCause() != null && e.getCause() instanceof MissingLogDataException) {
       throw new IncrementalBackupNotPossibleException("It's been too long since this backup was last updated, and it has " + "fallen too far behind the database transaction stream for incremental backup to be possible. " + "You need to perform a full backup at this point. You can modify this time interval by setting "+ "the '" + GraphDatabaseSettings.keep_logical_logs.name() + "' configuration on the database to a "+ "higher value.",e.getCause());
     }
- else {
-      throw new RuntimeException("Failed to perform incremental backup.",e);
-    }
+    throw new RuntimeException("Failed to perform incremental backup.",e);
+  }
+catch (  IOException e) {
+    throw new RuntimeException("Failed to perform incremental backup.",e);
+  }
+catch (  Throwable throwable) {
+    throw new RuntimeException(throwable);
   }
  finally {
     try {
@@ -24,5 +31,5 @@
       throw new RuntimeException(throwable);
     }
   }
-  return new BackupOutcome(lastCommittedTxs,consistent);
+  return new BackupOutcome(handler.getLastSeenTransactionId(),consistent);
 }

@@ -1,9 +1,16 @@
 {
   ArrayList<CacheProvider> cacheList=new ArrayList<>();
   TestGraphDatabaseFactory gdbf=new TestGraphDatabaseFactory();
-  cacheList.add(new SoftCacheProvider());
+  CacheProvider cacheProvider=new SoftCacheProvider();
+  CapturingCacheProvider capturingProvider=new CapturingCacheProvider(cacheProvider);
+  cacheList.add(capturingProvider);
   gdbf.setCacheProviders(cacheList);
   GraphDatabaseAPI db=(GraphDatabaseAPI)gdbf.newImpermanentDatabase();
-  assertEquals(SoftCacheProvider.NAME,db.getDependencyResolver().resolveDependency(NodeManager.class).getCacheType().getName());
-  db.shutdown();
+  try {
+    assertTrue(capturingProvider.nodeCacheCalled);
+    assertTrue(capturingProvider.relCacheCalled);
+  }
+  finally {
+    db.shutdown();
+  }
 }

@@ -1,10 +1,9 @@
 {
   GraphDatabaseAPI database=(GraphDatabaseAPI)new GraphDatabaseFactory().newEmbeddedDatabaseBuilder(directory).setConfig(configuration(false)).newGraphDatabase();
-  try (org.neo4j.graphdb.Transaction tx=database.beginTx()){
-    DependencyResolver resolver=database.getDependencyResolver();
-    XaDataSourceManager xaDataSourceManager=resolver.resolveDependency(XaDataSourceManager.class);
-    NeoStoreXaDataSource dataSource=xaDataSourceManager.getNeoStoreDataSource();
-    dataSource.applyPreparedTransaction(write(transaction,dataSource.getLastCommittedTxId()));
+  try {
+    TransactionRepresentationCommitProcess commitProcess=new TransactionRepresentationCommitProcess(database.getDependencyResolver().resolveDependency(LogicalTransactionStore.class),database.getDependencyResolver().resolveDependency(KernelHealth.class),database.getDependencyResolver().resolveDependency(NeoStoreProvider.class).evaluate(),database.getDependencyResolver().resolveDependency(TransactionRepresentationStoreApplier.class),true);
+    TransactionIdStore transactionIdStore=database.getDependencyResolver().resolveDependency(TransactionIdStore.class);
+    commitProcess.commit(transaction.representation(idGenerator(),masterId(),myId(),transactionIdStore.getLastCommittingTransactionId()));
   }
   finally {
     database.shutdown();

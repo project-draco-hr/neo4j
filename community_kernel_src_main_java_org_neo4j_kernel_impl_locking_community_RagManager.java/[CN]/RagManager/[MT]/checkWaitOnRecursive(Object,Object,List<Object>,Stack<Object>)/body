@@ -1,0 +1,37 @@
+{
+  if (lockingTx.equals(waitingTx)) {
+    StringBuffer circle=null;
+    Object resource;
+    do {
+      lockingTx=graphStack.pop();
+      resource=graphStack.pop();
+      if (circle == null) {
+        circle=new StringBuffer();
+        circle.append(lockingTx).append(" <-[:HELD_BY]- ").append(resource);
+      }
+ else {
+        circle.append(" <-[:WAITING_FOR]- ").append(lockingTx).append(" <-[:HELD_BY]- ").append(resource);
+      }
+    }
+ while (!graphStack.isEmpty());
+    deadlockCount.incrementAndGet();
+    throw new DeadlockDetectedException(waitingTx + " can't wait on resource " + resource+ " since => "+ circle);
+  }
+  checkedTransactions.add(lockingTx);
+  Object resource=waitingTxMap.get(lockingTx);
+  if (resource != null) {
+    graphStack.push(resource);
+    List<Object> lockingTxList=resourceMap.get(resource);
+    if (lockingTxList != null) {
+      for (      Object aLockingTxList : lockingTxList) {
+        lockingTx=aLockingTxList;
+        if (!checkedTransactions.contains(lockingTx)) {
+          graphStack.push(lockingTx);
+          checkWaitOnRecursive(lockingTx,waitingTx,checkedTransactions,graphStack);
+          graphStack.pop();
+        }
+      }
+    }
+    graphStack.pop();
+  }
+}

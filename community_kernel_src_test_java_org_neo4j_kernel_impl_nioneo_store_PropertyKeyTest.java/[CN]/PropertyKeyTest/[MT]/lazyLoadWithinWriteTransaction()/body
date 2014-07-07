@@ -1,0 +1,17 @@
+{
+  File dir=new File("dir");
+  BatchInserter inserter=BatchInserters.inserter(dir.getAbsoluteFile().getPath(),fs.get());
+  int count=3000;
+  long nodeId=inserter.createNode(mapWithManyProperties(count));
+  inserter.shutdown();
+  GraphDatabaseService db=new TestGraphDatabaseFactory().setFileSystem(fs.get()).newImpermanentDatabase(dir.getAbsoluteFile().getPath());
+  try (Transaction tx=db.beginTx()){
+    db.createNode();
+    Node node=db.getNodeById(nodeId);
+    assertEquals(count,IteratorUtil.count(node.getPropertyKeys()));
+    tx.success();
+  }
+  finally {
+    db.shutdown();
+  }
+}

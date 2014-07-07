@@ -1,16 +1,15 @@
 {
   Map<String,String> config=defaultBackupPortHostParams();
   config.put(GraphDatabaseSettings.keep_logical_logs.name(),"false");
+  config.put(GraphDatabaseSettings.logical_log_rotation_threshold.name(),"20");
   GraphDatabaseAPI db=createDb(storeDir,config);
   BackupService backupService=new BackupService(fileSystem);
   createAndIndexNode(db,1);
   backupService.doFullBackup(BACKUP_HOST,backupPort,backupDir.getAbsolutePath(),false,new Config(defaultBackupPortHostParams()));
   createAndIndexNode(db,2);
-  rotateLog(db);
   createAndIndexNode(db,3);
-  rotateLog(db);
-  createAndIndexNode(db,3);
-  rotateLog(db);
+  createAndIndexNode(db,4);
+  createAndIndexNode(db,5);
   try {
     backupService.doIncrementalBackup(BACKUP_HOST,backupPort,backupDir.getAbsolutePath(),false);
     fail("Should have thrown exception.");
@@ -18,5 +17,4 @@
  catch (  IncrementalBackupNotPossibleException e) {
     assertThat(e.getMessage(),equalTo("It's been too long since this backup was last updated, and it has " + "fallen too far behind the database transaction stream for incremental backup to be possible. " + "You need to perform a full backup at this point. You can modify this time interval by setting "+ "the '" + GraphDatabaseSettings.keep_logical_logs.name() + "' configuration on the database to a "+ "higher value."));
   }
-  db.shutdown();
 }

@@ -1,17 +1,5 @@
 {
-  List<String> nonRecoveredRecording=new ArrayList<>();
-  NeoStoreTransaction nonRecoveredTx=newWriteTransaction();
-  injectAllPossibleCommands(nonRecoveredTx);
-  List<String> recoveredRecording=new ArrayList<>();
-  NeoStoreTransaction recoveredTx=newWriteTransaction();
-  recoveredTx.setRecovered();
-  injectAllPossibleCommands(recoveredTx);
-  currentRecording.set(nonRecoveredRecording);
-  nonRecoveredTx.doPrepare();
-  nonRecoveredTx.doCommit();
-  currentRecording.set(recoveredRecording);
-  recoveredTx.doPrepare();
-  recoveredTx.doCommit();
-  assertThat(nonRecoveredRecording,equalTo(recoveredRecording));
-  assertThat(new HashSet<>(recoveredRecording).size(),is(9));
+  TransactionRecordState tx=injectAllPossibleCommands();
+  PhysicalTransactionRepresentation commands=transactionRepresentationOf(tx);
+  commands.accept(new NeoCommandHandler.HandlerVisitor(new OrderVerifyingCommandHandler()));
 }

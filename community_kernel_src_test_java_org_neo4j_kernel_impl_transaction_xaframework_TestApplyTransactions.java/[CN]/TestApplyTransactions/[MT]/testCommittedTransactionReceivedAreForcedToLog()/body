@@ -1,25 +1,2 @@
 {
-  File baseStoreDir=new File("base");
-  File originStoreDir=new File(baseStoreDir,"origin");
-  File destStoreDir=new File(baseStoreDir,"destination");
-  GraphDatabaseAPI origin=(GraphDatabaseAPI)new TestGraphDatabaseFactory().setFileSystem(fs.get()).newImpermanentDatabase(originStoreDir.getPath());
-  Transaction tx=origin.beginTx();
-  origin.createNode();
-  tx.success();
-  tx.finish();
-  XaDataSource originNeoDataSource=xaDs(origin);
-  int latestTxId=(int)originNeoDataSource.getLastCommittedTxId();
-  InMemoryLogBuffer theTx=new InMemoryLogBuffer();
-  originNeoDataSource.getLogExtractor(latestTxId,latestTxId).extractNext(theTx);
-  final GraphDatabaseAPI dest=(GraphDatabaseAPI)new TestGraphDatabaseFactory().setFileSystem(fs.get()).newImpermanentDatabase(destStoreDir.getPath());
-  XaDataSource destNeoDataSource=xaDs(dest);
-  destNeoDataSource.applyCommittedTransaction(latestTxId,theTx);
-  origin.shutdown();
-  EphemeralFileSystemAbstraction snapshot=fs.snapshot(shutdownDb(dest));
-  GraphDatabaseAPI newDest=(GraphDatabaseAPI)new TestGraphDatabaseFactory().setFileSystem(snapshot).newImpermanentDatabase(destStoreDir.getPath());
-  destNeoDataSource=newDest.getDependencyResolver().resolveDependency(XaDataSourceManager.class).getXaDataSource(NeoStoreXaDataSource.DEFAULT_DATA_SOURCE_NAME);
-  latestTxId=(int)destNeoDataSource.getLastCommittedTxId();
-  theTx=new InMemoryLogBuffer();
-  long extractedTxId=destNeoDataSource.getLogExtractor(latestTxId,latestTxId).extractNext(theTx);
-  assertEquals(latestTxId,extractedTxId);
 }

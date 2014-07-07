@@ -1,18 +1,16 @@
 {
-  Map<String,String> params=tuningConfiguration.getParams();
-  params.put(GraphDatabaseSettings.store_dir.name(),storeDir);
-  tuningConfiguration.applyChanges(params);
   DefaultFileSystemAbstraction fileSystem=new DefaultFileSystemAbstraction();
   Monitors monitors=new Monitors();
+  tuningConfiguration=configForStoreDir(tuningConfiguration,new File(storeDir));
   Neo4jJobScheduler jobScheduler=new Neo4jJobScheduler();
   LifecycledPageCache pageCache=new LifecycledPageCache(fileSystem,jobScheduler,tuningConfiguration);
-  StoreFactory factory=new StoreFactory(tuningConfiguration,new DefaultIdGeneratorFactory(),pageCache,fileSystem,logger,new DefaultTxHook(),monitors);
+  StoreFactory factory=new StoreFactory(tuningConfiguration,new DefaultIdGeneratorFactory(),pageCache,fileSystem,logger,monitors);
   jobScheduler.init();
   pageCache.start();
   ConsistencySummaryStatistics summary;
   File reportFile=chooseReportPath(tuningConfiguration);
   StringLogger report=StringLogger.lazyLogger(reportFile);
-  NeoStore neoStore=factory.newNeoStore(new File(storeDir,NeoStore.DEFAULT_NAME));
+  NeoStore neoStore=factory.newNeoStore(false);
   try {
     neoStore.makeStoreOk();
     StoreAccess store=new StoreAccess(neoStore);

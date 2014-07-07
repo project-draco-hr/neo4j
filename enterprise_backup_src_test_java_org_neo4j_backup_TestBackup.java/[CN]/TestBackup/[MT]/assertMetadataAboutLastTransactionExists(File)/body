@@ -1,0 +1,20 @@
+{
+  GraphDatabaseAPI db=(GraphDatabaseAPI)new GraphDatabaseFactory().newEmbeddedDatabase(storeDir.getPath());
+  long lastCommittingTransactionId=-1;
+  try {
+    DependencyResolver resolver=db.getDependencyResolver();
+    LogicalTransactionStore transactionStore=resolver.resolveDependency(LogicalTransactionStore.class);
+    TransactionIdStore transactionIdStore=resolver.resolveDependency(TransactionIdStore.class);
+    lastCommittingTransactionId=transactionIdStore.getLastCommittingTransactionId();
+    assertNotNull(transactionStore.getMetadataFor(lastCommittingTransactionId));
+  }
+ catch (  NoSuchTransactionException e) {
+    fail("Transaction metadata for " + lastCommittingTransactionId + " not found: "+ e);
+  }
+catch (  IOException e) {
+    throw new RuntimeException(e);
+  }
+ finally {
+    db.shutdown();
+  }
+}

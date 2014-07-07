@@ -1,6 +1,6 @@
 {
   ArrayMap<Integer,Pair<DefinedProperty,Long>> props=new ArrayMap<>();
-  xaCon.getTransaction().relLoadProperties(rel,false,newPropertyReceiver(props));
+  propertyLoader.relLoadProperties(rel,newPropertyReceiver(props));
   int count=0;
   for (  int keyId : props.keySet()) {
     long id=props.get(keyId).other();
@@ -18,7 +18,7 @@
  else     if (data.propertyKeyId() == prop3.propertyKeyId()) {
       assertEquals("prop3",MyPropertyKeyToken.getIndexFor(keyId).name());
       assertEquals(false,data.value());
-      xaCon.getTransaction().relRemoveProperty(rel,prop3.propertyKeyId());
+      transaction.relRemoveProperty(rel,prop3.propertyKeyId());
     }
  else {
       throw new IOException();
@@ -27,18 +27,16 @@
   }
   assertEquals(3,count);
   CountingPropertyReceiver propertyCounter=new CountingPropertyReceiver();
-  xaCon.getTransaction().relLoadProperties(rel,false,propertyCounter);
+  propertyLoader.relLoadProperties(rel,propertyCounter);
   assertEquals(3,propertyCounter.count);
-  RelationshipRecord relData=xaCon.getTransaction().relLoadLight(rel);
-  assertEquals(firstNode,relData.getFirstNode());
-  assertEquals(secondNode,relData.getSecondNode());
-  assertEquals(relType,relData.getType());
-  xaCon.getTransaction().relDelete(rel);
-  MutableRelationshipLoadingPosition firstPos=getPosition(xaCon,firstNode);
-  Iterator<RelationshipRecord> first=getMore(xaCon,firstNode,firstPos).iterator();
+  assertRelationshipData(rel,firstNode,secondNode,relType);
+  ;
+  transaction.relDelete(rel);
+  MutableRelationshipLoadingPosition firstPos=getPosition(firstNode);
+  Iterator<RelationshipRecord> first=getMore(firstNode,firstPos).iterator();
   first.next();
-  MutableRelationshipLoadingPosition secondPos=getPosition(xaCon,secondNode);
-  Iterator<RelationshipRecord> second=getMore(xaCon,secondNode,secondPos).iterator();
+  MutableRelationshipLoadingPosition secondPos=getPosition(secondNode);
+  Iterator<RelationshipRecord> second=getMore(secondNode,secondPos).iterator();
   second.next();
   assertTrue(first.hasNext());
   assertTrue(second.hasNext());

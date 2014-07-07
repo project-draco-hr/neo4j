@@ -1,0 +1,48 @@
+{
+  List<RelationshipRecord> out=new ArrayList<>();
+  List<RelationshipRecord> in=new ArrayList<>();
+  List<RelationshipRecord> loop=null;
+  Map<DirectionWrapper,Iterable<RelationshipRecord>> result=new EnumMap<>(DirectionWrapper.class);
+  result.put(DirectionWrapper.OUTGOING,out);
+  result.put(DirectionWrapper.INCOMING,in);
+  RelationshipLoadingPosition loadPosition=originalPosition.clone();
+  long position=loadPosition.position(direction,types);
+  for (int i=0; i < relationshipGrabSize && position != Record.NO_NEXT_RELATIONSHIP.intValue(); i++) {
+    RelationshipRecord relRecord=relationshipStore.getChainRecord(position);
+    if (relRecord == null) {
+      return Pair.of(result,loadPosition);
+    }
+    long firstNode=relRecord.getFirstNode();
+    long secondNode=relRecord.getSecondNode();
+    if (relRecord.inUse()) {
+      if (firstNode == secondNode) {
+        if (loop == null) {
+          loop=new ArrayList<>();
+          result.put(DirectionWrapper.BOTH,loop);
+        }
+        loop.add(relRecord);
+      }
+ else       if (firstNode == nodeId) {
+        out.add(relRecord);
+      }
+ else       if (secondNode == nodeId) {
+        in.add(relRecord);
+      }
+    }
+ else {
+      i--;
+    }
+    long next=0;
+    if (firstNode == nodeId) {
+      next=relRecord.getFirstNextRel();
+    }
+ else     if (secondNode == nodeId) {
+      next=relRecord.getSecondNextRel();
+    }
+ else {
+      throw new InvalidRecordException("Node[" + nodeId + "] is neither firstNode["+ firstNode+ "] nor secondNode["+ secondNode+ "] for Relationship["+ relRecord.getId()+ "]");
+    }
+    position=loadPosition.nextPosition(next,direction,types);
+  }
+  return Pair.of(result,loadPosition);
+}

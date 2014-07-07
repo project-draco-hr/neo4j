@@ -1,0 +1,28 @@
+{
+  Pair<Map<String,String>,Boolean> result=findIndexConfig(entityType.entityClass(),indexName,suppliedConfig,config.getParams());
+  boolean createdNow=false;
+  if (result.other()) {
+synchronized (this) {
+      Map<String,String> existing=indexStore.get(entityType.entityClass(),indexName);
+      if (existing != null) {
+        assertConfigMatches(indexProviders.lookup(existing.get(PROVIDER)),indexName,existing,result.first());
+        return Pair.of(result.first(),false);
+      }
+      ExecutorService executorService=Executors.newSingleThreadExecutor();
+      try {
+        executorService.submit(new IndexCreatorJob(entityType,indexName,result.first())).get();
+        createdNow=true;
+      }
+ catch (      ExecutionException ex) {
+        throw new TransactionFailureException("Index creation failed for " + indexName + ", "+ result.first(),ex.getCause());
+      }
+catch (      InterruptedException ex) {
+        Thread.interrupted();
+      }
+ finally {
+        executorService.shutdownNow();
+      }
+    }
+  }
+  return Pair.of(result.first(),createdNow);
+}

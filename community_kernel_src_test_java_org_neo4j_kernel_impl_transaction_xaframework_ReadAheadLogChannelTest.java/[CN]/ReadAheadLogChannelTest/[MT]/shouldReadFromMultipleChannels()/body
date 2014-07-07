@@ -1,0 +1,35 @@
+{
+  writeSomeData(file(0),new Visitor<ByteBuffer,IOException>(){
+    @Override public boolean visit(    ByteBuffer element) throws IOException {
+      for (int i=0; i < 10; i++) {
+        element.putLong(i);
+      }
+      return true;
+    }
+  }
+);
+  writeSomeData(file(1),new Visitor<ByteBuffer,IOException>(){
+    @Override public boolean visit(    ByteBuffer element) throws IOException {
+      for (int i=10; i < 20; i++) {
+        element.putLong(i);
+      }
+      return true;
+    }
+  }
+);
+  try (ReadAheadLogChannel channel=new ReadAheadLogChannel(new PhysicalLogVersionedStoreChannel(fs.open(file(0),"r")),new LogVersionBridge(){
+    private boolean returned=false;
+    @Override public VersionedStoreChannel next(    VersionedStoreChannel channel) throws IOException {
+      if (!returned) {
+        returned=true;
+        return new PhysicalLogVersionedStoreChannel(fs.open(file(1),"r"));
+      }
+      return channel;
+    }
+  }
+,10)){
+    for (long i=0; i < 20; i++) {
+      assertEquals(i,channel.getLong());
+    }
+  }
+ }
