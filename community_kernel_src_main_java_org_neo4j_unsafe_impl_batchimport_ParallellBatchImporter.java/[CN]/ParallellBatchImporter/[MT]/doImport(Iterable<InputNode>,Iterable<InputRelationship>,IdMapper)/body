@@ -1,12 +1,11 @@
 {
   long startTime=currentTimeMillis();
   try (BatchingNeoStore neoStore=new BatchingNeoStore(fileSystem,storeDir,config,writeMonitor,logging,writerFactory)){
-    NodeIdMapper nodeIdMapper=nodeIdMapping.mapper(neoStore.getNodeStore());
-    NodeStage nodeStage=new NodeStage(nodeIdMapper.wrapNodes(nodes.iterator()),neoStore);
+    NodeStage nodeStage=new NodeStage(idMapper.wrapNodes(nodes.iterator()),neoStore);
     NodeRelationshipLink nodeRelationshipLink=new NodeRelationshipLinkImpl(LongArrayFactory.AUTO,config.denseNodeThreshold());
     CalculateDenseNodesStage calculateDenseNodesStage=new CalculateDenseNodesStage(relationships.iterator(),neoStore,nodeRelationshipLink);
     executeStages(nodeStage,calculateDenseNodesStage);
-    executeStages(new RelationshipStage(relationships,neoStore,nodeRelationshipLink));
+    executeStages(new RelationshipStage(idMapper.wrapRelationships(relationships.iterator()),neoStore,nodeRelationshipLink));
     neoStore.switchNodeAndRelationshipStoresToReverseUpdatingMode();
     executeStages(new NodeFirstRelationshipStage(neoStore,nodeRelationshipLink));
     nodeRelationshipLink.clearRelationships();
