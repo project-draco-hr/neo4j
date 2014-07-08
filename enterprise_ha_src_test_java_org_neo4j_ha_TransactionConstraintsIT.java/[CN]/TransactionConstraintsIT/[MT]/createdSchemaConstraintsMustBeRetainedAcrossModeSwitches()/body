@@ -1,0 +1,30 @@
+{
+  HighlyAvailableGraphDatabase master=cluster.getMaster();
+  createConstraint(master,LABEL,PROPERTY_KEY);
+  createNode(master,LABEL).getId();
+  cluster.sync();
+  ClusterManager.RepairKit repairKit=cluster.fail(master);
+  cluster.await(masterAvailable(master));
+  takeTheLeadInAnEventualMasterSwitch(cluster.getMaster());
+  cluster.sync();
+  Thread.sleep(30000);
+  repairKit.repair();
+  cluster.await(allSeesAllAsAvailable());
+  cluster.sync();
+  cluster.stop();
+  for (  HighlyAvailableGraphDatabase instance : cluster.getAllMembers()) {
+    GraphDatabaseService db=new GraphDatabaseFactory().newEmbeddedDatabase(instance.getStoreDir());
+    Label label=DynamicLabel.label(LABEL);
+    try (Transaction tx=db.beginTx()){
+      Node node=db.createNode(label);
+      node.setProperty(PROPERTY_KEY,PROPERTY_VALUE + "1");
+      tx.success();
+    }
+     try (Transaction tx=db.beginTx()){
+      ConstraintDefinition constraint=single(db.schema().getConstraints(label));
+      constraint.drop();
+      tx.success();
+    }
+     db.shutdown();
+  }
+}
