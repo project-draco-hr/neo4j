@@ -1,8 +1,6 @@
 {
-  StringBuilder beanList=new StringBuilder(4096);
-  StringBuilder altBeanList=new StringBuilder(2048);
-  altBeanList.append(IFDEF_NONHTMLOUTPUT);
-  beanList.append("[[jmx-list]]\n" + ".MBeans exposed by Neo4j\n" + IFDEF_HTMLOUTPUT + "[options=\"header\", cols=\"m,\"]\n"+ "|===\n"+ "|Name|Description\n");
+  List<Triplet<String,String,String>> beanItems=new ArrayList<>();
+  AsciiDocListGenerator listGenerator=new AsciiDocListGenerator("jmx-list","MBeans exposed by Neo4j",false);
   MBeanServer mBeanServer=ManagementFactory.getPlatformMBeanServer();
   SortedMap<String,ObjectName> neo4jBeans=new TreeMap<String,ObjectName>(String.CASE_INSENSITIVE_ORDER);
   for (  String query : QUERIES) {
@@ -32,17 +30,13 @@
     MBeanInfo info=mBeanServer.getMBeanInfo(objectName);
     String description=info.getDescription().replace('\n',' ');
     String id=getId(name);
-    beanList.append("|<<").append(id).append(',').append(name).append(">>|").append(description).append('\n');
-    altBeanList.append("* <<").append(id).append(',').append(name).append(">>: ").append(description).append('\n');
+    beanItems.add(Triplet.of(id,name,description));
     writeDetailsToFile(id,objectName,bean,info,description);
   }
-  beanList.append("|===\n").append(ENDIF);
-  altBeanList.append(ENDIF).append("\n");
-  beanList.append(altBeanList.toString());
   Writer fw=null;
   try {
     fw=AsciiDocGenerator.getFW("target/docs/ops","JMX List");
-    fw.write(beanList.toString());
+    fw.write(listGenerator.generateListAndTableCombo(beanItems));
   }
   finally {
     if (fw != null) {

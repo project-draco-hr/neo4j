@@ -1,31 +1,43 @@
 {
-  if (key.equals("description")) {
+  if (key.equals(CLASS_DESCRIPTION)) {
     Description description=(Description)settingsClass.getAnnotation(Description.class);
     return description.value();
   }
   String name=key.substring(0,key.lastIndexOf("."));
-  if (key.endsWith(".description")) {
+  if (key.endsWith(DESCRIPTION)) {
     Field settingField=getField(name);
     return settingField.getAnnotation(Description.class).value();
   }
-  if (key.endsWith(".title")) {
-    Field settingField=getField(name);
-    @SuppressWarnings("deprecation") Title annotation=settingField.getAnnotation(Title.class);
-    if (annotation != null) {
-      return annotation.value();
-    }
- else {
-      name=name.replace('_',' ');
-      name=name.substring(0,1).toUpperCase() + name.substring(1);
-      return name;
-    }
+  if (key.endsWith(DEPRECATED)) {
+    return "The " + name + " configuration setting has been deprecated.";
   }
-  if (key.endsWith(".default")) {
+  if (key.endsWith(INTERNAL)) {
+    return "The " + name + " configuration setting is for internal use.";
+  }
+  if (key.endsWith(OBSOLETED)) {
+    Field settingField=getField(name);
+    return settingField.getAnnotation(Obsoleted.class).value();
+  }
+  if (key.endsWith(VALIDATIONMESSAGE)) {
     try {
-      return getFieldValue(name).apply(Functions.<String,String>nullFunction()).toString();
+      Field settingField=getField(name);
+      Setting<?> setting=(Setting<?>)settingField.get(null);
+      return setting.toString();
     }
  catch (    Exception e) {
     }
+  }
+  if (key.endsWith(DEFAULT)) {
+    Field settingField=getField(name);
+    try {
+      Setting<?> setting=(Setting<?>)settingField.get(null);
+      return setting.getDefaultValue().toString();
+    }
+ catch (    Exception e) {
+    }
+  }
+  if (key.endsWith(MANDATORY)) {
+    return "The " + name + " configuration setting is mandatory.";
   }
   throw new IllegalResourceException("Could not find resource for property " + key);
 }
