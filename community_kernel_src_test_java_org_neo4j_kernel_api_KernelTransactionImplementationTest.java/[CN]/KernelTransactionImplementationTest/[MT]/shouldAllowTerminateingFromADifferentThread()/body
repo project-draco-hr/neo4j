@@ -1,0 +1,25 @@
+{
+  final DoubleLatch latch=new DoubleLatch(1);
+  final KernelTransaction transaction=newTransaction();
+  Thread thread=new Thread(new Runnable(){
+    @Override public void run(){
+      latch.awaitStart();
+      transaction.markForTermination();
+      latch.finish();
+    }
+  }
+);
+  thread.start();
+  transaction.success();
+  latch.startAndAwaitFinish();
+  boolean exceptionReceived=false;
+  try {
+    transaction.close();
+  }
+ catch (  TransactionFailureException e) {
+    exceptionReceived=true;
+  }
+  assertTrue(exceptionReceived);
+  verify(transactionMonitor,times(1)).transactionFinished(false);
+  verifyNoMoreInteractions(transactionMonitor);
+}
