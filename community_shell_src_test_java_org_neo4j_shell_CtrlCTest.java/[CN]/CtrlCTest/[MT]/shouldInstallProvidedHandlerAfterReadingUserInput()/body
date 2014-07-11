@@ -1,0 +1,32 @@
+{
+  final StubCtrlCHandler handler=new StubCtrlCHandler();
+  AbstractClient client=new AbstractClient(new HashMap<String,Serializable>(),handler){
+    @Override public ShellServer getServer(){
+      try {
+        return new FakeShellServer(null);
+      }
+ catch (      RemoteException e) {
+        throw new RuntimeException(e);
+      }
+    }
+    @Override public Output getOutput(){
+      try {
+        return new CollectingOutput();
+      }
+ catch (      RemoteException e) {
+        throw new RuntimeException(e);
+      }
+    }
+    @Override public String readLine(    String ignored){
+      assertFalse("handler installed, expected it to not be there",handler.installed);
+      return "CYPHER 2.1 RETURN 42;";
+    }
+    @Override public void evaluate(    String output){
+      assertTrue("handler not installed, but expected to be there",handler.installed);
+      end();
+    }
+  }
+;
+  client.grabPrompt();
+  assertFalse("handler installed, expected it to not be there",handler.installed);
+}
