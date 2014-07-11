@@ -1,0 +1,29 @@
+{
+  return new PrefetchingIterator<NodeRecord>(){
+    long id=0;
+    ByteBuffer buffer=allocateDirect(RECORD_SIZE);
+    @Override protected NodeRecord fetchNextOrNull(){
+      NodeRecord nodeRecord=null;
+      while (nodeRecord == null && id <= maxId) {
+        readIntoBuffer(fileChannel,buffer,RECORD_SIZE);
+        long inUseByte=buffer.get();
+        boolean inUse=(inUseByte & 0x1) == Record.IN_USE.intValue();
+        if (inUse) {
+          long nextRel=getUnsignedInt(buffer);
+          long relModifier=(inUseByte & 0xEL) << 31;
+          long nextProp=getUnsignedInt(buffer);
+          long propModifier=(inUseByte & 0xF0L) << 28;
+          nodeRecord=new NodeRecord(id,false,longFromIntAndMod(nextRel,relModifier),longFromIntAndMod(nextProp,propModifier));
+        }
+ else         nodeRecord=new NodeRecord(id,false,Record.NO_NEXT_RELATIONSHIP.intValue(),Record.NO_NEXT_PROPERTY.intValue());
+        nodeRecord.setInUse(inUse);
+        id++;
+      }
+      return nodeRecord;
+    }
+    @Override public void remove(){
+      throw new UnsupportedOperationException();
+    }
+  }
+;
+}
