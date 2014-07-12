@@ -1,5 +1,13 @@
 {
-  Legacy20Store legacyStore=new Legacy20Store(fileSystem,new File(storeDir,NeoStore.DEFAULT_NAME));
+  String versionToUpgradeFrom=upgradableDatabase.checkUpgradeable(storeDir);
+  progressMonitor.started();
+  LegacyStore legacyStore;
+  if (versionToUpgradeFrom.equals(Legacy19Store.LEGACY_VERSION)) {
+    legacyStore=new Legacy19Store(fileSystem,new File(storeDir,NeoStore.DEFAULT_NAME));
+  }
+ else {
+    legacyStore=new Legacy20Store(fileSystem,new File(storeDir,NeoStore.DEFAULT_NAME));
+  }
   ExecutionMonitor executionMonitor=new CoarseBoundedProgressExecutionMonitor(legacyStore.getNodeStoreReader().getMaxId(),legacyStore.getRelStoreReader().getMaxId()){
     @Override protected void percent(    int percent){
       progressMonitor.percentComplete(percent);
@@ -7,7 +15,6 @@
   }
 ;
   BatchImporter importer=new ParallellBatchImporter(migrationDir.getAbsolutePath(),fileSystem,new Configuration.OverrideFromConfig(config),Collections.<KernelExtensionFactory<?>>emptyList(),executionMonitor);
-  progressMonitor.started();
   importer.doImport(legacyNodesAsInput(legacyStore),legacyRelationshipsAsInput(legacyStore),IdMappers.actualIds());
   progressMonitor.finished();
   importer.shutdown();
