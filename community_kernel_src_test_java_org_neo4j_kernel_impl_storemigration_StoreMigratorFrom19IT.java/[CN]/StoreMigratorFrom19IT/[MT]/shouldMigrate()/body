@@ -1,16 +1,23 @@
 {
-  File oldStoreDirectory=find19FormatStoreDirectory();
-  upgrader(new StoreMigrator(monitor,fs)).migrateIfNeeded(oldStoreDirectory);
+  StoreUpgrader upgrader=upgrader(new StoreMigrator(monitor,fs));
+  File legacyStoreDir=find19FormatStoreDirectory(storeDir);
+  upgrader.migrateIfNeeded(legacyStoreDir);
   assertEquals(100,monitor.events.size());
   assertTrue(monitor.started);
   assertTrue(monitor.finished);
-  GraphDatabaseService database=cleanup.add(new GraphDatabaseFactory().newEmbeddedDatabase(oldStoreDirectory.getAbsolutePath()));
+  GraphDatabaseService database=cleanup.add(new GraphDatabaseFactory().newEmbeddedDatabase(storeDir.getAbsolutePath()));
   try {
+    System.out.println("Verifying at " + storeDir);
     DatabaseContentVerifier verifier=new DatabaseContentVerifier(database);
     verifier.verifyNodes();
     verifier.verifyRelationships();
+    verifier.verifyNodeIdsReused();
+    verifier.verifyRelationshipIdsReused();
   }
   finally {
     database.shutdown();
   }
+  NeoStore neoStore=cleanup.add(storeFactory.newNeoStore(storeFileName));
+  verifyNeoStore(neoStore);
+  neoStore.close();
 }
