@@ -1,0 +1,22 @@
+{
+  final Ring<Item> ring=new Ring<>(2,new Factory<Item>(){
+    @Override public Item newInstance(){
+      return new Item();
+    }
+  }
+);
+  Item first=ring.next();
+  assertEquals(0,first.id);
+  Item second=ring.next();
+  assertEquals(1,second.id);
+  Future<Item> thirdFuture=t2.execute(new WorkerCommand<Void,Item>(){
+    @Override public Item doWork(    Void state) throws Exception {
+      return ring.next();
+    }
+  }
+);
+  assertThat(t2,OtherThreadRule.isThreadState(Thread.State.TIMED_WAITING));
+  ring.free(first);
+  Item third=thirdFuture.get();
+  assertEquals(0,third.id);
+}
