@@ -6,49 +6,9 @@
   this.baseStorePath=this.filesystemFacade.ensureDirectoryExists(fileSystemAbstraction,baseDirectory(storeDir));
   this.filesystemFacade.cleanWriteLocks(baseStorePath);
   boolean allowUpgrade=config.get(Configuration.allow_store_upgrade);
-  this.providerStore=newIndexStore(baseStorePath,fileSystemAbstraction,allowUpgrade);
   this.typeCache=new IndexTypeCache(indexStore);
   boolean isReadOnly=config.get(Configuration.read_only);
-  nodeEntityType=new EntityType(){
-    @Override public Document newDocument(    Object entityId){
-      return IndexType.newBaseDocument((Long)entityId);
-    }
-    @Override public Class<? extends PropertyContainer> getType(){
-      return Node.class;
-    }
-  }
-;
-  relationshipEntityType=new EntityType(){
-    @Override public Document newDocument(    Object entityId){
-      RelationshipId relId=(RelationshipId)entityId;
-      Document doc=IndexType.newBaseDocument(relId.id);
-      doc.add(new Field(LuceneIndex.KEY_START_NODE_ID,"" + relId.startNode,Store.YES,org.apache.lucene.document.Field.Index.NOT_ANALYZED));
-      doc.add(new Field(LuceneIndex.KEY_END_NODE_ID,"" + relId.endNode,Store.YES,org.apache.lucene.document.Field.Index.NOT_ANALYZED));
-      return doc;
-    }
-    @Override public Class<? extends PropertyContainer> getType(){
-      return Relationship.class;
-    }
-  }
-;
-  XaCommandReaderFactory commandReaderFactory=new LuceneCommandReaderFactory(nodeEntityType,relationshipEntityType);
-  XaCommandWriterFactory commandWriterFactory=new LuceneCommandWriterFactory();
-  XaTransactionFactory tf=new LuceneTransactionFactory();
-  DependencyResolver dummy=new DependencyResolver.Adapter(){
-    @Override public <T>T resolveDependency(    Class<T> type,    SelectionStrategy selector){
-      return (T)LuceneDataSource.this.config;
-    }
-  }
-;
-  xaContainer=xaFactory.newXaContainer(this,logBaseName(baseStorePath),commandReaderFactory,commandWriterFactory,InjectedTransactionValidator.ALLOW_ALL,tf,TransactionStateFactory.noStateFactory(null),new TransactionInterceptorProviders(new HashSet<TransactionInterceptorProvider>(),dummy),false,new LuceneLogTranslator());
   closed=false;
   if (!isReadOnly) {
-    try {
-      xaContainer.openLogicalLog();
-    }
- catch (    IOException e) {
-      throw new RuntimeException("Unable to open lucene log in " + this.baseStorePath,e);
-    }
-    setLogicalLogAtCreationTime(xaContainer.getLogicalLog());
   }
 }

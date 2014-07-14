@@ -1,10 +1,11 @@
 {
-  return new Transactor.Work<IndexDescriptor,CreateConstraintFailureException>(){
-    @Override public IndexDescriptor perform(    Statement kernelStatement){
-      IndexDescriptor descriptor=new IndexDescriptor(labelId,propertyKeyId);
-      ((KernelStatement)kernelStatement).txState().constraintIndexRuleDoAdd(descriptor);
-      return descriptor;
-    }
+  try (KernelTransaction transaction=kernel.newTransaction();Statement statement=transaction.acquireStatement()){
+    IndexDescriptor descriptor=new IndexDescriptor(labelId,propertyKeyId);
+    ((KernelStatement)statement).txState().constraintIndexRuleDoAdd(descriptor);
+    transaction.success();
+    return descriptor;
   }
-;
+ catch (  TransactionFailureException e) {
+    throw new RuntimeException(e);
+  }
 }

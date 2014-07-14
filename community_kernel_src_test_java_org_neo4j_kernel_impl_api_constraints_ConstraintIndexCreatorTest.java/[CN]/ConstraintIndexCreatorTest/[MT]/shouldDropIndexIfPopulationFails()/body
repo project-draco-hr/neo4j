@@ -3,13 +3,13 @@
   KernelStatement state=mockedState();
   IndexDescriptor descriptor=new IndexDescriptor(123,456);
   IndexingService indexingService=mock(IndexingService.class);
-  StubTransactor transactor=new StubTransactor();
+  StubKernel kernel=new StubKernel();
   when(constraintCreationContext.schemaReadOperations().indexGetCommittedId(state,descriptor,CONSTRAINT)).thenReturn(2468l);
   IndexProxy indexProxy=mock(IndexProxy.class);
   when(indexingService.getProxyForRule(2468l)).thenReturn(indexProxy);
   PreexistingIndexEntryConflictException cause=new PreexistingIndexEntryConflictException("a",2,1);
   doThrow(new IndexPopulationFailedKernelException(descriptor,"some index",cause)).when(indexProxy).awaitStoreScanCompleted();
-  ConstraintIndexCreator creator=new ConstraintIndexCreator(transactor,indexingService);
+  ConstraintIndexCreator creator=new ConstraintIndexCreator(kernel,indexingService);
   try {
     creator.createUniquenessConstraintIndex(state,constraintCreationContext.schemaReadOperations(),123,456);
     fail("expected exception");
@@ -17,13 +17,13 @@
  catch (  ConstraintVerificationFailedKernelException e) {
     assertEquals("Existing data does not satisfy CONSTRAINT ON ( n:label[123] ) ASSERT n.property[456] IS UNIQUE.",e.getMessage());
   }
-  assertEquals(2,transactor.transactions.size());
-  TxState tx1=transactor.transactions.get(0).txState();
+  assertEquals(2,kernel.statements.size());
+  TxState tx1=kernel.statements.get(0).txState();
   verify(tx1).constraintIndexRuleDoAdd(new IndexDescriptor(123,456));
   verifyNoMoreInteractions(tx1);
   verify(constraintCreationContext.schemaReadOperations()).indexGetCommittedId(state,descriptor,CONSTRAINT);
   verifyNoMoreInteractions(constraintCreationContext.schemaReadOperations());
-  TxState tx2=transactor.transactions.get(1).txState();
+  TxState tx2=kernel.statements.get(1).txState();
   verify(tx2).constraintIndexDoDrop(new IndexDescriptor(123,456));
   verifyNoMoreInteractions(tx2);
 }

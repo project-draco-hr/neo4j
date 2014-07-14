@@ -1,0 +1,26 @@
+{
+  List<DynamicRecord> recordList=new LinkedList<>();
+  long blockId=startBlockId;
+  int noNextBlock=Record.NO_NEXT_BLOCK.intValue();
+  try (PageCursor cursor=storeFile.io(0,PF_SHARED_LOCK)){
+    while (blockId != noNextBlock && cursor.next(pageIdForRecord(blockId))) {
+      DynamicRecord record=new DynamicRecord(blockId);
+      do {
+        cursor.setOffset(offsetForId(blockId));
+        if (readRecordHeader(cursor,record,false) && readBothHeaderAndData) {
+          readRecordData(cursor,record);
+        }
+      }
+ while (cursor.retry());
+      if (!record.inUse()) {
+        return recordList;
+      }
+      recordList.add(record);
+      blockId=record.getNextBlock();
+    }
+    return recordList;
+  }
+ catch (  IOException e) {
+    throw new UnderlyingStorageException(e);
+  }
+}

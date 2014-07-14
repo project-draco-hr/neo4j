@@ -1,0 +1,15 @@
+{
+  long startPage=10;
+  long endPage=(recordCount / recordsPerFilePage) - 10;
+  generateFileWithRecords(file,recordCount,recordSize);
+  PageCache cache=getPageCache(fs,maxPages,pageCachePageSize,PageCacheMonitor.NULL);
+  PagedFile pagedFile=cache.map(file,filePageSize);
+  int recordId=(int)(startPage * recordsPerFilePage);
+  try (PageCursor cursor=pagedFile.io(startPage,PF_SHARED_LOCK)){
+    while (cursor.next() && cursor.getCurrentPageId() < endPage) {
+      verifyRecordsMatchExpected(cursor);
+      recordId+=recordsPerFilePage;
+    }
+  }
+   assertThat(recordId,is(recordCount - (10 * recordsPerFilePage)));
+}

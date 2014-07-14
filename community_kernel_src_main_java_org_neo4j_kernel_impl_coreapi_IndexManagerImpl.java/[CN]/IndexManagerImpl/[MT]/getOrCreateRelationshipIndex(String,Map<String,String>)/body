@@ -1,12 +1,12 @@
 {
-  Pair<Map<String,String>,Boolean> config=getOrCreateIndexConfig(Relationship.class,indexName,customConfiguration);
-  try {
-    return getIndexProvider(config.first().get(PROVIDER)).relationshipIndex(indexName,config.first());
+  try (Statement statement=transactionBridge.instance()){
+    statement.dataWriteOperations().relationshipLegacyIndexCreateLazily(indexName,customConfiguration);
+    return new RelationshipLegacyIndexProxy(indexName,lookup,transactionBridge);
   }
- catch (  RuntimeException e) {
-    if (config.other()) {
-      indexStore.remove(Relationship.class,indexName);
-    }
-    throw e;
+ catch (  InvalidTransactionTypeKernelException e) {
+    throw new ConstraintViolationException(e.getMessage(),e);
+  }
+catch (  ReadOnlyDatabaseKernelException e) {
+    throw new ReadOnlyDbException();
   }
 }

@@ -18,11 +18,10 @@
       throw ex;
     }
     out.println("Logical log version: " + logVersion + " with prev committed tx["+ prevLastCommittedTx+ "]");
-    LogDeserializer deserializer=new LogDeserializer(buffer,instantiateCommandReaderFactory());
+    LogDeserializer deserializer=new LogDeserializer(instantiateCommandReaderFactory());
     PrintingConsumer consumer=new PrintingConsumer(out,timeZone);
-    try (Cursor<LogEntry,IOException> cursor=deserializer.cursor(fileChannel)){
-      while (cursor.next(consumer))       ;
-    }
-   }
+    ReadableLogChannel logChannel=new ReadAheadLogChannel(new PhysicalLogVersionedStoreChannel(fileChannel,logVersion),LogVersionBridge.NO_MORE_CHANNELS,4096);
+    exhaustAndClose(deserializer.cursor(logChannel,consumer));
+  }
   return logsFound;
 }

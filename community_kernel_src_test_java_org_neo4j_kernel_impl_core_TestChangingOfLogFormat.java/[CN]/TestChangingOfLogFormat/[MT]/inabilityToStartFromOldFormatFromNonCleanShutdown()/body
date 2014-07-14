@@ -1,15 +1,15 @@
 {
-  File storeDir=new File("target/var/oldlog");
+  File storeDir=new File("target/var/oldlog").getAbsoluteFile();
   GraphDatabaseService db=factory.newImpermanentDatabase(storeDir.getPath());
-  File logBaseFileName=((GraphDatabaseAPI)db).getDependencyResolver().resolveDependency(XaDataSourceManager.class).getNeoStoreDataSource().getXaContainer().getLogicalLog().getBaseFileName();
+  File logBaseFileName=new File(storeDir,PhysicalLogFile.DEFAULT_NAME);
   Transaction tx=db.beginTx();
   db.createNode();
   tx.success();
   tx.finish();
-  Pair<Pair<File,File>,Pair<File,File>> copy=copyLogicalLog(fs.get(),logBaseFileName);
+  Pair<Pair<File,File>,Pair<File,File>> copy=copyLogicalLog(logBaseFileName);
   decrementLogFormat(copy.other().other());
   db.shutdown();
-  renameCopiedLogicalLog(fs.get(),copy);
+  renameCopiedLogicalLog(copy);
   try {
     db=factory.newImpermanentDatabase(storeDir.getPath());
     fail("Shouldn't be able to do recovery (and upgrade log format version) on non-clean shutdown");

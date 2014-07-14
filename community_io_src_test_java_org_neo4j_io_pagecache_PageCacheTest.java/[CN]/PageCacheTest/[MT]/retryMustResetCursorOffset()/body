@@ -1,0 +1,50 @@
+{
+  PageCache cache=getPageCache(fs,maxPages,pageCachePageSize,PageCacheMonitor.NULL);
+  final PagedFile pagedFile=cache.map(file,filePageSize);
+  final AtomicReference<Exception> caughtWriterException=new AtomicReference<>();
+  final CountDownLatch startLatch=new CountDownLatch(1);
+  final byte expectedByte=(byte)13;
+  try (PageCursor cursor=pagedFile.io(0,PF_EXCLUSIVE_LOCK)){
+    if (cursor.next()) {
+      do {
+        cursor.putByte(expectedByte);
+      }
+ while (cursor.retry());
+    }
+  }
+   Runnable writer=new Runnable(){
+    @Override public void run(){
+      while (!Thread.currentThread().isInterrupted()) {
+        try (PageCursor cursor=pagedFile.io(0,PF_EXCLUSIVE_LOCK)){
+          if (cursor.next()) {
+            do {
+              cursor.setOffset(recordSize);
+              cursor.putByte((byte)14);
+            }
+ while (cursor.retry());
+          }
+          startLatch.countDown();
+        }
+ catch (        IOException e) {
+          caughtWriterException.set(e);
+          throw new RuntimeException(e);
+        }
+      }
+    }
+  }
+;
+  Thread writerThread=new Thread(writer);
+  writerThread.start();
+  startLatch.await();
+  for (int i=0; i < 1000; i++) {
+    try (PageCursor cursor=pagedFile.io(0,PF_SHARED_LOCK)){
+      assertTrue(cursor.next());
+      do {
+        assertThat(cursor.getByte(),is(expectedByte));
+      }
+ while (cursor.retry());
+    }
+   }
+  writerThread.interrupt();
+  writerThread.join();
+}

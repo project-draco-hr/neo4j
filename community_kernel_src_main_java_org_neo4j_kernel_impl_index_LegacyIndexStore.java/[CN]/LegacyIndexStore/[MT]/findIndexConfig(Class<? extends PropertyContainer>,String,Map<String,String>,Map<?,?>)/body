@@ -1,0 +1,34 @@
+{
+  Map<String,String> storedConfig=indexStore.get(cls,indexName);
+  if (storedConfig != null && suppliedConfig == null) {
+    Map<String,String> newConfig=injectDefaultProviderIfMissing(indexName,dbConfig,storedConfig);
+    if (newConfig != storedConfig) {
+      indexStore.set(cls,indexName,newConfig);
+    }
+    return Pair.of(newConfig,Boolean.FALSE);
+  }
+  Map<String,String> configToUse=suppliedConfig;
+  String provider=null;
+  IndexImplementation indexProvider=null;
+  if (configToUse == null) {
+    provider=getDefaultProvider(indexName,dbConfig);
+    configToUse=MapUtil.stringMap(PROVIDER,provider);
+  }
+ else {
+    provider=configToUse.get(PROVIDER);
+    provider=provider == null ? getDefaultProvider(indexName,dbConfig) : provider;
+  }
+  indexProvider=indexProviders.lookup(provider);
+  configToUse=indexProvider.fillInDefaults(configToUse);
+  configToUse=injectDefaultProviderIfMissing(indexName,dbConfig,configToUse);
+  if (storedConfig != null) {
+    assertConfigMatches(indexProvider,indexName,storedConfig,suppliedConfig);
+    Map<String,String> newConfig=injectDefaultProviderIfMissing(indexName,dbConfig,storedConfig);
+    if (newConfig != storedConfig) {
+      indexStore.set(cls,indexName,newConfig);
+    }
+    configToUse=newConfig;
+  }
+  boolean needsToBeSet=!indexStore.has(cls,indexName);
+  return Pair.of(Collections.unmodifiableMap(configToUse),needsToBeSet);
+}

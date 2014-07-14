@@ -1,0 +1,31 @@
+{
+  FileUtils.deleteRecursively(new File(DB_PATH));
+  GraphDatabaseService graphDb=new GraphDatabaseFactory().newEmbeddedDatabase(DB_PATH);
+  RelationshipType relType=DynamicRelationshipType.withName("CHILD");
+  Queue<Node> nodes=new LinkedList<>();
+  int depth=1;
+  try (Transaction tx=graphDb.beginTx()){
+    Node rootNode=graphDb.createNode();
+    nodes.add(rootNode);
+    Terminator terminator=new Terminator(tx);
+    terminator.terminateAfter(1000);
+    for (; true; depth++) {
+      int nodesToExpand=nodes.size();
+      for (int i=0; i < nodesToExpand; ++i) {
+        Node parent=nodes.remove();
+        Node left=graphDb.createNode();
+        Node right=graphDb.createNode();
+        parent.createRelationshipTo(left,relType);
+        parent.createRelationshipTo(right,relType);
+        nodes.add(left);
+        nodes.add(right);
+      }
+    }
+  }
+ catch (  TransactionTerminatedException ignored) {
+    return String.format("Created tree up to depth %s in 1 sec",depth);
+  }
+ finally {
+    graphDb.shutdown();
+  }
+}

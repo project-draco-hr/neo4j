@@ -1,7 +1,9 @@
 {
-  backupMonitor.startCopyingFiles();
-  RequestContext context=ServerUtil.rotateLogsAndStreamStoreFiles(spi.getStoreDir(),xaDataSourceManager,kpeg,logger,false,writer,new DefaultFileSystemAbstraction(),backupMonitor);
-  writer.done();
-  backupMonitor.finishedCopyingStoreFiles();
-  return packResponse(context);
-}
+  try (StoreWriter storeWriter=writer){
+    backupMonitor.startCopyingFiles();
+    RequestContext copyStartContext=storeCopyServer.flushStoresAndStreamStoreFiles(storeWriter);
+    ResponsePacker responsePacker=new StoreCopyResponsePacker(logicalTransactionStore,transactionIdStore,logFileInformation,db,copyStartContext.lastAppliedTransaction() + 1);
+    long optionalTransactionId=boBackACoupleOfTransactionsIfRequired(copyStartContext.lastAppliedTransaction());
+    return responsePacker.packResponse(anonymous(optionalTransactionId),null);
+  }
+ }

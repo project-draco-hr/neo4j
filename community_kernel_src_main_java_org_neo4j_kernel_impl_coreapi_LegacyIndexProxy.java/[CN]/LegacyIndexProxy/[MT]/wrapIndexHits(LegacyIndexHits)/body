@@ -1,0 +1,26 @@
+{
+  return new AbstractIndexHits<T>(){
+    private final PrimitiveLongSet alreadyReturned=longSet(max(16,ids.size()));
+    @Override public int size(){
+      return ids.size();
+    }
+    @Override public float currentScore(){
+      return ids.currentScore();
+    }
+    @Override protected T fetchNextOrNull(){
+      statementContextBridge.assertInTransaction();
+      while (ids.hasNext()) {
+        long id=ids.next();
+        if (alreadyReturned.add(id)) {
+          try {
+            return entityOf(id);
+          }
+ catch (          NotFoundException e) {
+          }
+        }
+      }
+      return null;
+    }
+  }
+;
+}

@@ -1,11 +1,12 @@
 {
   TransactionHook hook=mock(TransactionHook.class);
-  when(hook.beforeCommit(any(TxState.class),any(KernelTransaction.class))).thenReturn(new TransactionHook.Outcome(){
+  final String message="Original";
+  when(hook.beforeCommit(any(TxState.class),any(KernelTransaction.class),any(StoreReadLayer.class))).thenReturn(new TransactionHook.Outcome(){
     @Override public boolean isSuccessful(){
       return false;
     }
     @Override public Throwable failure(){
-      return new Throwable();
+      return new Throwable(message);
     }
   }
 );
@@ -16,12 +17,12 @@
     commit();
     fail("Expected this to fail.");
   }
- catch (  TransactionFailureException e) {
-    XAException xaException=(XAException)e.getCause().getCause();
-    assertThat(xaException.errorCode,equalTo(XAException.XA_RBOTHER));
-    assertThat(xaException.getCause().getMessage(),equalTo("Transaction handler failed."));
+ catch (  org.neo4j.kernel.api.exceptions.TransactionFailureException e) {
+    e.printStackTrace();
+    assertThat(e.getCause().getMessage(),equalTo("Transaction handler failed."));
+    assertThat(e.getCause().getCause().getMessage(),equalTo(message));
   }
-  verify(hook).beforeCommit(any(TxState.class),any(KernelTransaction.class));
+  verify(hook).beforeCommit(any(TxState.class),any(KernelTransaction.class),any(StoreReadLayer.class));
   verify(hook).afterRollback(any(TxState.class),any(KernelTransaction.class),any(TransactionHook.Outcome.class));
   verifyNoMoreInteractions(hook);
 }

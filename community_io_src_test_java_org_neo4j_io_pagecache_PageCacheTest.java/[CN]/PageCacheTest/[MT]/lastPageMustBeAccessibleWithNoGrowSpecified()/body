@@ -1,0 +1,35 @@
+{
+  generateFileWithRecords(file,recordsPerFilePage * 2,recordSize);
+  PageCache cache=getPageCache(fs,maxPages,pageCachePageSize,PageCacheMonitor.NULL);
+  PagedFile pagedFile=cache.map(file,filePageSize);
+  try (PageCursor cursor=pagedFile.io(0L,PF_EXCLUSIVE_LOCK | PF_NO_GROW)){
+    assertTrue(cursor.next());
+    assertTrue(cursor.next());
+    assertFalse(cursor.next());
+  }
+   try (PageCursor cursor=pagedFile.io(0L,PF_SHARED_LOCK)){
+    assertTrue(cursor.next());
+    assertTrue(cursor.next());
+    assertFalse(cursor.next());
+  }
+   try (PageCursor cursor=pagedFile.io(1L,PF_EXCLUSIVE_LOCK | PF_NO_GROW)){
+    assertTrue(cursor.next());
+    assertFalse(cursor.next());
+  }
+   try (PageCursor cursor=pagedFile.io(1L,PF_SHARED_LOCK)){
+    assertTrue(cursor.next());
+    assertFalse(cursor.next());
+  }
+   try (PageCursor cursor=pagedFile.io(2L,PF_EXCLUSIVE_LOCK | PF_NO_GROW)){
+    assertFalse(cursor.next());
+  }
+   try (PageCursor cursor=pagedFile.io(2L,PF_SHARED_LOCK)){
+    assertFalse(cursor.next());
+  }
+   try (PageCursor cursor=pagedFile.io(3L,PF_EXCLUSIVE_LOCK | PF_NO_GROW)){
+    assertFalse(cursor.next());
+  }
+   try (PageCursor cursor=pagedFile.io(3L,PF_SHARED_LOCK)){
+    assertFalse(cursor.next());
+  }
+ }

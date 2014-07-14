@@ -1,0 +1,27 @@
+{
+  long myLastCommittedTx=transactionIdStore.getLastCommittingTransactionId();
+  int myMaster=-1;
+  long myChecksum=0;
+  TransactionMetadataCache.TransactionMetadata metadata=nioneoDataSource.getDependencyResolver().resolveDependency(LogicalTransactionStore.class).getMetadataFor(myLastCommittedTx);
+  myMaster=metadata.getMasterId();
+  myChecksum=metadata.getChecksum();
+  HandshakeResult handshake;
+  try (Response<HandshakeResult> response=master.handshake(myLastCommittedTx,nioneoDataSource.getStoreId())){
+    handshake=response.response();
+    requestContextFactory.setEpoch(handshake.epoch());
+  }
+ catch (  BranchedDataException e) {
+    throw new BranchedDataException("Master detected branched data for this machine.",e);
+  }
+catch (  RuntimeException e) {
+    if (e.getCause() instanceof MissingLogDataException) {
+      throw new StoreOutOfDateException("The master is missing the log required to complete the " + "consistency check",e.getCause());
+    }
+    throw e;
+  }
+  if (myMaster != -1 && (myMaster != handshake.txAuthor() || myChecksum != handshake.txChecksum())) {
+    String msg="Branched data, I (machineId:" + config.get(ClusterSettings.server_id) + ") think machineId for"+ " txId ("+ myLastCommittedTx+ ") is "+ myMaster+ ", but master (machineId:"+ getServerId(availableMasterId)+ ") says that it's "+ handshake;
+    throw new BranchedDataException(msg);
+  }
+  msgLog.logMessage("Master id for last committed tx ok with highestTxId=" + myLastCommittedTx + " with masterId="+ myMaster,true);
+}

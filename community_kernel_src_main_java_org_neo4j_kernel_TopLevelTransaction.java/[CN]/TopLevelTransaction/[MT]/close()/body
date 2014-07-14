@@ -1,24 +1,18 @@
 {
   try {
-    javax.transaction.Transaction transaction=transactionManager.getTransaction();
-    if (transaction != null) {
-      if (transactionOutcome.canCommit()) {
-        transaction.commit();
-      }
- else {
-        transaction.rollback();
-      }
+    if (transaction.isOpen()) {
+      transaction.close();
     }
   }
- catch (  RollbackException e) {
-    throw new TransactionFailureException("Unable to commit transaction",e);
-  }
-catch (  Exception e) {
+ catch (  Exception e) {
     if (transactionOutcome.successCalled()) {
-      throw new TransactionFailureException("Unable to commit transaction",e);
+      throw new TransactionFailureException("Transaction was marked as successful, " + "but unable to commit transaction so rolled back.",e);
     }
  else {
       throw new TransactionFailureException("Unable to rollback transaction",e);
     }
+  }
+ finally {
+    stmtProvider.unbindTransactionFromCurrentThread();
   }
 }

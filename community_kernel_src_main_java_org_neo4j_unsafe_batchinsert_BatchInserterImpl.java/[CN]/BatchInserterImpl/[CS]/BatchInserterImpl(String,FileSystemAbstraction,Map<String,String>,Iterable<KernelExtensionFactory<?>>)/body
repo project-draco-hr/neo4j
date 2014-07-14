@@ -2,9 +2,8 @@
   rejectAutoUpgrade(stringParams);
   Map<String,String> params=getDefaultParams();
   params.put(GraphDatabaseSettings.use_memory_mapped_buffers.name(),Settings.FALSE);
-  params.put(InternalAbstractGraphDatabase.Configuration.store_dir.name(),storeDir);
   params.putAll(stringParams);
-  config=new Config(params,GraphDatabaseSettings.class);
+  config=StoreFactory.configForStoreDir(new Config(params,GraphDatabaseSettings.class),new File(storeDir));
   life=new LifeSupport();
   this.fileSystem=fileSystem;
   this.storeDir=new File(FileUtils.fixSeparatorsInPath(storeDir));
@@ -17,13 +16,12 @@
   boolean dump=config.get(GraphDatabaseSettings.dump_configuration);
   this.idGeneratorFactory=new DefaultIdGeneratorFactory();
   Monitors monitors=new Monitors();
-  StoreFactory sf=new StoreFactory(config,idGeneratorFactory,pageCache,fileSystem,msgLog,null,monitors);
-  File store=fixPath(this.storeDir,sf);
+  StoreFactory sf=new StoreFactory(config,idGeneratorFactory,pageCache,fileSystem,msgLog,monitors);
   if (dump) {
     dumpConfiguration(params);
   }
   msgLog.logMessage(Thread.currentThread() + " Starting BatchInserter(" + this+ ")");
-  neoStore=sf.newNeoStore(store);
+  neoStore=sf.newNeoStore(true);
   if (!neoStore.isStoreOk()) {
     throw new IllegalStateException(storeDir + " store is not cleanly shutdown.");
   }
@@ -33,7 +31,7 @@
   labelTokens=new BatchTokenHolder(neoStore.getLabelTokenStore().getTokens(Integer.MAX_VALUE));
   Token[] types=getRelationshipTypeStore().getTokens(Integer.MAX_VALUE);
   relationshipTypeTokens=new BatchTokenHolder(types);
-  indexStore=life.add(new IndexStore(this.storeDir,fileSystem));
+  indexStore=life.add(new IndexConfigStore(this.storeDir,fileSystem));
   schemaCache=new SchemaCache(neoStore.getSchemaStore());
   KernelExtensions extensions=life.add(new KernelExtensions(kernelExtensions,config,new DependencyResolverImpl(),UnsatisfiedDependencyStrategies.ignore()));
   life.start();

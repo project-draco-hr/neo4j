@@ -2,26 +2,25 @@
   try {
     Hits hits=new Hits(searcher(),query,null);
     HitsIterator result=new HitsIterator(hits);
+    LegacyIndexHits primitiveHits=null;
     if (key == null || this.cache == null || !this.cache.containsKey(key)) {
-      return new DocToIdIterator(result,Collections.<Long>emptyList(),null);
+      primitiveHits=new DocToIdIterator(result,Collections.<Long>emptyList(),null);
     }
  else {
-      return new DocToIdIterator(result,Collections.<Long>emptyList(),null){
-        private final Collection<Long> ids=new ArrayList<Long>();
-        @Override protected Long fetchNextOrNull(){
-          Long result=super.fetchNextOrNull();
-          if (result != null) {
-            ids.add(result);
+      primitiveHits=new DocToIdIterator(result,Collections.<Long>emptyList(),null){
+        private final Collection<Long> ids=new ArrayList<>();
+        @Override protected boolean fetchNext(){
+          if (super.fetchNext()) {
+            ids.add(next);
+            return true;
           }
-          return result;
-        }
-        @Override protected void endReached(){
-          super.endReached();
           addToCache(ids,key,value);
+          return false;
         }
       }
 ;
     }
+    return wrapIndexHits(primitiveHits);
   }
  catch (  IOException e) {
     throw new RuntimeException(e);

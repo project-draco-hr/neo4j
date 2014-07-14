@@ -1,13 +1,24 @@
 {
   Transaction tx=db.beginTx();
-  Relationship relationship1=createRelationshipAssumingTxWith("key",1);
-  Relationship relationship2=createRelationshipAssumingTxWith("key",2);
+  createRelationshipAssumingTxWith("key",1);
+  createRelationshipAssumingTxWith("key",2);
   tx.success();
-  tx.finish();
+  tx.close();
   tx=db.beginTx();
   Iterator<Relationship> allRelationships=GlobalGraphOperations.at(db).getAllRelationships().iterator();
-  Relationship relationship3=createRelationshipAssumingTxWith("key",3);
-  assertEquals(asList(relationship1,relationship2,relationship3),addToCollection(allRelationships,new ArrayList<Relationship>()));
+  Thread thread=new Thread(new Runnable(){
+    @Override public void run(){
+      Transaction newTx=db.beginTx();
+      assertThat(newTx,not(instanceOf(PlaceboTransaction.class)));
+      createRelationshipAssumingTxWith("key",3);
+      newTx.success();
+      newTx.close();
+    }
+  }
+);
+  thread.start();
+  thread.join();
+  assertThat(addToCollection(allRelationships,new ArrayList<Relationship>()).size(),is(3));
   tx.success();
-  tx.finish();
+  tx.close();
 }

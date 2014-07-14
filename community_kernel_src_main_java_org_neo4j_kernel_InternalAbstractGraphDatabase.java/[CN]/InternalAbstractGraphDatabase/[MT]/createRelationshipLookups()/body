@@ -1,17 +1,39 @@
 {
   return new RelationshipProxy.RelationshipLookups(){
-    @Override public RelationshipImpl lookupRelationship(    long relationshipId){
-      assertDatabaseRunning();
-      return nodeManager.getRelationshipForProxy(relationshipId);
+    private final ThreadLocal<RelationshipData> relationshipData=new ThreadLocal<RelationshipData>(){
+      @Override protected RelationshipData initialValue(){
+        return new RelationshipData();
+      }
     }
+;
+    private final RelationshipVisitor<RuntimeException> visitor=new RelationshipVisitor<RuntimeException>(){
+      @Override public void visit(      long relId,      long startNode,      long endNode,      int type){
+        relationshipData.get().set(startNode,endNode,type);
+      }
+    }
+;
     @Override public GraphDatabaseService getGraphDatabaseService(){
       return InternalAbstractGraphDatabase.this;
     }
-    @Override public NodeManager getNodeManager(){
-      return nodeManager;
-    }
     @Override public Node newNodeProxy(    long nodeId){
       return nodeManager.newNodeProxyById(nodeId);
+    }
+    @Override public RelationshipData getRelationshipData(    long relationshipId){
+      try (Statement statement=threadToTransactionBridge.instance()){
+        statement.readOperations().relationshipVisit(relationshipId,visitor);
+        return relationshipData.get();
+      }
+ catch (      EntityNotFoundException e) {
+        throw new NotFoundException(e);
+      }
+    }
+    @Override public RelationshipType getRelationshipTypeById(    int type){
+      try {
+        return relationshipTypeTokenHolder.getTokenById(type);
+      }
+ catch (      TokenNotFoundException e) {
+        throw new NotFoundException(e);
+      }
     }
   }
 ;

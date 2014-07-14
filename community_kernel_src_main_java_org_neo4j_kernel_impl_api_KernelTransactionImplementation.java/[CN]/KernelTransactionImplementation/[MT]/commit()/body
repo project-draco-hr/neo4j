@@ -1,13 +1,29 @@
 {
+  boolean success=false;
   try {
-    release();
-    close();
-    hooks.afterCommit(txState,this,hooksState);
+    if ((hooksState=hooks.beforeCommit(txState,this,storeLayer)) != null && hooksState.failed()) {
+      throw new TransactionFailureException(Status.Transaction.HookFailed,hooksState.failure(),"");
+    }
+    prepareRecordChangesFromTransactionState();
+    if (!isReadOnly()) {
+      List<Command> commands=new ArrayList<>();
+      recordState.extractCommands(commands);
+      legacyIndexTransactionState.extractCommands(commands);
+      PhysicalTransactionRepresentation transactionRepresentation=new PhysicalTransactionRepresentation(commands);
+      transactionRepresentation.setHeader(headerInformation.getAdditionalHeader(),headerInformation.getMasterId(),headerInformation.getAuthorId(),currentTimeMillis(),transactionIdStore.getLastCommittingTransactionId());
+      commitProcess.commit(transactionRepresentation);
+    }
+    if (hasTxStateWithChanges()) {
+      persistenceCache.apply(txState);
+    }
+    success=true;
   }
- catch (  ReleaseLocksFailedKernelException e) {
-    throw new TransactionFailureException(new RuntimeException(e.getMessage(),e));
-  }
- finally {
-    closing=false;
+  finally {
+    if (!success) {
+      rollback();
+    }
+ else {
+      afterCommit();
+    }
   }
 }

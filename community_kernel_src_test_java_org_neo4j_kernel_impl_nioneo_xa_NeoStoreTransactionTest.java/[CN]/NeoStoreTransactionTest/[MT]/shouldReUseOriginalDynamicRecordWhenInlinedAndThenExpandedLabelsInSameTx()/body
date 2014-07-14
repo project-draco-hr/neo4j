@@ -1,6 +1,6 @@
 {
   final long nodeId=neoStore.getNodeStore().nextId();
-  NeoStoreTransaction writeTransaction=newWriteTransaction(mockIndexing).first();
+  TransactionRecordState writeTransaction=newWriteTransaction().first();
   writeTransaction.nodeCreate(nodeId);
   writeTransaction.addLabelToNode(16,nodeId);
   writeTransaction.addLabelToNode(29,nodeId);
@@ -11,27 +11,28 @@
   writeTransaction.addLabelToNode(50,nodeId);
   writeTransaction.addLabelToNode(51,nodeId);
   writeTransaction.addLabelToNode(52,nodeId);
-  prepareAndCommit(writeTransaction);
-  CommandCapturingVisitor commandCapture=new CommandCapturingVisitor();
-  writeTransaction=newWriteTransaction(mockIndexing,commandCapture).first();
+  PhysicalTransactionRepresentation transactionCommands=transactionRepresentationOf(writeTransaction);
+  commitProcess().commit(transactionCommands);
+  writeTransaction=newWriteTransaction().first();
   writeTransaction.removeLabelFromNode(50,nodeId);
   writeTransaction.removeLabelFromNode(51,nodeId);
   writeTransaction.removeLabelFromNode(52,nodeId);
   writeTransaction.addLabelToNode(60,nodeId);
   writeTransaction.addLabelToNode(61,nodeId);
   writeTransaction.addLabelToNode(62,nodeId);
-  prepareAndCommit(writeTransaction);
-  commandCapture.visitCapturedCommands(new Visitor<XaCommand,RuntimeException>(){
-    @Override public boolean visit(    XaCommand element) throws RuntimeException {
-      if (element instanceof Command.NodeCommand) {
-        Command.NodeCommand cmd=(Command.NodeCommand)element;
-        DynamicRecord before=cmd.getBefore().getDynamicLabelRecords().iterator().next();
-        DynamicRecord after=cmd.getAfter().getDynamicLabelRecords().iterator().next();
-        assertThat(before.getId(),equalTo(after.getId()));
-        assertThat(after.inUse(),equalTo(true));
-      }
+  transactionCommands=transactionRepresentationOf(writeTransaction);
+  commitProcess().commit(transactionCommands);
+  final AtomicBoolean nodeCommandsExist=new AtomicBoolean(false);
+  transactionCommands.accept(new NeoCommandHandler.HandlerVisitor(new NeoCommandHandler.Adapter(){
+    @Override public boolean visitNodeCommand(    NodeCommand command) throws IOException {
+      nodeCommandsExist.set(true);
+      DynamicRecord before=command.getBefore().getDynamicLabelRecords().iterator().next();
+      DynamicRecord after=command.getAfter().getDynamicLabelRecords().iterator().next();
+      assertThat(before.getId(),equalTo(after.getId()));
+      assertThat(after.inUse(),equalTo(true));
       return true;
     }
   }
-);
+));
+  assertTrue("No node commands found",nodeCommandsExist.get());
 }

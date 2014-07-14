@@ -6,7 +6,7 @@
   params.put(ClusterSettings.initial_hosts.name(),from);
   params.put(ClusterSettings.instance_name.name(),"Backup");
   params.put(ClusterClient.clusterJoinTimeout.name(),"20s");
-  final Config config=new Config(params,ClusterSettings.class,OnlineBackupSettings.class);
+  final Config config=null;
   ObjectStreamFactory objectStreamFactory=new ObjectStreamFactory();
   final ClusterClient clusterClient=life.add(new ClusterClient(new Monitors(),ClusterClient.adapt(config),logging,new NotElectableElectionCredentialsProvider(),objectStreamFactory,objectStreamFactory));
   ClusterMemberEvents events=life.add(new PaxosClusterMemberEvents(new Monitors(),clusterClient,clusterClient,clusterClient,clusterClient,new SystemOutLogging(),Predicates.<PaxosClusterMemberEvents.ClusterMembersSnapshot>TRUE(),new HANewSnapshotFunction(),objectStreamFactory,objectStreamFactory));
@@ -23,12 +23,6 @@
     Map<InstanceId,URI> backupUris=new HashMap<InstanceId,URI>();
     InstanceId master=null;
     @Override public void memberIsAvailable(    String role,    InstanceId clusterUri,    URI roleUri){
-      if (OnlineBackupKernelExtension.BACKUP.equals(role)) {
-        backupUris.put(clusterUri,roleUri);
-      }
- else       if (HighAvailabilityModeSwitcher.MASTER.equals(role)) {
-        master=clusterUri;
-      }
       if (master != null && backupUris.containsKey(master)) {
         backupUri.set(backupUris.get(master));
         infoReceivedLatch.release();

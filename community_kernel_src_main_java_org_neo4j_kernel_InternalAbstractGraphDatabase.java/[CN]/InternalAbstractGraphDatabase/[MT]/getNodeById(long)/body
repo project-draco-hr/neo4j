@@ -2,5 +2,11 @@
   if (id < 0 || id > MAX_NODE_ID) {
     throw new NotFoundException(format("Node %d not found",id));
   }
-  return nodeManager.getNodeById(id);
-}
+  threadToTransactionBridge.assertInTransaction();
+  try (Statement statement=threadToTransactionBridge.instance()){
+    if (!statement.readOperations().nodeExists(id)) {
+      throw new NotFoundException(format("Node %d not found",id));
+    }
+    return nodeManager.newNodeProxyById(id);
+  }
+ }

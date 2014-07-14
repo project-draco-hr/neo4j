@@ -2,5 +2,11 @@
   if (id < 0 || id > MAX_RELATIONSHIP_ID) {
     throw new NotFoundException(format("Relationship %d not found",id));
   }
-  return nodeManager.getRelationshipById(id);
-}
+  threadToTransactionBridge.assertInTransaction();
+  try (Statement statement=threadToTransactionBridge.instance()){
+    if (!statement.readOperations().relationshipExists(id)) {
+      throw new NotFoundException(format("Relationship %d not found",id));
+    }
+    return nodeManager.newRelationshipProxyById(id);
+  }
+ }

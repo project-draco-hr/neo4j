@@ -3,16 +3,15 @@
   monitors.addMonitorListener(networkCounterMetrics,MasterServer.class.getName());
   monitors.addMonitorListener(networkCounterMetrics,"logdeserializer");
   diskCounterMetrics=new ByteCounterMetrics();
-  monitors.addMonitorListener(diskCounterMetrics,XaLogicalLog.class.getName());
+  monitors.addMonitorListener(diskCounterMetrics,"this used to attach to XaLogicalLog");
   File path=new File(config.get(GraphDatabaseSettings.store_dir),"metrics.txt");
-  System.out.println("CSV:" + path);
   OutputStream file=fileSystemAbstraction.openAsOutputStream(path,false);
   csv=new CSVFile(file,Iterables.<String,String>iterable("timestamp","diskWritten","diskRead","networkWritten","networkRead","committedTx"));
   executor=Executors.newSingleThreadScheduledExecutor();
   executor.scheduleWithFixedDelay(new Runnable(){
     @Override public void run(){
       try {
-        csv.print(System.currentTimeMillis(),diskCounterMetrics.getBytesWritten(),diskCounterMetrics.getBytesRead(),networkCounterMetrics.getBytesWritten(),networkCounterMetrics.getBytesRead(),txManager.getCommittedTxCount());
+        csv.print(System.currentTimeMillis(),diskCounterMetrics.getBytesWritten(),diskCounterMetrics.getBytesRead(),networkCounterMetrics.getBytesWritten(),networkCounterMetrics.getBytesRead());
         System.out.println(config.get(ClusterSettings.server_id) + " bytes written:" + networkCounterMetrics.getBytesWritten());
       }
  catch (      IOException e) {

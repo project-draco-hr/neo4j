@@ -1,13 +1,18 @@
 {
+  if (txId == 0) {
+    return;
+  }
+  TransactionMetadataCache.TransactionMetadata metadata=null;
   try {
-    Pair<Integer,Long> readChecksum=dataSource().getMasterForCommittedTx(txId);
-    boolean match=masterId == readChecksum.first() && checksum == readChecksum.other();
-    if (!match) {
-      throw new BranchedDataException(stringify(txId,masterId,checksum) + " doesn't match " + readChecksum);
-    }
+    metadata=txStore.getMetadataFor(txId);
   }
  catch (  IOException e) {
-    logger.logMessage("Couldn't verify checksum for " + stringify(txId,masterId,checksum),e);
-    throw new BranchedDataException(e);
+    throw new RuntimeException(e);
+  }
+  int readMaster=metadata.getMasterId();
+  long readChecksum=metadata.getChecksum();
+  boolean match=masterId == readMaster && checksum == readChecksum;
+  if (!match) {
+    throw new BranchedDataException(stringify(txId,masterId,checksum) + " doesn't match " + stringify(txId,readMaster,readChecksum));
   }
 }

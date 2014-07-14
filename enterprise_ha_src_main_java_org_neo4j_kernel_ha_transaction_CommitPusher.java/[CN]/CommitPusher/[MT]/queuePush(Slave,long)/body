@@ -1,0 +1,19 @@
+{
+  PullUpdateFuture pullRequest=new PullUpdateFuture(slave,txId);
+  BlockingQueue<PullUpdateFuture> queue=pullUpdateQueues.get(slave.getServerId());
+  queue=queue == null ? createNewQueue(slave) : queue;
+  while (!queue.offer(pullRequest)) {
+    Thread.yield();
+  }
+  try {
+    pullRequest.get();
+  }
+ catch (  InterruptedException e) {
+    Thread.interrupted();
+    throw new RuntimeException(e);
+  }
+catch (  ExecutionException e) {
+    if (e.getCause() instanceof RuntimeException)     throw ((RuntimeException)e.getCause());
+ else     throw new RuntimeException(e.getCause());
+  }
+}

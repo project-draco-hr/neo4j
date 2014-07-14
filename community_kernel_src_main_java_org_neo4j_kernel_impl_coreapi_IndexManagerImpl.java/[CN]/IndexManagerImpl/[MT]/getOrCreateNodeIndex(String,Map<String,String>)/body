@@ -1,12 +1,12 @@
 {
-  Pair<Map<String,String>,Boolean> config=getOrCreateIndexConfig(Node.class,indexName,customConfiguration);
-  try {
-    return getIndexProvider(config.first().get(PROVIDER)).nodeIndex(indexName,config.first());
+  try (Statement statement=transactionBridge.instance()){
+    statement.dataWriteOperations().nodeLegacyIndexCreateLazily(indexName,customConfiguration);
+    return new LegacyIndexProxy<>(indexName,Type.NODE,lookup,transactionBridge);
   }
- catch (  RuntimeException e) {
-    if (config.other()) {
-      indexStore.remove(Node.class,indexName);
-    }
-    throw e;
+ catch (  InvalidTransactionTypeKernelException e) {
+    throw new ConstraintViolationException(e.getMessage(),e);
+  }
+catch (  ReadOnlyDatabaseKernelException e) {
+    throw new ReadOnlyDbException();
   }
 }
