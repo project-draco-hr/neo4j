@@ -4,8 +4,14 @@
   }
   TransactionMetadataCache.TransactionMetadata transactionMetadata=transactionMetadataCache.getTransactionMetadata(transactionId);
   if (transactionMetadata == null) {
-    exhaustAndClose(getCursor(transactionId,new TransactionMetadataFiller()));
-  }
+    try (IOCursor<CommittedTransactionRepresentation> cursor=getTransactions(transactionId)){
+      while (cursor.next()) {
+        CommittedTransactionRepresentation tx=cursor.get();
+        transactionMetadataCache.cacheTransactionMetadata(tx.getCommitEntry().getTxId(),tx.getStartEntry().getStartPosition(),tx.getStartEntry().getMasterId(),tx.getStartEntry().getLocalId(),LogEntry.Start.checksum(tx.getStartEntry()));
+      }
+      ;
+    }
+   }
   transactionMetadata=transactionMetadataCache.getTransactionMetadata(transactionId);
   return transactionMetadata;
 }
