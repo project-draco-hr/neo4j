@@ -1,7 +1,11 @@
 {
   File logFile=logFiles.getVersionFileName(highestVersion);
   ReadableLogChannel logChannel=new ReadAheadLogChannel(new PhysicalLogVersionedStoreChannel(FS.open(logFile,"R"),highestVersion),NO_MORE_CHANNELS,DEFAULT_READ_AHEAD_SIZE);
-  TransactionIdSeeker transactionIdSeeker=new TransactionIdSeeker();
-  exhaustAndClose(new PhysicalTransactionCursor(logChannel,new VersionAwareLogEntryReader(DEFAULT),transactionIdSeeker));
-  return transactionIdSeeker.highestSeenTransactionId();
+  long lastTransactionId=-1;
+  try (IOCursor<CommittedTransactionRepresentation> cursor=new PhysicalTransactionCursor(logChannel,new VersionAwareLogEntryReader(DEFAULT))){
+    while (cursor.next()) {
+      lastTransactionId=cursor.get().getCommitEntry().getTxId();
+    }
+  }
+   return lastTransactionId;
 }

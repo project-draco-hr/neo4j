@@ -6,8 +6,10 @@
     @Override public void accept(    Visitor<CommittedTransactionRepresentation,IOException> visitor) throws IOException {
       LogEntryReader<ReadableLogChannel> reader=new VersionAwareLogEntryReader(CommandReaderFactory.DEFAULT);
       NetworkReadableLogChannel channel=new NetworkReadableLogChannel(dechunkingBuffer);
-      exhaustAndClose(new PhysicalTransactionCursor(channel,reader,visitor));
-    }
+      try (PhysicalTransactionCursor cursor=new PhysicalTransactionCursor(channel,reader)){
+        while (cursor.next() && visitor.visit(cursor.get()))         ;
+      }
+     }
   }
 ;
   return new Response<PAYLOAD>(response,storeId,transactions,channelReleaser);

@@ -19,9 +19,12 @@
     }
     out.println("Logical log version: " + logVersion + " with prev committed tx["+ prevLastCommittedTx+ "]");
     LogDeserializer deserializer=new LogDeserializer(instantiateCommandReaderFactory());
-    PrintingConsumer consumer=new PrintingConsumer(out,timeZone);
     ReadableLogChannel logChannel=new ReadAheadLogChannel(new PhysicalLogVersionedStoreChannel(fileChannel,logVersion),LogVersionBridge.NO_MORE_CHANNELS,4096);
-    exhaustAndClose(deserializer.cursor(logChannel,consumer));
-  }
+    try (IOCursor<LogEntry> cursor=deserializer.logEntries(logChannel)){
+      while (cursor.next()) {
+        out.println(cursor.get().toString(timeZone));
+      }
+    }
+   }
   return logsFound;
 }
