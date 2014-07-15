@@ -1,5 +1,5 @@
 {
-  String versionToUpgradeFrom=upgradableDatabase.checkUpgradeable(storeDir);
+  versionToUpgradeFrom=upgradableDatabase.checkUpgradeable(storeDir);
   progressMonitor.started();
   LegacyStore legacyStore;
   if (versionToUpgradeFrom.equals(Legacy19Store.LEGACY_VERSION)) {
@@ -15,7 +15,10 @@
   }
 ;
   BatchImporter importer=new ParallellBatchImporter(migrationDir.getAbsolutePath(),fileSystem,new Configuration.OverrideFromConfig(config),Collections.<KernelExtensionFactory<?>>emptyList(),executionMonitor);
-  importer.doImport(legacyNodesAsInput(legacyStore),legacyRelationshipsAsInput(legacyStore),IdMappers.actualIds());
+  Iterable<InputNode> nodes=legacyNodesAsInput(legacyStore);
+  Iterable<InputRelationship> relationships=legacyRelationshipsAsInput(legacyStore);
+  IdMapper idMapper=IdMappers.actualIds();
+  importer.doImport(nodes,relationships,idMapper);
   progressMonitor.finished();
   importer.shutdown();
   legacyStore.close();
