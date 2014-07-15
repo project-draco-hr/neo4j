@@ -1,0 +1,18 @@
+{
+  final NeoTransactionIndexApplier applier=new NeoTransactionIndexApplier(indexingService,labelScanStore,nodeStore,propertyStore,cacheAccess,propertyLoader);
+  final NodeRecord before=new NodeRecord(11);
+  before.setLabelField(17,Collections.<DynamicRecord>emptySet());
+  final NodeRecord after=new NodeRecord(12);
+  after.setLabelField(18,Collections.<DynamicRecord>emptySet());
+  final Command.NodeCommand command=new Command.NodeCommand().init(before,after);
+  when(labelScanStore.newWriter()).thenReturn(mock(LabelScanWriter.class));
+  final boolean result=applier.visitNodeCommand(command);
+  applier.close();
+  assertTrue(result);
+  final NodeLabelUpdate update=NodeLabelUpdate.labelChanges(command.getKey(),new long[]{},new long[]{});
+  final Collection<NodeLabelUpdate> labelUpdates=Arrays.asList(update);
+  verify(cacheAccess,times(1)).applyLabelUpdates(eq(labelUpdates));
+  final Map<Long,Command.NodeCommand> nodeCommands=Collections.singletonMap(command.getKey(),command);
+  final LazyIndexUpdates expectedUpdates=new LazyIndexUpdates(nodeStore,propertyStore,emptyPropCommands,nodeCommands,propertyLoader);
+  verify(indexingService,times(1)).updateIndexes(eq(expectedUpdates));
+}
