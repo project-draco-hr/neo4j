@@ -4,8 +4,10 @@
   assertHasTxLocation(begin);
   final String executeResource=begin.location();
   final String statement="WITH range(0, 100000) AS r UNWIND r AS i CREATE (n {number: i}) RETURN count(n)";
+  final CountDownLatch latch=new CountDownLatch(1);
   final Future<Response> executeFuture=Executors.newSingleThreadExecutor().submit(new Callable<Response>(){
     public Response call(){
+      latch.countDown();
       Response response=http.POST(executeResource,quotedJson("{ 'statements': [ { 'statement': '" + statement + "' } ] }"));
       assertThat(response.status(),equalTo(200));
       return response;
@@ -15,7 +17,8 @@
   final Future<Response> interruptFuture=Executors.newSingleThreadExecutor().submit(new Callable<Response>(){
     public Response call(){
       try {
-        Thread.sleep(1000L);
+        latch.await();
+        Thread.sleep(100);
       }
  catch (      InterruptedException ignored) {
       }
