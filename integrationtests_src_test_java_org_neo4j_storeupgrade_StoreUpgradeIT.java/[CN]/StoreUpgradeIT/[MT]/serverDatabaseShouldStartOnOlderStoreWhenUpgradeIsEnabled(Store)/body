@@ -1,0 +1,29 @@
+{
+  File dir=store.prepareDirectory();
+  File configFile=new File(dir,"neo4j.properties");
+  Properties props=new Properties();
+  props.setProperty(Configurator.DATABASE_LOCATION_PROPERTY_KEY,dir.getAbsolutePath());
+  props.setProperty(Configurator.DB_TUNING_PROPERTY_FILE_KEY,configFile.getAbsolutePath());
+  props.setProperty(GraphDatabaseSettings.allow_store_upgrade.name(),"true");
+  props.store(new FileWriter(configFile),"");
+  try {
+    System.setProperty(Configurator.NEO_SERVER_CONFIG_FILE_KEY,configFile.getAbsolutePath());
+    Bootstrapper bootstrapper=Bootstrapper.loadMostDerivedBootstrapper();
+    bootstrapper.start();
+    try {
+      NeoServer server=bootstrapper.getServer();
+      Database database=server.getDatabase();
+      GraphDatabaseAPI db=database.getGraph();
+      try (Transaction ignore=db.beginTx()){
+        long count=countAllNodes(db);
+        assertThat(count,is(store.expectedNodeCount));
+      }
+     }
+  finally {
+      bootstrapper.stop();
+    }
+  }
+  finally {
+    System.clearProperty(Configurator.NEO_SERVER_CONFIG_FILE_KEY);
+  }
+}

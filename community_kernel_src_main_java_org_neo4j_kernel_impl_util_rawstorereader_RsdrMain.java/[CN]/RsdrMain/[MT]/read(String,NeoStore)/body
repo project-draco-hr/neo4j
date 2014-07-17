@@ -1,0 +1,27 @@
+{
+  Matcher matcher=readCommandPattern.matcher(cmd);
+  if (matcher.find()) {
+    String lower=matcher.group("lower");
+    String upper=matcher.group("upper");
+    String fname=matcher.group("fname");
+    String regex=matcher.group("regex");
+    Pattern pattern=regex != null ? Pattern.compile(regex) : null;
+    long fromId=lower != null ? Long.parseLong(lower) : 0L;
+    long toId=upper != null ? Long.parseLong(upper) : Long.MAX_VALUE;
+    RecordStore store=getStore(fname,neoStore);
+    if (store != null) {
+      readStore(store,fromId,toId,pattern);
+      return;
+    }
+    Cursor<LogEntry,IOException> cursor=getLogCursor(fname,neoStore);
+    if (cursor != null) {
+      readLog(cursor,fromId,toId,pattern);
+      cursor.close();
+      return;
+    }
+    console.printf("don't know how to read '%s'%n",fname);
+  }
+ else {
+    console.printf("bad read command format%n");
+  }
+}
