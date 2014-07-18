@@ -1,0 +1,32 @@
+{
+  toId=Math.min(toId,store.getHighId());
+  try (StoreChannel channel=files.open(store.getStorageFileName(),"r")){
+    int recordSize=store.getRecordSize();
+    ByteBuffer buf=ByteBuffer.allocate(recordSize);
+    for (long i=fromId; i <= toId; i++) {
+      buf.clear();
+      long offset=recordSize * i;
+      int count=channel.read(buf,offset);
+      byte[] bytes=new byte[count];
+      buf.clear();
+      buf.get(bytes);
+      String hex=DatatypeConverter.printHexBinary(bytes);
+      int paddingNeeded=(recordSize * 2 - Math.max(count * 2,0)) + 1;
+      String format="%s %6s 0x%08X %s%" + paddingNeeded + "s%s%n";
+      String str;
+      String use;
+      try {
+        AbstractBaseRecord record=store.getRecord(i);
+        use=record.inUse() ? "+" : "-";
+        str=record.toString();
+      }
+ catch (      InvalidRecordException e) {
+        str=new String(bytes,0,count,"ASCII");
+        use="?";
+      }
+      if (pattern == null || pattern.matcher(str).find()) {
+        console.printf(format,use,i,offset,hex," ",str);
+      }
+    }
+  }
+ }

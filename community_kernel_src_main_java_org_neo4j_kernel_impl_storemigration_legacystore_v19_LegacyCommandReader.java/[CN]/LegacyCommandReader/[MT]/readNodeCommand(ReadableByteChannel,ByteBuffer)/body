@@ -1,0 +1,32 @@
+{
+  buffer.clear();
+  buffer.limit(9);
+  if (byteChannel.read(buffer) != buffer.limit()) {
+    return null;
+  }
+  buffer.flip();
+  long id=buffer.getLong();
+  byte inUseFlag=buffer.get();
+  boolean inUse=false;
+  if (inUseFlag == Record.IN_USE.byteValue()) {
+    inUse=true;
+  }
+ else   if (inUseFlag != Record.NOT_IN_USE.byteValue()) {
+    throw new IOException("Illegal in use flag: " + inUseFlag);
+  }
+  NodeRecord record;
+  if (inUse) {
+    buffer.clear();
+    buffer.limit(16);
+    if (byteChannel.read(buffer) != buffer.limit()) {
+      return null;
+    }
+    buffer.flip();
+    record=new NodeRecord(id,false,buffer.getLong(),buffer.getLong());
+  }
+ else   record=new NodeRecord(id,false,Record.NO_NEXT_RELATIONSHIP.intValue(),Record.NO_NEXT_PROPERTY.intValue());
+  record.setInUse(inUse);
+  NodeCommand toReturn=new NodeCommand();
+  toReturn.init(record,record);
+  return toReturn;
+}

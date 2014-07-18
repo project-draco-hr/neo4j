@@ -1,0 +1,21 @@
+{
+  PropertyKeyTokenStore keyTokenStore=propertyStore.getPropertyKeyTokenStore();
+  Map<Integer,Integer> translations=new HashMap<Integer,Integer>();
+  Map<String,Integer> createdTokens=new HashMap<String,Integer>();
+  for (  Token token : tokens) {
+    Integer id=createdTokens.get(token.name());
+    if (id == null) {
+      id=(int)keyTokenStore.nextId();
+      PropertyKeyTokenRecord record=new PropertyKeyTokenRecord(id);
+      Collection<DynamicRecord> nameRecords=keyTokenStore.allocateNameRecords(encode(token.name()));
+      record.setNameId((int)first(nameRecords).getId());
+      record.addNameRecords(nameRecords);
+      record.setInUse(true);
+      record.setCreated();
+      keyTokenStore.updateRecord(record);
+      createdTokens.put(token.name(),id);
+    }
+    translations.put(token.id(),id);
+  }
+  return translations;
+}
