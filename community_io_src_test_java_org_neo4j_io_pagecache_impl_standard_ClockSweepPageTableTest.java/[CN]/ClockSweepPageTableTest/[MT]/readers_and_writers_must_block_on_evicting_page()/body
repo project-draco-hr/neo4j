@@ -1,13 +1,13 @@
 {
   PageSwapper io=new BufferPageSwapper(ByteBuffer.allocate(TEST_PAGE_SIZE));
   long pageId=12;
-  PinnablePage page=table.load(io,pageId,PageLock.EXCLUSIVE);
+  PinnablePage page=table.load(io,pageId,PagedFile.PF_EXCLUSIVE_LOCK);
   monitor.observe(Fault.class);
   CountDownLatch latch=monitor.trap(is(new Evict(io,pageId)));
-  page.unpin(PageLock.EXCLUSIVE);
+  page.unpin(PagedFile.PF_EXCLUSIVE_LOCK);
   monitor.observe(Evict.class);
-  Thread pinForShared=fork($pinUnpin(page,io,pageId,PageLock.SHARED));
-  Thread pinForExclusive=fork($pinUnpin(page,io,pageId,PageLock.EXCLUSIVE));
+  Thread pinForShared=fork($pinUnpin(page,io,pageId,PagedFile.PF_SHARED_LOCK));
+  Thread pinForExclusive=fork($pinUnpin(page,io,pageId,PagedFile.PF_EXCLUSIVE_LOCK));
   awaitThreadState(pinForShared,Thread.State.WAITING);
   awaitThreadState(pinForExclusive,Thread.State.WAITING);
   latch.countDown();

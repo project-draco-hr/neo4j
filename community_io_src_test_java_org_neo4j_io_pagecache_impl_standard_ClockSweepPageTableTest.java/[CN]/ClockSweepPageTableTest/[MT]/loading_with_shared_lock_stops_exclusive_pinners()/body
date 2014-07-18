@@ -1,17 +1,17 @@
 {
   final BufferPageSwapper io=new BufferPageSwapper(bytesA);
-  final PinnablePage page=table.load(io,12,PageLock.SHARED);
+  final PinnablePage page=table.load(io,12,PagedFile.PF_SHARED_LOCK);
   final AtomicBoolean acquiredPage=new AtomicBoolean(false);
   Thread otherThread=fork(new Runnable(){
     @Override public void run(){
-      page.pin(io,12,PageLock.EXCLUSIVE);
+      page.pin(io,12,PagedFile.PF_EXCLUSIVE_LOCK);
       acquiredPage.set(true);
     }
   }
 );
   awaitThreadState(otherThread,Thread.State.WAITING);
   assertFalse(acquiredPage.get());
-  page.unpin(PageLock.SHARED);
+  page.unpin(PagedFile.PF_SHARED_LOCK);
   otherThread.join();
   assertTrue(acquiredPage.get());
 }
