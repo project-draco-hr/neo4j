@@ -1,0 +1,23 @@
+{
+  StoreUpgrader upgrader=upgrader(new StoreMigrator(monitor,fs));
+  File legacyStoreDir=find19FormatStoreDirectory(storeDir);
+  upgrader.migrateIfNeeded(legacyStoreDir);
+  assertEquals(100,monitor.events.size());
+  assertTrue(monitor.started);
+  assertTrue(monitor.finished);
+  GraphDatabaseService database=cleanup.add(new GraphDatabaseFactory().newEmbeddedDatabase(storeDir.getAbsolutePath()));
+  try {
+    DatabaseContentVerifier verifier=new DatabaseContentVerifier(database);
+    verifier.verifyNodes();
+    verifier.verifyRelationships();
+    verifier.verifyNodeIdsReused();
+    verifier.verifyRelationshipIdsReused();
+  }
+  finally {
+    database.shutdown();
+  }
+  NeoStore neoStore=storeFactory.newNeoStore(false);
+  cleanup.add(neoStore);
+  verifyNeoStore(neoStore);
+  neoStore.close();
+}
