@@ -1,0 +1,37 @@
+{
+  final Response begin=http.POST("/db/data/transaction");
+  assertThat(begin.status(),equalTo(201));
+  assertHasTxLocation(begin);
+  final String executeResource=begin.location();
+  final String statement="WITH range(0, 100000) AS r UNWIND r AS i CREATE (n {number: i}) RETURN count(n)";
+  final CountDownLatch latch=new CountDownLatch(1);
+  final Future<Response> executeFuture=Executors.newSingleThreadExecutor().submit(new Callable<Response>(){
+    public Response call(){
+      latch.countDown();
+      Response response=http.POST(executeResource,quotedJson("{ 'statements': [ { 'statement': '" + statement + "' } ] }"));
+      assertThat(response.status(),equalTo(200));
+      return response;
+    }
+  }
+);
+  final Future<Response> interruptFuture=Executors.newSingleThreadExecutor().submit(new Callable<Response>(){
+    public Response call(){
+      try {
+        latch.await();
+        Thread.sleep(100);
+      }
+ catch (      InterruptedException ignored) {
+      }
+      Response response=http.DELETE(begin.location());
+      assertThat(response.status(),equalTo(200));
+      return response;
+    }
+  }
+);
+  interruptFuture.get();
+  Response execute=executeFuture.get();
+  assertThat(execute,hasErrors(Status.Statement.ExecutionFailure));
+  Response execute2=http.POST(begin.location(),quotedJson("{ 'statements': [ { 'statement': 'CREATE n' } ] }"));
+  assertThat(execute2.status(),equalTo(404));
+  assertThat(execute2,hasErrors(Status.Transaction.UnknownId));
+}

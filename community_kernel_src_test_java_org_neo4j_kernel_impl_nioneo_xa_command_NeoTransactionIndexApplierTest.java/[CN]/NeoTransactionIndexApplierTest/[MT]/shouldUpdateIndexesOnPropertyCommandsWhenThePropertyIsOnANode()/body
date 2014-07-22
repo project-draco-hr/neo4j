@@ -1,0 +1,13 @@
+{
+  final NeoTransactionIndexApplier applier=new NeoTransactionIndexApplier(indexingService,labelScanStore,nodeStore,propertyStore,cacheAccess,propertyLoader);
+  final PropertyRecord before=new PropertyRecord(11);
+  final PropertyRecord after=new PropertyRecord(12);
+  after.setNodeId(42);
+  final Command.PropertyCommand command=new Command.PropertyCommand().init(before,after);
+  final boolean result=applier.visitPropertyCommand(command);
+  applier.close();
+  assertTrue(result);
+  Map<Long,List<Command.PropertyCommand>> propCommands=Collections.singletonMap(command.getNodeId(),Arrays.asList(command));
+  final LazyIndexUpdates expectedUpdates=new LazyIndexUpdates(nodeStore,propertyStore,propCommands,emptyNodeCommands,propertyLoader);
+  verify(indexingService,times(1)).updateIndexes(eq(expectedUpdates));
+}

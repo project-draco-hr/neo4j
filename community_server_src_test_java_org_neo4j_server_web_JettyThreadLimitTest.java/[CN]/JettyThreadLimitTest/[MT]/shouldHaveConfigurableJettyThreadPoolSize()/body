@@ -1,16 +1,18 @@
 {
   Jetty9WebServer server=new Jetty9WebServer(DevNullLoggingService.DEV_NULL);
-  final int maxThreads=7;
-  server.setMaxThreads(maxThreads);
+  int numCores=1;
+  int configuredMaxThreads=12;
+  server.setMaxThreads(numCores);
   server.setPort(7480);
   try {
     server.start();
     QueuedThreadPool threadPool=(QueuedThreadPool)server.getJetty().getThreadPool();
     threadPool.start();
-    int configuredMaxThreads=maxThreads * 4;
-    loadThreadPool(threadPool,configuredMaxThreads + 1);
+    CountDownLatch cb=loadThreadPool(threadPool,configuredMaxThreads + 1);
+    Thread.sleep(10);
     int threads=threadPool.getThreads();
-    assertTrue(threads <= maxThreads);
+    assertEquals("Wrong number of threads in pool",configuredMaxThreads,threads);
+    cb.countDown();
   }
   finally {
     server.stop();

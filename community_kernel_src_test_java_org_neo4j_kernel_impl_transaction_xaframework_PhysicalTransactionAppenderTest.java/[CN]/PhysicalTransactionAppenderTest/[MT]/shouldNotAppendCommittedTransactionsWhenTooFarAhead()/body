@@ -1,0 +1,25 @@
+{
+  LogFile logFile=mock(LogFile.class);
+  InMemoryLogChannel channel=new InMemoryLogChannel();
+  when(logFile.getWriter()).thenReturn(channel);
+  TxIdGenerator txIdGenerator=mock(TxIdGenerator.class);
+  TransactionMetadataCache positionCache=new TransactionMetadataCache(10,100);
+  TransactionIdStore transactionIdStore=mock(TransactionIdStore.class);
+  TransactionAppender appender=new PhysicalTransactionAppender(logFile,txIdGenerator,positionCache,transactionIdStore);
+  final byte[] additionalHeader=new byte[]{1,2,5};
+  final int masterId=2, authorId=1;
+  final long timeWritten=12345, latestCommittedTxWhenStarted=4545;
+  PhysicalTransactionRepresentation transactionRepresentation=new PhysicalTransactionRepresentation(singleCreateNodeCommand());
+  transactionRepresentation.setHeader(additionalHeader,masterId,authorId,timeWritten,latestCommittedTxWhenStarted);
+  when(transactionIdStore.getLastCommittingTransactionId()).thenReturn(latestCommittedTxWhenStarted);
+  LogEntryStart start=new LogEntryStart(0,0,0l,latestCommittedTxWhenStarted,null,LogPosition.UNSPECIFIED);
+  LogEntryCommit commit=new OnePhaseCommit(latestCommittedTxWhenStarted + 2,0l);
+  CommittedTransactionRepresentation transaction=new CommittedTransactionRepresentation(start,transactionRepresentation,commit);
+  try {
+    appender.append(transaction);
+    fail("should have thrown");
+  }
+ catch (  IOException e) {
+    assertEquals("Tried to apply transaction with txId=" + (latestCommittedTxWhenStarted + 2) + " but last committed txId="+ latestCommittedTxWhenStarted,e.getMessage());
+  }
+}

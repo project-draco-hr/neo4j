@@ -34,8 +34,10 @@
        TransactionStream transactions=new TransactionStream(){
         @Override public void accept(        Visitor<CommittedTransactionRepresentation,IOException> visitor) throws IOException {
           LogicalTransactionStore txStore=resolver.resolveDependency(LogicalTransactionStore.class);
-          exhaustAndClose(txStore.getCursor(transactionIdWhenStartingCopy + 1,visitor));
-        }
+          try (IOCursor<CommittedTransactionRepresentation> cursor=txStore.getTransactions(transactionIdWhenStartingCopy + 1)){
+            while (cursor.next() && visitor.visit(cursor.get()))             ;
+          }
+         }
       }
 ;
       return response=spy(new Response<>(null,original.storeId(),transactions,NO_OP));

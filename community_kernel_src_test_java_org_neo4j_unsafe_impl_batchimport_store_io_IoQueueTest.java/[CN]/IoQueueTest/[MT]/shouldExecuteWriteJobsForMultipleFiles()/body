@@ -1,0 +1,27 @@
+{
+  ExecutorService executor=cleanupRule.add(spy(Executors.newFixedThreadPool(3)));
+  IoQueue queue=new IoQueue(executor);
+  File file1=new File(directory.directory(),"file1");
+  StoreChannel channel1=cleanupRule.add(spy(fs.create(file1)));
+  File file2=new File(directory.directory(),"file2");
+  StoreChannel channel2=cleanupRule.add(spy(fs.create(file2)));
+  Monitor monitor=mock(Monitor.class);
+  Writer writer1=queue.create(file1,channel1,monitor);
+  Writer writer2=queue.create(file2,channel2,monitor);
+  Ring<ByteBuffer> ring1=mock(Ring.class);
+  Ring<ByteBuffer> ring2=mock(Ring.class);
+  ByteBuffer buffer=ByteBuffer.allocate(10);
+  int position1=100, position2=position1 + buffer.capacity(), position3=50;
+  writer1.write(buffer,position1,ring1);
+  writer1.write(buffer,position2,ring1);
+  writer2.write(buffer,position3,ring2);
+  verify(executor,atLeast(2)).submit(any(Callable.class));
+  verify(executor,atMost(3)).submit(any(Callable.class));
+  executor.shutdown();
+  executor.awaitTermination(10,SECONDS);
+  verify(channel1,times(1)).write(buffer,position1);
+  verify(channel1,times(1)).write(buffer,position2);
+  verify(channel2,times(1)).write(buffer,position3);
+  verifyNoMoreInteractions(channel1);
+  verifyNoMoreInteractions(channel2);
+}

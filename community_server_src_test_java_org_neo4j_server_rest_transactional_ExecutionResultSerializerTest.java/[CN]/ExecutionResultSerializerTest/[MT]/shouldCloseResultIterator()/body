@@ -1,0 +1,21 @@
+{
+  OutputStream output=mock(OutputStream.class);
+  ExecutionResultSerializer serializer=new ExecutionResultSerializer(output,null,null);
+  RuntimeException onCloseException=new IllegalStateException("Iterator closed");
+  ResourceIterator iterator=mock(ResourceIterator.class);
+  when(iterator.hasNext()).thenReturn(true);
+  when(iterator.next()).thenThrow(onCloseException);
+  ExecutionResult result=mock(ExecutionResult.class);
+  when(result.iterator()).thenReturn(iterator);
+  try {
+    serializer.statementResult(result,false);
+    fail("Expected IllegalStateException to be thrown when closing the iterator");
+  }
+ catch (  IllegalStateException e) {
+    assertEquals(onCloseException,e);
+  }
+  verify(iterator,times(1)).hasNext();
+  verify(iterator,times(1)).next();
+  verify(iterator,times(1)).close();
+  verifyNoMoreInteractions(iterator);
+}

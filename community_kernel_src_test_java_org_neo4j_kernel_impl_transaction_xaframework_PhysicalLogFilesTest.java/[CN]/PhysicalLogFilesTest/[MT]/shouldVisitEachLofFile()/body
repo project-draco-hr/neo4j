@@ -1,0 +1,16 @@
+{
+  PhysicalLogFiles files=new PhysicalLogFiles(tmpDirectory,filename,fs);
+  final File[] filesOnDisk=new File[]{new File(tmpDirectory,filename + ".v1"),new File(tmpDirectory,"crap.v2"),new File(tmpDirectory,filename + ".v3"),new File(tmpDirectory,filename)};
+  when(fs.listFiles(tmpDirectory)).thenReturn(filesOnDisk);
+  final List<File> seenFiles=new ArrayList<>();
+  final List<Long> seenVersions=new ArrayList<>();
+  files.accept(new PhysicalLogFiles.LogVersionVisitor(){
+    @Override public void visit(    File file,    long logVersion){
+      seenFiles.add(file);
+      seenVersions.add(logVersion);
+    }
+  }
+);
+  assertEquals(Arrays.asList(new File(tmpDirectory,filename + ".v1"),new File(tmpDirectory,filename + ".v3")),seenFiles);
+  assertEquals(Arrays.asList(1l,3l),seenVersions);
+}
