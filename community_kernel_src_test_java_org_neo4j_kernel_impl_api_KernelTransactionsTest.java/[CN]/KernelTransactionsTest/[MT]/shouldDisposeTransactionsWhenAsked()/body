@@ -1,0 +1,18 @@
+{
+  LifeSupport life=new LifeSupport();
+  life.start();
+  Locks locks=mock(Locks.class);
+  when(locks.newClient()).thenReturn(mock(Locks.Client.class));
+  KernelTransactions registry=new KernelTransactions(new MockContextSupplier(),mock(NeoStore.class),locks,null,null,null,null,null,null,null,null,TransactionHeaderInformationFactory.DEFAULT,null,null,mock(Provider.class),null,null,new TransactionHooks(),new TransactionMonitorImpl(),life,false);
+  registry.disposeAll();
+  KernelTransaction first=registry.newInstance();
+  KernelTransaction second=registry.newInstance();
+  KernelTransaction leftOpen=registry.newInstance();
+  first.close();
+  second.close();
+  registry.disposeAll();
+  KernelTransaction postDispose=registry.newInstance();
+  assertThat(postDispose,not(equalTo(first)));
+  assertThat(postDispose,not(equalTo(second)));
+  assertTrue(leftOpen.shouldBeTerminated());
+}
