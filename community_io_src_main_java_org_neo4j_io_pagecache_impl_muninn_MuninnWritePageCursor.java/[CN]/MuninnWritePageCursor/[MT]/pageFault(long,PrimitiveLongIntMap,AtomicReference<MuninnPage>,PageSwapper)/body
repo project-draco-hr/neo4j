@@ -1,0 +1,18 @@
+{
+  MuninnPage page;
+  for (; ; ) {
+    page=freelist.get();
+    if (page == null) {
+      pagedFile.pageCache.unparkEvictor();
+      continue;
+    }
+    if (freelist.compareAndSet(page,page.nextFree)) {
+      break;
+    }
+  }
+  lockStamp=page.writeLock();
+  page.initBuffer();
+  page.fault(swapper,filePageId);
+  translationTable.put(filePageId,page.cachePageId);
+  pinCursorToPage(page);
+}

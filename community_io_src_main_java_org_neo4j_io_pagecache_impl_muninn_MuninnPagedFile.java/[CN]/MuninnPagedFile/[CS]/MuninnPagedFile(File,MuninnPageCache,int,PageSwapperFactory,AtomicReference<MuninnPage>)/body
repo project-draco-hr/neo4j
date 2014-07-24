@@ -1,0 +1,28 @@
+{
+  this.pageCache=pageCache;
+  this.cachePages=pageCache.pages;
+  this.pageSize=pageSize;
+  this.freelist=freelist;
+  translationTables=new PrimitiveLongIntMap[translationTableStripeLevel];
+  translationTableLocks=new StampedLock[translationTableStripeLevel];
+  for (int i=0; i < translationTableStripeLevel; i++) {
+    translationTables[i]=Primitive.longIntMap(32);
+    translationTableLocks[i]=new StampedLock();
+  }
+  PageEvictionCallback onEviction=new MuninnPageEvictionCallback(translationTables,translationTableLocks);
+  swapper=swapperFactory.createPageSwapper(file,pageSize,onEviction);
+  flusher=new PageFlusher(cachePages,swapper);
+  lastPageId=swapper.getLastPageId();
+  readCursors=new MuninnCursorFreelist(){
+    @Override protected MuninnPageCursor createNewCursor(){
+      return new MuninnReadPageCursor(this);
+    }
+  }
+;
+  writeCursors=new MuninnCursorFreelist(){
+    @Override protected MuninnPageCursor createNewCursor(){
+      return new MuninnWritePageCursor(this);
+    }
+  }
+;
+}
