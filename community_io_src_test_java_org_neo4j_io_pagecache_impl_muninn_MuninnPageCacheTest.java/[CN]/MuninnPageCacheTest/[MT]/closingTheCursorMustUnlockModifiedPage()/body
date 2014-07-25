@@ -1,0 +1,32 @@
+{
+  writeInitialDataTo(file);
+  final MuninnPageCache pageCache=new MuninnPageCache(fs,2,8,PageCacheMonitor.NULL);
+  final PagedFile pagedFile=pageCache.map(file,8);
+  Future<?> task=executor.submit(new Runnable(){
+    @Override public void run(){
+      try (PageCursor cursor=pagedFile.io(0,PF_EXCLUSIVE_LOCK)){
+        assertTrue(cursor.next());
+        cursor.putLong(41);
+      }
+ catch (      IOException e) {
+        throw new RuntimeException(e);
+      }
+    }
+  }
+);
+  task.get();
+  try (PageCursor cursor=pagedFile.io(0,PF_EXCLUSIVE_LOCK)){
+    assertTrue(cursor.next());
+    long value=cursor.getLong();
+    cursor.setOffset(0);
+    cursor.putLong(value + 1);
+  }
+   int clockArm=pageCache.evictPages(1,0);
+  assertThat(clockArm,is(1));
+  ByteBuffer buf=ByteBuffer.allocate(16);
+  StoreChannel channel=fs.open(file,"r");
+  channel.read(buf);
+  buf.flip();
+  assertThat(buf.getLong(),is(42L));
+  assertThat(buf.getLong(),is(y));
+}

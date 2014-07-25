@@ -1,0 +1,20 @@
+{
+  writeInitialDataTo(file);
+  RecordingPageCacheMonitor monitor=new RecordingPageCacheMonitor();
+  MuninnPageCache pageCache=new MuninnPageCache(fs,2,8,monitor);
+  PagedFile pagedFile=pageCache.map(file,8);
+  try (PageCursor cursor=pagedFile.io(1,PF_EXCLUSIVE_LOCK)){
+    assertTrue(cursor.next());
+    cursor.putLong(0L);
+  }
+   assertNotNull(monitor.observe(Fault.class));
+  int clockArm=pageCache.evictPages(1,0);
+  assertThat(clockArm,is(1));
+  assertNotNull(monitor.observe(Evict.class));
+  ByteBuffer buf=ByteBuffer.allocate(16);
+  StoreChannel channel=fs.open(file,"r");
+  channel.read(buf);
+  buf.flip();
+  assertThat(buf.getLong(),is(x));
+  assertThat(buf.getLong(),is(0L));
+}

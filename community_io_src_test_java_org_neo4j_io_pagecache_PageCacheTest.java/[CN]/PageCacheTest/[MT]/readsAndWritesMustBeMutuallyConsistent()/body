@@ -59,15 +59,17 @@
     int countedConsistentPageReads=0;
     try (PageCursor cursor=pagedFile.io(0,PF_SHARED_LOCK)){
       while (cursor.next()) {
-        boolean consistent=true;
+        boolean consistent;
         do {
+          consistent=true;
           byte first=cursor.getByte();
           for (int j=1; j < filePageSize; j++) {
-            consistent=consistent && cursor.getByte() == first;
+            byte b=cursor.getByte();
+            consistent=consistent && b == first;
           }
         }
  while (cursor.retry());
-        assertTrue(consistent);
+        assertTrue("checked consistency at itr " + i,consistent);
         countedConsistentPageReads++;
       }
     }
