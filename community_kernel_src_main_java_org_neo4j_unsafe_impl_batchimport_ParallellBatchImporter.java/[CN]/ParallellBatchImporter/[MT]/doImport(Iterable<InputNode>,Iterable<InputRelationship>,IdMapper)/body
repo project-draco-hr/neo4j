@@ -1,18 +1,23 @@
 {
-  try (BatchFriendlyNeoStore neoStore=new BatchFriendlyNeoStore(fileSystem,storeDir,config,writeMonitor,logging)){
-    executeStage(new NodeStage(idMapper.wrapNodes(nodes.iterator()),neoStore));
-    NodeRelationshipLink nodeRelationshipLink=new NodeRelationshipLinkImpl(LongArrayFactory.AUTO,neoStore.getNodeStore().getHighId(),config.denseNodeThreshold());
-    executeStage(new CalculateDenseNodesStage(relationships.iterator(),neoStore,nodeRelationshipLink));
-    executeStage(new RelationshipStage(relationships.iterator(),neoStore,nodeRelationshipLink));
+  long startTime=currentTimeMillis();
+  try (BatchingNeoStore neoStore=new BatchingNeoStore(fileSystem,storeDir,config,writeMonitor,logging,writerFactory)){
+    NodeStage nodeStage=new NodeStage(idMapper.wrapNodes(nodes.iterator()),neoStore);
+    NodeRelationshipLink nodeRelationshipLink=new NodeRelationshipLinkImpl(LongArrayFactory.AUTO,config.denseNodeThreshold());
+    CalculateDenseNodesStage calculateDenseNodesStage=new CalculateDenseNodesStage(relationships.iterator(),neoStore,nodeRelationshipLink);
+    executeStages(nodeStage,calculateDenseNodesStage);
+    executeStages(new RelationshipStage(idMapper.wrapRelationships(relationships.iterator()),neoStore,nodeRelationshipLink));
     neoStore.switchNodeAndRelationshipStoresToUpdateMode();
-    executeStage(new NodeFirstRelationshipStage(neoStore,nodeRelationshipLink));
+    executeStages(new NodeFirstRelationshipStage(neoStore,nodeRelationshipLink));
     nodeRelationshipLink.clearRelationships();
-    executeStage(new RelationshipLinkbackStage(neoStore,nodeRelationshipLink));
-    executionMonitor.done();
+    executeStages(new RelationshipLinkbackStage(neoStore,nodeRelationshipLink));
+    executionMonitor.done(currentTimeMillis() - startTime);
     logger.log("Import completed [TODO import stats]");
   }
  catch (  Throwable t) {
     logger.error("Error during import",t);
     throw Exceptions.launderedException(IOException.class,t);
+  }
+ finally {
+    writerFactory.shutdownAndAwaitEverythingWritten();
   }
 }
