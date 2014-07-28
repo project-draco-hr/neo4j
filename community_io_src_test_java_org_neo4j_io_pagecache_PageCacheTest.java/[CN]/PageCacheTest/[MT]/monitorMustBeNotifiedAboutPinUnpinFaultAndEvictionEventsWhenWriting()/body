@@ -1,0 +1,24 @@
+{
+  int pagesToGenerate=142;
+  CountingPageCacheMonitor monitor=new CountingPageCacheMonitor();
+  fs.create(file).close();
+  getPageCache(fs,maxPages,pageCachePageSize,monitor);
+  PagedFile pagedFile=pageCache.map(file,filePageSize);
+  try (PageCursor cursor=pagedFile.io(0,PF_EXCLUSIVE_LOCK)){
+    for (long i=0; i < pagesToGenerate; i++) {
+      assertTrue(cursor.next());
+      assertThat(cursor.getCurrentPageId(),is(i));
+      assertTrue(cursor.next(i));
+      assertThat(cursor.getCurrentPageId(),is(i));
+      writeRecords(cursor);
+    }
+  }
+   assertThat(monitor.countPins(),is(pagesToGenerate * 2));
+  assertThat(monitor.countTakenExclusiveLocks(),is(pagesToGenerate * 2));
+  assertThat(monitor.countTakenSharedLocks(),is(0));
+  assertThat(monitor.countReleasedExclusiveLocks(),is(pagesToGenerate * 2));
+  assertThat(monitor.countReleasedSharedLocks(),is(0));
+  assertThat(monitor.countUnpins(),is(pagesToGenerate * 2));
+  assertThat(monitor.countFaults(),greaterThanOrEqualTo(pagesToGenerate));
+  assertThat(monitor.countEvictions(),both(greaterThanOrEqualTo(pagesToGenerate - maxPages)).and(lessThan(pagesToGenerate)));
+}
