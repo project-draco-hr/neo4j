@@ -2,11 +2,13 @@
   int stripe=(int)(pageId & MuninnPagedFile.translationTableStripeMask);
   StampedLock translationTableLock=translationTableLocks[stripe];
   PrimitiveLongIntMap translationTable=translationTables[stripe];
-  long stamp=translationTableLock.writeLock();
-  try {
-    translationTable.remove(pageId);
-  }
+  long stamp=translationTableLock.tryWriteLock();
+  if (stamp != 0) {
+    try {
+      translationTable.remove(pageId);
+    }
   finally {
-    translationTableLock.unlockWrite(stamp);
+      translationTableLock.unlockWrite(stamp);
+    }
   }
 }
