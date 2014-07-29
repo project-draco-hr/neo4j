@@ -1,0 +1,17 @@
+{
+  final StampedLock lock=new StampedLock();
+  long s=lock.writeLock();
+  Thread t=newStartedThread(new CheckedRunnable(){
+    public void realRun() throws InterruptedException {
+      long startTime=System.nanoTime();
+      long timeoutMillis=10;
+      long rs=lock.tryReadLock(timeoutMillis,MILLISECONDS);
+      assertEquals(rs,0L);
+      assertTrue(millisElapsedSince(startTime) >= timeoutMillis);
+    }
+  }
+);
+  awaitTermination(t);
+  assertTrue(lock.isWriteLocked());
+  lock.unlockWrite(s);
+}

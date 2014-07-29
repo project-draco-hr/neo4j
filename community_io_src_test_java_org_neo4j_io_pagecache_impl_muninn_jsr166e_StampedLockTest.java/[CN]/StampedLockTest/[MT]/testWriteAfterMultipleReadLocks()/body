@@ -1,0 +1,23 @@
+{
+  final StampedLock lock=new StampedLock();
+  long s=lock.readLock();
+  Thread t1=newStartedThread(new CheckedRunnable(){
+    public void realRun(){
+      long rs=lock.readLock();
+      lock.unlockRead(rs);
+    }
+  }
+);
+  awaitTermination(t1);
+  Thread t2=newStartedThread(new CheckedRunnable(){
+    public void realRun(){
+      long ws=lock.writeLock();
+      lock.unlockWrite(ws);
+    }
+  }
+);
+  assertFalse(lock.isWriteLocked());
+  lock.unlockRead(s);
+  awaitTermination(t2);
+  assertFalse(lock.isWriteLocked());
+}

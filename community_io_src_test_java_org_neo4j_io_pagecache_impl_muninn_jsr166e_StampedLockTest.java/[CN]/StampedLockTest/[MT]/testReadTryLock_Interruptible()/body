@@ -1,0 +1,22 @@
+{
+  final CountDownLatch running=new CountDownLatch(1);
+  final StampedLock lock=new StampedLock();
+  long s=lock.writeLock();
+  Thread t=newStartedThread(new CheckedInterruptedRunnable(){
+    public void realRun() throws InterruptedException {
+      running.countDown();
+      lock.tryReadLock(2 * LONG_DELAY_MS,MILLISECONDS);
+    }
+  }
+);
+  try {
+    running.await();
+    waitForThreadToEnterWaitState(t,100);
+    t.interrupt();
+    awaitTermination(t);
+    releaseWriteLock(lock,s);
+  }
+ catch (  InterruptedException ie) {
+    threadUnexpectedException(ie);
+  }
+}

@@ -1,0 +1,19 @@
+{
+  final StampedLock lock=new StampedLock();
+  final long s=lock.readLock();
+  Thread t=newStartedThread(new CheckedRunnable(){
+    public void realRun() throws InterruptedException {
+      long s2=lock.tryReadLock();
+      assertTrue(s2 != 0L);
+      lock.unlockRead(s2);
+      long s3=lock.tryReadLock(LONG_DELAY_MS,MILLISECONDS);
+      assertTrue(s3 != 0L);
+      lock.unlockRead(s3);
+      long s4=lock.readLock();
+      lock.unlockRead(s4);
+    }
+  }
+);
+  awaitTermination(t);
+  lock.unlockRead(s);
+}
