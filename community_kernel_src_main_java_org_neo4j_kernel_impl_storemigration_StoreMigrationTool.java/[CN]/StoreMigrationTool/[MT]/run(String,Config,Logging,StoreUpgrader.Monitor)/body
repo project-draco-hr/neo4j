@@ -2,7 +2,7 @@
   FileSystemAbstraction fs=new DefaultFileSystemAbstraction();
   StoreUpgrader migrationProcess=new StoreUpgrader(new ConfigMapUpgradeConfiguration(config),fs,monitor);
   config=StoreFactory.configForStoreDir(config,new File(legacyStoreDirectory));
-  migrationProcess.addParticipant(new StoreMigrator(new VisibleMigrationProgressMonitor(log,System.out),new UpgradableDatabase(new StoreVersionCheck(fs)),config));
+  migrationProcess.addParticipant(new StoreMigrator(new VisibleMigrationProgressMonitor(logging.getMessagesLog(StoreMigrationTool.class),System.out),new UpgradableDatabase(new StoreVersionCheck(fs)),config,logging));
   LifeSupport life=new LifeSupport();
   KernelExtensions kernelExtensions=life.add(new KernelExtensions(new DefaultGraphDatabaseDependencies().kernelExtensions(),config,kernelExtensionDependencyResolver(fs,config),ignore()));
   life.start();
@@ -16,7 +16,7 @@
     long startTime=System.currentTimeMillis();
     migrationProcess.migrateIfNeeded(new File(legacyStoreDirectory));
     long duration=System.currentTimeMillis() - startTime;
-    log.info(format("Migration completed in %d s%n",duration / 1000));
+    logging.getMessagesLog(StoreMigrationTool.class).info(format("Migration completed in %d s%n",duration / 1000));
   }
   finally {
     life.shutdown();
