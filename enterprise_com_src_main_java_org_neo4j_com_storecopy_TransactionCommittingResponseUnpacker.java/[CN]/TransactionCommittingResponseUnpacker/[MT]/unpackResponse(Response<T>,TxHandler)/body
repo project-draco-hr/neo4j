@@ -3,13 +3,22 @@
     @Override public boolean visit(    CommittedTransactionRepresentation transaction) throws IOException {
 synchronized (appender) {
         if (appender.append(transaction)) {
-          long transactionId=transaction.getCommitEntry().getTxId();
+          final boolean isMyTx=serverId != NO_SERVER_ID && serverId == transaction.getTransactionRepresentation().getAuthorId();
+          final long transactionId=transaction.getCommitEntry().getTxId();
+          if (!isMyTx) {
+            transactionMonitor.transactionStarted();
+          }
+          boolean success=false;
           try {
             storeApplier.apply(transaction.getTransactionRepresentation(),transactionId,true);
             handler.accept(transaction);
+            success=true;
           }
   finally {
             transactionIdStore.transactionClosed(transactionId);
+            if (!isMyTx) {
+              transactionMonitor.transactionFinished(success);
+            }
           }
         }
       }
