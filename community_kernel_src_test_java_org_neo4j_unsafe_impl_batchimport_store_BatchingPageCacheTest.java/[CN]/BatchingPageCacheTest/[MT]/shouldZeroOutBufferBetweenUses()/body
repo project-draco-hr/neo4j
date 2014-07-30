@@ -1,0 +1,18 @@
+{
+  int pageSize=100;
+  File file=directory.file("store");
+  fillFileWithByteContents(file);
+  byte[] someBytes=new byte[]{1,2,3,4,5};
+  PageCache pageCache=new BatchingPageCache(FS,pageSize,SYNCHRONOUS,NO_MONITOR,Mode.APPEND_ONLY);
+  PagedFile pagedFile=pageCache.map(file,pageSize);
+  try (PageCursor cursor=pagedFile.io(1,PagedFile.PF_EXCLUSIVE_LOCK)){
+    cursor.putBytes(someBytes);
+  }
+   try (PageCursor cursor=pagedFile.io(2,PagedFile.PF_EXCLUSIVE_LOCK)){
+    byte[] readBack=new byte[someBytes.length];
+    cursor.getBytes(readBack);
+    byte[] zeros=new byte[someBytes.length];
+    Arrays.fill(zeros,(byte)0);
+    assertArrayEquals(zeros,readBack);
+  }
+ }
