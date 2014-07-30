@@ -1,7 +1,7 @@
 {
   ByteBuffer buf=ByteBuffer.allocate(recordSize);
-  PageCache cache=getPageCache(fs,maxPages,pageCachePageSize,PageCacheMonitor.NULL);
-  PagedFile pagedFile=cache.map(file,filePageSize);
+  getPageCache(fs,maxPages,pageCachePageSize,PageCacheMonitor.NULL);
+  PagedFile pagedFile=pageCache.map(file,filePageSize);
   long startPageId=0;
   long endPageId=recordCount / recordsPerFilePage;
   try (PageCursor cursor=pagedFile.io(startPageId,PF_EXCLUSIVE_LOCK)){
@@ -12,7 +12,10 @@
  while (cursor.retry());
     }
   }
-   cache.close();
+  finally {
+    pageCache.unmap(file);
+    pageCache.close();
+  }
   StoreChannel channel=fs.open(file,"r");
   ByteBuffer observation=ByteBuffer.allocate(recordSize);
   for (int i=0; i < recordCount; i++) {

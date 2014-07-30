@@ -24,8 +24,11 @@
   startLatch.await();
   try (PageCursor cursorB=pagedFile.io(1,PF_EXCLUSIVE_LOCK)){
     assertTrue(cursorB.next());
+    unpinLatch.countDown();
   }
-   unpinLatch.countDown();
+  finally {
+    pageCache.unmap(file);
+  }
   Exception e=exceptionRef.get();
   if (e != null) {
     throw new Exception("Child thread got exception",e);
