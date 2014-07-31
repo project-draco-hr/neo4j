@@ -1,0 +1,26 @@
+{
+  ByteArrayOutputStream output=new ByteArrayOutputStream();
+  ExecutionResultSerializer serializer=new ExecutionResultSerializer(output,URI.create("http://base.uri/"),StringLogger.DEV_NULL);
+  String operatorType="Ich habe einen Plan";
+  Map<String,Object> args=new HashMap<>();
+  args.put("string","A String");
+  args.put("bool",true);
+  args.put("number",1);
+  args.put("double",2.3);
+  args.put("listOfInts",asList(1,2,3));
+  args.put("listOfListOfInts",asList(asList(1,2,3)));
+  PlanDescription planDescription=mockedPlanDescription(operatorType,args,Collections.<PlanDescription>emptyList());
+  serializer.statementResult(mockExecutionResult(planDescription),false,ResultDataContent.rest);
+  serializer.finish();
+  String resultString=output.toString("UTF-8");
+  assertIsPlanRoot(resultString);
+  Map<String,?> rootMap=planRootMap(resultString);
+  assertEquals(asSet("operatorType","children","string","bool","number","double","listOfInts","listOfListOfInts"),rootMap.keySet());
+  assertEquals(operatorType,rootMap.get("operatorType"));
+  assertEquals(args.get("string"),rootMap.get("string"));
+  assertEquals(args.get("bool"),rootMap.get("bool"));
+  assertEquals(args.get("number"),rootMap.get("number"));
+  assertEquals(args.get("double"),rootMap.get("double"));
+  assertEquals(args.get("listOfInts"),rootMap.get("listOfInts"));
+  assertEquals(args.get("listOfListOfInts"),rootMap.get("listOfListOfInts"));
+}
