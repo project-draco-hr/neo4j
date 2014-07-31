@@ -1,0 +1,17 @@
+{
+  final SimplePool<Item> pool=new SimplePool<>(2,ITEM_FACTORY);
+  Item first=pool.acquire();
+  assertEquals(0,first.id);
+  Item second=pool.acquire();
+  assertEquals(1,second.id);
+  Future<Item> thirdFuture=t2.execute(new WorkerCommand<Void,Item>(){
+    @Override public Item doWork(    Void state) throws Exception {
+      return pool.acquire();
+    }
+  }
+);
+  assertThat(t2,OtherThreadRule.isThreadState(Thread.State.TIMED_WAITING));
+  pool.release(first);
+  Item third=thirdFuture.get();
+  assertEquals(0,third.id);
+}

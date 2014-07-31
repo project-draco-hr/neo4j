@@ -1,0 +1,22 @@
+{
+  byte[] someBytes=new byte[]{1,2,3,4,5};
+  byte[] someOtherBytes=new byte[]{6,7,8,9,10};
+  int pageSize=100;
+  Monitor monitor=mock(Monitor.class);
+  File file=directory.file("store");
+  fillFileWithByteContents(file);
+  PageCache pageCache=new BatchingPageCache(FS,pageSize,SYNCHRONOUS,monitor,Mode.APPEND_ONLY);
+  PagedFile pagedFile=pageCache.map(file,pageSize);
+  try (PageCursor cursor=pagedFile.io(0,PagedFile.PF_EXCLUSIVE_LOCK)){
+    cursor.putBytes(someBytes);
+  }
+   verify(monitor,times(0)).dataWritten(0);
+  try (PageCursor cursor=pagedFile.io(0,PagedFile.PF_EXCLUSIVE_LOCK)){
+    cursor.setOffset(16);
+    cursor.putBytes(someBytes);
+  }
+   verify(monitor,times(0)).dataWritten(0);
+  try (PageCursor ignored=pagedFile.io(1,PagedFile.PF_EXCLUSIVE_LOCK)){
+    verify(monitor,times(1)).dataWritten(anyInt());
+  }
+ }
