@@ -2,6 +2,7 @@
   final int pageCount=100;
   int writerThreads=8;
   final CountDownLatch startLatch=new CountDownLatch(writerThreads);
+  final CountDownLatch writersDoneLatch=new CountDownLatch(writerThreads);
   List<Future<?>> writers=new ArrayList<>();
   final PageCache cache=getPageCache(fs,maxPages,pageCachePageSize,PageCacheMonitor.NULL);
   PagedFile pagedFile=cache.map(file,filePageSize);
@@ -48,6 +49,9 @@
  catch (      IOException e) {
         throw new RuntimeException(e);
       }
+ finally {
+        writersDoneLatch.countDown();
+      }
     }
   }
 ;
@@ -84,4 +88,5 @@
     }
   }
   cache.unmap(file);
+  writersDoneLatch.await();
 }
