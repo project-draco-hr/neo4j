@@ -1,0 +1,41 @@
+{
+  Map<String,String> params=tuningConfiguration.getParams();
+  params.put(GraphDatabaseSettings.store_dir.name(),storeDir);
+  tuningConfiguration.applyChanges(params);
+  DefaultFileSystemAbstraction fileSystem=new DefaultFileSystemAbstraction();
+  StoreFactory factory=new StoreFactory(tuningConfiguration,new DefaultIdGeneratorFactory(),tuningConfiguration.get(ConsistencyCheckSettings.consistency_check_window_pool_implementation).windowPoolFactory(tuningConfiguration,logger),fileSystem,logger,new DefaultTxHook());
+  ConsistencySummaryStatistics summary;
+  File reportFile=chooseReportPath(tuningConfiguration);
+  StringLogger report=StringLogger.lazyLogger(reportFile);
+  NeoStore neoStore=factory.newNeoStore(new File(storeDir,NeoStore.DEFAULT_NAME));
+  try {
+    neoStore.makeStoreOk();
+    StoreAccess store=new StoreAccess(neoStore);
+    LabelScanStore labelScanStore=null;
+    try {
+      labelScanStore=new LuceneLabelScanStoreBuilder(storeDir,store.getRawNeoStore(),fileSystem,logger).build();
+      SchemaIndexProvider indexes=new LuceneSchemaIndexProvider(DirectoryFactory.PERSISTENT,tuningConfiguration);
+      DirectStoreAccess stores=new DirectStoreAccess(store,labelScanStore,indexes);
+      summary=new FullCheck(tuningConfiguration,progressFactory).execute(stores,StringLogger.tee(logger,report));
+    }
+  finally {
+      try {
+        if (null != labelScanStore) {
+          labelScanStore.shutdown();
+        }
+      }
+ catch (      IOException e) {
+        logger.error("Faiure during shutdown of label scan store",e);
+      }
+    }
+  }
+  finally {
+    report.close();
+    neoStore.close();
+  }
+  if (!summary.isConsistent()) {
+    logger.logMessage(String.format("See '%s' for a detailed consistency report.",reportFile.getPath()));
+    return Result.FAILURE;
+  }
+  return Result.SUCCESS;
+}
