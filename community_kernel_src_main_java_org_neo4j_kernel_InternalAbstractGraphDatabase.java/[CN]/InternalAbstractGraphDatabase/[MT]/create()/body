@@ -12,7 +12,6 @@
   config.setLogger(msgLog);
   this.storeLocker=life.add(new StoreLockerLifecycleAdapter(new StoreLocker(fileSystem),storeDir));
   new JvmChecker(msgLog,new JvmMetadataRepository()).checkJvmCompatibilityAndIssueWarning();
-  boolean readOnly=config.get(Configuration.read_only);
   String cacheTypeName=config.get(Configuration.cache_type);
   CacheProvider cacheProvider=cacheProviders.get(cacheTypeName);
   if (cacheProvider == null) {
@@ -48,12 +47,11 @@
   extensions=life.add(createKernelData());
   life.add(kernelExtensions);
   schema=new SchemaImpl(threadToTransactionBridge);
-  LegacyIndexProxy.Lookup indexLookup=createIndexLookup();
-  indexManager=new IndexManagerImpl(indexLookup,threadToTransactionBridge);
-  nodeAutoIndexer=life.add(new NodeAutoIndexerImpl(config,indexManager,nodeManager));
-  relAutoIndexer=life.add(new RelationshipAutoIndexerImpl(config,indexManager,nodeManager));
-  indexManager.setNodeAutoIndexer(nodeAutoIndexer);
-  indexManager.setRelAutoIndexer(relAutoIndexer);
+  final LegacyIndexProxy.Lookup indexLookup=createIndexLookup();
+  final IndexProvider indexProvider=new IndexProviderImpl(indexLookup,threadToTransactionBridge);
+  nodeAutoIndexer=life.add(new NodeAutoIndexerImpl(config,indexProvider,nodeManager));
+  relAutoIndexer=life.add(new RelationshipAutoIndexerImpl(config,indexProvider,nodeManager));
+  indexManager=new IndexManagerImpl(threadToTransactionBridge,indexProvider,nodeAutoIndexer,relAutoIndexer);
   recoveryVerifier=createRecoveryVerifier();
   storeFactory=createStoreFactory();
   startupStatistics=new StartupStatisticsProvider();
