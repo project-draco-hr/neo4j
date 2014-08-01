@@ -1,0 +1,14 @@
+{
+  try (Transaction tx=graphDb.beginTx()){
+    graphDb.index().forNodes("index");
+    tx.success();
+  }
+   shutdownDB();
+  Process process=Runtime.getRuntime().exec(new String[]{"java","-cp",System.getProperty("java.class.path"),AddThenDeleteInAnotherTxAndQuit.class.getName(),path.getPath()});
+  assertEquals(0,new ProcessStreamHandler(process,false).waitForResult());
+  startDB();
+  try (Transaction tx=graphDb.beginTx()){
+    assertFalse(graphDb.index().existsForNodes("index"));
+    assertNotNull(graphDb.index().forNodes("index2").get("key","value").getSingle());
+  }
+ }
