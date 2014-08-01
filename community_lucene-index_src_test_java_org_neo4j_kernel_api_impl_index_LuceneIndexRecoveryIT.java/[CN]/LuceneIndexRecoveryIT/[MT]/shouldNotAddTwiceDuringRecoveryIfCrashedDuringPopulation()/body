@@ -1,19 +1,15 @@
 {
   startDb(createAlwaysInitiallyPopulatingLuceneIndexFactory());
-  Label myLabel=label("MyLabel");
-  createIndex(myLabel);
+  IndexDefinition indexDefinition=createIndex(myLabel);
+  waitForIndex(indexDefinition);
   long nodeId=createNode(myLabel,12);
   assertEquals(1,doIndexLookup(myLabel,12).size());
   killDb();
   startDb(createAlwaysInitiallyPopulatingLuceneIndexFactory());
-  Transaction transaction=db.beginTx();
-  try {
-    IndexDefinition indexDefinition=db.schema().getIndexes().iterator().next();
-    db.schema().awaitIndexOnline(indexDefinition,10l,TimeUnit.SECONDS);
+  try (Transaction tx=db.beginTx()){
+    IndexDefinition index=db.schema().getIndexes().iterator().next();
+    waitForIndex(index);
     assertEquals(12,db.getNodeById(nodeId).getProperty(NUM_BANANAS_KEY));
     assertEquals(1,doIndexLookup(myLabel,12).size());
   }
-  finally {
-    transaction.finish();
-  }
-}
+ }
