@@ -1,0 +1,39 @@
+{
+  NeoStoreXaDataSource ds=db.getDependencyResolver().resolveDependency(NeoStoreXaDataSource.class);
+  PhysicalLogFile pLogFile=ds.getDependencyResolver().resolveDependency(PhysicalLogFile.class);
+  long version=ds.getCurrentLogVersion();
+  pLogFile.forceRotate();
+  ReadableLogChannel logFileChannel=pLogFile.getReader(new LogPosition(version,LOG_HEADER_SIZE));
+  LogDeserializer deserializer=new LogDeserializer(CommandReaderFactory.DEFAULT);
+  final AtomicBoolean success=new AtomicBoolean(false);
+  try (IOCursor<LogEntry> cursor=deserializer.logEntries(logFileChannel)){
+    List<Command> commandsInFirstEntry=new ArrayList<>();
+    boolean startFound=false;
+    while (cursor.next()) {
+      LogEntry entry=cursor.get();
+      if (entry instanceof LogEntryStart) {
+        if (startFound) {
+          throw new IllegalArgumentException("More than one start entry");
+        }
+        startFound=true;
+      }
+      if (startFound && entry instanceof LogEntryCommand) {
+        commandsInFirstEntry.add(((LogEntryCommand)entry).getXaCommand());
+      }
+      if (entry instanceof LogEntryCommit) {
+        assertTrue(startFound);
+        assertFalse("Index creation transaction wasn't the first one",commandsInFirstEntry.isEmpty());
+        List<Command> createCommands=IteratorUtil.asList(new FilteringIterator<>(commandsInFirstEntry.iterator(),new Predicate<Command>(){
+          @Override public boolean accept(          Command item){
+            return item instanceof IndexDefineCommand;
+          }
+        }
+));
+        assertEquals(1,createCommands.size());
+        success.set(true);
+        break;
+      }
+    }
+  }
+   assertTrue("Didn't find any commit record in log " + version,success.get());
+}
