@@ -6,18 +6,19 @@
     CalculateDenseNodesStage calculateDenseNodesStage=new CalculateDenseNodesStage(relationships.iterator(),nodeRelationshipLink);
     executeStages(nodeStage,calculateDenseNodesStage);
     executeStages(new RelationshipStage(idMapper.wrapRelationships(relationships.iterator()),neoStore,nodeRelationshipLink));
-    neoStore.switchNodeAndRelationshipStoresToUpdateMode();
+    writerFactory.awaitEverythingWritten();
+    neoStore.switchToUpdateMode();
     executeStages(new NodeFirstRelationshipStage(neoStore,nodeRelationshipLink));
     nodeRelationshipLink.clearRelationships();
     executeStages(new RelationshipLinkbackStage(neoStore,nodeRelationshipLink));
     executionMonitor.done(currentTimeMillis() - startTime);
-    logger.log("Import completed [TODO import stats]");
+    logger.log("Import completed");
   }
  catch (  Throwable t) {
     logger.error("Error during import",t);
     throw Exceptions.launderedException(IOException.class,t);
   }
  finally {
-    writerFactory.shutdownAndAwaitEverythingWritten();
+    writerFactory.shutdown();
   }
 }
