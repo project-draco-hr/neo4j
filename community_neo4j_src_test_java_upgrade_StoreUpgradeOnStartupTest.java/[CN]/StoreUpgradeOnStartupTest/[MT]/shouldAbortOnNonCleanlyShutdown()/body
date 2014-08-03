@@ -1,0 +1,14 @@
+{
+  prepareSampleLegacyDatabase(fileSystem,workingDirectory);
+  assertTrue(allStoreFilesHaveVersion(fileSystem,workingDirectory,LEGACY_VERSION));
+  truncateAllFiles(fileSystem,workingDirectory);
+  Map<String,String> params=new HashMap<>();
+  params.put(GraphDatabaseSettings.allow_store_upgrade.name(),"true");
+  try {
+    new GraphDatabaseFactory().newEmbeddedDatabaseBuilder(workingDirectory.getPath()).setConfig(params).newGraphDatabase();
+    fail("Should have been unable to start upgrade on old version");
+  }
+ catch (  RuntimeException e) {
+    assertThat(Exceptions.rootCause(e),Matchers.instanceOf(StoreUpgrader.UpgradingStoreVersionNotFoundException.class));
+  }
+}

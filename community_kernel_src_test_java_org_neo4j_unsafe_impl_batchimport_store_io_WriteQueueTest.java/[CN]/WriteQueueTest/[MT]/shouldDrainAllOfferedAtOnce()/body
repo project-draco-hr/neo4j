@@ -1,6 +1,8 @@
 {
   ExecutorService executor=mock(ExecutorService.class);
-  WriteQueue queue=new WriteQueue(executor);
+  JobMonitor jobMonitor=new JobMonitor();
+  WriteQueue queue=new WriteQueue(executor,jobMonitor);
+  assertFalse(jobMonitor.hasActiveJobs());
   WriteJob job1=mock(WriteJob.class);
   WriteJob job2=mock(WriteJob.class);
   queue.offer(job1);
@@ -8,8 +10,10 @@
   assertArrayEquals(new WriteJob[]{job1,job2},queue.drain());
   verify(executor,times(1)).submit(any(Callable.class));
   reset(executor);
+  assertTrue(jobMonitor.hasActiveJobs());
   WriteJob job3=mock(WriteJob.class);
   queue.offer(job3);
   assertArrayEquals(new WriteJob[]{job3},queue.drain());
   verify(executor,times(1)).submit(any(Callable.class));
+  assertTrue(jobMonitor.hasActiveJobs());
 }
