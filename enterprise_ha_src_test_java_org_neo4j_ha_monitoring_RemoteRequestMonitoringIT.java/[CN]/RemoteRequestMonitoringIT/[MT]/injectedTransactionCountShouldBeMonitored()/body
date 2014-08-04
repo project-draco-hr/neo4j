@@ -12,21 +12,21 @@
     firstSlave.getDependencyResolver().resolveDependency(Monitors.class).addMonitorListener(firstSlaveMonitor);
     HighlyAvailableGraphDatabase secondSlave=clusterManager.getDefaultCluster().getAnySlave(firstSlave);
     secondSlave.getDependencyResolver().resolveDependency(Monitors.class).addMonitorListener(secondSlaveMonitor);
-    Transaction tx=master.beginTx();
-    master.createNode();
-    tx.success();
-    tx.finish();
-    tx=firstSlave.beginTx();
-    firstSlave.createNode();
-    tx.success();
-    tx.finish();
-    tx=secondSlave.beginTx();
-    secondSlave.createNode();
-    tx.success();
-    tx.finish();
-  }
+    try (Transaction tx=master.beginTx()){
+      master.createNode();
+      tx.success();
+    }
+     try (Transaction tx=firstSlave.beginTx()){
+      firstSlave.createNode();
+      tx.success();
+    }
+     try (Transaction tx=secondSlave.beginTx()){
+      secondSlave.createNode();
+      tx.success();
+    }
+   }
   finally {
-    clusterManager.stop();
+    clusterManager.shutdown();
   }
   assertEquals(masterMonitor.getRequests().size(),masterMonitor.getRequestsEnded());
   assertEquals(firstSlaveMonitor.getRequests().size(),firstSlaveMonitor.getRequestsEnded());
