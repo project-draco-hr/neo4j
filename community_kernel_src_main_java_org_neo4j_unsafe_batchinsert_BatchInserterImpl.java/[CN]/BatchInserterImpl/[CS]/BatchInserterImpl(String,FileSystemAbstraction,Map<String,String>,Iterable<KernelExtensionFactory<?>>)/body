@@ -3,18 +3,20 @@
   Map<String,String> params=getDefaultParams();
   params.putAll(stringParams);
   config=StoreFactory.configForStoreDir(new Config(params,GraphDatabaseSettings.class),new File(storeDir));
+  Monitors monitors=new Monitors();
   life=new LifeSupport();
   this.fileSystem=fileSystem;
   this.storeDir=new File(FileUtils.fixSeparatorsInPath(storeDir));
   Neo4jJobScheduler jobScheduler=life.add(new Neo4jJobScheduler());
-  LifecycledPageCache pageCache=life.add(new LifecycledPageCache(fileSystem,jobScheduler,config));
+  PageCacheFactory pageCacheFactory=new StandardPageCacheFactory();
+  PageSwapperFactory swapperFactory=new SingleFilePageSwapperFactory(fileSystem);
+  LifecycledPageCache pageCache=life.add(new LifecycledPageCache(pageCacheFactory,swapperFactory,jobScheduler,config,monitors));
   msgLog=StringLogger.loggerDirectory(fileSystem,this.storeDir);
   logging=new SingleLoggingService(msgLog);
   storeLocker=new StoreLocker(fileSystem);
   storeLocker.checkLock(this.storeDir);
   boolean dump=config.get(GraphDatabaseSettings.dump_configuration);
   this.idGeneratorFactory=new DefaultIdGeneratorFactory();
-  Monitors monitors=new Monitors();
   StoreFactory sf=new StoreFactory(config,idGeneratorFactory,pageCache,fileSystem,msgLog,monitors);
   if (dump) {
     dumpConfiguration(params);
