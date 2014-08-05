@@ -1,0 +1,22 @@
+{
+  if (!txState.nodeIsAddedInThisTx(nodeId.read())) {
+    while (storeCursor.next()) {
+      if (!txState.relationshipIsDeletedInThisTx(relIdFromStore.read())) {
+        relId.write(relIdFromStore.read());
+        return true;
+      }
+    }
+  }
+  if (inputCursor.next()) {
+    storeInputCursor.makeNextAvailable();
+    storeCursor.reset();
+    txLocalRels=txState.addedRelationships(nodeId.read(),relTypes.read(),expandDirection.read());
+    if (txLocalRels != null) {
+      state=State.INJECTING_LOCAL_RELS;
+    }
+    return next();
+  }
+ else {
+    return false;
+  }
+}

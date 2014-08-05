@@ -1,0 +1,20 @@
+{
+  Set<Long> relIds=new HashSet<>();
+  for (  Row row : rows) {
+    relIds.add(row.relId);
+    final Row r=row;
+    when(state.relationshipVisit(eq(row.relId),any(RelationshipVisitor.class))).thenAnswer(new Answer<Object>(){
+      @Override public Object answer(      InvocationOnMock invocation) throws Throwable {
+        if (r.direction == INCOMING) {
+          ((RelationshipVisitor)invocation.getArguments()[1]).visit(r.relId,r.neighborId,r.startId,r.type);
+        }
+ else {
+          ((RelationshipVisitor)invocation.getArguments()[1]).visit(r.relId,r.startId,r.neighborId,r.type);
+        }
+        return true;
+      }
+    }
+);
+  }
+  when(state.addedRelationships(nodeId,relTypes.read(),expandDirection.read())).thenReturn(PrimitiveLongCollections.iterator(1337,1338));
+}
