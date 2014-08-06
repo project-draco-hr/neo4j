@@ -1,0 +1,29 @@
+{
+  PageCache cache=getPageCache(fs,20,pageCachePageSize,PageCacheMonitor.NULL);
+  PagedFile pagedFile=cache.map(file,pageCachePageSize);
+  long startPageId=0;
+  long endPageId=21;
+  int iterations=10000;
+  int shortsPerPage=pageCachePageSize / 2;
+  try {
+    for (int i=1; i <= iterations; i++) {
+      try (PageCursor cursor=pagedFile.io(startPageId,PF_EXCLUSIVE_LOCK)){
+        while (cursor.getCurrentPageId() < endPageId && cursor.next()) {
+          for (int j=0; j < shortsPerPage; j++) {
+            cursor.putShort((short)i);
+          }
+        }
+      }
+       pagedFile.flush();
+      try (DataInputStream stream=new DataInputStream(fs.openAsInputStream(file))){
+        for (int j=0; j < shortsPerPage; j++) {
+          int value=stream.readShort();
+          assertThat("short pos = " + j + ", iteration = "+ i,value,is(i));
+        }
+      }
+     }
+  }
+  finally {
+    pageCache.unmap(file);
+  }
+}

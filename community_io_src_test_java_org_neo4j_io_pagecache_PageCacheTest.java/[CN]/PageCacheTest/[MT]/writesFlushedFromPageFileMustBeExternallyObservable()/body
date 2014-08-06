@@ -13,14 +13,18 @@
     }
   }
    pagedFile.flush();
-  pageCache.unmap(file);
-  StoreChannel channel=fs.open(file,"r");
-  ByteBuffer observation=ByteBuffer.allocate(recordSize);
-  for (int i=0; i < recordCount; i++) {
-    generateRecordForId(i,buf);
-    observation.position(0);
-    channel.read(observation);
-    assertRecord(i,observation,buf);
+  try {
+    StoreChannel channel=fs.open(file,"r");
+    ByteBuffer observation=ByteBuffer.allocate(recordSize);
+    for (int i=0; i < recordCount; i++) {
+      generateRecordForId(i,buf);
+      observation.position(0);
+      channel.read(observation);
+      assertRecord(i,observation,buf);
+    }
+    channel.close();
   }
-  channel.close();
+  finally {
+    pageCache.unmap(file);
+  }
 }
