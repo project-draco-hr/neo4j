@@ -1,0 +1,19 @@
+{
+  NodeRecord record=new NodeRecord(id);
+  byte inUseByte=cursor.getByte(offset + IN_USE);
+  long nextRel=cursor.getUnsignedInt(offset + NEXT_REL_BASE);
+  long nextProp=cursor.getUnsignedInt(offset + NEXT_PROP_BASE);
+  long lsbLabels=cursor.getUnsignedInt(offset + LSB_LABELS);
+  long hsbLabels=cursor.getByte(offset + MSB_LABELS) & 0xFF;
+  byte extra=cursor.getByte(offset + EXTRA);
+  long relModifier=(inUseByte & 0xEL) << 31;
+  long propModifier=(inUseByte & 0xF0L) << 28;
+  long labels=lsbLabels | (hsbLabels << 32);
+  boolean dense=(extra & 0x1) > 0;
+  record.setDense(dense);
+  record.setNextRel(longFromIntAndMod(nextRel,relModifier));
+  record.setNextProp(longFromIntAndMod(nextProp,propModifier));
+  record.setInUse((inUseByte & 0x1) == 1);
+  record.setLabelField(labels,Collections.<DynamicRecord>emptyList());
+  return record;
+}

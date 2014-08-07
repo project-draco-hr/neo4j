@@ -1,0 +1,16 @@
+{
+  EphemeralFileSystemAbstraction fs=fsRule.get();
+  File path=new File("/store.db");
+  MuninnPageCache cache=new MuninnPageCache(fs,1024,1024,PageCacheMonitor.NULL);
+  Store<TestRecord,TestCursor> store=newStore(fs,path,cache);
+  store.write(new TestRecord(2,1));
+  cache.flush();
+  StoreIdGenerator idGenerator=spy(new TestStoreIdGenerator());
+  StoreToolkit toolkit=mock(StoreToolkit.class);
+  when(toolkit.fileSize()).thenReturn(100 * 8l);
+  when(toolkit.recordSize()).thenReturn(8);
+  when(toolkit.firstRecordId()).thenReturn(4l);
+  IdGeneratorRebuilder.FullDefragmentationRebuilderFactory rebuilder=new IdGeneratorRebuilder.FullDefragmentationRebuilderFactory();
+  rebuilder.newIdGeneratorRebuilder(store,toolkit,idGenerator).rebuildIdGenerator();
+  verify(idGenerator).rebuild(4);
+}
