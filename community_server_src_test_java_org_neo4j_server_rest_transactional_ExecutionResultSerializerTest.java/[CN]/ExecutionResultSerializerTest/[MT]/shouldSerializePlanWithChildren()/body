@@ -1,0 +1,20 @@
+{
+  ByteArrayOutputStream output=new ByteArrayOutputStream();
+  ExecutionResultSerializer serializer=new ExecutionResultSerializer(output,URI.create("http://base.uri/"),StringLogger.DEV_NULL);
+  PlanDescription plan1=mockedPlanDescription("child",MapUtil.map("id",1),Collections.<PlanDescription>emptyList());
+  PlanDescription plan2=mockedPlanDescription("child",MapUtil.map("id",2),Collections.<PlanDescription>emptyList());
+  PlanDescription plan0=mockedPlanDescription("parent",MapUtil.map("id",0),asList(plan1,plan2));
+  serializer.statementResult(mockExecutionResult(plan0),false,ResultDataContent.rest);
+  serializer.finish();
+  String result=output.toString("UTF-8");
+  JsonNode root=assertIsPlanRoot(result);
+  assertEquals("parent",root.get("operatorType").getTextValue());
+  assertEquals(0,root.get("id").asLong());
+  Set<Integer> childIds=new HashSet<>();
+  for (  JsonNode child : root.get("children")) {
+    assertTrue("Expected object",child.isObject());
+    assertEquals("child",child.get("operatorType").getTextValue());
+    childIds.add(child.get("id").asInt());
+  }
+  assertEquals(asSet(1,2),childIds);
+}
