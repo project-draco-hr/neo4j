@@ -1,0 +1,30 @@
+{
+  Config config=new Config(MapUtil.stringMap(GraphDatabaseSettings.rebuild_idgenerators_fast.name(),"false"));
+  File storeFile=file("nodes");
+  fs.create(storeFile);
+  IdGeneratorImpl.createGenerator(fs,file("nodes.id"));
+  NodeStore store=new NodeStore(storeFile,config,new DefaultIdGeneratorFactory(),pageCacheRule.getPageCache(fs,config),fs,StringLogger.DEV_NULL,null,null,new Monitors());
+  int recordsPerPage=store.recordsPerPage();
+  NodeRecord record=new NodeRecord(0);
+  record.setInUse(true);
+  for (int i=0; i < recordsPerPage * 3; i++) {
+    assertThat(store.nextId(),is((long)i));
+    record.setId(i);
+    store.updateRecord(record);
+  }
+  store.updateHighId();
+  Long[] idsToFree={recordsPerPage - 2L,recordsPerPage - 1L};
+  record.setInUse(false);
+  for (  long toDelete : idsToFree) {
+    record.setId(toDelete);
+    store.updateRecord(record);
+  }
+  store.rebuildIdGenerator();
+  store.closeIdGenerator();
+  store.openIdGenerator();
+  List<Long> nextIds=new ArrayList<>();
+  nextIds.add(store.nextId());
+  nextIds.add(store.nextId());
+  nextIds.add(store.nextId());
+  assertThat(nextIds,contains(recordsPerPage - 2L,recordsPerPage - 1L,recordsPerPage * 3L));
+}

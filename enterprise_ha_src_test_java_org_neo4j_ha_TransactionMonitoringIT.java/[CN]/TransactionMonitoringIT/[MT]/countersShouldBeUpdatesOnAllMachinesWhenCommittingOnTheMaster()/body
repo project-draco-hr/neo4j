@@ -1,0 +1,31 @@
+{
+  ClusterManager clusterManager=new ClusterManager(fromXml(getClass().getResource("/threeinstances.xml").toURI()),TargetDirectory.forTest(getClass()).cleanDirectory("testCluster"),MapUtil.stringMap(HaSettings.ha_server.name(),":6001-6005",HaSettings.tx_push_factor.name(),"2"));
+  TransactionMonitor masterMonitor=null;
+  TransactionMonitor firstSlaveMonitor=null;
+  TransactionMonitor secondSlaveMonitor=null;
+  try {
+    clusterManager.start();
+    clusterManager.getDefaultCluster().await(allSeesAllAsAvailable());
+    GraphDatabaseAPI master=clusterManager.getDefaultCluster().getMaster();
+    masterMonitor=master.getDependencyResolver().resolveDependency(TransactionMonitor.class);
+    HighlyAvailableGraphDatabase firstSlave=clusterManager.getDefaultCluster().getAnySlave();
+    firstSlaveMonitor=firstSlave.getDependencyResolver().resolveDependency(TransactionMonitor.class);
+    HighlyAvailableGraphDatabase secondSlave=clusterManager.getDefaultCluster().getAnySlave(firstSlave);
+    secondSlaveMonitor=secondSlave.getDependencyResolver().resolveDependency(TransactionMonitor.class);
+    try (Transaction tx=master.beginTx()){
+      master.createNode();
+      tx.success();
+    }
+     firstSlave.getDependencyResolver().resolveDependency(UpdatePuller.class).pullUpdates();
+    secondSlave.getDependencyResolver().resolveDependency(UpdatePuller.class).pullUpdates();
+  }
+  finally {
+    clusterManager.stop();
+  }
+  assertNotNull(masterMonitor);
+  assertEquals(1,masterMonitor.getNumberOfCommittedTransactions());
+  assertNotNull(firstSlaveMonitor);
+  assertEquals(1,firstSlaveMonitor.getNumberOfCommittedTransactions());
+  assertNotNull(secondSlaveMonitor);
+  assertEquals(1,secondSlaveMonitor.getNumberOfCommittedTransactions());
+}

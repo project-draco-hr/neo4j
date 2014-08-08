@@ -1,22 +1,8 @@
 {
   StoreChannel fileChannel=fileSystem.open(new File(logPath),"r");
   ByteBuffer buffer=ByteBuffer.allocateDirect(9 + Xid.MAXGTRIDSIZE + Xid.MAXBQUALSIZE * 10);
-  try {
-    VersionAwareLogEntryReader.readLogHeader(buffer,fileChannel,true);
-    final List<LogEntry> entries=new ArrayList<>();
-    LogDeserializer deserializer=new LogDeserializer(CommandReaderFactory.DEFAULT);
-    Visitor<LogEntry,IOException> consumer=new Visitor<LogEntry,IOException>(){
-      @Override public boolean visit(      LogEntry entry) throws IOException {
-        entries.add(entry);
-        return true;
-      }
-    }
-;
-    ReadableLogChannel logChannel=new ReadAheadLogChannel(new PhysicalLogVersionedStoreChannel(fileChannel),LogVersionBridge.NO_MORE_CHANNELS,4096);
-    exhaustAndClose(deserializer.cursor(logChannel,consumer));
-    return entries;
-  }
-  finally {
-    fileChannel.close();
-  }
+  VersionAwareLogEntryReader.readLogHeader(buffer,fileChannel,true);
+  LogDeserializer deserializer=new LogDeserializer();
+  ReadableLogChannel logChannel=new ReadAheadLogChannel(new PhysicalLogVersionedStoreChannel(fileChannel),LogVersionBridge.NO_MORE_CHANNELS,4096);
+  return iterable(deserializer.logEntries(logChannel));
 }

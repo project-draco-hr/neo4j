@@ -1,16 +1,13 @@
 {
   PhysicalLogFiles logFiles=new PhysicalLogFiles(sourceDir,FS);
   int startVersion=0;
-  File logFile=logFiles.getVersionFileName(startVersion);
+  File logFile=logFiles.getLogFileForVersion(startVersion);
   LogVersionBridge versionBridge=new ReaderLogVersionBridge(FS,logFiles);
   ReadableLogChannel logChannel=new ReadAheadLogChannel(new PhysicalLogVersionedStoreChannel(FS.open(logFile,"R"),startVersion),versionBridge,DEFAULT_READ_AHEAD_SIZE);
-  Visitor<CommittedTransactionRepresentation,IOException> visitor=new Visitor<CommittedTransactionRepresentation,IOException>(){
-    @Override public boolean visit(    CommittedTransactionRepresentation transaction) throws IOException {
-      storeApplier.apply(transaction.getTransactionRepresentation(),transaction.getCommitEntry().getTxId(),true);
-      return true;
+  try (IOCursor<CommittedTransactionRepresentation> cursor=new PhysicalTransactionCursor(logChannel,new VersionAwareLogEntryReader())){
+    while (cursor.next()) {
+      storeApplier.apply(cursor.get().getTransactionRepresentation(),cursor.get().getCommitEntry().getTxId(),true);
     }
   }
-;
-  exhaustAndClose(new PhysicalTransactionCursor(logChannel,new VersionAwareLogEntryReader(DEFAULT),visitor));
-  return this;
+   return this;
 }

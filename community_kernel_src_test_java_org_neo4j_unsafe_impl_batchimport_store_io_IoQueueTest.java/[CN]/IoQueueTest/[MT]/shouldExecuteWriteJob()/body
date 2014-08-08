@@ -1,0 +1,18 @@
+{
+  ExecutorService executor=cleanupRule.add(spy(Executors.newFixedThreadPool(3)));
+  IoQueue queue=new IoQueue(executor,SYNCHRONOUS);
+  File file=new File(directory.directory(),"file");
+  StoreChannel channel=spy(fs.create(file));
+  Monitor monitor=mock(Monitor.class);
+  Writer writer=queue.create(file,channel,monitor);
+  SimplePool<ByteBuffer> pool=Mockito.mock(SimplePool.class);
+  ByteBuffer buffer=ByteBuffer.allocate(10);
+  int position=100;
+  writer.write(buffer,position,pool);
+  verify(executor,times(1)).submit(any(Callable.class));
+  executor.shutdown();
+  executor.awaitTermination(10,SECONDS);
+  verify(channel).position(100);
+  verify(channel).write(buffer);
+  verifyNoMoreInteractions(channel);
+}

@@ -1,18 +1,18 @@
 {
   ClockSweepPageTable table=new ClockSweepPageTable(1,TEST_PAGE_SIZE,PageCacheMonitor.NULL);
   final BufferPageSwapper io=new BufferPageSwapper(bytesA);
-  final PinnablePage page=table.load(io,12,PageLock.EXCLUSIVE);
+  final PinnablePage page=table.load(io,12,PagedFile.PF_EXCLUSIVE_LOCK);
   final AtomicBoolean acquiredPage=new AtomicBoolean(false);
   Thread otherThread=fork(new Runnable(){
     @Override public void run(){
-      page.pin(io,12,PageLock.SHARED);
+      page.pin(io,12,PagedFile.PF_SHARED_LOCK);
       acquiredPage.set(true);
     }
   }
 );
   awaitThreadState(otherThread,Thread.State.WAITING);
   assertFalse(acquiredPage.get());
-  page.unpin(PageLock.EXCLUSIVE);
+  page.unpin(PagedFile.PF_EXCLUSIVE_LOCK);
   otherThread.join();
   assertTrue(acquiredPage.get());
 }

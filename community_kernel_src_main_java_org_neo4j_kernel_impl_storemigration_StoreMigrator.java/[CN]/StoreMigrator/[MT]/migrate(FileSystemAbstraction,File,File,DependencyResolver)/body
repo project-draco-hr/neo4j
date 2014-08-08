@@ -1,14 +1,24 @@
 {
-  LegacyStore legacyStore=new LegacyStore(fileSystem,new File(storeDir,NeoStore.DEFAULT_NAME));
+  versionToUpgradeFrom=upgradableDatabase.checkUpgradeable(storeDir);
+  progressMonitor.started();
+  LegacyStore legacyStore;
+  if (versionToUpgradeFrom.equals(Legacy19Store.LEGACY_VERSION)) {
+    legacyStore=new Legacy19Store(fileSystem,new File(storeDir,NeoStore.DEFAULT_NAME));
+  }
+ else {
+    legacyStore=new Legacy20Store(fileSystem,new File(storeDir,NeoStore.DEFAULT_NAME));
+  }
   ExecutionMonitor executionMonitor=new CoarseBoundedProgressExecutionMonitor(legacyStore.getNodeStoreReader().getMaxId(),legacyStore.getRelStoreReader().getMaxId()){
     @Override protected void percent(    int percent){
       progressMonitor.percentComplete(percent);
     }
   }
 ;
-  BatchImporter importer=new ParallellBatchImporter(migrationDir.getAbsolutePath(),fileSystem,new Configuration.OverrideFromConfig(config),Collections.<KernelExtensionFactory<?>>emptyList(),executionMonitor);
-  progressMonitor.started();
-  importer.doImport(legacyNodesAsInput(legacyStore),legacyRelationshipsAsInput(legacyStore),NodeIdMapping.actual);
+  BatchImporter importer=new ParallelBatchImporter(migrationDir.getAbsolutePath(),fileSystem,new Configuration.OverrideFromConfig(config),executionMonitor);
+  Iterable<InputNode> nodes=legacyNodesAsInput(legacyStore);
+  Iterable<InputRelationship> relationships=legacyRelationshipsAsInput(legacyStore);
+  IdMapper idMapper=IdMappers.actualIds();
+  importer.doImport(nodes,relationships,idMapper);
   progressMonitor.finished();
   importer.shutdown();
   legacyStore.close();

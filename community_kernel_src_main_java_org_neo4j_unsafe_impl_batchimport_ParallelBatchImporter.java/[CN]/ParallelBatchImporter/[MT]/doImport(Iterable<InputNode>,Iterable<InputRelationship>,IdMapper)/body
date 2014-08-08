@@ -1,0 +1,24 @@
+{
+  long startTime=currentTimeMillis();
+  try (BatchingNeoStore neoStore=new BatchingNeoStore(fileSystem,storeDir,config,writeMonitor,logging,monitors,writerFactory)){
+    NodeStage nodeStage=new NodeStage(idMapper.wrapNodes(nodes.iterator()),neoStore);
+    NodeRelationshipLink nodeRelationshipLink=new NodeRelationshipLinkImpl(LongArrayFactory.AUTO,config.denseNodeThreshold());
+    CalculateDenseNodesStage calculateDenseNodesStage=new CalculateDenseNodesStage(relationships.iterator(),nodeRelationshipLink);
+    executeStages(nodeStage,calculateDenseNodesStage);
+    executeStages(new RelationshipStage(idMapper.wrapRelationships(relationships.iterator()),neoStore,nodeRelationshipLink));
+    writerFactory.awaitEverythingWritten();
+    neoStore.switchToUpdateMode();
+    executeStages(new NodeFirstRelationshipStage(neoStore,nodeRelationshipLink));
+    nodeRelationshipLink.clearRelationships();
+    executeStages(new RelationshipLinkbackStage(neoStore,nodeRelationshipLink));
+    executionMonitor.done(currentTimeMillis() - startTime);
+  }
+ catch (  Throwable t) {
+    logger.error("Error during import",t);
+    throw Exceptions.launderedException(IOException.class,t);
+  }
+ finally {
+    writerFactory.shutdown();
+  }
+  logger.log("Import completed");
+}

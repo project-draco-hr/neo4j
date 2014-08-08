@@ -1,0 +1,28 @@
+{
+  GraphDatabaseService graphDb=db.getGraphDatabaseService();
+  Node node, other;
+  try (Transaction tx=graphDb.beginTx()){
+    node=graphDb.createNode();
+    for (int i=0; i < DenseNode; i++) {
+      node.createRelationshipTo(graphDb.createNode(),TYPE);
+    }
+    other=graphDb.createNode();
+    other.createRelationshipTo(node,TYPE);
+    tx.success();
+  }
+   clearCaches();
+  try (Transaction tx=graphDb.beginTx()){
+    for (    Relationship one : node.getRelationships(TYPE,Direction.OUTGOING)) {
+      assertNotNull(one);
+    }
+    tx.success();
+  }
+   try (Transaction tx=graphDb.beginTx()){
+    other.getSingleRelationship(TYPE,Direction.OUTGOING).delete();
+    tx.failure();
+  }
+   try (Transaction tx=graphDb.beginTx()){
+    assertEquals(DenseNode + 1,IteratorUtil.count(node.getRelationships(TYPE)));
+    tx.success();
+  }
+ }

@@ -1,0 +1,55 @@
+{
+  return new ResourceIterable<T>(){
+    @Override public ResourceIterator<T> iterator(){
+      try {
+        if (cursor.next()) {
+          final T first=cursor.get();
+          return new ResourceIterator<T>(){
+            T instance=first;
+            @Override public boolean hasNext(){
+              return instance != null;
+            }
+            @Override public T next(){
+              try {
+                return instance;
+              }
+  finally {
+                try {
+                  if (cursor.next()) {
+                    instance=cursor.get();
+                  }
+ else {
+                    cursor.close();
+                    instance=null;
+                  }
+                }
+ catch (                IOException e) {
+                  instance=null;
+                }
+              }
+            }
+            @Override public void remove(){
+              throw new UnsupportedOperationException();
+            }
+            @Override public void close(){
+              try {
+                cursor.close();
+              }
+ catch (              IOException e) {
+              }
+            }
+          }
+;
+        }
+ else {
+          cursor.close();
+          return IteratorUtil.<T>asResourceIterator(Collections.<T>emptyIterator());
+        }
+      }
+ catch (      IOException e) {
+        return IteratorUtil.<T>asResourceIterator(Collections.<T>emptyIterator());
+      }
+    }
+  }
+;
+}

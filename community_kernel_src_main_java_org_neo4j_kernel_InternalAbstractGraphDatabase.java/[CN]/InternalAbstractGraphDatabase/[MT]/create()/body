@@ -1,40 +1,19 @@
 {
-  availabilityGuard=createAvailabilityGuard();
-  availabilityGuard.addListener(new AvailabilityGuard.AvailabilityListener(){
-    @Override public void available(){
-      msgLog.info("Database is now ready");
-    }
-    @Override public void unavailable(){
-      msgLog.info("Database is now unavailable");
-    }
-  }
-);
+  availabilityGuard=new AvailabilityGuard(Clock.SYSTEM_CLOCK);
   fileSystem=createFileSystemAbstraction();
   if (this.logging == null) {
     this.logging=createLogging();
   }
   this.monitors=createMonitors();
   storeMigrationProcess=new StoreUpgrader(new ConfigMapUpgradeConfiguration(config),fileSystem,monitors.newMonitor(StoreUpgrader.Monitor.class));
-  AutoConfigurator autoConfigurator=new AutoConfigurator(fileSystem,config.get(NeoStoreXaDataSource.Configuration.store_dir),config.get(Configuration.use_memory_mapped_buffers),logging.getConsoleLog(AutoConfigurator.class));
-  if (config.get(GraphDatabaseSettings.dump_configuration)) {
-    System.out.println(autoConfigurator.getNiceMemoryInformation());
-  }
   Map<String,String> configParams=config.getParams();
-  Map<String,String> autoConfiguration=autoConfigurator.configure();
-  for (  Map.Entry<String,String> autoConfig : autoConfiguration.entrySet()) {
-    String key=autoConfig.getKey();
-    if (!config.getParams().containsKey(key)) {
-      configParams.put(key,autoConfig.getValue());
-    }
-  }
   config.applyChanges(configParams);
   this.msgLog=logging.getMessagesLog(getClass());
   config.setLogger(msgLog);
   this.storeLocker=life.add(new StoreLockerLifecycleAdapter(new StoreLocker(fileSystem),storeDir));
   new JvmChecker(msgLog,new JvmMetadataRepository()).checkJvmCompatibilityAndIssueWarning();
-  boolean readOnly=config.get(Configuration.read_only);
   String cacheTypeName=config.get(Configuration.cache_type);
-  cacheProvider=cacheProviders.get(cacheTypeName);
+  CacheProvider cacheProvider=cacheProviders.get(cacheTypeName);
   if (cacheProvider == null) {
     throw new IllegalArgumentException("No provider for cache type '" + cacheTypeName + "'. "+ "Cache providers are loaded using java service loading where they "+ "register themselves in resource (plain-text) files found on the class path under "+ "META-INF/services/"+ CacheProvider.class.getName()+ ". This missing provider may have "+ "been caused by either such a missing registration, or by the lack of the provider class itself.");
   }
@@ -58,27 +37,25 @@
   labelTokenHolder=life.add(new LabelTokenHolder(createLabelIdCreator()));
   relationshipTypeTokenHolder=life.add(new RelationshipTypeTokenHolder(createRelationshipTypeCreator()));
   caches.configure(cacheProvider,config);
-  Cache<NodeImpl> nodeCache=diagnosticsManager.tryAppendProvider(caches.node());
-  Cache<RelationshipImpl> relCache=diagnosticsManager.tryAppendProvider(caches.relationship());
+  diagnosticsManager.tryAppendProvider(caches.node());
+  diagnosticsManager.tryAppendProvider(caches.relationship());
   threadToTransactionBridge=life.add(new ThreadToStatementContextBridge());
-  nodeManager=createNodeManager(readOnly,cacheProvider,nodeCache,relCache);
+  nodeManager=createNodeManager();
   transactionEventHandlers=new TransactionEventHandlers(createNodeLookup(),createRelationshipLookups(),threadToTransactionBridge);
   indexStore=life.add(new IndexConfigStore(this.storeDir,fileSystem));
   diagnosticsManager.prependProvider(config);
   extensions=life.add(createKernelData());
   life.add(kernelExtensions);
   schema=new SchemaImpl(threadToTransactionBridge);
-  LegacyIndexProxy.Lookup indexLookup=createIndexLookup();
-  indexManager=new IndexManagerImpl(indexLookup,threadToTransactionBridge);
-  nodeAutoIndexer=life.add(new NodeAutoIndexerImpl(config,indexManager,nodeManager));
-  relAutoIndexer=life.add(new RelationshipAutoIndexerImpl(config,indexManager,nodeManager));
-  indexManager.setNodeAutoIndexer(nodeAutoIndexer);
-  indexManager.setRelAutoIndexer(relAutoIndexer);
+  final LegacyIndexProxy.Lookup indexLookup=createIndexLookup();
+  final IndexProvider indexProvider=new IndexProviderImpl(indexLookup,threadToTransactionBridge);
+  nodeAutoIndexer=life.add(new NodeAutoIndexerImpl(config,indexProvider,nodeManager));
+  relAutoIndexer=life.add(new RelationshipAutoIndexerImpl(config,indexProvider,nodeManager));
+  indexManager=new IndexManagerImpl(threadToTransactionBridge,indexProvider,nodeAutoIndexer,relAutoIndexer);
   recoveryVerifier=createRecoveryVerifier();
   storeFactory=createStoreFactory();
   startupStatistics=new StartupStatisticsProvider();
   transactionHeaderInformation=createTransactionHeaderInformation();
-  transactionMonitor=new TransactionMonitorImpl();
   createNeoDataSource();
   life.add(new MonitorGc(config,msgLog));
   life.add(nodeManager);
