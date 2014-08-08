@@ -1,10 +1,5 @@
 {
   long myLastCommittedTx=transactionIdStore.getLastCommittingTransactionId();
-  int myMaster=-1;
-  long myChecksum=0;
-  TransactionMetadataCache.TransactionMetadata metadata=nioneoDataSource.getDependencyResolver().resolveDependency(LogicalTransactionStore.class).getMetadataFor(myLastCommittedTx);
-  myMaster=metadata.getMasterId();
-  myChecksum=metadata.getChecksum();
   HandshakeResult handshake;
   try (Response<HandshakeResult> response=master.handshake(myLastCommittedTx,nioneoDataSource.getStoreId())){
     handshake=response.response();
@@ -19,6 +14,9 @@ catch (  RuntimeException e) {
     }
     throw e;
   }
+  final TransactionMetadataCache.TransactionMetadata metadata=nioneoDataSource.getDependencyResolver().resolveDependency(LogicalTransactionStore.class).getMetadataFor(myLastCommittedTx);
+  int myMaster=metadata.getMasterId();
+  long myChecksum=metadata.getChecksum();
   if (myMaster != -1 && (myMaster != handshake.txAuthor() || myChecksum != handshake.txChecksum())) {
     String msg="The cluster contains two logically different versions of the database.. This will be " + "automatically resolved. Details: I (machineId:" + config.get(ClusterSettings.server_id) + ") think machineId for txId ("+ myLastCommittedTx+ ") is "+ myMaster+ ", but master (machineId:"+ getServerId(availableMasterId)+ ") says that it's "+ handshake;
     throw new BranchedDataException(msg);

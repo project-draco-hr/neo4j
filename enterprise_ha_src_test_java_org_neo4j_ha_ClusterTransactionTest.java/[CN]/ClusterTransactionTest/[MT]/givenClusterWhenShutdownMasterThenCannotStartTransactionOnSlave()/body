@@ -1,11 +1,11 @@
 {
-  ClusterManager clusterManager=new ClusterManager(fromXml(getClass().getResource("/threeinstances.xml").toURI()),TargetDirectory.forTest(getClass()).cleanDirectory("testCluster"),MapUtil.stringMap(HaSettings.ha_server.name(),":6001-6005",HaSettings.tx_push_factor.name(),"2"));
+  ClusterManager clusterManager=new ClusterManager(fromXml(getClass().getResource("/threeinstances.xml").toURI()),forTest(getClass()).cleanDirectory("testCluster"),stringMap(HaSettings.ha_server.name(),":6001-6005",HaSettings.tx_push_factor.name(),"2"));
   try {
     clusterManager.start();
     clusterManager.getDefaultCluster().await(ClusterManager.allSeesAllAsAvailable());
     GraphDatabaseAPI master=clusterManager.getDefaultCluster().getMaster();
     final GraphDatabaseAPI slave=clusterManager.getDefaultCluster().getAnySlave();
-    final FutureTask<Boolean> result=new FutureTask<Boolean>(new Callable(){
+    final FutureTask<Boolean> result=new FutureTask<>(new Callable<Boolean>(){
       @Override public Boolean call() throws Exception {
         try (Transaction tx=slave.beginTx()){
           tx.acquireWriteLock(slave.getNodeById(0));
@@ -26,7 +26,7 @@
     }
 );
     master.shutdown();
-    Assert.assertThat(result.get(),CoreMatchers.equalTo(true));
+    assertThat(result.get(),CoreMatchers.equalTo(true));
   }
   finally {
     clusterManager.stop();
