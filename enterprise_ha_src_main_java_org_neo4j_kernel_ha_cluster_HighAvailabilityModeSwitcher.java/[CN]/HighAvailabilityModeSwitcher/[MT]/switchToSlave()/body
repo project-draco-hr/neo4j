@@ -1,6 +1,11 @@
 {
   final URI masterUri=availableMasterId;
+  if (getServerId(masterUri).equals(getServerId(me))) {
+    msgLog.error("I (" + me + ") tried to switch to slave for myself as master ("+ masterUri+ ")");
+    return;
+  }
   final AtomicLong wait=new AtomicLong();
+  final CancellationHandle cancellationHandle=new CancellationHandle();
   startModeSwitching(new Runnable(){
     @Override public void run(){
       if (currentTargetState != HighAvailabilityMemberState.TO_SLAVE) {
@@ -9,7 +14,13 @@
       try {
         haCommunicationLife.shutdown();
         haCommunicationLife=new LifeSupport();
-        slaveHaURI=switchToSlave.switchToSlave(haCommunicationLife,me,masterUri);
+        URI resultingSlaveHaURI=switchToSlave.switchToSlave(haCommunicationLife,me,masterUri,cancellationHandle);
+        if (resultingSlaveHaURI == null) {
+          msgLog.info("Switch to slave resulted in null URI - that means it was effectively cancelled");
+        }
+ else {
+          slaveHaURI=resultingSlaveHaURI;
+        }
       }
  catch (      MismatchingStoreIdException e) {
         run();
@@ -26,5 +37,5 @@ catch (      Throwable t) {
       }
     }
   }
-);
+,cancellationHandle);
 }
