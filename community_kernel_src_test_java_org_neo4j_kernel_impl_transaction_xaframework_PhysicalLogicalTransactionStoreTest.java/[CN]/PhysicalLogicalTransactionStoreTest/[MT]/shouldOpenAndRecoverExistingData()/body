@@ -5,14 +5,14 @@
   TransactionMetadataCache positionCache=new TransactionMetadataCache(10,100);
   final byte[] additionalHeader=new byte[]{1,2,5};
   final int masterId=2, authorId=1;
-  final long timeWritten=12345, latestCommittedTxWhenStarted=4545;
+  final long timeStarted=12345, latestCommittedTxWhenStarted=4545, timeCommitted=timeStarted + 10;
   LifeSupport life=new LifeSupport();
   PhysicalLogFiles logFiles=new PhysicalLogFiles(testDir,DEFAULT_NAME,fs);
   Monitor monitor=new Monitors().newMonitor(PhysicalLogFile.Monitor.class);
   LogFile logFile=life.add(new PhysicalLogFile(fs,logFiles,1000,NO_PRUNING,transactionIdStore,mock(LogVersionRepository.class),monitor,logRotationControl,positionCache,emptyRecoveryVisitor()));
   life.start();
   try {
-    addATransactionAndRewind(logFile,txIdGenerator,positionCache,transactionIdStore,additionalHeader,masterId,authorId,timeWritten,latestCommittedTxWhenStarted);
+    addATransactionAndRewind(logFile,txIdGenerator,positionCache,transactionIdStore,additionalHeader,masterId,authorId,timeStarted,latestCommittedTxWhenStarted,timeCommitted);
   }
   finally {
     life.shutdown();
@@ -25,7 +25,8 @@
       assertArrayEquals(additionalHeader,transaction.additionalHeader());
       assertEquals(masterId,transaction.getMasterId());
       assertEquals(authorId,transaction.getAuthorId());
-      assertEquals(timeWritten,transaction.getTimeWritten());
+      assertEquals(timeStarted,transaction.getTimeStarted());
+      assertEquals(timeCommitted,transaction.getTimeCommitted());
       assertEquals(latestCommittedTxWhenStarted,transaction.getLatestCommittedTxWhenStarted());
       recoveredTransactions.incrementAndGet();
       return true;
