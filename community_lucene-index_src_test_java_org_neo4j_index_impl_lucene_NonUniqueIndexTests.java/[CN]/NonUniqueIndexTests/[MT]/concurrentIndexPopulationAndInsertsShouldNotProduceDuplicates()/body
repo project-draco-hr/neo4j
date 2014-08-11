@@ -1,0 +1,15 @@
+{
+  GraphDatabaseService db=newEmbeddedGraphDatabaseWithSlowJobScheduler();
+  try (Transaction tx=db.beginTx()){
+    db.schema().indexFor(label("SomeLabel")).on("key").create();
+    tx.success();
+  }
+   Node node;
+  try (Transaction tx=db.beginTx()){
+    node=db.createNode(label("SomeLabel"));
+    node.setProperty("key","value");
+    tx.success();
+  }
+   db.shutdown();
+  assertThat(nodeIdsInIndex(1,"value"),equalTo(singletonList(node.getId())));
+}
