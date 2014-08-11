@@ -1,0 +1,30 @@
+{
+  generateFileWithRecords(file,recordCount,recordSize);
+  getPageCache(fs,500,pageCachePageSize,PageCacheMonitor.NULL);
+  final PagedFile pagedFile=pageCache.map(file,filePageSize);
+  for (int i=0; i < 100; i++) {
+    try (PageCursor cursor=pagedFile.io(0,PF_EXCLUSIVE_LOCK | PF_NO_GROW)){
+      while (cursor.next()) {
+        verifyRecordsMatchExpected(cursor);
+      }
+    }
+     int threads=2;
+    final CountDownLatch readyLatch=new CountDownLatch(threads);
+    List<Future<?>> futures=new ArrayList<>();
+    for (int j=0; j < threads; j++) {
+      futures.add(executor.submit(new Callable<Object>(){
+        @Override public Object call() throws Exception {
+          readyLatch.countDown();
+          readyLatch.await();
+          pagedFile.flush();
+          return null;
+        }
+      }
+));
+    }
+    for (    Future<?> future : futures) {
+      future.get();
+    }
+  }
+  pageCache.unmap(file);
+}
