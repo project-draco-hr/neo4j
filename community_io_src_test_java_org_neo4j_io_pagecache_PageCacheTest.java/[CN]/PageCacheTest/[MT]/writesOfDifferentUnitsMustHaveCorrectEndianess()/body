@@ -1,0 +1,43 @@
+{
+  getPageCache(fs,maxPages,pageCachePageSize,PageCacheMonitor.NULL);
+  PagedFile pagedFile=pageCache.map(file,20);
+  try (PageCursor cursor=pagedFile.io(0,PF_EXCLUSIVE_LOCK)){
+    assertTrue(cursor.next());
+    byte[] data={42,43,44,45,46};
+    cursor.putLong(41);
+    cursor.putInt(41);
+    cursor.putShort((short)41);
+    cursor.putByte((byte)41);
+    cursor.putBytes(data);
+  }
+   try (PageCursor cursor=pagedFile.io(0,PF_EXCLUSIVE_LOCK)){
+    assertTrue(cursor.next());
+    long a=cursor.getLong();
+    int b=cursor.getInt();
+    short c=cursor.getShort();
+    byte[] data=new byte[]{cursor.getByte(),cursor.getByte(),cursor.getByte(),cursor.getByte(),cursor.getByte(),cursor.getByte()};
+    cursor.setOffset(0);
+    cursor.putLong(1 + a);
+    cursor.putInt(1 + b);
+    cursor.putShort((short)(1 + c));
+    for (int i=0; i < data.length; i++) {
+      byte d=data[i];
+      d++;
+      cursor.putByte(d);
+    }
+  }
+   pageCache.unmap(file);
+  StoreChannel channel=fs.open(file,"r");
+  ByteBuffer buf=ByteBuffer.allocate(20);
+  channel.read(buf);
+  buf.flip();
+  assertThat(buf.getLong(),is(42L));
+  assertThat(buf.getInt(),is(42));
+  assertThat(buf.getShort(),is((short)42));
+  assertThat(buf.get(),is((byte)42));
+  assertThat(buf.get(),is((byte)43));
+  assertThat(buf.get(),is((byte)44));
+  assertThat(buf.get(),is((byte)45));
+  assertThat(buf.get(),is((byte)46));
+  assertThat(buf.get(),is((byte)47));
+}

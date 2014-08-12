@@ -1,0 +1,46 @@
+{
+  generateFileWithRecords(file,recordCount,recordSize);
+  final AtomicBoolean observedWrite=new AtomicBoolean();
+  FileSystemAbstraction fs=new DelegatingFileSystemAbstraction(this.fs){
+    @Override public StoreChannel open(    File fileName,    String mode) throws IOException {
+      StoreChannel channel=super.open(fileName,mode);
+      return new DelegatingStoreChannel(channel){
+        @Override public int write(        ByteBuffer src,        long position) throws IOException {
+          observedWrite.set(true);
+          throw new IOException("not allowed");
+        }
+        @Override public long write(        ByteBuffer[] srcs,        int offset,        int length) throws IOException {
+          observedWrite.set(true);
+          throw new IOException("not allowed");
+        }
+        @Override public void writeAll(        ByteBuffer src,        long position) throws IOException {
+          observedWrite.set(true);
+          throw new IOException("not allowed");
+        }
+        @Override public void writeAll(        ByteBuffer src) throws IOException {
+          observedWrite.set(true);
+          throw new IOException("not allowed");
+        }
+        @Override public int write(        ByteBuffer src) throws IOException {
+          observedWrite.set(true);
+          throw new IOException("not allowed");
+        }
+        @Override public long write(        ByteBuffer[] srcs) throws IOException {
+          observedWrite.set(true);
+          throw new IOException("not allowed");
+        }
+      }
+;
+    }
+  }
+;
+  getPageCache(fs,maxPages,pageCachePageSize,PageCacheMonitor.NULL);
+  PagedFile pagedFile=pageCache.map(file,filePageSize);
+  try (PageCursor cursor=pagedFile.io(0,PF_SHARED_LOCK)){
+    while (cursor.next()) {
+      verifyRecordsMatchExpected(cursor);
+    }
+  }
+   pageCache.unmap(file);
+  assertFalse(observedWrite.get());
+}

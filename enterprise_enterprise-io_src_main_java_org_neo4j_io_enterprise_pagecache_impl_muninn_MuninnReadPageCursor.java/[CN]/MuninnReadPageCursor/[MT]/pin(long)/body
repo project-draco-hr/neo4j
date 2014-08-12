@@ -1,0 +1,55 @@
+{
+  int stripe=(int)(filePageId & MuninnPagedFile.translationTableStripeMask);
+  StampedLock translationTableLock=pagedFile.translationTableLocks[stripe];
+  PrimitiveLongObjectMap<MuninnPage> translationTable=pagedFile.translationTables[stripe];
+  PageSwapper swapper=pagedFile.swapper;
+  AtomicReference<MuninnPage> freelist=pagedFile.freelist;
+  MuninnPage page;
+  long stamp=translationTableLock.tryOptimisticRead();
+  page=translationTable.get(filePageId);
+  if (!translationTableLock.validate(stamp)) {
+    stamp=translationTableLock.readLock();
+    try {
+      page=translationTable.get(filePageId);
+    }
+  finally {
+      translationTableLock.unlockRead(stamp);
+    }
+  }
+  if (page == null) {
+    stamp=translationTableLock.writeLock();
+    try {
+      page=translationTable.get(filePageId);
+      if (page == null) {
+        pageFault(filePageId,translationTable,freelist,swapper);
+        return;
+      }
+    }
+  finally {
+      translationTableLock.unlockWrite(stamp);
+    }
+  }
+  lockStamp=page.tryOptimisticRead();
+  if (page.isBoundTo(swapper,filePageId)) {
+    pinCursorToPage(page,filePageId,swapper);
+    optimisticLock=true;
+    return;
+  }
+  stamp=translationTableLock.writeLock();
+  try {
+    page=translationTable.get(filePageId);
+    if (page != null) {
+      lockStamp=page.readLock();
+      if (page.isBoundTo(swapper,filePageId)) {
+        pinCursorToPage(page,filePageId,swapper);
+        optimisticLock=false;
+        return;
+      }
+      page.unlockRead(lockStamp);
+    }
+    pageFault(filePageId,translationTable,freelist,swapper);
+  }
+  finally {
+    translationTableLock.unlockWrite(stamp);
+  }
+}

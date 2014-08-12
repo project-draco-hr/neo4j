@@ -1,0 +1,57 @@
+{
+  generateFileWithRecords(file,recordCount,recordSize);
+  int filePageSize2=filePageSize - 3;
+  long maxPageIdCursor1=recordCount / recordsPerFilePage;
+  File file2=new File("b");
+  OutputStream outputStream=fs.openAsOutputStream(file2,false);
+  long file2sizeBytes=(maxPageIdCursor1 + 17) * filePageSize2;
+  for (int i=0; i < file2sizeBytes; i++) {
+    outputStream.write('a');
+  }
+  outputStream.flush();
+  outputStream.close();
+  getPageCache(fs,maxPages,pageCachePageSize,PageCacheMonitor.NULL);
+  PagedFile pagedFile1=pageCache.map(file,filePageSize);
+  PagedFile pagedFile2=pageCache.map(file2,filePageSize2);
+  try (PageCursor cursor1=pagedFile1.io(0,PF_EXCLUSIVE_LOCK);PageCursor cursor2=pagedFile2.io(0,PF_EXCLUSIVE_LOCK | PF_NO_GROW)){
+    assertThat(cursor1,not(sameInstance(cursor2)));
+    boolean moreWorkToDo;
+    do {
+      boolean cursorReady1=cursor1.getCurrentPageId() < maxPageIdCursor1 && cursor1.next();
+      boolean cursorReady2=cursor2.next();
+      moreWorkToDo=cursorReady1 || cursorReady2;
+      if (cursorReady1) {
+        writeRecords(cursor1);
+      }
+      if (cursorReady2) {
+        do {
+          for (int i=0; i < filePageSize2; i++) {
+            cursor2.putByte((byte)'b');
+          }
+        }
+ while (cursor2.shouldRetry());
+      }
+    }
+ while (moreWorkToDo);
+  }
+   pageCache.unmap(file);
+  pageCache.unmap(file2);
+  assertThat(fs.getFileSize(file2),is(file2sizeBytes));
+  InputStream inputStream=fs.openAsInputStream(file2);
+  for (int i=0; i < file2sizeBytes; i++) {
+    int b=inputStream.read();
+    assertThat(b,is((int)'b'));
+  }
+  assertThat(inputStream.read(),is(-1));
+  inputStream.close();
+  StoreChannel channel=fs.open(file,"r");
+  ByteBuffer bufB=ByteBuffer.allocate(recordSize);
+  for (int i=0; i < recordCount; i++) {
+    bufA.clear();
+    channel.read(bufA);
+    bufA.flip();
+    bufB.clear();
+    generateRecordForId(i,bufB);
+    assertThat(bufB.array(),byteArray(bufA.array()));
+  }
+}

@@ -1,0 +1,33 @@
+{
+  generateFileWithRecords(file,recordCount,recordSize);
+  final AtomicInteger writeCounter=new AtomicInteger();
+  FileSystemAbstraction fs=new DelegatingFileSystemAbstraction(this.fs){
+    @Override public StoreChannel open(    File fileName,    String mode) throws IOException {
+      return new DelegatingStoreChannel(super.open(fileName,mode)){
+        @Override public void writeAll(        ByteBuffer src,        long position) throws IOException {
+          if (writeCounter.incrementAndGet() >= 1) {
+            throw new IOException("No space left on device");
+          }
+          super.writeAll(src,position);
+        }
+      }
+;
+    }
+  }
+;
+  getPageCache(fs,maxPages,pageCachePageSize,PageCacheMonitor.NULL);
+  PagedFile pagedFile=pageCache.map(file,filePageSize);
+  try (PageCursor cursor=pagedFile.io(0,PF_EXCLUSIVE_LOCK)){
+    assertTrue(cursor.next());
+  }
+   try (PageCursor cursor=pagedFile.io(0,PF_SHARED_LOCK)){
+    for (; ; ) {
+      while (cursor.next()) {
+      }
+      cursor.rewind();
+    }
+  }
+  finally {
+    pageCache=null;
+  }
+}

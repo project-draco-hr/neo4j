@@ -1,0 +1,32 @@
+{
+  while (pageCountToEvict > 0) {
+    if (clockArm == pages.length) {
+      clockArm=0;
+    }
+    MuninnPage page=pages[clockArm];
+    if (page.isLoaded() && page.decrementUsage()) {
+      long stamp=page.tryWriteLock();
+      if (stamp != 0) {
+        PageSwapper swapper=page.getSwapper();
+        long filePageId=page.getFilePageId();
+        try {
+          page.evict();
+          pageCountToEvict--;
+        }
+  finally {
+          page.unlockWrite(stamp);
+        }
+        swapper.evicted(filePageId);
+        monitor.evict(filePageId,swapper);
+        MuninnPage next;
+        do {
+          next=freelist.get();
+          page.nextFree=next;
+        }
+ while (!freelist.compareAndSet(next,page));
+      }
+    }
+    clockArm++;
+  }
+  return clockArm;
+}

@@ -1,0 +1,16 @@
+{
+  fs.create(file).close();
+  getPageCache(fs,maxPages,pageCachePageSize,PageCacheMonitor.NULL);
+  PagedFile pagedFile=pageCache.map(file,filePageSize);
+  try (PageCursor cursor=pagedFile.io(0,PF_EXCLUSIVE_LOCK)){
+    assertTrue(cursor.next());
+    long greaterThanMaxInt=(1L << 40) - 1;
+    cursor.putLong(greaterThanMaxInt);
+    cursor.setOffset(0);
+    assertThat(cursor.getInt(),is((1 << 8) - 1));
+    assertThat(cursor.getUnsignedInt(),is((1L << 32) - 1));
+  }
+  finally {
+    pageCache.unmap(file);
+  }
+}

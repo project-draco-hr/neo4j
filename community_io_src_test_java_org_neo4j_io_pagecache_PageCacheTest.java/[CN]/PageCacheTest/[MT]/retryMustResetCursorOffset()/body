@@ -9,7 +9,7 @@
       do {
         cursor.putByte(expectedByte);
       }
- while (cursor.retry());
+ while (cursor.shouldRetry());
     }
   }
    Runnable writer=new Runnable(){
@@ -21,7 +21,7 @@
               cursor.setOffset(recordSize);
               cursor.putByte((byte)14);
             }
- while (cursor.retry());
+ while (cursor.shouldRetry());
           }
           startLatch.countDown();
         }
@@ -33,8 +33,7 @@
     }
   }
 ;
-  Thread writerThread=new Thread(writer);
-  writerThread.start();
+  Future<?> writerFuture=executor.submit(writer);
   startLatch.await();
   for (int i=0; i < 1000; i++) {
     try (PageCursor cursor=pagedFile.io(0,PF_SHARED_LOCK)){
@@ -42,9 +41,9 @@
       do {
         assertThat(cursor.getByte(),is(expectedByte));
       }
- while (cursor.retry());
+ while (cursor.shouldRetry());
     }
    }
-  writerThread.interrupt();
-  writerThread.join();
+  writerFuture.cancel(true);
+  pageCache.unmap(file);
 }

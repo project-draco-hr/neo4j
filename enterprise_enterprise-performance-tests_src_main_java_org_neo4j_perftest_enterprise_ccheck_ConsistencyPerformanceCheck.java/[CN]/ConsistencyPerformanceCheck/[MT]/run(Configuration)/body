@@ -17,7 +17,10 @@
   Config tuningConfiguration=buildTuningConfiguration(configuration);
   jobScheduler=new Neo4jJobScheduler();
   fileSystem=new DefaultFileSystemAbstraction();
-  pageCache=new LifecycledPageCache(fileSystem,jobScheduler,tuningConfiguration);
+  PageCacheFactory pageCacheFactory=new StandardPageCacheFactory();
+  PageSwapperFactory swapperFactory=new SingleFilePageSwapperFactory(fileSystem);
+  Monitors monitors=new Monitors();
+  pageCache=new LifecycledPageCache(pageCacheFactory,swapperFactory,jobScheduler,tuningConfiguration,monitors);
   jobScheduler.init();
   pageCache.start();
   DirectStoreAccess directStoreAccess=createScannableStores(configuration.get(DataGenerator.store_dir),tuningConfiguration);
@@ -27,6 +30,7 @@
     configuration.get(checker_version).run(progressMonitor,directStoreAccess,tuningConfiguration);
   }
   finally {
+    directStoreAccess.close();
     pageCache.stop();
     jobScheduler.shutdown();
   }

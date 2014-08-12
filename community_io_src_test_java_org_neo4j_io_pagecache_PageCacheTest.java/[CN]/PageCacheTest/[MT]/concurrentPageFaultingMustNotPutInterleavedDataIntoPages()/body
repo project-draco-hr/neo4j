@@ -1,0 +1,49 @@
+{
+  getPageCache(fs,3,pageCachePageSize,PageCacheMonitor.NULL);
+  final File fileA=new File("a");
+  int pageCount=11;
+  try (StoreChannel storeChannel=fs.create(fileA)){
+    for (byte i=0; i < pageCount; i++) {
+      byte[] data=new byte[pageCachePageSize];
+      Arrays.fill(data,(byte)(i + 1));
+      storeChannel.write(ByteBuffer.wrap(data));
+    }
+  }
+   final int COUNT=100000;
+  final CountDownLatch readyLatch=new CountDownLatch(11);
+  final PagedFile pagedFile=pageCache.map(fileA,pageCachePageSize);
+  List<Future<?>> futures=new ArrayList<>();
+  for (int pageId=0; pageId < pageCount; pageId++) {
+    final int finalPageId=pageId;
+    futures.add(executor.submit(new Callable<Void>(){
+      @Override public Void call() throws Exception {
+        readyLatch.countDown();
+        readyLatch.await();
+        byte[] byteCheck=new byte[pageCachePageSize];
+        for (int c=0; c < COUNT; c++) {
+          try (PageCursor cursor=pagedFile.io(finalPageId,PagedFile.PF_SHARED_LOCK)){
+            if (cursor.next()) {
+              do {
+                cursor.getBytes(byteCheck);
+              }
+ while (cursor.shouldRetry());
+            }
+          }
+           for (int i=0; i < pageCachePageSize; i++) {
+            assertThat(byteCheck[i],equalTo((byte)(1 + finalPageId)));
+          }
+        }
+        return null;
+      }
+    }
+));
+  }
+  try {
+    for (    Future<?> future : futures) {
+      future.get();
+    }
+  }
+  finally {
+    pageCache.unmap(fileA);
+  }
+}
