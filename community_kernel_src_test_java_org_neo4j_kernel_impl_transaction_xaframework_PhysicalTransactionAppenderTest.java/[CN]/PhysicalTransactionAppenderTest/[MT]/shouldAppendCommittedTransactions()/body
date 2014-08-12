@@ -8,10 +8,10 @@
   TransactionAppender appender=new PhysicalTransactionAppender(logFile,txIdGenerator,positionCache,transactionIdStore);
   final byte[] additionalHeader=new byte[]{1,2,5};
   final int masterId=2, authorId=1;
-  final long timeWritten=12345, latestCommittedTxWhenStarted=4545;
+  final long timeStarted=12345, latestCommittedTxWhenStarted=4545, timeCommitted=timeStarted + 10;
   PhysicalTransactionRepresentation transactionRepresentation=new PhysicalTransactionRepresentation(singleCreateNodeCommand());
-  transactionRepresentation.setHeader(additionalHeader,masterId,authorId,timeWritten,latestCommittedTxWhenStarted);
-  when(transactionIdStore.getLastCommittingTransactionId()).thenReturn(latestCommittedTxWhenStarted);
+  transactionRepresentation.setHeader(additionalHeader,masterId,authorId,timeStarted,latestCommittedTxWhenStarted,timeCommitted);
+  when(transactionIdStore.getLastCommittedTransactionId()).thenReturn(latestCommittedTxWhenStarted);
   LogEntryStart start=new LogEntryStart(0,0,0l,latestCommittedTxWhenStarted,null,LogPosition.UNSPECIFIED);
   LogEntryCommit commit=new OnePhaseCommit(latestCommittedTxWhenStarted + 1,0l);
   CommittedTransactionRepresentation transaction=new CommittedTransactionRepresentation(start,transactionRepresentation,commit);
@@ -22,6 +22,7 @@
   assertArrayEquals(additionalHeader,result.additionalHeader());
   assertEquals(masterId,result.getMasterId());
   assertEquals(authorId,result.getAuthorId());
-  assertEquals(timeWritten,result.getTimeWritten());
+  assertEquals(timeStarted,result.getTimeStarted());
+  assertEquals(timeCommitted,result.getTimeCommitted());
   assertEquals(latestCommittedTxWhenStarted,result.getLatestCommittedTxWhenStarted());
 }
