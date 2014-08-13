@@ -1,13 +1,17 @@
 {
+  final CancellationHandle cancellationHandle=new CancellationHandle();
   startModeSwitching(new Runnable(){
     @Override public void run(){
+      if (cancellationHandle.cancellationRequested()) {
+        return;
+      }
       if (currentTargetState != HighAvailabilityMemberState.TO_MASTER) {
         return;
       }
       haCommunicationLife.shutdown();
       haCommunicationLife=new LifeSupport();
       try {
-        masterHaURI=switchToMaster.switchToMaster(haCommunicationLife,me);
+        masterHaURI=switchToMaster.switchToMaster(haCommunicationLife,me,cancellationHandle);
       }
  catch (      Throwable e) {
         msgLog.logMessage("Failed to switch to master",e);
@@ -16,5 +20,5 @@
       }
     }
   }
-);
+,cancellationHandle);
 }
