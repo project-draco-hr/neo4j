@@ -3,7 +3,9 @@
   writer.writeCommandEntry(cmd);
   int bytesSuccessfullyWritten=inMemoryChannel.writerPosition();
   try {
-    assertEquals(cmd,((LogEntryCommand)logEntryReader.readLogEntry(inMemoryChannel)).getXaCommand());
+    LogEntry logEntry=logEntryReader.readLogEntry(inMemoryChannel);
+    Command command=((LogEntryCommand)logEntry).getXaCommand();
+    assertEquals(cmd,command);
   }
  catch (  Exception e) {
     throw new AssertionError("Failed to deserialize " + cmd.toString() + ", because: ",e);
@@ -13,7 +15,7 @@
     inMemoryChannel.reset();
     writer.writeCommandEntry(cmd);
     inMemoryChannel.truncateTo(bytesSuccessfullyWritten);
-    LogEntryCommand deserialized=((LogEntryCommand)logEntryReader.readLogEntry(inMemoryChannel));
-    assertNull("Deserialization did not detect log truncation! Record: " + cmd + ", deserialized: "+ deserialized,deserialized);
+    LogEntry deserialized=logEntryReader.readLogEntry(inMemoryChannel);
+    assertNull("Deserialization did not detect log truncation!" + "Record: " + cmd + ", deserialized: "+ deserialized,deserialized);
   }
 }

@@ -1,22 +1,23 @@
 {
   try {
     channel.getCurrentPosition(positionMarker);
-    byte version=channel.get();
-    byte type=channel.get();
-switch (type) {
-case LogEntry.TX_START:
-      return readTxStartEntry(version,channel,positionMarker.newPosition());
-case LogEntry.TX_1P_COMMIT:
-    return readTxOnePhaseCommitEntry(version,channel);
-case LogEntry.COMMAND:
-  return readTxCommandEntry(version,channel);
-case LogEntry.EMPTY:
-return null;
-default :
-throw new IOException("Unknown entry[" + type + "] at position "+ positionMarker.newPosition()+ " and entry version "+ version);
-}
-}
- catch (ReadPastEndException e) {
-return null;
-}
+    byte logFormatVersion=channel.getLogFormatVersion();
+    LogEntryParserDispatcher dispatcher=logEntryParserFactory.newInstance(logFormatVersion);
+    while (true) {
+      byte version=channel.get();
+      byte type=channel.get();
+      LogEntryParser reader=dispatcher.dispatch(type);
+      if (reader == null) {
+        LogPosition position=positionMarker.newPosition();
+        throw new IOException("Log format version: " + logFormatVersion + " - Unknown entry["+ type+ "] at "+ "position "+ position+ " and entry version "+ version);
+      }
+      LogEntry entry=reader.parse(version,channel,positionMarker,commandReaderFactory);
+      if (!reader.skip()) {
+        return entry;
+      }
+    }
+  }
+ catch (  ReadPastEndException e) {
+    return null;
+  }
 }

@@ -3,11 +3,12 @@
   File tempFile=new File(file.getAbsolutePath() + ".tmp");
   fileSystem.deleteFile(tempFile);
   try (StoreChannel in=fileSystem.open(file,"r");StoreChannel out=fileSystem.open(tempFile,"rw")){
-    final WritableLogChannel outBuffer=new PhysicalWritableLogChannel(new PhysicalLogVersionedStoreChannel(out));
     ByteBuffer buffer=ByteBuffer.allocate(1024 * 1024);
-    LogEntryWriter entryWriter=new LogEntryWriterv1(outBuffer,new CommandWriter(outBuffer));
-    transferLogicalLogHeader(in,outBuffer,buffer);
-    ReadableLogChannel inBuffer=new ReadAheadLogChannel(new PhysicalLogVersionedStoreChannel(in),LogVersionBridge.NO_MORE_CHANNELS,DEFAULT_READ_AHEAD_SIZE);
+    LogHeader logHeader=transferLogicalLogHeader(in,out,buffer);
+    PhysicalLogVersionedStoreChannel outChannel=new PhysicalLogVersionedStoreChannel(out,logHeader.logVersion,logHeader.logFormatVersion);
+    final WritableLogChannel outBuffer=new PhysicalWritableLogChannel(outChannel);
+    PhysicalLogVersionedStoreChannel inChannel=new PhysicalLogVersionedStoreChannel(in,logHeader.logVersion,logHeader.logFormatVersion);
+    ReadableLogChannel inBuffer=new ReadAheadLogChannel(inChannel,NO_MORE_CHANNELS,DEFAULT_READ_AHEAD_SIZE);
     LogEntryReader<ReadableLogChannel> entryReader=new VersionAwareLogEntryReader();
     LogEntry entry;
     while ((entry=entryReader.readLogEntry(inBuffer)) != null) {

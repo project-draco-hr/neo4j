@@ -1,9 +1,10 @@
 {
-  ByteBuffer buffer=ByteBuffer.allocateDirect(9 + Xid.MAXGTRIDSIZE + Xid.MAXBQUALSIZE * 10);
-  try (StoreChannel fileChannel=fileSystem.open(new File(logPath),"r")){
-    VersionAwareLogEntryReader.readLogHeader(buffer,fileChannel,true);
+  ByteBuffer buffer=ByteBuffer.allocateDirect(9 + MAXGTRIDSIZE + MAXBQUALSIZE * 10);
+  try (StoreChannel file=fileSystem.open(new File(logPath),"r")){
+    LogHeader logHeader=readLogHeader(buffer,file,true);
     LogDeserializer deserializer=new LogDeserializer();
-    ReadableLogChannel logChannel=new ReadAheadLogChannel(new PhysicalLogVersionedStoreChannel(fileChannel),LogVersionBridge.NO_MORE_CHANNELS,4096);
+    PhysicalLogVersionedStoreChannel channel=new PhysicalLogVersionedStoreChannel(file,logHeader.logVersion,logHeader.logFormatVersion);
+    ReadableLogChannel logChannel=new ReadAheadLogChannel(channel,NO_MORE_CHANNELS,4096);
     try (IOCursor<LogEntry> cursor=deserializer.logEntries(logChannel)){
       int entryNo=0;
       while (cursor.next()) {

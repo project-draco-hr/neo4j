@@ -2,9 +2,20 @@
   final StoreChannel newStoreChannel=mock(StoreChannel.class);
   final ReaderLogVersionBridge bridge=new ReaderLogVersionBridge(fs,logFiles);
   when(channel.getVersion()).thenReturn(version);
+  when(channel.getLogFormatVersion()).thenReturn(CURRENT_LOG_VERSION);
   when(logFiles.getLogFileForVersion(version + 1)).thenReturn(file);
   when(fs.open(file,"r")).thenReturn(newStoreChannel);
-  final VersionedStoreChannel result=bridge.next(channel);
-  assertEquals(new PhysicalLogVersionedStoreChannel(newStoreChannel,version + 1),result);
+  when(newStoreChannel.read(Matchers.<ByteBuffer>any())).then(new Answer<Integer>(){
+    @Override public Integer answer(    InvocationOnMock invocationOnMock) throws Throwable {
+      ByteBuffer buffer=(ByteBuffer)invocationOnMock.getArguments()[0];
+      buffer.putLong(encodeLogVersion(version + 1));
+      buffer.putLong(42);
+      return LOG_HEADER_SIZE;
+    }
+  }
+);
+  final LogVersionedStoreChannel result=bridge.next(channel);
+  PhysicalLogVersionedStoreChannel expected=new PhysicalLogVersionedStoreChannel(newStoreChannel,version + 1,CURRENT_LOG_VERSION);
+  assertEquals(expected,result);
   verify(channel,times(1)).close();
 }
