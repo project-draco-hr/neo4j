@@ -11,10 +11,12 @@
   members.put(myInstanceId,URI.create("ha://me"));
   when(context.getMembers()).thenReturn(members);
   final String role="master";
+  ElectionContext.VoteRequest voteRequest=new ElectionContext.VoteRequest(role,13);
   when(context.getPossibleRoles()).thenReturn(Collections.<ElectionRole>singletonList(new ElectionRole(role)));
   when(context.getElected(role)).thenReturn(myInstanceId);
+  when(context.voteRequestForRole(new ElectionRole(role))).thenReturn(voteRequest);
   when(context.getLogger(Mockito.<Class>any())).thenReturn(mock(StringLogger.class));
   election.handle(context,Message.<ElectionMessage>internal(performRoleElections),holder);
-  verify(holder,times(1)).offer(Matchers.argThat(new MessageArgumentMatcher<ElectionMessage>().onMessageType(ElectionMessage.vote).withPayload(role)));
+  verify(holder,times(1)).offer(Matchers.argThat(new MessageArgumentMatcher<ElectionMessage>().onMessageType(ElectionMessage.vote).withPayload(voteRequest)));
   verify(context,times(0)).setTimeout(Matchers.<String>any(),Matchers.<Message>any());
 }
