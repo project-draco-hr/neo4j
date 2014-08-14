@@ -2,10 +2,7 @@
   File storeDir=config.get(InternalAbstractGraphDatabase.Configuration.store_dir);
   File tempStore=new File(storeDir,COPY_FROM_MASTER_TEMP);
   Config tempConfig=configForTempStore(tempStore);
-  if (!tempStore.mkdir()) {
-    FileUtils.deleteRecursively(tempStore);
-    tempStore.mkdir();
-  }
+  clearTempDirectory(tempStore);
   try (Response response=requester.copyStore(decorateWithProgressIndicator(new ToFileStoreWriter(tempStore)))){
     long highestLogVersion=XaLogicalLog.getHighestHistoryLogVersion(fs,tempStore,LOGICAL_LOG_DEFAULT_NAME);
     if (highestLogVersion > -1) {
@@ -16,8 +13,10 @@
   finally {
     requester.done();
   }
+  checkCancellation(cancellationRequest,tempStore);
   GraphDatabaseAPI copiedDb=newTempDatabase(tempStore);
   copiedDb.shutdown();
+  checkCancellation(cancellationRequest,tempStore);
   for (  File candidate : tempStore.listFiles(new FileFilter(){
     @Override public boolean accept(    File file){
       return !file.getName().startsWith("metrics") && !file.getName().equals(StringLogger.DEFAULT_NAME) && !("active_tx_log tm_tx_log.1 tm_tx_log.2").contains(file.getName());
