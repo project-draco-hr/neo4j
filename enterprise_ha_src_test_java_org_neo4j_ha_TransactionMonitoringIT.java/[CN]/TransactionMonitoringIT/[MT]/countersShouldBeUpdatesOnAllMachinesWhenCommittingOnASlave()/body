@@ -1,17 +1,17 @@
 {
   ClusterManager clusterManager=new ClusterManager(fromXml(getClass().getResource("/threeinstances.xml").toURI()),TargetDirectory.forTest(getClass()).cleanDirectory("testCluster"),MapUtil.stringMap(HaSettings.ha_server.name(),":6001-6005",HaSettings.tx_push_factor.name(),"2"));
-  TransactionMonitorCounters masterMonitor=null;
-  TransactionMonitorCounters firstSlaveMonitor=null;
-  TransactionMonitorCounters secondSlaveMonitor=null;
+  TransactionCounters masterMonitor=null;
+  TransactionCounters firstSlaveMonitor=null;
+  TransactionCounters secondSlaveMonitor=null;
   try {
     clusterManager.start();
     clusterManager.getDefaultCluster().await(allSeesAllAsAvailable());
     GraphDatabaseAPI master=clusterManager.getDefaultCluster().getMaster();
-    masterMonitor=master.getDependencyResolver().resolveDependency(TransactionMonitorCounters.class);
+    masterMonitor=master.getDependencyResolver().resolveDependency(TransactionCounters.class);
     HighlyAvailableGraphDatabase firstSlave=clusterManager.getDefaultCluster().getAnySlave();
-    firstSlaveMonitor=firstSlave.getDependencyResolver().resolveDependency(TransactionMonitorCounters.class);
+    firstSlaveMonitor=firstSlave.getDependencyResolver().resolveDependency(TransactionCounters.class);
     HighlyAvailableGraphDatabase secondSlave=clusterManager.getDefaultCluster().getAnySlave(firstSlave);
-    secondSlaveMonitor=secondSlave.getDependencyResolver().resolveDependency(TransactionMonitorCounters.class);
+    secondSlaveMonitor=secondSlave.getDependencyResolver().resolveDependency(TransactionCounters.class);
     try (Transaction tx=firstSlave.beginTx()){
       firstSlave.createNode();
       tx.success();
