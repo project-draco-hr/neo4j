@@ -1,0 +1,34 @@
+{
+  long time=System.currentTimeMillis();
+  if (time - putTimeStamp > minLogInterval) {
+    putTimeStamp=time;
+    printStatistics();
+  }
+  int pos=getPosition(obj);
+  E oldObj=cache.get(pos);
+  while (oldObj != obj) {
+    if (oldObj != null && oldObj.getId() == obj.getId() && !force) {
+      return oldObj;
+    }
+    int objectSize=obj.sizeOfObjectInBytesIncludingOverhead();
+    if (cache.compareAndSet(pos,oldObj,obj)) {
+      setHighest(pos);
+      int oldObjSize=0;
+      if (oldObj != null) {
+        oldObjSize=oldObj.getRegisteredSize();
+      }
+      long size=currentSize.addAndGet(objectSize - oldObjSize);
+      obj.setRegisteredSize(objectSize);
+      if (oldObj != null) {
+        collisions++;
+      }
+      totalPuts++;
+      if (size > closeToMaxSize) {
+        purgeFrom(pos);
+      }
+      break;
+    }
+    oldObj=cache.get(pos);
+  }
+  return obj;
+}
