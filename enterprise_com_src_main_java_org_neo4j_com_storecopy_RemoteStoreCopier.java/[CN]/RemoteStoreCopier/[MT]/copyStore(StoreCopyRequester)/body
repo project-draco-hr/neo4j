@@ -1,12 +1,13 @@
 {
-  File storeDir=config.get(InternalAbstractGraphDatabase.Configuration.store_dir);
+  File storeDir=config.get(Configuration.store_dir);
   File tempStore=new File(storeDir,COPY_FROM_MASTER_TEMP);
   Config tempConfig=configForTempStore(tempStore);
   if (!tempStore.mkdir()) {
     FileUtils.deleteRecursively(tempStore);
     tempStore.mkdir();
   }
-  try (Response response=requester.copyStore(decorateWithProgressIndicator(new ToFileStoreWriter(tempStore)))){
+  StoreWriter storeWriter=decorateWithProgressIndicator(new ToFileStoreWriter(tempStore));
+  try (Response<?> response=requester.copyStore(storeWriter)){
     long highestLogVersion=XaLogicalLog.getHighestHistoryLogVersion(fs,tempStore,LOGICAL_LOG_DEFAULT_NAME);
     if (highestLogVersion > -1) {
       NeoStore.setVersion(fs,new File(tempStore,NeoStore.DEFAULT_NAME),highestLogVersion + 1);

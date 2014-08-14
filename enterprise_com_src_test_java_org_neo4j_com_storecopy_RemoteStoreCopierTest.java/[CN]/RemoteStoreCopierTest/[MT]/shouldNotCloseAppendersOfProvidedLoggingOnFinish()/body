@@ -1,0 +1,14 @@
+{
+  String dir=new File(testDir.directory(),"dir").getAbsolutePath();
+  Config config=new Config(stringMap(store_dir.name(),dir));
+  ConsoleLogger console=new ConsoleLogger(StringLogger.SYSTEM);
+  Logging logging=LogbackWeakDependency.tryLoadLogbackService(config,null);
+  RemoteStoreCopier copier=spy(new RemoteStoreCopier(config,loadKernelExtensions(),console,logging,fs));
+  when(copier.logConfigFileName()).thenReturn("neo4j-logback.xml");
+  Response response=when(mock(Response.class).transactions()).thenReturn(TransactionStream.EMPTY).getMock();
+  RemoteStoreCopier.StoreCopyRequester requester=when(mock(RemoteStoreCopier.StoreCopyRequester.class).copyStore(any(StoreWriter.class))).thenReturn(response).getMock();
+  copier.copyStore(requester);
+  LoggerContext context=ReflectionUtil.getPrivateField(logging,"loggerContext",LoggerContext.class);
+  List<Appender<ILoggingEvent>> appenders=asList(context.getLogger("org.neo4j").iteratorForAppenders());
+  assertThat(appenders,not(empty()));
+}
