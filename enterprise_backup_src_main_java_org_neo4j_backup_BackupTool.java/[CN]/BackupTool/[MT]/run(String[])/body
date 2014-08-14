@@ -5,46 +5,15 @@
   String to=arguments.get(TO,null);
   boolean verify=arguments.getBoolean(VERIFY,true,true);
   Config tuningConfiguration=readTuningConfiguration(TO,arguments);
-  if (!from.contains(":"))   from="single://" + from;
-  URI backupURI=null;
-  try {
-    backupURI=new URI(from);
-  }
- catch (  URISyntaxException e) {
-    throw new ToolFailureException("Please properly specify a location to backup as a valid URI in the form " + "<scheme>://<host>[:port], where scheme is the target database's running mode, eg ha");
-  }
-  String module=backupURI.getScheme();
-  BackupExtensionService service=null;
-  if (module != null && !DEFAULT_SCHEME.equals(module)) {
-    try {
-      service=Service.load(BackupExtensionService.class,module);
-    }
- catch (    NoSuchElementException e) {
-      throw new ToolFailureException(String.format("%s was specified as a backup module but it was not found. " + "Please make sure that the implementing service is on the classpath.",module));
-    }
-  }
-  if (service != null) {
-    Logging logging;
-    try {
-      getClass().getClassLoader().loadClass("ch.qos.logback.classic.LoggerContext");
-      LifeSupport life=new LifeSupport();
-      LogbackService logbackService=life.add(new LogbackService(tuningConfiguration,(LoggerContext)getSingleton().getLoggerFactory(),"neo4j-backup-logback.xml"));
-      life.start();
-      logging=logbackService;
-    }
- catch (    Throwable e) {
-      logging=new SystemOutLogging();
-    }
-    try {
-      backupURI=service.resolve(backupURI,arguments,logging);
-    }
- catch (    Throwable e) {
-      throw new ToolFailureException(e.getMessage());
-    }
+  URI backupURI=resolveBackupUri(from.trim(),arguments,tuningConfiguration);
+  if (backupURI == null || backupURI.getHost() == null) {
+    throw new ToolFailureException(WRONG_FROM_ADDRESS_SYNTAX);
   }
   try {
     String str=backupURI.toASCIIString();
-    if (str.contains("://"))     str=str.split("://")[1];
+    if (str.contains("://")) {
+      str=str.split("://")[1];
+    }
     systemOut.println("Performing backup from '" + str + "'");
     doBackup(backupURI,to,verify,tuningConfiguration);
   }
@@ -60,7 +29,7 @@
       doBackup(backupURI,to,verify,tuningConfiguration);
     }
  else {
-      throw new ToolFailureException("TransactionFailureException from existing backup at '" + from + "'"+ ".",e);
+      throw new ToolFailureException("TransactionFailureException " + "from existing backup at '" + from + "'.",e);
     }
   }
 }
