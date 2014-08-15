@@ -1,9 +1,14 @@
 {
-  while (pageCountToEvict > 0) {
+  Thread currentThread=Thread.currentThread();
+  while (pageCountToEvict > 0 && !currentThread.isInterrupted()) {
     if (clockArm == pages.length) {
       clockArm=0;
     }
     MuninnPage page=pages[clockArm];
+    if (page == null) {
+      currentThread.interrupt();
+      return 0;
+    }
     if (page.isLoaded() && page.decrementUsage()) {
       long stamp=page.tryWriteLock();
       if (stamp != 0) {

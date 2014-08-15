@@ -1,0 +1,31 @@
+{
+  int iterations=1000;
+  final AtomicReference<Throwable> caughtException=new AtomicReference<>();
+  Thread.UncaughtExceptionHandler exceptionHandler=new Thread.UncaughtExceptionHandler(){
+    @Override public void uncaughtException(    Thread t,    Throwable e){
+      e.printStackTrace();
+      caughtException.set(e);
+    }
+  }
+;
+  generateFileWithRecords(file,recordCount,recordSize);
+  int filePagesInTotal=recordCount / recordsPerFilePage;
+  for (int i=0; i < iterations; i++) {
+    RunnablePageCache cache=createPageCache(fs,maxPages,pageCachePageSize,PageCacheMonitor.NULL);
+    String evictionThreadName=cache.getClass().getSimpleName() + "-Eviction-Thread-" + i;
+    Thread evictionThread=new Thread(cache,evictionThreadName);
+    evictionThread.setUncaughtExceptionHandler(exceptionHandler);
+    evictionThread.start();
+    PagedFile pagedFile=cache.map(file,filePageSize);
+    try (PageCursor cursor=pagedFile.io(0,PF_SHARED_LOCK)){
+      for (int j=0; j < filePagesInTotal; j++) {
+        assertTrue(cursor.next());
+      }
+    }
+     cache.unmap(file);
+    cache.close();
+    evictionThread.interrupt();
+    evictionThread.join();
+    assertThat(caughtException.get(),is(nullValue()));
+  }
+}
