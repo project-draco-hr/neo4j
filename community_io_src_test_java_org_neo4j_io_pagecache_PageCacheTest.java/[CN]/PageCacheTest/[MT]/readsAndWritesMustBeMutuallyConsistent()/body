@@ -4,8 +4,8 @@
   final CountDownLatch startLatch=new CountDownLatch(writerThreads);
   final CountDownLatch writersDoneLatch=new CountDownLatch(writerThreads);
   List<Future<?>> writers=new ArrayList<>();
-  final PageCache cache=getPageCache(fs,maxPages,pageCachePageSize,PageCacheMonitor.NULL);
-  PagedFile pagedFile=cache.map(file,filePageSize);
+  getPageCache(fs,maxPages,pageCachePageSize,PageCacheMonitor.NULL);
+  final PagedFile pagedFile=pageCache.map(file,filePageSize);
   try (PageCursor cursor=pagedFile.io(0,PF_EXCLUSIVE_LOCK)){
     for (int i=0; i < pageCount; i++) {
       assertTrue(cursor.next());
@@ -14,7 +14,6 @@
    Runnable writer=new Runnable(){
     @Override public void run(){
       try {
-        PagedFile pagedFile=cache.map(file,filePageSize);
         int pageRangeMin=pageCount / 2;
         int pageRangeMax=pageRangeMin + 5;
         ThreadLocalRandom rng=ThreadLocalRandom.current();
@@ -44,7 +43,6 @@
             }
           }
          }
-        cache.unmap(file);
       }
  catch (      IOException e) {
         throw new RuntimeException(e);
@@ -59,34 +57,38 @@
     writers.add(executor.submit(writer));
   }
   startLatch.await();
-  for (int i=0; i < 2000; i++) {
-    int countedConsistentPageReads=0;
-    try (PageCursor cursor=pagedFile.io(0,PF_SHARED_LOCK)){
-      while (cursor.next()) {
-        boolean consistent;
-        do {
-          consistent=true;
-          byte first=cursor.getByte();
-          for (int j=1; j < filePageSize; j++) {
-            byte b=cursor.getByte();
-            consistent=consistent && b == first;
+  try {
+    for (int i=0; i < 2000; i++) {
+      int countedConsistentPageReads=0;
+      try (PageCursor cursor=pagedFile.io(0,PF_SHARED_LOCK)){
+        while (cursor.next()) {
+          boolean consistent;
+          do {
+            consistent=true;
+            byte first=cursor.getByte();
+            for (int j=1; j < filePageSize; j++) {
+              byte b=cursor.getByte();
+              consistent=consistent && b == first;
+            }
           }
-        }
  while (cursor.shouldRetry());
-        assertTrue("checked consistency at itr " + i,consistent);
-        countedConsistentPageReads++;
+          assertTrue("checked consistency at itr " + i,consistent);
+          countedConsistentPageReads++;
+        }
+      }
+       assertThat(countedConsistentPageReads,is(pageCount));
+    }
+    for (    Future<?> future : writers) {
+      if (future.isDone()) {
+        future.get();
+      }
+ else {
+        future.cancel(true);
       }
     }
-     assertThat(countedConsistentPageReads,is(pageCount));
+    writersDoneLatch.await();
   }
-  for (  Future<?> future : writers) {
-    if (future.isDone()) {
-      future.get();
-    }
- else {
-      future.cancel(true);
-    }
+  finally {
+    pageCache.unmap(file);
   }
-  cache.unmap(file);
-  writersDoneLatch.await();
 }
