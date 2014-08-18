@@ -1,0 +1,43 @@
+{
+  final long nodeId=createGraph();
+  DataWriteOperations ops=dataWriteOperationsInNewTransaction();
+  RelationshipRegister relId=newRelationshipRegister();
+  NodeRegister startId=newNodeRegister();
+  NeoRegister.RelTypeRegister relType=newRelTypeRegister();
+  ObjectRegister<Direction> direction=newObjectRegister();
+  NodeRegister neighborId=newNodeRegister();
+  ops.relationshipDelete(0l);
+  ops.relationshipCreate(relType1,nodeId,ops.nodeCreate());
+  ops.relationshipCreate(relType1,ops.nodeCreate(),nodeId);
+  ops.relationshipCreate(relType2,nodeId,ops.nodeCreate());
+  final NodeRegister nodeRegister=newNodeRegister();
+  final ObjectRegister<int[]> typesRegister=newObjectRegister();
+  final ObjectRegister<Direction> directionRegister=newObjectRegister();
+  Cursor inputCursor=new Cursor(){
+    private int count=0;
+    @Override public boolean next(){
+switch (count++) {
+case 0:
+        nodeRegister.write(nodeId);
+      typesRegister.write(new int[]{relType1});
+    directionRegister.write(INCOMING);
+  return true;
+case 1:
+nodeRegister.write(nodeId);
+typesRegister.write(new int[]{relType2});
+directionRegister.write(OUTGOING);
+return true;
+default :
+return false;
+}
+}
+@Override public void reset(){
+}
+@Override public void close(){
+}
+}
+;
+Cursor cursor=ops.expand(inputCursor,nodeRegister,typesRegister,directionRegister,relId,relType,direction,startId,neighborId);
+assertThat(rows(cursor,relId,relType,direction,startId,neighborId),equalTo(asList(row(1,0,BOTH,0,0),row(4,0,INCOMING,0,1),row(5,0,INCOMING,0,1),row(8,0,INCOMING,0,2),row(9,0,INCOMING,0,2),row(10,1,OUTGOING,0,3),row(11,1,OUTGOING,0,4),row(13,0,INCOMING,0,6),row(14,1,OUTGOING,0,7))));
+assertFalse("Should not contain any more rows.",cursor.next());
+}
