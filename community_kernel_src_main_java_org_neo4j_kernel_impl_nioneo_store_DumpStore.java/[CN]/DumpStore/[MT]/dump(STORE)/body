@@ -1,0 +1,38 @@
+{
+  store.makeStoreOk();
+  int size=store.getRecordSize();
+  StoreChannel fileChannel=store.getFileChannel();
+  ByteBuffer buffer=ByteBuffer.allocate(size);
+  out.println("store.getRecordSize() = " + size);
+  out.println("<dump>");
+  long used=0;
+  for (long i=1, high=store.getHighestPossibleIdInUse(); i <= high; i++) {
+    RECORD record=store.forceGetRecord(i);
+    if (record.inUse()) {
+      used++;
+    }
+    Object transform=transform(record);
+    if (transform != null) {
+      if (!"".equals(transform)) {
+        out.println(transform);
+      }
+    }
+ else {
+      out.print(record);
+      buffer.clear();
+      fileChannel.read(buffer,i * size);
+      buffer.flip();
+      if (record.inUse()) {
+        dumpHex(buffer,i * size);
+      }
+ else       if (allZero(buffer)) {
+        out.printf(": all zeros @ 0x%x - 0x%x%n",i * size,(i + 1) * size);
+      }
+ else {
+        dumpHex(buffer,i * size);
+      }
+    }
+  }
+  out.println("</dump>");
+  out.printf("used = %s / highId = %s (%.2f%%)%n",used,store.getHighId(),used * 100.0 / store.getHighId());
+}
