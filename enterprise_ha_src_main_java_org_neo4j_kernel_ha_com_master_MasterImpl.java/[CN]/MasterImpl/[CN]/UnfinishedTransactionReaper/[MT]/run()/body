@@ -1,19 +1,23 @@
 {
   try {
-    Map<RequestContext,TimestampedLockClient> safeTransactions;
-synchronized (slaveLockState) {
-      safeTransactions=new HashMap<>(slaveLockState);
+    Map<RequestContext,LockSession> safeSessions;
+synchronized (slaveLockSessions) {
+      safeSessions=new HashMap<>(slaveLockSessions);
     }
-    for (    Map.Entry<RequestContext,TimestampedLockClient> entry : safeTransactions.entrySet()) {
+    for (    Map.Entry<RequestContext,LockSession> entry : safeSessions.entrySet()) {
       long time=entry.getValue().timeLastSuspended.get();
-      if ((time != 0 && System.currentTimeMillis() - time >= unfinishedTransactionThresholdMillis) || entry.getValue().finishAsap()) {
+      if ((time != 0 && System.currentTimeMillis() - time >= unfinishedTransactionThresholdMillis) || entry.getValue().closeAsap()) {
         long displayableTime=(time == 0 ? 0 : (System.currentTimeMillis() - time));
-        String oldTxDescription=format("old tx %s: %s at age %s ms",entry.getKey(),entry.getValue().getLockClient(),displayableTime);
+        RequestContext context=entry.getKey();
+        String oldTxDescription=format("old tx %s: %s at age %s ms",context,entry.getValue().client(),displayableTime);
         try {
-          finishTransaction0(entry.getKey());
+          resume(context);
+          endLockSession0(context);
           msgLog.info("Rolled back " + oldTxDescription);
         }
- catch (        Throwable t) {
+ catch (        LockSessionAlreadyActiveException e) {
+        }
+catch (        Throwable t) {
           msgLog.warn("Unable to roll back " + oldTxDescription,t);
         }
       }

@@ -1,5 +1,24 @@
 {
   assertCorrectEpoch(context);
-  finishTransaction0(context);
+  boolean successfullyEnded=false;
+  try {
+    resume(context);
+    successfullyEnded=true;
+  }
+ catch (  TransactionNotPresentOnMasterException e) {
+    throw e;
+  }
+catch (  LockSessionAlreadyActiveException e) {
+    return packResponse(context,null);
+  }
+ finally {
+    if (!successfullyEnded) {
+      LockSession client=getLockSession(context);
+      if (client != null) {
+        client.markAsCloseAsap();
+      }
+    }
+  }
+  endLockSession0(context);
   return packResponse(context,null);
 }
