@@ -1,14 +1,20 @@
 {
   final CountDownLatch switching=new CountDownLatch(1);
-  final CountDownLatch latch=new CountDownLatch(1);
   final CountDownLatch slaveAvailable=new CountDownLatch(2);
+  final AtomicBoolean firstSwitch=new AtomicBoolean(true);
   ClusterMemberAvailability availability=mock(ClusterMemberAvailability.class);
   SwitchToSlave switchToSlave=mock(SwitchToSlave.class);
   SwitchToMaster switchToMaster=mock(SwitchToMaster.class);
-  when(switchToSlave.switchToSlave(any(LifeSupport.class),any(URI.class),any(URI.class))).thenAnswer(new Answer<URI>(){
+  when(switchToSlave.switchToSlave(any(LifeSupport.class),any(URI.class),any(URI.class),any(CancellationRequest.class))).thenAnswer(new Answer<URI>(){
     @Override public URI answer(    InvocationOnMock invocationOnMock) throws Throwable {
       switching.countDown();
-      latch.await();
+      CancellationRequest cancel=(CancellationRequest)invocationOnMock.getArguments()[3];
+      if (firstSwitch.get()) {
+        while (!cancel.cancellationRequested()) {
+          Thread.sleep(1);
+        }
+        firstSwitch.set(false);
+      }
       slaveAvailable.countDown();
       return URI.create("ha://slave");
     }
@@ -19,10 +25,10 @@
   HighAvailabilityModeSwitcher toTest=new HighAvailabilityModeSwitcher(switchToSlave,switchToMaster,mock(Election.class),availability,StringLogger.DEV_NULL);
   toTest.init();
   toTest.start();
+  toTest.listeningAt(URI.create("ha://server3?serverId=3"));
   toTest.masterIsAvailable(new HighAvailabilityMemberChangeEvent(PENDING,TO_SLAVE,new InstanceId(1),URI.create("ha://server1")));
   switching.await();
   toTest.masterIsElected(new HighAvailabilityMemberChangeEvent(TO_SLAVE,PENDING,new InstanceId(2),URI.create("ha://server2")));
   toTest.masterIsAvailable(new HighAvailabilityMemberChangeEvent(PENDING,TO_SLAVE,new InstanceId(2),URI.create("ha://server2")));
-  latch.countDown();
   slaveAvailable.await();
 }
