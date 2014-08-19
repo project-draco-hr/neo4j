@@ -2,8 +2,22 @@
   TxLockElement tle=getOrCreateLockElement(tx);
   try {
     tle.movedOn=false;
+    boolean shouldAddWait=true;
+    Thread currentThread=currentThread();
     while (totalWriteCount > tle.writeCount) {
-      deadlockGuardedWait(tx,tle,READ);
+      ragManager.checkWaitOn(this,tx);
+      if (shouldAddWait) {
+        waitingThreadList.addFirst(new WaitElement(tle,READ,currentThread));
+      }
+      try {
+        wait();
+        shouldAddWait=false;
+      }
+ catch (      InterruptedException e) {
+        interrupted();
+        shouldAddWait=true;
+      }
+      ragManager.stopWaitOn(this,tx);
     }
     registerReadLockAcquired(tx,tle);
   }
