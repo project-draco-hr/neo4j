@@ -5,7 +5,8 @@
   final GraphDatabaseAPI original=(GraphDatabaseAPI)new GraphDatabaseFactory().newEmbeddedDatabase(originalDir.getAbsolutePath());
   final DependencyResolver resolver=original.getDependencyResolver();
   final FileSystemAbstraction fileSystem=resolver.resolveDependency(FileSystemAbstraction.class);
-  StoreCopyClient copier=new StoreCopyClient(config,loadKernelExtensions(),new ConsoleLogger(StringLogger.SYSTEM),fs);
+  Logging logging=new DevNullLoggingService();
+  StoreCopyClient copier=new StoreCopyClient(config,loadKernelExtensions(),new ConsoleLogger(StringLogger.SYSTEM),logging,fs);
   StoreCopyClient.StoreCopyRequester requester=spy(new StoreCopyClient.StoreCopyRequester(){
     private Response<Object> response;
     @Override public Response<?> copyStore(    StoreWriter writer) throws IOException {
@@ -50,7 +51,7 @@
     }
   }
 );
-  copier.copyStore(requester);
+  copier.copyStore(requester,CancellationRequest.NONE);
   GraphDatabaseService copy=new GraphDatabaseFactory().newEmbeddedDatabase(copyDir.getAbsolutePath());
   try (Transaction tx=copy.beginTx()){
     GlobalGraphOperations globalOps=GlobalGraphOperations.at(copy);

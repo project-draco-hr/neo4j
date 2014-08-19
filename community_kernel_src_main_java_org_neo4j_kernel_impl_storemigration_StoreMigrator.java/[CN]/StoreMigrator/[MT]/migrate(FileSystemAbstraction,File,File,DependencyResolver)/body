@@ -14,12 +14,23 @@
     }
   }
 ;
-  BatchImporter importer=new ParallelBatchImporter(migrationDir.getAbsolutePath(),fileSystem,new Configuration.OverrideFromConfig(config),executionMonitor);
+  BatchImporter importer=new ParallelBatchImporter(migrationDir.getAbsolutePath(),fileSystem,new Configuration.OverrideFromConfig(config),logging,executionMonitor);
   Iterable<InputNode> nodes=legacyNodesAsInput(legacyStore);
   Iterable<InputRelationship> relationships=legacyRelationshipsAsInput(legacyStore);
   IdMapper idMapper=IdMappers.actualIds();
   importer.doImport(nodes,relationships,idMapper);
   progressMonitor.finished();
   importer.shutdown();
+  if (legacyStore instanceof Legacy19Store) {
+    StandardPageCache pageCache=new StandardPageCache(fileSystem,1000,8192);
+    PropertyStore propertyStore=storeFactory(fileSystem,pageCache,migrationDir,dependencyResolver).newPropertyStore();
+    try {
+      migratePropertyKeys((Legacy19Store)legacyStore,propertyStore);
+    }
+  finally {
+      propertyStore.close();
+      pageCache.close();
+    }
+  }
   legacyStore.close();
 }
