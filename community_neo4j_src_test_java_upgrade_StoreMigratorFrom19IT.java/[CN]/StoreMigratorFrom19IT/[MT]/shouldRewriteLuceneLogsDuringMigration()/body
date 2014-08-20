@@ -1,0 +1,21 @@
+{
+  StoreUpgrader upgrader=new StoreUpgrader(ALLOW_UPGRADE,fs,StoreUpgrader.NO_MONITOR);
+  upgrader.addParticipant(new StoreMigrator(monitor,fs));
+  File legacyStoreDir=find19FormatStoreDirectory(storeDir.directory());
+  upgrader.migrateIfNeeded(legacyStoreDir);
+  File indexDir=new File(legacyStoreDir,"index");
+  File[] luceneLogs=findAllMatchingFiles(indexDir,"lucene\\.log\\.v.*");
+  assertThat(luceneLogs,arrayWithSize(1));
+  List<LogEntry> logEntries=readLuceneLogEntriesFrom(luceneLogs[0]);
+  assertThat(logEntries,hasSize(23));
+  LogEntry log1=logEntries.get(0);
+  assertThat(log1,instanceOf(LogEntry.Start.class));
+  assertThat(((LogEntry.Start)log1).getMasterId(),equalTo(2));
+  assertThat(((LogEntry.Start)log1).getLocalId(),equalTo(2));
+  LogEntry log2=logEntries.get(1);
+  assertThat(log2,instanceOf(LogEntry.Command.class));
+  assertThat(((LogEntry.Command)log2).getXaCommand().getClass().getSimpleName(),containsString("Remove"));
+  assertThat(logEntries.get(logEntries.size() - 3),instanceOf(LogEntry.Prepare.class));
+  assertThat(logEntries.get(logEntries.size() - 2),instanceOf(LogEntry.TwoPhaseCommit.class));
+  assertThat(logEntries.get(logEntries.size() - 1),instanceOf(LogEntry.Done.class));
+}

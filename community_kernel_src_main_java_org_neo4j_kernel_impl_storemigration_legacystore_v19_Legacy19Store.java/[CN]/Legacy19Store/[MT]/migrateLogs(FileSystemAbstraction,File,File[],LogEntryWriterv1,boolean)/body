@@ -1,0 +1,20 @@
+{
+  for (  File legacyLogFile : logs) {
+    File newLogFile=new File(migrationDir,legacyLogFile.getName());
+    try (StoreChannel channel=fs.open(newLogFile,"rw")){
+      LogBuffer logBuffer=new DirectMappedLogBuffer(channel,ByteCounterMonitor.NULL);
+      Iterator<LogEntry> legacyLogsIterator;
+      if (transactionLogs) {
+        legacyLogsIterator=iterateTransactionLogEntries(legacyLogFile,logBuffer);
+      }
+ else {
+        legacyLogsIterator=iterateLuceneLogEntries(legacyLogFile,logBuffer);
+      }
+      for (      LogEntry entry : loop(legacyLogsIterator)) {
+        logWriter.writeLogEntry(entry,logBuffer);
+      }
+      logBuffer.force();
+      channel.close();
+    }
+   }
+}

@@ -22,13 +22,16 @@
   progressMonitor.finished();
   importer.shutdown();
   if (legacyStore instanceof Legacy19Store) {
-    PropertyStore propertyStore=storeFactory(fileSystem,migrationDir,dependencyResolver).newPropertyStore(new File(migrationDir.getPath(),NeoStore.DEFAULT_NAME + StoreFactory.PROPERTY_STORE_NAME));
+    Legacy19Store legacy19Store=(Legacy19Store)legacyStore;
+    PropertyStore propertyStore=storeFactory(fileSystem,migrationDir).newPropertyStore(new File(migrationDir.getPath(),NeoStore.DEFAULT_NAME + StoreFactory.PROPERTY_STORE_NAME));
     try {
-      migratePropertyKeys((Legacy19Store)legacyStore,propertyStore);
+      migratePropertyKeys(legacy19Store,propertyStore);
     }
   finally {
       propertyStore.close();
     }
+    legacy19Store.migrateTransactionLogs(fileSystem,migrationDir,storeDir);
+    legacy19Store.migrateLuceneLogs(fileSystem,migrationDir,storeDir);
   }
   legacyStore.close();
 }
