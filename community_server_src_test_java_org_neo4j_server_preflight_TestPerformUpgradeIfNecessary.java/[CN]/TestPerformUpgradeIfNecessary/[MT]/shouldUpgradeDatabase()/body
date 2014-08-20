@@ -2,11 +2,13 @@
   Configuration serverConfig=buildProperties(true);
   prepareSampleLegacyDatabase(STORE_DIRECTORY);
   Monitor monitor=mock(Monitor.class);
-  PerformUpgradeIfNecessary upgrader=new PerformUpgradeIfNecessary(serverConfig,loadNeo4jProperties(),DEV_NULL,monitor);
+  TestLogging logging=new TestLogging();
+  PerformUpgradeIfNecessary upgrader=new PerformUpgradeIfNecessary(serverConfig,loadNeo4jProperties(),logging,monitor);
   boolean exit=upgrader.run();
   assertEquals(true,exit);
   InOrder order=inOrder(monitor);
   order.verify(monitor,times(1)).migrationNeeded();
   order.verify(monitor,times(1)).migrationCompleted();
   order.verifyNoMoreInteractions();
+  logging.getMessagesLog(ParallelBatchImporter.class).assertAtLeastOnce(info("Import completed"));
 }
