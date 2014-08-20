@@ -1,26 +1,24 @@
 {
-  Triplet<Outcome,String,String> outcome=checkUpgradeableFor19(storeDirectory);
-  if (outcome.first().isSuccessful()) {
+  Result result=checkUpgradeableFor(storeDirectory,Legacy19Store.LEGACY_VERSION);
+  if (result.outcome.isSuccessful()) {
     return Legacy19Store.LEGACY_VERSION;
   }
- else {
-    outcome=checkUpgradeableFor20(storeDirectory);
-    if (!outcome.first().isSuccessful()) {
-      String foundVersion=outcome.second();
-      String storeFileName=outcome.third();
-switch (outcome.first()) {
+  result=checkUpgradeableFor(storeDirectory,Legacy20Store.LEGACY_VERSION);
+  if (result.outcome.isSuccessful()) {
+    return Legacy20Store.LEGACY_VERSION;
+  }
+  result=checkUpgradeableFor(storeDirectory,Legacy21Store.LEGACY_VERSION);
+  if (result.outcome.isSuccessful()) {
+    return Legacy21Store.LEGACY_VERSION;
+  }
+switch (result.outcome) {
 case missingStoreFile:
-        throw new StoreUpgrader.UpgradeMissingStoreFilesException(storeFileName);
+    throw new StoreUpgrader.UpgradeMissingStoreFilesException(result.storeFilename);
 case storeVersionNotFound:
-      throw new StoreUpgrader.UpgradingStoreVersionNotFoundException(storeFileName);
+  throw new StoreUpgrader.UpgradingStoreVersionNotFoundException(result.storeFilename);
 case unexpectedUpgradingStoreVersion:
-    throw new StoreUpgrader.UnexpectedUpgradingStoreVersionException(storeFileName,Legacy20Store.LEGACY_VERSION,foundVersion);
+throw new StoreUpgrader.UnexpectedUpgradingStoreVersionException(result.storeFilename,Legacy21Store.LEGACY_VERSION,result.actualVersion);
 default :
-  throw new IllegalArgumentException(outcome.first().name());
-}
-}
- else {
-return Legacy20Store.LEGACY_VERSION;
-}
+throw new IllegalArgumentException(result.outcome.name());
 }
 }
