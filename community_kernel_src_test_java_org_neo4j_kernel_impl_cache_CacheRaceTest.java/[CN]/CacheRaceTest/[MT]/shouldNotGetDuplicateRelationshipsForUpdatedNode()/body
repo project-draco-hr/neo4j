@@ -1,0 +1,17 @@
+{
+  GraphDatabaseService graphDb=db.getGraphDatabaseService();
+  Node node=createNode(Barrier.NONE).apply(graphDb);
+  Barrier.Control committing=new Barrier.Control();
+  Future<Relationship> rel=threading.execute(addRelationship(committing),node);
+  committing.await();
+  nodeCache.clear();
+  Barrier.Control updateCache=nodeCache.blockThread("add-relationship");
+  threading.threadBlockMonitor(currentThread(),new Release(updateCache));
+  committing.release();
+  updateCache.await();
+  List<String> before=countRelationshipsOfAllNodes(graphDb);
+  updateCache.release();
+  rel.get();
+  List<String> after=countRelationshipsOfAllNodes(graphDb);
+  assertEquals(join("\n\t",after),before.size(),after.size());
+}
