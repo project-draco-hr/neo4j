@@ -1,9 +1,14 @@
 {
   return new Function<ClusterMember,Slave>(){
     @Override public Slave apply(    ClusterMember from){
-      Slave slave=life.add(slaveFactory.newSlave(from));
-      slaves.put(from,slave);
-      return slave;
+synchronized (HighAvailabilitySlaves.this) {
+        Slave presentSlave=slaves.get(from);
+        if (presentSlave == null) {
+          presentSlave=life.add(slaveFactory.newSlave(from));
+          slaves.put(from,presentSlave);
+        }
+        return presentSlave;
+      }
     }
   }
 ;
