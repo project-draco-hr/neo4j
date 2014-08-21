@@ -1,0 +1,38 @@
+{
+  final CountDownLatch latch=new CountDownLatch(1);
+  try {
+    MasterImpl.SPI spi=mock(MasterImpl.SPI.class);
+    when(spi.isAccessible()).thenReturn(true);
+    Client client=mock(Client.class);
+    doAnswer(new Answer<Void>(){
+      @Override public Void answer(      InvocationOnMock invocation) throws Throwable {
+        latch.await();
+        return null;
+      }
+    }
+).when(client).acquireExclusive(any(ResourceType.class),Matchers.<long[]>anyVararg());
+    when(spi.acquireClient()).thenReturn(client);
+    Config config=config(20);
+    final MasterImpl master=new MasterImpl(spi,mock(Monitor.class),new DevNullLoggingService(),config,20);
+    master.start();
+    HandshakeResult handshake=master.handshake(1,new StoreId()).response();
+    final RequestContext context=new RequestContext(handshake.epoch(),1,2,0,1,0);
+    master.newLockSession(context);
+    Future<Void> acquireFuture=otherThread.execute(new WorkerCommand<Void,Void>(){
+      @Override public Void doWork(      Void state) throws Exception {
+        master.acquireExclusiveLock(context,ResourceTypes.NODE,1L);
+        return null;
+      }
+    }
+);
+    otherThread.get().waitUntilWaiting();
+    master.endLockSession(context,false);
+    verify(client,times(0)).close();
+    latch.countDown();
+    acquireFuture.get();
+    verify(client,times(1)).close();
+  }
+  finally {
+    latch.countDown();
+  }
+}
