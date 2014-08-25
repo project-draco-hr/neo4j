@@ -1,0 +1,24 @@
+{
+  File seedDir=deleteAllLogsOn(slave1);
+  File newDir=new File(dir,"new");
+  FileUtils.deleteRecursively(newDir);
+  ClusterManager newClusterManager=new ClusterManager(new ClusterManager.Builder(newDir).withProvider(clusterOfSize(3)).withSeedDir(seedDir));
+  newClusterManager.start();
+  ClusterManager.ManagedCluster newCluster=newClusterManager.getDefaultCluster();
+  HighlyAvailableGraphDatabase newMaster;
+  HighlyAvailableGraphDatabase newSlave1;
+  HighlyAvailableGraphDatabase newSlave2;
+  try {
+    newCluster.await(allSeesAllAsAvailable());
+    newMaster=newCluster.getMaster();
+    newSlave1=newCluster.getAnySlave();
+    newSlave2=newCluster.getAnySlave(newSlave1);
+  }
+  finally {
+    newClusterManager.shutdown();
+  }
+  assertAllStoreConsistent(newMaster,newSlave1,newSlave2);
+  assertConsistentStore(new File(newMaster.getStoreDir()));
+  assertConsistentStore(new File(newSlave1.getStoreDir()));
+  assertConsistentStore(new File(newSlave2.getStoreDir()));
+}
