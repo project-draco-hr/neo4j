@@ -1,0 +1,21 @@
+{
+  try {
+    systemOut.println("Performing backup from '" + hostnamePort + "'");
+    doBackup(hostnamePort,to,verify,tuningConfiguration);
+  }
+ catch (  TransactionFailureException tfe) {
+    if (tfe.getCause() instanceof UpgradeNotAllowedByConfigurationException) {
+      try {
+        systemOut.println("The database present in the target directory is of an older version. " + "Backing that up in target and performing a full backup from source");
+        moveExistingDatabase(fs,to);
+      }
+ catch (      IOException e) {
+        throw new ToolFailureException("There was a problem moving the old database out of the way" + " - cannot continue, aborting.",e);
+      }
+      doBackup(hostnamePort,to,verify,tuningConfiguration);
+    }
+ else {
+      throw new ToolFailureException("TransactionFailureException " + "from existing backup at '" + hostnamePort + "'.",tfe);
+    }
+  }
+}
