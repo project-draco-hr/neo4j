@@ -1,0 +1,24 @@
+{
+  long txId=3;
+  String failureMessage="Forces a failure";
+  WritableLogChannel channel=spy(new InMemoryLogChannel());
+  when(channel.putInt(anyInt())).thenThrow(new IOException(failureMessage));
+  LogFile logFile=mock(LogFile.class);
+  when(logFile.getWriter()).thenReturn(channel);
+  TxIdGenerator txIdGenerator=mock(TxIdGenerator.class);
+  when(txIdGenerator.generate(any(TransactionRepresentation.class))).thenReturn(txId);
+  TransactionMetadataCache metadataCache=new TransactionMetadataCache(10,10);
+  TransactionIdStore transactionIdStore=mock(TransactionIdStore.class);
+  TransactionAppender appender=new PhysicalTransactionAppender(logFile,txIdGenerator,metadataCache,transactionIdStore);
+  TransactionRepresentation transaction=mock(TransactionRepresentation.class);
+  when(transaction.additionalHeader()).thenReturn(new byte[0]);
+  try {
+    appender.append(transaction);
+    fail("Expected append to fail. Something is wrong with the test itself");
+  }
+ catch (  TransactionAppendException e) {
+    assertTrue(e.hasNewTransactionIdGenerated());
+    assertEquals(txId,e.newTransactionIdGenerated());
+    assertTrue(contains(e,failureMessage,IOException.class));
+  }
+}

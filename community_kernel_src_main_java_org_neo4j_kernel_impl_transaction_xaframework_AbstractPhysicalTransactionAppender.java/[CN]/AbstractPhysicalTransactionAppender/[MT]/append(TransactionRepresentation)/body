@@ -1,11 +1,17 @@
 {
-  long transactionId, ticket;
+  long transactionId=-1;
+  try {
+    long ticket;
 synchronized (this) {
-    logFile.checkRotation();
-    transactionId=txIdGenerator.generate(transaction);
-    append(transaction,transactionId);
-    ticket=getCurrentTicket();
+      logFile.checkRotation();
+      transactionId=txIdGenerator.generate(transaction);
+      append(transaction,transactionId);
+      ticket=getCurrentTicket();
+    }
+    force(ticket);
+    return transactionId;
   }
-  force(ticket);
-  return FutureAdapter.present(transactionId);
+ catch (  Exception e) {
+    throw new TransactionAppendException(e,transactionId);
+  }
 }
