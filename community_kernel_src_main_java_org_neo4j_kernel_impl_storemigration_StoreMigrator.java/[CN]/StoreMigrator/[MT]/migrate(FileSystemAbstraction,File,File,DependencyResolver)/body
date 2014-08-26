@@ -1,36 +1,11 @@
 {
   versionToUpgradeFrom=upgradableDatabase.checkUpgradeable(storeDir);
   progressMonitor.started();
-  LegacyStore legacyStore;
-  if (versionToUpgradeFrom.equals(Legacy19Store.LEGACY_VERSION)) {
-    legacyStore=new Legacy19Store(fileSystem,new File(storeDir,NeoStore.DEFAULT_NAME));
+  if (versionToUpgradeFrom.equals(Legacy21Store.LEGACY_VERSION)) {
+    migrateByCopyingFile(fileSystem,storeDir,migrationDir);
   }
  else {
-    legacyStore=new Legacy20Store(fileSystem,new File(storeDir,NeoStore.DEFAULT_NAME));
+    migrateWithBatchImporter(fileSystem,storeDir,migrationDir,dependencyResolver);
   }
-  ExecutionMonitor executionMonitor=new CoarseBoundedProgressExecutionMonitor(legacyStore.getNodeStoreReader().getMaxId(),legacyStore.getRelStoreReader().getMaxId()){
-    @Override protected void percent(    int percent){
-      progressMonitor.percentComplete(percent);
-    }
-  }
-;
-  BatchImporter importer=new ParallelBatchImporter(migrationDir.getAbsolutePath(),fileSystem,new Configuration.OverrideFromConfig(config),logging,executionMonitor);
-  Iterable<InputNode> nodes=legacyNodesAsInput(legacyStore);
-  Iterable<InputRelationship> relationships=legacyRelationshipsAsInput(legacyStore);
-  IdMapper idMapper=IdMappers.actualIds();
-  importer.doImport(nodes,relationships,idMapper);
   progressMonitor.finished();
-  importer.shutdown();
-  if (legacyStore instanceof Legacy19Store) {
-    StandardPageCache pageCache=new StandardPageCache(fileSystem,1000,8192);
-    PropertyStore propertyStore=storeFactory(fileSystem,pageCache,migrationDir,dependencyResolver).newPropertyStore();
-    try {
-      migratePropertyKeys((Legacy19Store)legacyStore,propertyStore);
-    }
-  finally {
-      propertyStore.close();
-      pageCache.close();
-    }
-  }
-  legacyStore.close();
 }

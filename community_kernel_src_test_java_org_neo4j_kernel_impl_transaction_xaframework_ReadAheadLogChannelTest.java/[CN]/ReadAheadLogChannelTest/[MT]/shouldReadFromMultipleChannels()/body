@@ -17,12 +17,14 @@
     }
   }
 );
-  try (ReadAheadLogChannel channel=new ReadAheadLogChannel(new PhysicalLogVersionedStoreChannel(fs.open(file(0),"r")),new LogVersionBridge(){
+  StoreChannel storeChannel=fs.open(file(0),"r");
+  PhysicalLogVersionedStoreChannel versionedStoreChannel=new PhysicalLogVersionedStoreChannel(storeChannel,-1,(byte)-1);
+  try (ReadAheadLogChannel channel=new ReadAheadLogChannel(versionedStoreChannel,new LogVersionBridge(){
     private boolean returned=false;
-    @Override public VersionedStoreChannel next(    VersionedStoreChannel channel) throws IOException {
+    @Override public LogVersionedStoreChannel next(    LogVersionedStoreChannel channel) throws IOException {
       if (!returned) {
         returned=true;
-        return new PhysicalLogVersionedStoreChannel(fs.open(file(1),"r"));
+        return new PhysicalLogVersionedStoreChannel(fs.open(file(1),"r"),-1,(byte)-1);
       }
       return channel;
     }

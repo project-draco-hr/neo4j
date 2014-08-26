@@ -1,0 +1,17 @@
+{
+  buffer.clear();
+  buffer.limit(LOG_HEADER_SIZE);
+  int read=channel.read(buffer);
+  if (read != LOG_HEADER_SIZE) {
+    if (strict) {
+      throw new IOException("Unable to read log version and last committed tx");
+    }
+    return null;
+  }
+  buffer.flip();
+  long encodedLogVersions=buffer.getLong();
+  byte logFormatVersion=decodeLogFormatVersion(encodedLogVersions);
+  long logVersion=decodeLogVersion(logFormatVersion,encodedLogVersions,strict);
+  long previousCommittedTx=buffer.getLong();
+  return new LogHeader(logFormatVersion,logVersion,previousCommittedTx);
+}

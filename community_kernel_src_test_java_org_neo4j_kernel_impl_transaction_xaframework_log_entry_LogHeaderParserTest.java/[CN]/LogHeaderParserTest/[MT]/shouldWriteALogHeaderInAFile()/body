@@ -1,0 +1,19 @@
+{
+  final File file=File.createTempFile("WriteLogHeader",getClass().getSimpleName());
+  final FileSystemAbstraction fs=new DefaultFileSystemAbstraction();
+  writeLogHeader(fs,file,expectedLogVersion,expectedTxId);
+  final byte[] array=new byte[LOG_HEADER_SIZE];
+  try (InputStream stream=fs.openAsInputStream(file)){
+    int read=stream.read(array);
+    assertEquals(LOG_HEADER_SIZE,read);
+  }
+   final ByteBuffer result=ByteBuffer.wrap(array);
+  long encodedLogVersions=result.getLong();
+  assertEquals(encodeLogVersion(expectedLogVersion),encodedLogVersions);
+  byte logFormatVersion=decodeLogFormatVersion(encodedLogVersions);
+  assertEquals(CURRENT_LOG_VERSION,logFormatVersion);
+  long logVersion=decodeLogVersion(logFormatVersion,encodedLogVersions,true);
+  assertEquals(expectedLogVersion,logVersion);
+  long txId=result.getLong();
+  assertEquals(expectedTxId,txId);
+}

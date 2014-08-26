@@ -1,13 +1,11 @@
 {
   File file=new File(neoStore.getStorageFileName().getParent(),fname);
   StoreChannel fileChannel=files.open(file,"r");
-  ByteBuffer buffer=ByteBuffer.allocateDirect(9 + Xid.MAXGTRIDSIZE + Xid.MAXBQUALSIZE * 10);
-  long[] header=VersionAwareLogEntryReader.readLogHeader(buffer,fileChannel,false);
-  long logVersion=header[0];
-  long prevLastCommittedTx=header[1];
-  console.printf("Logical log version: %s with prev committed tx[%s]%n",logVersion,prevLastCommittedTx);
+  ByteBuffer buffer=ByteBuffer.allocateDirect(9 + MAXGTRIDSIZE + MAXBQUALSIZE * 10);
+  LogHeader logHeader=readLogHeader(buffer,fileChannel,false);
+  console.printf("Logical log version: %s with prev committed tx[%s]%n",logHeader.logVersion,logHeader.lastCommittedTxId);
   LogDeserializer deserializer=new LogDeserializer();
-  PhysicalLogVersionedStoreChannel channel=new PhysicalLogVersionedStoreChannel(fileChannel,logVersion);
-  ReadableLogChannel logChannel=new ReadAheadLogChannel(channel,LogVersionBridge.NO_MORE_CHANNELS,4096);
+  PhysicalLogVersionedStoreChannel channel=new PhysicalLogVersionedStoreChannel(fileChannel,logHeader.logVersion,logHeader.logFormatVersion);
+  ReadableLogChannel logChannel=new ReadAheadLogChannel(channel,NO_MORE_CHANNELS,4096);
   return deserializer.logEntries(logChannel);
 }

@@ -10,14 +10,15 @@
       }
 );
       LogVersionBridge bridge=new LogVersionBridge(){
-        @Override public VersionedStoreChannel next(        VersionedStoreChannel channel) throws IOException {
+        @Override public LogVersionedStoreChannel next(        LogVersionedStoreChannel channel) throws IOException {
           return channel;
         }
       }
 ;
-      PhysicalLogVersionedStoreChannel storeChannel=new PhysicalLogVersionedStoreChannel(fs.open(from,"r"));
-      storeChannel.position(LOG_HEADER_SIZE);
-      try (ReadableLogChannel channel=new ReadAheadLogChannel(storeChannel,bridge,1000)){
+      StoreChannel storeChannel=fs.open(from,"r");
+      PhysicalLogVersionedStoreChannel versionedStoreChannel=new PhysicalLogVersionedStoreChannel(storeChannel,-1,CURRENT_LOG_VERSION);
+      versionedStoreChannel.position(LOG_HEADER_SIZE);
+      try (ReadableLogChannel channel=new ReadAheadLogChannel(versionedStoreChannel,bridge,1000)){
         reader.visit(channel);
       }
        return counter.get();
