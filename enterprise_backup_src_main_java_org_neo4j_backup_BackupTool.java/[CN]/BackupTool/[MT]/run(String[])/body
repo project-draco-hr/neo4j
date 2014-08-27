@@ -1,35 +1,15 @@
 {
   Args arguments=new Args(args);
-  checkArguments(arguments);
-  String from=arguments.get(FROM,null);
-  String to=arguments.get(TO,null);
-  boolean verify=arguments.getBoolean(VERIFY,true,true);
-  Config tuningConfiguration=readTuningConfiguration(TO,arguments);
-  URI backupURI=resolveBackupUri(from.trim(),arguments,tuningConfiguration);
-  if (backupURI == null || backupURI.getHost() == null) {
-    throw new ToolFailureException(WRONG_FROM_ADDRESS_SYNTAX);
+  if (!arguments.hasNonNull(TO)) {
+    throw new ToolFailureException("Specify target location with " + dash(TO) + " <target-directory>");
   }
-  try {
-    String str=backupURI.toASCIIString();
-    if (str.contains("://")) {
-      str=str.split("://")[1];
-    }
-    systemOut.println("Performing backup from '" + str + "'");
-    doBackup(backupURI,to,verify,tuningConfiguration);
+  if (arguments.hasNonNull(FROM) && !arguments.has(HOST) && !arguments.has(PORT)) {
+    runBackupWithLegacyArgs(arguments);
   }
- catch (  TransactionFailureException e) {
-    if (e.getCause() instanceof UpgradeNotAllowedByConfigurationException) {
-      try {
-        systemOut.println("The database present in the target directory is of an older version. " + "Backing that up in target and performing a full backup from source");
-        moveExistingDatabase(fs,to);
-      }
- catch (      IOException e1) {
-        throw new ToolFailureException("There was a problem moving the old database out of the way" + " - cannot continue, aborting.",e);
-      }
-      doBackup(backupURI,to,verify,tuningConfiguration);
-    }
+ else   if (arguments.hasNonNull(HOST)) {
+    runBackup(arguments);
+  }
  else {
-      throw new ToolFailureException("TransactionFailureException " + "from existing backup at '" + from + "'.",e);
-    }
+    throw new ToolFailureException(NO_SOURCE_SPECIFIED);
   }
 }
