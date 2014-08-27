@@ -1,11 +1,11 @@
 {
-  StoreChannel channel=null;
-  try {
-    channel=fs.open(neoStoreFile(storeDir),"r");
+  try (StoreChannel channel=fs.open(neoStoreFile(storeDir),"r")){
     int recordsToRead=6;
-    ByteBuffer buf=ByteBuffer.allocate(recordsToRead * NeoStore.RECORD_SIZE);
-    if (channel.read(buf) != recordsToRead * NeoStore.RECORD_SIZE) {
-      throw new RuntimeException("Unable to read neo store header information");
+    int bytesToRead=recordsToRead * NeoStore.RECORD_SIZE;
+    ByteBuffer buf=ByteBuffer.allocate(bytesToRead);
+    int bytesRead=channel.read(buf);
+    if (bytesRead != bytesToRead) {
+      throw new RuntimeException("Unable to read neo store header information, " + "read: " + bytesRead + "B, expected "+ bytesToRead+ "B");
     }
     buf.flip();
     creationTime=nextRecord(buf);
@@ -17,15 +17,5 @@
   }
  catch (  IOException e) {
     throw new RuntimeException(e);
-  }
- finally {
-    if (channel != null) {
-      try {
-        channel.close();
-      }
- catch (      IOException e) {
-        throw new RuntimeException(e);
-      }
-    }
   }
 }
