@@ -1,9 +1,9 @@
 {
-  clusterEventsDelegateInvocationHandler=new DelegateInvocationHandler(ClusterMemberEvents.class);
-  memberContextDelegateInvocationHandler=new DelegateInvocationHandler(HighAvailabilityMemberContext.class);
-  clusterMemberAvailabilityDelegateInvocationHandler=new DelegateInvocationHandler(ClusterMemberAvailability.class);
+  DelegateInvocationHandler<ClusterMemberEvents> clusterEventsDelegateInvocationHandler=new DelegateInvocationHandler<>(ClusterMemberEvents.class);
+  DelegateInvocationHandler<HighAvailabilityMemberContext> memberContextDelegateInvocationHandler=new DelegateInvocationHandler<>(HighAvailabilityMemberContext.class);
+  DelegateInvocationHandler<ClusterMemberAvailability> clusterMemberAvailabilityDelegateInvocationHandler=new DelegateInvocationHandler<>(ClusterMemberAvailability.class);
   clusterEvents=(ClusterMemberEvents)Proxy.newProxyInstance(ClusterMemberEvents.class.getClassLoader(),new Class[]{ClusterMemberEvents.class,Lifecycle.class},clusterEventsDelegateInvocationHandler);
-  memberContext=(HighAvailabilityMemberContext)Proxy.newProxyInstance(HighAvailabilityMemberContext.class.getClassLoader(),new Class[]{HighAvailabilityMemberContext.class},memberContextDelegateInvocationHandler);
+  HighAvailabilityMemberContext memberContext=(HighAvailabilityMemberContext)Proxy.newProxyInstance(HighAvailabilityMemberContext.class.getClassLoader(),new Class[]{HighAvailabilityMemberContext.class},memberContextDelegateInvocationHandler);
   clusterMemberAvailability=(ClusterMemberAvailability)Proxy.newProxyInstance(ClusterMemberAvailability.class.getClassLoader(),new Class[]{ClusterMemberAvailability.class},clusterMemberAvailabilityDelegateInvocationHandler);
   ElectionCredentialsProvider electionCredentialsProvider=config.get(HaSettings.slave_only) ? new NotElectableElectionCredentialsProvider() : new DefaultElectionCredentialsProvider(config.get(ClusterSettings.server_id),new OnDiskLastTxIdGetter(new File(getStoreDir())),new HighAvailabilityMemberInfoProvider(){
     @Override public HighAvailabilityMemberState getHighAvailabilityMemberState(){
@@ -18,7 +18,7 @@
       for (      MemberIsAvailable member : item.getCurrentAvailableMembers()) {
         if (member.getRoleUri().getScheme().equals("ha")) {
           if (HighAvailabilityModeSwitcher.getServerId(member.getRoleUri()).equals(config.get(ClusterSettings.server_id))) {
-            msgLog.error(String.format("Instance %s has the same serverId as ours (%d) - will not " + "join this cluster",member.getRoleUri(),config.get(ClusterSettings.server_id)));
+            msgLog.error(String.format("Instance %s has the same serverId as ours (%d) - will not " + "join this cluster",member.getRoleUri(),config.get(ClusterSettings.server_id).toIntegerIndex()));
             return true;
           }
         }
