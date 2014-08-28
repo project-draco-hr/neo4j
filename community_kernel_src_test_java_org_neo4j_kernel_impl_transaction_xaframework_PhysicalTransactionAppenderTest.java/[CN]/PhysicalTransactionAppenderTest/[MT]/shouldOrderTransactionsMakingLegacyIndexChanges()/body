@@ -1,0 +1,37 @@
+{
+  LogFile logFile=mock(LogFile.class);
+  WritableLogChannel channel=new InMemoryLogChannel();
+  when(logFile.getWriter()).thenReturn(channel);
+  TxIdGenerator txIdGenerator=mock(TxIdGenerator.class);
+  when(txIdGenerator.generate(any(TransactionRepresentation.class))).thenReturn(1L,2L,3L,4L,5L);
+  TransactionMetadataCache metadataCache=new TransactionMetadataCache(10,100);
+  TransactionIdStore transactionIdStore=mock(TransactionIdStore.class);
+  IdOrderingQueue legacyIndexOrdering=new SynchronizedArrayIdOrderingQueue(5);
+  TransactionAppender appender=new BatchingPhysicalTransactionAppender(logFile,txIdGenerator,metadataCache,transactionIdStore,legacyIndexOrdering);
+  boolean[] transactions={true,false,true,false,true};
+  Future[] committers=committersStartYourEngines(appender,transactions);
+  boolean[] completed=new boolean[transactions.length];
+  for (int i=0; i < transactions.length; i++) {
+    if (!transactions[i]) {
+      assertNotNull(tryComplete(committers[i],1000));
+      completed[i]=true;
+    }
+  }
+  while (anyBoolean(completed,false)) {
+    Long doneTx=null;
+    for (int attempt=0; attempt < 5 && doneTx == null; attempt++) {
+      for (int i=0; i < completed.length; i++) {
+        if (!completed[i]) {
+          Long tx=tryComplete(committers[i],100);
+          if (tx != null) {
+            assertNull("Multiple legacy index transactions seems to have " + "moved on from append at the same time",doneTx);
+            doneTx=tx;
+            completed[i]=true;
+          }
+        }
+      }
+    }
+    assertNotNull("None done this round",doneTx);
+    legacyIndexOrdering.removeChecked(doneTx);
+  }
+}
