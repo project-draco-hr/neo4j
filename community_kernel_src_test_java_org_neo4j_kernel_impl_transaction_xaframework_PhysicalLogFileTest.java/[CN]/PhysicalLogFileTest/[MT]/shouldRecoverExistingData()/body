@@ -1,9 +1,10 @@
 {
   String name="log";
   File file=new File(directory.directory(),name + ".1");
+  final int logVersion=1;
   writeSomeData(file,new Visitor<ByteBuffer,IOException>(){
     @Override public boolean visit(    ByteBuffer buffer) throws IOException {
-      writeLogHeader(buffer,1,3);
+      writeLogHeader(buffer,logVersion,3);
       buffer.clear();
       buffer.position(LOG_HEADER_SIZE);
       buffer.put((byte)2);
@@ -15,7 +16,8 @@
   LogRotationControl logRotationControl=mock(LogRotationControl.class);
   LifeSupport life=new LifeSupport();
   PhysicalLogFiles logFiles=new PhysicalLogFiles(directory.directory(),name,fs);
-  LogFile logFile=life.add(new PhysicalLogFile(fs,logFiles,50,LogPruneStrategyFactory.NO_PRUNING,transactionIdStore,logVersionRepository,mock(Monitor.class),logRotationControl,new TransactionMetadataCache(10,100),new Visitor<ReadableLogChannel,IOException>(){
+  Monitor monitor=mock(Monitor.class);
+  life.add(new PhysicalLogFile(fs,logFiles,50,LogPruneStrategyFactory.NO_PRUNING,transactionIdStore,logVersionRepository,monitor,logRotationControl,new TransactionMetadataCache(10,100),new Visitor<ReadableLogChannel,IOException>(){
     @Override public boolean visit(    ReadableLogChannel element) throws IOException {
       assertEquals((byte)2,element.get());
       assertEquals(23324,element.getInt());
@@ -31,6 +33,9 @@
 ));
   try {
     life.start();
+    InOrder order=inOrder(monitor);
+    order.verify(monitor,times(1)).recoveryRequired(logVersion);
+    order.verify(monitor,times(1)).recoveryCompleted();
   }
   finally {
     life.shutdown();
