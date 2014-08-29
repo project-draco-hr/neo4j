@@ -4,19 +4,18 @@
   when(logicalTransactionStore.getAppender()).thenReturn(appender);
   long txId=11;
   IOException rootCause=new IOException("Mock exception");
-  doThrow(new TransactionAppendException(rootCause,txId)).when(appender).append(any(TransactionRepresentation.class));
+  doThrow(new IOException(rootCause)).when(appender).append(any(TransactionRepresentation.class));
   KernelHealth kernelHealth=mock(KernelHealth.class);
   TransactionIdStore transactionIdStore=mock(TransactionIdStore.class);
   TransactionRepresentationStoreApplier storeApplier=mock(TransactionRepresentationStoreApplier.class);
   TransactionCommitProcess commitProcess=new TransactionRepresentationCommitProcess(logicalTransactionStore,kernelHealth,transactionIdStore,storeApplier,false);
-  TransactionRepresentation transaction=mock(TransactionRepresentation.class);
-  when(transaction.additionalHeader()).thenReturn(new byte[0]);
   try {
-    commitProcess.commit(transaction);
+    commitProcess.commit(mockedTransaction());
     fail("Should have failed, something is wrong with the mocking in this test");
   }
  catch (  TransactionFailureException e) {
+    assertThat(e.getMessage(),containsString("Could not append transaction representation to log"));
     assertTrue(contains(e,rootCause.getMessage(),rootCause.getClass()));
   }
-  verify(transactionIdStore,times(1)).transactionClosed(txId);
+  verify(transactionIdStore,times(0)).transactionCommitted(txId);
 }
