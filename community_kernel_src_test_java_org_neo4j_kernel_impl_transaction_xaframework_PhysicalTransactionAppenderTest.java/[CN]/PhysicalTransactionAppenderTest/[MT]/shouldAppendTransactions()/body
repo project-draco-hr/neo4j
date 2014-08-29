@@ -3,6 +3,8 @@
   InMemoryLogChannel channel=new InMemoryLogChannel();
   when(logFile.getWriter()).thenReturn(channel);
   TxIdGenerator txIdGenerator=mock(TxIdGenerator.class);
+  long txId=15;
+  when(txIdGenerator.generate(any(TransactionRepresentation.class))).thenReturn(txId);
   TransactionMetadataCache positionCache=new TransactionMetadataCache(10,100);
   TransactionIdStore transactionIdStore=mock(TransactionIdStore.class);
   TransactionAppender appender=new PhysicalTransactionAppender(logFile,txIdGenerator,positionCache,transactionIdStore);
@@ -12,6 +14,7 @@
   final long timeStarted=12345, latestCommittedTxWhenStarted=4545, timeCommitted=timeStarted + 10;
   transaction.setHeader(additionalHeader,masterId,authorId,timeStarted,latestCommittedTxWhenStarted,timeCommitted);
   appender.append(transaction);
+  verify(transactionIdStore,times(1)).transactionCommitted(txId);
   try (PhysicalTransactionCursor reader=new PhysicalTransactionCursor(channel,new VersionAwareLogEntryReader())){
     reader.next();
     TransactionRepresentation tx=reader.get().getTransactionRepresentation();
