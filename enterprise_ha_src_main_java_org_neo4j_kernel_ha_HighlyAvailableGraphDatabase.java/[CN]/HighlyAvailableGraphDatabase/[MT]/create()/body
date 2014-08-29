@@ -3,8 +3,8 @@
   masterDelegateInvocationHandler=new DelegateInvocationHandler(Master.class);
   master=(Master)Proxy.newProxyInstance(Master.class.getClassLoader(),new Class[]{Master.class},masterDelegateInvocationHandler);
   final int serverId=config.get(ClusterSettings.server_id).toIntegerIndex();
-  requestContextFactory=new RequestContextFactory(serverId,getDependencyResolver());
-  this.unpacker=new TransactionCommittingResponseUnpacker(dependencyResolver,serverId);
+  requestContextFactory=dependencies.satisfyDependency(new RequestContextFactory(serverId,getDependencyResolver()));
+  this.unpacker=dependencies.satisfyDependency(new TransactionCommittingResponseUnpacker(dependencyResolver,serverId));
   kernelProvider=new Provider<KernelAPI>(){
     @Override public KernelAPI instance(){
       return neoDataSource.getKernel();
@@ -15,7 +15,7 @@
   life.add(requestContextFactory);
   life.add(unpacker);
   kernelEventHandlers.registerKernelEventHandler(new HaKernelPanicHandler(availabilityGuard,logging,masterDelegateInvocationHandler));
-  life.add(updatePuller=new UpdatePuller(memberStateMachine,master,requestContextFactory,availabilityGuard,lastUpdateTime,config,jobScheduler,msgLog,unpacker));
+  dependencies.satisfyDependency(life.add(updatePuller=new UpdatePuller(memberStateMachine,master,requestContextFactory,availabilityGuard,lastUpdateTime,config,jobScheduler,msgLog,unpacker)));
   stateSwitchTimeoutMillis=config.get(HaSettings.state_switch_timeout);
   life.add(paxosLife);
   life.add(new DatabaseAvailability(availabilityGuard,transactionMonitor));
