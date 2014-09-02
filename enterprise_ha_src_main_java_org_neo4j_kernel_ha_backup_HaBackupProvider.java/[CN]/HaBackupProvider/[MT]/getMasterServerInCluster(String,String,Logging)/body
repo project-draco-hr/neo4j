@@ -8,8 +8,9 @@
   params.put(ClusterClient.clusterJoinTimeout.name(),"20s");
   final Config config=null;
   ObjectStreamFactory objectStreamFactory=new ObjectStreamFactory();
-  final ClusterClient clusterClient=life.add(new ClusterClient(new Monitors(),ClusterClient.adapt(config),logging,new NotElectableElectionCredentialsProvider(),objectStreamFactory,objectStreamFactory));
-  ClusterMemberEvents events=life.add(new PaxosClusterMemberEvents(clusterClient,clusterClient,clusterClient,clusterClient,new SystemOutLogging(),Predicates.<PaxosClusterMemberEvents.ClusterMembersSnapshot>TRUE(),new HANewSnapshotFunction(),objectStreamFactory,objectStreamFactory,new Monitors()));
+  Monitors monitors=new Monitors();
+  final ClusterClient clusterClient=life.add(new ClusterClient(monitors,ClusterClient.adapt(config),logging,new NotElectableElectionCredentialsProvider(),objectStreamFactory,objectStreamFactory));
+  ClusterMemberEvents events=life.add(new PaxosClusterMemberEvents(clusterClient,clusterClient,clusterClient,clusterClient,new SystemOutLogging(),Predicates.<PaxosClusterMemberEvents.ClusterMembersSnapshot>TRUE(),new HANewSnapshotFunction(),objectStreamFactory,objectStreamFactory,monitors.newMonitor(NamedThreadFactory.Monitor.class)));
   clusterClient.addClusterListener(new ClusterListener.Adapter(){
     @Override public void enteredCluster(    ClusterConfiguration clusterConfiguration){
       clusterClient.performRoleElections();
