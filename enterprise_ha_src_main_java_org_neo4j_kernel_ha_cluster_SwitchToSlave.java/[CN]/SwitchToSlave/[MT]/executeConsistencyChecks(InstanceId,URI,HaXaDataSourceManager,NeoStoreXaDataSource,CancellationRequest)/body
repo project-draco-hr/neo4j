@@ -8,15 +8,19 @@
     if (masterIsOld) {
       ClusterMembers members=resolver.resolveDependency(ClusterMembers.class);
       ClusterMemberVersionCheck checker=new ClusterMemberVersionCheck(members,myId,SYSTEM_CLOCK);
-      boolean storeIdMismatchesExists=!checker.doVersionCheck(myStoreId,5,SECONDS);
-      if (storeIdMismatchesExists) {
-        throw new RuntimeException();
+      Outcome outcome=checker.doVersionCheck(myStoreId,VERSION_CHECK_TIMEOUT,SECONDS);
+      msgLog.info("Cluster members version  checked: " + outcome);
+      if (outcome.hasUnavailable()) {
+        throw new UnavailableMembersException(outcome.getUnavailable());
+      }
+      if (outcome.hasMismatched()) {
+        throw new InconsistentlyUpgradedClusterException(myStoreId,outcome.getMismatched());
       }
     }
     if (cancellationRequest.cancellationRequested()) {
       return false;
     }
-    checkDataConsistency(xaDataSourceManager,masterClient,resolver.resolveDependency(RequestContextFactory.class),nioneoDataSource,masterUri);
+    checkDataConsistency(xaDataSourceManager,masterClient,resolver.resolveDependency(RequestContextFactory.class),nioneoDataSource,masterUri,masterIsOld);
   }
   finally {
     consistencyCheckLife.shutdown();

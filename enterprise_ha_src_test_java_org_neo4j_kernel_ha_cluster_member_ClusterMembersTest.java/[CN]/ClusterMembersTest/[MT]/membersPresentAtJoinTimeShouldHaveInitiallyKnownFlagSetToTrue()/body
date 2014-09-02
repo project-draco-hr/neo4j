@@ -1,0 +1,29 @@
+{
+  Cluster cluster=mock(Cluster.class);
+  final ClusterListener[] listenerSlot=new ClusterListener[1];
+  doAnswer(new Answer<Void>(){
+    @Override public Void answer(    InvocationOnMock invocation) throws Throwable {
+      listenerSlot[0]=((ClusterListener)invocation.getArguments()[0]);
+      return null;
+    }
+  }
+).when(cluster).addClusterListener(any(ClusterListener.class));
+  Heartbeat heartbeat=mock(Heartbeat.class);
+  ClusterMemberEvents clusterMemberEvents=mock(ClusterMemberEvents.class);
+  ClusterMembers members=new ClusterMembers(cluster,heartbeat,clusterMemberEvents,clusterId1);
+  ClusterListener clusterListener=listenerSlot[0];
+  clusterListener.enteredCluster(clusterConfiguration(clusterUri1,clusterUri2));
+  clusterListener.joinedCluster(clusterId3,clusterUri3);
+  assertThat(count(members.getMembers()),equalTo(3L));
+  for (  ClusterMember member : members.getMembers()) {
+    if (member.getInstanceId().equals(clusterId1) || member.getInstanceId().equals(clusterId2)) {
+      assertTrue(member.isInitiallyKnown());
+    }
+ else     if (member.getInstanceId().equals(clusterId3)) {
+      assertFalse(member.isInitiallyKnown());
+    }
+ else {
+      fail("Unexpected member with id: " + member.getInstanceId());
+    }
+  }
+}
