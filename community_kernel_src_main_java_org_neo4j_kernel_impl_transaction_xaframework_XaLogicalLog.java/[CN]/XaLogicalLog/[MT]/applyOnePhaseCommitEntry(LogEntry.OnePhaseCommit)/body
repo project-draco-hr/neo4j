@@ -6,11 +6,11 @@
     throw new IOException("Unknown xid for identifier " + identifier);
   }
   Xid xid=startEntry.getXid();
-  try {
+  try (LockGroup lockGroup=new LockGroup()){
     XaTransaction xaTx=xaRm.getXaTransaction(xid);
     xaTx.setCommitTxId(txId);
     positionCache.cacheStartPosition(txId,startEntry,logVersion);
-    xaRm.injectOnePhaseCommit(xid);
+    xaRm.injectOnePhaseCommit(xid,lockGroup);
     registerRecoveredTransaction(txId);
   }
  catch (  XAException e) {

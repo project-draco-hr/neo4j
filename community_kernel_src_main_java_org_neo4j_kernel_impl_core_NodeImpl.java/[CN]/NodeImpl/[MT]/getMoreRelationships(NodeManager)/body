@@ -4,32 +4,34 @@
     return LoadStatus.NOTHING;
   }
   boolean more;
+  try (Lock ignored=nodeManager.lowLevelNodeReadLock(id)){
 synchronized (this) {
-    if (!hasMoreRelationshipsToLoad()) {
-      return LoadStatus.NOTHING;
-    }
-    rels=loadMoreRelationshipsFromNodeManager(nodeManager);
-    ArrayMap<Integer,RelIdArray> addMap=rels.first();
-    if (addMap.size() == 0) {
-      return LoadStatus.NOTHING;
-    }
-    for (    int type : addMap.keySet()) {
-      RelIdArray addRels=addMap.get(type);
-      RelIdArray srcRels=getRelIdArray(type);
-      if (srcRels == null) {
-        putRelIdArray(addRels);
+      if (!hasMoreRelationshipsToLoad()) {
+        return LoadStatus.NOTHING;
       }
+      rels=loadMoreRelationshipsFromNodeManager(nodeManager);
+      ArrayMap<Integer,RelIdArray> addMap=rels.first();
+      if (addMap.size() == 0) {
+        return LoadStatus.NOTHING;
+      }
+      for (      int type : addMap.keySet()) {
+        RelIdArray addRels=addMap.get(type);
+        RelIdArray srcRels=getRelIdArray(type);
+        if (srcRels == null) {
+          putRelIdArray(addRels);
+        }
  else {
-        RelIdArray newSrcRels=srcRels.addAll(addRels);
-        if (newSrcRels != srcRels) {
-          putRelIdArray(newSrcRels);
+          RelIdArray newSrcRels=srcRels.addAll(addRels);
+          if (newSrcRels != srcRels) {
+            putRelIdArray(newSrcRels);
+          }
         }
       }
+      setRelChainPosition(rels.third());
+      more=hasMoreRelationshipsToLoad();
+      updateSize(nodeManager);
     }
-    setRelChainPosition(rels.third());
-    more=hasMoreRelationshipsToLoad();
-    updateSize(nodeManager);
   }
-  nodeManager.putAllInRelCache(rels.second());
+   nodeManager.putAllInRelCache(rels.second());
   return more ? LoadStatus.LOADED_MORE : LoadStatus.LOADED_END;
 }

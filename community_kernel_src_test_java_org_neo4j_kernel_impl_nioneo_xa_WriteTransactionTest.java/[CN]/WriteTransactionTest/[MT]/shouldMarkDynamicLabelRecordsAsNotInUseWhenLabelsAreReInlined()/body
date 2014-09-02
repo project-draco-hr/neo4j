@@ -10,14 +10,18 @@
   writeTransaction.addLabelToNode(27,nodeId);
   writeTransaction.addLabelToNode(50,nodeId);
   writeTransaction.prepare();
-  writeTransaction.commit();
-  CommandCapturingVisitor commandCapture=new CommandCapturingVisitor();
+  try (LockGroup lockGroup=new LockGroup()){
+    writeTransaction.commit(lockGroup);
+  }
+   CommandCapturingVisitor commandCapture=new CommandCapturingVisitor();
   writeTransaction=newWriteTransaction(mockIndexing,commandCapture);
   writeTransaction.removeLabelFromNode(11,nodeId);
   writeTransaction.removeLabelFromNode(23,nodeId);
   writeTransaction.prepare();
-  writeTransaction.commit();
-  commandCapture.visitCapturedCommands(new Visitor<XaCommand,RuntimeException>(){
+  try (LockGroup lockGroup=new LockGroup()){
+    writeTransaction.commit(lockGroup);
+  }
+   commandCapture.visitCapturedCommands(new Visitor<XaCommand,RuntimeException>(){
     @Override public boolean visit(    XaCommand element) throws RuntimeException {
       if (element instanceof Command.NodeCommand) {
         Command.NodeCommand cmd=(Command.NodeCommand)element;
