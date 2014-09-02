@@ -1,11 +1,12 @@
 {
-  final NeoTransactionStoreApplier applier=newApplier(false);
+  final NeoCommandHandler applier=newApplier(false);
+  final NeoCommandHandler indexApplier=newIndexApplier(TransactionApplicationMode.INTERNAL);
   final DynamicRecord record=DynamicRecord.dynamicRecord(21,true);
   record.setInUse(false);
   final Collection<DynamicRecord> recordsAfter=Arrays.asList(record);
   final IndexRule rule=IndexRule.indexRule(0,1,2,new SchemaIndexProvider.Descriptor("K","X.Y"));
   final Command.SchemaRuleCommand command=new Command.SchemaRuleCommand().init(Collections.<DynamicRecord>emptyList(),recordsAfter,rule);
-  final boolean result=applier.visitSchemaRuleCommand(command);
+  final boolean result=applier.visitSchemaRuleCommand(command) & indexApplier.visitSchemaRuleCommand(command);
   assertTrue(result);
   verify(schemaStore,times(1)).updateRecord(record);
   verify(indexingService,times(1)).dropIndex(rule);

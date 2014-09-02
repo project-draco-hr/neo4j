@@ -1,0 +1,26 @@
+{
+  SchemaStore schemaStore=neoStore.getSchemaStore();
+  for (  DynamicRecord record : command.getRecordsAfter()) {
+    schemaStore.updateRecord(record);
+  }
+  if (command.getSchemaRule() instanceof UniquenessConstraintRule) {
+switch (command.getMode()) {
+case UPDATE:
+case CREATE:
+      neoStore.setLatestConstraintIntroducingTx(transactionId);
+    break;
+case DELETE:
+  break;
+default :
+throw new IllegalStateException(command.getMode().name());
+}
+}
+switch (command.getMode()) {
+case DELETE:
+cacheAccess.removeSchemaRuleFromCache(command.getKey());
+break;
+default :
+cacheAccess.addSchemaRule(command.getSchemaRule());
+}
+return true;
+}

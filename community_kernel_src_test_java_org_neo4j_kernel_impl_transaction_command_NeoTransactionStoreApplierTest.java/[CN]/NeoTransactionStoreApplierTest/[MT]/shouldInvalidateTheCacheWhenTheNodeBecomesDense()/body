@@ -1,18 +1,18 @@
 {
-  final NeoTransactionStoreApplier applier=newApplier(false);
+  final NeoCommandHandler applier=newApplier(false);
   final NodeRecord before=new NodeRecord(11);
-  before.setLabelField(42,Arrays.asList(one,two));
+  before.setLabelField(42,Arrays.asList(one));
   before.setInUse(true);
   before.setDense(false);
   final NodeRecord after=new NodeRecord(12);
   after.setInUse(true);
   after.setDense(true);
-  after.setLabelField(42,Arrays.asList(one,three));
+  after.setLabelField(42,Arrays.asList(one,two,three));
   final Command.NodeCommand command=new Command.NodeCommand().init(before,after);
   final boolean result=applier.visitNodeCommand(command);
   assertTrue(result);
   verify(lockService,times(1)).acquireNodeLock(command.getKey(),LockService.LockType.WRITE_LOCK);
   verify(nodeStore,times(1)).updateRecord(after);
-  verify(nodeStore,times(1)).updateDynamicLabelRecords(Arrays.asList(one,three,two));
+  verify(nodeStore,times(1)).updateDynamicLabelRecords(Arrays.asList(one,two,three));
   verify(cacheAccess,times(1)).removeNodeFromCache(command.getKey());
 }
