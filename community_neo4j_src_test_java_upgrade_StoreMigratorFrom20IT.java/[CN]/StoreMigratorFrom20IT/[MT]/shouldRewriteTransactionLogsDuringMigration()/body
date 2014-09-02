@@ -1,0 +1,14 @@
+{
+  File legacyStoreDir=find20FormatStoreDirectory(storeDir);
+  upgrader(new StoreMigrator(monitor,fs)).migrateIfNeeded(legacyStoreDir);
+  File[] transactionLogs=findAllMatchingFiles(legacyStoreDir,"nioneo_logical\\.log\\.v.*");
+  assertThat(transactionLogs,arrayWithSize(3));
+  List<LogEntry> logEntries=readTransactionLogEntriesFrom(fs,transactionLogs[1]);
+  assertThat(logEntries,not(emptyCollectionOf(LogEntry.class)));
+  assertThat(logEntries.get(0),instanceOf(LogEntry.Start.class));
+  assertThat(logEntries.get(1),instanceOf(LogEntry.Command.class));
+  assertThat(((LogEntry.Command)logEntries.get(1)).getXaCommand(),instanceOf(Command.LabelTokenCommand.class));
+  assertThat(((LogEntry.Command)logEntries.get(logEntries.size() - 3)).getXaCommand(),instanceOf(Command.SchemaRuleCommand.class));
+  assertThat(logEntries.get(logEntries.size() - 2),instanceOf(LogEntry.OnePhaseCommit.class));
+  assertThat(logEntries.get(logEntries.size() - 1),instanceOf(LogEntry.Done.class));
+}

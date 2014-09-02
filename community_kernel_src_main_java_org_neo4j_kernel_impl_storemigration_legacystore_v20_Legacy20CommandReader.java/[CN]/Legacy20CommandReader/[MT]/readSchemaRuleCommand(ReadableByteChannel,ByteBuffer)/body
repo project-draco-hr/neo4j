@@ -1,0 +1,21 @@
+{
+  Collection<DynamicRecord> recordsBefore=new ArrayList<>();
+  readDynamicRecords(byteChannel,buffer,recordsBefore,COLLECTION_DYNAMIC_RECORD_ADDER);
+  Collection<DynamicRecord> recordsAfter=new ArrayList<>();
+  readDynamicRecords(byteChannel,buffer,recordsAfter,COLLECTION_DYNAMIC_RECORD_ADDER);
+  if (!readAndFlip(byteChannel,buffer,1)) {
+    throw new IllegalStateException("Missing SchemaRule.isCreated flag in deserialization");
+  }
+  byte isCreated=buffer.get();
+  if (1 == isCreated) {
+    for (    DynamicRecord record : recordsAfter) {
+      record.setCreated();
+    }
+  }
+  if (!readAndFlip(byteChannel,buffer,8)) {
+    throw new IllegalStateException("Missing SchemaRule.txId in deserialization");
+  }
+  long txId=buffer.getLong();
+  SchemaRule rule=first(recordsAfter).inUse() ? readSchemaRule(recordsAfter) : readSchemaRule(recordsBefore);
+  return new Command.SchemaRuleCommand().init(recordsBefore,recordsAfter,rule,txId);
+}

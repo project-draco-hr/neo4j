@@ -1,0 +1,26 @@
+{
+  if (!readAndFlip(byteChannel,buffer,13)) {
+    return null;
+  }
+  int id=buffer.getInt();
+  byte inUseFlag=buffer.get();
+  boolean inUse=false;
+  if ((inUseFlag & IN_USE.byteValue()) == IN_USE.byteValue()) {
+    inUse=true;
+  }
+ else   if (inUseFlag != NOT_IN_USE.byteValue()) {
+    throw new IOException("Illegal in use flag: " + inUseFlag);
+  }
+  RelationshipTypeTokenRecord record=new RelationshipTypeTokenRecord(id);
+  record.setInUse(inUse);
+  record.setNameId(buffer.getInt());
+  int nrTypeRecords=buffer.getInt();
+  for (int i=0; i < nrTypeRecords; i++) {
+    DynamicRecord dr=readDynamicRecord(byteChannel,buffer);
+    if (dr == null) {
+      return null;
+    }
+    record.addNameRecord(dr);
+  }
+  return new Command.RelationshipTypeTokenCommand().init(record);
+}

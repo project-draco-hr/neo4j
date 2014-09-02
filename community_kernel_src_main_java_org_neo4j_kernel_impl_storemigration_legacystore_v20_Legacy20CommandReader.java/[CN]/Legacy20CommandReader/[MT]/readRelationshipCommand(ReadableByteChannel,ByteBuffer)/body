@@ -1,0 +1,32 @@
+{
+  if (!readAndFlip(byteChannel,buffer,9)) {
+    return null;
+  }
+  long id=buffer.getLong();
+  byte inUseFlag=buffer.get();
+  boolean inUse=false;
+  if ((inUseFlag & IN_USE.byteValue()) == IN_USE.byteValue()) {
+    inUse=true;
+  }
+ else   if ((inUseFlag & IN_USE.byteValue()) != NOT_IN_USE.byteValue()) {
+    throw new IOException("Illegal in use flag: " + inUseFlag);
+  }
+  RelationshipRecord record;
+  if (inUse) {
+    if (!readAndFlip(byteChannel,buffer,60)) {
+      return null;
+    }
+    record=new RelationshipRecord(id,buffer.getLong(),buffer.getLong(),buffer.getInt());
+    record.setInUse(inUse);
+    record.setFirstPrevRel(buffer.getLong());
+    record.setFirstNextRel(buffer.getLong());
+    record.setSecondPrevRel(buffer.getLong());
+    record.setSecondNextRel(buffer.getLong());
+    record.setNextProp(buffer.getLong());
+  }
+ else {
+    record=new RelationshipRecord(id,-1,-1,-1);
+    record.setInUse(false);
+  }
+  return new Command.RelationshipCommand().init(record);
+}
