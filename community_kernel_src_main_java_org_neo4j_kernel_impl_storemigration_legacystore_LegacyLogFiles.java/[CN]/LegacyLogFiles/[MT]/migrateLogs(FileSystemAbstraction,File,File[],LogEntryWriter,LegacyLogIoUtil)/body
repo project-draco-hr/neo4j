@@ -1,0 +1,14 @@
+{
+  for (  File legacyLogFile : logs) {
+    File newLogFile=new File(migrationDir,legacyLogFile.getName());
+    try (StoreChannel channel=fs.open(newLogFile,"rw")){
+      LogBuffer logBuffer=new DirectMappedLogBuffer(channel,ByteCounterMonitor.NULL);
+      Iterator<LogEntry> iterator=iterateLogEntries(legacyLogFile,logBuffer,logIoUtil);
+      for (      LogEntry entry : loop(iterator)) {
+        logWriter.writeLogEntry(entry,logBuffer);
+      }
+      logBuffer.force();
+      channel.close();
+    }
+   }
+}

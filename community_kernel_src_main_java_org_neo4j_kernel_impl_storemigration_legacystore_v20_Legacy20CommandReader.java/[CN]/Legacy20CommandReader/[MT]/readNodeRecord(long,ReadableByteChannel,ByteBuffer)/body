@@ -1,0 +1,29 @@
+{
+  if (!readAndFlip(byteChannel,buffer,1)) {
+    return null;
+  }
+  byte inUseFlag=buffer.get();
+  boolean inUse=false;
+  if (inUseFlag == IN_USE.byteValue()) {
+    inUse=true;
+  }
+ else   if (inUseFlag != NOT_IN_USE.byteValue()) {
+    throw new IOException("Illegal in use flag: " + inUseFlag);
+  }
+  NodeRecord record;
+  if (inUse) {
+    if (!readAndFlip(byteChannel,buffer,8 * 3)) {
+      return null;
+    }
+    record=new NodeRecord(id,false,buffer.getLong(),buffer.getLong());
+    long labelField=buffer.getLong();
+    Collection<DynamicRecord> dynamicLabelRecords=new ArrayList<>();
+    readDynamicRecords(byteChannel,buffer,dynamicLabelRecords,COLLECTION_DYNAMIC_RECORD_ADDER);
+    record.setLabelField(labelField,dynamicLabelRecords);
+  }
+ else {
+    record=new NodeRecord(id,false,NO_NEXT_RELATIONSHIP.intValue(),NO_NEXT_PROPERTY.intValue());
+  }
+  record.setInUse(inUse);
+  return record;
+}

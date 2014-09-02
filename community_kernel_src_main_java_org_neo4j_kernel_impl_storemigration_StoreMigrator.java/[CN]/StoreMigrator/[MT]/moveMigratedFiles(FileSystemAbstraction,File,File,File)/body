@@ -1,21 +1,15 @@
 {
   StoreFile20.deleteIdFile(fileSystem,migrationDir,allExcept(StoreFile20.RELATIONSHIP_GROUP_STORE));
-  StoreFile20[] filesToDelete;
-  StoreFile20[] leftoverFiles;
+  Iterable<StoreFile20> filesToMove;
   if (versionToUpgradeFrom.equals(Legacy19Store.LEGACY_VERSION)) {
-    filesToDelete=allExcept(StoreFile20.NODE_STORE,StoreFile20.RELATIONSHIP_STORE,StoreFile20.RELATIONSHIP_GROUP_STORE,StoreFile20.LABEL_TOKEN_STORE,StoreFile20.NODE_LABEL_STORE,StoreFile20.PROPERTY_STORE,StoreFile20.PROPERTY_KEY_TOKEN_STORE,StoreFile20.PROPERTY_KEY_TOKEN_NAMES_STORE,StoreFile20.LABEL_TOKEN_NAMES_STORE,StoreFile20.SCHEMA_STORE);
-    leftoverFiles=new StoreFile20[]{StoreFile20.NODE_STORE,StoreFile20.RELATIONSHIP_STORE,StoreFile20.PROPERTY_STORE,StoreFile20.PROPERTY_KEY_TOKEN_STORE,StoreFile20.PROPERTY_KEY_TOKEN_NAMES_STORE};
+    filesToMove=Arrays.asList(StoreFile20.NODE_STORE,StoreFile20.RELATIONSHIP_STORE,StoreFile20.RELATIONSHIP_GROUP_STORE,StoreFile20.LABEL_TOKEN_STORE,StoreFile20.NODE_LABEL_STORE,StoreFile20.LABEL_TOKEN_NAMES_STORE,StoreFile20.PROPERTY_STORE,StoreFile20.PROPERTY_KEY_TOKEN_STORE,StoreFile20.PROPERTY_KEY_TOKEN_NAMES_STORE,StoreFile20.SCHEMA_STORE);
   }
  else {
-    filesToDelete=allExcept(StoreFile20.NODE_STORE,StoreFile20.RELATIONSHIP_STORE,StoreFile20.RELATIONSHIP_GROUP_STORE,StoreFile20.SCHEMA_STORE);
-    leftoverFiles=new StoreFile20[]{StoreFile20.NODE_STORE,StoreFile20.RELATIONSHIP_STORE};
+    filesToMove=Arrays.asList(StoreFile20.NODE_STORE,StoreFile20.RELATIONSHIP_STORE,StoreFile20.RELATIONSHIP_GROUP_STORE);
   }
-  StoreFile20.deleteStoreFile(fileSystem,migrationDir,filesToDelete);
-  StoreFile20.move(fileSystem,storeDir,leftOversDir,IteratorUtil.asIterable(leftoverFiles),false,false,StoreFileType.STORE);
-  StoreFile20.move(fileSystem,migrationDir,storeDir,StoreFile20.currentStoreFiles(),true,true,StoreFileType.values());
+  StoreFile20.move(fileSystem,storeDir,leftOversDir,filesToMove,true,false,StoreFileType.STORE);
+  StoreFile20.move(fileSystem,migrationDir,storeDir,filesToMove,true,true,StoreFileType.values());
   StoreFile20.ensureStoreVersion(fileSystem,storeDir,StoreFile20.currentStoreFiles());
-  if (versionToUpgradeFrom.equals(Legacy19Store.LEGACY_VERSION)) {
-    Legacy19Store.moveRewrittenTransactionLogs(migrationDir,storeDir);
-    Legacy19Store.moveRewrittenLuceneLogs(migrationDir,storeDir);
-  }
+  legacyLogFiles.moveRewrittenNeoLogs(migrationDir,storeDir);
+  legacyLogFiles.moveRewrittenLuceneLogs(migrationDir,storeDir);
 }

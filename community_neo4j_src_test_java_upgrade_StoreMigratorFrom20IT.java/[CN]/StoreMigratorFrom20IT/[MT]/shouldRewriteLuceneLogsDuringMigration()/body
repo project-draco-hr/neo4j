@@ -1,0 +1,18 @@
+{
+  File legacyStoreDir=find20FormatStoreDirectory(storeDir);
+  upgrader(new StoreMigrator(monitor,fs)).migrateIfNeeded(legacyStoreDir);
+  File indexDir=new File(legacyStoreDir,"index");
+  File[] luceneLogs=findAllMatchingFiles(indexDir,"lucene\\.log\\.v.*");
+  assertThat(luceneLogs,arrayWithSize(3));
+  List<LogEntry> logEntries=readLuceneLogEntriesFrom(fs,luceneLogs[2]);
+  assertThat(logEntries,hasSize(4));
+  LogEntry log1=logEntries.get(0);
+  assertThat(log1,instanceOf(LogEntry.Start.class));
+  assertThat(((LogEntry.Start)log1).getMasterId(),equalTo(-1));
+  assertThat(((LogEntry.Start)log1).getLocalId(),equalTo(-1));
+  LogEntry log2=logEntries.get(1);
+  assertThat(log2,instanceOf(LogEntry.Command.class));
+  assertThat(((LogEntry.Command)log2).getXaCommand().getClass().getSimpleName(),equalTo("CreateIndexCommand"));
+  assertThat(logEntries.get(logEntries.size() - 2),instanceOf(LogEntry.OnePhaseCommit.class));
+  assertThat(logEntries.get(logEntries.size() - 1),instanceOf(LogEntry.Done.class));
+}
