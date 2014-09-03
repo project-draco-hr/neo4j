@@ -69,7 +69,8 @@
   Cache<NodeImpl> nodeCache=diagnosticsManager.tryAppendProvider(caches.node());
   Cache<RelationshipImpl> relCache=diagnosticsManager.tryAppendProvider(caches.relationship());
   statementContextProvider=life.add(new ThreadToStatementContextBridge(persistenceManager));
-  nodeManager=guard != null ? createGuardedNodeManager(readOnly,cacheProvider,nodeCache,relCache) : createNodeManager(readOnly,cacheProvider,nodeCache,relCache);
+  locks=new ReentrantLockService();
+  nodeManager=guard != null ? createGuardedNodeManager(readOnly,locks,cacheProvider,nodeCache,relCache) : createNodeManager(readOnly,locks,cacheProvider,nodeCache,relCache);
   transactionEventHandlers=new TransactionEventHandlers(createNodeLookup(),createRelationshipLookups(),statementContextProvider);
   stateFactory.setDependencies(lockManager,nodeManager,txHook,txIdGenerator);
   indexStore=life.add(new IndexStore(this.storeDir,fileSystem));
@@ -86,7 +87,7 @@
   storeFactory=createStoreFactory();
   String keepLogicalLogsConfig=config.get(GraphDatabaseSettings.keep_logical_logs);
   xaFactory=new XaFactory(config,txIdGenerator,txManager,fileSystem,monitors,logging,recoveryVerifier,LogPruneStrategies.fromConfigValue(fileSystem,keepLogicalLogsConfig),kernelHealth);
-  createNeoDataSource();
+  createNeoDataSource(locks);
   life.add(new MonitorGc(config,msgLog));
   life.add(nodeManager);
   createDatabaseAvailability();
