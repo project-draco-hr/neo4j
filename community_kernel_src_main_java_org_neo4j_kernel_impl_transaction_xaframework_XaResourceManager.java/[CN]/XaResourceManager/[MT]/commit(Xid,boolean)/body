@@ -1,24 +1,26 @@
 {
   XaTransaction xaTransaction;
   boolean isReadOnly;
+  try (LockGroup lockGroup=new LockGroup()){
 synchronized (this) {
-    XidStatus status=xidMap.get(xid);
-    if (status == null) {
-      throw new XAException("Unknown xid[" + xid + "]");
-    }
-    TransactionStatus txStatus=status.getTransactionStatus();
-    xaTransaction=txStatus.getTransaction();
-    TxIdGenerator txIdGenerator=xaTransaction.getTxIdGenerator();
-    isReadOnly=xaTransaction.isReadOnly();
-    if (isReadOnly) {
-      commitReadTx(xid,onePhase,xaTransaction,txStatus);
-    }
+      XidStatus status=xidMap.get(xid);
+      if (status == null) {
+        throw new XAException("Unknown xid[" + xid + "]");
+      }
+      TransactionStatus txStatus=status.getTransactionStatus();
+      xaTransaction=txStatus.getTransaction();
+      TxIdGenerator txIdGenerator=xaTransaction.getTxIdGenerator();
+      isReadOnly=xaTransaction.isReadOnly();
+      if (isReadOnly) {
+        commitReadTx(xid,onePhase,xaTransaction,txStatus);
+      }
  else {
-      commitWriteTx(xid,onePhase,xaTransaction,txStatus,txIdGenerator);
+        commitWriteTx(lockGroup,xid,onePhase,xaTransaction,txStatus,txIdGenerator);
+      }
     }
+    commitKernelTx(xaTransaction);
   }
-  commitKernelTx(xaTransaction);
-  if (!xaTransaction.isRecovered() && !isReadOnly) {
+   if (!xaTransaction.isRecovered() && !isReadOnly) {
     try {
       txIdGenerator.committed(dataSource,xaTransaction.getIdentifier(),xaTransaction.getCommitTxId(),null);
     }
