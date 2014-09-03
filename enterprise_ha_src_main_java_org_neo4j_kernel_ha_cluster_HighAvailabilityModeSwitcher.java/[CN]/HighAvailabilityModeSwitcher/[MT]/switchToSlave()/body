@@ -22,7 +22,23 @@
           slaveHaURI=resultingSlaveHaURI;
         }
       }
- catch (      MismatchingStoreIdException|NoSuchLogVersionException e) {
+ catch (      UnableToCopyStoreFromOldMasterException|InconsistentlyUpgradedClusterException|UnavailableMembersException e) {
+        consoleLog.error("UNABLE TO START UP AS SLAVE: " + e.getMessage());
+        msgLog.error("Unable to start up as slave",e);
+        clusterMemberAvailability.memberIsUnavailable(SLAVE);
+        ClusterClient clusterClient=dependencyResolver.resolveDependency(ClusterClient.class);
+        try {
+          clusterClient.leave();
+          clusterClient.stop();
+          haCommunicationLife.shutdown();
+        }
+ catch (        Throwable t) {
+          msgLog.error("Unable to stop cluster client",t);
+        }
+        modeSwitcherExecutor.schedule(this,5,TimeUnit.SECONDS);
+        throw e;
+      }
+catch (      MismatchingStoreIdException|NoSuchLogVersionException e) {
         run();
       }
 catch (      Throwable t) {
