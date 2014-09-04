@@ -1,4 +1,5 @@
 {
+  dbWithNoCache();
   int propertyKeyId;
   long nodeId;
 {
@@ -9,15 +10,17 @@
     statement.nodeSetProperty(nodeId,stringProperty(propertyKeyId,"bozo"));
     commit();
   }
+  DefinedProperty newProperty=stringProperty(propertyKeyId,"ozob");
 {
     DataWriteOperations statement=dataWriteOperationsInNewTransaction();
-    Object previous=statement.nodeRemoveProperty(nodeId,propertyKeyId).value();
-    assertEquals("bozo",previous);
-    assertThat(statement.nodeGetProperty(nodeId,propertyKeyId),not(isDefinedProperty()));
+    statement.nodeRemoveProperty(nodeId,propertyKeyId);
+    statement.nodeSetProperty(nodeId,newProperty);
+    assertThat(statement.nodeGetProperty(nodeId,propertyKeyId),equalTo((Property)newProperty));
     commit();
   }
 {
     DataWriteOperations statement=dataWriteOperationsInNewTransaction();
-    assertThat(statement.nodeGetProperty(nodeId,propertyKeyId),not(isDefinedProperty()));
+    assertThat(statement.nodeGetProperty(nodeId,propertyKeyId),equalTo((Property)newProperty));
+    assertThat(IteratorUtil.asList(statement.nodeGetAllProperties(nodeId)),equalTo(Arrays.asList(newProperty)));
   }
 }
