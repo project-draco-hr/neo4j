@@ -1,7 +1,6 @@
 {
-  StoreUpgrader upgrader=new StoreUpgrader(ALLOW_UPGRADE,fileSystem,StoreUpgrader.NO_MONITOR);
+  StoreUpgrader upgrader=newUpgrader(ALLOW_UPGRADE);
   String failureMessage="Just failing";
-  upgrader.addParticipant(new StoreMigrator(new SilentMigrationProgressMonitor(),fileSystem));
   upgrader.addParticipant(participantThatWillFailWhenMoving(failureMessage));
   try {
     upgrader.migrateIfNeeded(dbDirectory);
@@ -11,14 +10,13 @@
     assertEquals(failureMessage,e.getCause().getMessage());
   }
   Monitor monitor=Mockito.mock(Monitor.class);
-  upgrader=new StoreUpgrader(ALLOW_UPGRADE,fileSystem,monitor);
-  upgrader.addParticipant(new StoreMigrator(new SilentMigrationProgressMonitor(),fileSystem));
+  upgrader=newUpgrader(monitor);
   StoreMigrationParticipant observingParticipant=Mockito.mock(StoreMigrationParticipant.class);
   Mockito.when(observingParticipant.needsMigration(Matchers.any(FileSystemAbstraction.class),Matchers.any(File.class))).thenReturn(true);
   upgrader.addParticipant(observingParticipant);
   upgrader.migrateIfNeeded(dbDirectory);
   Mockito.verify(observingParticipant,Mockito.times(0)).migrate(Matchers.any(FileSystemAbstraction.class),Matchers.any(File.class),Matchers.any(File.class),Matchers.any(DependencyResolver.class));
-  Mockito.verify(observingParticipant,Mockito.times(1)).moveMigratedFiles(Matchers.eq(fileSystem),Matchers.any(File.class),Matchers.any(File.class),Matchers.any(File.class));
+  Mockito.verify(observingParticipant,Mockito.times(1)).moveMigratedFiles(Matchers.eq(fileSystem),Matchers.any(File.class),Matchers.any(File.class));
   Mockito.verify(observingParticipant,Mockito.times(1)).cleanup(Matchers.eq(fileSystem),Matchers.any(File.class));
   Mockito.verify(monitor).migrationCompleted();
 }
