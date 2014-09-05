@@ -1,0 +1,11 @@
+{
+  final IOCursor<LogEntry> cursor=mock(IOCursor.class);
+  final LogVersionedStoreChannel writeChannel=mock(LogVersionedStoreChannel.class);
+  final LogHeader header=new LogHeader(CURRENT_LOG_VERSION,1,42);
+  when(fs.listFiles(storeDir,versionedLegacyLogFilesFilter)).thenReturn(new File[]{new File(getLegacyLogFilename(1))});
+  when(reader.openReadableChannel(new File(getLegacyLogFilename(1)))).thenReturn(Pair.of(header,cursor));
+  when(writer.openWritableChannel(new File(migrationDir,getLegacyLogFilename(1)))).thenReturn(writeChannel);
+  new LegacyLogs(fs,reader,writer).migrateLogs(storeDir,migrationDir);
+  verify(writer,times(1)).writeLogHeader(writeChannel,header);
+  verify(writer,times(1)).writeAllLogEntries(writeChannel,cursor);
+}

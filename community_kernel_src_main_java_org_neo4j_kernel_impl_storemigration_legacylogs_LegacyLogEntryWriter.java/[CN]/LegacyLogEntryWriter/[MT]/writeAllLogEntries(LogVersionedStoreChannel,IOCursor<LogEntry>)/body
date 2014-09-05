@@ -1,0 +1,27 @@
+{
+  try (PhysicalWritableLogChannel writable=new PhysicalWritableLogChannel(channel)){
+    final LogEntryWriter writer=factory.apply(writable);
+    List<Command> commands=new ArrayList<>();
+    while (cursor.next()) {
+      LogEntry entry=cursor.get();
+      if (entry instanceof LogEntryStart) {
+        final LogEntryStart startEntry=entry.as();
+        writer.writeStartEntry(startEntry.getMasterId(),startEntry.getLocalId(),startEntry.getTimeWritten(),startEntry.getLastCommittedTxWhenTransactionStarted(),startEntry.getAdditionalHeader());
+      }
+ else       if (entry instanceof LogEntryCommit) {
+        if (!commands.isEmpty()) {
+          writer.serialize(new PhysicalTransactionRepresentation(commands));
+          commands=new ArrayList<>();
+        }
+        final LogEntryCommit commitEntry=(LogEntryCommit)entry;
+        writer.writeCommitEntry(commitEntry.getTxId(),commitEntry.getTimeWritten());
+      }
+ else       if (entry instanceof LogEntryCommand) {
+        commands.add(((LogEntryCommand)entry).getXaCommand());
+      }
+ else {
+        throw new IllegalStateException("Unknown entry: " + entry);
+      }
+    }
+  }
+ }

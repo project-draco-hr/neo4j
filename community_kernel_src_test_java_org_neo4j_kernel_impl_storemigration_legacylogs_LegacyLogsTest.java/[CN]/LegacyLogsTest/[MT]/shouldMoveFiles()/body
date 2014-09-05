@@ -1,0 +1,33 @@
+{
+  final EphemeralFileSystemAbstraction fs=new EphemeralFileSystemAbstraction();
+  fs.mkdirs(storeDir);
+  fs.mkdirs(migrationDir);
+  final Set<File> logsInStoreDir=new HashSet<>(Arrays.asList(new File(storeDir,getLegacyLogFilename(1)),new File(storeDir,getLegacyLogFilename(2))));
+  final List<File> logsInMigrationDir=Arrays.asList(new File(migrationDir,getLegacyLogFilename(1)),new File(migrationDir,getLegacyLogFilename(2)));
+  for (  File file : logsInMigrationDir) {
+    try (StoreChannel channel=fs.create(file)){
+      ByteBuffer buffer=ByteBuffer.allocate(8);
+      buffer.putLong(42);
+      buffer.flip();
+      channel.write(buffer);
+    }
+   }
+  for (  File file : logsInStoreDir) {
+    try (StoreChannel channel=fs.create(file)){
+      ByteBuffer buffer=ByteBuffer.allocate(8);
+      buffer.putLong(13);
+      buffer.flip();
+      channel.write(buffer);
+    }
+   }
+  new LegacyLogs(fs,reader,writer).moveLogs(migrationDir,storeDir);
+  assertEquals(logsInStoreDir,new HashSet<>(Arrays.asList(fs.listFiles(storeDir))));
+  for (  File file : logsInStoreDir) {
+    try (StoreChannel channel=fs.open(file,"r")){
+      ByteBuffer buffer=ByteBuffer.allocate(8);
+      channel.read(buffer);
+      buffer.flip();
+      assertEquals(42,buffer.getLong());
+    }
+   }
+}
