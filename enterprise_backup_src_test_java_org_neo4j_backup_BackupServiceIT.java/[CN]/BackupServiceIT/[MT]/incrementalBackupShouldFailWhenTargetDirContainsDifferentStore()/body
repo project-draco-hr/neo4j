@@ -1,0 +1,22 @@
+{
+  GraphDatabaseAPI db1=createDb(storeDir,defaultBackupPortHostParams());
+  createAndIndexNode(db1,1);
+  new BackupService(fileSystem).doFullBackup(BACKUP_HOST,backupPort,backupDir.getAbsolutePath(),false,defaultConfig());
+  db1.shutdown();
+  deleteAllBackedUpTransactionLogs();
+  fileSystem.deleteRecursively(storeDir);
+  fileSystem.mkdir(storeDir);
+  GraphDatabaseAPI db2=createDb(storeDir,defaultBackupPortHostParams());
+  createAndIndexNode(db2,2);
+  try {
+    new BackupService(fileSystem).doIncrementalBackupOrFallbackToFull(BACKUP_HOST,backupPort,backupDir.getAbsolutePath(),false,defaultConfig());
+    fail("Should have thrown exception about mismatching store ids");
+  }
+ catch (  RuntimeException e) {
+    assertThat(e.getMessage(),equalTo(BackupService.DIFFERENT_STORE));
+    assertThat(e.getCause(),instanceOf(MismatchingStoreIdException.class));
+  }
+ finally {
+    db2.shutdown();
+  }
+}
