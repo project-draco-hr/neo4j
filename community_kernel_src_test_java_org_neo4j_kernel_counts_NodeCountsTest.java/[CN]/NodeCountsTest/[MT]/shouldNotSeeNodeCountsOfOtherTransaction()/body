@@ -1,0 +1,28 @@
+{
+  GraphDatabaseService graphDb=db.getGraphDatabaseService();
+  final Barrier.Control barrier=new Barrier.Control();
+  long before=numberOfNodes();
+  Future<Long> done=threading.execute(new NamedFunction<GraphDatabaseService,Long>("create-nodes"){
+    @Override public Long apply(    GraphDatabaseService graphDb){
+      try (Transaction tx=graphDb.beginTx()){
+        graphDb.createNode();
+        graphDb.createNode();
+        barrier.reached();
+        long during=countsForNode();
+        tx.success();
+        return during;
+      }
+     }
+  }
+,graphDb);
+  barrier.await();
+  long nodes=numberOfNodes();
+  barrier.release();
+  long during=done.get();
+  done.get();
+  long after=numberOfNodes();
+  assertEquals(0,before);
+  assertEquals(0,nodes);
+  assertEquals(2,during);
+  assertEquals(2,after);
+}
