@@ -1,0 +1,15 @@
+{
+  File file=Files.createTempFile("pagecachestress",".bin").toFile();
+  file.deleteOnExit();
+  PagedFile pagedFile=pageCache.map(file,recordsPerPage * recordVerifierUpdater.getRecordSize());
+  List<Updater> updaters=new LinkedList<>();
+  for (int threadNumber=0; threadNumber < numberOfThreads; threadNumber++) {
+    updaters.add(new Updater(pagedFile,condition,maxPages,recordsPerPage,recordVerifierUpdater,threadNumber));
+  }
+  ExecutorService executorService=Executors.newFixedThreadPool(numberOfThreads);
+  for (  Future<Updater> future : executorService.invokeAll(updaters)) {
+    future.get().verifyCounts();
+  }
+  new Verifier().verify(pagedFile,maxPages,recordsPerPage,recordVerifierUpdater);
+  pageCache.unmap(file);
+}
