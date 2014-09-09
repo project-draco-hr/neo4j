@@ -1,0 +1,23 @@
+{
+  GraphDatabaseService db=new GraphDatabaseFactory().newEmbeddedDatabase(folder.getRoot().getAbsolutePath());
+  Node node1, node2;
+  try (Transaction tx=db.beginTx()){
+    node1=db.createNode();
+    node2=db.createNode();
+    tx.success();
+  }
+   try (Transaction tx=db.beginTx()){
+    node1.createRelationshipTo(node2,DynamicRelationshipType.withName("LIKE"));
+    tx.failure();
+  }
+   db.shutdown();
+  db=new GraphDatabaseFactory().newEmbeddedDatabase(folder.getRoot().getAbsolutePath());
+  Relationship relationship;
+  try (Transaction tx=db.beginTx()){
+    node1=db.getNodeById(node1.getId());
+    node2=db.getNodeById(node2.getId());
+    relationship=node1.createRelationshipTo(node2,DynamicRelationshipType.withName("LIKE"));
+    tx.success();
+  }
+   assertThat(relationship.getId(),equalTo(0L));
+}
