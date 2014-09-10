@@ -1,0 +1,14 @@
+{
+  generateFileWithRecords(file,recordCount,recordSize);
+  getPageCache(fs,maxPages,pageCachePageSize,PageCacheMonitor.NULL);
+  PagedFile pagedFile=pageCache.map(file,filePageSize);
+  int iterations=maxPages * 2;
+  accessPagesWhileInterrupted(pagedFile,PF_SHARED_LOCK,iterations);
+  accessPagesWhileInterrupted(pagedFile,PF_EXCLUSIVE_LOCK,iterations);
+  Thread.interrupted();
+  try (PageCursor cursor=pagedFile.io(0,PF_SHARED_LOCK)){
+    assertTrue(cursor.next());
+    verifyRecordsMatchExpected(cursor);
+  }
+   pageCache.unmap(file);
+}
