@@ -1,28 +1,26 @@
 {
-  StoreFile[] filesToDelete;
-  StoreFile[] leftoverFiles;
+  Iterable<StoreFile> filesToMove;
   StoreFile[] idFilesToDelete;
 switch (versionToUpgradeFrom) {
 case Legacy19Store.LEGACY_VERSION:
-    filesToDelete=allExcept(StoreFile.NODE_STORE,StoreFile.RELATIONSHIP_STORE,StoreFile.RELATIONSHIP_GROUP_STORE,StoreFile.LABEL_TOKEN_STORE,StoreFile.NODE_LABEL_STORE,StoreFile.PROPERTY_STORE,StoreFile.PROPERTY_KEY_TOKEN_STORE,StoreFile.PROPERTY_KEY_TOKEN_NAMES_STORE,StoreFile.LABEL_TOKEN_NAMES_STORE,StoreFile.SCHEMA_STORE);
+    filesToMove=Arrays.asList(StoreFile.NODE_STORE,StoreFile.RELATIONSHIP_STORE,StoreFile.RELATIONSHIP_GROUP_STORE,StoreFile.LABEL_TOKEN_STORE,StoreFile.NODE_LABEL_STORE,StoreFile.LABEL_TOKEN_NAMES_STORE,StoreFile.PROPERTY_STORE,StoreFile.PROPERTY_KEY_TOKEN_STORE,StoreFile.PROPERTY_KEY_TOKEN_NAMES_STORE,StoreFile.SCHEMA_STORE);
   idFilesToDelete=allExcept(StoreFile.RELATIONSHIP_GROUP_STORE);
-leftoverFiles=new StoreFile[]{StoreFile.NODE_STORE,StoreFile.RELATIONSHIP_STORE,StoreFile.PROPERTY_STORE,StoreFile.PROPERTY_KEY_TOKEN_STORE,StoreFile.PROPERTY_KEY_TOKEN_NAMES_STORE};
 break;
 case Legacy20Store.LEGACY_VERSION:
-filesToDelete=allExcept(StoreFile.NODE_STORE,StoreFile.RELATIONSHIP_STORE,StoreFile.RELATIONSHIP_GROUP_STORE);
+filesToMove=Arrays.asList(StoreFile.NODE_STORE,StoreFile.RELATIONSHIP_STORE,StoreFile.RELATIONSHIP_GROUP_STORE);
 idFilesToDelete=allExcept(StoreFile.RELATIONSHIP_GROUP_STORE);
-leftoverFiles=new StoreFile[]{StoreFile.NODE_STORE,StoreFile.RELATIONSHIP_STORE};
 break;
 case Legacy21Store.LEGACY_VERSION:
-filesToDelete=idFilesToDelete=leftoverFiles=new StoreFile[]{};
+filesToMove=Iterables.empty();
+idFilesToDelete=new StoreFile[]{};
 break;
 default :
 throw new IllegalStateException("Unknown version to upgrade from: " + versionToUpgradeFrom);
 }
-StoreFile.deleteStoreFile(fileSystem,migrationDir,filesToDelete);
 StoreFile.deleteIdFile(fileSystem,migrationDir,idFilesToDelete);
-StoreFile.move(fileSystem,storeDir,leftOversDir,IteratorUtil.asIterable(leftoverFiles),false,false,StoreFileType.STORE);
-StoreFile.move(fileSystem,migrationDir,storeDir,StoreFile.currentStoreFiles(),true,true,StoreFileType.values());
+StoreFile.move(fileSystem,storeDir,leftOversDir,filesToMove,true,false,StoreFileType.STORE);
+StoreFile.move(fileSystem,migrationDir,storeDir,filesToMove,true,true,StoreFileType.values());
 StoreFile.ensureStoreVersion(fileSystem,storeDir,StoreFile.currentStoreFiles());
+updateOrAddUpgradeIdAndUpgradeTime(fileSystem,storeDir);
 renameLogFiles(fileSystem,storeDir);
 }

@@ -1,0 +1,15 @@
+{
+  Unzip.unzip(LegacyStore.class,"v21/upgradeMissedPropKeyDup.zip",storeDir);
+  try {
+    new GraphDatabaseFactory().newEmbeddedDatabaseBuilder(storeDir.getAbsolutePath()).setConfig(GraphDatabaseSettings.allow_store_upgrade,"true").newGraphDatabase();
+    fail("should have failed to start");
+  }
+ catch (  RuntimeException e) {
+    assertThat(e.getCause(),instanceOf(LifecycleException.class));
+    assertThat(e.getCause().getCause(),instanceOf(LifecycleException.class));
+    Throwable root=e.getCause().getCause().getCause();
+    assertThat(root,instanceOf(NonUniqueTokenException.class));
+    assertNull(root.getCause());
+    assertTrue(root.getMessage().startsWith("The PropertyKey \"name\" is not unique"));
+  }
+}

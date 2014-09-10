@@ -1,0 +1,29 @@
+{
+  LifeSupport consistencyCheckLife=new LifeSupport();
+  try {
+    StoreId myStoreId=nioneoDataSource.getStoreId();
+    MasterClient masterClient=newMasterClient(masterUri,myStoreId,consistencyCheckLife);
+    consistencyCheckLife.start();
+    boolean masterIsOld=MasterClient.CURRENT.compareTo(masterClient.getProtocolVersion()) > 0;
+    if (masterIsOld) {
+      ClusterMembers members=resolver.resolveDependency(ClusterMembers.class);
+      ClusterMemberVersionCheck checker=new ClusterMemberVersionCheck(members,myId,SYSTEM_CLOCK);
+      Outcome outcome=checker.doVersionCheck(myStoreId,VERSION_CHECK_TIMEOUT,SECONDS);
+      msgLog.info("Cluster members version  checked: " + outcome);
+      if (outcome.hasUnavailable()) {
+        throw new UnavailableMembersException(outcome.getUnavailable());
+      }
+      if (outcome.hasMismatched()) {
+        throw new InconsistentlyUpgradedClusterException(myStoreId,outcome.getMismatched());
+      }
+    }
+    if (cancellationRequest.cancellationRequested()) {
+      return false;
+    }
+    checkDataConsistency(masterClient,resolver.resolveDependency(RequestContextFactory.class),nioneoDataSource,masterUri,masterIsOld);
+  }
+  finally {
+    consistencyCheckLife.shutdown();
+  }
+  return true;
+}

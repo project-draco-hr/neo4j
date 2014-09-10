@@ -1,0 +1,37 @@
+{
+  FileSystemAbstraction fileSystem=fs.get();
+  File neoStoreDir=new File("/tmp/graph.db/neostore");
+  StoreFactory factory=new StoreFactory(fileSystem,neoStoreDir,pageCache,StringLogger.DEV_NULL,new Monitors());
+  NeoStore neoStore=factory.newNeoStore(true);
+  neoStore.setCreationTime(3);
+  neoStore.setRandomNumber(4);
+  neoStore.setCurrentLogVersion(5);
+  neoStore.setLastCommittedAndClosedTransactionId(6);
+  neoStore.setStoreVersion(7);
+  neoStore.setGraphNextProp(8);
+  neoStore.setLatestConstraintIntroducingTx(9);
+  neoStore.flush();
+  neoStore.close();
+  File file=new File(neoStoreDir,NeoStore.DEFAULT_NAME);
+  try (StoreChannel channel=fileSystem.open(file,"rw")){
+    byte[] trailer=UTF8.encode(CommonAbstractStore.buildTypeDescriptorAndVersion(neoStore.getTypeDescriptor()));
+    channel.truncate(channel.size() - 2 * NeoStore.RECORD_SIZE);
+    channel.position(channel.size() - trailer.length);
+    channel.write(ByteBuffer.wrap(trailer));
+  }
+   assertNotEquals(10,neoStore.getUpgradeId());
+  assertNotEquals(11,neoStore.getUpgradeTime());
+  NeoStore.setOrAddUpgradeIdOnMigration(fileSystem,file,10);
+  NeoStore.setOrAddUpgradeTimeOnMigration(fileSystem,file,11);
+  neoStore=factory.newNeoStore(false);
+  assertEquals(3,neoStore.getCreationTime());
+  assertEquals(4,neoStore.getRandomNumber());
+  assertEquals(5,neoStore.getCurrentLogVersion());
+  assertEquals(6,neoStore.getLastCommittedTransactionId());
+  assertEquals(7,neoStore.getStoreVersion());
+  assertEquals(8,neoStore.getGraphNextProp());
+  assertEquals(9,neoStore.getLatestConstraintIntroducingTx());
+  assertEquals(10,neoStore.getUpgradeId());
+  assertEquals(11,neoStore.getUpgradeTime());
+  neoStore.close();
+}
