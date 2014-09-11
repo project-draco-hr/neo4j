@@ -10,9 +10,16 @@
       break;
     }
   }
-  lockStamp=page.writeLock();
-  page.initBuffer();
-  page.fault(swapper,filePageId);
+  long stamp=page.writeLock();
+  try {
+    page.initBuffer();
+    page.fault(swapper,filePageId);
+  }
+ catch (  Throwable throwable) {
+    page.unlockWrite(stamp);
+    throw throwable;
+  }
+  lockStamp=stamp;
   translationTable.put(filePageId,page);
   pinCursorToPage(page,filePageId,swapper);
   pagedFile.monitor.pageFaulted(filePageId,swapper);

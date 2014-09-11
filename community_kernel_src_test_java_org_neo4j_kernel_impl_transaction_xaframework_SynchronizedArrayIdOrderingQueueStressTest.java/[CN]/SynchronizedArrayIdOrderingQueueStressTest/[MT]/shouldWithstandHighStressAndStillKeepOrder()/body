@@ -1,0 +1,18 @@
+{
+  VerifyingIdOrderingQueue queue=new VerifyingIdOrderingQueue(new SynchronizedArrayIdOrderingQueue(5));
+  Committer[] committers=new Committer[20];
+  CountDownLatch readySignal=new CountDownLatch(committers.length);
+  AtomicLong endTime=new AtomicLong();
+  CountDownLatch startSignal=new CountDownLatch(1);
+  PrimitiveLongIterator idSource=neverEndingIdStream();
+  for (int i=0; i < committers.length; i++) {
+    committers[i]=new Committer(queue,idSource,endTime,readySignal,startSignal);
+  }
+  readySignal.await();
+  endTime.set(currentTimeMillis() + SECONDS.toMillis(3));
+  startSignal.countDown();
+  for (  Committer committer : committers) {
+    committer.awaitFinish();
+  }
+  assertTrue("Would have wanted at least a few ids to be processed, but only saw " + queue.getNumberOfOrderlyRemovedIds(),queue.getNumberOfOrderlyRemovedIds() > 50);
+}
