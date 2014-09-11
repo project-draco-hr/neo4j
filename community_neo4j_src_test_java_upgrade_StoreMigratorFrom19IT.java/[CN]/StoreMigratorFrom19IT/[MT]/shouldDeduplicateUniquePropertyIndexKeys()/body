@@ -1,0 +1,24 @@
+{
+  File legacyStoreDir=find19FormatStoreDirectory(storeDir.directory());
+  upgrader(new StoreMigrator(monitor,fs)).migrateIfNeeded(storeDir.directory());
+  GraphDatabaseService db=new GraphDatabaseFactory().newEmbeddedDatabase(storeDir.absolutePath());
+  try {
+    Node nodeA=getNodeWithName(db,"A");
+    assertThat(nodeA,inTx(db,hasProperty("name").withValue("A")));
+    Node nodeB=getNodeWithName(db,"B");
+    assertThat(nodeB,inTx(db,hasProperty("name").withValue("B")));
+    Node nodeC=getNodeWithName(db,"C");
+    assertThat(nodeC,inTx(db,hasProperty("name").withValue("C")));
+    assertThat(nodeC,inTx(db,hasProperty("other").withValue("a value")));
+    assertThat(nodeC,inTx(db,hasProperty("third").withValue("something")));
+  }
+  finally {
+    db.shutdown();
+  }
+  File propertyKeyStore=new File(storeDir.directory(),NeoStore.DEFAULT_NAME + PROPERTY_STORE_NAME);
+  PropertyKeyTokenStore tokenStore=cleanup.add(storeFactory.newPropertyKeyTokenStore(propertyKeyStore));
+  Token[] tokens=tokenStore.getTokens(MAX_VALUE);
+  tokenStore.close();
+  assertNoDuplicates(tokens);
+  assertConsistentStore(storeDir.directory());
+}

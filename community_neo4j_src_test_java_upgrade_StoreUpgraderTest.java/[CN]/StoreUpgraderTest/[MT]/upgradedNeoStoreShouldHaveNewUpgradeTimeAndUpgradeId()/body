@@ -1,0 +1,17 @@
+{
+  fileSystem.deleteFile(new File(dbDirectory,StringLogger.DEFAULT_NAME));
+  newUpgrader(ALLOW_UPGRADE,new StoreMigrator(new SilentMigrationProgressMonitor(),fileSystem)).migrateIfNeeded(dbDirectory);
+  LifeSupport life=new LifeSupport();
+  life.start();
+  PageCache pageCache=createPageCache(fileSystem,getClass().getName(),life);
+  try {
+    NeoStore neoStore=new StoreFactory(fileSystem,dbDirectory,pageCache,StringLogger.DEV_NULL,mock(Monitors.class)).newNeoStore(false);
+    assertThat(neoStore.getUpgradeId(),not(equalTo(NeoStore.FIELD_NOT_INITIALIZED)));
+    assertThat(neoStore.getUpgradeTime(),not(equalTo(NeoStore.FIELD_NOT_INITIALIZED)));
+    long minuteAgo=System.currentTimeMillis() - 1000;
+    assertThat(neoStore.getUpgradeTime(),greaterThan(minuteAgo));
+  }
+  finally {
+    life.shutdown();
+  }
+}

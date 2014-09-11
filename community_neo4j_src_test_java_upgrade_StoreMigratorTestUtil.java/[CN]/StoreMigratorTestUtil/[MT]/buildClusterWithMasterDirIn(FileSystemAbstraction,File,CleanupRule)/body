@@ -1,0 +1,15 @@
+{
+  File haRootDir=new File(legacyStoreDir.getParentFile(),"ha-migration");
+  fs.deleteRecursively(haRootDir);
+  ClusterManager clusterManager=new ClusterManager.Builder(haRootDir).withStoreDirInitializer(new ClusterManager.StoreDirInitializer(){
+    @Override public void initializeStoreDir(    int serverId,    File storeDir) throws IOException {
+      if (serverId == 1) {
+        FileUtils.copyRecursively(legacyStoreDir,storeDir);
+      }
+    }
+  }
+).withProvider(clusterOfSize(3)).build();
+  clusterManager.start();
+  cleanup.add(clusterManager);
+  return clusterManager.getDefaultCluster();
+}

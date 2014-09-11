@@ -1,0 +1,27 @@
+{
+  long endTime=currentTimeMillis() + PULL_INTERVAL * 20;
+  boolean ok=false;
+  while (!ok && currentTimeMillis() < endTime) {
+    ok=true;
+    loop:     for (    HighlyAvailableGraphDatabase db : cluster.getAllMembers()) {
+      for (      HighlyAvailableGraphDatabase except : excepts) {
+        if (db == except) {
+          continue loop;
+        }
+      }
+      try (Transaction tx=db.beginTx()){
+        Number value=(Number)db.getNodeById(nodeId).getProperty("i",null);
+        if (value == null || value.intValue() != expectedPropertyValue) {
+          ok=false;
+        }
+      }
+ catch (      NotFoundException e) {
+        ok=false;
+      }
+    }
+    if (!ok) {
+      powerNap();
+    }
+  }
+  assertTrue("Change wasn't propagated by pulling updates",ok);
+}

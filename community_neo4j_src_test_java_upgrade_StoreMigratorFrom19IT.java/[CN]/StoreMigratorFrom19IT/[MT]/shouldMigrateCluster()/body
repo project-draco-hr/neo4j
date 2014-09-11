@@ -1,0 +1,13 @@
+{
+  StoreUpgrader upgrader=new StoreUpgrader(ALLOW_UPGRADE,fs,StoreUpgrader.NO_MONITOR);
+  upgrader.addParticipant(new StoreMigrator(monitor,fs));
+  File legacyStoreDir=find19FormatStoreDirectory(storeDir.directory());
+  upgrader.migrateIfNeeded(legacyStoreDir);
+  ClusterManager.ManagedCluster cluster=cleanup.add(buildClusterWithMasterDirIn(fs,legacyStoreDir,cleanup));
+  cluster.await(allSeesAllAsAvailable());
+  cluster.sync();
+  HighlyAvailableGraphDatabase slave1=cluster.getAnySlave();
+  verifySlaveContents(slave1);
+  verifySlaveContents(cluster.getAnySlave(slave1));
+  verifyDatabaseContents(cluster.getMaster());
+}

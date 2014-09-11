@@ -1,0 +1,11 @@
+{
+  File legacyStoreDir=find20FormatStoreDirectory(storeDir.directory());
+  upgrader(new StoreMigrator(monitor,fs)).migrateIfNeeded(legacyStoreDir);
+  ClusterManager.ManagedCluster cluster=cleanup.add(buildClusterWithMasterDirIn(fs,legacyStoreDir,cleanup));
+  cluster.await(allSeesAllAsAvailable());
+  cluster.sync();
+  HighlyAvailableGraphDatabase slave1=cluster.getAnySlave();
+  verifySlaveContents(slave1);
+  verifySlaveContents(cluster.getAnySlave(slave1));
+  verifyDatabaseContents(cluster.getMaster());
+}

@@ -1,7 +1,6 @@
 {
-  StoreUpgrader upgrader=new StoreUpgrader(ALLOW_UPGRADE,fileSystem,StoreUpgrader.NO_MONITOR);
   String failureMessage="Just failing";
-  upgrader.addParticipant(participant("p1","one","two"));
+  StoreUpgrader upgrader=newUpgrader(ALLOW_UPGRADE,new StoreMigrator(new SilentMigrationProgressMonitor(),fileSystem));
   upgrader.addParticipant(participantThatWillFailWhenMoving(failureMessage));
   try {
     upgrader.migrateIfNeeded(dbDirectory);
@@ -10,10 +9,10 @@
     assertTrue(e.getCause() instanceof IOException);
     assertEquals(failureMessage,e.getCause().getMessage());
   }
-  Monitor monitor=Mockito.mock(Monitor.class);
+  Monitor monitor=mock(Monitor.class);
   upgrader=new StoreUpgrader(ALLOW_UPGRADE,fileSystem,monitor);
-  upgrader.addParticipant(participant("p1","one","two"));
-  StoreMigrationParticipant observingParticipant=Mockito.mock(StoreMigrationParticipant.class);
+  upgrader.addParticipant(new StoreMigrator(new SilentMigrationProgressMonitor(),fileSystem));
+  StoreMigrationParticipant observingParticipant=mock(StoreMigrationParticipant.class);
   Mockito.when(observingParticipant.needsMigration(Matchers.any(FileSystemAbstraction.class),Matchers.any(File.class))).thenReturn(true);
   upgrader.addParticipant(observingParticipant);
   upgrader.migrateIfNeeded(dbDirectory);
