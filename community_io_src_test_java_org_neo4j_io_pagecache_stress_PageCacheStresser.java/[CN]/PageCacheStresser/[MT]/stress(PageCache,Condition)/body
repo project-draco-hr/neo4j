@@ -7,9 +7,18 @@
     updaters.add(new Updater(pagedFile,condition,maxPages,recordsPerPage,recordVerifierUpdater,threadNumber));
   }
   ExecutorService executorService=Executors.newFixedThreadPool(numberOfThreads);
-  for (  Future<Updater> future : executorService.invokeAll(updaters)) {
-    future.get().verifyCounts();
+  try {
+    Collection<Verifier> verifiers=new LinkedList<>();
+    for (    Future<Verifier> future : executorService.invokeAll(updaters)) {
+      verifiers.add(future.get());
+    }
+    for (    Future<Void> future : executorService.invokeAll(verifiers)) {
+      future.get();
+    }
   }
-  new Verifier().verify(pagedFile,maxPages,recordsPerPage,recordVerifierUpdater);
+  finally {
+    executorService.shutdown();
+  }
+  new ChecksumVerifier().verify(pagedFile,recordsPerPage,recordVerifierUpdater);
   pageCache.unmap(file);
 }
