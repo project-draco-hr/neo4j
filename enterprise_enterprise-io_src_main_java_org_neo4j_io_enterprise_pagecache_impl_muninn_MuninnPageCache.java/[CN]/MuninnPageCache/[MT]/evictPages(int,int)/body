@@ -14,21 +14,35 @@
       if (stamp != 0) {
         PageSwapper swapper=page.getSwapper();
         long filePageId=page.getFilePageId();
+        boolean pageEvicted=false;
         try {
           page.evict();
           pageCountToEvict--;
+          evictorException=null;
+          pageEvicted=true;
         }
-  finally {
+ catch (        IOException ioException) {
+          evictorException=ioException;
+        }
+catch (        OutOfMemoryError ignore) {
+          evictorException=oomException;
+        }
+catch (        Throwable throwable) {
+          evictorException=new IOException("Eviction thread encountered a problem",throwable);
+        }
+ finally {
           page.unlockWrite(stamp);
         }
-        swapper.evicted(filePageId);
-        monitor.evicted(filePageId,swapper);
-        MuninnPage next;
-        do {
-          next=freelist.get();
-          page.nextFree=next;
-        }
+        if (pageEvicted) {
+          swapper.evicted(filePageId);
+          monitor.evicted(filePageId,swapper);
+          MuninnPage next;
+          do {
+            next=freelist.get();
+            page.nextFree=next;
+          }
  while (!freelist.compareAndSet(next,page));
+        }
       }
     }
     clockArm++;
