@@ -10,13 +10,17 @@
   writeTransaction.addLabelToNode(27,nodeId);
   writeTransaction.addLabelToNode(50,nodeId);
   PhysicalTransactionRepresentation transactionCommands=transactionRepresentationOf(writeTransaction);
-  commitProcess().commit(transactionCommands);
-  writeTransaction=newWriteTransaction().first();
+  try (LockGroup locks=new LockGroup()){
+    commitProcess().commit(transactionCommands,locks);
+  }
+   writeTransaction=newWriteTransaction().first();
   writeTransaction.removeLabelFromNode(11,nodeId);
   writeTransaction.removeLabelFromNode(23,nodeId);
   transactionCommands=transactionRepresentationOf(writeTransaction);
-  commitProcess().commit(transactionCommands);
-  final AtomicBoolean nodeCommandsExist=new AtomicBoolean(false);
+  try (LockGroup locks=new LockGroup()){
+    commitProcess().commit(transactionCommands,locks);
+  }
+   final AtomicBoolean nodeCommandsExist=new AtomicBoolean(false);
   transactionCommands.accept(new NeoCommandHandler.HandlerVisitor(new NeoCommandHandler.Adapter(){
     @Override public boolean visitNodeCommand(    NodeCommand command) throws IOException {
       nodeCommandsExist.set(true);

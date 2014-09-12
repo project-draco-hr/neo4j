@@ -1,6 +1,6 @@
 {
   boolean success=false;
-  try {
+  try (LockGroup locks=new LockGroup()){
     if ((hooksState=hooks.beforeCommit(txState,this,storeLayer)) != null && hooksState.failed()) {
       throw new TransactionFailureException(Status.Transaction.HookFailed,hooksState.failure(),"");
     }
@@ -12,7 +12,7 @@
       if (!commands.isEmpty()) {
         PhysicalTransactionRepresentation transactionRepresentation=new PhysicalTransactionRepresentation(commands);
         transactionRepresentation.setHeader(headerInformation.getAdditionalHeader(),headerInformation.getMasterId(),headerInformation.getAuthorId(),startTimeMillis,lastTransactionIdWhenStarted,clock.currentTimeMillis());
-        commitProcess.commit(transactionRepresentation);
+        commitProcess.commit(transactionRepresentation,locks);
       }
     }
     if (hasTxStateWithChanges()) {

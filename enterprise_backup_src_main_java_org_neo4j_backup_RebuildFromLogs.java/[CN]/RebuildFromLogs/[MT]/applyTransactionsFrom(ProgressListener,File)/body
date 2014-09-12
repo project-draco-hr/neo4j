@@ -6,8 +6,10 @@
   ReadableLogChannel channel=new ReadAheadLogChannel(startingChannel,versionBridge,DEFAULT_READ_AHEAD_SIZE);
   try (IOCursor<CommittedTransactionRepresentation> cursor=new PhysicalTransactionCursor(channel,new VersionAwareLogEntryReader())){
     while (cursor.next()) {
-      storeApplier.apply(cursor.get().getTransactionRepresentation(),cursor.get().getCommitEntry().getTxId(),true);
-    }
+      try (LockGroup locks=new LockGroup()){
+        storeApplier.apply(cursor.get().getTransactionRepresentation(),locks,cursor.get().getCommitEntry().getTxId(),true);
+      }
+     }
   }
    return this;
 }

@@ -1,9 +1,11 @@
 {
-  NeoTransactionStoreApplier storeApplier=new NeoTransactionStoreApplier(neoStore,mockIndexing,cacheAccessBackDoor,locks,txId,DEFAULT_HIGH_ID_TRACKING,true);
   LabelScanStore labelScanStore=mock(LabelScanStore.class);
   when(labelScanStore.newWriter()).thenReturn(mock(LabelScanWriter.class));
   NeoTransactionIndexApplier indexApplier=new NeoTransactionIndexApplier(mockIndexing,labelScanStore,neoStore.getNodeStore(),neoStore.getPropertyStore(),cacheAccessBackDoor,propertyLoader);
-  try (CommandApplierFacade applier=new CommandApplierFacade(storeApplier,indexApplier,mock(NeoCommandHandler.class))){
-    recoveredTx.accept(applier);
-  }
+  try (LockGroup lockGroup=new LockGroup()){
+    NeoTransactionStoreApplier storeApplier=new NeoTransactionStoreApplier(neoStore,mockIndexing,cacheAccessBackDoor,locks,lockGroup,txId,DEFAULT_HIGH_ID_TRACKING,true);
+    try (CommandApplierFacade applier=new CommandApplierFacade(storeApplier,indexApplier,mock(NeoCommandHandler.class))){
+      recoveredTx.accept(applier);
+    }
+   }
  }

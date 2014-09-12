@@ -6,8 +6,10 @@
   TransactionRecordState tx=newWriteTransaction().first();
   SchemaRule rule=indexRule(ruleId,labelId,propertyKeyId,PROVIDER_DESCRIPTOR);
   tx.createSchemaRule(rule);
-  commitProcess().commit(transactionRepresentationOf(tx));
-  IteratorCollector<NodePropertyUpdate> indexUpdates=new IteratorCollector<>(0);
+  try (LockGroup locks=new LockGroup()){
+    commitProcess().commit(transactionRepresentationOf(tx),locks);
+  }
+   IteratorCollector<NodePropertyUpdate> indexUpdates=new IteratorCollector<>(0);
   doAnswer(indexUpdates).when(mockIndexing).updateIndexes(any(IndexUpdates.class));
   tx=newWriteTransaction().first();
   tx.nodeCreate(nodeId);
@@ -16,8 +18,10 @@
   PhysicalTransactionRepresentation representation=transactionRepresentationOf(tx);
   RecoveryCreatingCopyingNeoCommandHandler recoverer=new RecoveryCreatingCopyingNeoCommandHandler();
   representation.accept(recoverer);
-  commitProcess().commit(representation);
-  verify(mockIndexing,times(1)).updateIndexes(any(IndexUpdates.class));
+  try (LockGroup locks=new LockGroup()){
+    commitProcess().commit(representation,locks);
+  }
+   verify(mockIndexing,times(1)).updateIndexes(any(IndexUpdates.class));
   indexUpdates.assertContent(expectedUpdate);
   reset(mockIndexing);
   indexUpdates=new IteratorCollector<>(0);

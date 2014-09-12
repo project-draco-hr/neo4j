@@ -9,11 +9,15 @@
   writeTransaction.nodeAddProperty(nodeId,propertyKey2,value2);
   writeTransaction.addLabelToNode(labelId,nodeId);
   PhysicalTransactionRepresentation transactionCommands=transactionRepresentationOf(writeTransaction);
-  commitProcess().commit(transactionCommands);
-  CapturingIndexingService indexingService=new CapturingIndexingService();
+  try (LockGroup locks=new LockGroup()){
+    commitProcess().commit(transactionCommands,locks);
+  }
+   CapturingIndexingService indexingService=new CapturingIndexingService();
   writeTransaction=newWriteTransaction(indexingService).first();
   writeTransaction.removeLabelFromNode(labelId,nodeId);
   transactionCommands=transactionRepresentationOf(writeTransaction);
-  commitProcess(indexingService).commit(transactionCommands);
-  assertEquals(asSet(remove(nodeId,propertyKey1,value1,labelIds),remove(nodeId,propertyKey2,value2,labelIds)),indexingService.updates);
+  try (LockGroup locks=new LockGroup()){
+    commitProcess(indexingService).commit(transactionCommands,locks);
+  }
+   assertEquals(asSet(remove(nodeId,propertyKey1,value1,labelIds),remove(nodeId,propertyKey2,value2,labelIds)),indexingService.updates);
 }

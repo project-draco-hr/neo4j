@@ -9,6 +9,8 @@
   long ruleId=first(records).getId();
   TransactionRecordState writeTransaction=newWriteTransaction().first();
   writeTransaction.dropSchemaRule(rule);
-  commitProcess().commit(transactionRepresentationOf(writeTransaction));
-  verify(cacheAccessBackDoor).removeSchemaRuleFromCache(ruleId);
+  try (LockGroup locks=new LockGroup()){
+    commitProcess().commit(transactionRepresentationOf(writeTransaction),locks);
+  }
+   verify(cacheAccessBackDoor).removeSchemaRuleFromCache(ruleId);
 }

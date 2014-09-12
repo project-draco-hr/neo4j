@@ -4,8 +4,10 @@
   tx.nodeCreate(nodeId);
   int index=0;
   tx.nodeAddProperty(nodeId,index,string(70));
-  commitProcess().commit(transactionRepresentationOf(tx));
-  Visitor<Command,IOException> verifier=new NeoCommandHandler.HandlerVisitor(new NeoCommandHandler.Adapter(){
+  try (LockGroup locks=new LockGroup()){
+    commitProcess().commit(transactionRepresentationOf(tx),locks);
+  }
+   Visitor<Command,IOException> verifier=new NeoCommandHandler.HandlerVisitor(new NeoCommandHandler.Adapter(){
     @Override public boolean visitPropertyCommand(    PropertyCommand command) throws IOException {
       verifyPropertyRecord(command.getBefore());
       verifyPropertyRecord(command.getAfter());
@@ -25,5 +27,7 @@
   tx.nodeAddProperty(nodeId,index2,string(40));
   PhysicalTransactionRepresentation representation=transactionRepresentationOf(tx);
   representation.accept(verifier);
-  commitProcess().commit(representation);
-}
+  try (LockGroup locks=new LockGroup()){
+    commitProcess().commit(representation,locks);
+  }
+ }
