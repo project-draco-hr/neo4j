@@ -2,7 +2,8 @@
   LimitedFilesystemAbstraction fs=new LimitedFilesystemAbstraction(new DefaultFileSystemAbstraction());
   RecordingPageCacheMonitor monitor=new RecordingPageCacheMonitor();
   StandardPageCache cache=new StandardPageCache(fs,2,512,monitor);
-  PagedFile file=cache.map(new File(testDir.directory(),"storefile"),512);
+  File storefile=new File(testDir.directory(),"storefile");
+  PagedFile file=cache.map(storefile,512);
   Thread sweeperThread=new Thread(cache);
   sweeperThread.start();
   CountDownLatch evictionThreadLatch=monitor.trap(any(RecordingPageCacheMonitor.Evict.class));
@@ -10,13 +11,18 @@
     cursor.next();
     cursor.next();
   }
-   fs.runOutOfDiskSpace();
+   fs.runOutOfDiskSpace(true);
   evictionThreadLatch.countDown();
   try {
     file.flush();
     fail("Should've thrown out of disk.");
   }
  catch (  IOException e) {
+    fs.runOutOfDiskSpace(false);
   }
-  sweeperThread.join();
+ finally {
+    sweeperThread.interrupt();
+    cache.unmap(storefile);
+    cache.close();
+  }
 }
