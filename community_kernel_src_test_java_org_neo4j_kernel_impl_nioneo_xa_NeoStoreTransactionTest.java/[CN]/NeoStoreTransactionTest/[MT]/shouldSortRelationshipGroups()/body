@@ -1,16 +1,16 @@
 {
   instantiateNeoStore(1);
   int type5=5, type10=10, type15=15;
-{
+  try (LockGroup locks=new LockGroup()){
     TransactionRecordState tx=newWriteTransaction().first();
     neoStore.getRelationshipTypeTokenStore().setHighId(16);
     tx.createRelationshipTypeToken(type5,"5");
     tx.createRelationshipTypeToken(type10,"10");
     tx.createRelationshipTypeToken(type15,"15");
-    commitProcess().commit(transactionRepresentationOf(tx));
+    commitProcess().commit(transactionRepresentationOf(tx),locks);
   }
-  long nodeId=neoStore.getNodeStore().nextId();
-{
+   long nodeId=neoStore.getNodeStore().nextId();
+  try (LockGroup locks=new LockGroup()){
     TransactionRecordState tx=newWriteTransaction().first();
     long otherNode1Id=neoStore.getNodeStore().nextId();
     long otherNode2Id=neoStore.getNodeStore().nextId();
@@ -19,23 +19,23 @@
     tx.nodeCreate(otherNode2Id);
     tx.relCreate(neoStore.getRelationshipStore().nextId(),type10,nodeId,otherNode1Id);
     tx.relCreate(neoStore.getRelationshipStore().nextId(),type10,nodeId,otherNode2Id);
-    commitProcess().commit(transactionRepresentationOf(tx));
+    commitProcess().commit(transactionRepresentationOf(tx),locks);
     assertRelationshipGroupsInOrder(nodeId,type10);
   }
-{
+   try (LockGroup locks=new LockGroup()){
     TransactionRecordState tx=newWriteTransaction().first();
     long otherNodeId=neoStore.getNodeStore().nextId();
     tx.nodeCreate(otherNodeId);
     tx.relCreate(neoStore.getRelationshipStore().nextId(),type5,nodeId,otherNodeId);
-    commitProcess().commit(transactionRepresentationOf(tx));
+    commitProcess().commit(transactionRepresentationOf(tx),locks);
   }
-  assertRelationshipGroupsInOrder(nodeId,type5,type10);
-{
+   assertRelationshipGroupsInOrder(nodeId,type5,type10);
+  try (LockGroup locks=new LockGroup()){
     TransactionRecordState tx=newWriteTransaction().first();
     long otherNodeId=neoStore.getNodeStore().nextId();
     tx.nodeCreate(otherNodeId);
     tx.relCreate(neoStore.getRelationshipStore().nextId(),type15,nodeId,otherNodeId);
-    commitProcess().commit(transactionRepresentationOf(tx));
+    commitProcess().commit(transactionRepresentationOf(tx),locks);
   }
-  assertRelationshipGroupsInOrder(nodeId,type5,type10,type15);
+   assertRelationshipGroupsInOrder(nodeId,type5,type10,type15);
 }

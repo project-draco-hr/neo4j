@@ -6,8 +6,10 @@
   int typeA=(int)neoStore.getRelationshipTypeTokenStore().nextId();
   writeTransaction.createRelationshipTypeToken(typeA,"A");
   createRelationships(writeTransaction,nodeId,typeA,INCOMING,20);
-  commitProcess().commit(transactionRepresentationOf(writeTransaction));
-  writeTransaction=newWriteTransaction().first();
+  try (LockGroup locks=new LockGroup()){
+    commitProcess().commit(transactionRepresentationOf(writeTransaction),locks);
+  }
+   writeTransaction=newWriteTransaction().first();
   int typeB=1;
   writeTransaction.createRelationshipTypeToken(typeB,"B");
   long[] relationshipsOfTypeB=createRelationships(writeTransaction,nodeId,typeB,OUTGOING,5);
@@ -15,8 +17,10 @@
     deleteRelationship(writeTransaction,relationshipToDelete);
   }
   PhysicalTransactionRepresentation tx=transactionRepresentationOf(writeTransaction);
-  commitProcess().commit(tx);
-  final AtomicBoolean foundRelationshipGroupInUse=new AtomicBoolean();
+  try (LockGroup locks=new LockGroup()){
+    commitProcess().commit(tx,locks);
+  }
+   final AtomicBoolean foundRelationshipGroupInUse=new AtomicBoolean();
   tx.accept(new NeoCommandHandler.HandlerVisitor(new NeoCommandHandler.Adapter(){
     @Override public boolean visitRelationshipGroupCommand(    RelationshipGroupCommand command) throws IOException {
       if (command.getRecord().inUse()) {

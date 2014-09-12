@@ -8,10 +8,10 @@
   KernelHealth kernelHealth=mock(KernelHealth.class);
   TransactionIdStore transactionIdStore=mock(TransactionIdStore.class);
   TransactionRepresentationStoreApplier storeApplier=mock(TransactionRepresentationStoreApplier.class);
-  doThrow(new IOException(rootCause)).when(storeApplier).apply(any(TransactionRepresentation.class),eq(txId),eq(false));
+  doThrow(new IOException(rootCause)).when(storeApplier).apply(any(TransactionRepresentation.class),any(LockGroup.class),eq(txId),eq(false));
   TransactionCommitProcess commitProcess=new TransactionRepresentationCommitProcess(logicalTransactionStore,kernelHealth,transactionIdStore,storeApplier,false);
-  try {
-    commitProcess.commit(mockedTransaction());
+  try (LockGroup locks=new LockGroup()){
+    commitProcess.commit(mockedTransaction(),locks);
   }
  catch (  TransactionFailureException e) {
     assertThat(e.getMessage(),containsString("Could not apply the transaction to the store"));

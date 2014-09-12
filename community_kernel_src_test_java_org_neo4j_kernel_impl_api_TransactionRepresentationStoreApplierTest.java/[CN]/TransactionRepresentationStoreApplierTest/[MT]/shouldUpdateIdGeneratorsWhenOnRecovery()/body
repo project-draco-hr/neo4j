@@ -4,7 +4,9 @@
   when(highIdTrackerFactory.create(true)).thenReturn(tracker);
   TransactionRepresentationStoreApplier applier=new TransactionRepresentationStoreApplier(indexService,labelScanStore,neoStore,cacheAccess,lockService,legacyIndexProviderLookup,indexConfigStore,highIdTrackerFactory,BYPASS);
   TransactionRepresentation transaction=mock(TransactionRepresentation.class);
-  applier.apply(transaction,transactionId,true);
-  verify(transaction,times(1)).accept(Matchers.<Visitor<Command,IOException>>any());
+  try (LockGroup locks=new LockGroup()){
+    applier.apply(transaction,locks,transactionId,true);
+  }
+   verify(transaction,times(1)).accept(Matchers.<Visitor<Command,IOException>>any());
   verify(tracker,times(1)).apply();
 }

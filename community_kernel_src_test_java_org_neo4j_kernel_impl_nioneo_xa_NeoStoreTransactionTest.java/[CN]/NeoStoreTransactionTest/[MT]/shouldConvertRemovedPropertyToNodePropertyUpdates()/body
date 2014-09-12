@@ -7,12 +7,16 @@
   DefinedProperty property1=writeTransaction.nodeAddProperty(nodeId,propertyKey1,value1);
   DefinedProperty property2=writeTransaction.nodeAddProperty(nodeId,propertyKey2,value2);
   PhysicalTransactionRepresentation transactionCommands=transactionRepresentationOf(writeTransaction);
-  commitProcess().commit(transactionCommands);
-  CapturingIndexingService indexingService=new CapturingIndexingService();
+  try (LockGroup locks=new LockGroup()){
+    commitProcess().commit(transactionCommands,locks);
+  }
+   CapturingIndexingService indexingService=new CapturingIndexingService();
   writeTransaction=newWriteTransaction(indexingService).first();
   writeTransaction.nodeRemoveProperty(nodeId,property1.propertyKeyId());
   writeTransaction.nodeRemoveProperty(nodeId,property2.propertyKeyId());
   transactionCommands=transactionRepresentationOf(writeTransaction);
-  commitProcess(indexingService).commit(transactionCommands);
-  assertEquals(asSet(remove(nodeId,propertyKey1,value1,none),remove(nodeId,propertyKey2,value2,none)),indexingService.updates);
+  try (LockGroup locks=new LockGroup()){
+    commitProcess(indexingService).commit(transactionCommands,locks);
+  }
+   assertEquals(asSet(remove(nodeId,propertyKey1,value1,none),remove(nodeId,propertyKey2,value2,none)),indexingService.updates);
 }
