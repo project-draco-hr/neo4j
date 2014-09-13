@@ -4,8 +4,13 @@
   Monitor monitor=mock(Monitor.class);
   TestLogging logging=new TestLogging();
   PerformUpgradeIfNecessary upgrader=new PerformUpgradeIfNecessary(serverConfig,loadNeo4jProperties(),logging,monitor);
-  boolean exit=upgrader.run();
-  assertEquals("dump logs",true,exit);
+  boolean success=upgrader.run();
+  if (!success) {
+    TestLogPrinter testLogPrinter=new TestLogPrinter();
+    logging.visitConsoleLog(upgrader.getClass(),testLogPrinter);
+    logging.visitMessagesLog(upgrader.getClass(),testLogPrinter);
+    fail();
+  }
   InOrder order=inOrder(monitor);
   order.verify(monitor,times(1)).migrationNeeded();
   order.verify(monitor,times(1)).migrationCompleted();
