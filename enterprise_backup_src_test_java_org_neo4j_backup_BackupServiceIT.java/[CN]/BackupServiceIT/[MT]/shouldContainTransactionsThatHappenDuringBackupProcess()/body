@@ -1,11 +1,11 @@
 {
   Map<String,String> params=defaultBackupPortHostParams();
   params.put(OnlineBackupSettings.online_backup_enabled.name(),"false");
-  final List<String> storesThatHaveBeenStreamed=new ArrayList<String>();
+  final List<String> storesThatHaveBeenStreamed=new ArrayList<>();
   final CountDownLatch firstStoreFinishedStreaming=new CountDownLatch(1);
   final CountDownLatch transactionCommitted=new CountDownLatch(1);
   final GraphDatabaseAPI db=(GraphDatabaseAPI)new GraphDatabaseFactory().newEmbeddedDatabaseBuilder(storeDir.getAbsolutePath()).setConfig(params).newGraphDatabase();
-  Config config=new Config(defaultBackupPortHostParams());
+  Config config=defaultConfig();
   Monitors monitors=new Monitors();
   monitors.addMonitorListener(new BackupMonitor(){
     @Override public void startCopyingFiles(){
@@ -64,16 +64,16 @@
     @Override public void run(){
       try {
         firstStoreFinishedStreaming.await();
-        Transaction tx=db.beginTx();
-        try {
+        try (Transaction tx=db.beginTx()){
           Node node1=db.createNode();
           Node node2=db.createNode();
           node1.createRelationshipTo(node2,DynamicRelationshipType.withName("foobydoo"));
           tx.success();
         }
   finally {
-          tx.finish();
-          db.getDependencyResolver().resolveDependency(XaDataSourceManager.class).getNeoStoreDataSource().getNeoStore().flushAll();
+          DependencyResolver resolver=db.getDependencyResolver();
+          XaDataSourceManager xaDsManager=resolver.resolveDependency(XaDataSourceManager.class);
+          xaDsManager.getNeoStoreDataSource().getNeoStore().flushAll();
           transactionCommitted.countDown();
         }
       }
