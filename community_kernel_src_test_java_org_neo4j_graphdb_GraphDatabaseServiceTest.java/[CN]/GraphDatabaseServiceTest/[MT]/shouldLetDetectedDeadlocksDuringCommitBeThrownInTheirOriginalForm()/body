@@ -1,0 +1,27 @@
+{
+  GraphDatabaseService db=cleanup.add(new TestGraphDatabaseFactory().newImpermanentDatabase());
+  Node n1=createNode(db);
+  Node n2=createNode(db);
+  Relationship r3=createRelationship(n1);
+  Relationship r2=createRelationship(n1);
+  Relationship r1=createRelationship(n1);
+  OtherThreadExecutor<Void> t2=cleanup.add(new OtherThreadExecutor<Void>("T2",null));
+  Transaction t1Tx=db.beginTx();
+  Transaction t2Tx=t2.execute(beginTx(db));
+  n2.setProperty("locked","indeed");
+  t2.execute(setProperty(r1,"locked","absolutely"));
+  Future<Object> t2n2Wait=t2.executeDontWait(setProperty(n2,"locked","In my dreams"));
+  t2.waitUntilWaiting();
+  r2.delete();
+  t1Tx.success();
+  try {
+    t1Tx.close();
+    fail("Should throw exception about deadlock");
+  }
+ catch (  Exception e) {
+    assertEquals(DeadlockDetectedException.class,e.getClass());
+  }
+ finally {
+    t2Tx.close();
+  }
+}
