@@ -2,12 +2,15 @@
   response.accept(new Visitor<CommittedTransactionRepresentation,IOException>(){
     @Override public boolean visit(    CommittedTransactionRepresentation transaction) throws IOException {
 synchronized (appender) {
+        long transactionId=transaction.getCommitEntry().getTxId();
         if (appender.append(transaction)) {
-          final long transactionId=transaction.getCommitEntry().getTxId();
-          try (LockGroup locks=new LockGroup()){
-            storeApplier.apply(transaction.getTransactionRepresentation(),locks,transactionId,true);
-            handler.accept(transaction);
-          }
+          transactionIdStore.transactionCommitted(transactionId);
+          try {
+            try (LockGroup locks=new LockGroup()){
+              storeApplier.apply(transaction.getTransactionRepresentation(),locks,transactionId,true);
+              handler.accept(transaction);
+            }
+           }
   finally {
             transactionIdStore.transactionClosed(transactionId);
           }
