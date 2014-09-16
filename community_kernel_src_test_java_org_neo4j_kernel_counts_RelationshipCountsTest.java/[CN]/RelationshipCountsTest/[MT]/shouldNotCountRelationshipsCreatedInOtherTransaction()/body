@@ -1,0 +1,29 @@
+{
+  GraphDatabaseService graphDb=db.getGraphDatabaseService();
+  final Barrier.Control barrier=new Barrier.Control();
+  long before=numberOfRelationships();
+  Future<Long> tx=threading.execute(new NamedFunction<GraphDatabaseService,Long>("create-relationships"){
+    @Override public Long apply(    GraphDatabaseService graphDb){
+      long during;
+      try (Transaction tx=graphDb.beginTx()){
+        Node node=graphDb.createNode();
+        node.createRelationshipTo(graphDb.createNode(),withName("KNOWS"));
+        node.createRelationshipTo(graphDb.createNode(),withName("KNOWS"));
+        during=countsForRelationship(null,null,null);
+        barrier.reached();
+        tx.success();
+      }
+       return during;
+    }
+  }
+,graphDb);
+  barrier.await();
+  long concurrently=numberOfRelationships();
+  barrier.release();
+  long during=tx.get();
+  long after=numberOfRelationships();
+  assertEquals(0,before);
+  assertEquals(0,concurrently);
+  assertEquals(2,after);
+  assertEquals(2,during);
+}
