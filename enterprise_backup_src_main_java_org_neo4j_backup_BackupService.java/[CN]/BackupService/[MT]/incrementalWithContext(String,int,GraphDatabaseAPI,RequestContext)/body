@@ -12,9 +12,12 @@
     unpacker.unpackResponse(response,handler);
     consistent=true;
   }
- catch (  RuntimeException e) {
+ catch (  MismatchingStoreIdException e) {
+    throw new RuntimeException(DIFFERENT_STORE,e);
+  }
+catch (  RuntimeException e) {
     if (e.getCause() != null && e.getCause() instanceof MissingLogDataException) {
-      throw new IncrementalBackupNotPossibleException("It's been too long since this backup was last updated, and it has " + "fallen too far behind the database transaction stream for incremental backup to be possible. " + "You need to perform a full backup at this point. You can modify this time interval by setting "+ "the '" + GraphDatabaseSettings.keep_logical_logs.name() + "' configuration on the database to a "+ "higher value.",e.getCause());
+      throw new IncrementalBackupNotPossibleException(TOO_OLD_BACKUP,e.getCause());
     }
     throw new RuntimeException("Failed to perform incremental backup.",e);
   }
@@ -29,7 +32,12 @@ catch (  Throwable throwable) {
       client.stop();
     }
  catch (    Throwable throwable) {
-      throw new RuntimeException(throwable);
+      if (consistent) {
+        logger.warn("Unable to stop backup client",throwable);
+      }
+ else {
+        throw new RuntimeException("Unable to stop backup client",throwable);
+      }
     }
   }
   return new BackupOutcome(handler.getLastSeenTransactionId(),consistent);
