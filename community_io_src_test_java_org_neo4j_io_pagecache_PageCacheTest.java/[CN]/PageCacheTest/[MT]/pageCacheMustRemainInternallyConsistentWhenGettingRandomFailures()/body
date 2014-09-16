@@ -1,0 +1,38 @@
+{
+  RandomAdversary adversary=new RandomAdversary(0.5,0.2,0.2);
+  adversary.setProbabilityFactor(0.0);
+  FileSystemAbstraction fs=new AdversarialFileSystemAbstraction(adversary,this.fs);
+  File fileA=new File("a");
+  File fileB=new File("b");
+  ThreadLocalRandom rng=ThreadLocalRandom.current();
+  getPageCache(fs,maxPages,pageCachePageSize,PageCacheMonitor.NULL);
+  PagedFile pfA=pageCache.map(fileA,filePageSize);
+  PagedFile pfB=pageCache.map(fileB,filePageSize / 2 + 1);
+  adversary.setProbabilityFactor(1.0);
+  for (int i=0; i < 50000; i++) {
+    PagedFile pagedFile=rng.nextBoolean() ? pfA : pfB;
+    long maxPageId=pagedFile.getLastPageId();
+    boolean performingRead=rng.nextBoolean() && maxPageId != -1;
+    long startingPage=maxPageId == -1 ? 0 : rng.nextLong(maxPageId + 1);
+    int pf_flags=performingRead ? PF_SHARED_LOCK : PF_EXCLUSIVE_LOCK;
+    int pageSize=pagedFile.pageSize();
+    try (PageCursor cursor=pagedFile.io(startingPage,pf_flags)){
+      if (performingRead) {
+        performConsistentAdversarialRead(cursor,maxPageId,startingPage,pageSize);
+      }
+ else {
+        performConsistentAdversarialWrite(cursor,rng,pageSize);
+      }
+    }
+ catch (    AssertionError error) {
+      throw error;
+    }
+catch (    Throwable throwable) {
+    }
+  }
+  adversary.setProbabilityFactor(0.0);
+  verifyAdversarialPagedContent(pfA);
+  verifyAdversarialPagedContent(pfB);
+  pageCache.unmap(fileA);
+  pageCache.unmap(fileB);
+}
