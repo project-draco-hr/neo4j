@@ -1,6 +1,5 @@
 {
   LogFile logFile=mock(LogFile.class);
-  InMemoryLogChannel channel=new InMemoryLogChannel();
   when(logFile.getWriter()).thenReturn(channel);
   TxIdGenerator txIdGenerator=mock(TxIdGenerator.class);
   long txId=15;
@@ -18,7 +17,8 @@
   LogEntryCommit commit=new OnePhaseCommit(latestCommittedTxWhenStarted + 1,0l);
   CommittedTransactionRepresentation transaction=new CommittedTransactionRepresentation(start,transactionRepresentation,commit);
   appender.append(transaction);
-  PhysicalTransactionCursor reader=new PhysicalTransactionCursor(channel,new VersionAwareLogEntryReader());
+  LogEntryReader<ReadableVersionableLogChannel> logEntryReader=new LogEntryReaderFactory().versionable();
+  PhysicalTransactionCursor<ReadableVersionableLogChannel> reader=new PhysicalTransactionCursor<>(channel,logEntryReader);
   reader.next();
   TransactionRepresentation result=reader.get().getTransactionRepresentation();
   assertArrayEquals(additionalHeader,result.additionalHeader());
