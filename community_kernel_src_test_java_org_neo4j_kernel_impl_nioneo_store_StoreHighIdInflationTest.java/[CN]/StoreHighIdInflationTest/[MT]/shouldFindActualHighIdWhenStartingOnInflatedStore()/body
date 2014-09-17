@@ -1,0 +1,16 @@
+{
+  FileSystemAbstraction fs=fsr.get();
+  fs.mkdirs(new File(storeDir));
+  GraphDatabaseAPI db=(GraphDatabaseAPI)new TestGraphDatabaseFactory().setFileSystem(fs).newImpermanentDatabase(storeDir);
+  long highestCreatedNodeId=createACoupleOfNodes(db,3);
+  long highestPropertyStringRecord=getHighestDynamicStringPropertyId(db);
+  db.shutdown();
+  inflateStore(NodeStore.TYPE_DESCRIPTOR,NodeStore.RECORD_SIZE,".nodestore.db");
+  inflateStore(DynamicStringStore.TYPE_DESCRIPTOR,DynamicStringStore.BLOCK_HEADER_SIZE,".nodestore.db");
+  db=(GraphDatabaseAPI)new TestGraphDatabaseFactory().setFileSystem(fs).newImpermanentDatabase(storeDir);
+  long nodeIdAfterInflation=createACoupleOfNodes(db,1);
+  long stringPropertyIdAfterInflation=getHighestDynamicStringPropertyId(db);
+  db.shutdown();
+  assertEquals(highestCreatedNodeId + 1,nodeIdAfterInflation);
+  assertEquals(highestPropertyStringRecord + 1,stringPropertyIdAfterInflation);
+}
