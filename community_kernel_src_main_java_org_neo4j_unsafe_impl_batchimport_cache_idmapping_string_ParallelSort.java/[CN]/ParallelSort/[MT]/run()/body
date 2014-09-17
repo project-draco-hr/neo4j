@@ -1,0 +1,19 @@
+{
+  int[][] sortParams=sortRadix(radixIndexCount,dataCache,tracker,threads);
+  CountDownLatch waitSignal=new CountDownLatch(1);
+  CountDownLatch doneSignal=new CountDownLatch(threads);
+  SortWorker[] sortWorker=new SortWorker[threads];
+  for (int i=0; i < threads; i++) {
+    sortWorker[i]=new SortWorker(i,sortParams[i][0],sortParams[i][1],dataCache,tracker,waitSignal,doneSignal);
+    sortWorker[i].start();
+  }
+  waitSignal.countDown();
+  try {
+    doneSignal.await();
+  }
+ catch (  InterruptedException e) {
+    throw new RuntimeException(e);
+  }
+  addIterations(-1);
+  return sortBuckets;
+}
