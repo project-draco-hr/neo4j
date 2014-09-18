@@ -1,12 +1,19 @@
 {
+  logger.info("Import starting");
   long startTime=currentTimeMillis();
   try (BatchingNeoStore neoStore=new BatchingNeoStore(fileSystem,storeDir,config,writeMonitor,logging,writerFactory)){
     IdMapper idMapper=idMapping.idMapper();
     IdGenerator idGenerator=idMapping.idGenerator();
-    NodeStage nodeStage=new NodeStage(nodes.iterator(),idMapper,idGenerator,neoStore);
     NodeRelationshipLink nodeRelationshipLink=new NodeRelationshipLinkImpl(LongArrayFactory.AUTO,config.denseNodeThreshold());
-    CalculateDenseNodesStage calculateDenseNodesStage=new CalculateDenseNodesStage(relationships.iterator(),nodeRelationshipLink);
-    executeStages(nodeStage,calculateDenseNodesStage);
+    NodeStage nodeStage=new NodeStage(nodes.iterator(),idMapper,idGenerator,neoStore);
+    CalculateDenseNodesStage calculateDenseNodesStage=new CalculateDenseNodesStage(relationships.iterator(),nodeRelationshipLink,idMapper);
+    if (idMapper.needsPreparation()) {
+      executeStages(nodeStage);
+      executeStages(calculateDenseNodesStage);
+    }
+ else {
+      executeStages(nodeStage,calculateDenseNodesStage);
+    }
     executeStages(new RelationshipStage(relationships.iterator(),idMapper,neoStore,nodeRelationshipLink));
     writerFactory.awaitEverythingWritten();
     neoStore.switchToUpdateMode();
