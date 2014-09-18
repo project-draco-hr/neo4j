@@ -1,11 +1,10 @@
 {
-  ClusterManager clusterManager=new ClusterManager(fromXml(getClass().getResource("/threeinstances.xml").toURI()),directory.cleanDirectory("slaveonly"),MapUtil.stringMap(),MapUtil.<Integer,Map<String,String>>genericMap(1,MapUtil.stringMap(HaSettings.slave_only.name(),"true"),2,MapUtil.stringMap(HaSettings.slave_only.name(),"true")));
+  final ClusterManager clusterManager=createCluster("slaveonly",1,2);
   try {
     clusterManager.start();
     ClusterManager.ManagedCluster cluster=clusterManager.getDefaultCluster();
-    cluster.await(masterAvailable(cluster.getMemberByServerId(new InstanceId(1)),cluster.getMemberByServerId(new InstanceId(2))));
-    HighlyAvailableGraphDatabase master=cluster.getMaster();
-    assertThat(cluster.getServerId(master).toIntegerIndex(),CoreMatchers.equalTo(3));
+    cluster.await(allSeesAllAsAvailable());
+    assertThat(cluster.getServerId(cluster.getMaster()),equalTo(new InstanceId(3)));
   }
   finally {
     clusterManager.stop();
