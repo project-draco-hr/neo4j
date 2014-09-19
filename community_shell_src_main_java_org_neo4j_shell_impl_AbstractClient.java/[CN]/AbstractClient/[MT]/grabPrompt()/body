@@ -3,11 +3,18 @@
   Runnable ctrlcAction=getTerminateAction();
   while (!end) {
     String command=readLine(getPrompt());
-    try (Closeable ignored=signalHandler.install(ctrlcAction)){
+    Cancelable cancelable=null;
+    try {
+      cancelable=signalHandler.install(ctrlcAction);
       evaluate(command);
     }
  catch (    Exception e) {
       printStackTrace(e);
+    }
+ finally {
+      if (cancelable != null) {
+        cancelable.cancel();
+      }
     }
   }
   this.shutdown();
