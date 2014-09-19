@@ -1,0 +1,19 @@
+{
+  NeoStore stores=db.resolveDependency(NeoStoreProvider.class).evaluate();
+  List<CountsState.Difference> differences=computeCounts(stores).verify(stores.getCountsStore());
+  if (!differences.isEmpty()) {
+    StringBuilder error=new StringBuilder();
+    for (    CountsState.Difference difference : differences) {
+      if (difference.key() instanceof CountsKey.RelationshipKey) {
+        CountsKey.RelationshipKey key=(CountsKey.RelationshipKey)difference.key();
+        if (key.startLabelId() != ReadOperations.ANY_LABEL && key.endLabelId() != ReadOperations.ANY_LABEL) {
+          continue;
+        }
+      }
+      error.append("\n\t").append(difference);
+    }
+    if (error.length() > 0) {
+      fail(error.toString());
+    }
+  }
+}

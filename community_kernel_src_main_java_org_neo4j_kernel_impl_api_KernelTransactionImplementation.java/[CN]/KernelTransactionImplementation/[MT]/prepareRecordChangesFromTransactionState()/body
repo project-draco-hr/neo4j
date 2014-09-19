@@ -9,10 +9,45 @@
         recordState.nodeDelete(id);
       }
       @Override public void visitCreatedRelationship(      long id,      int type,      long startNode,      long endNode){
+        try {
+          for (PrimitiveIntIterator labels=labelsOf(startNode); labels.hasNext(); ) {
+            int label=labels.next();
+            counts.increment(label,ANY_RELATIONSHIP_TYPE,ANY_LABEL);
+            counts.increment(label,type,ANY_LABEL);
+          }
+          for (PrimitiveIntIterator labels=labelsOf(endNode); labels.hasNext(); ) {
+            int label=labels.next();
+            counts.increment(ANY_LABEL,ANY_RELATIONSHIP_TYPE,label);
+            counts.increment(ANY_LABEL,type,label);
+          }
+        }
+ catch (        EntityNotFoundException e) {
+          throw new IllegalStateException("Nodes with added relationships should exist.",e);
+        }
         recordState.relCreate(id,type,startNode,endNode);
       }
       @Override public void visitDeletedRelationship(      long id){
+        try {
+          RelationshipDataExtractor rel=new RelationshipDataExtractor();
+          storeLayer.relationshipVisit(id,rel);
+          for (PrimitiveIntIterator labels=labelsOf(rel.startNode()); labels.hasNext(); ) {
+            int label=labels.next();
+            counts.decrement(label,ANY_RELATIONSHIP_TYPE,ANY_LABEL);
+            counts.decrement(label,rel.type(),ANY_LABEL);
+          }
+          for (PrimitiveIntIterator labels=labelsOf(rel.endNode()); labels.hasNext(); ) {
+            int label=labels.next();
+            counts.decrement(ANY_LABEL,ANY_RELATIONSHIP_TYPE,label);
+            counts.decrement(ANY_LABEL,rel.type(),label);
+          }
+        }
+ catch (        EntityNotFoundException e) {
+          throw new IllegalStateException("Relationship being deleted should exist along with its nodes.",e);
+        }
         recordState.relDelete(id);
+      }
+      private PrimitiveIntIterator labelsOf(      long nodeId) throws EntityNotFoundException {
+        return StateHandlingStatementOperations.nodeGetLabels(storeLayer,txState,nodeId);
       }
       @Override public void visitNodePropertyChanges(      long id,      Iterator<DefinedProperty> added,      Iterator<DefinedProperty> changed,      Iterator<Integer> removed){
         while (removed.hasNext()) {
@@ -53,12 +88,35 @@
           recordState.graphAddProperty(prop.propertyKeyId(),prop.value());
         }
       }
-      @Override public void visitNodeLabelChanges(      long id,      Iterator<Integer> added,      Iterator<Integer> removed){
-        while (removed.hasNext()) {
-          recordState.removeLabelFromNode(removed.next(),id);
+      @Override public void visitNodeLabelChanges(      long id,      final Set<Integer> added,      final Set<Integer> removed){
+        try {
+          if (!(added.isEmpty() && removed.isEmpty())) {
+            storeLayer.nodeVisitDegrees(id,new DegreeVisitor(){
+              @Override public void visitDegree(              int type,              int outgoing,              int incoming){
+                for (                Integer label : added) {
+                  counts.updateCountsForRelationship(label,-1,-1,outgoing);
+                  counts.updateCountsForRelationship(-1,-1,label,incoming);
+                  counts.updateCountsForRelationship(label,type,-1,outgoing);
+                  counts.updateCountsForRelationship(-1,type,label,incoming);
+                }
+                for (                Integer label : removed) {
+                  counts.updateCountsForRelationship(label,-1,-1,-outgoing);
+                  counts.updateCountsForRelationship(-1,-1,label,-incoming);
+                  counts.updateCountsForRelationship(label,type,-1,-outgoing);
+                  counts.updateCountsForRelationship(-1,type,label,-incoming);
+                }
+              }
+            }
+);
+          }
         }
-        while (added.hasNext()) {
-          recordState.addLabelToNode(added.next(),id);
+ catch (        EntityNotFoundException e) {
+        }
+        for (        Integer label : removed) {
+          recordState.removeLabelFromNode(label,id);
+        }
+        for (        Integer label : added) {
+          recordState.addLabelToNode(label,id);
         }
       }
       @Override public void visitAddedIndex(      IndexDescriptor element,      boolean isConstraintIndex){
