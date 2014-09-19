@@ -1,0 +1,24 @@
+{
+  HighlyAvailableGraphDatabase master=cluster.getMaster();
+  Node theNode;
+  try (Transaction tx=master.beginTx()){
+    theNode=master.createNode(label("TheNode"));
+    tx.success();
+  }
+   cluster.sync();
+  HighlyAvailableGraphDatabase slave=cluster.getAnySlave();
+  RepairKit repairKit=cluster.fail(slave);
+  try (Transaction tx=master.beginTx()){
+    for (int i=0; i < TEST_NODE_COUNT; i++) {
+      master.createNode(label("Node" + i));
+    }
+    tx.success();
+  }
+   cluster.sync();
+  repairKit.repair();
+  try (Transaction tx=slave.beginTx()){
+    slave.getNodeById(theNode.getId()).addLabel(label("42"));
+    tx.success();
+  }
+   assertEquals(1 + TEST_NODE_COUNT,nodeCountOn(slave));
+}
