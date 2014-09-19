@@ -1,12 +1,23 @@
 {
-  RunnablePageCache pageCache=simplePageCacheFactory.createPageCache(numberOfCachePages,cachePageSize,monitor);
-  Thread thread=new Thread(pageCache);
-  thread.start();
+  RunnablePageCache pageCacheUnderTest=new MuninnPageCache(new DefaultFileSystemAbstraction(),numberOfCachePages,cachePageSize,monitor);
+  RunnablePageCache pageCacheKeepingCount=new MuninnPageCache(new DefaultFileSystemAbstraction(),numberOfCachePages,cachePageSize,monitor);
+  Thread thread1=new Thread(pageCacheUnderTest);
+  Thread thread2=new Thread(pageCacheKeepingCount);
+  thread1.start();
+  thread2.start();
   try {
-    pageCacheStresser.stress(pageCache,condition);
+    File file=Files.createTempFile("pagecachestresstest",".bin").toFile();
+    file.deleteOnExit();
+    PagedFile pagedFile=pageCacheKeepingCount.map(file,recordsPerPage * numberOfThreads * SizeOfCounter);
+    CountKeeperFactory countKeeperFactory=new CountKeeperFactory(pagedFile,recordsPerPage,numberOfThreads);
+    PageCacheStresser pageCacheStresser=new PageCacheStresser(numberOfPages,recordsPerPage,numberOfThreads);
+    pageCacheStresser.stress(pageCacheUnderTest,condition,countKeeperFactory);
+    pageCacheKeepingCount.unmap(file);
   }
   finally {
-    thread.interrupt();
-    thread.join();
+    thread1.interrupt();
+    thread2.interrupt();
+    thread1.join();
+    thread2.join();
   }
 }
