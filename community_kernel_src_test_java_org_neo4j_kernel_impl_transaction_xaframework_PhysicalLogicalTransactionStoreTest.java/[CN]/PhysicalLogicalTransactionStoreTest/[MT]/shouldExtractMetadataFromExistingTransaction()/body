@@ -19,7 +19,7 @@
   }
   life=new LifeSupport();
   final AtomicInteger recoveredTransactions=new AtomicInteger();
-  logFile=life.add(new PhysicalLogFile(fs,logFiles,1000,NO_PRUNING,transactionIdStore,mock(LogVersionRepository.class),monitor,logRotationControl,positionCache,new LogFileRecoverer(new VersionAwareLogEntryReader(),new Visitor<CommittedTransactionRepresentation,IOException>(){
+  final LogFileRecoverer recoverer=new LogFileRecoverer(new LogEntryReaderFactory().versionable(),new Visitor<CommittedTransactionRepresentation,IOException>(){
     @Override public boolean visit(    CommittedTransactionRepresentation committedTx) throws IOException {
       TransactionRepresentation transaction=committedTx.getTransactionRepresentation();
       assertArrayEquals(additionalHeader,transaction.additionalHeader());
@@ -32,7 +32,8 @@
       return true;
     }
   }
-)));
+);
+  logFile=life.add(new PhysicalLogFile(fs,logFiles,1000,NO_PRUNING,transactionIdStore,mock(LogVersionRepository.class),monitor,logRotationControl,positionCache,recoverer));
   LogicalTransactionStore store=life.add(new PhysicalLogicalTransactionStore(logFile,txIdGenerator,positionCache,transactionIdStore,BYPASS,true));
   life.start();
   try {

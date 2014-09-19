@@ -2,7 +2,7 @@
   return aggregateLogData(new Extractor(){
     @Override public int extract(    File from) throws IOException {
       final AtomicInteger counter=new AtomicInteger();
-      LogFileRecoverer reader=new LogFileRecoverer(new VersionAwareLogEntryReader(),new Visitor<CommittedTransactionRepresentation,IOException>(){
+      LogFileRecoverer reader=new LogFileRecoverer(new LogEntryReaderFactory().versionable(),new Visitor<CommittedTransactionRepresentation,IOException>(){
         @Override public boolean visit(        CommittedTransactionRepresentation element) throws IOException {
           counter.incrementAndGet();
           return true;
@@ -18,7 +18,7 @@
       StoreChannel storeChannel=fs.open(from,"r");
       PhysicalLogVersionedStoreChannel versionedStoreChannel=new PhysicalLogVersionedStoreChannel(storeChannel,-1,CURRENT_LOG_VERSION);
       versionedStoreChannel.position(LOG_HEADER_SIZE);
-      try (ReadableLogChannel channel=new ReadAheadLogChannel(versionedStoreChannel,bridge,1000)){
+      try (ReadableVersionableLogChannel channel=new ReadAheadLogChannel(versionedStoreChannel,bridge,1000)){
         reader.visit(channel);
       }
        return counter.get();
