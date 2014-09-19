@@ -1,20 +1,18 @@
 {
-  if (this.action != null) {
+  if (!actionRef.compareAndSet(null,action)) {
     throw new RuntimeException("An action has already been registered");
   }
-  this.action=action;
   final SignalHandler oldHandler=Signal.handle(signal,this);
   final InterruptSignalHandler self=this;
-  return new Closeable(){
-    @Override public void close() throws IOException {
+  return new Cancelable(){
+    @Override public void cancel(){
       SignalHandler handle=Signal.handle(signal,oldHandler);
       if (self != handle) {
-        throw new RuntimeException("Error uninstalling ShellSignalHandler: another handler interjected in the " + "mean time");
+        throw new RuntimeException("Error uninstalling ShellSignalHandler: " + "another handler interjected in the mean time");
       }
-      if (self.action != action) {
+      if (!self.actionRef.compareAndSet(action,null)) {
         throw new RuntimeException("Popping a action that has not been pushed before");
       }
-      self.action=null;
     }
   }
 ;
