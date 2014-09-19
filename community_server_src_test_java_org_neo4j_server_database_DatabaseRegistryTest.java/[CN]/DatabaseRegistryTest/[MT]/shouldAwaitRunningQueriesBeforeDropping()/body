@@ -1,14 +1,14 @@
 {
-  DatabaseRegistry registry=newRegistryWithEmbeddedProvider();
-  registry.create(new DatabaseDefinition("northwind",EMBEDDED,DatabaseHosting.Mode.EXTERNAL,new Config()));
-  CountDownLatch visitingDbLatch=new CountDownLatch(1);
-  threadOne.execute(visitAndAwaitLatch("northwind",registry,visitingDbLatch));
-  Future<Object> threadTwoCompletion=threadTwo.execute(drop("northwind",registry));
+  final CountDownLatch visitingDbLatch=new CountDownLatch(1);
+  final CountDownLatch doneVisitingLatch=new CountDownLatch(1);
+  threadOne.execute(visitAndAwaitLatch(NORTH_WIND,registry,visitingDbLatch,doneVisitingLatch));
+  visitingDbLatch.await();
+  Future<Object> threadTwoCompletion=threadTwo.execute(drop(NORTH_WIND,registry));
   Thread.sleep(100);
-  verify(northwind,never()).stop();
-  verify(northwind,never()).shutdown();
-  visitingDbLatch.countDown();
+  verify(database,never()).stop();
+  verify(database,never()).shutdown();
+  doneVisitingLatch.countDown();
   threadTwoCompletion.get(10,TimeUnit.SECONDS);
-  verify(northwind).stop();
-  verify(northwind).shutdown();
+  verify(database).stop();
+  verify(database).shutdown();
 }
