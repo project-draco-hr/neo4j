@@ -1,3 +1,14 @@
 {
-  shouldImportCsvData0(SYNCHRONOUS);
+  final BatchImporter inserter=new ParallelBatchImporter(directory.absolutePath(),new DefaultFileSystemAbstraction(),config,new DevNullLoggingService(),new SilentExecutionMonitor(),writerFactory);
+  inserter.doImport(nodes(NODE_COUNT),relationships(RELATIONSHIP_COUNT,NODE_COUNT),IdMappings.actual());
+  inserter.shutdown();
+  GraphDatabaseService db=new GraphDatabaseFactory().newEmbeddedDatabase(directory.absolutePath());
+  try (Transaction tx=db.beginTx()){
+    verifyData(NODE_COUNT,db);
+    tx.success();
+  }
+  finally {
+    db.shutdown();
+  }
+  assertConsistent(directory.absolutePath());
 }

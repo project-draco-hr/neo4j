@@ -1,19 +1,21 @@
 {
-  ExecutorService executor=mock(ExecutorService.class);
-  JobMonitor jobMonitor=new JobMonitor();
-  WriteQueue queue=new WriteQueue(executor,jobMonitor);
   assertFalse(jobMonitor.hasActiveJobs());
-  WriteJob job1=mock(WriteJob.class);
-  WriteJob job2=mock(WriteJob.class);
-  queue.offer(job1);
-  queue.offer(job2);
-  assertArrayEquals(new WriteJob[]{job1,job2},queue.drain());
-  verify(executor,times(1)).submit(any(Callable.class));
-  reset(executor);
+  queue.offer(JOB1);
+  queue.offer(JOB2);
   assertTrue(jobMonitor.hasActiveJobs());
-  WriteJob job3=mock(WriteJob.class);
-  queue.offer(job3);
-  assertArrayEquals(new WriteJob[]{job3},queue.drain());
-  verify(executor,times(1)).submit(any(Callable.class));
+  verify(executor,times(1)).submit(queue);
+  queue.call();
+  verify(JOB1,times(1)).execute();
+  verify(JOB2,times(1)).execute();
+  verify(JOB3,never()).execute();
+  assertFalse(jobMonitor.hasActiveJobs());
+  reset(executor,JOB1,JOB2,JOB3);
+  queue.offer(JOB3);
   assertTrue(jobMonitor.hasActiveJobs());
+  verify(executor,times(1)).submit(queue);
+  queue.call();
+  verify(JOB1,never()).execute();
+  verify(JOB2,never()).execute();
+  verify(JOB3,times(1)).execute();
+  assertFalse(jobMonitor.hasActiveJobs());
 }
