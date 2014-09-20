@@ -1,0 +1,17 @@
+{
+  this.pageCache=pageCache;
+  this.pageSize=pageSize;
+  this.freelist=pageFreelist;
+  this.cursorPool=cursorPool;
+  this.monitor=monitor;
+  translationTables=new PrimitiveLongObjectMap[translationTableStripeLevel];
+  translationTableLocks=new StampedLock[translationTableStripeLevel];
+  for (int i=0; i < translationTableStripeLevel; i++) {
+    translationTables[i]=Primitive.longObjectMap(32);
+    translationTableLocks[i]=new StampedLock();
+  }
+  PageEvictionCallback onEviction=new MuninnPageEvictionCallback(translationTables,translationTableLocks);
+  swapper=new MonitoredPageSwapper(swapperFactory.createPageSwapper(file,pageSize,onEviction),monitor);
+  flusher=new PageFlusher(swapper);
+  initialiseLastPageId(swapper.getLastPageId());
+}
