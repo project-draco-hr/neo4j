@@ -1,0 +1,24 @@
+{
+  GraphDatabaseFactoryState state=new GraphDatabaseFactoryState();
+  state.setCacheProviders(asList((CacheProvider)new NoCacheProvider()));
+  return new EmbeddedGraphDatabase(storeLocation.absolutePath(),stringMap(cache_type.name(),NoCacheProvider.NAME),state.databaseDependencies()){
+    @Override protected TransactionCounters createTransactionCounters(){
+      return new TransactionCounters(){
+        public boolean skip;
+        @Override public void transactionFinished(        boolean successful){
+          super.transactionFinished(successful);
+          if (successful) {
+            if (skip) {
+              return;
+            }
+            skip=true;
+            signalFirstTransactionStartedPushing();
+            waitForSecondTransactionToFinish();
+          }
+        }
+      }
+;
+    }
+  }
+;
+}
