@@ -1,0 +1,31 @@
+{
+  long defraggedCount=0;
+  ByteBuffer byteBuffer=ByteBuffer.allocate(recordSize);
+  LinkedList<Long> freeIdList=new LinkedList<Long>();
+  for (long i=getNumberOfReservedLowIds(); i * recordSize < fileSize; i++) {
+    fileChannel.position(i * recordSize);
+    byteBuffer.clear();
+    fileChannel.read(byteBuffer);
+    byteBuffer.flip();
+    if (!isRecordInUse(byteBuffer)) {
+      if (justReserveIds) {
+        byteBuffer.clear();
+        byteBuffer.put(Record.IN_USE.byteValue()).putInt(Record.RESERVED.intValue());
+        byteBuffer.flip();
+        fileChannel.write(byteBuffer,i * recordSize);
+        byteBuffer.clear();
+      }
+ else {
+        freeIdList.add(i);
+      }
+    }
+ else {
+      setHighId(i + 1);
+      while (!freeIdList.isEmpty()) {
+        freeId(freeIdList.removeFirst());
+        defraggedCount++;
+      }
+    }
+  }
+  return defraggedCount;
+}
