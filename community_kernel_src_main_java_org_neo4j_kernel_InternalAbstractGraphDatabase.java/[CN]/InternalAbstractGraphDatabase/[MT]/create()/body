@@ -1,11 +1,11 @@
 {
-  this.kernelExtensions=new KernelExtensions(kernelExtensionFactories,config,getDependencyResolver(),fail());
+  this.kernelExtensions=new KernelExtensions(dependencies.kernelExtensions(),config,getDependencyResolver(),fail());
   availabilityGuard=new AvailabilityGuard(Clock.SYSTEM_CLOCK);
   fileSystem=createFileSystemAbstraction();
   if (this.logging == null) {
     this.logging=createLogging();
   }
-  this.monitors=createMonitors();
+  if (this.monitors == null)   this.monitors=createMonitors();
   storeMigrationProcess=new StoreUpgrader(createUpgradeConfiguration(),fileSystem,monitors.newMonitor(StoreUpgrader.Monitor.class),logging);
   Map<String,String> configParams=config.getParams();
   config.applyChanges(configParams);
@@ -29,6 +29,12 @@
   kernelEventHandlers=new KernelEventHandlers(logging.getMessagesLog(KernelEventHandlers.class));
   caches=createCaches();
   diagnosticsManager=life.add(new DiagnosticsManager(logging.getMessagesLog(DiagnosticsManager.class)));
+  monitors.addMonitorListener(new RollingLogMonitor(){
+    @Override public void rolledOver(){
+      diagnosticsManager.dumpAll();
+    }
+  }
+);
   kernelPanicEventGenerator=new KernelPanicEventGenerator(kernelEventHandlers);
   kernelHealth=new KernelHealth(kernelPanicEventGenerator,logging);
   dataSourceManager=life.add(new DataSourceManager());
