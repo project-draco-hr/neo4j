@@ -1,17 +1,15 @@
 {
-  Locks localLockManager=mock(Locks.class);
+  Locks lockManager=mock(Locks.class);
   master=mock(Master.class);
   local=mock(Locks.Client.class);
   when(local.tryExclusiveLock(any(Locks.ResourceType.class),any(long.class))).thenReturn(true);
   when(local.trySharedLock(any(Locks.ResourceType.class),any(long.class))).thenReturn(true);
-  when(localLockManager.newClient()).thenReturn(local);
+  when(lockManager.newClient()).thenReturn(local);
   RequestContextFactory requestContextFactory=mock(RequestContextFactory.class);
-  when(master.acquireSharedLock(Matchers.<RequestContext>any(),Matchers.<Locks.ResourceType>any(),Matchers.<long[]>anyVararg())).thenReturn(new Response<>(new LockResult(LockStatus.OK_LOCKED),null,TransactionStream.EMPTY,ResourceReleaser.NO_OP));
-  when(master.acquireExclusiveLock(Matchers.<RequestContext>anyObject(),Matchers.<Locks.ResourceType>any(),Matchers.<long[]>anyVararg())).thenReturn(new Response<>(new LockResult(LockStatus.OK_LOCKED),null,TransactionStream.EMPTY,ResourceReleaser.NO_OP));
+  when(master.acquireSharedLock(any(RequestContext.class),any(Locks.ResourceType.class),Matchers.<long[]>anyVararg())).thenReturn(new Response<>(new LockResult(LockStatus.OK_LOCKED),null,TransactionStream.EMPTY,ResourceReleaser.NO_OP));
+  when(master.acquireExclusiveLock(any(RequestContext.class),any(Locks.ResourceType.class),Matchers.<long[]>anyVararg())).thenReturn(new Response<>(new LockResult(LockStatus.OK_LOCKED),null,TransactionStream.EMPTY,ResourceReleaser.NO_OP));
   AvailabilityGuard availabilityGuard=mock(AvailabilityGuard.class);
   when(availabilityGuard.isAvailable(anyLong())).thenReturn(true);
   SlaveLockManager.Configuration config=mock(SlaveLockManager.Configuration.class);
-  TransactionCommittingResponseUnpacker unpacker=mock(TransactionCommittingResponseUnpacker.class);
-  when(unpacker.unpackResponse(Matchers.<Response>any())).thenReturn(new LockResult(LockStatus.OK_LOCKED));
-  client=new SlaveLocksClient(master,local,localLockManager,requestContextFactory,availabilityGuard,unpacker,config);
+  client=new SlaveLocksClient(master,local,lockManager,requestContextFactory,availabilityGuard,config);
 }

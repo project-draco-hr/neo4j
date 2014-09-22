@@ -1,8 +1,8 @@
 {
-  executor=Executors.newCachedThreadPool(new NamedThreadFactory(getClass().getSimpleName() + "@" + address));
+  executor=Executors.newCachedThreadPool(named(getClass().getSimpleName() + "@" + address));
   bootstrap=new ClientBootstrap(new NioClientSocketChannelFactory(executor,executor));
   bootstrap.setPipelineFactory(this);
-  channelPool=new ResourcePool<Triplet<Channel,ChannelBuffer,ByteBuffer>>(maxUnusedChannels,new ResourcePool.CheckStrategy.TimeoutCheckStrategy(ResourcePool.DEFAULT_CHECK_INTERVAL,SYSTEM_CLOCK),new LoggingResourcePoolMonitor(msgLog)){
+  channelPool=new ResourcePool<Triplet<Channel,ChannelBuffer,ByteBuffer>>(maxUnusedChannels,new ResourcePool.CheckStrategy.TimeoutCheckStrategy(DEFAULT_CHECK_INTERVAL,SYSTEM_CLOCK),new LoggingResourcePoolMonitor(msgLog)){
     @Override protected Triplet<Channel,ChannelBuffer,ByteBuffer> create(){
       ChannelFuture channelFuture=bootstrap.connect(address);
       channelFuture.awaitUninterruptibly(5,TimeUnit.SECONDS);
@@ -14,8 +14,7 @@
       }
       String msg=Client.this.getClass().getSimpleName() + " could not connect to " + address;
       msgLog.logMessage(msg,true);
-      ComException exception=new ComException(msg);
-      throw exception;
+      throw new ComException(msg);
     }
     @Override protected boolean isAlive(    Triplet<Channel,ChannelBuffer,ByteBuffer> resource){
       return resource.first().isConnected();
@@ -23,7 +22,7 @@
     @Override protected void dispose(    Triplet<Channel,ChannelBuffer,ByteBuffer> resource){
       Channel channel=resource.first();
       if (channel.isConnected()) {
-        msgLog.debug("Closing channel: " + channel + ". Channel pool size is now "+ channelPool.currentSize());
+        msgLog.debug("Closing channel: " + channel + ". Channel pool size is now "+ currentSize());
         channel.close();
       }
     }

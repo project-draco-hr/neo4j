@@ -1,10 +1,10 @@
 {
   boolean success=true;
-  Triplet<Channel,ChannelBuffer,ByteBuffer> channelContext=null;
+  Triplet<Channel,ChannelBuffer,ByteBuffer> channelContext;
   Throwable failure=null;
-  Channel channel=null;
-  ChannelBuffer output=null;
-  ByteBuffer input=null;
+  Channel channel;
+  ChannelBuffer output;
+  ByteBuffer input;
   try {
     channelContext=getChannel(type);
     channel=channelContext.first();
@@ -15,13 +15,12 @@
     throw Exceptions.launderedException(ComException.class,e);
   }
   try {
-    Map<String,String> requestContext=new HashMap<>();
-    requestContext.put("type",type.toString());
-    requestContext.put("slaveContext",context.toString());
-    requestContext.put("serverAddress",channel.getRemoteAddress().toString());
-    requestMonitor.beginRequest(requestContext);
+    notifyRequestMonitor(type,context,channel);
     protocol.serializeRequest(channel,output,type,context,serializer);
     @SuppressWarnings("unchecked") Response<R> response=protocol.deserializeResponse((BlockingReadHandler<ChannelBuffer>)channel.getPipeline().get("blockingHandler"),input,getReadTimeout(type,readTimeout),deserializer,resourcePoolReleaser);
+    if (type.responseShouldBeUnpacked()) {
+      responseUnpacker.unpackResponse(response);
+    }
     if (shouldCheckStoreId(type)) {
       if (specificStoreId != null) {
         assertCorrectStoreId(response.getStoreId(),specificStoreId);

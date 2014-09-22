@@ -1,0 +1,22 @@
+{
+  MasterImpl master=spy(newMasterImpl(mockMasterImplSpiWith(StoreId.DEFAULT)));
+  doReturn(voidResponseWithTransactionLogs()).when(master).newLockSession(any(RequestContext.class));
+  cleanupRule.add(newMasterServer(master));
+  DependencyResolver resolver=mock(DependencyResolver.class);
+  LogicalTransactionStore txStore=mock(LogicalTransactionStore.class);
+  TransactionRepresentationStoreApplier txApplier=mock(TransactionRepresentationStoreApplier.class);
+  TransactionIdStore txIdStore=mock(TransactionIdStore.class);
+  TransactionAppender txAppender=mock(TransactionAppender.class);
+  when(resolver.resolveDependency(LogicalTransactionStore.class)).thenReturn(txStore);
+  when(resolver.resolveDependency(TransactionRepresentationStoreApplier.class)).thenReturn(txApplier);
+  when(resolver.resolveDependency(TransactionIdStore.class)).thenReturn(txIdStore);
+  when(txAppender.append(any(CommittedTransactionRepresentation.class))).thenReturn(true);
+  when(txStore.getAppender()).thenReturn(txAppender);
+  ResponseUnpacker unpacker=initAndStart(new TransactionCommittingResponseUnpacker(resolver,NO_OP_TX_HANDLER));
+  MasterClient masterClient=cleanupRule.add(newMasterClient214(StoreId.DEFAULT,unpacker));
+  masterClient.newLockSession(new RequestContext(1,2,3,4,5,6));
+  verify(txAppender,times(TX_LOG_COUNT)).append(any(CommittedTransactionRepresentation.class));
+  verify(txIdStore,times(TX_LOG_COUNT)).transactionCommitted(anyLong());
+  verify(txApplier,times(TX_LOG_COUNT)).apply(any(TransactionRepresentation.class),any(LockGroup.class),anyLong(),anyBoolean());
+  verify(txIdStore,times(TX_LOG_COUNT)).transactionClosed(anyLong());
+}

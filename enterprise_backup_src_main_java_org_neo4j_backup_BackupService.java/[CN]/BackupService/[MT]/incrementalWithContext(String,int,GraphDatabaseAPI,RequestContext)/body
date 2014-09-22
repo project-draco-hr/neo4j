@@ -1,43 +1,35 @@
 {
   DependencyResolver resolver=targetDb.getDependencyResolver();
-  Monitors monitors=resolver.resolveDependency(Monitors.class);
-  BackupClient client=new BackupClient(sourceHostNameOrIp,sourcePort,resolver.resolveDependency(Logging.class),targetDb.storeId(),monitors.newMonitor(ByteCounterMonitor.class,BackupClient.class),monitors.newMonitor(RequestMonitor.class,BackupClient.class));
-  client.start();
-  boolean consistent=false;
   ProgressTxHandler handler=new ProgressTxHandler();
+  TransactionCommittingResponseUnpacker unpacker=new TransactionCommittingResponseUnpacker(resolver,handler);
+  Monitors monitors=resolver.resolveDependency(Monitors.class);
+  BackupClient client=new BackupClient(sourceHostNameOrIp,sourcePort,resolver.resolveDependency(Logging.class),targetDb.storeId(),unpacker,monitors.newMonitor(ByteCounterMonitor.class,BackupClient.class),monitors.newMonitor(RequestMonitor.class,BackupClient.class));
+  boolean consistent=false;
   try {
-    Response<Void> response=client.incrementalBackup(context);
-    TransactionCommittingResponseUnpacker unpacker=new TransactionCommittingResponseUnpacker(resolver);
+    client.start();
     unpacker.start();
-    unpacker.unpackResponse(response,handler);
+    unpacker.unpackResponse(client.incrementalBackup(context));
     consistent=true;
   }
  catch (  MismatchingStoreIdException e) {
     throw new RuntimeException(DIFFERENT_STORE,e);
   }
-catch (  RuntimeException e) {
+catch (  RuntimeException|IOException e) {
     if (e.getCause() != null && e.getCause() instanceof MissingLogDataException) {
       throw new IncrementalBackupNotPossibleException(TOO_OLD_BACKUP,e.getCause());
     }
     throw new RuntimeException("Failed to perform incremental backup.",e);
   }
-catch (  IOException e) {
-    throw new RuntimeException("Failed to perform incremental backup.",e);
-  }
 catch (  Throwable throwable) {
-    throw new RuntimeException(throwable);
+    throw new RuntimeException("Unexpected error",throwable);
   }
  finally {
     try {
       client.stop();
+      unpacker.stop();
     }
  catch (    Throwable throwable) {
-      if (consistent) {
-        logger.warn("Unable to stop backup client",throwable);
-      }
- else {
-        throw new RuntimeException("Unable to stop backup client",throwable);
-      }
+      logger.warn("Unable to stop backup client",throwable);
     }
   }
   return new BackupOutcome(handler.getLastSeenTransactionId(),consistent);

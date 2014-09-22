@@ -1,11 +1,12 @@
 {
   final DelegateInvocationHandler<TransactionCommitProcess> commitProcessDelegate=new DelegateInvocationHandler<>(TransactionCommitProcess.class);
-  slaves=dependencies.satisfyDependency(life.add(new HighAvailabilitySlaves(members,clusterClient,this.slaveFactory=dependencies.satisfyDependency(new DefaultSlaveFactory(logging,monitors,config.get(HaSettings.com_chunk_size).intValue())))));
+  DefaultSlaveFactory slaveFactory=dependencies.satisfyDependency(new DefaultSlaveFactory(logging,monitors,config.get(HaSettings.com_chunk_size).intValue()));
+  Slaves slaves=dependencies.satisfyDependency(life.add(new HighAvailabilitySlaves(members,clusterClient,slaveFactory)));
   final TransactionPropagator pusher=life.add(new TransactionPropagator(TransactionPropagator.from(config),msgLog,slaves,new CommitPusher(jobScheduler)));
   return new CommitProcessFactory(){
     @Override public TransactionCommitProcess create(    LogicalTransactionStore logicalTransactionStore,    KernelHealth kernelHealth,    NeoStore neoStore,    TransactionRepresentationStoreApplier storeApplier,    NeoStoreInjectedTransactionValidator validator,    boolean recovery){
       TransactionRepresentationCommitProcess inner=(TransactionRepresentationCommitProcess)defaultCommitProcessFactory.create(logicalTransactionStore,kernelHealth,neoStore,storeApplier,validator,recovery);
-      new CommitProcessSwitcher(pusher,master,commitProcessDelegate,requestContextFactory,memberStateMachine,unpacker,validator,inner);
+      new CommitProcessSwitcher(pusher,master,commitProcessDelegate,requestContextFactory,memberStateMachine,validator,inner);
       return (TransactionCommitProcess)Proxy.newProxyInstance(TransactionCommitProcess.class.getClassLoader(),new Class[]{TransactionCommitProcess.class},commitProcessDelegate);
     }
   }
