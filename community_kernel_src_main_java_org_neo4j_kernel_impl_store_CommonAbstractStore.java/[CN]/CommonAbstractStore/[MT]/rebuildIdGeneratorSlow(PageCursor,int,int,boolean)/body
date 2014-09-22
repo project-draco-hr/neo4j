@@ -1,0 +1,31 @@
+{
+  long defragCount=0;
+  long[] freedBatch=new long[recordsPerPage];
+  int startingId=getNumberOfReservedLowIds();
+  int defragged;
+  while (cursor.next()) {
+    long idPageOffset=(cursor.getCurrentPageId() * recordsPerPage);
+    do {
+      defragged=0;
+      for (int i=startingId; i < recordsPerPage; i++) {
+        cursor.setOffset(i * blockSize);
+        long recordId=idPageOffset + i;
+        if (!isRecordInUse(cursor)) {
+          freedBatch[defragged]=recordId;
+          defragged++;
+        }
+      }
+    }
+ while (cursor.shouldRetry());
+    setHighId(idPageOffset + recordsPerPage);
+    for (int i=0; i < defragged; i++) {
+      long freedId=freedBatch[i];
+      if (!justReserveIds) {
+        freeId(freedId);
+      }
+    }
+    defragCount+=defragged;
+    startingId=0;
+  }
+  return defragCount;
+}
