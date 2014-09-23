@@ -1,0 +1,16 @@
+{
+  try (PageCursor cursor=pages.io(0,PF_SHARED_LOCK | PF_NO_GROW | PF_READ_AHEAD)){
+    int record=0;
+    while (cursor.next()) {
+      for (int offset=(cursor.getCurrentPageId() == 0 ? header.headerRecords() : 0) * RECORD_SIZE; offset < pages.pageSize(); offset+=RECORD_SIZE) {
+        if (record++ >= totalRecords) {
+          return;
+        }
+        visitRecord(cursor,offset,visitor);
+      }
+    }
+  }
+ catch (  IOException e) {
+    throw new UnderlyingStorageException(e);
+  }
+}

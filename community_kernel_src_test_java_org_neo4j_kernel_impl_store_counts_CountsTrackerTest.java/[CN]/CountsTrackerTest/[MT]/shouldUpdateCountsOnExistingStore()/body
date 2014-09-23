@@ -1,0 +1,22 @@
+{
+  CountsTracker.createEmptyCountsStore(pageCache(),storeFile(),VERSION);
+  CountsOracle oracle=oracle();
+  try (CountsTracker tracker=new CountsTracker(fs.get(),pageCache(),storeFile())){
+    oracle.update(tracker);
+    tracker.rotate(1);
+    CountsOracle delta=new CountsOracle();
+{
+      CountsOracle.Node n1=delta.node(1);
+      CountsOracle.Node n2=delta.node(1,4);
+      delta.relationship(n1,1,n2);
+      delta.relationship(n2,2,n1);
+    }
+    delta.update(tracker);
+    delta.update(oracle);
+    oracle.verify(tracker);
+    tracker.rotate(2);
+  }
+   try (CountsTracker tracker=new CountsTracker(fs.get(),pageCache(),storeFile())){
+    oracle.verify(tracker);
+  }
+ }

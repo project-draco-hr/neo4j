@@ -1,0 +1,12 @@
+{
+  try (LockWrapper _=new LockWrapper(updateLock.writeLock())){
+    State state=this.state;
+    if (state.hasChanges()) {
+      try (CountsStore.Writer writer=nextWriter(state,lastCommittedTxId)){
+        state.accept(writer);
+        this.state=new ConcurrentTrackerState(writer.openForReading());
+      }
+       state.close();
+    }
+  }
+ }

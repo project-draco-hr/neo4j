@@ -1,0 +1,60 @@
+{
+class InstrumentedCountsTracker extends CountsTracker {
+    private final Barrier barrier;
+    InstrumentedCountsTracker(    FileSystemAbstraction fs,    PageCache pageCache,    File storeFileBase,    Barrier barrier){
+      super(fs,pageCache,storeFileBase);
+      this.barrier=barrier;
+    }
+    @Override CountsStore.Writer nextWriter(    State state,    long lastCommittedTxId) throws IOException {
+      final CountsStore.Writer writer=super.nextWriter(state,lastCommittedTxId);
+      return new CountsStore.Writer(){
+        @Override public CountsStore openForReading() throws IOException {
+          barrier.reached();
+          return writer.openForReading();
+        }
+        @Override public void close() throws IOException {
+          writer.close();
+        }
+        @Override public void visit(        CountsKey key,        long value){
+          writer.visit(key,value);
+        }
+      }
+;
+    }
+  }
+  CountsTracker.createEmptyCountsStore(pageCache(),storeFile(),VERSION);
+  CountsOracle oracle=oracle();
+  try (CountsTracker tracker=new CountsTracker(fs.get(),pageCache(),storeFile())){
+    oracle.update(tracker);
+    tracker.rotate(1);
+  }
+   final CountsOracle delta=new CountsOracle();
+{
+    CountsOracle.Node n1=delta.node(1);
+    CountsOracle.Node n2=delta.node(1,4);
+    delta.relationship(n1,1,n2);
+    delta.relationship(n2,2,n1);
+  }
+  delta.update(oracle);
+  Barrier.Control barrier=new Barrier.Control();
+  try (InstrumentedCountsTracker tracker=new InstrumentedCountsTracker(fs.get(),pageCache(),storeFile(),barrier)){
+    Future<Void> task=threading.execute(new Function<CountsTracker,Void>(){
+      @Override public Void apply(      CountsTracker tracker){
+        try {
+          delta.update(tracker);
+          tracker.rotate(2);
+        }
+ catch (        IOException e) {
+          throw new AssertionError(e);
+        }
+        return null;
+      }
+    }
+,tracker);
+    barrier.await();
+    oracle.verify(tracker);
+    barrier.release();
+    task.get();
+    oracle.verify(tracker);
+  }
+ }
