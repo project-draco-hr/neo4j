@@ -1,0 +1,25 @@
+{
+  if (command.getSchemaRule() instanceof IndexRule) {
+switch (command.getMode()) {
+case UPDATE:
+      if (((IndexRule)command.getSchemaRule()).isConstraintIndex()) {
+        try {
+          indexingService.activateIndex(command.getSchemaRule().getId());
+        }
+ catch (        IndexNotFoundKernelException|IndexActivationFailedKernelException|IndexPopulationFailedKernelException e) {
+          throw new IllegalStateException("Unable to enable constraint, backing index is not online.",e);
+        }
+      }
+    break;
+case CREATE:
+  indexingService.createIndex((IndexRule)command.getSchemaRule());
+break;
+case DELETE:
+indexingService.dropIndex((IndexRule)command.getSchemaRule());
+break;
+default :
+throw new IllegalStateException(command.getMode().name());
+}
+}
+return true;
+}
