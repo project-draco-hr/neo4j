@@ -1,8 +1,23 @@
 {
-  try {
-    return findHighIdBackwards(storeFile);
+  try (PageCursor cursor=storeFile.io(0,PF_SHARED_LOCK)){
+    long lastPageId=storeFile.getLastPageId();
+    long nextPageId=lastPageId;
+    int recordsPerPage=recordsPerPage();
+    int recordSize=getRecordSize();
+    while (nextPageId >= 0 && cursor.next(nextPageId)) {
+      nextPageId--;
+      do {
+        int currentRecord=recordsPerPage;
+        while (currentRecord-- > 0) {
+          cursor.setOffset(currentRecord * recordSize);
+          long recordId=(cursor.getCurrentPageId() * recordsPerPage) + currentRecord;
+          if (isRecordInUse(cursor)) {
+            return recordId + 1;
+          }
+        }
+      }
+ while (cursor.shouldRetry());
+    }
+    return getNumberOfReservedLowIds();
   }
- catch (  IOException e) {
-    throw new UnderlyingStorageException("Unable to find high id by scanning backwards " + getStorageFileName(),e);
-  }
-}
+ }
