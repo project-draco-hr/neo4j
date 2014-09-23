@@ -6,6 +6,17 @@
  catch (    IllegalStateException|SecurityException e) {
       throw new TransactionFailureException(Status.Transaction.CouldNotRollback,e,"Could not drop created constraint indexes");
     }
+    if (txState != null) {
+      txState.accept(new TxState.VisitorAdapter(){
+        @Override public void visitCreatedNode(        long id){
+          storeLayer.releaseNode(id);
+        }
+        @Override public void visitCreatedRelationship(        long id,        int type,        long startNode,        long endNode){
+          storeLayer.releaseRelationship(id);
+        }
+      }
+);
+    }
     if (hasTxStateWithChanges()) {
       persistenceCache.invalidate(txState);
     }
