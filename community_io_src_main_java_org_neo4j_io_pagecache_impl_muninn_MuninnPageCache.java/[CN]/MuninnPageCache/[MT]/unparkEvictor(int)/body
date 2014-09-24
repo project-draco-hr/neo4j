@@ -1,0 +1,24 @@
+{
+  assertHealthy();
+  Thread thread=evictorThread;
+  if (thread != null) {
+    if (iterationCount > pageFaultSpinCount) {
+      FreePageWaiter waiter=new FreePageWaiter();
+      FreePageWaiter listHead;
+      do {
+        listHead=freePageWaiters.get();
+        if (listHead == shutdownSignal) {
+          throw new IllegalStateException("The PageCache has been shut down");
+        }
+        waiter.next=listHead;
+      }
+ while (!freePageWaiters.compareAndSet(listHead,waiter));
+      LockSupport.unpark(thread);
+      return waiter.park(this);
+    }
+ else {
+      LockSupport.unpark(thread);
+    }
+  }
+  return null;
+}
