@@ -1,0 +1,26 @@
+{
+  Iterable<StoreFile> filesToMove;
+  StoreFile[] idFilesToDelete;
+switch (versionToUpgradeFrom) {
+case Legacy19Store.LEGACY_VERSION:
+    filesToMove=Arrays.asList(StoreFile.NODE_STORE,StoreFile.RELATIONSHIP_STORE,StoreFile.RELATIONSHIP_GROUP_STORE,StoreFile.LABEL_TOKEN_STORE,StoreFile.NODE_LABEL_STORE,StoreFile.LABEL_TOKEN_NAMES_STORE,StoreFile.PROPERTY_STORE,StoreFile.PROPERTY_KEY_TOKEN_STORE,StoreFile.PROPERTY_KEY_TOKEN_NAMES_STORE,StoreFile.SCHEMA_STORE);
+  idFilesToDelete=allExcept(StoreFile.RELATIONSHIP_GROUP_STORE);
+break;
+case Legacy20Store.LEGACY_VERSION:
+filesToMove=Arrays.asList(StoreFile.NODE_STORE,StoreFile.RELATIONSHIP_STORE,StoreFile.RELATIONSHIP_GROUP_STORE);
+idFilesToDelete=allExcept(StoreFile.RELATIONSHIP_GROUP_STORE);
+break;
+case Legacy21Store.LEGACY_VERSION:
+filesToMove=Iterables.empty();
+idFilesToDelete=new StoreFile[]{};
+break;
+default :
+throw new IllegalStateException("Unknown version to upgrade from: " + versionToUpgradeFrom);
+}
+StoreFile.deleteIdFile(fileSystem,migrationDir,idFilesToDelete);
+StoreFile.move(fileSystem,migrationDir,storeDir,filesToMove,true,true,StoreFileType.values());
+StoreFile.ensureStoreVersion(fileSystem,storeDir,StoreFile.currentStoreFiles());
+updateOrAddUpgradeIdAndUpgradeTime(storeDir);
+legacyLogs.moveLogs(migrationDir,storeDir);
+legacyLogs.renameLogFiles(storeDir);
+}

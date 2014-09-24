@@ -1,0 +1,17 @@
+{
+  final LogEntry start=new LogEntryStart(0,1,2,3,EMPTY_ADDITIONAL_ARRAY,UNSPECIFIED);
+  final LogEntry command=new LogEntryCommand(new Command.NodeCommand());
+  final LogEntry commit=new OnePhaseCommit(42,43);
+  final LogEntryReader<ReadableVersionableLogChannel> logEntryReader=mock(LogEntryReader.class);
+  when(logEntryReader.readLogEntry(any(ReadableVersionableLogChannel.class))).thenReturn(new IdentifiableLogEntry(start,1),new IdentifiableLogEntry(command,1),new IdentifiableLogEntry(commit,1),null);
+  final LegacyLogEntryReader reader=new LegacyLogEntryReader(fs,logEntryReader);
+  final IOCursor<LogEntry> cursor=reader.openReadableChannel(input).other();
+  assertTrue(cursor.next());
+  assertEquals(start,cursor.get());
+  assertTrue(cursor.next());
+  assertEquals(command,cursor.get());
+  assertTrue(cursor.next());
+  assertEquals(commit,cursor.get());
+  assertFalse(cursor.next());
+  cursor.close();
+}

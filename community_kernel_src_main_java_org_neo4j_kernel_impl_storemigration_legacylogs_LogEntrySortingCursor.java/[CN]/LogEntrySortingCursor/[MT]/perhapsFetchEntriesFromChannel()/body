@@ -1,0 +1,23 @@
+{
+  if (idToFetchFrom > 0) {
+    return;
+  }
+  LogEntry entry;
+  while ((entry=reader.readLogEntry(channel)) != null) {
+    if (!(entry instanceof IdentifiableLogEntry)) {
+      throw new IllegalStateException("reading from a log which is not a legacy one???");
+    }
+    final IdentifiableLogEntry identifiableLogEntry=(IdentifiableLogEntry)entry;
+    final int identifier=identifiableLogEntry.getIdentifier();
+    final LogEntry inner=identifiableLogEntry.getEntry();
+    List<LogEntry> list=provideList(idToEntries,identifier);
+    list.add(inner);
+    if (inner instanceof LogEntryCommit) {
+      idToFetchFrom=identifier;
+      break;
+    }
+  }
+  if (idToFetchFrom < 0 && !idToEntries.isEmpty()) {
+    throw new IllegalStateException("Missing commit entry for several entries");
+  }
+}

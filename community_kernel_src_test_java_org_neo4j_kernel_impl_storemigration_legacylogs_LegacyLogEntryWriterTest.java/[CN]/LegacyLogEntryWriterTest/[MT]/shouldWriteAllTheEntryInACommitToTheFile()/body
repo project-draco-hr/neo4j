@@ -1,0 +1,14 @@
+{
+  final LogVersionedStoreChannel channel=mock(LogVersionedStoreChannel.class);
+  final LogEntryWriter logEntryWriter=mock(LogEntryWriter.class);
+  final LegacyLogEntryWriter writer=new LegacyLogEntryWriter(fs,liftToFactory(logEntryWriter));
+  final LogEntryStart start=new LogEntryStart(0,1,2l,3l,EMPTY_ADDITIONAL_ARRAY,UNSPECIFIED);
+  final LogEntryCommand command=new LogEntryCommand(new Command.NodeCommand());
+  final LogEntryCommit commit=new OnePhaseCommit(42l,43l);
+  final IOCursor<LogEntry> cursor=mockCursor(start,command,commit);
+  writer.writeAllLogEntries(channel,cursor);
+  verify(logEntryWriter,times(1)).writeStartEntry(0,1,2l,3l,EMPTY_ADDITIONAL_ARRAY);
+  final TransactionRepresentation expected=new PhysicalTransactionRepresentation(Arrays.asList(command.getXaCommand()));
+  verify(logEntryWriter,times(1)).serialize(eq(expected));
+  verify(logEntryWriter,times(1)).writeCommitEntry(42l,43l);
+}

@@ -1,0 +1,10 @@
+{
+  final StoreChannel rawChannel=fs.open(logFile,"r");
+  final ByteBuffer buffer=ByteBuffer.allocate(LOG_HEADER_SIZE);
+  final LogHeader header=readLogHeader(buffer,rawChannel,false);
+  long lastCommittedTxId=Math.max(BASE_TX_ID,header.lastCommittedTxId);
+  final PhysicalLogVersionedStoreChannel channel=new PhysicalLogVersionedStoreChannel(rawChannel,header.logVersion,header.logFormatVersion);
+  final ReadableVersionableLogChannel readableChannel=new ReadAheadLogChannel(channel,NO_MORE_CHANNELS,DEFAULT_READ_AHEAD_SIZE);
+  final IOCursor<LogEntry> cursor=new LogEntrySortingCursor(reader,readableChannel);
+  return Pair.of(new LogHeader(CURRENT_LOG_VERSION,header.logVersion,lastCommittedTxId),cursor);
+}

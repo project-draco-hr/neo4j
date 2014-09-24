@@ -1,0 +1,21 @@
+{
+  final LogVersionedStoreChannel channel=mock(LogVersionedStoreChannel.class);
+  final LogEntryWriter logEntryWriter=mock(LogEntryWriter.class);
+  final LegacyLogEntryWriter writer=new LegacyLogEntryWriter(fs,liftToFactory(logEntryWriter));
+  final LogEntryStart start1=new LogEntryStart(0,1,2l,3l,EMPTY_ADDITIONAL_ARRAY,UNSPECIFIED);
+  final LogEntryCommand command1=new LogEntryCommand(new Command.NodeCommand());
+  final LogEntryCommit commit1=new OnePhaseCommit(42l,43l);
+  final LogEntryStart start2=new LogEntryStart(9,8,7l,6l,EMPTY_ADDITIONAL_ARRAY,UNSPECIFIED);
+  final LogEntryCommand command2=new LogEntryCommand(new Command.RelationshipCommand());
+  final LogEntryCommit commit2=new OnePhaseCommit(84l,85l);
+  IOCursor<LogEntry> cursor=mockCursor(start1,command1,commit1,start2,command2,commit2);
+  writer.writeAllLogEntries(channel,cursor);
+  verify(logEntryWriter,times(1)).writeStartEntry(0,1,2l,3l,EMPTY_ADDITIONAL_ARRAY);
+  final TransactionRepresentation expected1=new PhysicalTransactionRepresentation(Arrays.asList(command1.getXaCommand()));
+  verify(logEntryWriter,times(1)).serialize(eq(expected1));
+  verify(logEntryWriter,times(1)).writeCommitEntry(42l,43l);
+  verify(logEntryWriter,times(1)).writeStartEntry(9,8,7l,6l,EMPTY_ADDITIONAL_ARRAY);
+  final TransactionRepresentation expected2=new PhysicalTransactionRepresentation(Arrays.asList(command2.getXaCommand()));
+  verify(logEntryWriter,times(1)).serialize(eq(expected2));
+  verify(logEntryWriter,times(1)).writeCommitEntry(84l,85l);
+}
