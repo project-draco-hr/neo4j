@@ -1,0 +1,18 @@
+{
+  EphemeralFileSystemAbstraction fs=fsRule.get();
+  GraphDatabaseService db=newDB(fs);
+  long node1=createNode(db);
+  long node2=createNode(db);
+  deleteNode(db,node2);
+  EphemeralFileSystemAbstraction crashedFs=fs.snapshot();
+  db.shutdown();
+  repairIdGenerator(crashedFs,new File(storeDir,NeoStore.DEFAULT_NAME + StoreFactory.NODE_STORE_NAME + ".id"));
+  db=newDB(crashedFs);
+  try (Transaction tx=db.beginTx()){
+    db.getNodeById(node1);
+    tx.success();
+  }
+  finally {
+    db.shutdown();
+  }
+}
