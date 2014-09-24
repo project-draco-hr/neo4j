@@ -1,13 +1,18 @@
 {
-  try (PageCursor cursor=pages.io(0,PF_SHARED_LOCK | PF_NO_GROW | PF_READ_AHEAD)){
-    int record=0;
-    while (cursor.next()) {
-      for (int offset=(cursor.getCurrentPageId() == 0 ? header.headerRecords() : 0) * RECORD_SIZE; offset < pages.pageSize(); offset+=RECORD_SIZE) {
-        if (record++ >= totalRecords) {
-          return;
-        }
-        visitRecord(cursor,offset,visitor);
+  try (InputStream in=fs.openAsInputStream(file)){
+    for (long bytes=header.headerRecords() * RECORD_SIZE; bytes != 0; ) {
+      bytes-=in.skip(bytes);
+    }
+    byte[] record=new byte[RECORD_SIZE];
+    ByteBuffer buffer=ByteBuffer.wrap(record);
+    for (int read, offset=0; (read=in.read(record,offset,record.length - offset)) != -1; ) {
+      if (read != record.length) {
+        offset=read;
+        continue;
       }
+      buffer.position(0);
+      visitRecord(buffer,visitor);
+      offset=0;
     }
   }
  catch (  IOException e) {
