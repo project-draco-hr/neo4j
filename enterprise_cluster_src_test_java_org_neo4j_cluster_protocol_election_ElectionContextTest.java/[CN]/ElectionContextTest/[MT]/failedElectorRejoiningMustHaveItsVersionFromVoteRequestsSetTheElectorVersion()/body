@@ -1,0 +1,30 @@
+{
+  final String role1="coordinator1";
+  InstanceId me=new InstanceId(1);
+  InstanceId failingInstance=new InstanceId(2);
+  InstanceId forQuorum=new InstanceId(3);
+  Logging logging=Mockito.mock(Logging.class,RETURNS_MOCKS);
+  ClusterConfiguration clusterConfiguration=mock(ClusterConfiguration.class);
+  List<InstanceId> clusterMemberIds=new LinkedList<InstanceId>();
+  clusterMemberIds.add(failingInstance);
+  clusterMemberIds.add(me);
+  clusterMemberIds.add(forQuorum);
+  when(clusterConfiguration.getMemberIds()).thenReturn(clusterMemberIds);
+  MultiPaxosContext context=new MultiPaxosContext(me,Iterables.<ElectionRole,ElectionRole>iterable(new ElectionRole(role1)),clusterConfiguration,new Executor(){
+    @Override public void execute(    Runnable command){
+      command.run();
+    }
+  }
+,logging,Mockito.mock(ObjectInputStreamFactory.class),Mockito.mock(ObjectOutputStreamFactory.class),Mockito.mock(AcceptorInstanceStore.class),Mockito.mock(Timeouts.class));
+  HeartbeatContext heartbeatContext=context.getHeartbeatContext();
+  ClusterContext clusterContext=context.getClusterContext();
+  clusterContext.setLastElector(failingInstance);
+  clusterContext.setLastElectorVersion(8);
+  heartbeatContext.suspicions(forQuorum,Collections.singleton(failingInstance));
+  heartbeatContext.suspect(failingInstance);
+  assertEquals(clusterContext.getLastElector(),InstanceId.NONE);
+  assertEquals(clusterContext.getLastElectorVersion(),ClusterContext.NO_ELECTOR_VERSION);
+  clusterContext.elected(role1,forQuorum,failingInstance,9);
+  assertEquals(clusterContext.getLastElector(),failingInstance);
+  assertEquals(clusterContext.getLastElectorVersion(),9);
+}
