@@ -1,0 +1,18 @@
+{
+  InstanceId me=new InstanceId(1);
+  InstanceId elector=new InstanceId(2);
+  CommonContextState commonContextState=mock(CommonContextState.class,RETURNS_MOCKS);
+  Logging logging=mock(Logging.class);
+  Timeouts timeouts=mock(Timeouts.class);
+  Executor executor=mock(Executor.class);
+  HeartbeatContext heartbeatContext=mock(HeartbeatContext.class);
+  ArgumentCaptor<HeartbeatListener> listenerCaptor=ArgumentCaptor.forClass(HeartbeatListener.class);
+  ClusterContext context=new ClusterContextImpl(me,commonContextState,logging,timeouts,executor,mock(ObjectOutputStreamFactory.class),mock(ObjectInputStreamFactory.class),mock(LearnerContext.class),heartbeatContext);
+  verify(heartbeatContext).addHeartbeatListener(listenerCaptor.capture());
+  HeartbeatListener theListener=listenerCaptor.getValue();
+  context.setLastElector(elector);
+  context.setLastElectorVersion(8);
+  theListener.failed(new InstanceId(3));
+  assertEquals(context.getLastElector(),elector);
+  assertEquals(context.getLastElectorVersion(),8);
+}
