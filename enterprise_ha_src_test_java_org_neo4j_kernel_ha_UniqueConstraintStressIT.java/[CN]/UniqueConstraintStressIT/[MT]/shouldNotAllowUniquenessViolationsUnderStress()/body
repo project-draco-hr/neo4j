@@ -1,0 +1,17 @@
+{
+  HighlyAvailableGraphDatabase master=cluster.getMaster();
+  HighlyAvailableGraphDatabase slave=cluster.getAnySlave();
+  long end=System.currentTimeMillis() + runtime;
+  while (end > System.currentTimeMillis()) {
+    setup: {
+      setLabelAndPropertyForNextRound();
+      cluster.sync();
+      slaveWork.execute(performInsert(slave)).get();
+    }
+    stress: {
+      Future<Object> constraintCreation=masterWork.execute(createConstraint(master));
+      Future<Object> constraintViolation=slaveWork.execute(performInsert(slave));
+      assertConstraintsNotViolated(constraintCreation,constraintViolation,master);
+    }
+  }
+}
