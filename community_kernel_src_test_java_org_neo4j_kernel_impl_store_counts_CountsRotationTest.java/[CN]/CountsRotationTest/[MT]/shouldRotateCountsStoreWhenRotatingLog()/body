@@ -1,0 +1,25 @@
+{
+  GraphDatabaseAPI db=(GraphDatabaseAPI)dbBuilder.setConfig(GraphDatabaseSettings.logical_log_rotation_threshold,"1").newGraphDatabase();
+  try (Transaction tx=db.beginTx()){
+    db.createNode(B);
+    tx.success();
+  }
+   try (Transaction tx=db.beginTx()){
+    db.createNode(C);
+    tx.success();
+  }
+   assertTrue(fs.fileExists(alphaStoreFile()));
+  assertTrue(fs.fileExists(betaStoreFile()));
+  final PageCache pageCache=db.getDependencyResolver().resolveDependency(PageCache.class);
+  try (CountsStore store=CountsStore.open(fs,pageCache,betaStoreFile())){
+    assertEquals(TransactionIdStore.BASE_TX_ID + 1 + 1,store.lastTxId());
+    assertEquals(1 + 1,store.totalRecordsStored());
+    assertEquals(1 + 1,allRecords(store).size());
+  }
+   final CountsTracker tracker=db.getDependencyResolver().resolveDependency(NeoStore.class).getCounts();
+  assertEquals(1 + 1,tracker.countsForNode(-1));
+  final LabelTokenHolder holder=db.getDependencyResolver().resolveDependency(LabelTokenHolder.class);
+  int labelId=holder.getIdByName(C.name());
+  assertEquals(1,tracker.countsForNode(labelId));
+  db.shutdown();
+}
