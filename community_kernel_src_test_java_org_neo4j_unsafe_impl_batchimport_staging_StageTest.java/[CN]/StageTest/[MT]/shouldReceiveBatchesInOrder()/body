@@ -1,0 +1,24 @@
+{
+  Configuration config=new Configuration.Default();
+  Stage stage=new Stage(new DevNullLoggingService(),"Test stage",config);
+  int batchSize=10;
+  long batches=1000;
+  final long items=batches * batchSize;
+  stage.add(new ProducerStep<Object>(stage.control(),"Producer",batchSize){
+    private long i=0;
+    private final Object theObject=new Object();
+    @Override protected Object nextOrNull(){
+      return ++i > items ? null : theObject;
+    }
+  }
+);
+  for (int i=0; i < 3; i++) {
+    stage.add(new ReceiveOrderAssertingStep(stage.control(),"Step" + i,20,2,i));
+  }
+  stage.add(new LastReceiveOrderAssertingStep(stage.control(),"Final step",20,2,0));
+  StageExecution execution=stage.execute();
+  new SilentExecutionMonitor().monitor(execution);
+  for (  StepStats stats : execution.stats()) {
+    assertEquals(batches,stats.stat(Keys.done_batches).asLong());
+  }
+}
