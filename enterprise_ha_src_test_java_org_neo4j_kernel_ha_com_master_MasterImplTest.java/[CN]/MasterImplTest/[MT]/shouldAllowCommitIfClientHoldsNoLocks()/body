@@ -1,0 +1,18 @@
+{
+  MasterImpl.SPI spi=mock(MasterImpl.SPI.class);
+  Config config=config(20);
+  Client locks=mock(Client.class);
+  when(locks.trySharedLock(ResourceTypes.SCHEMA,ResourceTypes.schemaResource())).thenReturn(true);
+  when(spi.isAccessible()).thenReturn(true);
+  when(spi.getMasterIdForCommittedTx(anyLong())).thenReturn(Pair.of(1,1L));
+  when(spi.acquireClient()).thenReturn(locks);
+  mockEmptyResponse(spi);
+  MasterImpl master=new MasterImpl(spi,mock(MasterImpl.Monitor.class),new DevNullLoggingService(),config);
+  master.start();
+  HandshakeResult handshake=master.handshake(1,new StoreId()).response();
+  int no_lock_session=-1;
+  RequestContext ctx=new RequestContext(handshake.epoch(),1,no_lock_session,0,1,0);
+  TransactionRepresentation tx=mock(TransactionRepresentation.class);
+  master.commit(ctx,tx);
+  verify(spi).applyPreparedTransaction(tx);
+}

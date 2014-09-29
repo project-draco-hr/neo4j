@@ -1,10 +1,14 @@
 {
   monitor.initializeTx(context);
   if (!spi.isAccessible()) {
-    throw new TransactionFailureException("Database is currently not available");
+    throw new TransactionFailureException(Status.General.DatabaseUnavailable,"Database is currently not available");
   }
   assertCorrectEpoch(context);
-  LockSession locks=new LockSession(spi.acquireClient());
-  slaveLockSessions.put(context,locks);
+  try {
+    slaveLockSessions.begin(context);
+  }
+ catch (  ConcurrentAccessException e) {
+    throw new TransactionFailureException(Status.Transaction.ConcurrentRequest,"The lock session requested to start is already in use. Please retry your request in a few seconds.");
+  }
   return spi.packTransactionObligationResponse(context,null);
 }
