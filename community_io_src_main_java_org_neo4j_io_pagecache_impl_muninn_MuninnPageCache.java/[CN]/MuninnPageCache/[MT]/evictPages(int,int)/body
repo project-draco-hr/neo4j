@@ -1,6 +1,8 @@
 {
+  FreePageWaiter waiters=freePageWaiters.getAndSet(null);
+  waiters=reverse(waiters);
   Thread currentThread=Thread.currentThread();
-  while (pageCountToEvict > 0 && !currentThread.isInterrupted()) {
+  while ((pageCountToEvict > 0 || waiters != null) && !currentThread.isInterrupted()) {
     if (clockArm == pages.length) {
       clockArm=0;
     }
@@ -36,16 +38,26 @@ catch (        Throwable throwable) {
         if (pageEvicted) {
           swapper.evicted(filePageId);
           monitor.evicted(filePageId,swapper);
-          MuninnPage next;
-          do {
-            next=freelist.get();
-            page.nextFree=next;
+          if (waiters != null) {
+            waiters.unpark(page);
+            waiters=waiters.next;
           }
+ else {
+            MuninnPage next;
+            do {
+              next=freelist.get();
+              page.nextFree=next;
+            }
  while (!freelist.compareAndSet(next,page));
+          }
         }
       }
     }
     clockArm++;
+  }
+  while (waiters != null) {
+    waiters.unparkInterrupt();
+    waiters=waiters.next;
   }
   return clockArm;
 }
