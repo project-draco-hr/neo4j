@@ -1,0 +1,26 @@
+{
+  final DoubleLatch pruneLatch=new DoubleLatch();
+  LogFile logFile=mock(LogFile.class);
+  when(logFile.checkRotation()).thenReturn(true).thenReturn(false);
+  doAnswer(new Answer<Void>(){
+    @Override public Void answer(    InvocationOnMock invocation) throws Throwable {
+      pruneLatch.startAndAwaitFinish();
+      return null;
+    }
+  }
+).when(logFile).prune();
+  WritableLogChannel channel=new InMemoryLogChannel();
+  when(logFile.getWriter()).thenReturn(channel);
+  TxIdGenerator txIdGenerator=mock(TxIdGenerator.class);
+  when(txIdGenerator.generate(any(TransactionRepresentation.class))).thenReturn(1L,2L,3L,4L,5L);
+  TransactionMetadataCache metadataCache=new TransactionMetadataCache(10,100);
+  TransactionIdStore transactionIdStore=mock(TransactionIdStore.class);
+  IdOrderingQueue legacyIndexOrdering=new SynchronizedArrayIdOrderingQueue(5);
+  TransactionAppender appender=new PhysicalTransactionAppender(logFile,txIdGenerator,metadataCache,transactionIdStore,legacyIndexOrdering);
+  OtherThreadExecutor<Void> otherThread=cleanup.add(new OtherThreadExecutor<Void>("T2",null));
+  Future<Object> appendFuture=otherThread.executeDontWait(append(appender,mockedTransaction()));
+  pruneLatch.awaitStart();
+  appender.append(mockedTransaction());
+  pruneLatch.finish();
+  appendFuture.get();
+}
