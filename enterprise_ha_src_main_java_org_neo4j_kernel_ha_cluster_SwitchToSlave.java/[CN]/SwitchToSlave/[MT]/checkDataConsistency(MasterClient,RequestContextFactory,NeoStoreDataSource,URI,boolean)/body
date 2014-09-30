@@ -5,8 +5,19 @@
     checkMyStoreIdAndMastersStoreId(nioneoDataSource,masterIsOld);
     checkDataConsistencyWithMaster(masterUri,masterClient,nioneoDataSource,txIdStore);
     console.log("Store is consistent");
-    console.log("Catching up with master");
-    masterClient.pullUpdates(requestContextFactory.newRequestContext());
+    RequestContext catchUpRequestContext=requestContextFactory.newRequestContext();
+    console.log("Catching up with master. I'm at " + catchUpRequestContext);
+    masterClient.pullUpdates(catchUpRequestContext,new TxHandler(){
+      @Override public void accept(      CommittedTransactionRepresentation tx){
+        long txId=tx.getCommitEntry().getTxId();
+        if (txId % 10 == 0) {
+          console.log("  ...still catching up with master, now at " + txId);
+        }
+      }
+      @Override public void done(){
+      }
+    }
+);
     console.log("Now consistent with master");
   }
  catch (  NoSuchLogVersionException e) {

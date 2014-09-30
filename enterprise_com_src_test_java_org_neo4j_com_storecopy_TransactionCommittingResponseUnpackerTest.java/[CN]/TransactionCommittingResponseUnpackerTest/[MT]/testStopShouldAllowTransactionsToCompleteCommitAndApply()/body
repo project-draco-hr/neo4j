@@ -9,17 +9,17 @@
   when(dependencyResolver.resolveDependency(LogicalTransactionStore.class)).thenReturn(logicalTransactionStore);
   when(dependencyResolver.resolveDependency(TransactionRepresentationStoreApplier.class)).thenReturn(mock(TransactionRepresentationStoreApplier.class));
   StoppingTxHandler stoppingTxHandler=new StoppingTxHandler();
-  TransactionCommittingResponseUnpacker unpacker=new TransactionCommittingResponseUnpacker(dependencyResolver,stoppingTxHandler);
+  TransactionCommittingResponseUnpacker unpacker=new TransactionCommittingResponseUnpacker(dependencyResolver);
   stoppingTxHandler.setUnpacker(unpacker);
   unpacker.start();
   int committingTransactionId=2;
   DummyResponse response=new DummyResponse(committingTransactionId);
-  unpacker.unpackResponse(response);
+  unpacker.unpackResponse(response,stoppingTxHandler);
   verify(txIdStore,times(1)).transactionCommitted(committingTransactionId);
   verify(txIdStore,times(1)).transactionClosed(committingTransactionId);
   verify(appender,times(1)).append(response.getTheTx());
   try {
-    unpacker.unpackResponse(mock(Response.class));
+    unpacker.unpackResponse(mock(Response.class),stoppingTxHandler);
     fail("A stopped transaction unpacker should not allow transactions to be applied");
   }
  catch (  IllegalStateException e) {

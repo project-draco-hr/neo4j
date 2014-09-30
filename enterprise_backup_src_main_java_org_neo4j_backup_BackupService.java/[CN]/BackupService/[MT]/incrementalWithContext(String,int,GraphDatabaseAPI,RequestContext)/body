@@ -1,14 +1,14 @@
 {
   DependencyResolver resolver=targetDb.getDependencyResolver();
   ProgressTxHandler handler=new ProgressTxHandler();
-  TransactionCommittingResponseUnpacker unpacker=new TransactionCommittingResponseUnpacker(resolver,handler);
+  TransactionCommittingResponseUnpacker unpacker=new TransactionCommittingResponseUnpacker(resolver);
   Monitors monitors=resolver.resolveDependency(Monitors.class);
   BackupClient client=new BackupClient(sourceHostNameOrIp,sourcePort,resolver.resolveDependency(Logging.class),targetDb.storeId(),unpacker,monitors.newMonitor(ByteCounterMonitor.class,BackupClient.class),monitors.newMonitor(RequestMonitor.class,BackupClient.class));
   boolean consistent=false;
   try {
     client.start();
     unpacker.start();
-    unpacker.unpackResponse(client.incrementalBackup(context));
+    unpacker.unpackResponse(client.incrementalBackup(context),handler);
     consistent=true;
   }
  catch (  MismatchingStoreIdException e) {
