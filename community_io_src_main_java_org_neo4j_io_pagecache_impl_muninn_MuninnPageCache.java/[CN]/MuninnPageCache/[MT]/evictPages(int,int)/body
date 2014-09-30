@@ -17,9 +17,9 @@
         PageSwapper swapper=page.getSwapper();
         long filePageId=page.getFilePageId();
         boolean pageEvicted=false;
+        pageCountToEvict--;
         try {
           page.evict();
-          pageCountToEvict--;
           evictorException=null;
           pageEvicted=true;
         }
@@ -52,6 +52,10 @@ catch (        Throwable throwable) {
             }
  while (!freelist.compareAndSet(next,page));
           }
+        }
+ else         if (waiters != null && evictorException != null) {
+          waiters.unparkException(evictorException);
+          waiters=waiters.next;
         }
       }
     }
