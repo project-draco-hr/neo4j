@@ -1,0 +1,14 @@
+{
+  super(logging,"Nodes",config);
+  add(new IteratorBatcherStep<>(control(),"INPUT",config.batchSize(),nodes.iterator()));
+  NodeStore nodeStore=neoStore.getNodeStore();
+  PropertyStore propertyStore=neoStore.getPropertyStore();
+  Iterable<Object> allIds=new IterableWrapper<Object,InputNode>(nodes){
+    @Override protected Object underlyingObjectToObject(    InputNode object){
+      return object.id();
+    }
+  }
+;
+  add(new NodeEncoderStep(control(),"ENCODER",config.workAheadSize(),1,idMapper,idGenerator,neoStore.getPropertyKeyRepository(),neoStore.getLabelRepository(),nodeStore,propertyStore,allIds));
+  add(new EntityStoreUpdaterStep<>(control(),"WRITER",nodeStore,propertyStore,writeMonitor));
+}
