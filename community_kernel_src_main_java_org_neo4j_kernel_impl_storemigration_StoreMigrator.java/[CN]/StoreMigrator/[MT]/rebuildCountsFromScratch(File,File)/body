@@ -1,0 +1,17 @@
+{
+  final LifeSupport life=new LifeSupport();
+  life.start();
+  try {
+    final PageCache pageCache=createPageCache(fileSystem,"build-counts",life);
+    final File storeFileBase=new File(migrationDir,NeoStore.DEFAULT_NAME + StoreFactory.COUNTS_STORE);
+    CountsTracker.createEmptyCountsStore(pageCache,storeFileBase,buildTypeDescriptorAndVersion(CountsTracker.STORE_DESCRIPTOR));
+    final StoreFactory storeFactory=new StoreFactory(fileSystem,storeDir,pageCache,DEV_NULL,new Monitors());
+    try (NodeStore nodeStore=storeFactory.newNodeStore();RelationshipStore relationshipStore=storeFactory.newRelationshipStore();CountsTracker tracker=new CountsTracker(fileSystem,pageCache,storeFileBase)){
+      CountsComputer.computeCounts(nodeStore,relationshipStore).accept(new CountsAcceptor.Initializer(tracker));
+      tracker.rotate(NeoStore.getTxId(fileSystem,new File(storeDir,NeoStore.DEFAULT_NAME)));
+    }
+   }
+  finally {
+    life.shutdown();
+  }
+}

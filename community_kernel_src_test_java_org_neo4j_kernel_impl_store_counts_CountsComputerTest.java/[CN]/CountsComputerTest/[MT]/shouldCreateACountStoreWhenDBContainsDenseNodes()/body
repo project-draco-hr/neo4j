@@ -1,0 +1,39 @@
+{
+  final GraphDatabaseAPI db=(GraphDatabaseAPI)dbBuilder.setConfig(GraphDatabaseSettings.dense_node_threshold,"2").newGraphDatabase();
+  try (Transaction tx=db.beginTx()){
+    Node nodeA=db.createNode(DynamicLabel.label("A"));
+    Node nodeC=db.createNode(DynamicLabel.label("C"));
+    Node nodeD=db.createNode(DynamicLabel.label("D"));
+    nodeA.createRelationshipTo(nodeA,DynamicRelationshipType.withName("TYPE1"));
+    nodeA.createRelationshipTo(nodeC,DynamicRelationshipType.withName("TYPE2"));
+    nodeA.createRelationshipTo(nodeD,DynamicRelationshipType.withName("TYPE3"));
+    nodeD.createRelationshipTo(nodeC,DynamicRelationshipType.withName("TYPE4"));
+    tx.success();
+  }
+   final CountsState countsState=CountsComputer.computeCounts(db);
+  long lastCommittedTransactionId=getLastTxId(db);
+  db.shutdown();
+  cleanupCountsForRebuilding();
+  rebuildCounts(countsState,lastCommittedTransactionId);
+  try (CountsStore store=CountsStore.open(fs,pageCache,betaStoreFile())){
+    assertEquals(BASE_TX_ID + 1 + 1+ 1+ 1+ 1+ 1+ 1+ 1,store.lastTxId());
+    assertEquals(30,store.totalRecordsStored());
+    assertEquals(3,store.get(CountsKey.nodeKey(-1)));
+    assertEquals(1,store.get(CountsKey.nodeKey(0)));
+    assertEquals(1,store.get(CountsKey.nodeKey(1)));
+    assertEquals(1,store.get(CountsKey.nodeKey(2)));
+    assertEquals(0,store.get(CountsKey.nodeKey(3)));
+    assertEquals(4,store.get(CountsKey.relationshipKey(-1,-1,-1)));
+    assertEquals(1,store.get(CountsKey.relationshipKey(-1,0,-1)));
+    assertEquals(1,store.get(CountsKey.relationshipKey(-1,1,-1)));
+    assertEquals(1,store.get(CountsKey.relationshipKey(-1,2,-1)));
+    assertEquals(1,store.get(CountsKey.relationshipKey(-1,3,-1)));
+    assertEquals(0,store.get(CountsKey.relationshipKey(-1,4,-1)));
+    assertEquals(1,store.get(CountsKey.relationshipKey(0,2,2)));
+    assertEquals(0,store.get(CountsKey.relationshipKey(2,0,0)));
+    assertEquals(1,store.get(CountsKey.relationshipKey(-1,1,1)));
+    assertEquals(2,store.get(CountsKey.relationshipKey(-1,-1,1)));
+    assertEquals(0,store.get(CountsKey.relationshipKey(1,-1,2)));
+    assertEquals(3,store.get(CountsKey.relationshipKey(0,-1,-1)));
+  }
+ }

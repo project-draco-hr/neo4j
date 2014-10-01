@@ -1,0 +1,12 @@
+{
+  final GraphDatabaseAPI db=(GraphDatabaseAPI)dbBuilder.newGraphDatabase();
+  final CountsState countsState=CountsComputer.computeCounts(db);
+  long lastCommittedTransactionId=getLastTxId(db);
+  db.shutdown();
+  cleanupCountsForRebuilding();
+  rebuildCounts(countsState,lastCommittedTransactionId);
+  try (CountsStore store=CountsStore.open(fs,pageCache,alphaStoreFile())){
+    assertEquals(BASE_TX_ID,store.lastTxId());
+    assertEquals(0,store.totalRecordsStored());
+  }
+ }
