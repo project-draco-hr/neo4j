@@ -1,0 +1,21 @@
+{
+  LogicalTransactionStore transactionStore=mock(LogicalTransactionStore.class);
+  long lastAppliedTransactionId=5L;
+  IOCursor<CommittedTransactionRepresentation> endlessCursor=new EndlessCursor(lastAppliedTransactionId + 1);
+  when(transactionStore.getTransactions(anyLong())).thenReturn(endlessCursor);
+  final long targetTransactionId=8L;
+  final TransactionIdStore transactionIdStore=new DeadSimpleTransactionIdStore(targetTransactionId);
+  ResponsePacker packer=new ResponsePacker(transactionStore,transactionIdStore,singletonProvider(new StoreId()));
+  Response<Object> response=packer.packResponse(requestContextStartingAt(5L),null);
+  final AtomicLong nextExpectedVisit=new AtomicLong(lastAppliedTransactionId);
+  response.accept(new Visitor<CommittedTransactionRepresentation,IOException>(){
+    @Override public boolean visit(    CommittedTransactionRepresentation element) throws IOException {
+      long txId=element.getCommitEntry().getTxId();
+      assertThat(txId,lessThanOrEqualTo(targetTransactionId));
+      assertEquals(nextExpectedVisit.incrementAndGet(),txId);
+      transactionIdStore.setLastCommittedAndClosedTransactionId(transactionIdStore.getLastCommittedTransactionId() + 1);
+      return true;
+    }
+  }
+);
+}
