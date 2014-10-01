@@ -2,13 +2,14 @@
   this.oldChannelThresholdMillis=config.getOldChannelThreshold();
   chunkSize=config.getChunkSize();
   assertChunkSizeIsWithinFrameSize(chunkSize,frameLength);
-  targetCallExecutor=Executors.newCachedThreadPool(new NamedThreadFactory(getClass().getSimpleName() + ":" + config.getServerAddress().getPort()));
-  unfinishedTransactionExecutor=Executors.newScheduledThreadPool(2,new NamedThreadFactory("Unfinished " + "transactions"));
-  silentChannelExecutor=Executors.newSingleThreadScheduledExecutor(new NamedThreadFactory("Silent channel " + "reaper"));
+  String className=getClass().getSimpleName();
+  targetCallExecutor=newCachedThreadPool(named(className + ":" + config.getServerAddress().getPort()));
+  unfinishedTransactionExecutor=newScheduledThreadPool(2,named("Unfinished transactions"));
+  silentChannelExecutor=newSingleThreadScheduledExecutor(named("Silent channel reaper"));
   silentChannelExecutor.scheduleWithFixedDelay(silentChannelFinisher(),5,5,TimeUnit.SECONDS);
-  ExecutorService executor=Executors.newCachedThreadPool(new NamedThreadFactory("Server receiving"));
-  ExecutorService workerExecutor=Executors.newCachedThreadPool(new NamedThreadFactory("Server receiving"));
-  bootstrap=new ServerBootstrap(new NioServerSocketChannelFactory(executor,workerExecutor,config.getMaxConcurrentTransactions()));
+  ExecutorService bossExecutor=newCachedThreadPool(daemon("Boss-" + className));
+  ExecutorService workerExecutor=newCachedThreadPool(daemon("Worker-" + className));
+  bootstrap=new ServerBootstrap(new NioServerSocketChannelFactory(bossExecutor,workerExecutor,config.getMaxConcurrentTransactions()));
   bootstrap.setPipelineFactory(this);
   Channel channel=null;
   socketAddress=null;
@@ -32,11 +33,13 @@
   }
   if (ex != null) {
     msgLog.logMessage("Failed to bind server to " + socketAddress,ex);
-    executor.shutdown();
-    workerExecutor.shutdown();
+    bootstrap.releaseExternalResources();
+    targetCallExecutor.shutdownNow();
+    unfinishedTransactionExecutor.shutdownNow();
+    silentChannelExecutor.shutdownNow();
     throw new IOException(ex);
   }
   channelGroup=new DefaultChannelGroup();
   channelGroup.add(channel);
-  msgLog.logMessage(getClass().getSimpleName() + " communication server started and bound to " + socketAddress);
+  msgLog.logMessage(className + " communication server started and bound to " + socketAddress);
 }
