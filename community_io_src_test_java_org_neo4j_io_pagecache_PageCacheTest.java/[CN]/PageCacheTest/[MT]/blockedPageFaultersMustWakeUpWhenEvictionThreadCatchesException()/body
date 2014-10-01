@@ -1,0 +1,49 @@
+{
+  final AtomicBoolean shouldBlock=new AtomicBoolean(true);
+  final AtomicBoolean shouldThrow=new AtomicBoolean(true);
+  FileSystemAbstraction fs=new DelegatingFileSystemAbstraction(this.fs){
+    @Override public StoreChannel open(    File fileName,    String mode) throws IOException {
+      return new DelegatingStoreChannel(super.open(fileName,mode)){
+        @Override public void writeAll(        ByteBuffer src,        long position) throws IOException {
+          while (shouldBlock.get()) {
+            LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(10));
+          }
+          if (shouldThrow.get()) {
+            throw new IOException("uh-oh...");
+          }
+        }
+      }
+;
+    }
+  }
+;
+  fs.create(file).close();
+  getPageCache(fs,maxPages,pageCachePageSize,PageCacheMonitor.NULL);
+  final PagedFile pagedFile=pageCache.map(file,filePageSize);
+  final AtomicReference<Thread> taskThreadRef=new AtomicReference<>();
+  Future<Boolean> task=executor.submit(new Callable<Boolean>(){
+    @Override public Boolean call() throws Exception {
+      taskThreadRef.set(Thread.currentThread());
+      try (PageCursor cursor=pagedFile.io(0,PF_EXCLUSIVE_LOCK)){
+        for (; ; ) {
+          assertTrue(cursor.next());
+          writeRecords(cursor);
+        }
+      }
+ catch (      IOException exception) {
+        return true;
+      }
+    }
+  }
+);
+  Thread taskThread;
+  do {
+    taskThread=taskThreadRef.get();
+  }
+ while (taskThread == null || taskThread.getState() != Thread.State.WAITING);
+  shouldBlock.set(false);
+  assertTrue(task.get());
+  shouldThrow.set(false);
+  pageCache.flush();
+  pageCache.unmap(file);
+}

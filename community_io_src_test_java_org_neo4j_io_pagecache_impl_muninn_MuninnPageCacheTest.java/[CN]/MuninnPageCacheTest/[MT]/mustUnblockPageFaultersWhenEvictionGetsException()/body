@@ -1,0 +1,40 @@
+{
+  writeInitialDataTo(file);
+  FileSystemAbstraction fs=new DelegatingFileSystemAbstraction(this.fs){
+    @Override public StoreChannel open(    File fileName,    String mode) throws IOException {
+      return new DelegatingStoreChannel(super.open(fileName,mode)){
+        @Override public void writeAll(        ByteBuffer src,        long position) throws IOException {
+          throw new IOException("uh-oh...");
+        }
+      }
+;
+    }
+  }
+;
+  MuninnPageCache pageCache=new MuninnPageCache(fs,2,8,PageCacheMonitor.NULL);
+  final PagedFile pagedFile=pageCache.map(file,8);
+  Future<?> task=executor.submit(new Callable<Object>(){
+    @Override public Object call() throws Exception {
+      try (PageCursor cursor=pagedFile.io(0,PF_EXCLUSIVE_LOCK)){
+        for (; ; ) {
+          assertTrue(cursor.next());
+        }
+      }
+     }
+  }
+);
+  try {
+    task.get(100,TimeUnit.MILLISECONDS);
+    fail("expected a timeout");
+  }
+ catch (  TimeoutException ignore) {
+  }
+  pageCache.evictPages(1,0);
+  try {
+    task.get();
+    fail("expected an execution exception");
+  }
+ catch (  ExecutionException e) {
+    assertThat(e.getCause(),instanceOf(IOException.class));
+  }
+}
