@@ -8,21 +8,22 @@ synchronized (this) {
         assertConfigMatches(indexProviders.lookup(existing.get(PROVIDER)),indexName,existing,result.first());
         return Pair.of(result.first(),false);
       }
-      ExecutorService executorService=Executors.newSingleThreadExecutor();
-      try {
-        executorService.submit(new IndexCreatorJob(entityType,indexName,result.first())).get();
-        createdNow=true;
-      }
- catch (      ExecutionException ex) {
-        throw new TransactionFailureException("Index creation failed for " + indexName + ", "+ result.first(),ex.getCause());
-      }
-catch (      InterruptedException ex) {
-        Thread.interrupted();
-      }
- finally {
-        executorService.shutdownNow();
-      }
-    }
-  }
-  return Pair.of(result.first(),createdNow);
+      try (KernelTransaction transaction=kernel.instance().newTransaction();Statement statement=transaction.acquireStatement()){
+switch (entityType) {
+case Node:
+          statement.dataWriteOperations().nodeLegacyIndexCreate(indexName,result.first());
+        break;
+case Relationship:
+      statement.dataWriteOperations().relationshipLegacyIndexCreate(indexName,result.first());
+    break;
+}
+transaction.success();
+createdNow=true;
+}
+ catch (Exception ex) {
+throw new TransactionFailureException("Index creation failed for " + indexName + ", "+ result.first(),ex);
+}
+}
+}
+return Pair.of(result.first(),createdNow);
 }

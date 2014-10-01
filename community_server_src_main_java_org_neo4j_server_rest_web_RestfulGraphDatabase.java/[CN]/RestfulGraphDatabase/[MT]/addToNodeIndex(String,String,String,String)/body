@@ -1,0 +1,43 @@
+{
+  try {
+    Map<String,Object> entityBody;
+    Pair<IndexedEntityRepresentation,Boolean> result;
+switch (unique(unique,uniqueness)) {
+case GetOrCreate:
+      entityBody=input.readMap(postBody,"key","value");
+    result=actions.getOrCreateIndexedNode(indexName,String.valueOf(entityBody.get("key")),String.valueOf(entityBody.get("value")),extractNodeIdOrNull(getStringOrNull(entityBody,"uri")),getMapOrNull(entityBody,"properties"));
+  return result.other() ? output.created(result.first()) : output.okIncludeLocation(result.first());
+case CreateOrFail:
+entityBody=input.readMap(postBody,"key","value");
+result=actions.getOrCreateIndexedNode(indexName,String.valueOf(entityBody.get("key")),String.valueOf(entityBody.get("value")),extractNodeIdOrNull(getStringOrNull(entityBody,"uri")),getMapOrNull(entityBody,"properties"));
+if (result.other()) {
+return output.created(result.first());
+}
+String uri=getStringOrNull(entityBody,"uri");
+if (uri == null) {
+return output.conflict(result.first());
+}
+long idOfNodeToBeIndexed=extractNodeId(uri);
+long idOfNodeAlreadyInIndex=extractNodeId(result.first().getIdentity());
+if (idOfNodeToBeIndexed == idOfNodeAlreadyInIndex) {
+return output.created(result.first());
+}
+return output.conflict(result.first());
+default :
+entityBody=input.readMap(postBody,"key","value","uri");
+return output.created(actions.addToNodeIndex(indexName,String.valueOf(entityBody.get("key")),String.valueOf(entityBody.get("value")),extractNodeId(entityBody.get("uri").toString())));
+}
+}
+ catch (UnsupportedOperationException e) {
+return output.methodNotAllowed(e);
+}
+catch (IllegalArgumentException e) {
+return output.badRequest(e);
+}
+catch (BadInputException e) {
+return output.badRequest(e);
+}
+catch (Exception e) {
+return output.serverError(e);
+}
+}
