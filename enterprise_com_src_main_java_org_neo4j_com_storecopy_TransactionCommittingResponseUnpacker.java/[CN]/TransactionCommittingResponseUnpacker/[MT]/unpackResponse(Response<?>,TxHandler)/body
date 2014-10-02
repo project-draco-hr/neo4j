@@ -2,24 +2,37 @@
   if (stopped) {
     throw new IllegalStateException("Component is currently stopped");
   }
-  response.accept(new Visitor<CommittedTransactionRepresentation,IOException>(){
-    @Override public boolean visit(    CommittedTransactionRepresentation transaction) throws IOException {
+  response.accept(new Response.Handler(){
+    @Override public void obligation(    long txId) throws IOException {
+      try {
+        obligationFulfiller.pullUpdates(txId).get();
+      }
+ catch (      InterruptedException|ExecutionException e) {
+        throw new IOException(e);
+      }
+    }
+    @Override public Visitor<CommittedTransactionRepresentation,IOException> transactions(){
+      return new Visitor<CommittedTransactionRepresentation,IOException>(){
+        @Override public boolean visit(        CommittedTransactionRepresentation transaction) throws IOException {
 synchronized (appender) {
-        long transactionId=transaction.getCommitEntry().getTxId();
-        if (appender.append(transaction)) {
-          transactionIdStore.transactionCommitted(transactionId);
-          try {
-            try (LockGroup locks=new LockGroup()){
-              storeApplier.apply(transaction.getTransactionRepresentation(),locks,transactionId,TransactionApplicationMode.EXTERNAL);
-              txHandler.accept(transaction);
-            }
-           }
+            long transactionId=transaction.getCommitEntry().getTxId();
+            if (appender.append(transaction)) {
+              transactionIdStore.transactionCommitted(transactionId);
+              try {
+                try (LockGroup locks=new LockGroup()){
+                  storeApplier.apply(transaction.getTransactionRepresentation(),locks,transactionId,TransactionApplicationMode.EXTERNAL);
+                  txHandler.accept(transaction);
+                }
+               }
   finally {
-            transactionIdStore.transactionClosed(transactionId);
+                transactionIdStore.transactionClosed(transactionId);
+              }
+            }
           }
+          return true;
         }
       }
-      return true;
+;
     }
   }
 );

@@ -2,16 +2,21 @@
   final DechunkingChannelBuffer dechunkingBuffer=new DechunkingChannelBuffer(reader,timeout,internalProtocolVersion,applicationProtocolVersion);
   PAYLOAD response=payloadDeserializer.read(dechunkingBuffer,input);
   StoreId storeId=readStoreId(dechunkingBuffer,input);
-  TransactionStream transactions=new TransactionStream(){
-    @Override public void accept(    Visitor<CommittedTransactionRepresentation,IOException> visitor) throws IOException {
-      LogEntryReader<ReadableLogChannel> reader=new LogEntryReaderFactory().create();
-      NetworkReadableLogChannel channel=new NetworkReadableLogChannel(dechunkingBuffer);
-      try (PhysicalTransactionCursor<ReadableLogChannel> cursor=new PhysicalTransactionCursor<>(channel,reader)){
-        while (cursor.next() && visitor.visit(cursor.get())) {
+  byte firstByte=dechunkingBuffer.readByte();
+  if (firstByte != -1) {
+    TransactionStream transactions=new TransactionStream(){
+      @Override public void accept(      Visitor<CommittedTransactionRepresentation,IOException> visitor) throws IOException {
+        LogEntryReader<ReadableLogChannel> reader=new LogEntryReaderFactory().create();
+        NetworkReadableLogChannel channel=new NetworkReadableLogChannel(dechunkingBuffer);
+        try (PhysicalTransactionCursor<ReadableLogChannel> cursor=new PhysicalTransactionCursor<>(channel,reader)){
+          while (cursor.next() && visitor.visit(cursor.get())) {
+          }
         }
-      }
-     }
-  }
+       }
+    }
 ;
-  return new Response<>(response,storeId,transactions,channelReleaser);
+    return new TransactionStreamResponse<>(response,storeId,transactions,channelReleaser);
+  }
+  long obligationTxId=dechunkingBuffer.readLong();
+  return new TransactionObligationResponse<>(response,storeId,obligationTxId,channelReleaser);
 }

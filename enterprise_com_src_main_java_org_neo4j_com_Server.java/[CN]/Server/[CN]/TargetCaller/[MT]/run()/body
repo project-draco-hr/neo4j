@@ -1,0 +1,31 @@
+{
+  Map<String,String> requestContext=new HashMap<>();
+  requestContext.put("type",type.toString());
+  requestContext.put("remoteClient",channel.getRemoteAddress().toString());
+  requestContext.put("slaveContext",context.toString());
+  requestMonitor.beginRequest(requestContext);
+  Response<R> response=null;
+  Throwable failure=null;
+  try {
+    unmapSlave(channel);
+    response=type.getTargetCaller().call(requestTarget,context,bufferToReadFrom,targetBuffer);
+    type.getObjectSerializer().write(response.response(),targetBuffer);
+    writeStoreId(response.getStoreId(),targetBuffer);
+    response.accept(this);
+    targetBuffer.done();
+    responseWritten(type,channel,context);
+  }
+ catch (  Throwable e) {
+    failure=e;
+    targetBuffer.clear(true);
+    writeFailureResponse(e,targetBuffer);
+    tryToFinishOffChannel(channel,context);
+    throw Exceptions.launderedException(e);
+  }
+ finally {
+    if (response != null) {
+      response.close();
+    }
+    requestMonitor.endRequest(failure);
+  }
+}
