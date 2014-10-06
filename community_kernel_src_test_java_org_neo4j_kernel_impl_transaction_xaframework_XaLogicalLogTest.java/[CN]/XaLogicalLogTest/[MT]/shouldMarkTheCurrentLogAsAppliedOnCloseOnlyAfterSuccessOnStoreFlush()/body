@@ -1,0 +1,21 @@
+{
+  XaTransactionFactory xaTf=mock(XaTransactionFactory.class);
+  doThrow(IOException.class).when(xaTf).flushAll();
+  DefaultFileSystemAbstraction fileSystem=mock(DefaultFileSystemAbstraction.class);
+  StoreFileChannel channel=mock(StoreFileChannel.class);
+  when(channel.write(any(ByteBuffer.class))).thenReturn(4);
+  when(channel.isOpen()).thenReturn(true);
+  when(fileSystem.open(any(File.class),anyString())).thenReturn(channel);
+  XaLogicalLog theLog=new XaLogicalLog(new File("db.tx.log"),mock(XaResourceManager.class),mock(XaCommandFactory.class),xaTf,fileSystem,new Monitors(),new DevNullLoggingService(),LogPruneStrategies.NO_PRUNING,mock(TransactionStateFactory.class),mock(KernelHealth.class),50000);
+  theLog.open();
+  reset(channel);
+  when(channel.write(any(ByteBuffer.class))).thenReturn(4);
+  when(channel.isOpen()).thenReturn(true);
+  try {
+    theLog.close();
+  }
+ catch (  IOException e) {
+  }
+  verify(channel,times(1)).isOpen();
+  verifyNoMoreInteractions(channel);
+}
