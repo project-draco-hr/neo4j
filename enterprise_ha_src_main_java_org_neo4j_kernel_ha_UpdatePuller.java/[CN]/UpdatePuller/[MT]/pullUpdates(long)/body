@@ -1,12 +1,16 @@
 {
   if (!updatePuller.isActive()) {
+    throw new IllegalStateException("Update puller not active " + updatePuller);
+  }
+  Condition condition=new Condition(){
+    @Override public boolean evaluate(){
+      return transactionIdStore.getLastClosedTransactionId() >= toTxId;
+    }
+  }
+;
+  if (condition.evaluate()) {
     return;
   }
   updatePuller.poke();
-  await(new Condition(){
-    @Override public boolean evaluate(){
-      return transactionIdStore.getLastCommittedTransactionId() >= toTxId;
-    }
-  }
-);
+  await(condition);
 }

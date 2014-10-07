@@ -5,10 +5,11 @@
 synchronized (logFile) {
     rotated=logFile.checkRotation();
     transactionId=transactionIdStore.nextCommittingTransactionId();
-    hasLegacyIndexChanges=append(transaction,transactionId);
+    hasLegacyIndexChanges=append0(transaction,transactionId);
     ticket=getCurrentTicket();
   }
-  force(ticket);
-  afterForce(transactionId,hasLegacyIndexChanges,rotated);
+  forceAfterAppend(ticket);
+  pruneIfRotated(rotated);
+  coordinateMultipleThreadsApplyingLegacyIndexChanges(hasLegacyIndexChanges,transactionId);
   return transactionId;
 }
