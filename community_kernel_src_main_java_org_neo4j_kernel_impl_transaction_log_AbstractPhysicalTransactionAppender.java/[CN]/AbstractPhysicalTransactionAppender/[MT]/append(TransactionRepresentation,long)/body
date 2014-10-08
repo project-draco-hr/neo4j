@@ -1,12 +1,9 @@
 {
-  channel.getCurrentPosition(positionMarker);
-  LogPosition logPosition=positionMarker.newPosition();
-  indexCommandDetector.reset();
-  transactionLogWriter.append(transaction,transactionId);
-  transactionMetadataCache.cacheTransactionMetadata(transactionId,logPosition,transaction.getMasterId(),transaction.getAuthorId(),LogEntryStart.checksum(transaction.additionalHeader(),transaction.getMasterId(),transaction.getAuthorId()));
-  channel.emptyBufferIntoChannelAndClearIt();
-  if (indexCommandDetector.hasWrittenAnyLegacyIndexCommand()) {
-    legacyIndexTransactionOrdering.offer(transactionId);
+synchronized (logFile) {
+    long transactionId=transactionIdStore.nextCommittingTransactionId();
+    if (transactionId != expectedTransactionId) {
+      throw new ThisShouldNotHappenError("Zhen Li and Mattias Persson","Received " + transaction + " with txId:"+ expectedTransactionId+ " to be applied, but appending it ended up generating an unexpected txId:"+ transactionId);
+    }
+    append0(transaction,transactionId);
   }
-  return indexCommandDetector.hasWrittenAnyLegacyIndexCommand();
 }

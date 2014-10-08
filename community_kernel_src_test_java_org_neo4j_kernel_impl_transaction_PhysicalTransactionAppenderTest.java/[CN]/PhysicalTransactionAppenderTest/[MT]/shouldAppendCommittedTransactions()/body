@@ -1,30 +1,29 @@
 {
   LogFile logFile=mock(LogFile.class);
   when(logFile.getWriter()).thenReturn(channel);
-  TxIdGenerator txIdGenerator=mock(TxIdGenerator.class);
-  long txId=15;
-  when(txIdGenerator.generate(any(TransactionRepresentation.class))).thenReturn(txId);
-  TransactionMetadataCache positionCache=new TransactionMetadataCache(10,100);
+  long nextTxId=15;
   TransactionIdStore transactionIdStore=mock(TransactionIdStore.class);
-  TransactionAppender appender=new PhysicalTransactionAppender(logFile,txIdGenerator,positionCache,transactionIdStore,BYPASS);
+  when(transactionIdStore.nextCommittingTransactionId()).thenReturn(nextTxId);
+  TransactionMetadataCache positionCache=new TransactionMetadataCache(10,100);
+  TransactionAppender appender=new PhysicalTransactionAppender(logFile,positionCache,transactionIdStore,BYPASS);
   final byte[] additionalHeader=new byte[]{1,2,5};
   final int masterId=2, authorId=1;
-  final long timeStarted=12345, latestCommittedTxWhenStarted=4545, timeCommitted=timeStarted + 10;
+  final long timeStarted=12345, latestCommittedTxWhenStarted=nextTxId - 5, timeCommitted=timeStarted + 10;
   PhysicalTransactionRepresentation transactionRepresentation=new PhysicalTransactionRepresentation(singleCreateNodeCommand());
   transactionRepresentation.setHeader(additionalHeader,masterId,authorId,timeStarted,latestCommittedTxWhenStarted,timeCommitted);
-  when(transactionIdStore.getLastCommittedTransactionId()).thenReturn(latestCommittedTxWhenStarted);
   LogEntryStart start=new LogEntryStart(0,0,0l,latestCommittedTxWhenStarted,null,LogPosition.UNSPECIFIED);
-  LogEntryCommit commit=new OnePhaseCommit(latestCommittedTxWhenStarted + 1,0l);
+  LogEntryCommit commit=new OnePhaseCommit(nextTxId,0l);
   CommittedTransactionRepresentation transaction=new CommittedTransactionRepresentation(start,transactionRepresentation,commit);
-  appender.append(transaction);
+  appender.append(transaction.getTransactionRepresentation(),transaction.getCommitEntry().getTxId());
   LogEntryReader<ReadableVersionableLogChannel> logEntryReader=new LogEntryReaderFactory().versionable();
-  PhysicalTransactionCursor<ReadableVersionableLogChannel> reader=new PhysicalTransactionCursor<>(channel,logEntryReader);
-  reader.next();
-  TransactionRepresentation result=reader.get().getTransactionRepresentation();
-  assertArrayEquals(additionalHeader,result.additionalHeader());
-  assertEquals(masterId,result.getMasterId());
-  assertEquals(authorId,result.getAuthorId());
-  assertEquals(timeStarted,result.getTimeStarted());
-  assertEquals(timeCommitted,result.getTimeCommitted());
-  assertEquals(latestCommittedTxWhenStarted,result.getLatestCommittedTxWhenStarted());
-}
+  try (PhysicalTransactionCursor<ReadableVersionableLogChannel> reader=new PhysicalTransactionCursor<>(channel,logEntryReader)){
+    reader.next();
+    TransactionRepresentation result=reader.get().getTransactionRepresentation();
+    assertArrayEquals(additionalHeader,result.additionalHeader());
+    assertEquals(masterId,result.getMasterId());
+    assertEquals(authorId,result.getAuthorId());
+    assertEquals(timeStarted,result.getTimeStarted());
+    assertEquals(timeCommitted,result.getTimeCommitted());
+    assertEquals(latestCommittedTxWhenStarted,result.getLatestCommittedTxWhenStarted());
+  }
+ }

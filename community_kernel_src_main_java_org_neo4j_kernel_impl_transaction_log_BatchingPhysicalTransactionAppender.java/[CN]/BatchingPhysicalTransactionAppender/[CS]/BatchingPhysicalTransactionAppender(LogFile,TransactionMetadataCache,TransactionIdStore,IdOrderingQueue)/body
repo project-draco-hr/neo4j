@@ -1,0 +1,22 @@
+{
+  super(logFile,transactionMetadataCache,transactionIdStore,legacyIndexTransactionOrdering);
+  forceThread=new BatchingForceThread(new BatchingForceThread.Operation(){
+    private long lastSeenTransactionId;
+    /** 
+ * Called by the forcing thread that forces now and then.
+ */
+    @Override public boolean force() throws IOException {
+      long currentTransactionId=transactionIdStore.getLastCommittedTransactionId();
+      ongoingForceCounter.incrementAndGet();
+      if (currentTransactionId != lastSeenTransactionId) {
+        BatchingPhysicalTransactionAppender.this.forceChannel();
+      }
+      completedForceCounter.incrementAndGet();
+      boolean changed=lastSeenTransactionId != currentTransactionId;
+      lastSeenTransactionId=currentTransactionId;
+      return changed;
+    }
+  }
+);
+  forceThread.start();
+}

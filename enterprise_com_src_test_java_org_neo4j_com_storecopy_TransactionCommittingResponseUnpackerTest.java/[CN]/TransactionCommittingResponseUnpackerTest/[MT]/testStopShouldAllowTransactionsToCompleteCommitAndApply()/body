@@ -3,21 +3,22 @@
   TransactionIdStore txIdStore=mock(TransactionIdStore.class);
   when(dependencyResolver.resolveDependency(TransactionIdStore.class)).thenReturn(txIdStore);
   TransactionAppender appender=mock(TransactionAppender.class);
-  when(appender.append(any(CommittedTransactionRepresentation.class))).thenReturn(true);
   LogicalTransactionStore logicalTransactionStore=mock(LogicalTransactionStore.class);
   when(logicalTransactionStore.getAppender()).thenReturn(appender);
   when(dependencyResolver.resolveDependency(LogicalTransactionStore.class)).thenReturn(logicalTransactionStore);
   when(dependencyResolver.resolveDependency(TransactionRepresentationStoreApplier.class)).thenReturn(mock(TransactionRepresentationStoreApplier.class));
   StoppingTxHandler stoppingTxHandler=new StoppingTxHandler();
-  TransactionCommittingResponseUnpacker unpacker=new TransactionCommittingResponseUnpacker(dependencyResolver);
+  int maxBatchSize=10;
+  TransactionCommittingResponseUnpacker unpacker=new TransactionCommittingResponseUnpacker(dependencyResolver,maxBatchSize);
   stoppingTxHandler.setUnpacker(unpacker);
   unpacker.start();
-  int committingTransactionId=2;
-  DummyResponse response=new DummyResponse(committingTransactionId);
+  long committingTransactionId=TransactionIdStore.BASE_TX_ID + 1;
+  DummyTransactionResponse response=new DummyTransactionResponse(committingTransactionId,1,appender,maxBatchSize);
   unpacker.unpackResponse(response,stoppingTxHandler);
   verify(txIdStore,times(1)).transactionCommitted(committingTransactionId);
   verify(txIdStore,times(1)).transactionClosed(committingTransactionId);
-  verify(appender,times(1)).append(response.getTheTx());
+  verify(appender,times(1)).append(any(TransactionRepresentation.class),anyLong());
+  verify(appender,times(1)).force();
   try {
     unpacker.unpackResponse(mock(Response.class),stoppingTxHandler);
     fail("A stopped transaction unpacker should not allow transactions to be applied");

@@ -1,15 +1,15 @@
 {
-  final CapturingHighAvailabilityMemberStateMachine memberStateMachine=new CapturingHighAvailabilityMemberStateMachine(myId);
-  final UpdatePuller puller=new UpdatePuller(memberStateMachine,master,requestContextFactory,availabilityGuard,lastUpdateTime,config,scheduler,stringLogger);
+  final UpdatePullerClient puller=new UpdatePullerClient(1,scheduler,logging,updatePuller);
   puller.init();
   puller.start();
+  stateMachine.switchInstanceToSlave();
   scheduler.runJob();
   verify(lastUpdateTime,times(1)).setLastUpdateTime(anyLong());
   verify(availabilityGuard,times(1)).isAvailable(anyLong());
   verify(master,times(1)).pullUpdates(Matchers.<RequestContext>any());
-  memberStateMachine.switchInstanceToMaster();
+  stateMachine.switchInstanceToMaster();
   scheduler.runJob();
-  memberStateMachine.switchInstanceToSlave();
+  stateMachine.switchInstanceToSlave();
   scheduler.runJob();
   verify(lastUpdateTime,times(2)).setLastUpdateTime(anyLong());
   verify(availabilityGuard,times(2)).isAvailable(anyLong());

@@ -2,25 +2,8 @@
   if (stopped) {
     throw new IllegalStateException("Component is currently stopped");
   }
-  response.accept(new Visitor<CommittedTransactionRepresentation,IOException>(){
-    @Override public boolean visit(    CommittedTransactionRepresentation transaction) throws IOException {
-synchronized (appender) {
-        long transactionId=transaction.getCommitEntry().getTxId();
-        if (appender.append(transaction)) {
-          transactionIdStore.transactionCommitted(transactionId);
-          try {
-            try (LockGroup locks=new LockGroup()){
-              storeApplier.apply(transaction.getTransactionRepresentation(),locks,transactionId,TransactionApplicationMode.EXTERNAL);
-              txHandler.accept(transaction);
-            }
-           }
-  finally {
-            transactionIdStore.transactionClosed(transactionId);
-          }
-        }
-      }
-      return true;
-    }
+  response.accept(new BatchingResponseHandler(txHandler));
+  if (response.hasTransactionsToBeApplied()) {
+    applyQueuedTransactions();
   }
-);
 }

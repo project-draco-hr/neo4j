@@ -4,11 +4,12 @@
   boolean hasLegacyIndexChanges, rotated;
 synchronized (logFile) {
     rotated=logFile.checkRotation();
-    transactionId=txIdGenerator.generate(transaction);
-    hasLegacyIndexChanges=append(transaction,transactionId);
+    transactionId=transactionIdStore.nextCommittingTransactionId();
+    hasLegacyIndexChanges=append0(transaction,transactionId);
     ticket=getCurrentTicket();
   }
-  force(ticket);
-  afterForce(transactionId,hasLegacyIndexChanges,rotated);
+  forceAfterAppend(ticket);
+  pruneIfRotated(rotated);
+  coordinateMultipleThreadsApplyingLegacyIndexChanges(hasLegacyIndexChanges,transactionId);
   return transactionId;
 }

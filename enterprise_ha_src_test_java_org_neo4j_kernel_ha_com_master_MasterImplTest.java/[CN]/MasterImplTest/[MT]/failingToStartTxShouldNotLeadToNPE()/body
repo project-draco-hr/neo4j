@@ -1,12 +1,19 @@
 {
-  MasterImpl.SPI spi=mock(MasterImpl.SPI.class);
+  MasterImpl.SPI spi=mockedSpi();
   Config config=config(20);
   when(spi.isAccessible()).thenReturn(true);
   when(spi.acquireClient()).thenThrow(new RuntimeException("Nope"));
   when(spi.getMasterIdForCommittedTx(anyLong())).thenReturn(Pair.of(1,1L));
+  when(spi.packEmptyResponse(any())).thenAnswer(new Answer(){
+    @Override public Object answer(    InvocationOnMock invocation) throws Throwable {
+      return new TransactionObligationResponse<>(invocation.getArguments()[0],StoreId.DEFAULT,TransactionIdStore.BASE_TX_ID,ResourceReleaser.NO_OP);
+    }
+  }
+);
   MasterImpl instance=new MasterImpl(spi,mock(MasterImpl.Monitor.class),new DevNullLoggingService(),config);
   instance.start();
-  HandshakeResult handshake=instance.handshake(1,new StoreId()).response();
+  Response<HandshakeResult> response=instance.handshake(1,new StoreId());
+  HandshakeResult handshake=response.response();
   try {
     instance.newLockSession(new RequestContext(handshake.epoch(),1,2,0,1,0));
     fail("Should have failed.");

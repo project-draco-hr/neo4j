@@ -6,15 +6,23 @@
   final long targetTransactionId=8L;
   final TransactionIdStore transactionIdStore=new DeadSimpleTransactionIdStore(targetTransactionId);
   ResponsePacker packer=new ResponsePacker(transactionStore,transactionIdStore,singletonProvider(new StoreId()));
-  Response<Object> response=packer.packResponse(requestContextStartingAt(5L),null);
+  Response<Object> response=packer.packTransactionStreamResponse(requestContextStartingAt(5L),null);
   final AtomicLong nextExpectedVisit=new AtomicLong(lastAppliedTransactionId);
-  response.accept(new Visitor<CommittedTransactionRepresentation,IOException>(){
-    @Override public boolean visit(    CommittedTransactionRepresentation element) throws IOException {
-      long txId=element.getCommitEntry().getTxId();
-      assertThat(txId,lessThanOrEqualTo(targetTransactionId));
-      assertEquals(nextExpectedVisit.incrementAndGet(),txId);
-      transactionIdStore.setLastCommittedAndClosedTransactionId(transactionIdStore.getLastCommittedTransactionId() + 1);
-      return true;
+  response.accept(new Response.Handler(){
+    @Override public void obligation(    long txId) throws IOException {
+      fail("Should not be called");
+    }
+    @Override public Visitor<CommittedTransactionRepresentation,IOException> transactions(){
+      return new Visitor<CommittedTransactionRepresentation,IOException>(){
+        @Override public boolean visit(        CommittedTransactionRepresentation element) throws IOException {
+          long txId=element.getCommitEntry().getTxId();
+          assertThat(txId,lessThanOrEqualTo(targetTransactionId));
+          assertEquals(nextExpectedVisit.incrementAndGet(),txId);
+          transactionIdStore.setLastCommittedAndClosedTransactionId(transactionIdStore.getLastCommittedTransactionId() + 1);
+          return true;
+        }
+      }
+;
     }
   }
 );
