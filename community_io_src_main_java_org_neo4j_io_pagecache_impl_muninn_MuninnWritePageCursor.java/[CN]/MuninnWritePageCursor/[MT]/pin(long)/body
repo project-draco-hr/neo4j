@@ -3,7 +3,6 @@
   StampedLock translationTableLock=pagedFile.translationTableLocks[stripe];
   PrimitiveLongObjectMap<MuninnPage> translationTable=pagedFile.translationTables[stripe];
   PageSwapper swapper=pagedFile.swapper;
-  AtomicReference<MuninnPage> freelist=pagedFile.freelist;
   MuninnPage page;
   long stamp=translationTableLock.tryOptimisticRead();
   page=translationTable.get(filePageId);
@@ -21,7 +20,7 @@
     try {
       page=translationTable.get(filePageId);
       if (page == null) {
-        pageFault(filePageId,translationTable,freelist,swapper);
+        pageFault(filePageId,translationTable,swapper);
         return;
       }
     }
@@ -46,7 +45,7 @@
       }
       page.unlockWrite(lockStamp);
     }
-    pageFault(filePageId,translationTable,freelist,swapper);
+    pageFault(filePageId,translationTable,swapper);
   }
   finally {
     translationTableLock.unlockWrite(stamp);

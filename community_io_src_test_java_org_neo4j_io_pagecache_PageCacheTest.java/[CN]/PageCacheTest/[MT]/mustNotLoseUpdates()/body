@@ -1,0 +1,86 @@
+{
+  final AtomicBoolean shouldStop=new AtomicBoolean();
+  final int cachePages=20;
+  final int filePages=cachePages * 2;
+  final int threadCount=8;
+  final int pageSize=threadCount * 4;
+  getPageCache(fs,cachePages,pageSize,PageCacheMonitor.NULL);
+  final PagedFile pagedFile=pageCache.map(file,pageSize);
+  try (PageCursor cursor=pagedFile.io(0,PF_EXCLUSIVE_LOCK)){
+    for (int i=0; i < filePages; i++) {
+      assertTrue("failed to initialise file page " + i,cursor.next());
+    }
+  }
+   pageCache.flush();
+class Result {
+    final int threadId;
+    final int[] pageCounts;
+    Result(    int threadId,    int[] pageCounts){
+      this.threadId=threadId;
+      this.pageCounts=pageCounts;
+    }
+  }
+class Worker implements Callable<Result> {
+    final int threadId;
+    Worker(    int threadId){
+      this.threadId=threadId;
+    }
+    @Override public Result call() throws Exception {
+      int[] pageCounts=new int[filePages];
+      ThreadLocalRandom rng=ThreadLocalRandom.current();
+      while (!shouldStop.get()) {
+        int pageId=rng.nextInt(0,filePages);
+        boolean updateCounter=rng.nextBoolean();
+        int pf_flags=updateCounter ? PF_EXCLUSIVE_LOCK : PF_SHARED_LOCK;
+        try (PageCursor cursor=pagedFile.io(pageId,pf_flags)){
+          int counter;
+          try {
+            assertTrue(cursor.next());
+            do {
+              cursor.setOffset(threadId * 4);
+              counter=cursor.getInt();
+            }
+ while (cursor.shouldRetry());
+            String lockName=updateCounter ? "PF_EXCLUSIVE_LOCK" : "PF_SHARED_LOCK";
+            assertThat("inconsistent page read from filePageId = " + pageId + ", with "+ lockName+ " [t:"+ Thread.currentThread().getId()+ "]",counter,is(pageCounts[pageId]));
+          }
+ catch (          Throwable throwable) {
+            shouldStop.set(true);
+            throw throwable;
+          }
+          if (updateCounter) {
+            counter++;
+            pageCounts[pageId]++;
+            cursor.setOffset(threadId * 4);
+            cursor.putInt(counter);
+          }
+        }
+       }
+      return new Result(threadId,pageCounts);
+    }
+  }
+  List<Future<Result>> futures=new ArrayList<>();
+  for (int i=0; i < threadCount; i++) {
+    futures.add(executor.submit(new Worker(i)));
+  }
+  Thread.sleep(1);
+  shouldStop.set(true);
+  for (  Future<Result> future : futures) {
+    Result result=future.get();
+    try (PageCursor cursor=pagedFile.io(0,PF_SHARED_LOCK)){
+      for (int i=0; i < filePages; i++) {
+        assertTrue(cursor.next());
+        int threadId=result.threadId;
+        int expectedCount=result.pageCounts[i];
+        int actualCount;
+        do {
+          cursor.setOffset(threadId * 4);
+          actualCount=cursor.getInt();
+        }
+ while (cursor.shouldRetry());
+        assertThat("wrong count for threadId = " + threadId + ", pageId = "+ i,actualCount,is(expectedCount));
+      }
+    }
+   }
+  pageCache.unmap(file);
+}

@@ -1,18 +1,19 @@
 {
   long parkNanos=TimeUnit.MILLISECONDS.toNanos(10);
-  int availablePages;
-  do {
+  for (; ; ) {
     LockSupport.parkNanos(parkNanos);
-    if (Thread.currentThread().isInterrupted()) {
+    if (Thread.currentThread().isInterrupted() || closed) {
       return 0;
     }
-    availablePages=0;
-    MuninnPage page=freelist.get();
-    while (page != null && availablePages < keepFree) {
-      availablePages++;
-      page=page.nextFree;
+    Object freelistHead=getFreelistHead();
+    if (freelistHead instanceof FreePage) {
+      int availablePages=((FreePage)freelistHead).count;
+      if (availablePages < keepFree) {
+        return keepFree - availablePages;
+      }
+    }
+ else     if (freelistHead instanceof FreePageWaiter) {
+      return keepFree;
     }
   }
- while (availablePages == keepFree && freePageWaiters.get() == null);
-  return keepFree - availablePages;
 }

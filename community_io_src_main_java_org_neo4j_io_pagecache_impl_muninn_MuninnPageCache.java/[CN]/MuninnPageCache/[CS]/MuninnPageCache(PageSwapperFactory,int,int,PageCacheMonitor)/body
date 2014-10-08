@@ -2,18 +2,30 @@
   verifyHacks();
   this.swapperFactory=swapperFactory;
   this.cachePageSize=cachePageSize;
+  this.keepFree=Math.min(pagesToKeepFree,maxPages / 2);
   this.cursorPool=new MuninnCursorPool();
   this.monitor=monitor;
   this.pages=new MuninnPage[maxPages];
   MemoryReleaser memoryReleaser=new MemoryReleaser(maxPages);
-  MuninnPage pageList=null;
+  Object pageList=null;
   int cachePageId=maxPages;
   while (cachePageId-- > 0) {
     MuninnPage page=new MuninnPage(cachePageSize,cachePageId,memoryReleaser);
     pages[cachePageId]=page;
-    page.nextFree=pageList;
-    pageList=page;
+    if (pageList == null) {
+      FreePage freePage=new FreePage(page);
+      freePage.setNext(null);
+      pageList=freePage;
+    }
+ else     if (pageList instanceof FreePage && ((FreePage)pageList).count < keepFree) {
+      FreePage freePage=new FreePage(page);
+      freePage.setNext((FreePage)pageList);
+      pageList=freePage;
+    }
+ else {
+      page.nextFree=pageList;
+      pageList=page;
+    }
   }
-  freelist=new AtomicReference<>(pageList);
-  freePageWaiters=new AtomicReference<>();
+  UnsafeUtil.putObjectVolatile(this,freelistOffset,pageList);
 }
