@@ -11,12 +11,11 @@
 ).when(logFile).prune();
   WritableLogChannel channel=new InMemoryLogChannel();
   when(logFile.getWriter()).thenReturn(channel);
-  TxIdGenerator txIdGenerator=mock(TxIdGenerator.class);
-  when(txIdGenerator.generate(any(TransactionRepresentation.class))).thenReturn(1L,2L,3L,4L,5L);
   TransactionMetadataCache metadataCache=new TransactionMetadataCache(10,100);
   TransactionIdStore transactionIdStore=mock(TransactionIdStore.class);
+  when(transactionIdStore.nextCommittingTransactionId()).thenReturn(1L,2L,3L,4L,5L);
   IdOrderingQueue legacyIndexOrdering=new SynchronizedArrayIdOrderingQueue(5);
-  TransactionAppender appender=new PhysicalTransactionAppender(logFile,txIdGenerator,metadataCache,transactionIdStore,legacyIndexOrdering);
+  TransactionAppender appender=new PhysicalTransactionAppender(logFile,metadataCache,transactionIdStore,legacyIndexOrdering);
   OtherThreadExecutor<Void> otherThread=cleanup.add(new OtherThreadExecutor<Void>("T2",null));
   Future<Object> appendFuture=otherThread.executeDontWait(append(appender,mockedTransaction()));
   pruneLatch.awaitStart();

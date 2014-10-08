@@ -5,11 +5,10 @@
   when(channel.putInt(anyInt())).thenThrow(new IOException(failureMessage));
   LogFile logFile=mock(LogFile.class);
   when(logFile.getWriter()).thenReturn(channel);
-  TxIdGenerator txIdGenerator=mock(TxIdGenerator.class);
-  when(txIdGenerator.generate(any(TransactionRepresentation.class))).thenReturn(txId);
   TransactionMetadataCache metadataCache=new TransactionMetadataCache(10,10);
   TransactionIdStore transactionIdStore=mock(TransactionIdStore.class);
-  TransactionAppender appender=new PhysicalTransactionAppender(logFile,txIdGenerator,metadataCache,transactionIdStore,BYPASS);
+  when(transactionIdStore.nextCommittingTransactionId()).thenReturn(txId);
+  TransactionAppender appender=new PhysicalTransactionAppender(logFile,metadataCache,transactionIdStore,BYPASS);
   TransactionRepresentation transaction=mock(TransactionRepresentation.class);
   when(transaction.additionalHeader()).thenReturn(new byte[0]);
   try {
@@ -18,6 +17,7 @@
   }
  catch (  IOException e) {
     assertTrue(contains(e,failureMessage,IOException.class));
+    verify(transactionIdStore,times(1)).nextCommittingTransactionId();
     verifyNoMoreInteractions(transactionIdStore);
   }
 }
