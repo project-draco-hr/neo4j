@@ -2,21 +2,21 @@
   final DechunkingChannelBuffer dechunkingBuffer=new DechunkingChannelBuffer(reader,timeout,internalProtocolVersion,applicationProtocolVersion);
   PAYLOAD response=payloadDeserializer.read(dechunkingBuffer,input);
   StoreId storeId=readStoreId(dechunkingBuffer,input);
-  byte firstByte=dechunkingBuffer.readByte();
-  if (firstByte != -1) {
-    TransactionStream transactions=new TransactionStream(){
-      @Override public void accept(      Visitor<CommittedTransactionRepresentation,IOException> visitor) throws IOException {
-        LogEntryReader<ReadableLogChannel> reader=new LogEntryReaderFactory().create();
-        NetworkReadableLogChannel channel=new NetworkReadableLogChannel(dechunkingBuffer);
-        try (PhysicalTransactionCursor<ReadableLogChannel> cursor=new PhysicalTransactionCursor<>(channel,reader)){
-          while (cursor.next() && visitor.visit(cursor.get())) {
-          }
-        }
-       }
-    }
-;
-    return new TransactionStreamResponse<>(response,storeId,transactions,channelReleaser);
+  byte responseType=dechunkingBuffer.readByte();
+  if (responseType == TransactionObligationResponse.RESPONSE_TYPE) {
+    long obligationTxId=dechunkingBuffer.readLong();
+    return new TransactionObligationResponse<>(response,storeId,obligationTxId,channelReleaser);
   }
-  long obligationTxId=dechunkingBuffer.readLong();
-  return new TransactionObligationResponse<>(response,storeId,obligationTxId,channelReleaser);
+  TransactionStream transactions=new TransactionStream(){
+    @Override public void accept(    Visitor<CommittedTransactionRepresentation,IOException> visitor) throws IOException {
+      LogEntryReader<ReadableLogChannel> reader=new LogEntryReaderFactory().create();
+      NetworkReadableLogChannel channel=new NetworkReadableLogChannel(dechunkingBuffer);
+      try (PhysicalTransactionCursor<ReadableLogChannel> cursor=new PhysicalTransactionCursor<>(channel,reader)){
+        while (cursor.next() && visitor.visit(cursor.get())) {
+        }
+      }
+     }
+  }
+;
+  return new TransactionStreamResponse<>(response,storeId,transactions,channelReleaser);
 }
