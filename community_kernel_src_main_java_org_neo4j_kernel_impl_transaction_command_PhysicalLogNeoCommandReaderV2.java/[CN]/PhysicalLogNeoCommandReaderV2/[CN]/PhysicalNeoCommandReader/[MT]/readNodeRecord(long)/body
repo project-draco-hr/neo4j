@@ -1,0 +1,25 @@
+{
+  byte inUseFlag=channel.get();
+  boolean inUse=false;
+  if (inUseFlag == Record.IN_USE.byteValue()) {
+    inUse=true;
+  }
+ else   if (inUseFlag != Record.NOT_IN_USE.byteValue()) {
+    throw new IOException("Illegal in use flag: " + inUseFlag);
+  }
+  NodeRecord record;
+  Collection<DynamicRecord> dynamicLabelRecords=new ArrayList<>();
+  long labelField=Record.NO_LABELS_FIELD.intValue();
+  if (inUse) {
+    boolean dense=channel.get() == 1;
+    record=new NodeRecord(id,dense,channel.getLong(),channel.getLong());
+    labelField=channel.getLong();
+  }
+ else {
+    record=new NodeRecord(id,false,Record.NO_NEXT_RELATIONSHIP.intValue(),Record.NO_NEXT_PROPERTY.intValue());
+  }
+  readDynamicRecords(dynamicLabelRecords,COLLECTION_DYNAMIC_RECORD_ADDER);
+  record.setLabelField(labelField,dynamicLabelRecords);
+  record.setInUse(inUse);
+  return record;
+}

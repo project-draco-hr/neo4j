@@ -1,0 +1,33 @@
+{
+  long id=channel.getLong();
+  byte flags=channel.get();
+  boolean inUse=false;
+  if (notFlag(notFlag(flags,Record.IN_USE.byteValue()),Record.CREATED_IN_TX) != 0) {
+    throw new IOException("Illegal in use flag: " + flags);
+  }
+  if (bitFlag(flags,Record.IN_USE.byteValue())) {
+    inUse=true;
+  }
+  RelationshipRecord record;
+  if (inUse) {
+    record=new RelationshipRecord(id,channel.getLong(),channel.getLong(),channel.getInt());
+    record.setInUse(true);
+    record.setFirstPrevRel(channel.getLong());
+    record.setFirstNextRel(channel.getLong());
+    record.setSecondPrevRel(channel.getLong());
+    record.setSecondNextRel(channel.getLong());
+    record.setNextProp(channel.getLong());
+    byte extraByte=channel.get();
+    record.setFirstInFirstChain((extraByte & 0x1) > 0);
+    record.setFirstInSecondChain((extraByte & 0x2) > 0);
+  }
+ else {
+    record=new RelationshipRecord(id,-1,-1,-1);
+    record.setInUse(false);
+  }
+  if (bitFlag(flags,Record.CREATED_IN_TX)) {
+    record.setCreated();
+  }
+  command.init(record);
+  return true;
+}
