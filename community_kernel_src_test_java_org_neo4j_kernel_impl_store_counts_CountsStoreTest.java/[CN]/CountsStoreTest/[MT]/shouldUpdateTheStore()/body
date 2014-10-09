@@ -1,20 +1,26 @@
 {
   CountsStore.createEmpty(pageCache,alpha,ALL_STORES_VERSION);
-  CountsStore.Writer<CountsKey,Register.Long.Out> writer;
-  try (CountsStore<CountsKey,Register.Long.Out> counts=CountsStore.open(fs,pageCache,alpha,RECORD_SERIALIZER,WRITER_FACTORY)){
+  SortedKeyValueStore.Writer<CountsKey,Register.LongRegister> writer;
+  try (CountsStore counts=CountsStore.open(fs,pageCache,alpha)){
     writer=counts.newWriter(beta,lastCommittedTxId);
-    writer.visit(nodeKey(0),21);
-    writer.visit(CountsKey.relationshipKey(1,2,3),32);
+    writer.valueRegister().write(21);
+    writer.visit(nodeKey(0));
+    writer.valueRegister().write(32);
+    writer.visit(relationshipKey(1,2,3));
     writer.close();
   }
-   try (CountsStore<CountsKey,Register.Long.Out> updated=writer.openForReading()){
+   try (CountsStore updated=(CountsStore)writer.openForReading()){
     assertEquals(21,get(updated,nodeKey(0)));
-    assertEquals(32,get(updated,CountsKey.relationshipKey(1,2,3)));
+    assertEquals(32,get(updated,relationshipKey(1,2,3)));
     assertEquals(lastCommittedTxId,updated.lastTxId());
     assertEquals(2,updated.totalRecordsStored());
     assertEquals(beta,updated.file());
-    updated.accept(new RecordVisitor<CountsKey>(){
-      @Override public void visit(      CountsKey key,      long value){
+    updated.accept(new KeyValueRecordVisitor<CountsKey,Register.LongRegister>(){
+      private final Register.LongRegister valueRegister=Registers.newLongRegister();
+      @Override public Register.LongRegister valueRegister(){
+        return valueRegister;
+      }
+      @Override public void visit(      CountsKey key){
         key.accept(new CountsVisitor(){
           @Override public void visitNodeCount(          int labelId,          long count){
             assertEquals(0,labelId);
@@ -27,7 +33,7 @@
             assertEquals(32,count);
           }
         }
-,value);
+,valueRegister);
       }
     }
 );

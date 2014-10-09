@@ -1,0 +1,21 @@
+{
+  final CountsStoreWriter writer=(CountsStoreWriter)super.nextWriter(state,lastCommittedTxId);
+  return new CountsStore.Writer<CountsKey,Register.LongRegister>(){
+    private final Register.LongRegister valueRegister=Registers.newLongRegister();
+    @Override public SortedKeyValueStore<CountsKey,Register.LongRegister> openForReading() throws IOException {
+      barrier.reached();
+      return writer.openForReading();
+    }
+    @Override public void close() throws IOException {
+      writer.close();
+    }
+    @Override public void visit(    CountsKey key){
+      writer.valueRegister().write(valueRegister.read());
+      writer.visit(key);
+    }
+    @Override public Register.LongRegister valueRegister(){
+      return valueRegister;
+    }
+  }
+;
+}

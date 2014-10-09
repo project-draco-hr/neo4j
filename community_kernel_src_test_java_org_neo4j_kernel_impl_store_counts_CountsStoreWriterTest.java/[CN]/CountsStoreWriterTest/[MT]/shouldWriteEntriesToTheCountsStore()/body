@@ -1,15 +1,21 @@
 {
   final CountsStoreWriter writer=new CountsStoreWriter(fs,pageCache,emptyHeader,file,lastTxId);
-  writer.visit(nodeKey(0),42);
-  writer.visit(relationshipKey(1,2,3),24);
+  writer.valueRegister().write(42);
+  writer.visit(nodeKey(0));
+  writer.valueRegister().write(24);
+  writer.visit(relationshipKey(1,2,3));
   writer.close();
   try {
-    final CountsStore counts=writer.openForReading();
+    final SortedKeyValueStore counts=writer.openForReading();
     assertEquals(lastTxId,counts.lastTxId());
     assertEquals(2,counts.totalRecordsStored());
     assertEquals(file,counts.file());
-    counts.accept(new RecordVisitor<CountsKey>(){
-      @Override public void visit(      CountsKey key,      long value){
+    counts.accept(new KeyValueRecordVisitor<CountsKey,Register.LongRegister>(){
+      private final Register.LongRegister valueRegister=Registers.newLongRegister();
+      @Override public Register.LongRegister valueRegister(){
+        return valueRegister;
+      }
+      @Override public void visit(      CountsKey key){
         key.accept(new CountsVisitor(){
           @Override public void visitNodeCount(          int labelId,          long count){
             assertEquals(0,labelId);
@@ -22,7 +28,7 @@
             assertEquals(24,count);
           }
         }
-,value);
+,valueRegister);
       }
     }
 );

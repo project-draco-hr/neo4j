@@ -1,27 +1,4 @@
 {
-class InstrumentedCountsTracker extends CountsTracker {
-    private final Barrier barrier;
-    InstrumentedCountsTracker(    FileSystemAbstraction fs,    PageCache pageCache,    File storeFileBase,    Barrier barrier){
-      super(fs,pageCache,storeFileBase);
-      this.barrier=barrier;
-    }
-    @Override CountsStore.Writer<CountsKey,Register.Long.Out> nextWriter(    State state,    long lastCommittedTxId) throws IOException {
-      final CountsStore.Writer<CountsKey,Register.Long.Out> writer=super.nextWriter(state,lastCommittedTxId);
-      return new CountsStore.Writer<CountsKey,Register.Long.Out>(){
-        @Override public CountsStore<CountsKey,Register.Long.Out> openForReading() throws IOException {
-          barrier.reached();
-          return writer.openForReading();
-        }
-        @Override public void close() throws IOException {
-          writer.close();
-        }
-        @Override public void visit(        CountsKey key,        long value){
-          writer.visit(key,value);
-        }
-      }
-;
-    }
-  }
   CountsTracker.createEmptyCountsStore(pageCache(),storeFile(),VERSION);
   CountsOracle oracle=oracle();
   try (CountsTracker tracker=new CountsTracker(fs.get(),pageCache(),storeFile())){
@@ -37,7 +14,7 @@ class InstrumentedCountsTracker extends CountsTracker {
   }
   delta.update(oracle);
   Barrier.Control barrier=new Barrier.Control();
-  try (InstrumentedCountsTracker tracker=new InstrumentedCountsTracker(fs.get(),pageCache(),storeFile(),barrier)){
+  try (CountsTracker tracker=new InstrumentedCountsTracker(fs.get(),pageCache(),storeFile(),barrier)){
     Future<Void> task=threading.execute(new Function<CountsTracker,Void>(){
       @Override public Void apply(      CountsTracker tracker){
         try {
