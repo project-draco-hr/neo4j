@@ -1,19 +1,19 @@
 {
   CountsStore.createEmpty(pageCache,alpha,ALL_STORES_VERSION);
-  CountsStore.Writer writer;
-  try (CountsStore counts=CountsStore.open(fs,pageCache,alpha)){
+  CountsStore.Writer<CountsKey> writer;
+  try (CountsStore<CountsKey> counts=CountsStore.open(fs,pageCache,alpha,RECORD_SERIALIZER)){
     writer=counts.newWriter(beta,lastCommittedTxId);
     writer.visit(CountsKey.nodeKey(0),21);
     writer.visit(CountsKey.relationshipKey(1,2,3),32);
     writer.close();
   }
-   try (CountsStore updated=writer.openForReading()){
+   try (CountsStore<CountsKey> updated=writer.openForReading()){
     assertEquals(21,updated.get(CountsKey.nodeKey(0)));
     assertEquals(32,updated.get(CountsKey.relationshipKey(1,2,3)));
     assertEquals(lastCommittedTxId,updated.lastTxId());
     assertEquals(2,updated.totalRecordsStored());
     assertEquals(beta,updated.file());
-    updated.accept(new RecordVisitor(){
+    updated.accept(new RecordVisitor<CountsKey>(){
       @Override public void visit(      CountsKey key,      long value){
         key.accept(new CountsVisitor(){
           @Override public void visitNodeCount(          int labelId,          long count){
