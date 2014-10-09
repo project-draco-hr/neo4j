@@ -1,0 +1,21 @@
+{
+  if (ioException != null) {
+    throw new IOException("IOException occured on read-ahead thread",ioException);
+  }
+  while (!hasReadAhead) {
+    parkAWhile();
+  }
+  int available=readAheadBuffer.limit();
+  int bytesToCopy;
+  try {
+    bytesToCopy=min(available,target.remaining());
+    readAheadBuffer.limit(bytesToCopy);
+    target.put(readAheadBuffer);
+  }
+  finally {
+    readAheadBuffer.limit(available);
+  }
+  hasReadAhead=false;
+  LockSupport.unpark(this);
+  return bytesToCopy;
+}

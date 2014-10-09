@@ -1,0 +1,29 @@
+{
+  try {
+    Mark mark=new Mark();
+    Extractors extractors=new Extractors(config.arrayDelimiter());
+    int[] delimiter=new int[]{config.delimiter()};
+    List<Header.Entry> columns=new ArrayList<>();
+    for (int i=0; !mark.isEndOfLine() && seeker.seek(mark,delimiter); i++) {
+      String columnString=seeker.extract(mark,Extractors.STRING);
+      int typeIndex=columnString.lastIndexOf(':');
+      String name;
+      String typeSpec;
+      if (typeIndex != -1) {
+        name=columnString.substring(0,typeIndex);
+        typeSpec=columnString.substring(typeIndex + 1);
+      }
+ else {
+        name=columnString;
+        typeSpec=null;
+      }
+      columns.add(entry(i,name,typeSpec,extractors,idExtractor));
+    }
+    Entry[] entries=columns.toArray(new Header.Entry[columns.size()]);
+    validateHeader(entries);
+    return new Header(entries);
+  }
+ catch (  IOException e) {
+    throw new RuntimeException(e);
+  }
+}
