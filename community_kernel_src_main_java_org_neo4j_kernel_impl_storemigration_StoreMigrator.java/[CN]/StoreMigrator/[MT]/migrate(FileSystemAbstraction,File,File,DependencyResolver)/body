@@ -1,21 +1,10 @@
 {
-  versionToUpgradeFrom=upgradableDatabase.checkUpgradeable(storeDir);
   progressMonitor.started();
-  final LogEntryWriterv1 logEntryWriter=new LogEntryWriterv1();
-  logEntryWriter.setCommandWriter(new PhysicalLogNeoXaCommandWriter());
-  final LogEntryWriterv1 luceneLogEntryWriter=new LogEntryWriterv1();
-  luceneLogEntryWriter.setCommandWriter(LegacyLuceneCommandReader.newWriter());
-  if (versionToUpgradeFrom.equals(Legacy19Store.LEGACY_VERSION)) {
+  if (versionToUpgradeFrom(fileSystem,storeDir).equals(Legacy19Store.LEGACY_VERSION)) {
     legacyStore=new Legacy19Store(fileSystem,new File(storeDir,NeoStore.DEFAULT_NAME));
-    final LegacyLogIoUtil logIoUtil=new Legacy19LogIoUtil(new Legacy19CommandReader());
-    final LegacyLogIoUtil luceneLogIoUtil=new Legacy19LogIoUtil(LegacyLuceneCommandReader.newReader());
-    legacyLogFiles=new LegacyLogFiles(fileSystem,logEntryWriter,luceneLogEntryWriter,logIoUtil,luceneLogIoUtil);
   }
  else {
     legacyStore=new Legacy20Store(fileSystem,new File(storeDir,NeoStore.DEFAULT_NAME));
-    final LegacyLogIoUtil logIoUtil=new Legacy20LogIoUtil(new Legacy20CommandReader());
-    final LegacyLogIoUtil luceneLogIoUtil=new Legacy20LogIoUtil(LegacyLuceneCommandReader.newReader());
-    legacyLogFiles=new LegacyLogFiles(fileSystem,logEntryWriter,luceneLogEntryWriter,logIoUtil,luceneLogIoUtil);
   }
   ExecutionMonitor executionMonitor=new CoarseBoundedProgressExecutionMonitor(legacyStore.getNodeStoreReader().getMaxId(),legacyStore.getRelStoreReader().getMaxId()){
     @Override protected void percent(    int percent){

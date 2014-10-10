@@ -1,0 +1,13 @@
+{
+  File storeDirectory=createNeoStoreWithOlderVersion();
+  StoreMigrator migrator=new StoreMigrator(new SilentMigrationProgressMonitor(),fs.get());
+  File migrationDir=new File(storeDirectory,StoreUpgrader.MIGRATION_DIRECTORY);
+  fs.get().mkdirs(migrationDir);
+  assertTrue(migrator.needsMigration(fs.get(),storeDirectory));
+  migrator.migrate(fs.get(),storeDirectory,migrationDir,mock(DependencyResolver.class));
+  migrator.close();
+  migrator=new StoreMigrator(new SilentMigrationProgressMonitor(),fs.get());
+  migrator.moveMigratedFiles(fs.get(),migrationDir,storeDirectory);
+  StoreFactory storeFactory=new StoreFactory(new Config(),new DefaultIdGeneratorFactory(),new DefaultWindowPoolFactory(),fs.get(),StringLogger.DEV_NULL,new DefaultTxHook());
+  storeFactory.newNeoStore(new File(storeDirectory,NeoStore.DEFAULT_NAME)).close();
+}
