@@ -5,6 +5,20 @@
     checkMyStoreIdAndMastersStoreId(nioneoDataSource,masterIsOld);
     checkDataConsistencyWithMaster(masterUri,masterClient,nioneoDataSource,txIdStore);
     console.log("Store is consistent");
+    RequestContext catchUpRequestContext=requestContextFactory.newRequestContext();
+    console.log("Catching up with master. I'm at " + catchUpRequestContext);
+    masterClient.pullUpdates(catchUpRequestContext,new TxHandler(){
+      @Override public void accept(      CommittedTransactionRepresentation tx){
+        long txId=tx.getCommitEntry().getTxId();
+        if (txId % 50 == 0) {
+          console.log("  ...still catching up with master, now at " + txId);
+        }
+      }
+      @Override public void done(){
+      }
+    }
+);
+    console.log("Now consistent with master");
   }
  catch (  NoSuchLogVersionException e) {
     msgLog.logMessage("Cannot catch up to master by pulling updates, because I cannot find the archived " + "logical log file that has the transaction I would start from. I'm going to copy the whole " + "store from the master instead.");
