@@ -2,16 +2,21 @@
   if (transactionId <= BASE_TX_ID) {
     return METADATA_FOR_EMPTY_STORE;
   }
-  TransactionMetadataCache.TransactionMetadata transactionMetadata=transactionMetadataCache.getTransactionMetadata(transactionId);
+  TransactionMetadata transactionMetadata=transactionMetadataCache.getTransactionMetadata(transactionId);
   if (transactionMetadata == null) {
     try (IOCursor<CommittedTransactionRepresentation> cursor=getTransactions(transactionId)){
       while (cursor.next()) {
         CommittedTransactionRepresentation tx=cursor.get();
-        transactionMetadataCache.cacheTransactionMetadata(tx.getCommitEntry().getTxId(),tx.getStartEntry().getStartPosition(),tx.getStartEntry().getMasterId(),tx.getStartEntry().getLocalId(),LogEntryStart.checksum(tx.getStartEntry()));
+        long committedTxId=tx.getCommitEntry().getTxId();
+        TransactionMetadata metadata=transactionMetadataCache.cacheTransactionMetadata(committedTxId,tx.getStartEntry().getStartPosition(),tx.getStartEntry().getMasterId(),tx.getStartEntry().getLocalId(),LogEntryStart.checksum(tx.getStartEntry()));
+        if (committedTxId == transactionId) {
+          transactionMetadata=metadata;
+        }
       }
-      ;
     }
-   }
-  transactionMetadata=transactionMetadataCache.getTransactionMetadata(transactionId);
+     if (transactionMetadata == null) {
+      throw new NoSuchTransactionException(transactionId);
+    }
+  }
   return transactionMetadata;
 }
