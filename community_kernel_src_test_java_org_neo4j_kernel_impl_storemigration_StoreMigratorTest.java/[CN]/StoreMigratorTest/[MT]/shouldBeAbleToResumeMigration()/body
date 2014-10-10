@@ -1,0 +1,22 @@
+{
+  File storeDirectory=createNeoStoreWithOlderVersion();
+  Logging logging=new DevNullLoggingService();
+  StoreMigrator migrator=new StoreMigrator(new SilentMigrationProgressMonitor(),fs.get(),logging);
+  File migrationDir=new File(storeDirectory,StoreUpgrader.MIGRATION_DIRECTORY);
+  fs.get().mkdirs(migrationDir);
+  assertTrue(migrator.needsMigration(storeDirectory));
+  migrator.migrate(storeDirectory,migrationDir);
+  migrator.close();
+  migrator=new StoreMigrator(new SilentMigrationProgressMonitor(),fs.get(),logging);
+  migrator.moveMigratedFiles(migrationDir,storeDirectory);
+  LifeSupport life=new LifeSupport();
+  PageCache pageCache=StandalonePageCacheFactory.createPageCache(fs.get(),getClass().getSimpleName(),life);
+  life.start();
+  try {
+    StoreFactory storeFactory=new StoreFactory(fs.get(),storeDirectory,pageCache,logging.getMessagesLog(getClass()),new Monitors());
+    storeFactory.newNeoStore(false).close();
+  }
+  finally {
+    life.shutdown();
+  }
+}
