@@ -1,0 +1,32 @@
+{
+  HighlyAvailableGraphDatabase master=cluster.getMaster();
+  final HighlyAvailableGraphDatabase slave1=cluster.getAnySlave();
+  final HighlyAvailableGraphDatabase slave2=cluster.getAnySlave(slave1);
+  final CountDownLatch slave1Left=new CountDownLatch(1);
+  final CountDownLatch slave2Left=new CountDownLatch(1);
+  clusterClientOf(master).addHeartbeatListener(new HeartbeatListener.Adapter(){
+    @Override public void failed(    InstanceId server){
+      if (instanceIdOf(slave1).equals(server)) {
+        slave1Left.countDown();
+      }
+ else       if (instanceIdOf(slave2).equals(server)) {
+        slave2Left.countDown();
+      }
+    }
+  }
+);
+  RepairKit slave1RepairKit=cluster.fail(slave1);
+  slave1Left.await();
+  RepairKit slave2RepairKit=cluster.fail(slave2);
+  slave2Left.await();
+  cluster.await(not(masterAvailable()));
+  assertEquals(HighAvailabilityMemberState.PENDING.toString(),master.getInstanceState());
+  slave1RepairKit.repair();
+  slave2RepairKit.repair();
+  cluster.await(masterAvailable());
+  cluster.await(masterSeesSlavesAsAvailable(2));
+  cluster.await(allSeesAllAsAvailable());
+  assertNotNull(createNodeOn(master));
+  assertNotNull(createNodeOn(slave1));
+  assertNotNull(createNodeOn(slave2));
+}
