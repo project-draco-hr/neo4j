@@ -8,6 +8,8 @@
   when(logicalTransactionStore.getAppender()).thenReturn(appender);
   when(dependencyResolver.resolveDependency(LogicalTransactionStore.class)).thenReturn(logicalTransactionStore);
   when(dependencyResolver.resolveDependency(TransactionRepresentationStoreApplier.class)).thenReturn(mock(TransactionRepresentationStoreApplier.class));
+  LogFile logFile=mock(LogFile.class);
+  when(dependencyResolver.resolveDependency(LogFile.class)).thenReturn(logFile);
   int maxBatchSize=3;
   TransactionCommittingResponseUnpacker unpacker=new TransactionCommittingResponseUnpacker(dependencyResolver,maxBatchSize);
   unpacker.start();
@@ -15,4 +17,5 @@
   unpacker.unpackResponse(new DummyTransactionResponse(2,txCount,appender,maxBatchSize),NO_OP_TX_HANDLER);
   verify(appender,times(txCount)).append(any(TransactionRepresentation.class),anyLong());
   verify(appender,times(2)).force();
+  verify(logFile,times(2)).checkRotation();
 }
