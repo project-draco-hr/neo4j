@@ -1,7 +1,12 @@
 {
   availabilityGuard.checkAvailability(config.getAvailabilityTimeout(),RuntimeException.class);
   if (!initialized) {
-    master.newLockSession(requestContextFactory.newRequestContext((int)client.getIdentifier()));
+    try {
+      master.newLockSession(requestContextFactory.newRequestContext(client.getLockSessionId()));
+    }
+ catch (    TransactionFailureException e) {
+      throw new org.neo4j.graphdb.TransactionFailureException("Failed to acquire lock in cluster: " + e.getMessage(),e);
+    }
     initialized=true;
   }
 }

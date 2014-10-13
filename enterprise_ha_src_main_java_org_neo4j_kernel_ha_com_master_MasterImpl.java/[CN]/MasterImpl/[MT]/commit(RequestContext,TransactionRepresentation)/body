@@ -1,12 +1,22 @@
 {
   assertCorrectEpoch(context);
-  try (Locks.Client locks=spi.acquireClient()){
-    if (locks.trySharedLock(ResourceTypes.SCHEMA,ResourceTypes.schemaResource())) {
-      long txId=spi.applyPreparedTransaction(preparedTransaction);
-      return spi.packTransactionObligationResponse(context,txId);
+  if (context.getEventIdentifier() == -1) {
+    try (Locks.Client locks=spi.acquireClient()){
+      return commit0(context,preparedTransaction,locks);
     }
+   }
  else {
-      throw new TransactionFailureException("Failed to commit, because another transaction is making " + "schema changes. Slave commits are disallowed while schema changes are being committed. " + "Retrying the transaction should yield a successful result.");
+    try {
+      Locks.Client locks=slaveLockSessions.acquire(context);
+      try {
+        return commit0(context,preparedTransaction,locks);
+      }
+  finally {
+        slaveLockSessions.release(context);
+      }
+    }
+ catch (    NoSuchEntryException|ConcurrentAccessException e) {
+      throw new TransactionNotPresentOnMasterException(context);
     }
   }
- }
+}

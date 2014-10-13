@@ -1,5 +1,14 @@
 {
-  this.unfinishedTransactionThresholdMillis=config.get(HaSettings.lock_read_timeout) + TX_TIMEOUT_ADDITION;
-  this.staleSlaveReaper=Executors.newSingleThreadScheduledExecutor(new NamedThreadFactory("Unfinished transaction reaper"));
-  this.staleSlaveReaper.scheduleWithFixedDelay(reaper,unfinishedSessionsCheckInterval,unfinishedSessionsCheckInterval,TimeUnit.SECONDS);
+  this.slaveLockSessions=new TimedRepository<>(new Factory<Locks.Client>(){
+    @Override public Locks.Client newInstance(){
+      return spi.acquireClient();
+    }
+  }
+,new Consumer<Locks.Client>(){
+    @Override public void accept(    Locks.Client value){
+      value.close();
+    }
+  }
+,config.get(HaSettings.lock_read_timeout) + TX_TIMEOUT_ADDITION,Clock.SYSTEM_CLOCK);
+  staleSlaveReaperJob=spi.scheduleRecurringJob(slaveLocksTimeout,unfinishedSessionsCheckInterval,slaveLockSessions);
 }
