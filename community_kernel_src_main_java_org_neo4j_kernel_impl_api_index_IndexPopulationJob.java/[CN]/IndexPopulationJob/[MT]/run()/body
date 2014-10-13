@@ -3,18 +3,21 @@
   currentThread().setName(format("Index populator on %s [runs on: %s]",indexUserDescription,oldThreadName));
   boolean success=false;
   Throwable failureCause=null;
+  final CountVisitor countVisitor=new CountVisitor();
   try {
     try {
       log.info(format("Index population started: [%s]",indexUserDescription));
       log.flush();
       populator.create();
-      indexAllNodes();
+      storeView.replaceIndexCount(descriptor,0);
+      indexAllNodes(countVisitor);
       if (cancelled) {
         return;
       }
       Callable<Void> duringFlip=new Callable<Void>(){
         @Override public Void call() throws Exception {
-          populateFromQueueIfAvailable(Long.MAX_VALUE);
+          populateFromQueueIfAvailable(Long.MAX_VALUE,countVisitor);
+          storeView.replaceIndexCount(descriptor,countVisitor.count());
           populator.close(true);
           updateableSchemaState.clear();
           return null;

@@ -2,14 +2,16 @@
   long nodeId=0;
   CapturingIndexingService indexingService=new CapturingIndexingService();
   TransactionRecordState writeTransaction=newWriteTransaction(indexingService).first();
+  int labelId=3;
   int propertyKey1=1, propertyKey2=2;
   Object value1="first", value2=4;
   writeTransaction.nodeCreate(nodeId);
+  writeTransaction.addLabelToNode(labelId,nodeId);
   writeTransaction.nodeAddProperty(nodeId,propertyKey1,value1);
   writeTransaction.nodeAddProperty(nodeId,propertyKey2,value2);
   PhysicalTransactionRepresentation transactionCommands=transactionRepresentationOf(writeTransaction);
   try (LockGroup locks=new LockGroup()){
     commitProcess(indexingService).commit(transactionCommands,locks);
   }
-   assertEquals(asSet(add(nodeId,propertyKey1,value1,none),add(nodeId,propertyKey2,value2,none)),indexingService.updates);
+   assertEquals(asSet(add(nodeId,propertyKey1,value1,new long[]{labelId}),add(nodeId,propertyKey2,value2,new long[]{labelId})),indexingService.updates);
 }

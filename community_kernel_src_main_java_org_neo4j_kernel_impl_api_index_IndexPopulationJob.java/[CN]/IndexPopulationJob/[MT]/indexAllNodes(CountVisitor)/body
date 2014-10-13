@@ -1,0 +1,23 @@
+{
+  storeScan=storeView.visitNodesWithPropertyAndLabel(descriptor,new Visitor<NodePropertyUpdate,IndexPopulationFailedKernelException>(){
+    @Override public boolean visit(    NodePropertyUpdate update) throws IndexPopulationFailedKernelException {
+      try {
+        populator.add(update.getNodeId(),update.getValueAfter());
+        countVisitor.visitIndexUpdateCount(1);
+        populateFromQueueIfAvailable(update.getNodeId(),countVisitor);
+      }
+ catch (      IndexEntryConflictException|IOException conflict) {
+        throw new IndexPopulationFailedKernelException(descriptor,indexUserDescription,conflict);
+      }
+      return false;
+    }
+  }
+);
+  storeScan.run();
+  try {
+    populator.verifyDeferredConstraints(storeView);
+  }
+ catch (  Exception conflict) {
+    throw new IndexPopulationFailedKernelException(descriptor,indexUserDescription,conflict);
+  }
+}
