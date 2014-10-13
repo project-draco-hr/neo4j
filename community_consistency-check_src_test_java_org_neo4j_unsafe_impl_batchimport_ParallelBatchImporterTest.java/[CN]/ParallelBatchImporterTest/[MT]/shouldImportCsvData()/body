@@ -1,13 +1,31 @@
 {
   final BatchImporter inserter=new ParallelBatchImporter(directory.absolutePath(),new DefaultFileSystemAbstraction(),config,new DevNullLoggingService(),new SilentExecutionMonitor(),writerFactory);
-  inserter.doImport(Inputs.input(nodes(NODE_COUNT,idGenerator),relationships(NODE_COUNT * 3,idGenerator),idMapping));
-  GraphDatabaseService db=new GraphDatabaseFactory().newEmbeddedDatabase(directory.absolutePath());
-  try (Transaction tx=db.beginTx()){
-    verifyData(NODE_COUNT,db);
-    tx.success();
+  boolean successful=false;
+  int relationshipCount=NODE_COUNT * 3;
+  try {
+    inserter.doImport(Inputs.input(nodes(NODE_COUNT,idGenerator),relationships(relationshipCount,idGenerator),idMapping));
+    GraphDatabaseService db=new GraphDatabaseFactory().newEmbeddedDatabase(directory.absolutePath());
+    try (Transaction tx=db.beginTx()){
+      verifyData(NODE_COUNT,db);
+      tx.success();
+    }
+  finally {
+      db.shutdown();
+    }
+    assertConsistent(directory.absolutePath());
+    successful=true;
   }
   finally {
-    db.shutdown();
+    if (!successful) {
+      File failureFile=directory.file("input");
+      try (PrintStream out=new PrintStream(failureFile)){
+        out.println("Seed used in this failing run: " + idGenerator.seed);
+        out.println(idGenerator);
+        for (        InputRelationship relationship : relationships(relationshipCount,idGenerator)) {
+          out.println(relationship.id() + " " + relationship.startNode()+ "-[:"+ relationship.type()+ "]->"+ relationship.endNode());
+        }
+      }
+       System.err.println("Additional debug information stored in " + failureFile);
+    }
   }
-  assertConsistent(directory.absolutePath());
 }
