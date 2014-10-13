@@ -1,0 +1,21 @@
+{
+  super(logFile,transactionMetadataCache,transactionIdStore,legacyIndexTransactionOrdering);
+  appenderTicket=counting.newInstance();
+  forceTicket=counting.newInstance();
+  forceThread=new BatchingForceThread(new BatchingForceThread.Operation(){
+    /** 
+ * Called by the forcing thread that forces now and then.
+ */
+    @Override public boolean force() throws IOException {
+      long currentAppenderTicket=appenderTicket.get();
+      if (forceTicket.get() == currentAppenderTicket) {
+        return false;
+      }
+      forceChannel();
+      forceTicket.set(currentAppenderTicket);
+      return true;
+    }
+  }
+,idleBackoffStrategy);
+  forceThread.start();
+}
