@@ -1,0 +1,39 @@
+{
+  final CountsStoreWriter writer=new CountsStoreWriter(fs,pageCache,emptyHeader,file,lastTxId);
+  writer.valueRegister().write(42);
+  writer.visit(nodeKey(0));
+  writer.valueRegister().write(24);
+  writer.visit(relationshipKey(1,2,3));
+  writer.close();
+  try {
+    final SortedKeyValueStore counts=writer.openForReading();
+    assertEquals(lastTxId,counts.lastTxId());
+    assertEquals(2,counts.totalRecordsStored());
+    assertEquals(file,counts.file());
+    counts.accept(new KeyValueRecordVisitor<CountsKey,Register.LongRegister>(){
+      private final Register.LongRegister valueRegister=Registers.newLongRegister();
+      @Override public Register.LongRegister valueRegister(){
+        return valueRegister;
+      }
+      @Override public void visit(      CountsKey key){
+        key.accept(new CountsVisitor(){
+          @Override public void visitNodeCount(          int labelId,          long count){
+            assertEquals(0,labelId);
+            assertEquals(42,count);
+          }
+          @Override public void visitRelationshipCount(          int startLabelId,          int typeId,          int endLabelId,          long count){
+            assertEquals(1,startLabelId);
+            assertEquals(2,typeId);
+            assertEquals(3,endLabelId);
+            assertEquals(24,count);
+          }
+        }
+,valueRegister);
+      }
+    }
+);
+  }
+  finally {
+    pageCache.unmap(file);
+  }
+}

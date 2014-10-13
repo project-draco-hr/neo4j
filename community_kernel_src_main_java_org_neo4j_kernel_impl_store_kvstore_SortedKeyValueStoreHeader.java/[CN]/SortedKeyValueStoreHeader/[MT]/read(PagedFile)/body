@@ -1,0 +1,34 @@
+{
+  try (PageCursor page=pagedFile.io(0,PF_EXCLUSIVE_LOCK)){
+    if (page.next()) {
+      short headerRecords;
+      short versionLength;
+      int dataRecords;
+      long lastTxId;
+      byte[] storeFormatVersion;
+      do {
+        page.setOffset(0);
+        headerRecords=page.getShort();
+        versionLength=page.getShort();
+        dataRecords=page.getInt();
+        lastTxId=page.getLong();
+        int versionSpace=headerRecords * RECORD_SIZE - META_HEADER_SIZE;
+        if (versionLength > versionSpace || versionLength < (versionSpace - RECORD_SIZE)) {
+          throw new IOException(String.format("Invalid header data, versionLength=%d, versionSpace=%d.",versionLength,versionSpace));
+        }
+        storeFormatVersion=new byte[versionLength];
+        page.getBytes(storeFormatVersion);
+        for (int i=versionSpace - versionLength; i-- > 0; ) {
+          if (page.getByte() != 0) {
+            throw new IOException("Unexpected header data.");
+          }
+        }
+      }
+ while (page.shouldRetry());
+      return new SortedKeyValueStoreHeader(storeFormatVersion,dataRecords,lastTxId);
+    }
+ else {
+      throw new IOException("Could not read count store header page");
+    }
+  }
+ }
