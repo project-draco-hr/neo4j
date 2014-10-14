@@ -6,11 +6,12 @@
     throw new IllegalStateException("page size must a multiple of the record size");
   }
   this.pagedFile=pageCache.map(targetFile,pageSize);
-  this.header=header;
+  this.oldHeader=oldHeader;
   this.targetFile=targetFile;
   this.txId=lastCommittedTxId;
+  this.minorVersion=txId == oldHeader.lastTxId() ? oldHeader.minorVersion() + 1 : SortedKeyValueStoreHeader.BASE_MINOR_VERSION;
   if (!(this.page=pagedFile.io(0,PF_EXCLUSIVE_LOCK)).next()) {
     throw new IOException("Could not acquire page.");
   }
-  page.setOffset(this.header.headerRecords() * SortedKeyValueStore.RECORD_SIZE);
+  page.setOffset(this.oldHeader.headerRecords() * SortedKeyValueStore.RECORD_SIZE);
 }
