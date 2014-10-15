@@ -3,9 +3,18 @@ synchronized (logFile) {
     if (logFile.checkRotation()) {
       logFile.prune();
     }
-    if (transactionQueue.acceptAndKeep(batchAppender) > 0) {
-      appender.force();
-      transactionQueue.acceptAndRemove(batchCommitterAndApplier);
+    try {
+      if (transactionQueue.accept(batchAppender) > 0) {
+        appender.force();
+        transactionQueue.accept(batchCommitterAndApplier);
+      }
+    }
+ catch (    IOException e) {
+      kernelHealth.panic(e);
+      throw e;
+    }
+ finally {
+      transactionQueue.clear();
     }
   }
 }

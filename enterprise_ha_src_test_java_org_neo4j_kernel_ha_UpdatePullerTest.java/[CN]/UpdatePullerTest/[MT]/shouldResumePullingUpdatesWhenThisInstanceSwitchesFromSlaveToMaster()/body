@@ -1,17 +1,16 @@
 {
-  final UpdatePullerClient puller=new UpdatePullerClient(1,scheduler,logging,updatePuller);
+  final UpdatePullerClient puller=new UpdatePullerClient(1,scheduler,logging,updatePuller,availabilityGuard);
   puller.init();
   puller.start();
-  stateMachine.switchInstanceToSlave();
+  updatePuller.pause(false);
   scheduler.runJob();
   verify(lastUpdateTime,times(1)).setLastUpdateTime(anyLong());
   verify(availabilityGuard,times(1)).isAvailable(anyLong());
   verify(master,times(1)).pullUpdates(Matchers.<RequestContext>any());
-  stateMachine.switchInstanceToSlave();
   scheduler.runJob();
   verify(lastUpdateTime,times(2)).setLastUpdateTime(anyLong());
   verify(availabilityGuard,times(2)).isAvailable(anyLong());
   verify(master,times(2)).pullUpdates(Matchers.<RequestContext>any());
-  stateMachine.switchInstanceToMaster();
+  stateMachine.masterIsElected();
   verifyNoMoreInteractions(lastUpdateTime,availabilityGuard);
 }
