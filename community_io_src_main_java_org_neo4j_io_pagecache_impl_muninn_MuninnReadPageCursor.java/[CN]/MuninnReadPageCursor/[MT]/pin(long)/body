@@ -17,16 +17,12 @@
   }
   if (page == null) {
     stamp=translationTableLock.writeLock();
-    try {
-      page=translationTable.get(filePageId);
-      if (page == null) {
-        pageFault(filePageId,translationTable,swapper);
-        return;
-      }
+    page=translationTable.get(filePageId);
+    if (page == null) {
+      pageFault(filePageId,translationTable,translationTableLock,stamp,swapper);
+      return;
     }
-  finally {
-      translationTableLock.unlockWrite(stamp);
-    }
+    translationTableLock.unlockWrite(stamp);
   }
   lockStamp=page.tryOptimisticRead();
   if (page.isBoundTo(swapper,filePageId)) {
@@ -35,20 +31,16 @@
     return;
   }
   stamp=translationTableLock.writeLock();
-  try {
-    page=translationTable.get(filePageId);
-    if (page != null) {
-      lockStamp=page.readLock();
-      if (page.isBoundTo(swapper,filePageId)) {
-        pinCursorToPage(page,filePageId,swapper);
-        optimisticLock=false;
-        return;
-      }
-      page.unlockRead(lockStamp);
+  page=translationTable.get(filePageId);
+  if (page != null) {
+    lockStamp=page.readLock();
+    if (page.isBoundTo(swapper,filePageId)) {
+      translationTableLock.unlockWrite(stamp);
+      pinCursorToPage(page,filePageId,swapper);
+      optimisticLock=false;
+      return;
     }
-    pageFault(filePageId,translationTable,swapper);
+    page.unlockRead(lockStamp);
   }
-  finally {
-    translationTableLock.unlockWrite(stamp);
-  }
+  pageFault(filePageId,translationTable,translationTableLock,stamp,swapper);
 }

@@ -1,6 +1,14 @@
 {
-  MuninnPage page=pagedFile.grabFreePage();
-  long stamp=page.writeLock();
+  MuninnPage page;
+  long stamp;
+  try {
+    page=pagedFile.grabFreePage();
+    stamp=page.writeLock();
+    translationTable.put(filePageId,page);
+  }
+  finally {
+    translationTableLock.unlockWrite(ttlStamp);
+  }
   try {
     page.initBuffer();
     page.fault(swapper,filePageId);
@@ -10,7 +18,6 @@
     throw throwable;
   }
   convertPageFaultLock(page,stamp);
-  translationTable.put(filePageId,page);
   pinCursorToPage(page,filePageId,swapper);
   pagedFile.monitor.pageFaulted(filePageId,swapper);
 }
