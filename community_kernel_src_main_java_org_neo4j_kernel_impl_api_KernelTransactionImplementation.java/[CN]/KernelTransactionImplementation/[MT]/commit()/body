@@ -1,25 +1,27 @@
 {
   boolean success=false;
-  try (LockGroup lockGroup=new LockGroup()){
+  try {
     if ((hooksState=hooks.beforeCommit(txState,this,storeLayer)) != null && hooksState.failed()) {
       throw new TransactionFailureException(Status.Transaction.HookFailed,hooksState.failure(),"");
     }
     prepareRecordChangesFromTransactionState();
     if (hasChanges()) {
-      List<Command> commands=new ArrayList<>();
-      recordState.extractCommands(commands);
-      legacyIndexTransactionState.extractCommands(commands);
-      counts.extractCommands(commands);
-      if (!commands.isEmpty()) {
-        PhysicalTransactionRepresentation transactionRepresentation=new PhysicalTransactionRepresentation(commands);
-        TransactionHeaderInformation headerInformation=headerInformationFactory.create();
-        transactionRepresentation.setHeader(headerInformation.getAdditionalHeader(),headerInformation.getMasterId(),headerInformation.getAuthorId(),startTimeMillis,lastTransactionIdWhenStarted,clock.currentTimeMillis(),locks.getLockSessionId());
-        commitProcess.commit(transactionRepresentation,lockGroup);
+      try (LockGroup lockGroup=new LockGroup()){
+        List<Command> commands=new ArrayList<>();
+        recordState.extractCommands(commands);
+        legacyIndexTransactionState.extractCommands(commands);
+        counts.extractCommands(commands);
+        if (!commands.isEmpty()) {
+          PhysicalTransactionRepresentation transactionRepresentation=new PhysicalTransactionRepresentation(commands);
+          TransactionHeaderInformation headerInformation=headerInformationFactory.create();
+          transactionRepresentation.setHeader(headerInformation.getAdditionalHeader(),headerInformation.getMasterId(),headerInformation.getAuthorId(),startTimeMillis,lastTransactionIdWhenStarted,clock.currentTimeMillis(),locks.getLockSessionId());
+          commitProcess.commit(transactionRepresentation,lockGroup);
+        }
+        if (hasTxStateWithChanges()) {
+          persistenceCache.apply(txState);
+        }
       }
-    }
-    if (hasTxStateWithChanges()) {
-      persistenceCache.apply(txState);
-    }
+     }
     success=true;
   }
   finally {
