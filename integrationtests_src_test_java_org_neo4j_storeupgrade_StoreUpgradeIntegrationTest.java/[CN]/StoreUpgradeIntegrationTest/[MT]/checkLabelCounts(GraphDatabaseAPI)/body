@@ -1,0 +1,21 @@
+{
+  try (Transaction ignored=db.beginTx()){
+    HashMap<Label,Long> counts=new HashMap<>();
+    for (    Node node : GlobalGraphOperations.at(db).getAllNodes()) {
+      for (      Label label : node.getLabels()) {
+        Long count=counts.get(label);
+        if (count != null) {
+          counts.put(label,count + 1);
+        }
+ else {
+          counts.put(label,1l);
+        }
+      }
+    }
+    ThreadToStatementContextBridge bridge=db.getDependencyResolver().resolveDependency(ThreadToStatementContextBridge.class);
+    Statement statement=bridge.instance();
+    for (    Map.Entry<Label,Long> entry : counts.entrySet()) {
+      assertEquals(entry.getValue().longValue(),statement.readOperations().countsForNode(statement.readOperations().labelGetForName(entry.getKey().name())));
+    }
+  }
+ }

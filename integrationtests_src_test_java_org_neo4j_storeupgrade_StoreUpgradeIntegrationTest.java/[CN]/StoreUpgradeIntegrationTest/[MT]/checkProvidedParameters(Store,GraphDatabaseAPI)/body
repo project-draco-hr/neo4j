@@ -1,0 +1,13 @@
+{
+  try (Transaction ignored=db.beginTx()){
+    long nodeCount=count(GlobalGraphOperations.at(db).getAllNodes());
+    assertThat(nodeCount,is(store.expectedNodeCount));
+    long indexCount=count(db.schema().getIndexes());
+    assertThat(indexCount,is(store.expectedIndexCount));
+    NeoStore neoStore=db.getDependencyResolver().resolveDependency(NeoStoreDataSource.class).getNeoStore();
+    long lastCommittedTxId=neoStore.getLastCommittedTransactionId();
+    CountsTracker counts=neoStore.getCounts();
+    assertTrue("expected correct last tx id to be used by counts store",!counts.acceptTx(lastCommittedTxId) && counts.acceptTx(lastCommittedTxId + 1));
+    assertThat(lastCommittedTxId,is(store.lastTxId));
+  }
+ }
