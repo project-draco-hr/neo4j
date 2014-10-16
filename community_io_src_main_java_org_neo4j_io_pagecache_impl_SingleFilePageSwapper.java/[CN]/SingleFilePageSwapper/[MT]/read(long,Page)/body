@@ -1,6 +1,16 @@
 {
   long offset=pageIdToPosition(filePageId);
-  if (offset < getCurrentFileSize()) {
-    page.swapIn(channel,offset,filePageSize);
+  try {
+    if (offset < getCurrentFileSize()) {
+      page.swapIn(channel,offset,filePageSize);
+    }
+  }
+ catch (  ClosedChannelException e) {
+    tryReopen(e);
+    boolean interrupted=Thread.interrupted();
+    read(filePageId,page);
+    if (interrupted) {
+      Thread.currentThread().interrupt();
+    }
   }
 }

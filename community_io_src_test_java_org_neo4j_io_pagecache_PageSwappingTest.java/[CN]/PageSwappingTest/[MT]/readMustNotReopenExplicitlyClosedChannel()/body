@@ -1,0 +1,20 @@
+{
+  File file=new File("a");
+  StoreChannel channel=fs.create(file);
+  ByteBuffer buf=ByteBuffer.allocate(20);
+  channel.writeAll(buf);
+  channel.close();
+  Page page=createPage(20);
+  PageSwapper swapper=swapperFactory.createPageSwapper(file,20,NO_CALLBACK);
+  swapper.close();
+  long stamp=writeLock(page);
+  try {
+    swapper.read(0,page);
+    fail("Should have thrown because the channel should be closed");
+  }
+ catch (  ClosedChannelException ignore) {
+  }
+ finally {
+    unlockWrite(page,stamp);
+  }
+}
