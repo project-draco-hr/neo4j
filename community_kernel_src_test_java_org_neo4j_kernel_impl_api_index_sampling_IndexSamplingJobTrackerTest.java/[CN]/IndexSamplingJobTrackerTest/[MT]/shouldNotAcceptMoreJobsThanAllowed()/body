@@ -1,0 +1,20 @@
+{
+  JobScheduler jobScheduler=new Neo4jJobScheduler();
+  jobScheduler.init();
+  IndexSamplingJobTracker jobTracker=new IndexSamplingJobTracker(jobScheduler,1);
+  final DoubleLatch latch=new DoubleLatch();
+  assertTrue(jobTracker.canExecuteMoreSamplingJobs());
+  jobTracker.scheduleSamplingJob(new Runnable(){
+    @Override public void run(){
+      latch.start();
+      latch.awaitFinish();
+    }
+  }
+);
+  latch.awaitStart();
+  assertFalse(jobTracker.canExecuteMoreSamplingJobs());
+  latch.finish();
+  while (!jobTracker.canExecuteMoreSamplingJobs()) {
+    Thread.yield();
+  }
+}

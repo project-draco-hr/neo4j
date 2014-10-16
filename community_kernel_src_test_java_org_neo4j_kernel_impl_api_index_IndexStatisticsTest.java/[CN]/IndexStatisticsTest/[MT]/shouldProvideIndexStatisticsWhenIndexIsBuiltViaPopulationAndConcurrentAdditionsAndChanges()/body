@@ -6,14 +6,24 @@
   }
   IndexDescriptor index=createIndex("Person","name");
   int createdAfter=0;
+  int updatesSeenWhilePopulating=-1;
   while (createdAfter < 10000) {
     createdAfter+=createNamedPeople(nodes);
     if (createdAfter % 5 == 0) {
       long nodeId=nodes.get(nodes.size() / 2);
-      changeName(nodeId,"name",names[(int)(nodeId % names.length)]);
+      changeName(nodeId,"name",NAMES[(int)(nodeId % NAMES.length)]);
+      if (updatesSeenWhilePopulating < 0 && isIndexOnline(index)) {
+        updatesSeenWhilePopulating=createdAfter;
+      }
     }
   }
   awaitOnline(index);
+  if (updatesSeenWhilePopulating == -1) {
+    updatesSeenWhilePopulating=createdAfter;
+  }
   int expected=createdBefore + createdAfter;
-  assertCorrectNumberOfEntries(expected,numberOfIndexEntries(index));
+  assertCorrectIndexSize(expected,indexSize(index));
+  int seenWhilePopulating=createdBefore + updatesSeenWhilePopulating;
+  double expectedSelectivity=UNIQUE_NAMES / ((double)seenWhilePopulating);
+  assertCorrectIndexSelectivity(expectedSelectivity,indexSelectivity(index));
 }

@@ -1,0 +1,14 @@
+{
+  try {
+    long indexSize=storeView.indexSize(indexDescriptor);
+    try (IndexReader reader=indexProxy.newReader()){
+      Register.DoubleLongRegister sample=Registers.newDoubleLongRegister();
+      ValueSampler sampler=new SkipOracleSampler(averageSkipOracle(indexSize / sampleSize));
+      reader.sampleIndex(sampler,sample);
+      storeView.replaceIndexSample(MAX_TX_ID,indexDescriptor,sample.readFirst(),sample.readSecond());
+    }
+   }
+ catch (  IndexNotFoundKernelException e) {
+    logger.warn("Attempted to sample missing/already deleted index " + indexDescriptor);
+  }
+}
