@@ -1,0 +1,27 @@
+{
+  File root=TargetDirectory.forTest(getClass()).cleanDirectory("shouldPropagateRelationshipCountsInHA");
+  ClusterManager clusterManager=new ClusterManager(clusterOfSize(3),root,MapUtil.stringMap(HaSettings.pull_interval.name(),PULL_INTERVAL + "ms"));
+  clusterManager.start();
+  try {
+    ClusterManager.ManagedCluster cluster=clusterManager.getDefaultCluster();
+    cluster.await(allSeesAllAsAvailable());
+    HighlyAvailableGraphDatabase master=cluster.getMaster();
+    try (Transaction tx=master.beginTx()){
+      Node left=master.createNode();
+      Node right=master.createNode(DynamicLabel.label("A"));
+      left.createRelationshipTo(right,DynamicRelationshipType.withName("Type"));
+      tx.success();
+    }
+     waitForPullUpdates();
+    for (    HighlyAvailableGraphDatabase db : cluster.getAllMembers()) {
+      CountsTracker counts=db.dependencyResolver.resolveDependency(NeoStore.class).getCounts();
+      assertEquals(1,counts.countsForRelationship(-1,-1,-1));
+      assertEquals(1,counts.countsForRelationship(-1,-1,0));
+      assertEquals(1,counts.countsForRelationship(-1,0,-1));
+      assertEquals(1,counts.countsForRelationship(-1,0,0));
+    }
+  }
+  finally {
+    clusterManager.shutdown();
+  }
+}
