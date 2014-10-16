@@ -1,14 +1,16 @@
 {
   lock(channel);
   StateDescription result=determineState(channel);
-switch (result.state()) {
+  StoreState state=result.state();
+switch (state) {
 case CLEAN:
     channel.truncate(channel.size() - UTF8.encode(footer()).length);
-  break;
+  return false;
 case UNCLEAN:
-idGenRebuilder.rebuildIdGenerator();
-break;
+return true;
 case WRONG_VERSION:
 throw new NotCurrentStoreVersionException(result.expectedFooter(),result.foundFooter(),"",false);
+default :
+throw new IllegalStateException("Unknown store state: " + state);
 }
 }
