@@ -1,0 +1,16 @@
+{
+  Store<TestRecord,TestCursor> store=life.add(new StandardStore<>(new TestHeaderlessStoreFormat(),new File("/store"),new TestStoreIdGenerator(),pageCache,fsRule.get(),StringLogger.DEV_NULL));
+  long firstId=store.allocate();
+  long secondId=store.allocate();
+  store.write(new TestRecord(firstId,1337));
+  store.write(new TestRecord(secondId,1338));
+  TestRecord firstRecord=store.read(firstId);
+  TestRecord secondRecord=store.read(secondId);
+  assertThat(firstRecord.value,equalTo(1337l));
+  assertThat(secondRecord.value,equalTo(1338l));
+  life.shutdown();
+  store=new StandardStore<>(new TestHeaderlessStoreFormat(),new File("/store"),new TestStoreIdGenerator(),pageCache,fsRule.get(),StringLogger.DEV_NULL);
+  store.init();
+  store.start();
+  assertThat(StoreMatchers.records(store),equalTo(asList(new TestRecord(firstId,1337),new TestRecord(secondId,1338))));
+}
