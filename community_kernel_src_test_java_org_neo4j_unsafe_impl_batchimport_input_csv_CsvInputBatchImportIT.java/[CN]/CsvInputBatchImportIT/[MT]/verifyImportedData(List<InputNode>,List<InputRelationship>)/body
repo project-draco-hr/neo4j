@@ -1,13 +1,14 @@
 {
   Map<String,InputNode> expectedNodes=new HashMap<>();
-  Set<String> expectedNodeNames=new HashSet<>();
+  Map<String,String[]> expectedNodeNames=new HashMap<>();
   Map<String,Map<String,Map<String,AtomicInteger>>> expectedRelationships=new HashMap<>();
   buildUpExpectedData(nodeData,relationshipData,expectedNodes,expectedNodeNames,expectedRelationships);
   GraphDatabaseService db=new GraphDatabaseFactory().newEmbeddedDatabase(directory.absolutePath());
   try (Transaction tx=db.beginTx()){
     for (    Node node : GlobalGraphOperations.at(db).getAllNodes()) {
       String name=(String)node.getProperty("name");
-      assertTrue(expectedNodeNames.remove(name));
+      String[] labels=expectedNodeNames.remove(name);
+      assertArrayEquals(labels,names(node.getLabels()));
     }
     assertEquals(0,expectedNodeNames.size());
     for (    Relationship relationship : GlobalGraphOperations.at(db).getAllRelationships()) {
