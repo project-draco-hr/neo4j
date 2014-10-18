@@ -1,0 +1,104 @@
+{
+  return new Register.DoubleLongRegister(){
+    private long first=initialFirst;
+    private long second=initialSecond;
+    private final StampedLock lock=new StampedLock();
+    @Override public long readFirst(){
+      long stamp=lock.tryOptimisticRead();
+      long result=first;
+      if (!lock.validate(stamp)) {
+        stamp=lock.readLock();
+        try {
+          result=first;
+        }
+  finally {
+          lock.unlock(stamp);
+        }
+      }
+      return result;
+    }
+    @Override public long readSecond(){
+      long stamp=lock.tryOptimisticRead();
+      long result=second;
+      if (!lock.validate(stamp)) {
+        stamp=lock.readLock();
+        try {
+          result=second;
+        }
+  finally {
+          lock.unlock(stamp);
+        }
+      }
+      return result;
+    }
+    @Override public void copyTo(    Register.DoubleLongRegister target){
+      long stamp=lock.tryOptimisticRead();
+      long firstCopy=this.first;
+      long secondCopy=this.second;
+      if (!lock.validate(stamp)) {
+        stamp=lock.readLock();
+        try {
+          firstCopy=this.first;
+          secondCopy=this.second;
+        }
+  finally {
+          lock.unlock(stamp);
+        }
+      }
+      target.write(firstCopy,secondCopy);
+    }
+    @Override public void write(    long first,    long second){
+      long stamp=lock.writeLock();
+      try {
+        this.first=first;
+        this.second=second;
+      }
+  finally {
+        lock.unlock(stamp);
+      }
+    }
+    @Override public void writeFirst(    long value){
+      long stamp=lock.writeLock();
+      try {
+        this.first=value;
+      }
+  finally {
+        lock.unlock(stamp);
+      }
+    }
+    @Override public void writeSecond(    long value){
+      long stamp=lock.writeLock();
+      try {
+        this.second=value;
+      }
+  finally {
+        lock.unlock(stamp);
+      }
+    }
+    @Override public long incrementFirst(    long delta){
+      long stamp=lock.writeLock();
+      long result;
+      try {
+        result=first + delta;
+        this.first=result;
+      }
+  finally {
+        lock.unlock(stamp);
+      }
+      return result;
+    }
+    @Override public long incrementSecond(    long delta){
+      long stamp=lock.writeLock();
+      long result;
+      try {
+        result=second + delta;
+        this.second=result;
+      }
+  finally {
+        lock.unlock(stamp);
+      }
+      return result;
+    }
+  }
+;
+}

@@ -1,0 +1,27 @@
+{
+  int singleSize=singleUpdates.size();
+  int doubleSize=doubleUpdates.size();
+  @SuppressWarnings("unchecked") Update<CountsKey>[] result=new Update[singleSize + doubleSize];
+  Iterator<Map.Entry<CountsKey,AtomicLong>> singleIterator=singleUpdates.entrySet().iterator();
+  for (int i=0; i < singleSize; i++) {
+    if (!singleIterator.hasNext()) {
+      throw new ConcurrentModificationException("fewer entries than expected");
+    }
+    result[i]=Update.fromSingleLongEntry(singleIterator.next());
+  }
+  if (singleIterator.hasNext()) {
+    throw new ConcurrentModificationException("more entries than expected");
+  }
+  Iterator<Map.Entry<CountsKey,DoubleLongRegister>> doubleIterator=doubleUpdates.entrySet().iterator();
+  for (int i=singleSize; i < result.length; i++) {
+    if (!doubleIterator.hasNext()) {
+      throw new ConcurrentModificationException("fewer entries than expected");
+    }
+    result[i]=Update.fromDoubleLongEntry(doubleIterator.next());
+  }
+  if (doubleIterator.hasNext()) {
+    throw new ConcurrentModificationException("more entries than expected");
+  }
+  Arrays.sort(result);
+  return result;
+}

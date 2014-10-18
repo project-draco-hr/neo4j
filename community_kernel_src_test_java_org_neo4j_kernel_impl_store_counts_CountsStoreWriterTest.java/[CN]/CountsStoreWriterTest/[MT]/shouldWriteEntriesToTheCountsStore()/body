@@ -4,11 +4,15 @@
   writer.visit(nodeKey(0));
   writer.valueRegister().write(0,24);
   writer.visit(relationshipKey(1,2,3));
+  writer.valueRegister().write(0,84);
+  writer.visit(indexSizeKey(4,5));
+  writer.valueRegister().write(24,84);
+  writer.visit(indexSampleKey(4,5));
   writer.close();
   try {
     final SortedKeyValueStore counts=writer.openForReading();
     assertEquals(lastTxId,counts.lastTxId());
-    assertEquals(2,counts.totalRecordsStored());
+    assertEquals(4,counts.totalRecordsStored());
     assertEquals(file,counts.file());
     counts.accept(new KeyValueRecordVisitor<CountsKey,Register.DoubleLongRegister>(){
       private final Register.DoubleLongRegister valueRegister=Registers.newDoubleLongRegister();
@@ -28,6 +32,15 @@
             assertEquals(24,count);
           }
           @Override public void visitIndexSizeCount(          int labelId,          int propertyKeyId,          long count){
+            assertEquals(4,labelId);
+            assertEquals(5,propertyKeyId);
+            assertEquals(84,count);
+          }
+          @Override public void visitIndexSampleCount(          int labelId,          int propertyKeyId,          long unique,          long size){
+            assertEquals(4,labelId);
+            assertEquals(5,propertyKeyId);
+            assertEquals(24,unique);
+            assertEquals(84,size);
           }
         }
 ,valueRegister);

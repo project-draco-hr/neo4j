@@ -7,6 +7,10 @@
     writer.visit(nodeKey(0));
     writer.valueRegister().write(0,32);
     writer.visit(relationshipKey(1,2,3));
+    writer.valueRegister().write(0,84);
+    writer.visit(indexSizeKey(4,5));
+    writer.valueRegister().write(24,84);
+    writer.visit(indexSampleKey(4,5));
     writer.close();
   }
    try (CountsStore updated=(CountsStore)writer.openForReading()){
@@ -14,7 +18,7 @@
     assertEquals(32,get(updated,relationshipKey(1,2,3)));
     assertEquals(lastCommittedTxId,updated.lastTxId());
     assertEquals(BASE_MINOR_VERSION,updated.minorVersion());
-    assertEquals(2,updated.totalRecordsStored());
+    assertEquals(4,updated.totalRecordsStored());
     assertEquals(beta,updated.file());
     updated.accept(new KeyValueRecordVisitor<CountsKey,Register.DoubleLongRegister>(){
       private final Register.DoubleLongRegister valueRegister=Registers.newDoubleLongRegister();
@@ -34,6 +38,15 @@
             assertEquals(32,count);
           }
           @Override public void visitIndexSizeCount(          int labelId,          int propertyKeyId,          long count){
+            assertEquals(4,labelId);
+            assertEquals(5,propertyKeyId);
+            assertEquals(84,count);
+          }
+          @Override public void visitIndexSampleCount(          int labelId,          int propertyKeyId,          long unique,          long size){
+            assertEquals(4,labelId);
+            assertEquals(5,propertyKeyId);
+            assertEquals(24,unique);
+            assertEquals(84,size);
           }
         }
 ,valueRegister);
