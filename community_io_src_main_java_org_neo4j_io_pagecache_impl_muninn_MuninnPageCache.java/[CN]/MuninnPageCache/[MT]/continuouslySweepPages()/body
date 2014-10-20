@@ -2,8 +2,10 @@
   int clockArm=0;
   while (!Thread.interrupted()) {
     int pageCountToEvict=parkUntilEvictionRequired(keepFree);
-    clockArm=evictPages(pageCountToEvict,clockArm);
-  }
+    try (EvictionRunEvent evictionRunEvent=monitor.beginPageEvictions(pageCountToEvict)){
+      clockArm=evictPages(pageCountToEvict,clockArm,evictionRunEvent);
+    }
+   }
   Object freelistHead=getAndSetFreelistHead(shutdownSignal);
   if (freelistHead instanceof FreePageWaiter) {
     FreePageWaiter waiters=(FreePageWaiter)freelistHead;

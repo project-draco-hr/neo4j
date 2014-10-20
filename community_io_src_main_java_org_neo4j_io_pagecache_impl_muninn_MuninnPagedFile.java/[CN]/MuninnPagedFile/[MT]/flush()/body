@@ -1,14 +1,17 @@
 {
-  for (int i=0; i < translationTableStripeLevel; i++) {
-    PrimitiveLongObjectMap<MuninnPage> translationTable=translationTables[i];
-    StampedLock translationTableLock=translationTableLocks[i];
-    long stamp=translationTableLock.readLock();
-    try {
-      translationTable.visitEntries(flusher);
-    }
+  try (MajorFlushEvent flushEvent=monitor.beginFileFlush(swapper)){
+    PageFlusher flusher=new PageFlusher(swapper,flushEvent);
+    for (int i=0; i < translationTableStripeLevel; i++) {
+      PrimitiveLongObjectMap<MuninnPage> translationTable=translationTables[i];
+      StampedLock translationTableLock=translationTableLocks[i];
+      long stamp=translationTableLock.readLock();
+      try {
+        translationTable.visitEntries(flusher);
+      }
   finally {
-      translationTableLock.unlockRead(stamp);
+        translationTableLock.unlockRead(stamp);
+      }
     }
+    force();
   }
-  force();
-}
+ }

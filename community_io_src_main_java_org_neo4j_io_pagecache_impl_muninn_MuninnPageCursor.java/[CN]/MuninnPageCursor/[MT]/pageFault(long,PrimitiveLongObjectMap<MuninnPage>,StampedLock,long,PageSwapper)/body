@@ -1,23 +1,29 @@
 {
+  PageFaultEvent faultEvent=pinEvent.beginPageFault();
   MuninnPage page;
   long stamp;
   try {
-    page=pagedFile.grabFreePage();
+    page=pagedFile.grabFreePage(faultEvent);
     stamp=page.writeLock();
     translationTable.put(filePageId,page);
   }
-  finally {
+ catch (  Throwable throwable) {
+    faultEvent.done(throwable);
+    throw throwable;
+  }
+ finally {
     translationTableLock.unlockWrite(ttlStamp);
   }
   try {
     page.initBuffer();
-    page.fault(swapper,filePageId);
+    page.fault(swapper,filePageId,faultEvent);
   }
  catch (  Throwable throwable) {
     page.unlockWrite(stamp);
+    faultEvent.done(throwable);
     throw throwable;
   }
   convertPageFaultLock(page,stamp);
   pinCursorToPage(page,filePageId,swapper);
-  pagedFile.monitor.pageFaulted(filePageId,swapper);
+  faultEvent.done();
 }

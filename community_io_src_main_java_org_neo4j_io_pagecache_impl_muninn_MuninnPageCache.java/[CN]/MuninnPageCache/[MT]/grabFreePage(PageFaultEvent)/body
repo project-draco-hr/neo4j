@@ -1,0 +1,52 @@
+{
+  Object current;
+  FreePageWaiter waiter=null;
+  int iterationCount=0;
+  boolean shouldUnparkInSpin=true;
+  for (; ; ) {
+    assertHealthy();
+    iterationCount++;
+    current=getFreelistHead();
+    if (current == null && iterationCount > pageFaultSpinCount) {
+      waiter=waiter == null ? new FreePageWaiter() : waiter;
+      waiter.next=null;
+      if (compareAndSetFreelistHead(null,waiter)) {
+        unparkEvictor();
+        faultEvent.setParked(true);
+        return waiter.park(this);
+      }
+    }
+ else     if (current == null) {
+      if (shouldUnparkInSpin) {
+        unparkEvictor();
+        shouldUnparkInSpin=false;
+      }
+      continue;
+    }
+ else     if (current instanceof MuninnPage) {
+      MuninnPage page=(MuninnPage)current;
+      if (compareAndSetFreelistHead(page,page.nextFree)) {
+        return page;
+      }
+    }
+ else     if (current instanceof FreePage) {
+      FreePage freePage=(FreePage)current;
+      if (compareAndSetFreelistHead(freePage,freePage.next)) {
+        return freePage.page;
+      }
+    }
+ else     if (current instanceof FreePageWaiter) {
+      if (current == shutdownSignal) {
+        throw new IllegalStateException("The PageCache has been shut down");
+      }
+      waiter=waiter == null ? new FreePageWaiter() : waiter;
+      waiter.next=(FreePageWaiter)current;
+      if (compareAndSetFreelistHead(current,waiter)) {
+        unparkEvictor();
+        faultEvent.setParked(true);
+        return waiter.park(this);
+      }
+    }
+    unparkEvictor();
+  }
+}
