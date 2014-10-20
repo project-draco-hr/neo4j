@@ -1,0 +1,45 @@
+{
+  for (  InputNode node : nodeData) {
+    expectedNodes.put((String)node.id(),node);
+    expectedNodeNames.put(nameOf(node),node.labels());
+    countNodeLabels(nodeCounts,node.labels());
+  }
+  for (  InputRelationship relationship : relationshipData) {
+    InputNode startNode=expectedNodes.get(relationship.startNode());
+    InputNode endNode=expectedNodes.get(relationship.endNode());
+{
+      String startNodeName=nameOf(startNode);
+      Map<String,Map<String,AtomicInteger>> inner=expectedRelationships.get(startNodeName);
+      if (inner == null) {
+        expectedRelationships.put(startNodeName,inner=new HashMap<>());
+      }
+      String endNodeName=nameOf(endNode);
+      Map<String,AtomicInteger> innerInner=inner.get(endNodeName);
+      if (innerInner == null) {
+        inner.put(endNodeName,innerInner=new HashMap<>());
+      }
+      AtomicInteger count=innerInner.get(relationship.type());
+      if (count == null) {
+        innerInner.put(relationship.type(),count=new AtomicInteger());
+      }
+      count.incrementAndGet();
+    }
+    for (    String startNodeLabelName : startNode.labels()) {
+      Map<String,Map<String,AtomicLong>> levelOne=relationshipCounts.get(startNodeLabelName);
+      if (levelOne == null) {
+        relationshipCounts.put(startNodeLabelName,levelOne=new HashMap<>());
+      }
+      Map<String,AtomicLong> levelTwo=levelOne.get(relationship.type());
+      if (levelTwo == null) {
+        levelOne.put(relationship.type(),levelTwo=new HashMap<>());
+      }
+      for (      String endNodeLabelName : endNode.labels()) {
+        AtomicLong count=levelTwo.get(endNodeLabelName);
+        if (count == null) {
+          levelTwo.put(endNodeLabelName,count=new AtomicLong());
+        }
+        count.incrementAndGet();
+      }
+    }
+  }
+}
