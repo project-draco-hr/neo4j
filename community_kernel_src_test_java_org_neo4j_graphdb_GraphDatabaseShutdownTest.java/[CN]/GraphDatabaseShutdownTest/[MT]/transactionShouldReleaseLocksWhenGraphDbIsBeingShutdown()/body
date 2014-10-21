@@ -1,0 +1,20 @@
+{
+  final GraphDatabaseAPI db=(GraphDatabaseAPI)new TestGraphDatabaseFactory().newImpermanentDatabase();
+  final Locks locks=db.getDependencyResolver().resolveDependency(Locks.class);
+  assertEquals(0,lockCount(locks));
+  Exception exceptionThrownByTxClose=null;
+  try (Transaction tx=db.beginTx()){
+    Node node=db.createNode();
+    tx.acquireWriteLock(node);
+    assertEquals(1,lockCount(locks));
+    db.shutdown();
+    db.createNode();
+    tx.success();
+  }
+ catch (  Exception e) {
+    exceptionThrownByTxClose=e;
+  }
+  assertThat(exceptionThrownByTxClose,instanceOf(DatabaseShutdownException.class));
+  assertFalse(db.isAvailable(1));
+  assertEquals(0,lockCount(locks));
+}
