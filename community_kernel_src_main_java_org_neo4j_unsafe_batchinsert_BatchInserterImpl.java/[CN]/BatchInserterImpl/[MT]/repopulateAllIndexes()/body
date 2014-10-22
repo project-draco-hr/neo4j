@@ -15,7 +15,9 @@
     labelIds[i]=labelId;
     propertyKeyIds[i]=propertyKeyId;
     IndexDescriptor descriptor=new IndexDescriptor(labelId,propertyKeyId);
-    populators[i]=schemaIndexProviders.apply(rule.getProviderDescriptor()).getPopulator(rule.getId(),descriptor,new IndexConfiguration(rule.isConstraintIndex()));
+    boolean isConstraint=rule.isConstraintIndex();
+    ValueSampler sampler=isConstraint ? new UniqueIndexSizeSampler() : new BoundedIndexSampler(config.get(GraphDatabaseSettings.max_unique_elements_per_sampling));
+    populators[i]=schemaIndexProviders.apply(rule.getProviderDescriptor()).getPopulator(rule.getId(),descriptor,new IndexConfiguration(isConstraint),sampler);
     populators[i].create();
   }
   Visitor<NodePropertyUpdate,IOException> propertyUpdateVisitor=new Visitor<NodePropertyUpdate,IOException>(){

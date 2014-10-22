@@ -2,10 +2,11 @@
   try {
     try (IndexReader reader=indexProxy.newReader()){
       Register.DoubleLongRegister sample=Registers.newDoubleLongRegister();
-      ValueSampler sampler=new SampleVisitor(numOfUniqueElements);
-      reader.sampleIndex(sampler,sample);
+      ValueSampler sampler=new BoundedIndexSampler(numOfUniqueElements);
+      reader.sampleIndex(sampler);
+      final long indexSize=sampler.result(sample);
       if (indexProxy.getState() == ONLINE) {
-        storeView.replaceIndexSample(MAX_TX_ID,indexDescriptor,sample.readFirst(),sample.readSecond());
+        storeView.setIndexCounts(indexDescriptor,sample.readFirst(),sample.readSecond(),indexSize);
       }
     }
    }

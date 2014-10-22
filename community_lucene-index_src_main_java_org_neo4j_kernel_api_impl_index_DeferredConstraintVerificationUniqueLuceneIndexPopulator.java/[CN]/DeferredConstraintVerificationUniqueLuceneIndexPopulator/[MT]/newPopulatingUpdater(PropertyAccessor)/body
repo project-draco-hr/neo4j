@@ -5,12 +5,23 @@
       long nodeId=update.getNodeId();
 switch (update.getUpdateMode()) {
 case ADDED:
+        Fieldable encodedValue=documentStructure.encodeAsFieldable(update.getValueAfter());
+      sampler.include(encodedValue.stringValue());
+    writer.updateDocument(documentStructure.newQueryForChangeOrRemove(nodeId),documentStructure.newDocumentRepresentingProperty(nodeId,encodedValue));
+  updatedPropertyValues.add(update.getValueAfter());
+break;
 case CHANGED:
-        writer.updateDocument(documentStructure.newQueryForChangeOrRemove(nodeId),documentStructure.newDocumentRepresentingProperty(nodeId,update.getValueAfter()));
-      updatedPropertyValues.add(update.getValueAfter());
-    break;
+Fieldable encodedValueBefore=documentStructure.encodeAsFieldable(update.getValueBefore());
+sampler.exclude(encodedValueBefore.stringValue());
+Fieldable encodedValueAfter=documentStructure.encodeAsFieldable(update.getValueAfter());
+sampler.include(encodedValueAfter.stringValue());
+writer.updateDocument(documentStructure.newQueryForChangeOrRemove(nodeId),documentStructure.newDocumentRepresentingProperty(nodeId,encodedValueAfter));
+updatedPropertyValues.add(update.getValueAfter());
+break;
 case REMOVED:
-  writer.deleteDocuments(documentStructure.newQueryForChangeOrRemove(nodeId));
+Fieldable removedValue=documentStructure.encodeAsFieldable(update.getValueBefore());
+sampler.exclude(removedValue.stringValue());
+writer.deleteDocuments(documentStructure.newQueryForChangeOrRemove(nodeId));
 break;
 default :
 throw new IllegalStateException("Unknown update mode " + update.getUpdateMode());

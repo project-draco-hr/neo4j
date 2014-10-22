@@ -8,20 +8,19 @@
       log.info(format("Index population started: [%s]",indexUserDescription));
       log.flush();
       populator.create();
-      resetIndexCounts();
-      indexAllNodes(sizeVisitor,populatingSampler);
+      storeView.setIndexCounts(descriptor,0,0,0);
+      indexAllNodes();
       verifyDeferredConstraints();
       if (cancelled) {
-        resetIndexCounts();
+        storeView.setIndexCounts(descriptor,0,0,0);
         return;
       }
       Callable<Void> duringFlip=new Callable<Void>(){
         @Override public Void call() throws Exception {
-          populateFromQueueIfAvailable(Long.MAX_VALUE,sizeVisitor,populatingSampler);
-          storeView.replaceIndexSize(MAX_TX_ID,descriptor,sizeVisitor.indexSize());
+          populateFromQueueIfAvailable(Long.MAX_VALUE);
           DoubleLongRegister result=Registers.newDoubleLongRegister();
-          populatingSampler.result(result);
-          storeView.replaceIndexSample(MAX_TX_ID,descriptor,result.readFirst(),result.readSecond());
+          long indexSize=populatingSampler.result(result);
+          storeView.setIndexCounts(descriptor,result.readFirst(),result.readSecond(),indexSize);
           storeView.flushIndexCounts();
           populator.close(true);
           updateableSchemaState.clear();
