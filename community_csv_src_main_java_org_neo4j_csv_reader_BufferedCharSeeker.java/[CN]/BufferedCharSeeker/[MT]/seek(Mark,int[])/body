@@ -4,20 +4,58 @@
   }
   seekStartPos=bufferPos;
   int ch;
-  while ((ch=nextChar()) != EOL_CHAR && ch != EOL_CHAR_2 && !eof) {
-    for (int i=0; i < untilOneOfChars.length; i++) {
-      if (ch == untilOneOfChars[i]) {
-        mark.set(lineNumber,seekStartPos,bufferPos - 1,ch);
-        return true;
+  int endOffset=1;
+  int skippedChars=0;
+  int quoteDepth=0;
+  while (!eof) {
+    ch=nextChar(skippedChars);
+    if (quoteDepth == 0) {
+      if (ch == quoteChar) {
+        quoteDepth++;
+        seekStartPos++;
+        continue;
+      }
+ else       if (isNewLine(ch)) {
+        break;
+      }
+ else {
+        for (int i=0; i < untilOneOfChars.length; i++) {
+          if (ch == untilOneOfChars[i]) {
+            mark.set(lineNumber,seekStartPos,bufferPos - endOffset - skippedChars,ch);
+            return true;
+          }
+        }
+      }
+    }
+ else {
+      if (ch == quoteChar) {
+        int nextCh=peekChar();
+        if (nextCh == quoteChar) {
+          repositionChar(bufferPos++,++skippedChars);
+          quoteDepth=quoteDepth == 1 ? 2 : 1;
+        }
+ else {
+          endOffset++;
+          quoteDepth--;
+        }
+      }
+ else       if ((ch == EOL_CHAR || ch == EOL_CHAR_2)) {
+        nextChar(skippedChars);
+      }
+ else       if (ch == BACK_SLASH) {
+        int nextCh=peekChar();
+        if (nextCh == quoteChar) {
+          repositionChar(bufferPos++,++skippedChars);
+        }
       }
     }
   }
   int valueLength=bufferPos - seekStartPos - 1;
-  if (ch == EOF_CHAR && valueLength == 0 && seekStartPos == lineStartPos) {
+  if (eof && valueLength == 0 && seekStartPos == lineStartPos) {
     return eof(mark);
   }
-  int skipped=skipEolChars();
-  mark.set(lineNumber,seekStartPos,bufferPos - 1 - skipped,Mark.END_OF_LINE_CHARACTER);
+  skippedChars+=skipEolChars();
+  mark.set(lineNumber,seekStartPos,bufferPos - endOffset - skippedChars,END_OF_LINE_CHARACTER);
   lineNumber++;
   lineStartPos=bufferPos;
   return true;
