@@ -1,18 +1,24 @@
 {
-  IndexDescriptor descriptor=samplingJob.descriptor();
-  if (executingJobDescriptors.contains(descriptor)) {
-    return;
-  }
-  executingJobDescriptors.add(descriptor);
-  jobScheduler.schedule(JobScheduler.Group.indexSampling,new Runnable(){
-    @Override public void run(){
-      try {
-        samplingJob.run();
-      }
+  lock.lock();
+  try {
+    IndexDescriptor descriptor=samplingJob.descriptor();
+    if (executingJobDescriptors.contains(descriptor)) {
+      return;
+    }
+    executingJobDescriptors.add(descriptor);
+    jobScheduler.schedule(JobScheduler.Group.indexSampling,new Runnable(){
+      @Override public void run(){
+        try {
+          samplingJob.run();
+        }
   finally {
-        samplingJobCompleted(samplingJob);
+          samplingJobCompleted(samplingJob);
+        }
       }
     }
-  }
 );
+  }
+  finally {
+    lock.unlock();
+  }
 }

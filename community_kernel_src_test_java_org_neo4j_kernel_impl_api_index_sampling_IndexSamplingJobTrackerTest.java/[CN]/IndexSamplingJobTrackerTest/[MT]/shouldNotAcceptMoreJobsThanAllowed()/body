@@ -1,8 +1,9 @@
 {
   JobScheduler jobScheduler=new Neo4jJobScheduler();
   jobScheduler.init();
-  IndexSamplingJobTracker jobTracker=new IndexSamplingJobTracker(jobScheduler,1);
+  final IndexSamplingJobTracker jobTracker=new IndexSamplingJobTracker(jobScheduler,1);
   final DoubleLatch latch=new DoubleLatch();
+  final DoubleLatch waitingLatch=new DoubleLatch();
   assertTrue(jobTracker.canExecuteMoreSamplingJobs());
   jobTracker.scheduleSamplingJob(new IndexSamplingJob(){
     private final IndexDescriptor descriptor=new IndexDescriptor(1,2);
@@ -17,7 +18,22 @@
 );
   latch.awaitStart();
   assertFalse(jobTracker.canExecuteMoreSamplingJobs());
+  final AtomicBoolean waiting=new AtomicBoolean(false);
+  new Thread(new Runnable(){
+    @Override public void run(){
+      waiting.set(true);
+      waitingLatch.start();
+      jobTracker.waitUntilCanExecuteMoreSamplingJobs();
+      waiting.set(false);
+      waitingLatch.finish();
+    }
+  }
+).start();
+  waitingLatch.awaitStart();
+  assertTrue(waiting.get());
   latch.finish();
+  waitingLatch.awaitFinish();
+  assertFalse(waiting.get());
   while (!jobTracker.canExecuteMoreSamplingJobs()) {
     Thread.yield();
   }
