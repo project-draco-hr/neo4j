@@ -10,13 +10,7 @@ break;
 default :
 throw new IllegalStateException("Unknown version to upgrade from: " + versionToUpgradeFrom);
 }
-ExecutionMonitor executionMonitor=new CoarseBoundedProgressExecutionMonitor(legacyStore.getNodeStoreReader().getMaxId(),legacyStore.getRelStoreReader().getMaxId()){
-@Override protected void percent(int percent){
-progressMonitor.percentComplete(percent);
-}
-}
-;
-BatchImporter importer=new ParallelBatchImporter(migrationDir.getAbsolutePath(),fileSystem,new Configuration.OverrideFromConfig(config),logging,executionMonitor);
+BatchImporter importer=new ParallelBatchImporter(migrationDir.getAbsolutePath(),fileSystem,new Configuration.OverrideFromConfig(config),logging,migrationBatchImporterMonitor(legacyStore,progressMonitor),parallel(),readHighTokenIds(storeDir,lastTxId));
 Iterable<InputNode> nodes=legacyNodesAsInput(legacyStore);
 Iterable<InputRelationship> relationships=legacyRelationshipsAsInput(legacyStore);
 importer.doImport(Inputs.input(nodes,relationships,IdMappings.actual()));
