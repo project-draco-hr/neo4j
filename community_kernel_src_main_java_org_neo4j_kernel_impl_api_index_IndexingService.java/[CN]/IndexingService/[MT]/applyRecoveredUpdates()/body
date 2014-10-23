@@ -1,20 +1,17 @@
 {
-  List<RecoveredTx> recoveredTransactions=currentRecoveredTransactions();
-  logger.debug("Applying recovered updates: " + recoveredTransactions);
-  monitor.applyingRecoveredData(recoveredTransactions);
-  if (!recoveredTransactions.isEmpty()) {
-    for (    RecoveredTx recoveredTx : recoveredTransactions) {
-      try (IndexUpdaterMap updaterMap=indexMapReference.createIndexUpdaterMap(IndexUpdateMode.RECOVERY,recoveredTx.transactionId)){
-        for (        IndexUpdater updater : updaterMap) {
-          updater.remove(recoveredTx.recoveredNodeIds);
-        }
-        for (        long nodeId : recoveredTx.recoveredNodeIds) {
-          Iterable<NodePropertyUpdate> updates=storeView.nodeAsUpdates(nodeId);
-          applyUpdates(updates,updaterMap);
-          monitor.appliedRecoveredData(updates);
-        }
+  logger.debug("Applying recovered updates: " + recoveredNodeIds);
+  monitor.applyingRecoveredData(recoveredNodeIds);
+  if (!recoveredNodeIds.isEmpty()) {
+    try (IndexUpdaterMap updaterMap=indexMapReference.createIndexUpdaterMap(IndexUpdateMode.RECOVERY)){
+      for (      IndexUpdater updater : updaterMap) {
+        updater.remove(recoveredNodeIds);
       }
-     }
-  }
-  disposeRecoveredTransactions();
+      for (      long nodeId : recoveredNodeIds) {
+        Iterable<NodePropertyUpdate> updates=storeView.nodeAsUpdates(nodeId);
+        applyUpdates(updates,updaterMap);
+        monitor.appliedRecoveredData(updates);
+      }
+    }
+   }
+  recoveredNodeIds.clear();
 }
