@@ -1,0 +1,38 @@
+{
+  final AtomicInteger totalCount=new AtomicInteger(0);
+  final AtomicInteger concurrentCount=new AtomicInteger(0);
+  final DoubleLatch jobLatch=new DoubleLatch();
+  final DoubleLatch testLatch=new DoubleLatch();
+  IndexSamplingJobFactory jobFactory=new IndexSamplingJobFactory(){
+    @Override public IndexSamplingJob create(    IndexProxy indexProxy){
+      if (!concurrentCount.compareAndSet(0,1)) {
+        throw new IllegalStateException("count !== 0 on create");
+      }
+      totalCount.incrementAndGet();
+      jobLatch.awaitStart();
+      testLatch.start();
+      jobLatch.awaitFinish();
+      concurrentCount.decrementAndGet();
+      testLatch.finish();
+      return null;
+    }
+  }
+;
+  final IndexSamplingController controller=new IndexSamplingController(jobFactory,tracker,snapshotProvider);
+  when(tracker.canExecuteMoreSamplingJobs()).thenReturn(true);
+  when(indexProxy.getState()).thenReturn(ONLINE);
+  new Thread(new Runnable(){
+    @Override public void run(){
+      controller.run();
+    }
+  }
+).start();
+  jobLatch.start();
+  testLatch.awaitStart();
+  assertEquals(1,concurrentCount.get());
+  controller.run();
+  jobLatch.finish();
+  testLatch.awaitFinish();
+  assertEquals(0,concurrentCount.get());
+  assertEquals(1,totalCount.get());
+}
