@@ -1,16 +1,16 @@
 {
   final FlippableIndexProxy flipper=new FlippableIndexProxy();
   final String indexUserDescription=indexUserDescription(descriptor,providerDescriptor);
-  IndexConfiguration config=new IndexConfiguration(constraint);
+  final IndexConfiguration config=new IndexConfiguration(constraint);
   ValueSampler sampler=valueSampler(constraint);
   IndexPopulator populator=getPopulatorFromProvider(providerDescriptor,ruleId,descriptor,config,sampler);
-  FailedIndexProxyFactory failureDelegateFactory=new FailedPopulatingIndexProxyFactory(descriptor,providerDescriptor,populator,indexUserDescription,IndexCountsRemover.Factory.create(storeView,descriptor));
-  PopulatingIndexProxy populatingIndex=new PopulatingIndexProxy(scheduler,descriptor,providerDescriptor,failureDelegateFactory,populator,flipper,storeView,sampler,updateableSchemaState,logging,indexUserDescription);
+  FailedIndexProxyFactory failureDelegateFactory=new FailedPopulatingIndexProxyFactory(descriptor,config,providerDescriptor,populator,indexUserDescription,IndexCountsRemover.Factory.create(storeView,descriptor));
+  PopulatingIndexProxy populatingIndex=new PopulatingIndexProxy(scheduler,descriptor,config,failureDelegateFactory,populator,flipper,storeView,sampler,updateableSchemaState,logging,indexUserDescription,providerDescriptor);
   flipper.flipTo(populatingIndex);
   flipper.setFlipTarget(new IndexProxyFactory(){
     @Override public IndexProxy create(){
       try {
-        OnlineIndexProxy onlineProxy=new OnlineIndexProxy(descriptor,providerDescriptor,getOnlineAccessorFromProvider(providerDescriptor,ruleId,new IndexConfiguration(constraint)),storeView);
+        OnlineIndexProxy onlineProxy=new OnlineIndexProxy(descriptor,config,getOnlineAccessorFromProvider(providerDescriptor,ruleId,config),storeView,providerDescriptor);
         if (constraint) {
           return new TentativeConstraintIndexProxy(flipper,onlineProxy);
         }
