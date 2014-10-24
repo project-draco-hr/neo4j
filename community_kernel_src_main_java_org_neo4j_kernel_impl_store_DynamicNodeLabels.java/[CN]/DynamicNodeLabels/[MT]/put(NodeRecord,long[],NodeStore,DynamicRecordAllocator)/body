@@ -1,0 +1,23 @@
+{
+  long existingLabelsField=node.getLabelField();
+  long existingLabelsBits=parseLabelsBody(existingLabelsField);
+  Collection<DynamicRecord> changedDynamicRecords=node.getDynamicLabelRecords();
+  long labelField=node.getLabelField();
+  if (fieldPointsToDynamicRecordOfLabels(labelField)) {
+    nodeStore.ensureHeavy(node,existingLabelsBits);
+    changedDynamicRecords=node.getDynamicLabelRecords();
+    setNotInUse(changedDynamicRecords);
+  }
+  if (!InlineNodeLabels.tryInlineInNodeRecord(node,labelIds,changedDynamicRecords)) {
+    Iterator<DynamicRecord> recycledRecords=changedDynamicRecords.iterator();
+    Collection<DynamicRecord> allocatedRecords=NodeStore.allocateRecordsForDynamicLabels(node.getId(),labelIds,recycledRecords,allocator);
+    while (recycledRecords.hasNext()) {
+      DynamicRecord removedRecord=recycledRecords.next();
+      removedRecord.setInUse(false);
+      allocatedRecords.add(removedRecord);
+    }
+    node.setLabelField(dynamicPointer(allocatedRecords),allocatedRecords);
+    changedDynamicRecords=allocatedRecords;
+  }
+  return changedDynamicRecords;
+}
