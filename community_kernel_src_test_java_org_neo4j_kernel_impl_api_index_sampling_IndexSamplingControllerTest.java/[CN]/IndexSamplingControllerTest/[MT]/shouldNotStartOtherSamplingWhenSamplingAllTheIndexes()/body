@@ -4,7 +4,7 @@
   final DoubleLatch jobLatch=new DoubleLatch();
   final DoubleLatch testLatch=new DoubleLatch();
   IndexSamplingJobFactory jobFactory=new IndexSamplingJobFactory(){
-    @Override public IndexSamplingJob create(    IndexProxy indexProxy){
+    @Override public IndexSamplingJob create(    IndexSamplingConfig samplingConfiguration,    IndexProxy indexProxy){
       if (!concurrentCount.compareAndSet(0,1)) {
         throw new IllegalStateException("count !== 0 on create");
       }
@@ -18,14 +18,14 @@
     }
   }
 ;
-  final IndexSamplingController controller=new IndexSamplingController(jobFactory,tracker,snapshotProvider);
+  final IndexSamplingController controller=new IndexSamplingController(samplingConfig,jobFactory,jobQueue,tracker,snapshotProvider);
   when(tracker.canExecuteMoreSamplingJobs()).thenReturn(true);
   when(indexProxy.getState()).thenReturn(ONLINE);
-  new Thread(runController(controller,REBUILD_UPDATED)).start();
+  new Thread(runController(controller,TRIGGER_REBUILD_UPDATED)).start();
   jobLatch.start();
   testLatch.awaitStart();
   assertEquals(1,concurrentCount.get());
-  controller.sampleIndexes(TRY_REBUILD_UPDATED);
+  controller.sampleIndexes(BACKGROUND_REBUILD_UPDATED);
   jobLatch.finish();
   testLatch.awaitFinish();
   assertEquals(0,concurrentCount.get());

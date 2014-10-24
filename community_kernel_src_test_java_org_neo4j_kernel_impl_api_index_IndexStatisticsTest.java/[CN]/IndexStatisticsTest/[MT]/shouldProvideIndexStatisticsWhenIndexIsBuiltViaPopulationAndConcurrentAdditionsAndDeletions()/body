@@ -7,13 +7,17 @@
   IndexDescriptor index=createIndex("Person","name");
   int createdAfter=0;
   int updatesSeenWhilePopulating=-1;
+  int deleted=0;
+  int deletionsSeenWhilePopulating=-1;
   while (createdAfter < 10000) {
     createdAfter+=createNamedPeople(nodes);
     if (createdAfter % 5 == 0) {
       long nodeId=nodes.get(nodes.size() / 2);
       deleteNode(nodeId);
       createdAfter--;
+      deleted++;
       if (updatesSeenWhilePopulating < 0 && isIndexOnline(index)) {
+        deletionsSeenWhilePopulating=deleted;
         updatesSeenWhilePopulating=createdAfter;
       }
     }
@@ -26,4 +30,5 @@
   assertCorrectIndexSize(seenWhilePopulating,indexSize(index));
   double expectedSelectivity=UNIQUE_NAMES / ((double)seenWhilePopulating);
   assertCorrectIndexSelectivity(expectedSelectivity,indexSelectivity(index));
+  assertCorrectIndexUpdates(deleted - deletionsSeenWhilePopulating + createdAfter - updatesSeenWhilePopulating,indexUpdates(index));
 }
