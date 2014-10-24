@@ -1,0 +1,24 @@
+{
+  fieldBits.clear(false);
+  fieldScratch[0]=cache.get(nodeId);
+  if (fieldScratch[0] == 0) {
+    target[0]=-1;
+    return target;
+  }
+  int length=fieldBits.getInt(bitsPerLabel);
+  int longsInUse=((bitsPerLabel * (length + 1)) - 1) / Long.SIZE + 1;
+  target=ensureCapacity(target,length);
+  if (longsInUse == 1) {
+    decode(fieldBits,length,target);
+  }
+ else {
+    long spillOverIndex=fieldBits.getLong(Long.SIZE - bitsPerLabel);
+    labelBits.clear(false);
+    for (int i=0; i < longsInUse; i++) {
+      labelScratch[i]=spillOver.get(spillOverIndex + i);
+    }
+    labelBits.getInt(bitsPerLabel);
+    decode(labelBits,length,target);
+  }
+  return target;
+}

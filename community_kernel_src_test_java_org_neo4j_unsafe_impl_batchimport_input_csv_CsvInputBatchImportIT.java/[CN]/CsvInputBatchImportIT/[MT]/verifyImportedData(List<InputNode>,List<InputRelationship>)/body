@@ -1,8 +1,10 @@
 {
   Map<String,InputNode> expectedNodes=new HashMap<>();
   Map<String,String[]> expectedNodeNames=new HashMap<>();
-  Map<String,Map<String,Map<String,AtomicInteger>>> expectedRelationships=new HashMap<>();
-  buildUpExpectedData(nodeData,relationshipData,expectedNodes,expectedNodeNames,expectedRelationships);
+  Map<String,Map<String,Map<String,AtomicInteger>>> expectedRelationships=new AutoCreatingHashMap<>(nested(String.class,nested(String.class,values(AtomicInteger.class))));
+  Map<String,AtomicLong> expectedNodeCounts=new AutoCreatingHashMap<>(values(AtomicLong.class));
+  Map<String,Map<String,Map<String,AtomicLong>>> expectedRelationshipCounts=new AutoCreatingHashMap<>(nested(String.class,nested(String.class,values(AtomicLong.class))));
+  buildUpExpectedData(nodeData,relationshipData,expectedNodes,expectedNodeNames,expectedRelationships,expectedNodeCounts,expectedRelationshipCounts);
   GraphDatabaseService db=new GraphDatabaseFactory().newEmbeddedDatabase(directory.absolutePath());
   try (Transaction tx=db.beginTx()){
     for (    Node node : GlobalGraphOperations.at(db).getAllNodes()) {
@@ -17,8 +19,7 @@
       String endNodeName=(String)relationship.getEndNode().getProperty("name");
       Map<String,AtomicInteger> innerInner=inner.get(endNodeName);
       String type=relationship.getType().name();
-      AtomicInteger count=innerInner.get(type);
-      int countAfterwards=count.decrementAndGet();
+      int countAfterwards=innerInner.get(type).decrementAndGet();
       assertThat(countAfterwards,greaterThanOrEqualTo(0));
       if (countAfterwards == 0) {
         innerInner.remove(type);
@@ -31,6 +32,16 @@
       }
     }
     assertEquals(0,expectedRelationships.size());
+    NeoStore neoStore=((GraphDatabaseAPI)db).getDependencyResolver().resolveDependency(NeoStoreProvider.class).evaluate();
+    Function<String,Integer> labelTranslationTable=translationTable(neoStore.getLabelTokenStore(),ReadOperations.ANY_LABEL);
+    for (    Pair<Integer,Long> count : allNodeCounts(labelTranslationTable,expectedNodeCounts)) {
+      assertEquals("Label count mismatch for label " + count.first(),count.other().longValue(),neoStore.getCounts().countsForNode(count.first().intValue()));
+    }
+    Function<String,Integer> relationshipTypeTranslationTable=translationTable(neoStore.getRelationshipTypeTokenStore(),ReadOperations.ANY_RELATIONSHIP_TYPE);
+    for (    Pair<RelationshipCountKey,Long> count : allRelationshipCounts(labelTranslationTable,relationshipTypeTranslationTable,expectedRelationshipCounts)) {
+      RelationshipCountKey key=count.first();
+      assertEquals("Label count mismatch for label " + key,count.other().longValue(),neoStore.getCounts().countsForRelationship(key.startLabel,key.type,key.endLabel));
+    }
     tx.success();
   }
   finally {
