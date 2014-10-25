@@ -6,8 +6,13 @@
   int cachePagePadding=parseInt(fromEnvironmentOrDefault("PAGE_CACHE_STRESS_CACHE_PAGE_PADDING","56"));
   int numberOfCachePages=parseInt(fromEnvironmentOrDefault("PAGE_CACHE_STRESS_NUMBER_OF_CACHE_PAGES","1000"));
   String workingDirectory=fromEnvironmentOrDefault("PAGE_CACHE_STRESS_WORKING_DIRECTORY",getProperty("java.io.tmpdir"));
-  PageCacheMonitor monitor=new SimpleMonitor();
+  CountingPageCacheMonitor monitor=new CountingPageCacheMonitor();
   PageCacheStressTest runner=new PageCacheStressTest.Builder().with(timePeriod(durationInMinutes,MINUTES)).withNumberOfPages(numberOfPages).withRecordsPerPage(recordsPerPage).withNumberOfThreads(numberOfThreads).withCachePagePadding(cachePagePadding).withNumberOfCachePages(numberOfCachePages).withWorkingDirectory(workingDirectory).with(monitor).build();
   runner.run();
-  System.out.println(monitor);
+  long faults=monitor.countFaults();
+  long evictions=monitor.countEvictions();
+  long pins=monitor.countPins();
+  long unpins=monitor.countUnpins();
+  long flushes=monitor.countFlushes();
+  System.out.printf(" - page faults: %d%n - evictions: %d%n - pins: %d%n - unpins: %d%n - flushes: %d%n",faults,evictions,pins,unpins,flushes);
 }
