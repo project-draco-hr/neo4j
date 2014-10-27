@@ -7,6 +7,10 @@
   this.pageCacheFactory=new BatchingPageCache(fileSystem,config.fileChannelBufferSize(),writerFactory,writeMonitor,APPEND_ONLY);
   this.neoStore=newNeoStore(pageCacheFactory);
   flushNeoStoreAndAwaitEverythingWritten();
+  if (alreadyContainsData(neoStore)) {
+    neoStore.close();
+    throw new IllegalStateException(storeDir + " already contains data, cannot do import here");
+  }
   neoStore.setLastCommittedAndClosedTransactionId(highTokenIds.lastCommittedTransactionId());
   this.propertyKeyRepository=new BatchingPropertyKeyTokenRepository(neoStore.getPropertyKeyTokenStore(),highTokenIds.highPropertyKeyTokenId());
   this.labelRepository=new BatchingLabelTokenRepository(neoStore.getLabelTokenStore(),highTokenIds.highLabelTokenId());
