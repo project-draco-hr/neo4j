@@ -1,11 +1,13 @@
 {
   try (PageCursor cursor=storeFile.io(pageIdForRecord(id),PF_SHARED_LOCK)){
     if (cursor.next()) {
-      T record;
+      T record=newRecord((int)id);
+      byte inUseByte;
       do {
-        record=getRecord((int)id,cursor,true);
+        inUseByte=getRecord((int)id,record,cursor);
       }
  while (cursor.shouldRetry());
+      checkInUseByteValidity(id,inUseByte);
       record.setIsLight(true);
       return record;
     }

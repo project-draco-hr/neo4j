@@ -1,15 +1,17 @@
 {
-  T record;
+  T record=newRecord(id);
+  byte inUseByte=Record.NOT_IN_USE.byteValue();
   try (PageCursor cursor=storeFile.io(pageIdForRecord(id),PF_SHARED_LOCK)){
     if (cursor.next()) {
       do {
-        record=getRecord(id,cursor,false);
+        inUseByte=getRecord(id,record,cursor);
       }
  while (cursor.shouldRetry());
     }
- else {
+    if (inUseByte != Record.IN_USE.byteValue()) {
       throw new InvalidRecordException(getClass().getSimpleName() + " Record[" + id+ "] not in use");
     }
+    checkInUseByteValidity(id,inUseByte);
   }
  catch (  IOException e) {
     throw new UnderlyingStorageException(e);
