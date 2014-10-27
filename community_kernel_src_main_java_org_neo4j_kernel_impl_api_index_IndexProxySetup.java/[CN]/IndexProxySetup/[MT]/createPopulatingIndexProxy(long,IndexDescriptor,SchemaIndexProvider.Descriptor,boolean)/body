@@ -1,0 +1,26 @@
+{
+  final FlippableIndexProxy flipper=new FlippableIndexProxy();
+  final String indexUserDescription=indexUserDescription(descriptor,providerDescriptor);
+  final IndexConfiguration config=new IndexConfiguration(constraint);
+  ValueSampler sampler=samplingSetup.createValueSample(constraint);
+  IndexPopulator populator=populatorFromProvider(providerDescriptor,ruleId,descriptor,config,sampler);
+  FailedIndexProxyFactory failureDelegateFactory=new FailedPopulatingIndexProxyFactory(descriptor,config,providerDescriptor,populator,indexUserDescription,IndexCountsRemover.Factory.create(storeView,descriptor));
+  PopulatingIndexProxy populatingIndex=new PopulatingIndexProxy(scheduler,descriptor,config,failureDelegateFactory,populator,flipper,storeView,sampler,updateableSchemaState,logging,indexUserDescription,providerDescriptor);
+  flipper.flipTo(populatingIndex);
+  flipper.setFlipTarget(new IndexProxyFactory(){
+    @Override public IndexProxy create(){
+      try {
+        OnlineIndexProxy onlineProxy=new OnlineIndexProxy(descriptor,config,onlineAccessorFromProvider(providerDescriptor,ruleId,config),storeView,providerDescriptor);
+        if (constraint) {
+          return new TentativeConstraintIndexProxy(flipper,onlineProxy);
+        }
+        return onlineProxy;
+      }
+ catch (      IOException e) {
+        return createFailedIndexProxy(ruleId,descriptor,providerDescriptor,constraint,failure(e));
+      }
+    }
+  }
+);
+  return new ContractCheckingIndexProxy(flipper,false);
+}
