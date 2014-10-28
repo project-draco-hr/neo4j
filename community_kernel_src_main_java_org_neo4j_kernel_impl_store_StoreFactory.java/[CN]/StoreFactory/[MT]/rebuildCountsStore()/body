@@ -1,0 +1,21 @@
+{
+  final LifeSupport life=new LifeSupport();
+  life.start();
+  try {
+    final PageCache pageCache=createPageCache(fileSystemAbstraction,"build-counts",life);
+    final File storeFileBase=storeFileName(COUNTS_STORE);
+    CountsTracker.createEmptyCountsStore(pageCache,storeFileBase,buildTypeDescriptorAndVersion(CountsTracker.STORE_DESCRIPTOR));
+    try (NodeStore nodeStore=newNodeStore();RelationshipStore relationshipStore=newRelationshipStore();CountsTracker tracker=new CountsTracker(fileSystemAbstraction,pageCache,storeFileBase)){
+      CountsComputer.computeCounts(nodeStore,relationshipStore).accept(new CountsAccessor.Initializer(tracker));
+      try {
+        tracker.rotate(NeoStore.getTxId(fileSystemAbstraction,neoStoreFileName));
+      }
+ catch (      IOException e) {
+        throw new UnderlyingStorageException("Unable to recreate CountsStore",e);
+      }
+    }
+   }
+  finally {
+    life.shutdown();
+  }
+}
