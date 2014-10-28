@@ -1,16 +1,25 @@
 {
-  try {
-    try (IndexReader reader=indexProxy.newReader()){
-      ValueSampler sampler=indexProxy.config().isUnique() ? new UniqueIndexSampler() : new NonUniqueIndexSampler(bufferSize);
-      reader.sampleIndex(sampler);
-      Register.DoubleLongRegister sample=Registers.newDoubleLongRegister();
-      final long indexSize=sampler.result(sample);
-      if (indexProxy.getState() == ONLINE) {
-        storeView.replaceIndexCounts(indexDescriptor,sample.readFirst(),sample.readSecond(),indexSize);
+  try (DurationLogger durationLogger=new DurationLogger(logger,"Sampling index " + indexUserDescription)){
+    try {
+      try (IndexReader reader=indexProxy.newReader()){
+        ValueSampler sampler=indexProxy.config().isUnique() ? new UniqueIndexSampler() : new NonUniqueIndexSampler(bufferSize);
+        reader.sampleIndex(sampler);
+        Register.DoubleLongRegister sample=Registers.newDoubleLongRegister();
+        final long indexSize=sampler.result(sample);
+        if (indexProxy.getState() == ONLINE) {
+          long unique=sample.readFirst();
+          long sampleSize=sample.readSecond();
+          storeView.replaceIndexCounts(indexDescriptor,unique,sampleSize,indexSize);
+          durationLogger.markAsFinished();
+          logger.info(format("Sampled index %s with %d unique values in sample of avg size %d taken from " + "index containing %d entries",indexUserDescription,unique,sampleSize,indexSize));
+        }
+ else {
+          durationLogger.markAsAborted("Index no longer ONLINE");
+        }
       }
+     }
+ catch (    IndexNotFoundKernelException e) {
+      durationLogger.markAsAborted("Attempted to sample missing/already deleted index " + indexUserDescription);
     }
-   }
- catch (  IndexNotFoundKernelException e) {
-    logger.warn("Attempted to sample missing/already deleted index " + indexDescriptor);
   }
-}
+ }
