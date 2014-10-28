@@ -1,21 +1,25 @@
 {
   try (PageCursor cursor=storeFile.io(pageIdForRecord(id),PF_SHARED_LOCK)){
     if (cursor.next()) {
-      RelationshipRecord record;
+      boolean success;
       do {
-        record=getRecord(id,cursor,loadMode,target);
+        success=readRecord(id,cursor,loadMode,target);
       }
  while (cursor.shouldRetry());
-      return record;
+      return success;
     }
  else     if (loadMode == RecordLoad.NORMAL) {
       throw new InvalidRecordException("RelationshipRecord[" + id + "] not in use");
     }
  else     if (loadMode == RecordLoad.CHECK) {
-      return null;
+      return false;
     }
  else {
-      return new RelationshipRecord(id,-1,-1,-1);
+      target.setId(id);
+      target.setType(-1);
+      target.setFirstNode(-1);
+      target.setSecondNode(-1);
+      return true;
     }
   }
  catch (  IOException e) {
