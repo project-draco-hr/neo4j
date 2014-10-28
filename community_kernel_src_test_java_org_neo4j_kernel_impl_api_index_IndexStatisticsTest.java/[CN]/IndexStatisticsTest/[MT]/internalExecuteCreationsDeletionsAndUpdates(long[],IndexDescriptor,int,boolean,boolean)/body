@@ -1,0 +1,38 @@
+{
+  Random random=ThreadLocalRandom.current();
+  UpdatesTracker updatesTracker=new UpdatesTracker();
+  int offset=0;
+  while (updatesTracker.created() < numberOfCreations) {
+    int created=createNamedPeople(nodes,offset);
+    offset+=created;
+    updatesTracker.increaseCreated(created);
+    if (!updatesTracker.isPopulationCompleted() && indexOnlineMonitor.isIndexOnline(index)) {
+      updatesTracker.notifyPopulationCompleted();
+    }
+    if (allowDeletions && updatesTracker.created() % 5 == 0) {
+      long nodeId=nodes[random.nextInt(nodes.length)];
+      try {
+        deleteNode(nodeId);
+        updatesTracker.increaseDeleted(1);
+      }
+ catch (      EntityNotFoundException ex) {
+      }
+      if (!updatesTracker.isPopulationCompleted() && indexOnlineMonitor.isIndexOnline(index)) {
+        updatesTracker.notifyPopulationCompleted();
+      }
+    }
+    if (allowUpdates && updatesTracker.created() % 5 == 0) {
+      long nodeId=nodes[random.nextInt(nodes.length)];
+      try {
+        changeName(nodeId,"name",NAMES[(int)(nodeId % NAMES.length)]);
+      }
+ catch (      EntityNotFoundException ex) {
+      }
+      if (!updatesTracker.isPopulationCompleted() && indexOnlineMonitor.isIndexOnline(index)) {
+        updatesTracker.notifyPopulationCompleted();
+      }
+    }
+  }
+  updatesTracker.notifyPopulationCompleted();
+  return updatesTracker;
+}
