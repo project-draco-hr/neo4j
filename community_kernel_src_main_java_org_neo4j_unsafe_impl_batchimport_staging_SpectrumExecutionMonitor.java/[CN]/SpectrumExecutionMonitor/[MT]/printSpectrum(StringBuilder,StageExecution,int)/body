@@ -8,15 +8,16 @@
   QuantizedProjection projection=new QuantizedProjection(total,width);
   long lastDoneBatches=0;
   int stepIndex=0;
-  for (  StepStats step : execution.stats()) {
-    if (!projection.next(avg(step))) {
-      throw new IllegalStateException();
+  for (  Step<?> step : execution.steps()) {
+    StepStats stats=step.stats();
+    if (!projection.next(avg(stats))) {
+      break;
     }
     long stepWidth=projection.step();
-    String name=step.toString(DetailLevel.IMPORTANT);
+    String name=stats.toString(DetailLevel.IMPORTANT) + (step.numberOfProcessors() > 1 ? "(" + step.numberOfProcessors() + ")" : "");
     builder.append(stepIndex++ == 0 ? '[' : '|');
     int charIndex=0;
-    char backgroundChar='-';
+    char backgroundChar=step.numberOfProcessors() > 1 ? '=' : '-';
     for (int i=0; i < stepWidth; i++, charIndex++) {
       char ch=backgroundChar;
       if (charIndex >= 0 && charIndex < name.length() && charIndex < stepWidth) {
@@ -24,7 +25,7 @@
       }
       builder.append(ch);
     }
-    lastDoneBatches=step.stat(Keys.done_batches).asLong();
+    lastDoneBatches=stats.stat(Keys.done_batches).asLong();
   }
   long progress=lastDoneBatches * execution.getConfig().batchSize();
   builder.append("]").append(fitInFour(progress));

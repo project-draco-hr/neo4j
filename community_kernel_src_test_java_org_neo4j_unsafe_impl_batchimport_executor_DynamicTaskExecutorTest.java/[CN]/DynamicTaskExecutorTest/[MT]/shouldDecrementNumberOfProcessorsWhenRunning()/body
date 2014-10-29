@@ -1,0 +1,25 @@
+{
+  TaskExecutor executor=new DynamicTaskExecutor(2,5,new ParkStrategy.Park(1),getClass().getSimpleName());
+  ControlledTask task1=new ControlledTask();
+  ControlledTask task2=new ControlledTask();
+  ControlledTask task3=new ControlledTask();
+  Task task4=new Task();
+  executor.submit(task1);
+  executor.submit(task2);
+  task1.latch.awaitStart();
+  task2.latch.awaitStart();
+  executor.submit(task3);
+  executor.submit(task4);
+  executor.setNumberOfProcessors(1);
+  task1.latch.finish();
+  task2.latch.finish();
+  task3.latch.awaitStart();
+  Thread.sleep(200);
+  assertEquals(0,task4.executed);
+  task3.latch.finish();
+  executor.shutdown(true);
+  assertEquals(1,task1.executed);
+  assertEquals(1,task2.executed);
+  assertEquals(1,task3.executed);
+  assertEquals(1,task4.executed);
+}

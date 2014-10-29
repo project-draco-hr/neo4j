@@ -1,0 +1,16 @@
+{
+  Pair<Step<?>,Float> bottleNeck=execution.stepsOrderedBy(Keys.avg_processing_time,false).iterator().next();
+  Step<?> bottleNeckStep=bottleNeck.first();
+  long doneBatches=batches(bottleNeckStep);
+  int usedPermits=0;
+  if (batchesPassedSinceLastChange(bottleNeckStep,doneBatches) >= config.movingAverageSize()) {
+    int optimalProcessorIncrement=min(max(1,(int)bottleNeck.other().floatValue() - 1),permits);
+    for (int i=0; i < optimalProcessorIncrement; i++) {
+      if (bottleNeckStep.incrementNumberOfProcessors()) {
+        lastChangedProcessors.put(bottleNeckStep,doneBatches);
+        usedPermits++;
+      }
+    }
+  }
+  return usedPermits;
+}
