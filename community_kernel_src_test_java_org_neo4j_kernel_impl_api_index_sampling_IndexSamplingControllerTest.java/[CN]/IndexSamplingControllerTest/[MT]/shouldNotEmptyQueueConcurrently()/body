@@ -19,15 +19,17 @@
   }
 ;
   final IndexSamplingController controller=new IndexSamplingController(samplingConfig,jobFactory,jobQueue,tracker,snapshotProvider);
-  when(tracker.canExecuteMoreSamplingJobs()).thenReturn(true);
+  when(tracker.canExecuteMoreSamplingJobs()).thenReturn(true,true,false);
   when(indexProxy.getState()).thenReturn(ONLINE);
   new Thread(runController(controller,BACKGROUND_REBUILD_UPDATED)).start();
   jobLatch.start();
   testLatch.awaitStart();
   assertEquals(1,concurrentCount.get());
+  assertEquals(1,totalCount.get());
   controller.sampleIndexes(BACKGROUND_REBUILD_UPDATED);
   jobLatch.finish();
   testLatch.awaitFinish();
   assertEquals(0,concurrentCount.get());
-  assertEquals(1,totalCount.get());
+  int expected=totalCount.get();
+  assertTrue("Expected 1 or 2, got " + expected,1 >= expected && expected <= 2);
 }

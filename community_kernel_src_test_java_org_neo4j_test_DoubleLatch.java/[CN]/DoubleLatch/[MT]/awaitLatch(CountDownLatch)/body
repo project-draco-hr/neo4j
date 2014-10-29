@@ -1,9 +1,16 @@
 {
-  try {
-    latch.await();
+  long deadline=System.currentTimeMillis() + FIVE_MINUTES;
+  long remaining;
+  while ((remaining=deadline - System.currentTimeMillis()) >= 0) {
+    try {
+      latch.await(remaining,TimeUnit.MILLISECONDS);
+      return;
+    }
+ catch (    InterruptedException e) {
+      Thread.interrupted();
+      new RuntimeException("Thread interrupted while waiting on latch",e).printStackTrace();
+    }
+    Thread.yield();
   }
- catch (  InterruptedException e) {
-    Thread.interrupted();
-    throw new RuntimeException(e);
-  }
+  throw new RuntimeException("Failed to acquire latch");
 }
