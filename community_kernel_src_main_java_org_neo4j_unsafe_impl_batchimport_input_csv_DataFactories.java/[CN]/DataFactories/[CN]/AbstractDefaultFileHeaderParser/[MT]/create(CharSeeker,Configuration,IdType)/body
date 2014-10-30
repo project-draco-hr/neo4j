@@ -1,0 +1,37 @@
+{
+  CharSeeker headerSeeker=null;
+  try {
+    headerSeeker=headerCharSeekerFactory.open(dataSeeker,config);
+    Mark mark=new Mark();
+    Extractors extractors=new Extractors(config.arrayDelimiter());
+    Extractor<?> idExtractor=idType.extractor(extractors);
+    int[] delimiter=new int[]{config.delimiter()};
+    List<Header.Entry> columns=new ArrayList<>();
+    for (int i=0; !mark.isEndOfLine() && headerSeeker.seek(mark,delimiter); i++) {
+      String columnString=headerSeeker.extract(mark,extractors.string()).value();
+      int typeIndex=columnString.lastIndexOf(':');
+      String name;
+      String typeSpec;
+      if (typeIndex != -1) {
+        name=columnString.substring(0,typeIndex);
+        typeSpec=columnString.substring(typeIndex + 1);
+      }
+ else {
+        name=columnString;
+        typeSpec=null;
+      }
+      columns.add(entry(i,name,typeSpec,extractors,idExtractor));
+    }
+    Entry[] entries=columns.toArray(new Header.Entry[columns.size()]);
+    validateHeader(entries);
+    return new Header(entries);
+  }
+ catch (  IOException e) {
+    throw new RuntimeException(e);
+  }
+ finally {
+    if (headerSeeker != null) {
+      headerCharSeekerFactory.close(headerSeeker);
+    }
+  }
+}
