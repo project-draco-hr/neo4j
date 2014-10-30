@@ -1,0 +1,20 @@
+{
+  Map<String,String> config=stringMap(tx_push_factor.name(),"2");
+  ClusterManager clusterManager=new ClusterManager.Builder(folder.getRoot()).withCommonConfig(config).withInstanceConfig(2,stringMap(GraphDatabaseSettings.read_only.name(),Settings.TRUE)).build();
+  try {
+    clusterManager.start();
+    ClusterManager.ManagedCluster cluster=clusterManager.getDefaultCluster();
+    cluster.await(ClusterManager.allSeesAllAsAvailable());
+    HighlyAvailableGraphDatabase readOnlySlave=cluster.getMemberByServerId(new InstanceId(2));
+    try (Transaction tx=readOnlySlave.beginTx()){
+      readOnlySlave.createNode();
+      tx.success();
+    }
+ catch (    TransactionFailureException ex) {
+      assertThat(ex.getCause(),instanceOf(ReadOnlyDbException.class));
+    }
+  }
+  finally {
+    clusterManager.shutdown();
+  }
+}

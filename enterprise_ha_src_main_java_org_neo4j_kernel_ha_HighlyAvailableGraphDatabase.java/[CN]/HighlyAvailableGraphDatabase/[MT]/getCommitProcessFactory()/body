@@ -4,10 +4,15 @@
   Slaves slaves=dependencies.satisfyDependency(life.add(new HighAvailabilitySlaves(members,clusterClient,slaveFactory)));
   final TransactionPropagator pusher=life.add(new TransactionPropagator(TransactionPropagator.from(config),msgLog,slaves,new CommitPusher(jobScheduler)));
   return new CommitProcessFactory(){
-    @Override public TransactionCommitProcess create(    LogicalTransactionStore logicalTransactionStore,    KernelHealth kernelHealth,    NeoStore neoStore,    TransactionRepresentationStoreApplier storeApplier,    NeoStoreInjectedTransactionValidator validator,    TransactionApplicationMode mode){
-      TransactionRepresentationCommitProcess inner=(TransactionRepresentationCommitProcess)defaultCommitProcessFactory.create(logicalTransactionStore,kernelHealth,neoStore,storeApplier,validator,mode);
-      new CommitProcessSwitcher(pusher,master,commitProcessDelegate,requestContextFactory,memberStateMachine,validator,inner);
-      return (TransactionCommitProcess)Proxy.newProxyInstance(TransactionCommitProcess.class.getClassLoader(),new Class[]{TransactionCommitProcess.class},commitProcessDelegate);
+    @Override public TransactionCommitProcess create(    LogicalTransactionStore logicalTransactionStore,    KernelHealth kernelHealth,    NeoStore neoStore,    TransactionRepresentationStoreApplier storeApplier,    NeoStoreInjectedTransactionValidator validator,    TransactionApplicationMode mode,    Config config){
+      if (config.get(GraphDatabaseSettings.read_only)) {
+        return defaultCommitProcessFactory.create(logicalTransactionStore,kernelHealth,neoStore,storeApplier,validator,mode,config);
+      }
+ else {
+        TransactionCommitProcess inner=defaultCommitProcessFactory.create(logicalTransactionStore,kernelHealth,neoStore,storeApplier,validator,mode,config);
+        new CommitProcessSwitcher(pusher,master,commitProcessDelegate,requestContextFactory,memberStateMachine,validator,inner);
+        return (TransactionCommitProcess)Proxy.newProxyInstance(TransactionCommitProcess.class.getClassLoader(),new Class[]{TransactionCommitProcess.class},commitProcessDelegate);
+      }
     }
   }
 ;
