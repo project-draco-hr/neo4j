@@ -1,0 +1,29 @@
+{
+  byte[] version=UTF8.encode(buildTypeDescriptorAndVersion(CountsTracker.STORE_DESCRIPTOR));
+  int headerBytes=META_HEADER_SIZE + version.length;
+  headerBytes+=RECORD_SIZE - (headerBytes % RECORD_SIZE);
+  short headerRecords=(short)(headerBytes / RECORD_SIZE);
+  int headerSize=RECORD_SIZE * headerRecords;
+  try (StoreChannel channel=fs.open(alpha,"rw")){
+    ByteBuffer buffer=ByteBuffer.allocate(headerSize);
+    buffer.putShort(headerRecords);
+    buffer.putShort((short)version.length);
+    buffer.putInt(3);
+    buffer.putLong(1);
+    buffer.putLong(1);
+    buffer.put(version);
+    for (int i=headerSize; i > META_HEADER_SIZE + version.length; i--) {
+      buffer.put((byte)0);
+    }
+    buffer.flip();
+    channel.write(buffer);
+    channel.force(false);
+  }
+   try {
+    CountsStore.open(fs,pageCache,alpha);
+    fail("should have thrown");
+  }
+ catch (  UnderlyingStorageException ex) {
+    assertEquals("Counts store is corrupted",ex.getMessage());
+  }
+}

@@ -1,5 +1,29 @@
 {
   PagedFile pages=mapCountsStore(pageCache,storeFile);
-  SortedKeyValueStoreHeader header=SortedKeyValueStoreHeader.read(pages);
-  return new CountsStore(fs,pageCache,storeFile,pages,header);
+  try {
+    SortedKeyValueStoreHeader header=SortedKeyValueStoreHeader.read(pages);
+    CountsStore countsStore=new CountsStore(fs,pageCache,storeFile,pages,header);
+    final LongRegister keys=Registers.newLongRegister(0);
+    countsStore.accept(new KeyValueRecordVisitor<CountsKey,DoubleLongRegister>(){
+      private final DoubleLongRegister register=Registers.newDoubleLongRegister();
+      @Override public DoubleLongRegister valueRegister(){
+        return register;
+      }
+      @Override public void visit(      CountsKey key){
+        if (register.readFirst() == 0 && register.readSecond() == 0) {
+          throw new UnderlyingStorageException("Counts store contains corrupted values");
+        }
+        keys.increment(1);
+      }
+    }
+);
+    if (keys.read() != header.dataRecords()) {
+      throw new UnderlyingStorageException("Counts store is corrupted");
+    }
+    return countsStore;
+  }
+ catch (  RuntimeException e) {
+    pageCache.unmap(storeFile);
+    throw e;
+  }
 }
