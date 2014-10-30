@@ -3,10 +3,15 @@
   final GraphDatabaseAPI db=(GraphDatabaseAPI)new TestGraphDatabaseFactory().setFileSystem(fs.get()).newImpermanentDatabase(storeDir);
   List<Long> deletedNodeIds=produceNonCleanDefraggedStringStore(db);
   Map<IdType,Long> highIdsBeforeCrash=getHighIds(db);
+  long checksumBefore=fs.get().checksum();
+  long checksumBefore2=fs.get().checksum();
+  assertThat(checksumBefore,Matchers.equalTo(checksumBefore2));
   EphemeralFileSystemAbstraction snapshot=fs.snapshot(shutdownDb(db));
+  assertThat(snapshot.checksum(),equalTo(checksumBefore));
   assertNumberOfFreeIdsEquals(storeDir,snapshot,0);
   GraphDatabaseAPI newDb=(GraphDatabaseAPI)new TestGraphDatabaseFactory().setFileSystem(snapshot).newImpermanentDatabaseBuilder(storeDir).setConfig(GraphDatabaseSettings.rebuild_idgenerators_fast,Settings.FALSE).newGraphDatabase();
-  assertEquals(highIdsBeforeCrash,getHighIds(newDb));
+  Map<IdType,Long> highIdsAfterCrash=getHighIds(newDb);
+  assertEquals(highIdsBeforeCrash,highIdsAfterCrash);
   try (Transaction tx=newDb.beginTx()){
     int nameCount=0;
     int relCount=0;

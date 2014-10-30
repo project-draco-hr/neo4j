@@ -1,0 +1,23 @@
+{
+  Checksum checksum=new CRC32();
+  byte[] data=new byte[4096];
+  List<File> names=new ArrayList<>(files.size());
+  names.addAll(files.keySet());
+  Collections.sort(names,new Comparator<File>(){
+    @Override public int compare(    File o1,    File o2){
+      return o1.getAbsolutePath().compareTo(o2.getAbsolutePath());
+    }
+  }
+);
+  for (  File name : names) {
+    EphemeralFileData file=files.get(name);
+    ByteBuffer buf=file.fileAsBuffer.buf;
+    buf.position(0);
+    while (buf.position() < buf.limit()) {
+      int len=Math.min(data.length,buf.limit() - buf.position());
+      buf.get(data);
+      checksum.update(data,0,len);
+    }
+  }
+  return checksum.getValue();
+}
