@@ -1,9 +1,10 @@
 {
   CountsTracker.createEmptyCountsStore(pageCache(),storeFile(),VERSION);
   CountsOracle oracle=oracle();
-  try (CountsTracker tracker=new CountsTracker(fs.get(),pageCache(),storeFile())){
+  int newTxId=2;
+  try (CountsTracker tracker=new CountsTracker(fs.get(),pageCache(),storeFile(),BASE_TX_ID)){
     oracle.update(tracker);
-    tracker.rotate(1);
+    tracker.rotate(newTxId);
   }
    final CountsOracle delta=new CountsOracle();
 {
@@ -14,7 +15,7 @@
   }
   delta.update(oracle);
   Barrier.Control barrier=new Barrier.Control();
-  try (CountsTracker tracker=new InstrumentedCountsTracker(fs.get(),pageCache(),storeFile(),barrier)){
+  try (CountsTracker tracker=new InstrumentedCountsTracker(fs.get(),pageCache(),storeFile(),newTxId,barrier)){
     Future<Void> task=threading.execute(new Function<CountsTracker,Void>(){
       @Override public Void apply(      CountsTracker tracker){
         try {
