@@ -5,18 +5,14 @@
     CountsStore countsStore=new CountsStore(fs,pageCache,storeFile,pages,header);
     final LongRegister keys=Registers.newLongRegister(0);
     countsStore.accept(new KeyValueRecordVisitor<CountsKey,DoubleLongRegister>(){
-      private final DoubleLongRegister register=Registers.newDoubleLongRegister();
-      @Override public DoubleLongRegister valueRegister(){
-        return register;
-      }
-      @Override public void visit(      CountsKey key){
+      @Override public void visit(      CountsKey key,      DoubleLongRegister register){
         if (register.readFirst() == 0 && register.readSecond() == 0) {
           throw new UnderlyingStorageException("Counts store contains corrupted values");
         }
         keys.increment(1);
       }
     }
-);
+,Registers.newDoubleLongRegister());
     if (keys.read() != header.dataRecords()) {
       throw new UnderlyingStorageException("Counts store is corrupted");
     }

@@ -1,25 +1,22 @@
 {
   final CountsStoreWriter writer=new CountsStoreWriter(fs,pageCache,emptyHeader,file,lastTxId);
-  writer.valueRegister().write(0,42);
-  writer.visit(nodeKey(0));
-  writer.valueRegister().write(0,24);
-  writer.visit(relationshipKey(1,2,3));
-  writer.valueRegister().write(9,11);
-  writer.visit(indexCountsKey(4,5));
-  writer.valueRegister().write(24,84);
-  writer.visit(indexSampleKey(4,5));
+  DoubleLongRegister valueRegister=Registers.newDoubleLongRegister();
+  valueRegister.write(0,42);
+  writer.visit(nodeKey(0),valueRegister);
+  valueRegister.write(0,24);
+  writer.visit(relationshipKey(1,2,3),valueRegister);
+  valueRegister.write(9,11);
+  writer.visit(indexCountsKey(4,5),valueRegister);
+  valueRegister.write(24,84);
+  writer.visit(indexSampleKey(4,5),valueRegister);
   writer.close();
   try {
     final SortedKeyValueStore counts=writer.openForReading();
     assertEquals(lastTxId,counts.lastTxId());
     assertEquals(4,counts.totalRecordsStored());
     assertEquals(file,counts.file());
-    counts.accept(new KeyValueRecordVisitor<CountsKey,Register.DoubleLongRegister>(){
-      private final Register.DoubleLongRegister valueRegister=Registers.newDoubleLongRegister();
-      @Override public Register.DoubleLongRegister valueRegister(){
-        return valueRegister;
-      }
-      @Override public void visit(      CountsKey key){
+    counts.accept(new KeyValueRecordVisitor<CountsKey,DoubleLongRegister>(){
+      @Override public void visit(      CountsKey key,      DoubleLongRegister valueRegister){
         key.accept(new CountsVisitor(){
           @Override public void visitNodeCount(          int labelId,          long count){
             assertEquals(0,labelId);
@@ -47,7 +44,7 @@
 ,valueRegister);
       }
     }
-);
+,Registers.newDoubleLongRegister());
   }
   finally {
     pageCache.unmap(file);
