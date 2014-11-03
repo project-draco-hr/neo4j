@@ -1,47 +1,74 @@
 {
-  ResourceBundle bundle=ResourceBundle.getBundle(settingsResource);
-  StringBuilder sb=new StringBuilder();
+  ResourceBundle bundle;
+  try {
+    bundle=new SettingsResourceBundle(Class.forName(settingsResource));
+  }
+ catch (  ClassNotFoundException e) {
+    throw new RuntimeException("Couldn't load settings class: ",e);
+  }
+  System.out.println("Generating docs for: " + settingsResource);
+  String settingsResourceId="config-" + settingsResource;
+  String bundleDescription="List of configuration settings";
+  if (bundle.containsKey(SettingsResourceBundle.CLASS_DESCRIPTION)) {
+    bundleDescription=bundle.getString(SettingsResourceBundle.CLASS_DESCRIPTION);
+  }
+  StringBuilder details=new StringBuilder();
+  List<Triplet<String,String,String>> beanList=new ArrayList<>();
+  List<Triplet<String,String,String>> deprecatedBeansList=new ArrayList<>();
+  AsciiDocListGenerator listGenerator=new AsciiDocListGenerator(settingsResourceId,bundleDescription,true);
+  AsciiDocListGenerator deprecatedBeanslistGenerator=new AsciiDocListGenerator(settingsResourceId + "-deprecated","Deprecated settings",true);
   List<String> keys=new ArrayList<String>(bundle.keySet());
   Collections.sort(keys);
   for (  String property : keys) {
-    if (property.endsWith(".description")) {
+    if (property.endsWith(SettingsResourceBundle.DESCRIPTION)) {
       String name=property.substring(0,property.lastIndexOf("."));
-      sb.append("." + bundle.getString(name + ".title") + "\n");
-      String minmax="";
-      if (bundle.containsKey(name + ".min") && bundle.containsKey(name + ".max"))       minmax=",\"minmax\"";
- else       if (bundle.containsKey(name + ".min"))       minmax=",\"min\"";
- else       if (bundle.containsKey(name + ".max"))       minmax=",\"max\"";
-      sb.append("[\"configsetting\"" + minmax + "]\n");
-      sb.append("----\n");
-      String defaultKey=name + ".default";
+      String monospacedName="+" + name + "+";
+      String internalKey=name + SettingsResourceBundle.INTERNAL;
+      if (bundle.containsKey(internalKey)) {
+        continue;
+      }
+      String id="config_" + name;
+      details.append("[[").append(id).append("]]\n").append('.').append(name).append('\n').append("[cols=\"<1h,<4\"]\n").append("|===\n");
+      String defaultKey=name + SettingsResourceBundle.DEFAULT;
+      String description=linkifyConfigSettings(bundle.getString(property));
+      details.append("|Description a|");
+      addWithDotAtEndAsNeeeded(details,description);
+      String validationKey=name + SettingsResourceBundle.VALIDATIONMESSAGE;
+      if (bundle.containsKey(validationKey)) {
+        String validation=bundle.getString(validationKey);
+        validation=validation.replace(name,monospacedName);
+        details.append("|Valid values a|");
+        addWithDotAtEndAsNeeeded(details,linkifyConfigSettings(validation,name));
+      }
       if (bundle.containsKey(defaultKey)) {
-        sb.append(name + ": " + bundle.getString(defaultKey)+ "\n");
-      }
- else {
-        sb.append(name + "\n");
-      }
-      sb.append(bundle.getString(property) + "\n");
-      String optionsKey=name + ".options";
-      if (bundle.containsKey(optionsKey)) {
-        String[] options=bundle.getString(optionsKey).split(",");
-        if (bundle.containsKey(name + ".option." + options[0])) {
-          for (          String option : options) {
-            String description=bundle.getString(name + ".option." + option);
-            char[] spaces=new char[option.length() + 2];
-            Arrays.fill(spaces,' ');
-            description=description.replace("\n"," ");
-            sb.append(option + ": " + description+ "\n");
-          }
-        }
- else {
-          sb.append(bundle.getString(optionsKey).replace(",","??\n") + "\n");
+        String defaultValue=bundle.getString(defaultKey);
+        if (!defaultValue.equals("__DEFAULT__")) {
+          details.append("|Default value m|").append(defaultValue).append('\n');
         }
       }
-      if (bundle.containsKey(name + ".min"))       sb.append(bundle.getString(name + ".min") + "\n");
-      if (bundle.containsKey(name + ".max"))       sb.append(bundle.getString(name + ".max") + "\n");
-      sb.append("----\n");
-      sb.append("\n");
+      String mandatorykey=name + SettingsResourceBundle.MANDATORY;
+      if (bundle.containsKey(mandatorykey)) {
+        details.append("|Mandatory a|");
+        addWithDotAtEndAsNeeeded(details,bundle.getString(mandatorykey).replace(name,monospacedName));
+      }
+      Triplet<String,String,String> beanSummary=Triplet.of(id,name,description);
+      String deprecatedKey=name + SettingsResourceBundle.DEPRECATED;
+      String obsoletedKey=name + SettingsResourceBundle.OBSOLETED;
+      if (bundle.containsKey(deprecatedKey) || bundle.containsKey(obsoletedKey)) {
+        details.append("|Deprecated a|");
+        if (bundle.containsKey(obsoletedKey)) {
+          addWithDotAtEndAsNeeeded(details,linkifyConfigSettings(bundle.getString(obsoletedKey)));
+        }
+ else {
+          addWithDotAtEndAsNeeeded(details,linkifyConfigSettings(bundle.getString(deprecatedKey)));
+        }
+        deprecatedBeansList.add(beanSummary);
+      }
+ else {
+        beanList.add(beanSummary);
+      }
+      details.append("|===\n\n");
     }
   }
-  return sb.toString();
+  return listGenerator.generateListAndTableCombo(beanList) + (deprecatedBeansList.isEmpty() ? "" : deprecatedBeanslistGenerator.generateListAndTableCombo(deprecatedBeansList)) + details.toString();
 }

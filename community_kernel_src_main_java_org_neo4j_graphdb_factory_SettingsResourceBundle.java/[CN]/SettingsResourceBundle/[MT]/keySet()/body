@@ -3,20 +3,45 @@
 {
     Description description=(Description)settingsClass.getAnnotation(Description.class);
     if (description != null) {
-      keys.add("description");
+      keys.add(CLASS_DESCRIPTION);
     }
   }
   for (  Field field : settingsClass.getFields()) {
+    Setting<?> setting=null;
     try {
-      Setting<?> setting=(Setting<?>)field.get(null);
-      if (field.getAnnotation(Description.class) != null) {
-        keys.add(setting.name() + ".description");
-        if (setting.apply(Functions.<String,String>nullFunction()) != null) {
-          keys.add(setting.name() + ".default");
-        }
-      }
+      setting=(Setting<?>)field.get(null);
     }
  catch (    Exception e) {
+      continue;
+    }
+    String name=setting.name();
+    if (field.getAnnotation(Internal.class) != null) {
+      keys.add(name + INTERNAL);
+    }
+    if (field.getAnnotation(Description.class) != null) {
+      keys.add(name + DESCRIPTION);
+      keys.add(name + VALIDATIONMESSAGE);
+      Object defaultValue=null;
+      try {
+        defaultValue=setting.apply(Functions.<String,String>nullFunction());
+      }
+ catch (      IllegalArgumentException iae) {
+        if (iae.toString().indexOf("mandatory") != -1) {
+          keys.add(name + MANDATORY);
+        }
+      }
+      if (defaultValue != null) {
+        keys.add(name + DEFAULT);
+      }
+    }
+ else {
+      System.out.println("Missing description for: " + field.getName());
+    }
+    if (field.getAnnotation(Deprecated.class) != null) {
+      keys.add(name + DEPRECATED);
+    }
+    if (field.getAnnotation(Obsoleted.class) != null) {
+      keys.add(name + OBSOLETED);
     }
   }
   return keys;
