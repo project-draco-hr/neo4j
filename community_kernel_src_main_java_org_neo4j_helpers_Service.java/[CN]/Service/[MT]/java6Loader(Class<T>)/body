@@ -1,17 +1,16 @@
 {
   try {
-    Class<?> serviceLoaderClass=Class.forName("java.util.ServiceLoader");
-    Iterable<T> contextClassLoaderServices=(Iterable<T>)serviceLoaderClass.getMethod("load",Class.class).invoke(null,type);
-    Iterable<T> currentClassLoaderServices=(Iterable<T>)serviceLoaderClass.getMethod("load",Class.class,ClassLoader.class).invoke(null,type,Service.class.getClassLoader());
-    HashMap<String,T> services=new HashMap<String,T>();
+    Iterable<T> contextClassLoaderServices=ServiceLoader.load(type);
+    Iterable<T> currentClassLoaderServices=ServiceLoader.load(type,Service.class.getClassLoader());
+    HashMap<String,T> services=new HashMap<>();
     putAllInstancesToMap(currentClassLoaderServices,services);
     putAllInstancesToMap(contextClassLoaderServices,services);
     return services.values();
   }
- catch (  Exception e) {
-    return null;
-  }
-catch (  LinkageError e) {
+ catch (  Exception|LinkageError e) {
+    if (printServiceLoaderStackTraces) {
+      e.printStackTrace();
+    }
     return null;
   }
 }
