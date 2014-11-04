@@ -6,18 +6,18 @@
   }
   FileSystemAbstraction fs=new DefaultFileSystemAbstraction();
   File storeDir;
-  File[] nodesFiles, relationshipsFiles;
+  Collection<File[]> nodesFiles, relationshipsFiles;
   try {
     storeDir=args.interpretOption(STORE_DIR,Converters.<File>mandatory(),Converters.toFile(),Validators.DIRECTORY_IS_WRITABLE,Validators.CONTAINS_NO_EXISTING_DATABASE);
-    nodesFiles=args.interpretOption(NODE_DATA,Converters.<File[]>mandatory(),Converters.toFiles(),Validators.FILES_EXISTS,Validators.<File>atLeast(1));
-    relationshipsFiles=args.interpretOption(RELATIONSHIP_DATA,Converters.<File[]>mandatory(),Converters.toFiles(),Validators.FILES_EXISTS,Validators.<File>atLeast(1));
+    nodesFiles=args.interpretOptions(NODE_DATA,Converters.<File[]>mandatory(),Converters.toFiles(),Validators.FILES_EXISTS,Validators.<File>atLeast(1));
+    relationshipsFiles=args.interpretOptions(RELATIONSHIP_DATA,Converters.<File[]>mandatory(),Converters.toFiles(),Validators.FILES_EXISTS,Validators.<File>atLeast(1));
   }
  catch (  IllegalArgumentException e) {
     printUsage();
     throw new RuntimeException(e);
   }
   BatchImporter importer=new ParallelBatchImporter(storeDir.getPath(),DEFAULT,new SystemOutLogging(),ExecutionMonitors.defaultVisible());
-  Input input=new CsvInput(DataFactories.data(nodesFiles),defaultFormatNodeFileHeader(),DataFactories.data(relationshipsFiles),defaultFormatRelationshipFileHeader(),args.interpretOption(ID_TYPE,withDefault(IdType.STRING),TO_ID_TYPE),csvConfiguration(args,nodesFiles[0]));
+  Input input=new CsvInput(DataFactories.data(nodesFiles),defaultFormatNodeFileHeader(),DataFactories.data(relationshipsFiles),defaultFormatRelationshipFileHeader(),args.interpretOption(ID_TYPE,withDefault(IdType.STRING),TO_ID_TYPE),csvConfiguration(args));
   boolean success=false;
   try {
     importer.doImport(input);
