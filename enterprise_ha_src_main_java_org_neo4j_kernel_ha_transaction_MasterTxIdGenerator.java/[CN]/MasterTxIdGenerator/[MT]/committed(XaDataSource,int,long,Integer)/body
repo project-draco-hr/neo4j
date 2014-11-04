@@ -6,30 +6,32 @@
   if (replicationFactor == 0) {
     return;
   }
-  Collection<Future<Void>> committers=new HashSet<>();
+  Collection<ReplicationContext> committers=new HashSet<>();
   try {
     int successfulReplications=0;
     Iterator<Slave> slaveList=filter(replicationStrategy.prioritize(slaves.getSlaves()).iterator(),externalAuthorServerId);
     CompletionNotifier notifier=new CompletionNotifier();
     for (int i=0; i < replicationFactor && slaveList.hasNext(); i++) {
-      committers.add(slaveCommitters.submit(slaveCommitter(dataSource,slaveList.next(),txId,notifier)));
+      Slave slave=slaveList.next();
+      committers.add(new ReplicationContext(slaveCommitters.submit(slaveCommitter(dataSource,slave,txId,notifier)),slave));
     }
-    Collection<Future<Void>> toAdd=new ArrayList<>();
-    Collection<Future<Void>> toRemove=new ArrayList<>();
+    Collection<ReplicationContext> toAdd=new ArrayList<>();
+    Collection<ReplicationContext> toRemove=new ArrayList<>();
     while (!committers.isEmpty() && successfulReplications < replicationFactor) {
       toAdd.clear();
       toRemove.clear();
-      for (      Future<Void> committer : committers) {
-        if (!committer.isDone()) {
+      for (      ReplicationContext context : committers) {
+        if (!context.future.isDone()) {
           continue;
         }
-        if (isSuccessful(committer)) {
+        if (isSuccessful(context)) {
           successfulReplications++;
         }
  else         if (slaveList.hasNext()) {
-          toAdd.add(slaveCommitters.submit(slaveCommitter(dataSource,slaveList.next(),txId,notifier)));
+          Slave newSlave=slaveList.next();
+          toAdd.add(new ReplicationContext(slaveCommitters.submit(slaveCommitter(dataSource,newSlave,txId,notifier)),newSlave));
         }
-        toRemove.add(committer);
+        toRemove.add(context);
       }
       if (!toAdd.isEmpty()) {
         committers.addAll(toAdd);
@@ -49,8 +51,8 @@
     log.logMessage("Unknown error commit master transaction at slave",t);
   }
  finally {
-    for (    Future<Void> committer : committers) {
-      committer.cancel(false);
+    for (    ReplicationContext context : committers) {
+      context.future.cancel(false);
     }
   }
 }
