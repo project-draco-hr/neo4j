@@ -5,16 +5,17 @@
   try (PageCursor cursor=storeFile.io(0,PF_SHARED_LOCK)){
     while (blockId != noNextBlock && cursor.next(pageIdForRecord(blockId))) {
       DynamicRecord record=new DynamicRecord(blockId);
+      int headerReadResult;
       do {
         cursor.setOffset(offsetForId(blockId));
-        if (readRecordHeader(cursor,record,false) && readBothHeaderAndData) {
+        headerReadResult=readRecordHeader(cursor,record,false);
+        if (headerReadResult == hasDataSignal && readBothHeaderAndData) {
           readRecordData(cursor,record);
         }
       }
  while (cursor.shouldRetry());
-      if (!record.inUse()) {
-        return recordList;
-      }
+      checkForInUse(headerReadResult,record);
+      checkForIllegalSize(headerReadResult,record);
       recordList.add(record);
       blockId=record.getNextBlock();
     }

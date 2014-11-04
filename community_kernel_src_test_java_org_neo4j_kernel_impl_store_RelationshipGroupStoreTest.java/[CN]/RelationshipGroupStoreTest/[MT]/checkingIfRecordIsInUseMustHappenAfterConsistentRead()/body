@@ -1,0 +1,14 @@
+{
+  AtomicBoolean nextReadIsInconsistent=new AtomicBoolean(false);
+  PageCache pageCache=pageCacheRule.getPageCache(fs,new Config());
+  pageCache=pageCacheRule.withInconsistentReads(pageCache,nextReadIsInconsistent);
+  StoreFactory factory=factory(null,pageCache);
+  try (NeoStore neoStore=factory.newNeoStore(true)){
+    RelationshipGroupStore relationshipGroupStore=neoStore.getRelationshipGroupStore();
+    RelationshipGroupRecord record=new RelationshipGroupRecord(1,2,3,4,5,6,true);
+    relationshipGroupStore.updateRecord(record);
+    nextReadIsInconsistent.set(true);
+    RelationshipGroupRecord readBack=relationshipGroupStore.getRecord(1);
+    assertThat(readBack.toString(),equalTo(record.toString()));
+  }
+ }

@@ -4,13 +4,16 @@
   try (PageCursor cursor=storeFile.io(pageId,PF_SHARED_LOCK)){
     if (cursor.next()) {
       int offset=offsetForId(record.getId());
+      int headerReadResult;
       do {
         cursor.setOffset(offset);
-        if (readRecordHeader(cursor,record,true)) {
+        headerReadResult=readRecordHeader(cursor,record,true);
+        if (headerReadResult == hasDataSignal) {
           readRecordData(cursor,record);
         }
       }
  while (cursor.shouldRetry());
+      checkForIllegalSize(headerReadResult,record);
     }
     return record;
   }

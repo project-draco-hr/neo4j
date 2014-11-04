@@ -2,19 +2,20 @@
   DynamicRecord record=new DynamicRecord(id);
   long pageId=pageIdForRecord(id);
   try (PageCursor cursor=storeFile.io(pageId,PF_SHARED_LOCK)){
+    int headerReadResult=notInUseSignal;
     if (cursor.next()) {
       int offset=offsetForId(record.getId());
       do {
         cursor.setOffset(offset);
-        if (readRecordHeader(cursor,record,false)) {
+        headerReadResult=readRecordHeader(cursor,record,false);
+        if (headerReadResult == hasDataSignal) {
           readRecordData(cursor,record);
         }
       }
  while (cursor.shouldRetry());
     }
- else {
-      throw new InvalidRecordException("DynamicRecord Not in use, blockId[" + id + "]");
-    }
+    checkForInUse(headerReadResult,record);
+    checkForIllegalSize(headerReadResult,record);
     return record;
   }
  catch (  IOException e) {

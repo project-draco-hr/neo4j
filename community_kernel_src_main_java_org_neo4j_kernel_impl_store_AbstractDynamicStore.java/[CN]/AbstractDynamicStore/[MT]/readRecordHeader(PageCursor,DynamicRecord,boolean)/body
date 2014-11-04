@@ -5,7 +5,7 @@
   int highNibbleInMaskedInteger=(int)((maskedInteger) >> 28);
   boolean inUse=highNibbleInMaskedInteger == Record.IN_USE.intValue();
   if (!inUse && !force) {
-    throw new InvalidRecordException("DynamicRecord Not in use, blockId[" + record.getId() + "]");
+    return notInUseSignal;
   }
   int dataSize=getBlockSize() - AbstractDynamicStore.BLOCK_HEADER_SIZE;
   int nrOfBytes=(int)(firstInteger & 0xFFFFFF);
@@ -13,15 +13,15 @@
   long nextModifier=(firstInteger & 0xF000000L) << 8;
   long longNextBlock=CommonAbstractStore.longFromIntAndMod(nextBlock,nextModifier);
   boolean hasDataToRead=true;
-  if (longNextBlock != Record.NO_NEXT_BLOCK.intValue() && nrOfBytes < dataSize || nrOfBytes > dataSize) {
-    hasDataToRead=false;
-    if (!force) {
-      throw new InvalidRecordException("Next block set[" + nextBlock + "] current block illegal size["+ nrOfBytes+ "/"+ dataSize+ "]");
-    }
-  }
   record.setInUse(inUse);
   record.setStartRecord(isStartRecord);
   record.setLength(nrOfBytes);
   record.setNextBlock(longNextBlock);
-  return hasDataToRead;
+  if (longNextBlock != Record.NO_NEXT_BLOCK.intValue() && nrOfBytes < dataSize || nrOfBytes > dataSize) {
+    hasDataToRead=false;
+    if (!force) {
+      return illegalSizeSignal;
+    }
+  }
+  return hasDataToRead ? hasDataSignal : hasNoDataSignal;
 }
