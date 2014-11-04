@@ -1,0 +1,15 @@
+{
+  Statement statement=threadToTransactionBridge.instance();
+  int labelId=statement.readOperations().labelGetForName(myLabel.name());
+  if (labelId == KeyReadOperations.NO_SUCH_LABEL) {
+    statement.close();
+    return emptyIterator();
+  }
+  final PrimitiveLongIterator nodeIds=statement.readOperations().nodesGetForLabel(labelId);
+  return ResourceClosingIterator.newResourceIterator(statement,map(new FunctionFromPrimitiveLong<Node>(){
+    @Override public Node apply(    long nodeId){
+      return nodeManager.newNodeProxyById(nodeId);
+    }
+  }
+,nodeIds));
+}
