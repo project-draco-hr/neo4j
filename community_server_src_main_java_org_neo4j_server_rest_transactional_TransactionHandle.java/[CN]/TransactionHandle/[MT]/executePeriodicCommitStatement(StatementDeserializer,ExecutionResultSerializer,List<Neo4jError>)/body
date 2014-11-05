@@ -1,17 +1,16 @@
 {
   try {
-    ExtendedExecutionResult result;
     try {
       Statement statement=statements.next();
       if (statements.hasNext()) {
-        throw new InvalidSemanticsException("Cannot execute another statement after executing PERIODIC COMMIT statement in the same transaction");
+        throw new QueryExecutionKernelException(new InvalidSemanticsException("Cannot execute another statement after executing " + "PERIODIC COMMIT statement in the same transaction"));
       }
-      result=engine.execute(statement.statement(),statement.parameters());
+      Result result=engine.executeQuery(statement.statement(),statement.parameters());
       ensureActiveTransaction();
       output.statementResult(result,statement.includeStats(),statement.resultDataContents());
       closeContextAndCollectErrors(errors);
     }
- catch (    CypherException e) {
+ catch (    KernelException|CypherException e) {
       errors.add(new Neo4jError(e.status(),e));
     }
 catch (    DeadlockDetectedException e) {

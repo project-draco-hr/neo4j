@@ -1,10 +1,10 @@
 {
   String queryText="USING PERIODIC COMMIT CREATE()";
   TransitionalPeriodTransactionMessContainer kernel=mockKernel();
-  ServerExecutionEngine executionEngine=mock(ServerExecutionEngine.class);
-  ExtendedExecutionResult executionResult=mock(ExtendedExecutionResult.class);
+  QueryExecutionEngine executionEngine=mock(QueryExecutionEngine.class);
+  Result executionResult=mock(Result.class);
   when(executionEngine.isPeriodicCommit(queryText)).thenReturn(true);
-  when(executionEngine.execute(queryText)).thenReturn(executionResult);
+  when(executionEngine.executeQuery(eq(queryText),eq(map()))).thenReturn(executionResult);
   TransactionRegistry registry=mock(TransactionRegistry.class);
   when(registry.begin(any(TransactionHandle.class))).thenReturn(1337l);
   TransactionHandle handle=new TransactionHandle(kernel,executionEngine,registry,uriScheme,StringLogger.DEV_NULL);
@@ -12,9 +12,9 @@
   Statement statement=new Statement(queryText,map(),false,(ResultDataContent[])null);
   handle.commit(statements(statement),output,true);
   verify(executionEngine).isPeriodicCommit(queryText);
-  verify(executionEngine).execute(queryText,map());
+  verify(executionEngine).executeQuery(queryText,map());
   InOrder outputOrder=inOrder(output);
-  outputOrder.verify(output).statementResult(null,false,(ResultDataContent[])null);
+  outputOrder.verify(output).statementResult(executionResult,false,(ResultDataContent[])null);
   outputOrder.verify(output).errors(argThat(hasNoErrors()));
   outputOrder.verify(output).finish();
   verifyNoMoreInteractions(output);

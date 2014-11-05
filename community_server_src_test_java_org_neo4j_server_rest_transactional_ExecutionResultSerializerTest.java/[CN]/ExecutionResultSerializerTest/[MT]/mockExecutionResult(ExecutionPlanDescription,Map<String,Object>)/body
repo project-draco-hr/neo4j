@@ -1,0 +1,26 @@
+{
+  Set<String> keys=new HashSet<>();
+  for (  Map<String,Object> row : rows) {
+    keys.addAll(row.keySet());
+  }
+  Result executionResult=mock(Result.class);
+  when(executionResult.columns()).thenReturn(new ArrayList<>(keys));
+  final Iterator<Map<String,Object>> inner=asList(rows).iterator();
+  when(executionResult.hasNext()).thenAnswer(new Answer<Boolean>(){
+    @Override public Boolean answer(    InvocationOnMock invocation) throws Throwable {
+      return inner.hasNext();
+    }
+  }
+);
+  when(executionResult.next()).thenAnswer(new Answer<Map<String,Object>>(){
+    @Override public Map<String,Object> answer(    InvocationOnMock invocation) throws Throwable {
+      return inner.next();
+    }
+  }
+);
+  when(executionResult.getQueryExecutionType()).thenReturn(null != planDescription ? QueryExecutionType.profiled(QueryExecutionType.QueryType.READ_WRITE) : QueryExecutionType.query(QueryExecutionType.QueryType.READ_WRITE));
+  if (executionResult.getQueryExecutionType().requestedExecutionPlanDescription()) {
+    when(executionResult.getExecutionPlanDescription()).thenReturn(planDescription);
+  }
+  return executionResult;
+}
