@@ -1,22 +1,31 @@
 {
   startDb();
-  when(mockedIndexProvider.getPopulator(anyLong(),any(IndexDescriptor.class),any(IndexConfiguration.class),any(ValueSampler.class))).thenReturn(mock(IndexPopulator.class));
+  IndexPopulator populator=mock(IndexPopulator.class);
+  when(mockedIndexProvider.getPopulator(anyLong(),any(IndexDescriptor.class),any(IndexConfiguration.class),any(IndexSamplingConfig.class))).thenReturn(populator);
+  when(populator.sampleResult(any(DoubleLong.Out.class))).thenAnswer(new Answer<Long>(){
+    @Override public Long answer(    InvocationOnMock invocation) throws Throwable {
+      DoubleLong.Out result=(DoubleLong.Out)invocation.getArguments()[0];
+      result.write(0l,0l);
+      return 0l;
+    }
+  }
+);
   IndexAccessor mockedAccessor=mock(IndexAccessor.class);
   when(mockedAccessor.newUpdater(any(IndexUpdateMode.class))).thenReturn(SwallowingIndexUpdater.INSTANCE);
-  when(mockedIndexProvider.getOnlineAccessor(anyLong(),any(IndexConfiguration.class))).thenReturn(mockedAccessor);
+  when(mockedIndexProvider.getOnlineAccessor(anyLong(),any(IndexConfiguration.class),any(IndexSamplingConfig.class))).thenReturn(mockedAccessor);
   createIndexAndAwaitPopulation(myLabel);
   rotateLogs();
   Set<NodePropertyUpdate> expectedUpdates=createSomeBananas(myLabel);
   killDb();
   when(mockedIndexProvider.getInitialState(anyLong())).thenReturn(InternalIndexState.ONLINE);
   GatheringIndexWriter writer=new GatheringIndexWriter();
-  when(mockedIndexProvider.getOnlineAccessor(anyLong(),any(IndexConfiguration.class))).thenReturn(writer);
+  when(mockedIndexProvider.getOnlineAccessor(anyLong(),any(IndexConfiguration.class),any(IndexSamplingConfig.class))).thenReturn(writer);
   startDb();
   assertThat(getIndexes(db,myLabel),inTx(db,hasSize(1)));
   assertThat(getIndexes(db,myLabel),inTx(db,haveState(db,Schema.IndexState.ONLINE)));
-  verify(mockedIndexProvider,times(1)).getPopulator(anyLong(),any(IndexDescriptor.class),any(IndexConfiguration.class),any(ValueSampler.class));
+  verify(mockedIndexProvider,times(1)).getPopulator(anyLong(),any(IndexDescriptor.class),any(IndexConfiguration.class),any(IndexSamplingConfig.class));
   int onlineAccessorInvocationCount=2;
-  verify(mockedIndexProvider,times(onlineAccessorInvocationCount)).getOnlineAccessor(anyLong(),any(IndexConfiguration.class));
+  verify(mockedIndexProvider,times(onlineAccessorInvocationCount)).getOnlineAccessor(anyLong(),any(IndexConfiguration.class),any(IndexSamplingConfig.class));
   assertEquals(expectedUpdates,writer.recoveredUpdates);
   for (  NodePropertyUpdate update : writer.recoveredUpdates) {
     assertTrue(writer.recoveredNodes.contains(update.getNodeId()));

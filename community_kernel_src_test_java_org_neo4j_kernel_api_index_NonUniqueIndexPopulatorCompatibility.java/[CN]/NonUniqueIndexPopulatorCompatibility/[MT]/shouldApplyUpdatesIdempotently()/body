@@ -1,2 +1,26 @@
 {
+  IndexConfiguration config=new IndexConfiguration(false);
+  IndexSamplingConfig indexSamplingConfig=new IndexSamplingConfig(new Config());
+  IndexPopulator populator=indexProvider.getPopulator(17,descriptor,config,indexSamplingConfig);
+  populator.create();
+  long nodeId=1;
+  int propertyKeyId=10, labelId=11;
+  final String propertyValue="value1";
+  PropertyAccessor propertyAccessor=new PropertyAccessor(){
+    @Override public Property getProperty(    long nodeId,    int propertyKeyId) throws EntityNotFoundException, PropertyNotFoundException {
+      return Property.stringProperty(propertyKeyId,propertyValue);
+    }
+  }
+;
+  populator.add(nodeId,propertyValue);
+  try (IndexUpdater updater=populator.newPopulatingUpdater(propertyAccessor)){
+    updater.process(add(nodeId,propertyKeyId,propertyValue,new long[]{labelId}));
+  }
+   populator.close(true);
+  IndexAccessor accessor=indexProvider.getOnlineAccessor(17,new IndexConfiguration(false),indexSamplingConfig);
+  try (IndexReader reader=accessor.newReader()){
+    PrimitiveLongIterator nodes=reader.lookup(propertyValue);
+    assertEquals(asSet(1l),asSet(nodes));
+  }
+   accessor.close();
 }
