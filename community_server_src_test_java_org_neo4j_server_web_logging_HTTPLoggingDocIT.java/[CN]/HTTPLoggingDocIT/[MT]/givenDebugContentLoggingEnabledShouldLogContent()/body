@@ -1,0 +1,18 @@
+{
+  final File logDirectory=TargetDirectory.forTest(this.getClass()).cleanDirectory("givenDebugContentLoggingEnabledShouldLogContent-logdir");
+  FileUtils.forceMkdir(logDirectory);
+  final File confDir=TargetDirectory.forTest(this.getClass()).cleanDirectory("givenDebugContentLoggingEnabledShouldLogContent-confdir");
+  FileUtils.forceMkdir(confDir);
+  final File configFile=HTTPLoggingPreparednessRuleTest.createConfigFile(HTTPLoggingPreparednessRuleTest.createLogbackConfigXml(logDirectory,"$requestContent\n%responseContent"),confDir);
+  NeoServer server=CommunityServerBuilder.server().withDefaultDatabaseTuning().withProperty(Configurator.HTTP_LOGGING,"true").withProperty(Configurator.HTTP_CONTENT_LOGGING,"true").withProperty(Configurator.HTTP_LOG_CONFIG_LOCATION,configFile.getPath()).usingDatabaseDir(TargetDirectory.forTest(this.getClass()).cleanDirectory("givenDebugContentLoggingEnabledShouldLogContent-dbdir").getAbsolutePath()).build();
+  try {
+    server.start();
+    HTTP.Response req=HTTP.POST(server.baseUri().resolve("/db/data/node").toString(),rawPayload("{\"name\":\"Hello, world!\"}"));
+    assertEquals(201,req.status());
+    assertEventually("request appears in log",5,logContains(logDirectory,"Hello, world!"));
+    assertEventually("request appears in log",5,logContains(logDirectory,"metadata"));
+  }
+  finally {
+    server.stop();
+  }
+}
