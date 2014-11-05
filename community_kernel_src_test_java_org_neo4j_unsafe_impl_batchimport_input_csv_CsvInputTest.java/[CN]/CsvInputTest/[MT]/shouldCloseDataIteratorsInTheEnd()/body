@@ -1,10 +1,14 @@
 {
-  CharSeeker nodeData=mock(CharSeeker.class);
-  CharSeeker relationshipData=mock(CharSeeker.class);
+  CharSeeker nodeData=spy(charSeeker("test"));
+  CharSeeker relationshipData=spy(charSeeker("test"));
   IdType idType=IdType.STRING;
-  Input input=new CsvInput(given(nodeData),header(entry("single",Type.IGNORE,idType.extractor(extractors))),given(relationshipData),header(entry("single",Type.IGNORE,idType.extractor(extractors))),idType,COMMAS);
-  input.nodes().iterator().close();
-  input.relationships().iterator().close();
-  verify(nodeData,times(1)).close();
+  Input input=new CsvInput(dataIterable(given(nodeData)),header(entry("single",Type.IGNORE,idType.extractor(extractors))),dataIterable(given(relationshipData)),header(entry("single",Type.IGNORE,idType.extractor(extractors))),idType,COMMAS);
+  try (ResourceIterator<InputNode> iterator=input.nodes().iterator()){
+    iterator.next();
+  }
+   try (ResourceIterator<InputRelationship> iterator=input.relationships().iterator()){
+    iterator.next();
+  }
+   verify(nodeData,times(1)).close();
   verify(relationshipData,times(1)).close();
 }

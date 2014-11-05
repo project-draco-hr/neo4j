@@ -1,20 +1,23 @@
 {
   Args args=new Args(incomingArguments);
-  FileSystemAbstraction fs=new DefaultFileSystemAbstraction();
-  File storeDir, nodesFile, relationshipsFile, nodeHeaderFile, relationshipHeaderFile;
-  storeDir=parseArgument(args,STORE_DIR,Converters.<File>mandatory(),Converters.toFile(),DIRECTORY_IS_WRITABLE,CONTAINS_NO_EXISTING_DATABASE);
-  nodesFile=parseArgument(args,NODE_DATA,Converters.<File>mandatory(),Converters.toFile(),FILE_EXISTS);
-  relationshipsFile=parseArgument(args,RELATIONSHIP_DATA,Converters.<File>mandatory(),Converters.toFile(),FILE_EXISTS);
-  nodeHeaderFile=parseArgument(args,NODE_HEADER,Converters.<File>optional(),Converters.toFile(),FILE_EXISTS);
-  relationshipHeaderFile=parseArgument(args,RELATIONSHIP_HEADER,Converters.<File>optional(),Converters.toFile(),FILE_EXISTS);
-  if (nodeHeaderFile != null && nodeHeaderFile.equals(nodesFile)) {
-    nodeHeaderFile=null;
+  if (asksForUsage(args)) {
+    printUsage();
+    return;
   }
-  if (relationshipHeaderFile != null && relationshipHeaderFile.equals(relationshipsFile)) {
-    relationshipHeaderFile=null;
+  FileSystemAbstraction fs=new DefaultFileSystemAbstraction();
+  File storeDir;
+  Collection<File[]> nodesFiles, relationshipsFiles;
+  try {
+    storeDir=args.interpretOption(STORE_DIR,Converters.<File>mandatory(),Converters.toFile(),Validators.DIRECTORY_IS_WRITABLE,Validators.CONTAINS_NO_EXISTING_DATABASE);
+    nodesFiles=args.interpretOptions(NODE_DATA,Converters.<File[]>mandatory(),Converters.toFiles(),Validators.FILES_EXISTS,Validators.<File>atLeast(1));
+    relationshipsFiles=args.interpretOptions(RELATIONSHIP_DATA,Converters.<File[]>mandatory(),Converters.toFiles(),Validators.FILES_EXISTS,Validators.<File>atLeast(1));
+  }
+ catch (  IllegalArgumentException e) {
+    printUsage();
+    throw new RuntimeException(e);
   }
   BatchImporter importer=new ParallelBatchImporter(storeDir.getPath(),DEFAULT,new SystemOutLogging(),ExecutionMonitors.defaultVisible());
-  Input input=new CsvInput(DataFactories.file(nodesFile),nodeHeaderFile != null ? defaultFormatNodeFileHeader(nodeHeaderFile) : defaultFormatNodeFileHeader(),DataFactories.file(relationshipsFile),relationshipHeaderFile != null ? defaultFormatRelationshipFileHeader(relationshipHeaderFile) : defaultFormatRelationshipFileHeader(),parseArgument(args,ID_TYPE,withDefault(IdType.STRING),toIdType()),csvConfiguration(args,nodesFile));
+  Input input=new CsvInput(DataFactories.data(nodesFiles),defaultFormatNodeFileHeader(),DataFactories.data(relationshipsFiles),defaultFormatRelationshipFileHeader(),args.interpretOption(ID_TYPE,withDefault(IdType.STRING),TO_ID_TYPE),csvConfiguration(args));
   boolean success=false;
   try {
     importer.doImport(input);
