@@ -1,17 +1,15 @@
 {
   for (int i=0; i < exclusiveLockCounts.length; i++) {
-    Map<Long,Integer> localLocks=exclusiveLockCounts[i];
+    PrimitiveLongIntMap localLocks=exclusiveLockCounts[i];
     if (localLocks != null) {
-      ConcurrentMap<Long,ForsetiLockManager.Lock> lockMap=lockMaps[i];
-      for (      Long resourceId : localLocks.keySet()) {
-        if (sharedLockCounts[i].containsKey(resourceId)) {
-          lockMap.put(resourceId,new SharedLock(this));
-        }
- else {
-          releaseGlobalLock(lockMap,resourceId);
-        }
+      int size=localLocks.size();
+      localLocks.visitKeys(releaseExclusiveLockVisitor.initialize(sharedLockCounts[i],lockMaps[i]));
+      if (size <= 32) {
+        localLocks.clear();
       }
-      localLocks.clear();
+ else {
+        exclusiveLockCounts[i]=Primitive.longIntMap();
+      }
     }
   }
 }
