@@ -1,6 +1,6 @@
 {
   CountsStore.createEmpty(pageCache,alpha,header);
-  SortedKeyValueStore.Writer<CountsKey,DoubleLongRegister> writer;
+  SortedKeyValueStore.Writer<CountsKey,CopyableDoubleLongRegister> writer;
   try (CountsStore counts=CountsStore.open(fs,pageCache,alpha)){
     DoubleLongRegister valueRegister=Registers.newDoubleLongRegister();
     writer=counts.newWriter(beta,lastCommittedTxId);
@@ -21,8 +21,10 @@
     assertEquals(BASE_MINOR_VERSION,updated.minorVersion());
     assertEquals(4,updated.totalRecordsStored());
     assertEquals(beta,updated.file());
-    updated.accept(new KeyValueRecordVisitor<CountsKey,DoubleLongRegister>(){
-      @Override public void visit(      CountsKey key,      DoubleLongRegister valueRegister){
+    updated.accept(new KeyValueRecordVisitor<CountsKey,CopyableDoubleLongRegister>(){
+      private final DoubleLongRegister target=Registers.newDoubleLongRegister();
+      @Override public void visit(      CountsKey key,      CopyableDoubleLongRegister valueRegister){
+        valueRegister.copyTo(target);
         key.accept(new CountsVisitor(){
           @Override public void visitNodeCount(          int labelId,          long count){
             assertEquals(0,labelId);
@@ -47,7 +49,7 @@
             assertEquals(84,size);
           }
         }
-,valueRegister);
+,target.readFirst(),target.readSecond());
       }
     }
 ,Registers.newDoubleLongRegister());

@@ -1,36 +1,8 @@
 {
-  return new Register.DoubleLongRegister(){
-    private long first=initialFirst;
-    private long second=initialSecond;
+  return new CopyableDoubleLongRegister(){
+    private long first=initFirst;
+    private long second=initSecond;
     private final StampedLock lock=new StampedLock();
-    @Override public long readFirst(){
-      long stamp=lock.tryOptimisticRead();
-      long result=first;
-      if (!lock.validate(stamp)) {
-        stamp=lock.readLock();
-        try {
-          result=first;
-        }
-  finally {
-          lock.unlock(stamp);
-        }
-      }
-      return result;
-    }
-    @Override public long readSecond(){
-      long stamp=lock.tryOptimisticRead();
-      long result=second;
-      if (!lock.validate(stamp)) {
-        stamp=lock.readLock();
-        try {
-          result=second;
-        }
-  finally {
-          lock.unlock(stamp);
-        }
-      }
-      return result;
-    }
     @Override public void copyTo(    Register.DoubleLong.Out target){
       long stamp=lock.tryOptimisticRead();
       long firstCopy=this.first;
@@ -46,6 +18,22 @@
         }
       }
       target.write(firstCopy,secondCopy);
+    }
+    @Override public boolean hasValues(    long first,    long second){
+      long stamp=lock.tryOptimisticRead();
+      long firstCopy=this.first;
+      long secondCopy=this.second;
+      if (!lock.validate(stamp)) {
+        stamp=lock.readLock();
+        try {
+          firstCopy=this.first;
+          secondCopy=this.second;
+        }
+  finally {
+          lock.unlock(stamp);
+        }
+      }
+      return firstCopy == first && secondCopy == second;
     }
     @Override public void write(    long first,    long second){
       long stamp=lock.writeLock();
