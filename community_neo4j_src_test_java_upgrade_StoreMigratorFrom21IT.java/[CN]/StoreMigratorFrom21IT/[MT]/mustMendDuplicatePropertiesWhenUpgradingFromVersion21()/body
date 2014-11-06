@@ -1,0 +1,23 @@
+{
+  File dir=MigrationTestUtils.find21FormatStoreDirectoryWithDuplicateProperties(storeDir.directory());
+  GraphDatabaseBuilder builder=new GraphDatabaseFactory().newEmbeddedDatabaseBuilder(dir.getAbsolutePath()).setConfig(GraphDatabaseSettings.allow_store_upgrade,"true");
+  GraphDatabaseService database=builder.newGraphDatabase();
+  NeoStoreProvider provider=((GraphDatabaseAPI)database).getDependencyResolver().resolveDependency(NeoStoreProvider.class);
+  NeoStore store=provider.evaluate();
+  NodeStore nodeStore=store.getNodeStore();
+  RelationshipStore relStore=store.getRelationshipStore();
+  PropertyStore propertyStore=store.getPropertyStore();
+  try (Transaction ignore=database.beginTx()){
+    verifyPropertiesEqual(database.getNodeById(0),Pair.of("keyA","actual"));
+    verifyPropertiesEqual(database.getNodeById(1),Pair.of("keyA","actual"),Pair.of("__DUPLICATE_keyA","actual"));
+    verifyPropertiesEqual(database.getNodeById(2),Pair.of("keyA","actual"),Pair.of("keyB","actual"),Pair.of("keyC","actual"));
+    verifyPropertiesEqual(database.getRelationshipById(0),Pair.of("keyA","actual"),Pair.of("__DUPLICATE_keyA","actual"));
+    verifyPropertiesEqual(database.getRelationshipById(1),Pair.of("keyA","actual"),Pair.of("keyB","actual"),Pair.of("keyC","actual"));
+  }
+   verifyNoDuplicatePropertyKeys(propertyStore,nodeStore.getRecord(0).getNextProp());
+  verifyNoDuplicatePropertyKeys(propertyStore,nodeStore.getRecord(1).getNextProp());
+  verifyNoDuplicatePropertyKeys(propertyStore,nodeStore.getRecord(2).getNextProp());
+  verifyNoDuplicatePropertyKeys(propertyStore,relStore.getRecord(0).getNextProp());
+  verifyNoDuplicatePropertyKeys(propertyStore,relStore.getRecord(1).getNextProp());
+  database.shutdown();
+}

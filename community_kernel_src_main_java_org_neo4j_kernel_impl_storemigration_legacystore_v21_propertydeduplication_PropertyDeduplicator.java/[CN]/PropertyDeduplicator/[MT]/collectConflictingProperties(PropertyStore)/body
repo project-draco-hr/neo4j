@@ -1,0 +1,31 @@
+{
+  final PrimitiveLongObjectMap<List<DuplicateCluster>> duplicateClusters=Primitive.longObjectMap();
+  for (long headRecordId=0; headRecordId < store.getHighestPossibleIdInUse(); ++headRecordId) {
+    final long localHeadRecordId=headRecordId;
+    PropertyRecord record=store.forceGetRecord(headRecordId);
+    if (!record.inUse() || record.getPrevProp() != -1) {
+      continue;
+    }
+    long propertyId=record.getId();
+    while (propertyId != -1) {
+      record=store.getRecord(propertyId);
+      List<PropertyBlock> propertyBlocks=record.getPropertyBlocks();
+      scanForDuplicates(store,propertyId,propertyBlocks);
+      propertyId=record.getNextProp();
+    }
+    localDuplicateClusters.visitEntries(new PrimitiveIntObjectVisitor<DuplicateCluster>(){
+      @Override public void visited(      int key,      DuplicateCluster duplicateCluster){
+        List<DuplicateCluster> clusters=duplicateClusters.get(key);
+        if (clusters == null) {
+          clusters=new ArrayList<>();
+          duplicateClusters.put(localHeadRecordId,clusters);
+        }
+        clusters.add(duplicateCluster);
+      }
+    }
+);
+    seenPropertyKeys.clear();
+    localDuplicateClusters.clear();
+  }
+  return duplicateClusters;
+}

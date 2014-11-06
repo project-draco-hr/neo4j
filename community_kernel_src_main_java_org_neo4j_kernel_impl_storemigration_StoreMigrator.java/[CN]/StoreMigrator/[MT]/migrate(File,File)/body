@@ -3,7 +3,15 @@
   long lastTxId=NeoStore.getTxId(fileSystem,new File(storeDir,NeoStore.DEFAULT_NAME));
   if (versionToUpgradeFrom(fileSystem,storeDir).equals(Legacy21Store.LEGACY_VERSION)) {
     ensureStoreVersions(storeDir);
-    rebuildCountsFromScratch(storeDir,migrationDir,lastTxId);
+    final LifeSupport life=new LifeSupport();
+    PageCache pageCache=createPageCache(fileSystem,"migration-pagecache",life);
+    try {
+      removeDuplicateEntityProperties(storeDir,migrationDir,pageCache);
+      rebuildCountsFromScratch(storeDir,migrationDir,lastTxId,pageCache);
+    }
+  finally {
+      life.shutdown();
+    }
   }
  else {
     migrateWithBatchImporter(storeDir,migrationDir,lastTxId);
