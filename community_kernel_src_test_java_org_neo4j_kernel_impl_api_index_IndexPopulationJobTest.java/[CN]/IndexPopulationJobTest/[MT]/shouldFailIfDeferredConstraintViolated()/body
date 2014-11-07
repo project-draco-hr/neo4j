@@ -1,10 +1,13 @@
 {
   createNode(map(name,"irrelephant"),FIRST);
   TestLogger logger=new TestLogger();
-  FlippableIndexProxy index=mock(FlippableIndexProxy.class);
-  IndexPopulationJob job=newIndexPopulationJob(FIRST,name,populator,index,indexStoreView,logger);
+  FlippableIndexProxy index=new FlippableIndexProxy(mock(IndexProxy.class));
+  IndexPopulator populator=spy(inMemoryPopulator(false));
+  IndexPopulationJob job=newIndexPopulationJob(FIRST,name,populator,index,indexStoreView,logger,true);
   IndexEntryConflictException failure=new PreexistingIndexEntryConflictException("duplicate value",0,1);
   doThrow(failure).when(populator).verifyDeferredConstraints(indexStoreView);
   job.run();
   verify(populator).markAsFailed(Matchers.contains("duplicate value"));
+  assertDoubleLongEquals(0,0,indexUpdatesAndSize(FIRST,name));
+  assertDoubleLongEquals(0,0,indexSample(FIRST,name));
 }

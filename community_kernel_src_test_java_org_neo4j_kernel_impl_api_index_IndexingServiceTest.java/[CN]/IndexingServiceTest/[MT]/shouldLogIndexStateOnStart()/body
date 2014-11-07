@@ -7,7 +7,7 @@
   IndexRule onlineIndex=indexRule(1,1,1,PROVIDER_DESCRIPTOR);
   IndexRule populatingIndex=indexRule(2,1,2,PROVIDER_DESCRIPTOR);
   IndexRule failedIndex=indexRule(3,2,2,PROVIDER_DESCRIPTOR);
-  IndexingService indexingService=new IndexingService(mock(JobScheduler.class),providerMap,mock(IndexStoreView.class),mockLookup,mock(UpdateableSchemaState.class),asList(onlineIndex,populatingIndex,failedIndex),mockLogging(logger),IndexingService.NO_MONITOR);
+  IndexingService indexingService=IndexingService.create(new IndexSamplingConfig(new Config()),mock(JobScheduler.class),providerMap,storeView,mockLookup,mock(UpdateableSchemaState.class),asList(onlineIndex,populatingIndex,failedIndex),mockLogging(logger),IndexingService.NO_MONITOR);
   when(provider.getInitialState(onlineIndex.getId())).thenReturn(ONLINE);
   when(provider.getInitialState(populatingIndex.getId())).thenReturn(InternalIndexState.POPULATING);
   when(provider.getInitialState(failedIndex.getId())).thenReturn(InternalIndexState.FAILED);
@@ -16,6 +16,7 @@
   when(mockLookup.labelGetName(2)).thenReturn("LabelTwo");
   when(mockLookup.propertyKeyGetName(1)).thenReturn("propertyOne");
   when(mockLookup.propertyKeyGetName(2)).thenReturn("propertyTwo");
+  when(storeView.indexSample(any(IndexDescriptor.class),any(DoubleLongRegister.class))).thenReturn(newDoubleLongRegister(32l,32l));
   logger.clear();
   indexingService.start();
   verify(provider).getPopulationFailure(3);

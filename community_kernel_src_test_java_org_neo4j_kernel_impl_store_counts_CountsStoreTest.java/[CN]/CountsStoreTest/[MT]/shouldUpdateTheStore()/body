@@ -1,26 +1,30 @@
 {
-  CountsStore.createEmpty(pageCache,alpha,ALL_STORES_VERSION);
-  SortedKeyValueStore.Writer<CountsKey,Register.LongRegister> writer;
+  CountsStore.createEmpty(pageCache,alpha,header);
+  SortedKeyValueStore.Writer<CountsKey,CopyableDoubleLongRegister> writer;
   try (CountsStore counts=CountsStore.open(fs,pageCache,alpha)){
+    DoubleLongRegister valueRegister=Registers.newDoubleLongRegister();
     writer=counts.newWriter(beta,lastCommittedTxId);
-    writer.valueRegister().write(21);
-    writer.visit(nodeKey(0));
-    writer.valueRegister().write(32);
-    writer.visit(relationshipKey(1,2,3));
+    valueRegister.write(0,21);
+    writer.visit(nodeKey(0),valueRegister);
+    valueRegister.write(0,32);
+    writer.visit(relationshipKey(1,2,3),valueRegister);
+    valueRegister.write(9,11);
+    writer.visit(indexCountsKey(4,5),valueRegister);
+    valueRegister.write(24,84);
+    writer.visit(indexSampleKey(4,5),valueRegister);
     writer.close();
   }
    try (CountsStore updated=(CountsStore)writer.openForReading()){
     assertEquals(21,get(updated,nodeKey(0)));
     assertEquals(32,get(updated,relationshipKey(1,2,3)));
     assertEquals(lastCommittedTxId,updated.lastTxId());
-    assertEquals(2,updated.totalRecordsStored());
+    assertEquals(BASE_MINOR_VERSION,updated.minorVersion());
+    assertEquals(4,updated.totalRecordsStored());
     assertEquals(beta,updated.file());
-    updated.accept(new KeyValueRecordVisitor<CountsKey,Register.LongRegister>(){
-      private final Register.LongRegister valueRegister=Registers.newLongRegister();
-      @Override public Register.LongRegister valueRegister(){
-        return valueRegister;
-      }
-      @Override public void visit(      CountsKey key){
+    updated.accept(new KeyValueRecordVisitor<CountsKey,CopyableDoubleLongRegister>(){
+      private final DoubleLongRegister target=Registers.newDoubleLongRegister();
+      @Override public void visit(      CountsKey key,      CopyableDoubleLongRegister valueRegister){
+        valueRegister.copyTo(target);
         key.accept(new CountsVisitor(){
           @Override public void visitNodeCount(          int labelId,          long count){
             assertEquals(0,labelId);
@@ -32,10 +36,22 @@
             assertEquals(3,endLabelId);
             assertEquals(32,count);
           }
+          @Override public void visitIndexCounts(          int labelId,          int propertyKeyId,          long updates,          long size){
+            assertEquals(4,labelId);
+            assertEquals(5,propertyKeyId);
+            assertEquals(9,updates);
+            assertEquals(11,size);
+          }
+          @Override public void visitIndexSample(          int labelId,          int propertyKeyId,          long unique,          long size){
+            assertEquals(4,labelId);
+            assertEquals(5,propertyKeyId);
+            assertEquals(24,unique);
+            assertEquals(84,size);
+          }
         }
-,valueRegister);
+,target.readFirst(),target.readSecond());
       }
     }
-);
+,Registers.newDoubleLongRegister());
   }
  }

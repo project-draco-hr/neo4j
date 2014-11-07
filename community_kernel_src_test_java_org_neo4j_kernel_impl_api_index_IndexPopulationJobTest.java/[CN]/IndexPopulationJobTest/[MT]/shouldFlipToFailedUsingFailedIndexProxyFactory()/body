@@ -1,8 +1,11 @@
 {
   FailedIndexProxyFactory failureDelegateFactory=mock(FailedIndexProxyFactory.class);
-  IndexPopulationJob job=newIndexPopulationJob(FIRST,name,failureDelegateFactory,populator,new FlippableIndexProxy(),indexStoreView,new TestLogger());
+  IndexPopulator populator=spy(inMemoryPopulator(false));
+  IndexPopulationJob job=newIndexPopulationJob(FIRST,name,failureDelegateFactory,populator,new FlippableIndexProxy(),indexStoreView,new TestLogger(),false);
   IllegalStateException failure=new IllegalStateException("not successful");
   doThrow(failure).when(populator).close(true);
   job.run();
   verify(failureDelegateFactory).create(any(Throwable.class));
+  assertDoubleLongEquals(0,0,indexUpdatesAndSize(FIRST,name));
+  assertDoubleLongEquals(0,0,indexSample(FIRST,name));
 }

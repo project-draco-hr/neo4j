@@ -8,13 +8,20 @@
       log.info(format("Index population started: [%s]",indexUserDescription));
       log.flush();
       populator.create();
+      storeView.replaceIndexCounts(descriptor,0,0,0);
       indexAllNodes();
+      verifyDeferredConstraints();
       if (cancelled) {
+        storeView.replaceIndexCounts(descriptor,0,0,0);
         return;
       }
       Callable<Void> duringFlip=new Callable<Void>(){
         @Override public Void call() throws Exception {
           populateFromQueueIfAvailable(Long.MAX_VALUE);
+          DoubleLongRegister result=Registers.newDoubleLongRegister();
+          long indexSize=populator.sampleResult(result);
+          storeView.replaceIndexCounts(descriptor,result.readFirst(),result.readSecond(),indexSize);
+          storeView.flushIndexCounts();
           populator.close(true);
           updateableSchemaState.clear();
           return null;
@@ -38,7 +45,7 @@
         log.flush();
       }
       failureCause=t;
-      flipper.flipTo(new FailedIndexProxy(descriptor,providerDescriptor,indexUserDescription,populator,failure(t)));
+      flipper.flipTo(new FailedIndexProxy(descriptor,config,providerDescriptor,indexUserDescription,populator,failure(t),indexCountsRemover));
     }
  finally {
       try {

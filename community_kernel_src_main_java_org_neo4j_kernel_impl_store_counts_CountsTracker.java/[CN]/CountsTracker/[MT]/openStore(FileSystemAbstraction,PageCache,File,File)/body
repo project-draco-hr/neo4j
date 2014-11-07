@@ -1,27 +1,25 @@
 {
   try {
-    boolean hasAlpha=fs.fileExists(alpha), hasBeta=fs.fileExists(beta);
-    if (hasAlpha && hasBeta) {
-      CountsStore alphaStore=CountsStore.open(fs,pageCache,alpha);
-      CountsStore betaStore=CountsStore.open(fs,pageCache,beta);
-      long alphaTxId=alphaStore.lastTxId(), betaTxId=betaStore.lastTxId();
-      if (alphaTxId > betaTxId) {
-        betaStore.close();
-        return alphaStore;
-      }
- else {
-        alphaStore.close();
-        return betaStore;
-      }
+    CountsStore alphaStore=openVerifiedCountsStore(fs,pageCache,alpha);
+    CountsStore betaStore=openVerifiedCountsStore(fs,pageCache,beta);
+    boolean isAlphaCorrupted=alphaStore == null;
+    boolean isBetaCorrupted=betaStore == null;
+    if (isAlphaCorrupted && isBetaCorrupted) {
+      throw new UnderlyingStorageException("Both counts store files are corrupted. Please shut down the database and delete them " + "to have the database recreate the counts store on next startup");
     }
- else     if (hasAlpha) {
-      return CountsStore.open(fs,pageCache,alpha);
+    if (isAlphaCorrupted) {
+      return betaStore;
     }
- else     if (hasBeta) {
-      return CountsStore.open(fs,pageCache,beta);
+    if (isBetaCorrupted) {
+      return alphaStore;
+    }
+    if (isAlphaStoreMoreRecent(alphaStore,betaStore)) {
+      betaStore.close();
+      return alphaStore;
     }
  else {
-      throw new IllegalStateException("Storage file not found.");
+      alphaStore.close();
+      return betaStore;
     }
   }
  catch (  IOException e) {

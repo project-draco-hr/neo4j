@@ -1,24 +1,25 @@
 {
-  IndexMap indexMap=indexMapReference.getIndexMapCopy();
+  IndexMap indexMap=indexMapRef.indexMapSnapshot();
   long ruleId=rule.getId();
   IndexProxy index=indexMap.getIndexProxy(ruleId);
   if (index != null) {
     return;
   }
-  final IndexDescriptor descriptor=createDescriptor(rule);
+  final IndexDescriptor descriptor=new IndexDescriptor(rule.getLabel(),rule.getPropertyKey());
   SchemaIndexProvider.Descriptor providerDescriptor=rule.getProviderDescriptor();
   boolean constraint=rule.isConstraintIndex();
   if (state == State.RUNNING) {
     try {
-      index=createAndStartPopulatingIndexProxy(ruleId,descriptor,providerDescriptor,constraint);
+      index=proxySetup.createPopulatingIndexProxy(ruleId,descriptor,providerDescriptor,constraint,monitor);
+      index.start();
     }
  catch (    IOException e) {
       throw new RuntimeException(e);
     }
   }
  else {
-    index=createAndStartRecoveringIndexProxy(descriptor,providerDescriptor);
+    index=proxySetup.createRecoveringIndexProxy(descriptor,providerDescriptor,constraint);
   }
   indexMap.putIndexProxy(rule.getId(),index);
-  indexMapReference.setIndexMap(indexMap);
+  indexMapRef.setIndexMap(indexMap);
 }

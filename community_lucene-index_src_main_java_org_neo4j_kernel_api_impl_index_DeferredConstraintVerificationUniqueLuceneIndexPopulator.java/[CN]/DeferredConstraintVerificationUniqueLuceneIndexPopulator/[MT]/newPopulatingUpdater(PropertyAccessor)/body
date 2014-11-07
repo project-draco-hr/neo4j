@@ -5,12 +5,19 @@
       long nodeId=update.getNodeId();
 switch (update.getUpdateMode()) {
 case ADDED:
+        sampler.increment(1);
+      Fieldable encodedValue=documentStructure.encodeAsFieldable(update.getValueAfter());
+    writer.updateDocument(documentStructure.newQueryForChangeOrRemove(nodeId),documentStructure.newDocumentRepresentingProperty(nodeId,encodedValue));
+  updatedPropertyValues.add(update.getValueAfter());
+break;
 case CHANGED:
-        writer.updateDocument(documentStructure.newQueryForChangeOrRemove(nodeId),documentStructure.newDocumentRepresentingProperty(nodeId,update.getValueAfter()));
-      updatedPropertyValues.add(update.getValueAfter());
-    break;
+Fieldable encodedValueAfter=documentStructure.encodeAsFieldable(update.getValueAfter());
+writer.updateDocument(documentStructure.newQueryForChangeOrRemove(nodeId),documentStructure.newDocumentRepresentingProperty(nodeId,encodedValueAfter));
+updatedPropertyValues.add(update.getValueAfter());
+break;
 case REMOVED:
-  writer.deleteDocuments(documentStructure.newQueryForChangeOrRemove(nodeId));
+sampler.increment(-1);
+writer.deleteDocuments(documentStructure.newQueryForChangeOrRemove(nodeId));
 break;
 default :
 throw new IllegalStateException("Unknown update mode " + update.getUpdateMode());
@@ -38,7 +45,7 @@ throw e;
 searcherManager.release(searcher);
 }
 }
-@Override public void remove(Iterable<Long> nodeIds){
+@Override public void remove(Collection<Long> nodeIds){
 throw new UnsupportedOperationException("should not remove() from populating index");
 }
 }

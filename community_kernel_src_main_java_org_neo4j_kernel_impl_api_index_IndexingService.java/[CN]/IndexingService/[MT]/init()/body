@@ -1,29 +1,29 @@
 {
-  IndexMap indexMap=indexMapReference.getIndexMapCopy();
+  IndexMap indexMap=indexMapRef.indexMapSnapshot();
   for (  IndexRule indexRule : indexRules) {
     IndexProxy indexProxy;
     long indexId=indexRule.getId();
-    IndexDescriptor descriptor=createDescriptor(indexRule);
+    IndexDescriptor descriptor=new IndexDescriptor(indexRule.getLabel(),indexRule.getPropertyKey());
     SchemaIndexProvider.Descriptor providerDescriptor=indexRule.getProviderDescriptor();
     SchemaIndexProvider provider=providerMap.apply(providerDescriptor);
     InternalIndexState initialState=provider.getInitialState(indexId);
-    logger.info(format("IndexingService.init: index %d on %s is %s",indexId,descriptor.userDescription(tokenNameLookup),initialState));
+    logger.info(proxySetup.indexStateInfo("init",indexId,initialState,descriptor));
     boolean constraint=indexRule.isConstraintIndex();
 switch (initialState) {
 case ONLINE:
-      indexProxy=createAndStartOnlineIndexProxy(indexId,descriptor,providerDescriptor,constraint);
+      indexProxy=proxySetup.createOnlineIndexProxy(indexId,descriptor,providerDescriptor,constraint);
     break;
 case POPULATING:
-  indexProxy=createAndStartRecoveringIndexProxy(descriptor,providerDescriptor);
+  indexProxy=proxySetup.createRecoveringIndexProxy(descriptor,providerDescriptor,constraint);
 break;
 case FAILED:
 IndexPopulationFailure failure=failure(provider.getPopulationFailure(indexId));
-indexProxy=createAndStartFailedIndexProxy(indexId,descriptor,providerDescriptor,constraint,failure);
+indexProxy=proxySetup.createFailedIndexProxy(indexId,descriptor,providerDescriptor,constraint,failure);
 break;
 default :
 throw new IllegalArgumentException("" + initialState);
 }
 indexMap.putIndexProxy(indexId,indexProxy);
 }
-indexMapReference.setIndexMap(indexMap);
+indexMapRef.setIndexMap(indexMap);
 }

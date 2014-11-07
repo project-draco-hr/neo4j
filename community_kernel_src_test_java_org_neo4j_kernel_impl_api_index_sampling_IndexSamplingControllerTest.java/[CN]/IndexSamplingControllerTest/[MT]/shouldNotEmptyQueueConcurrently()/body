@@ -1,0 +1,35 @@
+{
+  final AtomicInteger totalCount=new AtomicInteger(0);
+  final AtomicInteger concurrentCount=new AtomicInteger(0);
+  final DoubleLatch jobLatch=new DoubleLatch();
+  final DoubleLatch testLatch=new DoubleLatch();
+  IndexSamplingJobFactory jobFactory=new IndexSamplingJobFactory(){
+    @Override public IndexSamplingJob create(    IndexSamplingConfig samplingConfig,    IndexProxy indexProxy){
+      if (!concurrentCount.compareAndSet(0,1)) {
+        throw new IllegalStateException("count !== 0 on create");
+      }
+      totalCount.incrementAndGet();
+      jobLatch.awaitStart();
+      testLatch.start();
+      jobLatch.awaitFinish();
+      concurrentCount.decrementAndGet();
+      testLatch.finish();
+      return null;
+    }
+  }
+;
+  final IndexSamplingController controller=new IndexSamplingController(samplingConfig,jobFactory,jobQueue,tracker,snapshotProvider,scheduler,FALSE);
+  when(tracker.canExecuteMoreSamplingJobs()).thenReturn(true,true,false);
+  when(indexProxy.getState()).thenReturn(ONLINE);
+  new Thread(runController(controller,BACKGROUND_REBUILD_UPDATED)).start();
+  jobLatch.start();
+  testLatch.awaitStart();
+  assertEquals(1,concurrentCount.get());
+  assertEquals(1,totalCount.get());
+  controller.sampleIndexes(BACKGROUND_REBUILD_UPDATED);
+  jobLatch.finish();
+  testLatch.awaitFinish();
+  assertEquals(0,concurrentCount.get());
+  int expected=totalCount.get();
+  assertTrue("Expected 1 or 2, got " + expected,1 >= expected && expected <= 2);
+}

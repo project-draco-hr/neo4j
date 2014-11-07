@@ -1,0 +1,13 @@
+{
+  long[] nodes=repeatCreateNamedPeopleFor(NAMES.length * 10000);
+  int initialNodes=nodes.length;
+  IndexDescriptor index=createIndex("Person","name");
+  UpdatesTracker updatesTracker=executeCreationsAndDeletions(nodes,index,10000);
+  awaitOnline(index);
+  int seenWhilePopulating=initialNodes + updatesTracker.createdDuringPopulation() - updatesTracker.deletedDuringPopulation();
+  double expectedSelectivity=UNIQUE_NAMES / ((double)seenWhilePopulating);
+  assertCorrectIndexSelectivity(expectedSelectivity,indexSelectivity(index));
+  assertCorrectIndexSize(seenWhilePopulating,indexSize(index));
+  int expectedIndexUpdates=updatesTracker.deletedAfterPopulation() + updatesTracker.createdAfterPopulation();
+  assertCorrectIndexUpdates(expectedIndexUpdates,indexUpdates(index));
+}

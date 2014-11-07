@@ -1,0 +1,25 @@
+{
+  try (InputStream in=fs.openAsInputStream(file)){
+    for (long bytes=header.headerRecords() * recordSize; bytes > 0; bytes--) {
+      int read=in.read();
+      if (read == -1) {
+        break;
+      }
+    }
+    byte[] record=new byte[recordSize];
+    ByteBuffer buffer=ByteBuffer.wrap(record);
+    boolean readNext=true;
+    for (int read, offset=0; readNext && (read=in.read(record,offset,record.length - offset)) != -1; ) {
+      if (read != record.length) {
+        offset=read;
+        continue;
+      }
+      buffer.position(0);
+      readNext=recordSerializer.visitRecord(buffer,visitor,register);
+      offset=0;
+    }
+  }
+ catch (  IOException e) {
+    throw new UnderlyingStorageException(e);
+  }
+}

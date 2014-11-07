@@ -1,0 +1,60 @@
+{
+  return new CopyableDoubleLongRegister(){
+    private long first=initFirst;
+    private long second=initSecond;
+    private final StampedLock lock=new StampedLock();
+    @Override public void copyTo(    Register.DoubleLong.Out target){
+      long stamp=lock.tryOptimisticRead();
+      long firstCopy=this.first;
+      long secondCopy=this.second;
+      if (!lock.validate(stamp)) {
+        stamp=lock.readLock();
+        try {
+          firstCopy=this.first;
+          secondCopy=this.second;
+        }
+  finally {
+          lock.unlock(stamp);
+        }
+      }
+      target.write(firstCopy,secondCopy);
+    }
+    @Override public boolean hasValues(    long first,    long second){
+      long stamp=lock.tryOptimisticRead();
+      long firstCopy=this.first;
+      long secondCopy=this.second;
+      if (!lock.validate(stamp)) {
+        stamp=lock.readLock();
+        try {
+          firstCopy=this.first;
+          secondCopy=this.second;
+        }
+  finally {
+          lock.unlock(stamp);
+        }
+      }
+      return firstCopy == first && secondCopy == second;
+    }
+    @Override public void write(    long first,    long second){
+      long stamp=lock.writeLock();
+      try {
+        this.first=first;
+        this.second=second;
+      }
+  finally {
+        lock.unlock(stamp);
+      }
+    }
+    @Override public void increment(    long firstDelta,    long secondDelta){
+      long stamp=lock.writeLock();
+      try {
+        this.first+=firstDelta;
+        this.second+=secondDelta;
+      }
+  finally {
+        lock.unlock(stamp);
+      }
+    }
+  }
+;
+}

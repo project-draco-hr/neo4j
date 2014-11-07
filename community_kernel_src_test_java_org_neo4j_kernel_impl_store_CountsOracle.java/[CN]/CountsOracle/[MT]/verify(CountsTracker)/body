@@ -1,14 +1,26 @@
 {
-  List<CountsState.Difference> differences=state.verify(new CountsVisitor.Visitable(){
+  List<CountsRecordState.Difference> differences=state.verify(new CountsVisitor.Visitable(){
     @Override public void accept(    final CountsVisitor verifier){
       tracker.accept(new CountsVisitor(){
         @Override public void visitNodeCount(        int labelId,        long count){
-          assertEquals("Should be able to read visited state.",tracker.countsForNode(labelId),count);
+          assertEquals("Should be able to read visited state.",tracker.nodeCount(labelId),count);
           verifier.visitNodeCount(labelId,count);
         }
         @Override public void visitRelationshipCount(        int startLabelId,        int typeId,        int endLabelId,        long count){
-          assertEquals("Should be able to read visited state.",tracker.countsForRelationship(startLabelId,typeId,endLabelId),count);
+          assertEquals("Should be able to read visited state.",tracker.relationshipCount(startLabelId,typeId,endLabelId),count);
           verifier.visitRelationshipCount(startLabelId,typeId,endLabelId,count);
+        }
+        @Override public void visitIndexCounts(        int labelId,        int propertyKeyId,        long updates,        long size){
+          DoubleLongRegister output=tracker.indexUpdatesAndSize(labelId,propertyKeyId,newDoubleLongRegister());
+          assertEquals("Should be able to read visited state.",output.readFirst(),updates);
+          assertEquals("Should be able to read visited state.",output.readSecond(),size);
+          verifier.visitIndexCounts(labelId,propertyKeyId,updates,size);
+        }
+        @Override public void visitIndexSample(        int labelId,        int propertyKeyId,        long unique,        long size){
+          DoubleLongRegister output=tracker.indexSample(labelId,propertyKeyId,newDoubleLongRegister());
+          assertEquals("Should be able to read visited state.",output.readFirst(),unique);
+          assertEquals("Should be able to read visited state.",output.readSecond(),size);
+          verifier.visitIndexSample(labelId,propertyKeyId,unique,size);
         }
       }
 );
@@ -17,7 +29,7 @@
 );
   if (!differences.isEmpty()) {
     StringBuilder errors=new StringBuilder().append("Counts differ in ").append(differences.size()).append(" places...");
-    for (    CountsState.Difference difference : differences) {
+    for (    CountsRecordState.Difference difference : differences) {
       errors.append("\n\t").append(difference);
     }
     throw new AssertionError(errors.toString());
