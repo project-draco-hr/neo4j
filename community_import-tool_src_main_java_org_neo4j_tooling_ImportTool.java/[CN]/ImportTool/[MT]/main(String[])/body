@@ -6,11 +6,11 @@
   }
   FileSystemAbstraction fs=new DefaultFileSystemAbstraction();
   File storeDir;
-  Collection<File[]> nodesFiles, relationshipsFiles;
+  Collection<Option<File[]>> nodesFiles, relationshipsFiles;
   try {
     storeDir=args.interpretOption(STORE_DIR,Converters.<File>mandatory(),Converters.toFile(),Validators.DIRECTORY_IS_WRITABLE,Validators.CONTAINS_NO_EXISTING_DATABASE);
-    nodesFiles=args.interpretOptions(NODE_DATA,Converters.<File[]>mandatory(),Converters.toFiles(MULTI_DELIMITER),Validators.FILES_EXISTS,Validators.<File>atLeast(1));
-    relationshipsFiles=args.interpretOptions(RELATIONSHIP_DATA,Converters.<File[]>mandatory(),Converters.toFiles(MULTI_DELIMITER),Validators.FILES_EXISTS,Validators.<File>atLeast(1));
+    nodesFiles=args.interpretOptionsWithMetadata(NODE_DATA,Converters.<File[]>mandatory(),Converters.toFiles(MULTI_DELIMITER),Validators.FILES_EXISTS,Validators.<File>atLeast(1));
+    relationshipsFiles=args.interpretOptionsWithMetadata(RELATIONSHIP_DATA,Converters.<File[]>mandatory(),Converters.toFiles(MULTI_DELIMITER),Validators.FILES_EXISTS,Validators.<File>atLeast(1));
   }
  catch (  IllegalArgumentException e) {
     printUsage();
@@ -20,7 +20,7 @@
   Logging logging=life.add(new ClassicLoggingService(new Config(stringMap(store_dir.name(),storeDir.getAbsolutePath()))));
   life.start();
   BatchImporter importer=new ParallelBatchImporter(storeDir.getPath(),DEFAULT,logging,ExecutionMonitors.defaultVisible());
-  Input input=new CsvInput(DataFactories.data(nodesFiles),defaultFormatNodeFileHeader(),DataFactories.data(relationshipsFiles),defaultFormatRelationshipFileHeader(),args.interpretOption(ID_TYPE,withDefault(IdType.STRING),TO_ID_TYPE),csvConfiguration(args));
+  Input input=new CsvInput(nodeData(nodesFiles),defaultFormatNodeFileHeader(),relationshipData(relationshipsFiles),defaultFormatRelationshipFileHeader(),args.interpretOption(ID_TYPE,withDefault(IdType.STRING),TO_ID_TYPE),csvConfiguration(args));
   boolean success=false;
   try {
     importer.doImport(input);
