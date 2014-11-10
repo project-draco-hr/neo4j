@@ -35,6 +35,22 @@
       }
       return firstCopy == first && secondCopy == second;
     }
+    @Override public boolean satisfies(    Function2<Long,Long,Boolean> condition){
+      long stamp=lock.tryOptimisticRead();
+      long firstCopy=this.first;
+      long secondCopy=this.second;
+      if (!lock.validate(stamp)) {
+        stamp=lock.readLock();
+        try {
+          firstCopy=this.first;
+          secondCopy=this.second;
+        }
+  finally {
+          lock.unlock(stamp);
+        }
+      }
+      return condition.apply(firstCopy,secondCopy);
+    }
     @Override public void write(    long first,    long second){
       long stamp=lock.writeLock();
       try {
@@ -54,6 +70,22 @@
   finally {
         lock.unlock(stamp);
       }
+    }
+    @Override public String toString(){
+      long stamp=lock.tryOptimisticRead();
+      long firstCopy=this.first;
+      long secondCopy=this.second;
+      if (!lock.validate(stamp)) {
+        stamp=lock.readLock();
+        try {
+          firstCopy=this.first;
+          secondCopy=this.second;
+        }
+  finally {
+          lock.unlock(stamp);
+        }
+      }
+      return "DoubleLongRegister{first=" + firstCopy + ", second="+ secondCopy+ "}";
     }
   }
 ;
