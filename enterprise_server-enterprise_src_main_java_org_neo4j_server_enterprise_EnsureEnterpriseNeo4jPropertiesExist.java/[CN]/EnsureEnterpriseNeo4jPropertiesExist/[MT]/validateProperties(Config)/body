@@ -1,0 +1,48 @@
+{
+  String dbMode=config.get(NeoServerSettings.legacy_db_mode);
+  dbMode=dbMode.toUpperCase();
+  if (dbMode.equals(EnterpriseNeoServer.SINGLE)) {
+    return true;
+  }
+  if (!dbMode.equals(EnterpriseNeoServer.HA)) {
+    failureMessage=String.format("Illegal value for %s \"%s\" in %s",NeoServerSettings.legacy_db_mode.name(),dbMode,ServerInternalSettings.SERVER_CONFIG_FILE_KEY);
+    return false;
+  }
+  final File dbTuningFile=config.get(NeoServerSettings.legacy_db_config);
+  if (!dbTuningFile.exists()) {
+    failureMessage=String.format("No database tuning file at [%s]",dbTuningFile.getAbsoluteFile());
+    return false;
+  }
+ else {
+    final Properties dbTuning=new Properties();
+    try {
+      final InputStream tuningStream=new FileInputStream(dbTuningFile);
+      try {
+        dbTuning.load(tuningStream);
+      }
+  finally {
+        tuningStream.close();
+      }
+    }
+ catch (    IOException e) {
+      failureMessage=e.getMessage();
+      return false;
+    }
+    String machineId=null;
+    try {
+      machineId=getSinglePropertyFromCandidates(dbTuning,ClusterSettings.server_id.name(),CONFIG_KEY_OLD_SERVER_ID,"<not set>");
+      if (Integer.parseInt(machineId) < 0) {
+        throw new NumberFormatException();
+      }
+    }
+ catch (    NumberFormatException e) {
+      failureMessage=String.format("%s in %s needs to be a non-negative integer, not %s",ClusterSettings.server_id.name(),dbTuningFile.getAbsolutePath(),machineId);
+      return false;
+    }
+catch (    IllegalArgumentException e) {
+      failureMessage=String.format("%s in %s",e.getMessage(),dbTuningFile.getAbsolutePath());
+      return false;
+    }
+  }
+  return true;
+}

@@ -1,17 +1,16 @@
 {
   try {
-    String dbLocation=new File(config.getString(Configurator.DATABASE_LOCATION_PROPERTY_KEY)).getAbsolutePath();
-    if (new CurrentDatabase(new StoreVersionCheck(new DefaultFileSystemAbstraction())).storeFilesAtCurrentVersion(new File(dbLocation))) {
+    File storeDir=config.get(NeoServerSettings.legacy_db_location);
+    if (new CurrentDatabase(new StoreVersionCheck(new DefaultFileSystemAbstraction())).storeFilesAtCurrentVersion(storeDir)) {
       return true;
     }
-    File storeDir=new File(dbLocation);
     FileSystemAbstraction fileSystem=new DefaultFileSystemAbstraction();
     UpgradableDatabase upgradableDatabase=new UpgradableDatabase(new StoreVersionCheck(fileSystem));
     if (!upgradableDatabase.storeFilesUpgradeable(storeDir)) {
       return true;
     }
     try {
-      new StoreMigrationTool().run(dbLocation,configForStoreDir(new Config(dbConfig),storeDir),logging,monitor);
+      new StoreMigrationTool().run(storeDir.getAbsolutePath(),configForStoreDir(new Config(dbConfig),storeDir),logging,monitor);
     }
  catch (    UpgradeNotAllowedByConfigurationException e) {
       log.log(e.getMessage());

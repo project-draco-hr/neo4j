@@ -2,8 +2,14 @@
   NeoStore neoStore=db.getGraph().getDependencyResolver().resolveDependency(NeoStoreProvider.class).evaluate();
   Sampleable[] primitives={new NodeIdsInUseSampleable(neoStore),new PropertyCountSampleable(neoStore),new RelationshipCountSampleable(neoStore)};
   Sampleable[] usage={};
-  final String rrdPath=config.getString(RRDB_LOCATION_PROPERTY_KEY,getDefaultRrdFile(db.getGraph()));
-  final RrdDbWrapper rrdb=createRrdb(rrdPath,isEphemereal(db.getGraph()),join(primitives,usage));
+  File rrdFile=config.get(ServerSettings.rrdb_location);
+  if (rrdFile == null || !rrdFile.exists()) {
+    Map<String,String> params=config.getParams();
+    params.put(ServerSettings.rrdb_location.name(),getDefaultRrdFile(db.getGraph()));
+    config.applyChanges(params);
+    rrdFile=config.get(ServerSettings.rrdb_location);
+  }
+  final RrdDbWrapper rrdb=createRrdb(rrdFile,isEphemereal(db.getGraph()),join(primitives,usage));
   scheduler.scheduleAtFixedRate(new RrdJob(new RrdSamplerImpl(rrdb.get(),primitives)),RRD_THREAD_NAME + "[primitives]",SECONDS.toMillis(0),SECONDS.toMillis(3));
   return rrdb;
 }

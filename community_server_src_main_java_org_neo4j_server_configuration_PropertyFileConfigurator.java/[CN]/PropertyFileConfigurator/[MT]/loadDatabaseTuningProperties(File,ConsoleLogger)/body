@@ -1,30 +1,23 @@
 {
-  String databaseTuningPropertyFileLocation=serverConfiguration.getString(DB_TUNING_PROPERTY_FILE_KEY);
-  if (databaseTuningPropertyFileLocation == null) {
-    if (propertyFileDirectoryContainsDBTuningFile()) {
-      databaseTuningPropertyFileLocation=new File(propertyFileDirectory,NEO4J_PROPERTIES_FILENAME).getAbsolutePath();
-      log.log("No database tuning file explicitly set, defaulting to [%s]",databaseTuningPropertyFileLocation);
-    }
- else {
-      log.log("No database tuning properties (org.neo4j.server.db.tuning.properties) found in [%s], using defaults.",configFile.getPath());
-    }
+  String databaseTuningPropertyPath=serverProperties.get(NeoServerSettings.legacy_db_config.name());
+  if (databaseTuningPropertyPath == null) {
+    databaseTuningPropertyPath=configFile.getParent() + File.separator + ServerInternalSettings.DB_TUNING_CONFIG_FILE_NAME;
+    serverProperties.put(NeoServerSettings.legacy_db_config.name(),databaseTuningPropertyPath);
+    log.warn(String.format("No database tuning file explicitly set, defaulting to [%s]",databaseTuningPropertyPath));
   }
-  if (databaseTuningPropertyFileLocation != null) {
-    File databaseTuningPropertyFile=new File(databaseTuningPropertyFileLocation);
-    if (!databaseTuningPropertyFile.exists()) {
-      log.warn("The specified file for database performance tuning properties [%s] does not exist.",databaseTuningPropertyFileLocation);
-    }
+  File databaseTuningPropertyFile=new File(databaseTuningPropertyPath);
+  if (!databaseTuningPropertyFile.exists()) {
+    log.warn("The specified file for database performance tuning properties [%s] does not exist.",databaseTuningPropertyPath);
+  }
  else {
-      try {
-        databaseTuningProperties=MapUtil.load(databaseTuningPropertyFile);
-      }
- catch (      IOException e) {
-        log.warn("Unable to load database tuning file: " + e.getMessage());
-      }
+    try {
+      databaseTuningProperties=MapUtil.load(databaseTuningPropertyFile);
+    }
+ catch (    IOException e) {
+      log.warn("Unable to load database tuning file: " + e.getMessage());
     }
   }
   if (databaseTuningProperties == null) {
     databaseTuningProperties=new HashMap<>();
   }
-  databaseTuningProperties.put(GraphDatabaseSettings.store_dir.name(),serverConfiguration.getString(Configurator.DATABASE_LOCATION_PROPERTY_KEY));
 }
