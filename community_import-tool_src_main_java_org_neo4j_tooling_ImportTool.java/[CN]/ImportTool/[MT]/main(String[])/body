@@ -16,7 +16,10 @@
     printUsage();
     throw new RuntimeException(e);
   }
-  BatchImporter importer=new ParallelBatchImporter(storeDir.getPath(),DEFAULT,new SystemOutLogging(),ExecutionMonitors.defaultVisible());
+  LifeSupport life=new LifeSupport();
+  Logging logging=life.add(new ClassicLoggingService(new Config(stringMap(store_dir.name(),storeDir.getAbsolutePath()))));
+  life.start();
+  BatchImporter importer=new ParallelBatchImporter(storeDir.getPath(),DEFAULT,logging,ExecutionMonitors.defaultVisible());
   Input input=new CsvInput(DataFactories.data(nodesFiles),defaultFormatNodeFileHeader(),DataFactories.data(relationshipsFiles),defaultFormatRelationshipFileHeader(),args.interpretOption(ID_TYPE,withDefault(IdType.STRING),TO_ID_TYPE),csvConfiguration(args));
   boolean success=false;
   try {
@@ -27,6 +30,7 @@
     throw new RuntimeException(e);
   }
  finally {
+    life.shutdown();
     if (!success) {
       try {
         StoreFile.fileOperation(FileOperation.DELETE,fs,storeDir,null,Iterables.<StoreFile,StoreFile>iterable(StoreFile.values()),false,false,StoreFileType.values());
