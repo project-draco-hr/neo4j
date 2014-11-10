@@ -1,6 +1,7 @@
 {
-  executor=Executors.newCachedThreadPool(new NamedThreadFactory(getClass().getSimpleName() + "@" + address));
-  bootstrap=new ClientBootstrap(new NioClientSocketChannelFactory(executor,executor));
+  bossExecutor=Executors.newCachedThreadPool(named(getClass().getSimpleName() + "-boss@" + address));
+  workerExecutor=Executors.newCachedThreadPool(named(getClass().getSimpleName() + "-worker@" + address));
+  bootstrap=new ClientBootstrap(new NioClientSocketChannelFactory(bossExecutor,workerExecutor));
   bootstrap.setPipelineFactory(this);
   channelPool=new ResourcePool<Triplet<Channel,ChannelBuffer,ByteBuffer>>(maxUnusedChannels,new ResourcePool.CheckStrategy.TimeoutCheckStrategy(ResourcePool.DEFAULT_CHECK_INTERVAL,Clock.REAL_CLOCK),new LoggingResourcePoolMonitor(msgLog)){
     @Override protected Triplet<Channel,ChannelBuffer,ByteBuffer> create(){
