@@ -1,18 +1,27 @@
 {
   while (!closed) {
-    if (hasReadAhead) {
+    if (hasReadAhead || eof) {
       parkAWhile();
     }
  else {
       try {
         readAheadBuffer.compact();
-        actual.read(readAheadBuffer);
-        readAheadBuffer.flip();
+        int read=actual.read(readAheadArray,readAheadBuffer.position(),readAheadBuffer.remaining());
+        if (read == -1) {
+          eof=true;
+          read=0;
+        }
+        readAheadBuffer.limit(readAheadBuffer.position() + read);
+        readAheadBuffer.position(0);
         hasReadAhead=true;
         LockSupport.unpark(owner);
       }
  catch (      IOException e) {
         ioException=e;
+        closed=true;
+      }
+catch (      Throwable e) {
+        ioException=new IOException(e);
         closed=true;
       }
     }
