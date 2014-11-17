@@ -1,0 +1,11 @@
+{
+  startServerWithConfiguredUser();
+  String token=HTTP.POST(authURL(),HTTP.RawPayload.quotedJson("{'username':'neo4j','password':'secret'}")).get("authorization_token").asText();
+  RESTDocsGenerator.ResponseEntity response=gen.get().noGraph().expectedStatus(200).payload(quotedJson("{'password':'secret'}")).post(server.baseUri().resolve("/user/neo4j/authorization_token").toString());
+  JsonNode data=JsonHelper.jsonNode(response.entity());
+  String newToken=data.get("authorization_token").asText();
+  assertThat(newToken,not(equalTo(token)));
+  assertThat(newToken.length(),not(0));
+  assertEquals(200,HTTP.withHeaders(HttpHeaders.AUTHORIZATION,challengeResponse(newToken)).GET(authURL()).status());
+  assertEquals(401,HTTP.withHeaders(HttpHeaders.AUTHORIZATION,challengeResponse(token)).GET(authURL()).status());
+}
