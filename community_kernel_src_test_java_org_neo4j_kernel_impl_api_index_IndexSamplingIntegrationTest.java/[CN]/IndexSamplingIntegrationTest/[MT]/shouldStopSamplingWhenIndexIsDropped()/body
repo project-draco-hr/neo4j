@@ -1,0 +1,12 @@
+{
+  IndexDefinition index=awaitOnline(indexOn(label("Foo"),"bar"));
+  db.resolveDependency(IndexingService.class).triggerIndexSampling(TRIGGER_REBUILD_ALL);
+  samplingStarted.await();
+  drop(index);
+  samplingDone.release();
+  samplingStarted.release();
+  samplingDone.await();
+  Throwable exception=samplingException;
+  assertThat(exception,instanceOf(IndexNotFoundKernelException.class));
+  assertEquals("Index dropped while sampling.",exception.getMessage());
+}

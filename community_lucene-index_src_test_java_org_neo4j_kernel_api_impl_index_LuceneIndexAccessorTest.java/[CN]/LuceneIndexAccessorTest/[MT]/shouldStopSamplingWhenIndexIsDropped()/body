@@ -1,0 +1,21 @@
+{
+  updateAndCommit(asList(add(nodeId,value),add(nodeId2,value2)));
+  IndexReader indexReader=accessor.newReader();
+  Future<Void> drop=threading.executeAndAwait(new RawFunction<Void,Void,Exception>(){
+    @Override public Void apply(    Void nothing) throws Exception {
+      accessor.drop();
+      return nothing;
+    }
+  }
+,null,stackTracePredicate(3,TaskCoordinator.class,"awaitCompletion"),3,SECONDS);
+  try (IndexReader reader=indexReader){
+    reader.sampleIndex(Registers.newDoubleLongRegister());
+    fail("expected exception");
+  }
+ catch (  IndexNotFoundKernelException e) {
+    assertEquals("Index dropped while sampling.",e.getMessage());
+  }
+ finally {
+    drop.get();
+  }
+}
