@@ -1,0 +1,29 @@
+{
+  if (args.length != 1) {
+    System.out.println("one argument describing the path to the store");
+    System.exit(1);
+  }
+  final FileSystemAbstraction fs=new DefaultFileSystemAbstraction();
+  final File storeFile=new File(args[0]);
+  final LifeSupport life=new LifeSupport();
+  final PageCache pageCache=StandalonePageCacheFactory.createPageCache(fs,"counts-store-dump",life);
+  try {
+    CountsStore counts=CountsStore.open(fs,pageCache,storeFile);
+    System.out.println("Counts Store: " + counts.file());
+    System.out.println("\ttxId: " + counts.lastTxId());
+    System.out.println("\tminor version: " + counts.minorVersion());
+    System.out.println("\tentries: " + counts.totalRecordsStored());
+    System.out.println("Entries:");
+    counts.accept(new KeyValueRecordVisitor<CountsKey,CopyableDoubleLongRegister>(){
+      private final DoubleLongRegister tmp=newDoubleLongRegister();
+      @Override public void visit(      CountsKey key,      CopyableDoubleLongRegister register){
+        register.copyTo(tmp);
+        System.out.println("\t" + key + ": ("+ tmp.readFirst()+ ", "+ tmp.readSecond()+ ")");
+      }
+    }
+,newDoubleLongRegister());
+  }
+  finally {
+    life.shutdown();
+  }
+}
