@@ -4,35 +4,33 @@
     return LoadStatus.NOTHING;
   }
   boolean more;
-  try (Lock ignored=relationshipLoader.lowLevelNodeReadLock(id)){
 synchronized (this) {
-      if (!hasMoreRelationshipsToLoad(direction,types)) {
-        return LoadStatus.NOTHING;
-      }
-      rels=loadMoreRelationships(relationshipLoader,direction,types);
-      ArrayMap<Integer,RelIdArray> addMap=rels.first();
-      if (addMap.size() == 0) {
-        return LoadStatus.NOTHING;
-      }
-      for (      int type : addMap.keySet()) {
-        RelIdArray addRels=addMap.get(type);
-        RelIdArray srcRels=getRelIdArray(type);
-        if (srcRels == null) {
-          putRelIdArray(addRels);
-        }
- else {
-          RelIdArray newSrcRels=srcRels.addAll(addRels);
-          if (newSrcRels != srcRels) {
-            putRelIdArray(newSrcRels);
-          }
-        }
-      }
-      relChainPosition=rels.third();
-      moreRelationshipsLoaded();
-      more=hasMoreRelationshipsToLoad(direction,types);
-      cacheUpdateListener.newSize(this,sizeOfObjectInBytesIncludingOverhead());
+    if (!hasMoreRelationshipsToLoad(direction,types)) {
+      return LoadStatus.NOTHING;
     }
+    rels=loadMoreRelationships(relationshipLoader,direction,types);
+    ArrayMap<Integer,RelIdArray> addMap=rels.first();
+    if (addMap.size() == 0) {
+      return LoadStatus.NOTHING;
+    }
+    for (    int type : addMap.keySet()) {
+      RelIdArray addRels=addMap.get(type);
+      RelIdArray srcRels=getRelIdArray(type);
+      if (srcRels == null) {
+        putRelIdArray(addRels);
+      }
+ else {
+        RelIdArray newSrcRels=srcRels.addAll(addRels);
+        if (newSrcRels != srcRels) {
+          putRelIdArray(newSrcRels);
+        }
+      }
+    }
+    relChainPosition=rels.third();
+    moreRelationshipsLoaded();
+    more=hasMoreRelationshipsToLoad(direction,types);
+    cacheUpdateListener.newSize(this,sizeOfObjectInBytesIncludingOverhead());
   }
-   relationshipLoader.putAllInRelCache(rels.second());
+  relationshipLoader.putAllInRelCache(rels.second());
   return more ? LoadStatus.LOADED_MORE : LoadStatus.LOADED_END;
 }
