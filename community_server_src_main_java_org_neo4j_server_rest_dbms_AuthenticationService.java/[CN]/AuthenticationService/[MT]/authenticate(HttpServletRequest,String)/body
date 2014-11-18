@@ -1,0 +1,23 @@
+{
+  try {
+    Map<String,Object> deserialized=input.readMap(payload);
+    String user=getString(deserialized,USERNAME);
+    String password=getString(deserialized,PASSWORD);
+    if (security.authenticate(user,password)) {
+      return output.ok(new AuthorizationRepresentation(security.userForName(user)));
+    }
+ else {
+      log.warn("Failed authentication attempt for '%s' from %s",user,req.getRemoteAddr());
+    }
+    return output.response(UNPROCESSABLE,new ExceptionRepresentation(new Neo4jError(Status.Security.AuthenticationFailed,"Invalid username and/or password.")));
+  }
+ catch (  BadInputException e) {
+    return output.badRequestWithoutLegacyStacktrace(e);
+  }
+catch (  IllegalArgumentException e) {
+    return output.response(UNPROCESSABLE,new ExceptionRepresentation(new Neo4jError(Status.Request.Invalid,e.getMessage())));
+  }
+catch (  TooManyAuthenticationAttemptsException e) {
+    return output.response(TOO_MANY,new ExceptionRepresentation(new Neo4jError(e.status(),e)));
+  }
+}

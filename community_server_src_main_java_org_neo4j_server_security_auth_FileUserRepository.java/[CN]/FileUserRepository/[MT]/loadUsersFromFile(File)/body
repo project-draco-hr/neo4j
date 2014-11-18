@@ -1,0 +1,22 @@
+{
+  if (fs.fileExists(fileToLoadFrom)) {
+    List<User> loadedUsers;
+    try (InputStream in=fs.openAsInputStream(fileToLoadFrom)){
+      byte[] bytes=new byte[(int)fs.getFileSize(fileToLoadFrom)];
+      int offset=0;
+      while (offset < bytes.length) {
+        int read=in.read(bytes,offset,bytes.length - offset);
+        if (read == -1)         break;
+        offset+=read;
+      }
+      loadedUsers=serialization.deserializeUsers(bytes);
+    }
+     if (loadedUsers == null) {
+      throw new IllegalStateException("Failed to read authentication file: " + fileToLoadFrom.getAbsolutePath());
+    }
+    users=loadedUsers;
+    for (    User user : users) {
+      usersByName.put(user.name(),user);
+    }
+  }
+}

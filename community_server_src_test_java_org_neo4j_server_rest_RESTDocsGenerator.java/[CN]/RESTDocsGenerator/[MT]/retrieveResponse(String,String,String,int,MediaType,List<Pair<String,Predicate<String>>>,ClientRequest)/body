@@ -1,0 +1,47 @@
+{
+  DocumentationData data=new DocumentationData();
+  getRequestHeaders(data,request.getHeaders());
+  if (request.getEntity() != null) {
+    data.setPayload(String.valueOf(request.getEntity()));
+    List<Object> contentTypes=request.getHeaders().get("Content-Type");
+    if (contentTypes != null) {
+      if (contentTypes.size() != 1) {
+        throw new IllegalArgumentException("Request contains multiple content-types.");
+      }
+      Object contentType=contentTypes.get(0);
+      if (contentType instanceof MediaType) {
+        data.setPayloadType((MediaType)contentType);
+      }
+    }
+  }
+  Client client=new Client();
+  ClientResponse response=client.handle(request);
+  if (response.hasEntity() && response.getStatus() != 204) {
+    data.setEntity(response.getEntity(String.class));
+  }
+  if (response.getType() != null) {
+    assertTrue("wrong response type: " + data.entity,response.getType().isCompatible(type));
+  }
+  for (  Pair<String,Predicate<String>> headerField : headerFields) {
+    assertTrue("wrong headers: " + response.getHeaders(),headerField.other().accept(response.getHeaders().getFirst(headerField.first())));
+  }
+  if (noDoc) {
+    data.setIgnore();
+  }
+  data.setTitle(title);
+  data.setDescription(description);
+  data.setMethod(request.getMethod());
+  data.setUri(uri);
+  data.setStatus(responseCode);
+  assertEquals("Wrong response status. response: " + data.entity,responseCode,response.getStatus());
+  getResponseHeaders(data,response.getHeaders(),headerNames(headerFields));
+  if (graph == null) {
+    document(data);
+  }
+ else {
+    try (Transaction transaction=graph.beginTx()){
+      document(data);
+    }
+   }
+  return new ResponseEntity(response,data.entity);
+}
