@@ -1,0 +1,22 @@
+{
+  IndexingService indexingService=getServer().getDb().getDependencyResolver().resolveDependency(IndexingService.class);
+  if (indexingService == null) {
+    throw new ShellException("Internal error: failed to resolve IndexingService");
+  }
+  IndexSamplingMode samplingMode=getSamplingMode(forceSample);
+  if (sampleAll) {
+    indexingService.triggerIndexSampling(samplingMode);
+    return;
+  }
+  validateLabelsAndProperty(labels,property);
+  Statement statement=getServer().getStatement();
+  int labelKey=statement.readOperations().labelGetForName(labels[0].name());
+  int propertyKey=statement.readOperations().propertyKeyGetForName(property);
+  if (labelKey == -1) {
+    throw new ShellException("No label associated with '" + labels[0].name() + "' was found");
+  }
+  if (propertyKey == -1) {
+    throw new ShellException("No property associated with '" + property + "' was found");
+  }
+  indexingService.triggerIndexSampling(new IndexDescriptor(labelKey,propertyKey),samplingMode);
+}
