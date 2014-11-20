@@ -2,14 +2,17 @@
   this.fs=fs;
   this.pageCache=pageCache;
   int pageSize=pageCache.pageSize();
-  if (pageSize % RECORD_SIZE != 0) {
-    throw new IllegalStateException("page size must a multiple of the record size");
-  }
-  this.pagedFile=pageCache.map(targetFile,pageSize);
   this.oldHeader=oldHeader;
   this.targetFile=targetFile;
   this.txId=lastCommittedTxId;
   this.minorVersion=txId == oldHeader.lastTxId() ? oldHeader.minorVersion() + 1 : SortedKeyValueStoreHeader.BASE_MINOR_VERSION;
+  try (StoreChannel channel=fs.open(targetFile,"rw")){
+    channel.truncate(0).force(true);
+  }
+   if (pageSize % RECORD_SIZE != 0) {
+    throw new IllegalStateException("page size must a multiple of the record size");
+  }
+  this.pagedFile=pageCache.map(targetFile,pageSize);
   if (!(this.page=pagedFile.io(0,PF_EXCLUSIVE_LOCK)).next()) {
     throw new IOException("Could not acquire page.");
   }
