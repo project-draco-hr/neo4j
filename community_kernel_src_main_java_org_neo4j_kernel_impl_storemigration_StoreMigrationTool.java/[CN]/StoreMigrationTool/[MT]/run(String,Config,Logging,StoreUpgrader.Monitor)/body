@@ -5,17 +5,17 @@
   LifeSupport life=new LifeSupport();
   KernelExtensions kernelExtensions=life.add(new KernelExtensions(GraphDatabaseDependencies.newDependencies().kernelExtensions(),config,kernelExtensionDependencyResolver(fs,config),ignore()));
   config=StoreFactory.configForStoreDir(config,new File(legacyStoreDirectory));
-  migrationProcess.addParticipant(new StoreMigrator(new VisibleMigrationProgressMonitor(logging.getMessagesLog(StoreMigrationTool.class),System.out),fs,new UpgradableDatabase(new StoreVersionCheck(fs)),config,logging,kernelExtensions));
   life.start();
+  SchemaIndexProvider schemaIndexProvider=kernelExtensions.resolveDependency(SchemaIndexProvider.class,SchemaIndexProvider.HIGHEST_PRIORITIZED_OR_NONE);
   try {
-    SchemaIndexProvider schemaIndexProvider=kernelExtensions.resolveDependency(SchemaIndexProvider.class,SchemaIndexProvider.HIGHEST_PRIORITIZED_OR_NONE);
+    migrationProcess.addParticipant(new StoreMigrator(new VisibleMigrationProgressMonitor(logging.getMessagesLog(StoreMigrationTool.class),System.out),fs,new UpgradableDatabase(new StoreVersionCheck(fs)),config,logging));
     migrationProcess.addParticipant(schemaIndexProvider.storeMigrationParticipant());
   }
  catch (  IllegalArgumentException e) {
   }
   try {
     long startTime=System.currentTimeMillis();
-    migrationProcess.migrateIfNeeded(new File(legacyStoreDirectory));
+    migrationProcess.migrateIfNeeded(new File(legacyStoreDirectory),schemaIndexProvider);
     long duration=System.currentTimeMillis() - startTime;
     logging.getMessagesLog(StoreMigrationTool.class).info(format("Migration completed in %d s%n",duration / 1000));
   }
