@@ -1,0 +1,32 @@
+{
+  File dir=MigrationTestUtils.find21FormatStoreDirectoryWithDuplicateProperties(storeDir.directory());
+  GraphDatabaseBuilder builder=new GraphDatabaseFactory().newEmbeddedDatabaseBuilder(dir.getAbsolutePath()).setConfig(GraphDatabaseSettings.allow_store_upgrade,"true");
+  GraphDatabaseService database=builder.newGraphDatabase();
+  database.shutdown();
+  ConsistencyCheckService service=new ConsistencyCheckService();
+  ConsistencyCheckService.Result result=service.runFullConsistencyCheck(dir.getAbsolutePath(),new Config(),ProgressMonitorFactory.NONE,StringLogger.SYSTEM);
+  assertTrue(result.isSuccessful());
+  database=builder.newGraphDatabase();
+  DependencyResolver dependencyResolver=((GraphDatabaseAPI)database).getDependencyResolver();
+  NeoStoreProvider provider=dependencyResolver.resolveDependency(NeoStoreProvider.class);
+  NeoStore store=provider.evaluate();
+  NodeStore nodeStore=store.getNodeStore();
+  RelationshipStore relStore=store.getRelationshipStore();
+  PropertyStore propertyStore=store.getPropertyStore();
+  try (Transaction ignore=database.beginTx()){
+    verifyPropertiesEqual(database.getNodeById(0),Pair.of("keyA","actual"));
+    verifyPropertiesEqual(database.getNodeById(1),Pair.of("keyA","actual"),Pair.of("__DUPLICATE_keyA_1","actual"),Pair.of("__DUPLICATE_keyA_2","actual"));
+    verifyPropertiesEqual(database.getNodeById(2),Pair.of("keyA","real1"),Pair.of("keyD","real2"));
+    verifyPropertiesEqual(database.getNodeById(3),Pair.of("keyA","real1"),Pair.of("__DUPLICATE_keyA_1","real1"),Pair.of("__DUPLICATE_keyA_2","real1"),Pair.of("keyD","real2"),Pair.of("__DUPLICATE_keyD_1","real2"),Pair.of("__DUPLICATE_keyD_2","real2"));
+    verifyPropertiesEqual(database.getNodeById(4),Pair.of("keyA","actual"),Pair.of("keyB","actual"),Pair.of("keyC","actual"));
+    verifyPropertiesEqual(database.getRelationshipById(0),Pair.of("keyA","actual"),Pair.of("__DUPLICATE_keyA_1","actual"),Pair.of("__DUPLICATE_keyA_2","actual"));
+    verifyPropertiesEqual(database.getRelationshipById(1),Pair.of("keyA","real1"),Pair.of("__DUPLICATE_keyA_1","real1"),Pair.of("__DUPLICATE_keyA_2","real1"),Pair.of("keyD","real2"),Pair.of("__DUPLICATE_keyD_1","real2"),Pair.of("__DUPLICATE_keyD_2","real2"));
+    verifyPropertiesEqual(database.getRelationshipById(2),Pair.of("keyA","actual"),Pair.of("keyB","actual"),Pair.of("keyC","actual"));
+  }
+   verifyNoDuplicatePropertyKeys(propertyStore,nodeStore.getRecord(0).getNextProp());
+  verifyNoDuplicatePropertyKeys(propertyStore,nodeStore.getRecord(1).getNextProp());
+  verifyNoDuplicatePropertyKeys(propertyStore,nodeStore.getRecord(2).getNextProp());
+  verifyNoDuplicatePropertyKeys(propertyStore,relStore.getRecord(0).getNextProp());
+  verifyNoDuplicatePropertyKeys(propertyStore,relStore.getRecord(1).getNextProp());
+  database.shutdown();
+}
