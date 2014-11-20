@@ -1,0 +1,28 @@
+{
+  GraphDatabaseService db=new GraphDatabaseFactory().newEmbeddedDatabase(directory.absolutePath());
+  try (Transaction tx=db.beginTx()){
+    int nodeCount=0, relationshipCount=0, sequelCount=0;
+    for (    Node node : GlobalGraphOperations.at(db).getAllNodes()) {
+      nodeCount++;
+    }
+    assertEquals(NODE_COUNT,nodeCount);
+    for (    Relationship relationship : GlobalGraphOperations.at(db).getAllRelationships()) {
+      assertTrue(relationship.hasProperty("role"));
+      relationshipCount++;
+    }
+    assertEquals(RELATIONSHIP_COUNT,relationshipCount);
+    ResourceIterator<Node> movieSequels=db.findNodes(DynamicLabel.label("Sequel"));
+    while (movieSequels.hasNext()) {
+      Node sequel=movieSequels.next();
+      assertTrue(sequel.hasProperty("title"));
+      sequelCount++;
+    }
+    assertEquals(SEQUEL_COUNT,sequelCount);
+    tx.success();
+    Object year=db.findNode(DynamicLabel.label("Movie"),"title","The Matrix").getProperty("year");
+    assertEquals(year,1999);
+  }
+  finally {
+    db.shutdown();
+  }
+}
