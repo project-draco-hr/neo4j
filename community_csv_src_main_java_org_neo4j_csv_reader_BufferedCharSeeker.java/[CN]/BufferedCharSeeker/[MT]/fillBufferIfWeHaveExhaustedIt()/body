@@ -1,17 +1,16 @@
 {
   if (bufferPos >= buffer.length) {
     if (seekStartPos == 0) {
-      throw new IllegalStateException("Tried to read in a value larger than buffer size " + charBuffer.capacity());
+      throw new IllegalStateException("Tried to read in a value larger than buffer size " + buffer.length);
     }
     charBuffer.position(seekStartPos);
     charBuffer.compact();
-    int position=charBuffer.position();
-    reader.read(charBuffer);
-    if (charBuffer.hasRemaining()) {
-      charBuffer.put(EOF_CHAR);
+    int remaining=charBuffer.remaining();
+    int read=reader.read(buffer,charBuffer.position(),remaining);
+    if (read < remaining) {
+      buffer[charBuffer.position() + max(read,0)]=EOF_CHAR;
     }
-    bufferPos=position;
-    bufferStartPos+=seekStartPos;
+    bufferPos=charBuffer.position();
     seekStartPos=0;
   }
 }
