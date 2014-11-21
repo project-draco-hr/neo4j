@@ -3,6 +3,9 @@
   ConfigMapUpgradeConfiguration upgradeConfiguration=new ConfigMapUpgradeConfiguration(config);
   StoreUpgrader migrationProcess=new StoreUpgrader(upgradeConfiguration,fs,monitor,logging);
   LifeSupport life=new LifeSupport();
+  Neo4jJobScheduler jobScheduler=life.add(new Neo4jJobScheduler());
+  SingleFilePageSwapperFactory swapperFactory=new SingleFilePageSwapperFactory(fs);
+  LifecycledPageCache pageCache=life.add(new LifecycledPageCache(swapperFactory,jobScheduler,config,PageCacheMonitor.NULL));
   KernelExtensions kernelExtensions=life.add(new KernelExtensions(GraphDatabaseDependencies.newDependencies().kernelExtensions(),config,kernelExtensionDependencyResolver(fs,config),ignore()));
   config=StoreFactory.configForStoreDir(config,new File(legacyStoreDirectory));
   life.start();
@@ -15,7 +18,7 @@
   }
   try {
     long startTime=System.currentTimeMillis();
-    migrationProcess.migrateIfNeeded(new File(legacyStoreDirectory),schemaIndexProvider);
+    migrationProcess.migrateIfNeeded(new File(legacyStoreDirectory),schemaIndexProvider,pageCache);
     long duration=System.currentTimeMillis() - startTime;
     logging.getMessagesLog(StoreMigrationTool.class).info(format("Migration completed in %d s%n",duration / 1000));
   }
