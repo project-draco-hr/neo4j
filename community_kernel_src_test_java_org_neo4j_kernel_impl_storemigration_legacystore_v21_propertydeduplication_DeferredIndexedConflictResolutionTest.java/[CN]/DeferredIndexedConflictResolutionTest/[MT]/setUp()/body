@@ -1,0 +1,27 @@
+{
+  GraphDatabaseFactory factory=new GraphDatabaseFactory();
+  db=factory.newEmbeddedDatabase(storePath.absolutePath());
+  GraphDatabaseAPI api=(GraphDatabaseAPI)db;
+  Label nodeLabel=DynamicLabel.label("Label");
+  String propertyKey="someProp";
+  long nodeId;
+  try (Transaction transaction=db.beginTx()){
+    Node node=db.createNode(nodeLabel);
+    node.setProperty(propertyKey,"someVal");
+    nodeId=node.getId();
+    transaction.success();
+  }
+   DependencyResolver resolver=api.getDependencyResolver();
+  NeoStoreProvider neoStoreProvider=resolver.resolveDependency(NeoStoreProvider.class);
+  NeoStore neoStore=neoStoreProvider.evaluate();
+  nodeStore=neoStore.getNodeStore();
+  propertyStore=neoStore.getPropertyStore();
+  Map<String,Integer> propertyKeys=PropertyDeduplicatorTestUtil.indexPropertyKeys(neoStore.getPropertyKeyTokenStore());
+  nodeRecord=nodeStore.getRecord(nodeId);
+  int propertyKeyId=propertyKeys.get(propertyKey);
+  clusterToRemove=createDuplicateCluster(propertyKeyId,nodeRecord.getNextProp());
+  clusters=new ArrayList<>();
+  clusters.add(createDuplicateCluster(propertyKeyId + 1,nodeRecord.getNextProp()));
+  clusters.add(clusterToRemove);
+  clusters.add(createDuplicateCluster(propertyKeyId + 2,nodeRecord.getNextProp()));
+}
