@@ -1,23 +1,24 @@
 {
   File workingDirectory=directory.directory();
   MigrationTestUtils.prepareSampleLegacyDatabase(version,fileSystem,workingDirectory);
+  PageCache pageCache=pageCacheRule.getPageCache(fileSystem);
   StoreMigrator failingStoreMigrator=new StoreMigrator(new SilentMigrationProgressMonitor(),fileSystem,DevNullLoggingService.DEV_NULL){
-    @Override public void migrate(    File sourceStoreDir,    File targetStoreDir,    SchemaIndexProvider schemaIndexProvider) throws IOException {
-      super.migrate(sourceStoreDir,targetStoreDir,schemaIndexProvider);
+    @Override public void migrate(    File sourceStoreDir,    File targetStoreDir,    SchemaIndexProvider schemaIndexProvider,    PageCache pageCache) throws IOException {
+      super.migrate(sourceStoreDir,targetStoreDir,schemaIndexProvider,pageCache);
       throw new RuntimeException("This upgrade is failing");
     }
   }
 ;
   assertTrue(allStoreFilesHaveVersion(fileSystem,workingDirectory,version));
   try {
-    newUpgrader(failingStoreMigrator).migrateIfNeeded(workingDirectory,schemaIndexProvider);
+    newUpgrader(failingStoreMigrator).migrateIfNeeded(workingDirectory,schemaIndexProvider,pageCache);
     fail("Should throw exception");
   }
  catch (  RuntimeException e) {
     assertEquals("This upgrade is failing",e.getMessage());
   }
   assertTrue(allStoreFilesHaveVersion(fileSystem,workingDirectory,version));
-  newUpgrader(new StoreMigrator(new SilentMigrationProgressMonitor(),fileSystem,DevNullLoggingService.DEV_NULL)).migrateIfNeeded(workingDirectory,schemaIndexProvider);
+  newUpgrader(new StoreMigrator(new SilentMigrationProgressMonitor(),fileSystem,DevNullLoggingService.DEV_NULL)).migrateIfNeeded(workingDirectory,schemaIndexProvider,pageCache);
   assertTrue(allStoreFilesHaveVersion(fileSystem,workingDirectory,ALL_STORES_VERSION));
   assertConsistentStore(workingDirectory);
 }
