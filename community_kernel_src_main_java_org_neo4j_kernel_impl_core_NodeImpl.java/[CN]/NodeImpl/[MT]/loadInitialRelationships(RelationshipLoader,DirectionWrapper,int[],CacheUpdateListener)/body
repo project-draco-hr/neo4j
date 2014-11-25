@@ -1,24 +1,22 @@
 {
   Triplet<ArrayMap<Integer,RelIdArray>,List<RelationshipImpl>,RelationshipLoadingPosition> rels=null;
-  try (Lock ignored=relationshipLoader.lowLevelNodeReadLock(id)){
 synchronized (this) {
-      if (relationships == null || (relationships.length == 0 && relChainPosition.hasMore(direction,types))) {
-        try {
-          relChainPosition=relationshipLoader.getRelationshipChainPosition(getId());
-        }
- catch (        InvalidRecordException e) {
-          throw new NotFoundException("Node[" + id + "]"+ " concurrently deleted while loading its relationships?",e);
-        }
-        ArrayMap<Integer,RelIdArray> tmpRelMap=new ArrayMap<>();
-        rels=getMoreRelationships(relationshipLoader,tmpRelMap,direction,types);
-        this.relationships=toRelIdArray(tmpRelMap);
-        this.relChainPosition=rels == null ? RelationshipLoadingPosition.EMPTY : rels.third();
-        moreRelationshipsLoaded();
-        cacheUpdateListener.newSize(this,sizeOfObjectInBytesIncludingOverhead());
+    if (relationships == null || (relationships.length == 0 && relChainPosition.hasMore(direction,types))) {
+      try {
+        relChainPosition=relationshipLoader.getRelationshipChainPosition(getId());
       }
+ catch (      InvalidRecordException e) {
+        throw new NotFoundException("Node[" + id + "]"+ " concurrently deleted while loading its relationships?",e);
+      }
+      ArrayMap<Integer,RelIdArray> tmpRelMap=new ArrayMap<>();
+      rels=getMoreRelationships(relationshipLoader,tmpRelMap,direction,types);
+      this.relationships=toRelIdArray(tmpRelMap);
+      this.relChainPosition=rels == null ? RelationshipLoadingPosition.EMPTY : rels.third();
+      moreRelationshipsLoaded();
+      cacheUpdateListener.newSize(this,sizeOfObjectInBytesIncludingOverhead());
     }
   }
-   if (rels != null && rels.second().size() > 0) {
+  if (rels != null && rels.second().size() > 0) {
     relationshipLoader.putAllInRelCache(rels.second());
   }
 }

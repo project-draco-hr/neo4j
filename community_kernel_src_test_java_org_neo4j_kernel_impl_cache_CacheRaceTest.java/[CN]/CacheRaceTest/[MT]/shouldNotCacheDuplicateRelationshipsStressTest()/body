@@ -1,0 +1,44 @@
+{
+  final GraphDatabaseAPI graphDb=db.getGraphDatabaseAPI();
+  final CountDownLatch prepareLatch=new CountDownLatch(2);
+  final CountDownLatch startSignal=new CountDownLatch(1);
+  final Node node=createNode(graphDb);
+  Relationship[] initialRels=createRelationships(graphDb,node,1000,null);
+  db.clearCache();
+  ControlledThread reader=new ControlledThread("Reader",prepareLatch,startSignal,seed + 1){
+    @Override protected void perform(){
+      try (Transaction tx=graphDb.beginTx()){
+        IteratorUtil.count(node.getRelationships());
+        tx.success();
+      }
+ catch (      NotFoundException e) {
+      }
+    }
+  }
+;
+  ControlledThread evictor=new ControlledThread("Evictor",prepareLatch,startSignal,seed + 2){
+    @Override protected void perform(){
+      db.clearCache();
+    }
+  }
+;
+  prepareLatch.await();
+  Pair<Relationship[],Relationship[]> modification=modifyRelationships(graphDb,node,100,startSignal);
+  Relationship[] additionalRels=modification.first();
+  Relationship[] removedRels=modification.other();
+  reader.awaitCompletion();
+  evictor.awaitCompletion();
+  Relationship[] rels=null;
+  try (Transaction tx=graphDb.beginTx()){
+    try {
+      rels=duplicateSafeCountRelationships(node);
+      if (rels.length != initialRels.length + additionalRels.length - removedRels.length) {
+        throw new IllegalStateException("Relationship count mismatch");
+      }
+      tx.success();
+    }
+ catch (    IllegalStateException e) {
+      fail(e.getMessage() + ":\n" + "  initial:    "+ Arrays.toString(initialRels)+ "\n"+ "  additional: "+ Arrays.toString(additionalRels)+ "\n"+ "  removed:    "+ Arrays.toString(removedRels)+ "\n"+ (rels != null ? "  rels:       " + Arrays.toString(rels) + "\n" : "")+ (rels != null ? "  missing:    " + Arrays.toString(missingRels(initialRels,additionalRels,removedRels,rels)) + "\n" : "")+ "  on-disk:\n"+ onDiskChain(graphDb,node.getId())+ "\n"+ "  seed:       "+ seed);
+    }
+  }
+ }
