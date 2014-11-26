@@ -1,0 +1,14 @@
+{
+  ReadableVersionableLogChannel recoveredDataChannel=new ReadAheadLogChannel(channel,NO_MORE_CHANNELS,DEFAULT_READ_AHEAD_SIZE);
+  try (PhysicalTransactionCursor<ReadableVersionableLogChannel> physicalTransactionCursor=new PhysicalTransactionCursor<>(recoveredDataChannel,logEntryReader)){
+    long lastKnownGoodPosition=channel.position();
+    while (physicalTransactionCursor.next() && !visitor.visit(physicalTransactionCursor.get())) {
+      lastKnownGoodPosition=channel.position();
+    }
+    if (channel.position() > lastKnownGoodPosition)     channel.truncate(lastKnownGoodPosition);
+  }
+   if (visitor instanceof Closeable) {
+    ((Closeable)visitor).close();
+  }
+  return true;
+}

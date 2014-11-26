@@ -1,0 +1,21 @@
+{
+  Provider<NeoStore> neoStoreProvider=new Provider<NeoStore>(){
+    @Override public NeoStore instance(){
+      return neoStoreModule.neoStore();
+    }
+  }
+;
+  final StoreReadLayer storeLayer;
+  if (config.get(GraphDatabaseSettings.cache_type).equals(CacheLayer.EXPERIMENTAL_OFF)) {
+    storeLayer=new DiskLayer(propertyKeyTokenHolder,labelTokens,relationshipTypeTokens,new SchemaStorage(neoStore.getSchemaStore()),neoStoreProvider,indexingService);
+  }
+ else {
+    storeLayer=new CacheLayer(new DiskLayer(propertyKeyTokenHolder,labelTokens,relationshipTypeTokens,new SchemaStorage(neoStore.getSchemaStore()),neoStoreProvider,indexingService),persistenceCache,indexingService,schemaCache);
+  }
+  return new StoreLayerModule(){
+    @Override public StoreReadLayer storeLayer(){
+      return storeLayer;
+    }
+  }
+;
+}

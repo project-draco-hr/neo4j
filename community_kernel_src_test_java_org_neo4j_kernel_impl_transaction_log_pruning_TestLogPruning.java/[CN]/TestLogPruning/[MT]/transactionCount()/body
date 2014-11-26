@@ -1,14 +1,7 @@
 {
   return aggregateLogData(new Extractor(){
     @Override public int extract(    File from) throws IOException {
-      final AtomicInteger counter=new AtomicInteger();
-      LogFileRecoverer reader=new LogFileRecoverer(new LogEntryReaderFactory().versionable(),new Visitor<CommittedTransactionRepresentation,IOException>(){
-        @Override public boolean visit(        CommittedTransactionRepresentation element) throws IOException {
-          counter.incrementAndGet();
-          return false;
-        }
-      }
-);
+      int counter=0;
       LogVersionBridge bridge=new LogVersionBridge(){
         @Override public LogVersionedStoreChannel next(        LogVersionedStoreChannel channel) throws IOException {
           return channel;
@@ -16,12 +9,16 @@
       }
 ;
       StoreChannel storeChannel=fs.open(from,"r");
-      PhysicalLogVersionedStoreChannel versionedStoreChannel=new PhysicalLogVersionedStoreChannel(storeChannel,-1,CURRENT_LOG_VERSION);
-      versionedStoreChannel.position(LOG_HEADER_SIZE);
+      LogVersionedStoreChannel versionedStoreChannel=PhysicalLogFile.openForVersion(files,fs,CURRENT_LOG_VERSION);
+      new PhysicalLogVersionedStoreChannel(storeChannel,-1,CURRENT_LOG_VERSION);
       try (ReadableVersionableLogChannel channel=new ReadAheadLogChannel(versionedStoreChannel,bridge,1000)){
-        reader.visit(channel);
-      }
-       return counter.get();
+        try (PhysicalTransactionCursor<ReadableVersionableLogChannel> physicalTransactionCursor=new PhysicalTransactionCursor<>(channel,new LogEntryReaderFactory().versionable())){
+          while (physicalTransactionCursor.next()) {
+            counter++;
+          }
+        }
+       }
+       return counter;
     }
   }
 );

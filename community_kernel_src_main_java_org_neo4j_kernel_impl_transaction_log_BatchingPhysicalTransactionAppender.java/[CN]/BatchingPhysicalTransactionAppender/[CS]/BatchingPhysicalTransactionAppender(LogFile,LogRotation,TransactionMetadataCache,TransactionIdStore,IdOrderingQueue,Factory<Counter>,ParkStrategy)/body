@@ -1,0 +1,29 @@
+{
+  super(logFile,logRotation,transactionMetadataCache,transactionIdStore,legacyIndexTransactionOrdering);
+  appenderTicket=counting.newInstance();
+  forceTicket=counting.newInstance();
+  forceThread=new BatchingForceThread(new BatchingForceThread.Operation(){
+    /** 
+ * Called by the forcing thread that forces now and then.
+ */
+    @Override public boolean perform() throws IOException {
+      long currentAppenderTicket=appenderTicket.get();
+      if (forceTicket.get() == currentAppenderTicket) {
+        return false;
+      }
+      force();
+      forceTicket.set(currentAppenderTicket);
+      ThreadLink linkedOut=threadLinkHead.getAndSet(ThreadLink.END);
+      while (linkedOut != ThreadLink.END) {
+        LockSupport.unpark(linkedOut.thread);
+        while (linkedOut.next == null) {
+          ;
+        }
+        linkedOut=linkedOut.next;
+      }
+      return true;
+    }
+  }
+,idleBackoffStrategy);
+  forceThread.start();
+}

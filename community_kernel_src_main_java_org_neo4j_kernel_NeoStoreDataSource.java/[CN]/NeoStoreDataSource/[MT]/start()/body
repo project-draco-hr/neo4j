@@ -1,2 +1,57 @@
 {
+  dependencies=new Dependencies();
+  life=new LifeSupport();
+  storeDir=config.get(Configuration.store_dir);
+  File store=config.get(Configuration.neo_store);
+  if (!storeFactory.storeExists()) {
+    storeFactory.createNeoStore().close();
+  }
+  indexProvider=dependencyResolver.resolveDependency(SchemaIndexProvider.class,SchemaIndexProvider.HIGHEST_PRIORITIZED_OR_NONE);
+  LoggingLogFileMonitor loggingLogMonitor=new LoggingLogFileMonitor(logging.getMessagesLog(getClass()));
+  monitors.addMonitorListener(loggingLogMonitor);
+  monitors.addMonitorListener(new RecoveryVisitor.Monitor(){
+    @Override public void transactionRecovered(    long txId){
+      recoveredCount.incrementAndGet();
+    }
+  }
+);
+  upgradeStore(store,storeMigrationProcess,indexProvider);
+  try {
+    final NeoStoreModule neoStoreModule=buildNeoStore(storeFactory,labelTokens,relationshipTypeTokens,propertyKeyTokenHolder);
+    this.neoStoreModule=neoStoreModule;
+    CacheModule cacheModule=buildCaches(neoStoreModule.neoStore(),cacheProvider,nodeManager,labelTokens,relationshipTypeTokens,propertyKeyTokenHolder);
+    IndexingModule indexingModule=buildIndexing(config,scheduler,indexProvider,lockService,tokenNameLookup,logging,indexingServiceMonitor,neoStoreModule.neoStore(),cacheModule.updateableSchemaState());
+    StoreLayerModule storeLayerModule=buildStoreLayer(config,neoStoreModule.neoStore(),cacheModule.persistenceCache(),propertyKeyTokenHolder,labelTokens,relationshipTypeTokens,indexingModule.indexingService(),cacheModule.schemaCache());
+    TransactionLogModule transactionLogModule=buildTransactionLogs(config,logging,indexingModule.labelScanStore(),fs,neoStoreModule.neoStore(),cacheModule.cacheAccess(),indexingModule.indexingService());
+    buildRecovery(fs,cacheModule.cacheAccess(),indexingModule.indexingService(),indexingModule.labelScanStore(),neoStoreModule.neoStore(),monitors.newMonitor(RecoveryVisitor.Monitor.class),monitors.newMonitor(Recovery.Monitor.class),transactionLogModule.logFiles(),startupStatistics);
+    KernelModule kernelModule=buildKernel(indexingModule.integrityValidator(),transactionLogModule.logicalTransactionStore(),neoStoreModule.neoStore(),transactionLogModule.storeApplier(),indexingModule.indexingService(),storeLayerModule.storeLayer(),cacheModule.updateableSchemaState(),indexingModule.labelScanStore(),cacheModule.persistenceCache(),indexingModule.schemaIndexProviderMap());
+    this.cacheModule=cacheModule;
+    this.indexingModule=indexingModule;
+    this.storeLayerModule=storeLayerModule;
+    this.transactionLogModule=transactionLogModule;
+    this.kernelModule=kernelModule;
+    dependencies.satisfyDependency(this);
+    satisfyDependencies(neoStoreModule,cacheModule,indexingModule,storeLayerModule,transactionLogModule,kernelModule);
+  }
+ catch (  Throwable e) {
+    try {
+      neoStoreModule.neoStore().close();
+    }
+ catch (    Exception closeException) {
+      msgLog.logMessage("Couldn't close neostore after startup failure");
+    }
+    throw Exceptions.launderedException(e);
+  }
+  try {
+    life.start();
+  }
+ catch (  Throwable e) {
+    try {
+      neoStoreModule.neoStore().close();
+    }
+ catch (    Exception closeException) {
+      msgLog.logMessage("Couldn't close neostore after startup failure");
+    }
+    throw Exceptions.launderedException(e);
+  }
 }
