@@ -1,0 +1,33 @@
+{
+  GraphDatabaseFactory factory=new GraphDatabaseFactory();
+  GraphDatabaseService db=factory.newEmbeddedDatabase(storePath.absolutePath());
+  api=(GraphDatabaseAPI)db;
+  nonIndexedPropKey="notIndexed";
+  indexedPropKey="indexed";
+  Label usedLabel=DynamicLabel.label("UsedLabel");
+  try (Transaction transaction=db.beginTx()){
+    db.schema().indexFor(usedLabel).on(indexedPropKey).create();
+    transaction.success();
+  }
+   try (Transaction transaction=db.beginTx()){
+    indexedValue="value1";
+    nonIndexedValue="value2";
+    Node nodeA=db.createNode(usedLabel);
+    nodeA.setProperty(indexedPropKey,indexedValue);
+    nodeA.setProperty(nonIndexedPropKey,nonIndexedValue);
+    nodeId=nodeA.getId();
+    transaction.success();
+  }
+   DependencyResolver resolver=api.getDependencyResolver();
+  NeoStoreProvider neoStoreProvider=resolver.resolveDependency(NeoStoreProvider.class);
+  NeoStore neoStore=neoStoreProvider.evaluate();
+  nodeStore=neoStore.getNodeStore();
+  PropertyKeyTokenStore propertyKeyTokenStore=neoStore.getPropertyKeyTokenStore();
+  propertyKeys=PropertyDeduplicatorTestUtil.indexPropertyKeys(propertyKeyTokenStore);
+  propertyStore=neoStore.getPropertyStore();
+  nodeRecord=nodeStore.getRecord(nodeId);
+  propertyId=nodeRecord.getNextProp();
+  indexMock=mock(IndexLookup.Index.class);
+  when(indexMock.contains(nodeId,indexedValue)).thenReturn(true);
+  propertyRemoverMock=mock(DuplicatePropertyRemover.class);
+}

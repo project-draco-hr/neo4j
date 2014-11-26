@@ -1,0 +1,38 @@
+{
+  GraphDatabaseFactory factory=new GraphDatabaseFactory();
+  GraphDatabaseService db=factory.newEmbeddedDatabase(storePath.absolutePath());
+  api=(GraphDatabaseAPI)db;
+  String notUsedIndexPropKey="notUsed";
+  String usedIndexPropKey="used";
+  Label usedLabel=DynamicLabel.label("UsedLabel");
+  Label notUsedLabel=DynamicLabel.label("NotUsedLabel");
+  try (Transaction transaction=db.beginTx()){
+    db.schema().indexFor(usedLabel).on(usedIndexPropKey).create();
+    transaction.success();
+  }
+   try (Transaction transaction=db.beginTx()){
+    indexedNodePropertyValue="value1";
+    notIndexedNodePropertyValue="value2";
+    Node nodeA=db.createNode(usedLabel);
+    nodeA.setProperty(usedIndexPropKey,indexedNodePropertyValue);
+    nodeA.setProperty(notUsedIndexPropKey,notIndexedNodePropertyValue);
+    indexedNode=nodeA.getId();
+    Node nodeB=db.createNode(notUsedLabel);
+    nodeB.setProperty(usedIndexPropKey,notIndexedNodePropertyValue);
+    nodeB.setProperty(notUsedIndexPropKey,indexedNodePropertyValue);
+    notIndexedNode=nodeB.getId();
+    transaction.success();
+  }
+   DependencyResolver resolver=api.getDependencyResolver();
+  NeoStoreProvider neoStoreProvider=resolver.resolveDependency(NeoStoreProvider.class);
+  NeoStore neoStore=neoStoreProvider.evaluate();
+  SchemaStore schemaStore=neoStore.getSchemaStore();
+  SchemaIndexProvider schemaIndexProvider=resolver.resolveDependency(SchemaIndexProvider.class);
+  indexLookup=new IndexLookup(schemaStore,schemaIndexProvider);
+  LabelTokenStore labelTokenStore=neoStore.getLabelTokenStore();
+  notUsedLabelId=findTokenFor(labelTokenStore,notUsedLabel.name()).id();
+  usedLabelId=findTokenFor(labelTokenStore,usedLabel.name()).id();
+  PropertyKeyTokenStore propertyKeyTokenStore=neoStore.getPropertyKeyTokenStore();
+  notUsedPropertyId=findTokenFor(propertyKeyTokenStore,notUsedIndexPropKey).id();
+  usedPropertyId=findTokenFor(propertyKeyTokenStore,usedIndexPropKey).id();
+}

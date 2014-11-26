@@ -1,0 +1,46 @@
+{
+  GraphDatabaseFactory factory=new GraphDatabaseFactory();
+  GraphDatabaseService db=factory.newEmbeddedDatabase(storePath.absolutePath());
+  api=(GraphDatabaseAPI)db;
+  String propKeyA="keyA";
+  String propKeyB="keyB";
+  String propKeyC="keyC";
+  String propKeyD="keyD";
+  String propKeyE="keyE";
+  try (Transaction transaction=db.beginTx()){
+    Node nodeA=db.createNode();
+    nodeA.setProperty(propKeyA,"value");
+    nodeA.setProperty(propKeyB,"value");
+    nodeIdA=nodeA.getId();
+    Node nodeB=db.createNode();
+    nodeB.setProperty(propKeyA,"value");
+    nodeB.setProperty(propKeyB,"value");
+    nodeIdB=nodeB.getId();
+    Node nodeC=db.createNode();
+    nodeC.setProperty(propKeyA,"longer val");
+    nodeC.setProperty(propKeyB,"longer val");
+    nodeC.setProperty(propKeyC,"longer val");
+    nodeC.setProperty(propKeyD,"longer val");
+    nodeC.setProperty(propKeyE,"longer val");
+    nodeIdC=nodeC.getId();
+    transaction.success();
+  }
+   DependencyResolver resolver=api.getDependencyResolver();
+  NeoStoreProvider neoStoreProvider=resolver.resolveDependency(NeoStoreProvider.class);
+  NeoStore neoStore=neoStoreProvider.evaluate();
+  nodeStore=neoStore.getNodeStore();
+  propertyStore=neoStore.getPropertyStore();
+  propertyKeyTokenStore=neoStore.getPropertyKeyTokenStore();
+  tokenA=findTokenFor(propertyKeyTokenStore,propKeyA);
+  Token tokenB=findTokenFor(propertyKeyTokenStore,propKeyB);
+  Token tokenC=findTokenFor(propertyKeyTokenStore,propKeyC);
+  Token tokenD=findTokenFor(propertyKeyTokenStore,propKeyD);
+  Token tokenE=findTokenFor(propertyKeyTokenStore,propKeyE);
+  replacePropertyKey(propertyStore,nodeStore.getRecord(nodeIdA),tokenB,tokenA);
+  replacePropertyKey(propertyStore,nodeStore.getRecord(nodeIdB),tokenB,tokenA);
+  NodeRecord nodeRecordC=nodeStore.getRecord(nodeIdC);
+  replacePropertyKey(propertyStore,nodeRecordC,tokenB,tokenA);
+  replacePropertyKey(propertyStore,nodeRecordC,tokenC,tokenA);
+  replacePropertyKey(propertyStore,nodeRecordC,tokenD,tokenA);
+  replacePropertyKey(propertyStore,nodeRecordC,tokenE,tokenA);
+}

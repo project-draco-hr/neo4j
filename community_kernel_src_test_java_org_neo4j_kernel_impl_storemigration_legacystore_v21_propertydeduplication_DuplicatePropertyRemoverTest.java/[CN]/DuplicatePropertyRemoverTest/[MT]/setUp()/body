@@ -1,0 +1,35 @@
+{
+  GraphDatabaseFactory factory=new GraphDatabaseFactory();
+  GraphDatabaseService db=factory.newEmbeddedDatabase(storePath.absolutePath());
+  api=(GraphDatabaseAPI)db;
+  Label nodeLabel=DynamicLabel.label("Label");
+  propertyNames=new ArrayList<>();
+  try (Transaction transaction=db.beginTx()){
+    node=db.createNode(nodeLabel);
+    nodeId=node.getId();
+    for (int i=0; i < PROPERTY_COUNT; i++) {
+      String propKey="key" + i;
+      propertyNames.add(propKey);
+      String propValue="value" + i;
+      boolean isBigProp=ThreadLocalRandom.current().nextBoolean();
+      if (isBigProp) {
+        propValue+=propValue;
+        propValue+=propValue;
+        propValue+=propValue;
+        propValue+=propValue;
+        propValue+=propValue;
+      }
+      node.setProperty(propKey,propValue);
+    }
+    transaction.success();
+  }
+   Collections.shuffle(propertyNames);
+  DependencyResolver resolver=api.getDependencyResolver();
+  NeoStoreProvider neoStoreProvider=resolver.resolveDependency(NeoStoreProvider.class);
+  NeoStore neoStore=neoStoreProvider.evaluate();
+  nodeStore=neoStore.getNodeStore();
+  PropertyKeyTokenStore propertyKeyTokenStore=neoStore.getPropertyKeyTokenStore();
+  indexedPropertyKeys=PropertyDeduplicatorTestUtil.indexPropertyKeys(propertyKeyTokenStore);
+  propertyStore=neoStore.getPropertyStore();
+  remover=new DuplicatePropertyRemover(nodeStore,propertyStore);
+}
