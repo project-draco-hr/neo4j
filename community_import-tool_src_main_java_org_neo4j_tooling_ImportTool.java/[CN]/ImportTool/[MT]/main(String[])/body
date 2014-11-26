@@ -1,7 +1,7 @@
 {
   Args args=Args.parse(incomingArguments);
   if (asksForUsage(args)) {
-    printUsage();
+    printUsage(System.out);
     return;
   }
   FileSystemAbstraction fs=new DefaultFileSystemAbstraction();
@@ -13,13 +13,7 @@
     relationshipsFiles=args.interpretOptionsWithMetadata(Options.RELATIONSHIP_DATA.key(),Converters.<File[]>mandatory(),Converters.toFiles(MULTI_FILE_DELIMITER),Validators.FILES_EXISTS,Validators.<File>atLeast(1));
   }
  catch (  IllegalArgumentException e) {
-    printUsage();
-    Thread.currentThread().setUncaughtExceptionHandler(new UncaughtExceptionHandler(){
-      @Override public void uncaughtException(      Thread t,      Throwable e){
-      }
-    }
-);
-    throw e;
+    throw andPrintError("Input error",e,false);
   }
   LifeSupport life=new LifeSupport();
   Logging logging=life.add(new ClassicLoggingService(new Config(stringMap(store_dir.name(),storeDir.getAbsolutePath()))));
@@ -32,7 +26,7 @@
     success=true;
   }
  catch (  IOException e) {
-    throw new RuntimeException(e);
+    throw andPrintError("Import error",e,true);
   }
  finally {
     life.shutdown();
