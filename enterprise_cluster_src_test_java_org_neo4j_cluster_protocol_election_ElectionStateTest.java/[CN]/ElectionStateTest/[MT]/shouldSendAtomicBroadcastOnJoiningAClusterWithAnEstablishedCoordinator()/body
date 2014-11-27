@@ -1,0 +1,31 @@
+{
+  String winnerURI="some://winner";
+  InstanceId winner=new InstanceId(2);
+  final List<Message<?>> messages=new ArrayList<>(1);
+  MessageHolder holder=new MessageHolder(){
+    @Override public void offer(    Message<? extends MessageType> message){
+      messages.add(message);
+    }
+  }
+;
+  Comparable<Object> voteCredentialComparable=new Comparable<Object>(){
+    @Override public int compareTo(    Object o){
+      return 0;
+    }
+  }
+;
+  ElectionContext electionContext=mock(ElectionContext.class);
+  when(electionContext.voted(eq(COORDINATOR),eq(new InstanceId(1)),eq(voteCredentialComparable),anyLong())).thenReturn(true);
+  when(electionContext.getVoteCount(COORDINATOR)).thenReturn(3);
+  when(electionContext.getNeededVoteCount()).thenReturn(3);
+  when(electionContext.getElectionWinner(COORDINATOR)).thenReturn(winner);
+  when(electionContext.getLogger(any(Class.class))).thenReturn(StringLogger.DEV_NULL);
+  when(electionContext.newConfigurationStateChange()).thenReturn(mock(ClusterMessage.VersionedConfigurationStateChange.class));
+  when(electionContext.getUriForId(winner)).thenReturn(URI.create(winnerURI));
+  Message<ElectionMessage> votedMessage=Message.to(ElectionMessage.voted,URI.create("some://instance"),new ElectionMessage.VotedData(COORDINATOR,new InstanceId(1),voteCredentialComparable));
+  votedMessage.setHeader(Message.FROM,"some://other");
+  election.handle(electionContext,votedMessage,holder);
+  assertEquals(1,messages.size());
+  Message<?> message=messages.get(0);
+  assertEquals(AtomicBroadcastMessage.broadcast,message.getMessageType());
+}
