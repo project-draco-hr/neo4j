@@ -1,3 +1,19 @@
 {
-  return new GraphDatabaseFactory().newEmbeddedDatabaseBuilder(path.getPath()).setConfig(OnlineBackupSettings.online_backup_enabled,String.valueOf(withOnlineBackup)).setConfig(GraphDatabaseSettings.keep_logical_logs,Settings.TRUE).newGraphDatabase();
+  GraphDatabaseFactory dbFactory=new GraphDatabaseFactory(){
+    @Override protected GraphDatabaseService newDatabase(    String path,    Map<String,String> config,    Dependencies dependencies){
+      return new EmbeddedGraphDatabase(path,config,dependencies){
+        @Override protected TransactionHeaderInformationFactory createHeaderInformationFactory(){
+          return new TransactionHeaderInformationFactory.WithRandomBytes(){
+            @Override protected TransactionHeaderInformation createUsing(            byte[] additionalHeader){
+              return new TransactionHeaderInformation(1,2,additionalHeader);
+            }
+          }
+;
+        }
+      }
+;
+    }
+  }
+;
+  return dbFactory.newEmbeddedDatabaseBuilder(path.getPath()).setConfig(OnlineBackupSettings.online_backup_enabled,String.valueOf(withOnlineBackup)).setConfig(GraphDatabaseSettings.keep_logical_logs,Settings.TRUE).newGraphDatabase();
 }

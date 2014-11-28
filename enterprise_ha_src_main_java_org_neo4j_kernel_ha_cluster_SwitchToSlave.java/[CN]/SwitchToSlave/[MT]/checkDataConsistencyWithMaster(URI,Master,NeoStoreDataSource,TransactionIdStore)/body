@@ -1,5 +1,6 @@
 {
-  long myLastCommittedTx=transactionIdStore.getLastCommittedTransactionId();
+  long[] myLastCommittedTxData=transactionIdStore.getLastCommittedTransaction();
+  long myLastCommittedTx=myLastCommittedTxData[0];
   HandshakeResult handshake;
   try (Response<HandshakeResult> response=master.handshake(myLastCommittedTx,nioneoDataSource.getStoreId())){
     handshake=response.response();
@@ -14,12 +15,10 @@ catch (  RuntimeException e) {
     }
     throw e;
   }
-  final TransactionMetadataCache.TransactionMetadata metadata=nioneoDataSource.getDependencyResolver().resolveDependency(LogicalTransactionStore.class).getMetadataFor(myLastCommittedTx);
-  int myMaster=metadata.getMasterId();
-  long myChecksum=metadata.getChecksum();
-  if (myMaster != -1 && (myMaster != handshake.txAuthor() || myChecksum != handshake.txChecksum())) {
-    String msg="The cluster contains two logically different versions of the database.. This will be " + "automatically resolved. Details: I (machineId:" + config.get(ClusterSettings.server_id) + ") think machineId for txId ("+ myLastCommittedTx+ ") is "+ myMaster+ ", but master (machineId:"+ getServerId(availableMasterId)+ ") says that it's "+ handshake;
+  long myChecksum=myLastCommittedTxData[1];
+  if (myChecksum != handshake.txChecksum()) {
+    String msg="The cluster contains two logically different versions of the database.. This will be " + "automatically resolved. Details: I (server_id:" + config.get(ClusterSettings.server_id) + ") think checksum for txId ("+ myLastCommittedTx+ ") is "+ myChecksum+ ", but master (server_id:"+ getServerId(availableMasterId)+ ") says that it's "+ handshake.txChecksum()+ ", where handshake is "+ handshake;
     throw new BranchedDataException(msg);
   }
-  msgLog.logMessage("Master id for last committed tx ok with highestTxId=" + myLastCommittedTx + " with masterId="+ myMaster,true);
+  msgLog.logMessage("Checksum for last committed tx ok with lastTxId=" + myLastCommittedTx + " with checksum="+ myChecksum,true);
 }

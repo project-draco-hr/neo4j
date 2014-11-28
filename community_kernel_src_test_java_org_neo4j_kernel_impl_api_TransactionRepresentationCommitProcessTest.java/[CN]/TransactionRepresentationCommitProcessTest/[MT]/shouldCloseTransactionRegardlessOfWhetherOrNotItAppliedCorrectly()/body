@@ -10,14 +10,15 @@
   TransactionRepresentationStoreApplier storeApplier=mock(TransactionRepresentationStoreApplier.class);
   doThrow(new IOException(rootCause)).when(storeApplier).apply(any(TransactionRepresentation.class),any(LockGroup.class),eq(txId),eq(INTERNAL));
   TransactionCommitProcess commitProcess=new TransactionRepresentationCommitProcess(logicalTransactionStore,kernelHealth,transactionIdStore,storeApplier,INTERNAL);
+  TransactionRepresentation transaction=mockedTransaction();
   try (LockGroup locks=new LockGroup()){
-    commitProcess.commit(mockedTransaction(),locks);
+    commitProcess.commit(transaction,locks);
   }
  catch (  TransactionFailureException e) {
     assertThat(e.getMessage(),containsString("Could not apply the transaction to the store"));
     assertTrue(contains(e,rootCause.getMessage(),rootCause.getClass()));
   }
-  verify(transactionIdStore,times(1)).transactionCommitted(txId);
+  verify(transactionIdStore,times(1)).transactionCommitted(txId,checksum(transaction.additionalHeader(),transaction.getMasterId(),transaction.getAuthorId()));
   verify(transactionIdStore,times(1)).transactionClosed(txId);
   verifyNoMoreInteractions(transactionIdStore);
 }

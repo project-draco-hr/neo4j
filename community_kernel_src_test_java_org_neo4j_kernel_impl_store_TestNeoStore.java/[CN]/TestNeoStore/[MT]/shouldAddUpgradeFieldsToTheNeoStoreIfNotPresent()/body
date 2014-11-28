@@ -6,7 +6,7 @@
   neoStore.setCreationTime(3);
   neoStore.setRandomNumber(4);
   neoStore.setCurrentLogVersion(5);
-  neoStore.setLastCommittedAndClosedTransactionId(6);
+  neoStore.setLastCommittedAndClosedTransactionId(6,0);
   neoStore.setStoreVersion(7);
   neoStore.setGraphNextProp(8);
   neoStore.setLatestConstraintIntroducingTx(9);
@@ -19,10 +19,11 @@
     channel.position(channel.size() - trailer.length);
     channel.write(ByteBuffer.wrap(trailer));
   }
-   assertNotEquals(10,neoStore.getUpgradeId());
+   assertNotEquals(10,neoStore.getUpgradeTransaction()[0]);
   assertNotEquals(11,neoStore.getUpgradeTime());
-  NeoStore.setOrAddUpgradeIdOnMigration(fileSystem,file,10);
-  NeoStore.setOrAddUpgradeTimeOnMigration(fileSystem,file,11);
+  NeoStore.setRecord(fileSystem,file,Position.UPGRADE_TRANSACTION_ID,10);
+  NeoStore.setRecord(fileSystem,file,Position.UPGRADE_TRANSACTION_CHECKSUM,11);
+  NeoStore.setRecord(fileSystem,file,Position.UPGRADE_TIME,12);
   neoStore=factory.newNeoStore(false,false);
   assertEquals(3,neoStore.getCreationTime());
   assertEquals(4,neoStore.getRandomNumber());
@@ -31,7 +32,7 @@
   assertEquals(7,neoStore.getStoreVersion());
   assertEquals(8,neoStore.getGraphNextProp());
   assertEquals(9,neoStore.getLatestConstraintIntroducingTx());
-  assertEquals(10,neoStore.getUpgradeId());
-  assertEquals(11,neoStore.getUpgradeTime());
+  assertArrayEquals(new long[]{10,11},neoStore.getUpgradeTransaction());
+  assertEquals(12,neoStore.getUpgradeTime());
   neoStore.close();
 }

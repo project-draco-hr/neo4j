@@ -1,0 +1,28 @@
+{
+  List<File> logFiles=Arrays.asList(fs.listFiles(storeDir,versionedLegacyLogFilesFilter));
+  Collections.sort(logFiles,NEWEST_FIRST);
+  for (  File file : logFiles) {
+    Pair<LogHeader,IOCursor<LogEntry>> pair=reader.openReadableChannel(file);
+    boolean hadAnyTransactions=false;
+    try (IOCursor<LogEntry> cursor=pair.other()){
+      LogEntryStart startEntry=null;
+      while (cursor.next()) {
+        LogEntry logEntry=cursor.get();
+        if (logEntry instanceof LogEntryStart) {
+          startEntry=(LogEntryStart)logEntry;
+        }
+ else         if (logEntry instanceof LogEntryCommit) {
+          hadAnyTransactions=true;
+          LogEntryCommit commitEntry=logEntry.as();
+          if (commitEntry.getTxId() == transactionId) {
+            return startEntry.checksum();
+          }
+        }
+      }
+    }
+     if (hadAnyTransactions) {
+      break;
+    }
+  }
+  throw new NoSuchTransactionException(transactionId);
+}
