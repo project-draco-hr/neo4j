@@ -7,10 +7,12 @@
   FileSystemAbstraction fs=new DefaultFileSystemAbstraction();
   File storeDir;
   Collection<Option<File[]>> nodesFiles, relationshipsFiles;
+  boolean enableStacktrace;
   try {
     storeDir=args.interpretOption(Options.STORE_DIR.key(),Converters.<File>mandatory(),Converters.toFile(),Validators.DIRECTORY_IS_WRITABLE,Validators.CONTAINS_NO_EXISTING_DATABASE);
     nodesFiles=args.interpretOptionsWithMetadata(Options.NODE_DATA.key(),Converters.<File[]>mandatory(),Converters.toFiles(MULTI_FILE_DELIMITER),Validators.FILES_EXISTS,Validators.<File>atLeast(1));
     relationshipsFiles=args.interpretOptionsWithMetadata(Options.RELATIONSHIP_DATA.key(),Converters.<File[]>mandatory(),Converters.toFiles(MULTI_FILE_DELIMITER),Validators.FILES_EXISTS,Validators.<File>atLeast(1));
+    enableStacktrace=args.getBoolean(Options.STACKTRACE.key(),Boolean.FALSE,Boolean.TRUE);
   }
  catch (  IllegalArgumentException e) {
     throw andPrintError("Input error",e,false);
@@ -25,8 +27,8 @@
     importer.doImport(input);
     success=true;
   }
- catch (  IOException e) {
-    throw andPrintError("Import error",e,true);
+ catch (  Exception e) {
+    throw andPrintError("Import error",e,enableStacktrace);
   }
  finally {
     life.shutdown();
@@ -36,6 +38,9 @@
       }
  catch (      IOException e) {
         System.err.println("Unable to delete store files after an aborted import " + e);
+        if (enableStacktrace) {
+          e.printStackTrace();
+        }
       }
     }
   }
