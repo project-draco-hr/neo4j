@@ -1,0 +1,29 @@
+{
+  final NodeRecord node=access.getNodeRecords().getOrLoad(nodeId,null).forReadingLinkage();
+  if (!node.isDense()) {
+    return new FirstRelationshipIds(){
+      @Override public long firstIdOf(      int type,      DirectionWrapper direction){
+        return node.getNextRel();
+      }
+    }
+;
+  }
+  final PrimitiveIntLongMap ids=Primitive.intLongMap();
+  long groupId=node.getNextRel();
+  while (groupId != Record.NO_NEXT_RELATIONSHIP.intValue()) {
+    RelationshipGroupRecord group=access.getRelGroupRecords().getOrLoad(groupId,null).forReadingData();
+    for (    DirectionWrapper direction : DirectionWrapper.values()) {
+      long firstId=direction.getNextRel(group);
+      if (firstId != Record.NO_NEXT_RELATIONSHIP.intValue()) {
+        ids.put(typeKey(group.getType(),direction),firstId);
+      }
+    }
+    groupId=group.getNext();
+  }
+  return new FirstRelationshipIds(){
+    @Override public long firstIdOf(    int type,    DirectionWrapper direction){
+      return ids.get(typeKey(type,direction));
+    }
+  }
+;
+}
