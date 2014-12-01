@@ -1,10 +1,12 @@
 {
   logger.info("Import starting");
+  NodeRelationshipLink nodeRelationshipLink=null;
+  NodeLabelsCache nodeLabelsCache=null;
   long startTime=currentTimeMillis();
   try (BatchingNeoStore neoStore=new BatchingNeoStore(fileSystem,storeDir,config,writeMonitor,logging,monitors,writerFactory,highTokenIds)){
     IdMapper idMapper=input.idMapper();
     IdGenerator idGenerator=input.idGenerator();
-    NodeRelationshipLink nodeRelationshipLink=new NodeRelationshipLinkImpl(LongArrayFactory.AUTO,config.denseNodeThreshold());
+    nodeRelationshipLink=new NodeRelationshipLinkImpl(AUTO,config.denseNodeThreshold());
     final ResourceIterable<InputNode> nodes=input.nodes();
     final ResourceIterable<InputRelationship> relationships=input.relationships();
     final NodeStage nodeStage=new NodeStage(nodes,idMapper,idGenerator,neoStore);
@@ -27,11 +29,12 @@
     nodeRelationshipLink.clearRelationships();
     final RelationshipLinkbackStage relationshipLinkbackStage=new RelationshipLinkbackStage(neoStore,nodeRelationshipLink);
     executeStages(relationshipLinkbackStage);
+    nodeRelationshipLink.close();
     nodeRelationshipLink=null;
-    NodeLabelsCache countsCache=new NodeLabelsCache(LongArrayFactory.AUTO,neoStore.getLabelRepository().getHighId());
-    final NodeCountsStage nodeCountsStage=new NodeCountsStage(neoStore,countsCache);
+    nodeLabelsCache=new NodeLabelsCache(AUTO,neoStore.getLabelRepository().getHighId());
+    final NodeCountsStage nodeCountsStage=new NodeCountsStage(neoStore,nodeLabelsCache);
     executeStages(nodeCountsStage);
-    final RelationshipCountsStage relationshipCountsStage=new RelationshipCountsStage(neoStore,countsCache);
+    final RelationshipCountsStage relationshipCountsStage=new RelationshipCountsStage(neoStore,nodeLabelsCache);
     executeStages(relationshipCountsStage);
     long totalTimeMillis=currentTimeMillis() - startTime;
     executionPoller.done(totalTimeMillis);
@@ -43,5 +46,11 @@
   }
  finally {
     writerFactory.shutdown();
+    if (nodeRelationshipLink != null) {
+      nodeRelationshipLink.close();
+    }
+    if (nodeLabelsCache != null) {
+      nodeLabelsCache.close();
+    }
   }
 }
