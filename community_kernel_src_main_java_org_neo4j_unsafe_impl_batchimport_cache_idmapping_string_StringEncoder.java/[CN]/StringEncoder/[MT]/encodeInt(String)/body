@@ -1,29 +1,25 @@
 {
   int inputLength=s.length();
-  byte[] bytes=encodedBytes(inputLength);
+  byte[] bytes=new byte[inputLength];
   for (int i=0; i < inputLength; i++) {
     bytes[i]=(byte)((s.charAt(i)) % 127);
   }
   reMap(bytes,inputLength);
-  if (inputLength > 127) {
-    if (inputLength > maxIdLength) {
-      maxIdLength=inputLength;
-    }
-  }
   if (inputLength <= encodingThreshold) {
     return simplestCode(bytes,inputLength);
   }
+  int[] codes=new int[numCodes];
   for (int i=0; i < numCodes; ) {
-    scratchCodes[i]=getCode(bytes,inputLength,1);
-    scratchCodes[i + 1]=getCode(bytes,inputLength,inputLength - 1);
+    codes[i]=getCode(bytes,inputLength,1);
+    codes[i + 1]=getCode(bytes,inputLength,inputLength - 1);
     i+=2;
   }
   int carryOver=lengthEncoder(inputLength) << 1;
   int temp=0;
   for (int i=0; i < numCodes; i++) {
-    temp=scratchCodes[i] & FOURTH_BYTE;
-    scratchCodes[i]=scratchCodes[i] >>> 8 | carryOver << 24;
+    temp=codes[i] & FOURTH_BYTE;
+    codes[i]=codes[i] >>> 8 | carryOver << 24;
     carryOver=temp;
   }
-  return scratchCodes;
+  return codes;
 }

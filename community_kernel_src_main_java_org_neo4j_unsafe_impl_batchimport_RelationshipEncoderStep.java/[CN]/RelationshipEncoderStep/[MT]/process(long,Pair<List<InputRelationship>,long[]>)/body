@@ -1,0 +1,28 @@
+{
+  List<BatchEntity<RelationshipRecord,InputRelationship>> entities=new ArrayList<>(batch.first().size());
+  long[] startAndEndNodeIds=batch.other();
+  int index=0;
+  for (  InputRelationship batchRelationship : batch.first()) {
+    long relationshipId=batchRelationship.id();
+    long startNodeId=startAndEndNodeIds[index++];
+    long endNodeId=startAndEndNodeIds[index++];
+    relationshipStore.setHighestPossibleIdInUse(relationshipId);
+    int typeId=batchRelationship.hasTypeId() ? batchRelationship.typeId() : relationshipTypeRepository.getOrCreateId(batchRelationship.type());
+    RelationshipRecord relationshipRecord=new RelationshipRecord(relationshipId,startNodeId,endNodeId,typeId);
+    relationshipRecord.setInUse(true);
+    long firstNextRel=nodeRelationshipLink.getAndPutRelationship(startNodeId,typeId,batchRelationship.startDirection(),relationshipId,true);
+    relationshipRecord.setFirstNextRel(firstNextRel);
+    if (batchRelationship.isLoop()) {
+      relationshipRecord.setSecondNextRel(firstNextRel);
+    }
+ else {
+      relationshipRecord.setSecondNextRel(nodeRelationshipLink.getAndPutRelationship(endNodeId,typeId,INCOMING,relationshipId,true));
+    }
+    relationshipRecord.setFirstInFirstChain(false);
+    relationshipRecord.setFirstInSecondChain(false);
+    relationshipRecord.setFirstPrevRel(Record.NO_NEXT_RELATIONSHIP.intValue());
+    relationshipRecord.setSecondPrevRel(Record.NO_NEXT_RELATIONSHIP.intValue());
+    entities.add(new BatchEntity<>(relationshipRecord,batchRelationship));
+  }
+  return entities;
+}
