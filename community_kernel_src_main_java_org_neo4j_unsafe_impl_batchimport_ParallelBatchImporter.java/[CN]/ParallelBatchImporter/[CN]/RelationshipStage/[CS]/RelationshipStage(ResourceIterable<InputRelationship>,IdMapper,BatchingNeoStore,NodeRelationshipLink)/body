@@ -1,8 +1,10 @@
 {
   super("Relationships",config);
-  add(new IteratorBatcherStep<>(control(),"INPUT",config.batchSize(),relationships.iterator()));
+  add(new IteratorBatcherStep<>(control(),"INPUT",config.batchSize(),config.movingAverageSize(),relationships.iterator()));
   RelationshipStore relationshipStore=neoStore.getRelationshipStore();
   PropertyStore propertyStore=neoStore.getPropertyStore();
-  add(new RelationshipEncoderStep(control(),"ENCODER",config.workAheadSize(),1,idMapper,neoStore.getPropertyKeyRepository(),neoStore.getRelationshipTypeRepository(),relationshipStore,propertyStore,nodeRelationshipLink));
-  add(new EntityStoreUpdaterStep<>(control(),"WRITER",relationshipStore,propertyStore,writeMonitor));
+  add(new RelationshipPreparationStep(control(),config,idMapper));
+  add(new RelationshipEncoderStep(control(),config,idMapper,neoStore.getRelationshipTypeRepository(),relationshipStore,nodeRelationshipLink));
+  add(new PropertyEncoderStep<>(control(),config,1,neoStore.getPropertyKeyRepository(),propertyStore));
+  add(new EntityStoreUpdaterStep<>(control(),"WRITER",config,relationshipStore,propertyStore,writeMonitor,writerFactory));
 }
