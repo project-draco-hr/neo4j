@@ -1,29 +1,27 @@
 {
-  Pair<Map<String,String>,Boolean> result=findIndexConfig(entityType.entityClass(),indexName,suppliedConfig,config.getParams());
-  boolean createdNow=false;
-  if (result.other()) {
+  Map<String,String> config=findIndexConfig(entityType.entityClass(),indexName,suppliedConfig,this.config.getParams());
+  if (!indexStore.has(entityType.entityClass(),indexName)) {
 synchronized (this) {
       Map<String,String> existing=indexStore.get(entityType.entityClass(),indexName);
       if (existing != null) {
-        assertConfigMatches(indexProviders.lookup(existing.get(PROVIDER)),indexName,existing,result.first());
-        return Pair.of(result.first(),false);
+        assertConfigMatches(indexProviders.lookup(existing.get(PROVIDER)),indexName,existing,config);
+        return config;
       }
       try (KernelTransaction transaction=kernel.instance().newTransaction();Statement statement=transaction.acquireStatement()){
 switch (entityType) {
 case Node:
-          statement.dataWriteOperations().nodeLegacyIndexCreate(indexName,result.first());
+          statement.dataWriteOperations().nodeLegacyIndexCreate(indexName,config);
         break;
 case Relationship:
-      statement.dataWriteOperations().relationshipLegacyIndexCreate(indexName,result.first());
+      statement.dataWriteOperations().relationshipLegacyIndexCreate(indexName,config);
     break;
 }
 transaction.success();
-createdNow=true;
 }
  catch (Exception ex) {
-throw new TransactionFailureException("Index creation failed for " + indexName + ", "+ result.first(),ex);
+throw new TransactionFailureException("Index creation failed for " + indexName + ", "+ config,ex);
 }
 }
 }
-return Pair.of(result.first(),createdNow);
+return config;
 }
