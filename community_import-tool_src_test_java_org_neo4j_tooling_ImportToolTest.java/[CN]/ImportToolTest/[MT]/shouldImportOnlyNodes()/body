@@ -1,0 +1,19 @@
+{
+  List<String> nodeIds=nodeIds();
+  Configuration config=Configuration.COMMAS;
+  ImportTool.main(arguments("--into",directory.absolutePath(),"--nodes",nodeData(true,config,nodeIds,alwaysTrue()).getAbsolutePath()));
+  GraphDatabaseService db=new GraphDatabaseFactory().newEmbeddedDatabase(directory.absolutePath());
+  try (Transaction tx=db.beginTx()){
+    int nodeCount=0;
+    for (    Node node : GlobalGraphOperations.at(db).getAllNodes()) {
+      assertTrue(node.hasProperty("name"));
+      nodeCount++;
+      assertFalse(node.hasRelationship());
+    }
+    assertEquals(NODE_COUNT,nodeCount);
+    tx.success();
+  }
+  finally {
+    db.shutdown();
+  }
+}
