@@ -1,0 +1,35 @@
+{
+  GraphDatabaseService db=dbRule.getGraphDatabaseService();
+  final Label label=DynamicLabel.label("Label");
+  IndexDefinition index;
+  try (Transaction tx=db.beginTx()){
+    index=db.schema().indexFor(label).on("indexed").create();
+    tx.success();
+  }
+   db.registerTransactionEventHandler(new TransactionEventHandler<Object>(){
+    @Override public Object beforeCommit(    TransactionData data) throws Exception {
+      Iterator<Node> nodes=data.createdNodes().iterator();
+      if (nodes.hasNext()) {
+        Node node=nodes.next();
+        node.addLabel(label);
+      }
+      return null;
+    }
+    @Override public void afterCommit(    TransactionData data,    Object state){
+    }
+    @Override public void afterRollback(    TransactionData data,    Object state){
+    }
+  }
+);
+  try (Transaction tx=db.beginTx()){
+    db.schema().awaitIndexesOnline(10,TimeUnit.SECONDS);
+    Node node=db.createNode();
+    node.setProperty("indexed","value");
+    node.setProperty("random",42);
+    tx.success();
+  }
+   try (Transaction ignore=db.beginTx()){
+    Node node=db.findNode(label,"indexed","value");
+    assertThat(node.getProperty("random"),is((Object)42));
+  }
+ }
