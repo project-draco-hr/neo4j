@@ -1,0 +1,28 @@
+{
+  try {
+    return AccessController.doPrivileged(new PrivilegedExceptionAction<Unsafe>(){
+      @Override public Unsafe run() throws Exception {
+        try {
+          return Unsafe.getUnsafe();
+        }
+ catch (        Exception e) {
+          Class<Unsafe> type=Unsafe.class;
+          Field[] fields=type.getDeclaredFields();
+          for (          Field field : fields) {
+            if (Modifier.isStatic(field.getModifiers()) && type.isAssignableFrom(field.getType())) {
+              field.setAccessible(true);
+              return type.cast(field.get(null));
+            }
+          }
+          LinkageError error=new LinkageError("No static field of type sun.misc.Unsafe");
+          error.addSuppressed(e);
+          throw error;
+        }
+      }
+    }
+);
+  }
+ catch (  Exception e) {
+    throw new LinkageError("Cannot access sun.misc.Unsafe",e);
+  }
+}
