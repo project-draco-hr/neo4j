@@ -5,11 +5,12 @@
     out.println("=== " + fileName + " ===");
     StoreChannel fileChannel=fileSystem.open(new File(fileName),"r");
     ByteBuffer buffer=ByteBuffer.allocateDirect(9 + Xid.MAXGTRIDSIZE + Xid.MAXBQUALSIZE * 10);
-    long logVersion, prevLastCommittedTx;
+    long logVersion, prevLastCommittedTx, logFormat;
     try {
       long[] header=VersionAwareLogEntryReader.readLogHeader(buffer,fileChannel,false);
       logVersion=header[0];
       prevLastCommittedTx=header[1];
+      logFormat=header[2];
     }
  catch (    IOException ex) {
       out.println("Unable to read timestamp information, no records in logical log.");
@@ -17,7 +18,7 @@
       fileChannel.close();
       throw ex;
     }
-    out.println("Logical log version: " + logVersion + " with prev committed tx["+ prevLastCommittedTx+ "]");
+    out.println("Logical log format:" + logFormat + " version:"+ logVersion+ " with prev committed tx["+ prevLastCommittedTx+ "]");
     LogDeserializer deserializer=new LogDeserializer(buffer,instantiateCommandReaderFactory());
     PrintingConsumer consumer=new PrintingConsumer(out,timeZone);
     try (Cursor<LogEntry,IOException> cursor=deserializer.cursor(fileChannel)){
