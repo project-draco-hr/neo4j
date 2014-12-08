@@ -1,9 +1,16 @@
 {
   Config config=new Config();
   config.applyChanges(stringMap(mapped_memory_page_size.name(),"4096",mapped_memory_total_size.name(),Integer.toString(4096 * 16)));
+  LifeSupport life=new LifeSupport();
   PageSwapperFactory swapperFactory=new SingleFilePageSwapperFactory(fsRule.get());
-  Neo4jJobScheduler scheduler=new Neo4jJobScheduler();
-  PageCache cache=new LifecycledPageCache(swapperFactory,scheduler,config,PageCacheMonitor.NULL);
-  assertThat(cache.pageSize(),equalTo(4096));
-  assertThat(cache.maxCachedPages(),equalTo(16));
+  Neo4jJobScheduler scheduler=life.add(new Neo4jJobScheduler());
+  PageCache cache=life.add(new LifecycledPageCache(swapperFactory,scheduler,config,PageCacheMonitor.NULL));
+  life.start();
+  try {
+    assertThat(cache.pageSize(),equalTo(4096));
+    assertThat(cache.maxCachedPages(),equalTo(16));
+  }
+  finally {
+    life.shutdown();
+  }
 }
