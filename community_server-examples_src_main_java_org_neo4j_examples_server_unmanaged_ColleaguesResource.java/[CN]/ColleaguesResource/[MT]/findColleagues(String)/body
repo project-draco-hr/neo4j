@@ -1,0 +1,30 @@
+{
+  StreamingOutput stream=new StreamingOutput(){
+    @Override public void write(    OutputStream os) throws IOException, WebApplicationException {
+      JsonGenerator jg=objectMapper.getJsonFactory().createJsonGenerator(os,JsonEncoding.UTF8);
+      jg.writeStartObject();
+      jg.writeFieldName("colleagues");
+      jg.writeStartArray();
+      try (Transaction tx=graphDb.beginTx();ResourceIterator<Node> persons=graphDb.findNodesByLabelAndProperty(PERSON,"name",personName).iterator()){
+        while (persons.hasNext()) {
+          Node person=persons.next();
+          for (          Relationship actedIn : person.getRelationships(ACTED_IN,OUTGOING)) {
+            for (            Relationship colleagueActedIn : actedIn.getEndNode().getRelationships(ACTED_IN,INCOMING)) {
+              Node colleague=colleagueActedIn.getStartNode();
+              if (!colleague.equals(person)) {
+                jg.writeString(colleague.getProperty("name").toString());
+              }
+            }
+          }
+        }
+        tx.success();
+      }
+       jg.writeEndArray();
+      jg.writeEndObject();
+      jg.flush();
+      jg.close();
+    }
+  }
+;
+  return Response.ok().entity(stream).type(MediaType.APPLICATION_JSON).build();
+}
