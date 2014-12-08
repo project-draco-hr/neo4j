@@ -1,0 +1,24 @@
+{
+  final Map<String,Object> params=MapUtil.map("personName",personName);
+  StreamingOutput stream=new StreamingOutput(){
+    @Override public void write(    OutputStream os) throws IOException, WebApplicationException {
+      JsonGenerator jg=objectMapper.getJsonFactory().createJsonGenerator(os,JsonEncoding.UTF8);
+      jg.writeStartObject();
+      jg.writeFieldName("colleagues");
+      jg.writeStartArray();
+      try (Transaction tx=graphDb.beginTx()){
+        ExecutionResult result=executionEngine.execute(colleaguesQuery(),params);
+        for (        Map<String,Object> row : result) {
+          jg.writeString(((Node)row.get("colleague")).getProperty("name").toString());
+        }
+        tx.success();
+      }
+       jg.writeEndArray();
+      jg.writeEndObject();
+      jg.flush();
+      jg.close();
+    }
+  }
+;
+  return Response.ok().entity(stream).type(MediaType.APPLICATION_JSON).build();
+}
