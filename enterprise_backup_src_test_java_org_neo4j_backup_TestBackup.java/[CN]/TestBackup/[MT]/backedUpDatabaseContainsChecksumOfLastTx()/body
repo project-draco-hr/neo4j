@@ -1,0 +1,28 @@
+{
+  ServerInterface server=null;
+  try {
+    createInitialDataSet(serverPath);
+    server=startServer(serverPath);
+    OnlineBackup backup=OnlineBackup.from("127.0.0.1");
+    backup.full(backupPath.getPath());
+    assertTrue("Should be consistent",backup.isConsistent());
+    shutdownServer(server);
+    server=null;
+    long firstChecksum=lastTxChecksumOf(serverPath);
+    assertEquals(firstChecksum,lastTxChecksumOf(backupPath));
+    addMoreData(serverPath);
+    server=startServer(serverPath);
+    backup.incremental(backupPath.getPath());
+    assertTrue("Should be consistent",backup.isConsistent());
+    shutdownServer(server);
+    server=null;
+    long secondChecksum=lastTxChecksumOf(serverPath);
+    assertEquals(secondChecksum,lastTxChecksumOf(backupPath));
+    assertTrue(firstChecksum != secondChecksum);
+  }
+  finally {
+    if (server != null) {
+      shutdownServer(server);
+    }
+  }
+}

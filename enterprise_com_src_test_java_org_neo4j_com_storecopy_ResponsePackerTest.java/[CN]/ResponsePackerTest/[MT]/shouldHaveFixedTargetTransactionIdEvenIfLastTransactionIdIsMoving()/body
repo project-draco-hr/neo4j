@@ -4,7 +4,7 @@
   IOCursor<CommittedTransactionRepresentation> endlessCursor=new EndlessCursor(lastAppliedTransactionId + 1);
   when(transactionStore.getTransactions(anyLong())).thenReturn(endlessCursor);
   final long targetTransactionId=8L;
-  final TransactionIdStore transactionIdStore=new DeadSimpleTransactionIdStore(targetTransactionId);
+  final TransactionIdStore transactionIdStore=new DeadSimpleTransactionIdStore(targetTransactionId,0);
   ResponsePacker packer=new ResponsePacker(transactionStore,transactionIdStore,singletonProvider(new StoreId()));
   Response<Object> response=packer.packTransactionStreamResponse(requestContextStartingAt(5L),null);
   final AtomicLong nextExpectedVisit=new AtomicLong(lastAppliedTransactionId);
@@ -18,7 +18,7 @@
           long txId=element.getCommitEntry().getTxId();
           assertThat(txId,lessThanOrEqualTo(targetTransactionId));
           assertEquals(nextExpectedVisit.incrementAndGet(),txId);
-          transactionIdStore.setLastCommittedAndClosedTransactionId(transactionIdStore.getLastCommittedTransactionId() + 1);
+          transactionIdStore.setLastCommittedAndClosedTransactionId(transactionIdStore.getLastCommittedTransactionId() + 1,0);
           return true;
         }
       }

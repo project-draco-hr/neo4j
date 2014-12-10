@@ -6,7 +6,9 @@
     neoStoreXaDataSource.afterModeSwitch();
     MasterImpl.SPI spi=new DefaultMasterImplSPI(graphDb);
     MasterImpl masterImpl=new MasterImpl(spi,masterImplMonitor,logging,config);
-    MasterServer masterServer=new MasterServer(masterImpl,logging,serverConfig(),new BranchDetectingTxVerifier(logging.getMessagesLog(BranchDetectingTxVerifier.class),neoStoreXaDataSource.getDependencyResolver().resolveDependency(LogicalTransactionStore.class)),masterByteCounterMonitor,masterRequestMonitor);
+    DependencyResolver resolver=neoStoreXaDataSource.getDependencyResolver();
+    TransactionChecksumLookup txChecksumLookup=new TransactionChecksumLookup(resolver.resolveDependency(TransactionIdStore.class),resolver.resolveDependency(LogicalTransactionStore.class));
+    MasterServer masterServer=new MasterServer(masterImpl,logging,serverConfig(),new BranchDetectingTxVerifier(logging.getMessagesLog(BranchDetectingTxVerifier.class),txChecksumLookup),masterByteCounterMonitor,masterRequestMonitor);
     haCommunicationLife.add(masterImpl);
     haCommunicationLife.add(masterServer);
     masterDelegateHandler.setDelegate(masterImpl);

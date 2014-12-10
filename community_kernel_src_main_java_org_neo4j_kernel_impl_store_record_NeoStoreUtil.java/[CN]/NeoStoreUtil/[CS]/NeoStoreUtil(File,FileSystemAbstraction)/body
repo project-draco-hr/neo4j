@@ -1,18 +1,11 @@
 {
-  try (StoreChannel channel=fs.open(neoStoreFile(storeDir),"r")){
-    int recordsToRead=6;
-    ByteBuffer buf=ByteBuffer.allocate(recordsToRead * RECORD_SIZE);
-    int readBytes=channel.read(buf);
-    if (readBytes != recordsToRead * RECORD_SIZE) {
-      throw new RuntimeException(format("Unable to read neo store header information. " + "Wanted to read %d records, %d bytes each, but could only read %d bytes i.e. %f records",recordsToRead,RECORD_SIZE,readBytes,(double)(readBytes / RECORD_SIZE)));
-    }
+  try (StoreChannel channel=fs.open(neoStoreFile(storeDir,StoreFileType.STORE),"r")){
+    ByteBuffer buf=ByteBuffer.allocate(Position.values().length * RECORD_SIZE);
+    channel.read(buf);
     buf.flip();
-    creationTime=nextRecord(buf);
-    randomId=nextRecord(buf);
-    logVersion=nextRecord(buf);
-    txId=nextRecord(buf);
-    storeVersion=nextRecord(buf);
-    firstGraphProp=nextRecord(buf);
+    for (int i=0; buf.remaining() >= RECORD_SIZE && i < Position.values().length; i++) {
+      values.put(Position.values()[i],nextRecord(buf));
+    }
   }
  catch (  IOException e) {
     throw new RuntimeException(e);
