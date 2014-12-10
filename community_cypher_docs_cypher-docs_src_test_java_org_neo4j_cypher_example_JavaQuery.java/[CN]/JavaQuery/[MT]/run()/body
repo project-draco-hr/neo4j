@@ -6,23 +6,23 @@
     myNode.setProperty("name","my node");
     tx.success();
   }
-   Result result;
-  try (Transaction ignored=db.beginTx()){
-    result=db.execute("match (n {name: 'my node'}) return n, n.name");
+   try (Transaction ignored=db.beginTx();Result result=db.execute("match (n {name: 'my node'}) return n, n.name")){
+    while (result.hasNext()) {
+      Map<String,Object> row=result.next();
+      for (      Entry<String,Object> column : row.entrySet()) {
+        rows+=column.getKey() + ": " + column.getValue()+ "; ";
+      }
+      rows+="\n";
+    }
+  }
+   try (Transaction ignored=db.beginTx();Result result=db.execute("match (n {name: 'my node'}) return n, n.name")){
     Iterator<Node> n_column=result.columnAs("n");
     for (    Node node : IteratorUtil.asIterable(n_column)) {
       nodeResult=node + ": " + node.getProperty("name");
     }
+    List<String> columns=result.columns();
+    columnsString=columns.toString();
+    resultString=db.execute("match (n {name: 'my node'}) return n, n.name").resultAsString();
   }
-   List<String> columns=result.columns();
-  result=db.execute("match (n {name: 'my node'}) return n, n.name");
-  for (  Map<String,Object> row : loop(result)) {
-    for (    Entry<String,Object> column : row.entrySet()) {
-      rows+=column.getKey() + ": " + column.getValue()+ "; ";
-    }
-    rows+="\n";
-  }
-  resultString=db.execute("match (n {name: 'my node'}) return n, n.name").resultAsString();
-  columnsString=columns.toString();
-  db.shutdown();
+   db.shutdown();
 }
