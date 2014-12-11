@@ -1,0 +1,43 @@
+{
+  Map<String,Object> command=input.readMap(body);
+  if (!command.containsKey(QUERY_KEY)) {
+    return output.badRequest(new BadInputException("You have to provide the 'query' parameter."));
+  }
+  String query=(String)command.get(QUERY_KEY);
+  Map<String,Object> params;
+  try {
+    params=(Map<String,Object>)(command.containsKey(PARAMS_KEY) && command.get(PARAMS_KEY) != null ? command.get(PARAMS_KEY) : new HashMap<String,Object>());
+  }
+ catch (  ClassCastException e) {
+    return output.badRequest(new IllegalArgumentException("Parameters must be a JSON map"));
+  }
+  try {
+    QueryExecutionEngine executionEngine=cypherExecutor.getExecutionEngine();
+    boolean periodicCommitQuery=executionEngine.isPeriodicCommit(query);
+    CommitOnSuccessfulStatusCodeRepresentationWriteHandler handler=(CommitOnSuccessfulStatusCodeRepresentationWriteHandler)this.output.getRepresentationWriteHandler();
+    if (periodicCommitQuery) {
+      handler.closeTransaction();
+    }
+    Result result;
+    if (profile) {
+      result=executionEngine.profileQuery(query,params,new ServerQuerySession(request));
+      includePlan=true;
+    }
+ else {
+      result=executionEngine.executeQuery(query,params,new ServerQuerySession(request));
+      includePlan=result.getQueryExecutionType().requestedExecutionPlanDescription();
+    }
+    if (periodicCommitQuery) {
+      handler.setTransaction(database.beginTx());
+    }
+    return output.ok(new CypherResultRepresentation(result,includeStats,includePlan));
+  }
+ catch (  Throwable e) {
+    if (e.getCause() instanceof CypherException) {
+      return output.badRequest(e.getCause());
+    }
+ else {
+      return output.badRequest(e);
+    }
+  }
+}

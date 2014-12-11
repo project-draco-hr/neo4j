@@ -3,11 +3,14 @@
   TransitionalTxManagementKernelTransaction transactionContext=kernel.newTransaction();
   TransactionRegistry registry=mock(TransactionRegistry.class);
   QueryExecutionEngine executionEngine=mock(QueryExecutionEngine.class);
-  when(executionEngine.executeQuery("query",map())).thenThrow(new NullPointerException());
+  QuerySession querySession=mock(QuerySession.class);
+  QuerySessionProvider querySessionProvider=mock(QuerySessionProvider.class);
+  when(querySessionProvider.create(any(HttpServletRequest.class))).thenReturn(querySession);
+  when(executionEngine.executeQuery("query",map(),querySession)).thenThrow(new NullPointerException());
   when(registry.begin(any(TransactionHandle.class))).thenReturn(1337l);
-  TransactionHandle handle=new TransactionHandle(kernel,executionEngine,registry,uriScheme,StringLogger.DEV_NULL);
+  TransactionHandle handle=new TransactionHandle(kernel,executionEngine,registry,uriScheme,StringLogger.DEV_NULL,querySessionProvider);
   ExecutionResultSerializer output=mock(ExecutionResultSerializer.class);
-  handle.execute(statements(new Statement("query",map(),false,(ResultDataContent[])null)),output);
+  handle.execute(statements(new Statement("query",map(),false,(ResultDataContent[])null)),output,mock(HttpServletRequest.class));
   verify(transactionContext).rollback();
   verify(registry).forget(1337l);
   InOrder outputOrder=inOrder(output);

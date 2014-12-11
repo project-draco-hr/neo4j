@@ -1,0 +1,30 @@
+{
+  try {
+    try {
+      Statement statement=statements.next();
+      if (statements.hasNext()) {
+        throw new QueryExecutionKernelException(new InvalidSemanticsException("Cannot execute another statement after executing " + "PERIODIC COMMIT statement in the same transaction"));
+      }
+      Result result=engine.executeQuery(statement.statement(),statement.parameters(),sessionFactory.create(request));
+      ensureActiveTransaction();
+      output.statementResult(result,statement.includeStats(),statement.resultDataContents());
+      closeContextAndCollectErrors(errors);
+    }
+ catch (    KernelException|CypherException e) {
+      errors.add(new Neo4jError(e.status(),e));
+    }
+catch (    DeadlockDetectedException e) {
+      errors.add(new Neo4jError(Status.Transaction.DeadlockDetected,e));
+    }
+catch (    IOException e) {
+      errors.add(new Neo4jError(Status.Network.UnknownFailure,e));
+    }
+catch (    Exception e) {
+      errors.add(new Neo4jError(Status.Statement.ExecutionFailure,e));
+    }
+    addToCollection(statements.errors(),errors);
+  }
+ catch (  Throwable e) {
+    errors.add(new Neo4jError(Status.General.UnknownFailure,e));
+  }
+}
