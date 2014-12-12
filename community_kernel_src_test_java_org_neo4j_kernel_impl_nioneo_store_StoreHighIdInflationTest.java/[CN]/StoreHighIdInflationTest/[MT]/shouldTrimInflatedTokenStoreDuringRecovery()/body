@@ -1,0 +1,16 @@
+{
+  int nodesWithUniqueLabels=10;
+  int relsWithUniqueTypes=5;
+  int labelTokenRecordSize;
+  FileSystemAbstraction fs=fsr.get();
+  fs.mkdirs(new File(storeDir));
+  GraphDatabaseService db=newImpermanentDb();
+  createLabeledNodesAndRels(nodesWithUniqueLabels,relsWithUniqueTypes,db);
+  labelTokenRecordSize=neoStoreOf(db).getLabelTokenStore().getRecordSize();
+  db.shutdown();
+  inflateStore(LabelTokenStore.TYPE_DESCRIPTOR,LABEL_TOKEN_STORE_NAME,megabyteWorthOfZeros());
+  newImpermanentDb().shutdown();
+  long fileSize=fs.getFileSize(new File(storeDir,NeoStore.DEFAULT_NAME + LABEL_TOKEN_STORE_NAME));
+  int trailerLength=trailerLength(LabelTokenStore.TYPE_DESCRIPTOR);
+  assertEquals("Unexpected file size; trailerLength=" + trailerLength,nodesWithUniqueLabels * labelTokenRecordSize,fileSize - trailerLength);
+}
