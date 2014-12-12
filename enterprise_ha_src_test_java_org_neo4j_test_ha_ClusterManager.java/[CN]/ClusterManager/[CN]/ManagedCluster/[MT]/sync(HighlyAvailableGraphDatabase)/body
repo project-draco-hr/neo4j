@@ -2,7 +2,15 @@
   Set<HighlyAvailableGraphDatabase> exceptSet=new HashSet<>(asList(except));
   for (  HighlyAvailableGraphDatabase db : getAllMembers()) {
     if (!exceptSet.contains(db)) {
-      db.getDependencyResolver().resolveDependency(UpdatePullerClient.class).pullUpdates();
+      UpdatePullerClient client=db.getDependencyResolver().resolveDependency(UpdatePullerClient.class);
+      try {
+        if (db.isAvailable(60000)) {
+          client.pullUpdates();
+        }
+      }
+ catch (      Exception e) {
+        throw new IllegalStateException(stateToString(this),e);
+      }
     }
   }
 }
