@@ -1,0 +1,16 @@
+{
+  try (StoreChannel channel=fsr.get().open(new File(storeDir,storeFile),"rw")){
+    ByteBuffer buffer=ByteBuffer.allocate(recordSize);
+    long position=channel.size() - trailerLength - recordSize;
+    while (position > 0) {
+      buffer.clear();
+      channel.read(buffer,position);
+      buffer.flip();
+      if (buffer.get() == Record.IN_USE.byteValue()) {
+        return (int)(position / recordSize) + 1;
+      }
+      position-=recordSize;
+    }
+  }
+   throw new IllegalStateException("No inUse records found");
+}

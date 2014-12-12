@@ -1,0 +1,21 @@
+{
+  int nodesWithUniqueLabels=5;
+  int relsWithUniqueTypes=10;
+  int reservedRelTypeRecordsCount=100;
+  int relTypeTokenRecordSize;
+  String relTypeStoreFileName=NeoStore.DEFAULT_NAME + RELATIONSHIP_TYPE_TOKEN_STORE_NAME;
+  FileSystemAbstraction fs=fsr.get();
+  fs.mkdirs(new File(storeDir));
+  GraphDatabaseService db=newImpermanentDb();
+  createLabeledNodesAndRels(nodesWithUniqueLabels,relsWithUniqueTypes,db);
+  relTypeTokenRecordSize=relTypeTokenStore(db).getRecordSize();
+  assertEquals("Unexpected highest inUse id",relsWithUniqueTypes - 1,relTypeTokenStore(db).getHighestPossibleIdInUse());
+  db.shutdown();
+  inflateStore(RelationshipTypeTokenStore.TYPE_DESCRIPTOR,RELATIONSHIP_TYPE_TOKEN_STORE_NAME,reservedRelTypeRecords(reservedRelTypeRecordsCount,relTypeTokenRecordSize));
+  int lastInUseRecordId=findLastInUseRecord(relTypeStoreFileName,relTypeTokenRecordSize,0);
+  assertEquals(reservedRelTypeRecordsCount + relsWithUniqueTypes,lastInUseRecordId);
+  newImpermanentDb().shutdown();
+  lastInUseRecordId=findLastInUseRecord(relTypeStoreFileName,relTypeTokenRecordSize,trailerLength(RelationshipTypeTokenStore.TYPE_DESCRIPTOR));
+  assertEquals("Unexpected number of inUse records",relsWithUniqueTypes,lastInUseRecordId);
+  assertEquals("Unexpected highest inUse id",relsWithUniqueTypes - 1,relTypeTokenStore(newImpermanentDb()).getHighestPossibleIdInUse());
+}
