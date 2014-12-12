@@ -1,12 +1,11 @@
 {
   Monitor monitor=mock(RecoveryVisitor.Monitor.class);
-  final RecoveryVisitor visitor=new RecoveryVisitor(store,storeApplier,recoveredCount,monitor);
+  final RecoveryVisitor visitor=new RecoveryVisitor(store,storeApplier,monitor);
   final TransactionRepresentation representation=new PhysicalTransactionRepresentation(Collections.<Command>emptySet());
   final CommittedTransactionRepresentation transaction=new CommittedTransactionRepresentation(startEntry,representation,commitEntry);
   final boolean result=visitor.visit(transaction);
   assertFalse(result);
   verify(storeApplier,times(1)).apply(eq(representation),any(LockGroup.class),eq(commitEntry.getTxId()),eq(RECOVERY));
-  assertEquals(1l,recoveredCount.get());
   verify(monitor).transactionRecovered(commitEntry.getTxId());
   visitor.close();
   verify(store,times(1)).setLastCommittedAndClosedTransactionId(commitEntry.getTxId(),LogEntryStart.checksum(startEntry));

@@ -1,0 +1,57 @@
+{
+  String name="log";
+  File file=new File(directory.directory(),name + ".1");
+  final int logVersion=1;
+  writeSomeData(file,new Visitor<ByteBuffer,IOException>(){
+    @Override public boolean visit(    ByteBuffer buffer) throws IOException {
+      writeLogHeader(buffer,logVersion,3);
+      buffer.clear();
+      buffer.position(LOG_HEADER_SIZE);
+      buffer.put((byte)2);
+      buffer.putInt(23324);
+      return true;
+    }
+  }
+);
+  LifeSupport life=new LifeSupport();
+  final PhysicalLogFiles logFiles=new PhysicalLogFiles(directory.directory(),name,fs);
+  Recovery.Monitor monitor=mock(Recovery.Monitor.class);
+  try {
+    life.add(new Recovery(new Recovery.SPI(){
+      @Override public void forceEverything(){
+      }
+      @Override public long getCurrentLogVersion(){
+        return logVersionRepository.getCurrentLogVersion();
+      }
+      @Override public Visitor<LogVersionedStoreChannel,IOException> getRecoverer(){
+        return new Visitor<LogVersionedStoreChannel,IOException>(){
+          @Override public boolean visit(          LogVersionedStoreChannel element) throws IOException {
+            ReadableVersionableLogChannel recoveredDataChannel=new ReadAheadLogChannel(element,NO_MORE_CHANNELS,DEFAULT_READ_AHEAD_SIZE);
+            assertEquals((byte)2,recoveredDataChannel.get());
+            assertEquals(23324,recoveredDataChannel.getInt());
+            try {
+              recoveredDataChannel.get();
+              fail("There should be no more");
+            }
+ catch (            ReadPastEndException e) {
+            }
+            return true;
+          }
+        }
+;
+      }
+      @Override public PhysicalLogVersionedStoreChannel getLogFile(      long recoveryVersion) throws IOException {
+        return PhysicalLogFile.openForVersion(logFiles,fs,recoveryVersion);
+      }
+    }
+,monitor));
+    life.add(new PhysicalLogFile(fs,logFiles,50,transactionIdStore,logVersionRepository,mock(PhysicalLogFile.Monitor.class),new TransactionMetadataCache(10,100)));
+    life.start();
+    InOrder order=inOrder(monitor);
+    order.verify(monitor,times(1)).recoveryRequired(logVersion);
+    order.verify(monitor,times(1)).recoveryCompleted();
+  }
+  finally {
+    life.shutdown();
+  }
+}

@@ -1,0 +1,38 @@
+{
+  final UpdateableSchemaState updateableSchemaState=new KernelSchemaStateStore(logging.getMessagesLog(KernelSchemaStateStore.class));
+  final SchemaCache schemaCache=new SchemaCache(Collections.<SchemaRule>emptyList());
+  final AutoLoadingCache<NodeImpl> nodeCache=new AutoLoadingCache<>(cacheProvider.node(),nodeLoader(neoStore.getNodeStore()));
+  final AutoLoadingCache<RelationshipImpl> relationshipCache=new AutoLoadingCache<>(cacheProvider.relationship(),relationshipLoader(neoStore.getRelationshipStore()));
+  RelationshipLoader relationshipLoader=new RelationshipLoader(lockService,relationshipCache,new RelationshipChainLoader(neoStore));
+  final PersistenceCache persistenceCache=new PersistenceCache(nodeCache,relationshipCache,nodeManager,relationshipLoader,propertyKeyTokenHolder,relationshipTypeTokens,labelTokens);
+  final CacheAccessBackDoor cacheAccess=new BridgingCacheAccess(schemaCache,updateableSchemaState,persistenceCache);
+  life.add(new LifecycleAdapter(){
+    @Override public void start() throws Throwable {
+      loadSchemaCache();
+    }
+    @Override public void stop() throws Throwable {
+    }
+  }
+);
+  return new CacheModule(){
+    @Override public SchemaCache schemaCache(){
+      return schemaCache;
+    }
+    @Override public UpdateableSchemaState updateableSchemaState(){
+      return updateableSchemaState;
+    }
+    @Override public PersistenceCache persistenceCache(){
+      return persistenceCache;
+    }
+    @Override public CacheAccessBackDoor cacheAccess(){
+      return cacheAccess;
+    }
+    @Override public Cache<NodeImpl> nodeCache(){
+      return nodeCache;
+    }
+    @Override public Cache<RelationshipImpl> relationshipCache(){
+      return relationshipCache;
+    }
+  }
+;
+}

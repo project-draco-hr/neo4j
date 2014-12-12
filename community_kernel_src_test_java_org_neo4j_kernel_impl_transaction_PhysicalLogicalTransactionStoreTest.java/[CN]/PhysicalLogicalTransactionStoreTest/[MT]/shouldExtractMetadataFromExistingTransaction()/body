@@ -1,6 +1,5 @@
 {
-  LogRotationControl logRotationControl=mock(LogRotationControl.class);
-  TransactionIdStore transactionIdStore=new DeadSimpleTransactionIdStore(0l,0);
+  TransactionIdStore transactionIdStore=new DeadSimpleTransactionIdStore(0l,0l);
   TransactionMetadataCache positionCache=new TransactionMetadataCache(10,100);
   final byte[] additionalHeader=new byte[]{1,2,5};
   final int masterId=2, authorId=1;
@@ -8,7 +7,7 @@
   LifeSupport life=new LifeSupport();
   PhysicalLogFiles logFiles=new PhysicalLogFiles(testDir,DEFAULT_NAME,fs);
   Monitor monitor=new Monitors().newMonitor(PhysicalLogFile.Monitor.class);
-  LogFile logFile=life.add(new PhysicalLogFile(fs,logFiles,1000,NO_PRUNING,transactionIdStore,mock(LogVersionRepository.class),monitor,logRotationControl,positionCache,emptyRecoveryVisitor()));
+  LogFile logFile=life.add(new PhysicalLogFile(fs,logFiles,1000,transactionIdStore,mock(LogVersionRepository.class),monitor,positionCache));
   life.start();
   try {
     addATransactionAndRewind(logFile,positionCache,transactionIdStore,additionalHeader,masterId,authorId,timeStarted,latestCommittedTxWhenStarted,timeCommitted);
@@ -32,10 +31,11 @@
     }
   }
 );
-  logFile=life.add(new PhysicalLogFile(fs,logFiles,1000,NO_PRUNING,transactionIdStore,mock(LogVersionRepository.class),monitor,logRotationControl,positionCache,recoverer));
-  LogicalTransactionStore store=life.add(new PhysicalLogicalTransactionStore(logFile,positionCache,transactionIdStore,BYPASS,true));
+  logFile=life.add(new PhysicalLogFile(fs,logFiles,1000,transactionIdStore,mock(LogVersionRepository.class),monitor,positionCache));
+  LogicalTransactionStore store=life.add(new PhysicalLogicalTransactionStore(logFile,LogRotation.NO_ROTATION,positionCache,transactionIdStore,BYPASS,true));
   life.start();
   try {
+    recoverer.visit(PhysicalLogFile.openForVersion(logFiles,fs,0));
     positionCache.clear();
     assertThat(store.getMetadataFor(transactionIdStore.getLastCommittedTransactionId()).toString(),equalTo("TransactionMetadata[masterId=-1, authorId=-1, startPosition=LogPosition{logVersion=0, " + "byteOffset=16}, checksum=0]"));
   }
