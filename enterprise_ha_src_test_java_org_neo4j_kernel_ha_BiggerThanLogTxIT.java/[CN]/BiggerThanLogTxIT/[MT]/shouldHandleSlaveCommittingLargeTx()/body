@@ -2,11 +2,16 @@
   cluster.await(allSeesAllAsAvailable());
   GraphDatabaseService slave=cluster.getAnySlave();
   int initialNodeCount=nodeCount(slave);
-  ;
+  cluster.info("Before commit large");
   int nodeCount=commitLargeTx(slave);
+  cluster.info("Before sync");
   cluster.sync();
+  cluster.info("After sync");
   assertAllMembersHasNodeCount(initialNodeCount + nodeCount);
+  cluster.info("Before commit small");
   commitSmallTx(cluster.getMaster());
+  cluster.info("Before sync small");
   cluster.sync();
+  cluster.info("After sync small");
   assertAllMembersHasNodeCount(initialNodeCount + nodeCount + 1);
 }
