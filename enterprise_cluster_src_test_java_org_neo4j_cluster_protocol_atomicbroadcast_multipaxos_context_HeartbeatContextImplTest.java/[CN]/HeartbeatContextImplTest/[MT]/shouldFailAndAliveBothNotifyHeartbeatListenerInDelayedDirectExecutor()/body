@@ -1,0 +1,25 @@
+{
+  InstanceId me=new InstanceId(1);
+  InstanceId failedMachine=new InstanceId(2);
+  InstanceId goodMachine=new InstanceId(3);
+  Logging log=mock(Logging.class);
+  when(log.getMessagesLog(HeartbeatContext.class)).thenReturn(mock(StringLogger.class));
+  Timeouts timeouts=mock(Timeouts.class);
+  CommonContextState commonState=mock(CommonContextState.class);
+  ClusterConfiguration configuration=mock(ClusterConfiguration.class);
+  when(commonState.configuration()).thenReturn(configuration);
+  when(configuration.getMembers()).thenReturn(members(3));
+  when(configuration.getMemberIds()).thenReturn(ids(3));
+  final List<Runnable> runnables=new ArrayList<Runnable>();
+  HeartbeatContext context=new HeartbeatContextImpl(me,commonState,log,timeouts,new DelayedDirectExecutor(log){
+    @Override public synchronized void execute(    Runnable command){
+      runnables.add(command);
+    }
+  }
+);
+  context.addHeartbeatListener(mock(HeartbeatListener.Adapter.class));
+  context.suspicions(goodMachine,new HashSet<InstanceId>(Arrays.asList(failedMachine)));
+  context.suspect(failedMachine);
+  context.alive(failedMachine);
+  assertEquals(2,runnables.size());
+}
