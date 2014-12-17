@@ -2,13 +2,23 @@
   long transactionId=-1;
   long ticket;
   boolean hasLegacyIndexChanges;
+  int phase=0;
   logRotation.rotateLogIfNeeded();
+  try {
 synchronized (logFile) {
-    transactionId=transactionIdStore.nextCommittingTransactionId();
-    hasLegacyIndexChanges=append0(transaction,transactionId);
-    ticket=getNextTicket();
+      transactionId=transactionIdStore.nextCommittingTransactionId();
+      hasLegacyIndexChanges=append0(transaction,transactionId);
+      phase=1;
+      ticket=getNextTicket();
+    }
+    forceAfterAppend(ticket);
+    coordinateMultipleThreadsApplyingLegacyIndexChanges(hasLegacyIndexChanges,transactionId);
+    phase=2;
+    return transactionId;
   }
-  forceAfterAppend(ticket);
-  coordinateMultipleThreadsApplyingLegacyIndexChanges(hasLegacyIndexChanges,transactionId);
-  return transactionId;
+  finally {
+    if (phase == 1) {
+      transactionIdStore.transactionClosed(transactionId);
+    }
+  }
 }
