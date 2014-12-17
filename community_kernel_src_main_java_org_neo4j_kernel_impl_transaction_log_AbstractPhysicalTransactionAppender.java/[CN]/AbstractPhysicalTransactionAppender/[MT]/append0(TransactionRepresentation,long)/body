@@ -2,10 +2,13 @@
   LogPosition logPosition=channel.getCurrentPosition(positionMarker).newPosition();
   indexCommandDetector.reset();
   transactionLogWriter.append(transaction,transactionId);
-  transactionMetadataCache.cacheTransactionMetadata(transactionId,logPosition,transaction.getMasterId(),transaction.getAuthorId(),LogEntryStart.checksum(transaction.additionalHeader(),transaction.getMasterId(),transaction.getAuthorId()));
+  long transactionChecksum=LogEntryStart.checksum(transaction.additionalHeader(),transaction.getMasterId(),transaction.getAuthorId());
+  transactionMetadataCache.cacheTransactionMetadata(transactionId,logPosition,transaction.getMasterId(),transaction.getAuthorId(),transactionChecksum);
   emptyBufferIntoChannel();
   if (indexCommandDetector.hasWrittenAnyLegacyIndexCommand()) {
     legacyIndexTransactionOrdering.offer(transactionId);
   }
-  return indexCommandDetector.hasWrittenAnyLegacyIndexCommand();
+  boolean containsLegacyIndexCommands=indexCommandDetector.hasWrittenAnyLegacyIndexCommand();
+  transactionIdStore.transactionCommitted(transactionId,transactionChecksum);
+  return containsLegacyIndexCommands;
 }
