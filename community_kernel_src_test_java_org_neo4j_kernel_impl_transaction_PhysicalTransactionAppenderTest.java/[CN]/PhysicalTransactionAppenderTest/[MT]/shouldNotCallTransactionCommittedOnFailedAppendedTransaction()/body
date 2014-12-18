@@ -2,13 +2,15 @@
   long txId=3;
   String failureMessage="Forces a failure";
   WritableLogChannel channel=spy(new InMemoryLogChannel());
-  when(channel.putInt(anyInt())).thenThrow(new IOException(failureMessage));
+  IOException failure=new IOException(failureMessage);
+  when(channel.putInt(anyInt())).thenThrow(failure);
   LogFile logFile=mock(LogFile.class);
   when(logFile.getWriter()).thenReturn(channel);
   TransactionMetadataCache metadataCache=new TransactionMetadataCache(10,10);
   TransactionIdStore transactionIdStore=mock(TransactionIdStore.class);
   when(transactionIdStore.nextCommittingTransactionId()).thenReturn(txId);
-  TransactionAppender appender=new PhysicalTransactionAppender(logFile,LogRotation.NO_ROTATION,metadataCache,transactionIdStore,BYPASS);
+  KernelHealth health=mock(KernelHealth.class);
+  TransactionAppender appender=new PhysicalTransactionAppender(logFile,LogRotation.NO_ROTATION,metadataCache,transactionIdStore,BYPASS,health);
   TransactionRepresentation transaction=mock(TransactionRepresentation.class);
   when(transaction.additionalHeader()).thenReturn(new byte[0]);
   try {
@@ -18,6 +20,7 @@
  catch (  IOException e) {
     assertTrue(contains(e,failureMessage,IOException.class));
     verify(transactionIdStore,times(1)).nextCommittingTransactionId();
+    verify(health).panic(failure);
     verifyNoMoreInteractions(transactionIdStore);
   }
 }
