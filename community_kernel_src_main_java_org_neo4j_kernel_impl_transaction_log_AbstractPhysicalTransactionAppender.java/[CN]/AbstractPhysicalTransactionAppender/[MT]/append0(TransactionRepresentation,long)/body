@@ -1,14 +1,20 @@
 {
   LogPosition logPosition=channel.getCurrentPosition(positionMarker).newPosition();
   indexCommandDetector.reset();
-  transactionLogWriter.append(transaction,transactionId);
-  long transactionChecksum=LogEntryStart.checksum(transaction.additionalHeader(),transaction.getMasterId(),transaction.getAuthorId());
-  transactionMetadataCache.cacheTransactionMetadata(transactionId,logPosition,transaction.getMasterId(),transaction.getAuthorId(),transactionChecksum);
-  emptyBufferIntoChannel();
-  if (indexCommandDetector.hasWrittenAnyLegacyIndexCommand()) {
-    legacyIndexTransactionOrdering.offer(transactionId);
+  try {
+    transactionLogWriter.append(transaction,transactionId);
+    long transactionChecksum=checksum(transaction.additionalHeader(),transaction.getMasterId(),transaction.getAuthorId());
+    transactionMetadataCache.cacheTransactionMetadata(transactionId,logPosition,transaction.getMasterId(),transaction.getAuthorId(),transactionChecksum);
+    emptyBufferIntoChannel();
+    boolean containsLegacyIndexCommands=indexCommandDetector.hasWrittenAnyLegacyIndexCommand();
+    if (containsLegacyIndexCommands) {
+      legacyIndexTransactionOrdering.offer(transactionId);
+    }
+    transactionIdStore.transactionCommitted(transactionId,transactionChecksum);
+    return containsLegacyIndexCommands;
   }
-  boolean containsLegacyIndexCommands=indexCommandDetector.hasWrittenAnyLegacyIndexCommand();
-  transactionIdStore.transactionCommitted(transactionId,transactionChecksum);
-  return containsLegacyIndexCommands;
+ catch (  final Throwable panic) {
+    kernelHealth.panic(panic);
+    throw panic;
+  }
 }
