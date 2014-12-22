@@ -1,14 +1,17 @@
 {
   TransitionalPeriodTransactionMessContainer kernel=mockKernel();
   QueryExecutionEngine executionEngine=mock(QueryExecutionEngine.class);
-  when(executionEngine.executeQuery("matsch (n) return n",map())).thenThrow(new QueryExecutionKernelException(new SyntaxException("did you mean MATCH?")));
+  QuerySession querySession=mock(QuerySession.class);
+  QuerySessionProvider querySessionProvider=mock(QuerySessionProvider.class);
+  when(querySessionProvider.create(any(HttpServletRequest.class))).thenReturn(querySession);
+  when(executionEngine.executeQuery("matsch (n) return n",map(),querySession)).thenThrow(new QueryExecutionKernelException(new SyntaxException("did you mean MATCH?")));
   StringLogger log=mock(StringLogger.class);
   TransactionRegistry registry=mock(TransactionRegistry.class);
   when(registry.begin(any(TransactionHandle.class))).thenReturn(1337l);
-  TransactionHandle handle=new TransactionHandle(kernel,executionEngine,registry,uriScheme,log);
+  TransactionHandle handle=new TransactionHandle(kernel,executionEngine,registry,uriScheme,log,querySessionProvider);
   ExecutionResultSerializer output=mock(ExecutionResultSerializer.class);
   Statement statement=new Statement("matsch (n) return n",map(),false,(ResultDataContent[])null);
-  handle.commit(statements(statement),output,false);
+  handle.commit(statements(statement),output,false,mock(HttpServletRequest.class));
   verify(registry).forget(1337l);
   InOrder outputOrder=inOrder(output);
   outputOrder.verify(output).errors(argThat(hasErrors(Status.Statement.InvalidSyntax)));

@@ -3,12 +3,15 @@
   TransitionalTxManagementKernelTransaction transactionContext=kernel.newTransaction();
   TransactionRegistry registry=mock(TransactionRegistry.class);
   QueryExecutionEngine executionEngine=mock(QueryExecutionEngine.class);
+  QuerySession querySession=mock(QuerySession.class);
+  QuerySessionProvider querySessionProvider=mock(QuerySessionProvider.class);
+  when(querySessionProvider.create(any(HttpServletRequest.class))).thenReturn(querySession);
   Result executionResult=mock(Result.class);
-  when(executionEngine.executeQuery("query",map())).thenReturn(executionResult);
+  when(executionEngine.executeQuery("query",map(),querySession)).thenReturn(executionResult);
   when(registry.begin(any(TransactionHandle.class))).thenReturn(1337l);
-  TransactionHandle handle=new TransactionHandle(kernel,executionEngine,registry,uriScheme,StringLogger.DEV_NULL);
+  TransactionHandle handle=new TransactionHandle(kernel,executionEngine,registry,uriScheme,StringLogger.DEV_NULL,querySessionProvider);
   ExecutionResultSerializer output=mock(ExecutionResultSerializer.class);
-  handle.execute(statements(new Statement("query",map(),false,(ResultDataContent[])null)),output);
+  handle.execute(statements(new Statement("query",map(),false,(ResultDataContent[])null)),output,mock(HttpServletRequest.class));
   InOrder transactionOrder=inOrder(transactionContext,registry);
   transactionOrder.verify(transactionContext).suspendSinceTransactionsAreStillThreadBound();
   transactionOrder.verify(registry).release(1337l,handle);

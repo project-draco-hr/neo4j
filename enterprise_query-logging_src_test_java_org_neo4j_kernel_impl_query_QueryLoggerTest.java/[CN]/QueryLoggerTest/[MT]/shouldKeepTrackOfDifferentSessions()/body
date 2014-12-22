@@ -1,0 +1,24 @@
+{
+  StringLogger logger=mock(StringLogger.class);
+  QuerySession session1=session("{session one}");
+  QuerySession session2=session("{session two}");
+  QuerySession session3=session("{session three}");
+  FakeClock clock=new FakeClock();
+  QueryLogger queryLogger=new QueryLogger(clock,new LoggerFactory(logger),10);
+  queryLogger.init();
+  queryLogger.startQueryExecution(session1,"MATCH (a) RETURN a");
+  clock.forward(1,TimeUnit.MILLISECONDS);
+  queryLogger.startQueryExecution(session2,"MATCH (b) RETURN b");
+  clock.forward(1,TimeUnit.MILLISECONDS);
+  queryLogger.startQueryExecution(session3,"MATCH (c) RETURN c");
+  clock.forward(7,TimeUnit.MILLISECONDS);
+  queryLogger.endSuccess(session3);
+  clock.forward(7,TimeUnit.MILLISECONDS);
+  queryLogger.endSuccess(session2);
+  clock.forward(7,TimeUnit.MILLISECONDS);
+  queryLogger.endSuccess(session1);
+  InOrder order=inOrder(logger);
+  order.verify(logger).logMessage("SUCCESS 15 ms: {session two} - MATCH (b) RETURN b");
+  order.verify(logger).logMessage("SUCCESS 23 ms: {session one} - MATCH (a) RETURN a");
+  verifyNoMoreInteractions(logger);
+}

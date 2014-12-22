@@ -6,12 +6,15 @@
   TransactionRegistry registry=mock(TransactionRegistry.class);
   QueryExecutionEngine engine=mock(QueryExecutionEngine.class);
   Result executionResult=mock(Result.class);
-  when(engine.executeQuery("query",map())).thenReturn(executionResult);
+  QuerySession querySession=mock(QuerySession.class);
+  QuerySessionProvider querySessionProvider=mock(QuerySessionProvider.class);
+  when(querySessionProvider.create(any(HttpServletRequest.class))).thenReturn(querySession);
+  when(engine.executeQuery("query",map(),querySession)).thenReturn(executionResult);
   when(registry.begin(any(TransactionHandle.class))).thenReturn(1337l);
-  TransactionHandle handle=new TransactionHandle(kernel,engine,registry,uriScheme,log);
+  TransactionHandle handle=new TransactionHandle(kernel,engine,registry,uriScheme,log,querySessionProvider);
   ExecutionResultSerializer output=mock(ExecutionResultSerializer.class);
   Statement statement=new Statement("query",map(),false,(ResultDataContent[])null);
-  handle.commit(statements(statement),output,false);
+  handle.commit(statements(statement),output,false,mock(HttpServletRequest.class));
   verify(log).error(eq("Failed to commit transaction."),any(NullPointerException.class));
   verify(registry).forget(1337l);
   InOrder outputOrder=inOrder(output);

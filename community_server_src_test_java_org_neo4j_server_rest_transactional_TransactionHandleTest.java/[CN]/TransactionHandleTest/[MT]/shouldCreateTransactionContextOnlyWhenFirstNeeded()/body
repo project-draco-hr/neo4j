@@ -4,11 +4,14 @@
   TransactionRegistry registry=mock(TransactionRegistry.class);
   QueryExecutionEngine engine=mock(QueryExecutionEngine.class);
   Result executionResult=mock(Result.class);
-  when(engine.executeQuery("query",map())).thenReturn(executionResult);
+  QuerySession querySession=mock(QuerySession.class);
+  QuerySessionProvider querySessionProvider=mock(QuerySessionProvider.class);
+  when(querySessionProvider.create(any(HttpServletRequest.class))).thenReturn(querySession);
+  when(engine.executeQuery("query",map(),querySession)).thenReturn(executionResult);
   when(registry.begin(any(TransactionHandle.class))).thenReturn(1337l);
-  TransactionHandle handle=new TransactionHandle(kernel,engine,registry,uriScheme,StringLogger.DEV_NULL);
+  TransactionHandle handle=new TransactionHandle(kernel,engine,registry,uriScheme,StringLogger.DEV_NULL,querySessionProvider);
   verifyZeroInteractions(kernel);
-  handle.execute(statements(new Statement("query",map(),false,(ResultDataContent[])null)),output);
+  handle.execute(statements(new Statement("query",map(),false,(ResultDataContent[])null)),output,mock(HttpServletRequest.class));
   verify(kernel).newTransaction();
   InOrder outputOrder=inOrder(output);
   outputOrder.verify(output).transactionCommitUri(uriScheme.txCommitUri(1337));

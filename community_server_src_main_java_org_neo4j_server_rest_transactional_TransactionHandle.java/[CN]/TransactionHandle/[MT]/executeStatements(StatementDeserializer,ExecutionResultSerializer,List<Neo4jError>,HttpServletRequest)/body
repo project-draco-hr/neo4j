@@ -1,0 +1,30 @@
+{
+  try {
+    while (statements.hasNext()) {
+      Statement statement=statements.next();
+      try {
+        Result result=engine.executeQuery(statement.statement(),statement.parameters(),sessionFactory.create(request));
+        output.statementResult(result,statement.includeStats(),statement.resultDataContents());
+      }
+ catch (      KernelException|CypherException e) {
+        errors.add(new Neo4jError(e.status(),e));
+        break;
+      }
+catch (      DeadlockDetectedException e) {
+        errors.add(new Neo4jError(Status.Transaction.DeadlockDetected,e));
+      }
+catch (      IOException e) {
+        errors.add(new Neo4jError(Status.Network.UnknownFailure,e));
+        break;
+      }
+catch (      Exception e) {
+        errors.add(new Neo4jError(Status.Statement.ExecutionFailure,e));
+        break;
+      }
+    }
+    addToCollection(statements.errors(),errors);
+  }
+ catch (  Throwable e) {
+    errors.add(new Neo4jError(Status.General.UnknownFailure,e));
+  }
+}
