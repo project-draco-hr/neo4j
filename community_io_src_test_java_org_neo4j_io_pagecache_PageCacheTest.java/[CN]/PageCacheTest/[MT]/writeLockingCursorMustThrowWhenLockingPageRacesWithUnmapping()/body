@@ -1,0 +1,61 @@
+{
+  generateFileWithRecords(file,recordsPerFilePage * 2,recordSize);
+  getPageCache(fs,maxPages,pageCachePageSize,PageCacheMonitor.NULL);
+  final PagedFile pf=pageCache.map(file,filePageSize);
+  final CountDownLatch hasLockkLatch=new CountDownLatch(1);
+  final CountDownLatch unlockLatch=new CountDownLatch(1);
+  final CountDownLatch secondThreadGotLockLatch=new CountDownLatch(1);
+  executor.submit(new Callable<Object>(){
+    @Override public Object call() throws Exception {
+      try (PageCursor cursor=pf.io(0,PF_EXCLUSIVE_LOCK)){
+        cursor.next();
+        hasLockkLatch.countDown();
+        unlockLatch.await();
+      }
+       return null;
+    }
+  }
+);
+  hasLockkLatch.await();
+  Future<Object> takeLockFuture=executor.submit(new Callable<Object>(){
+    @Override public Object call() throws Exception {
+      try (PageCursor cursor=pf.io(0,PF_EXCLUSIVE_LOCK)){
+        cursor.next();
+        secondThreadGotLockLatch.await();
+      }
+       return null;
+    }
+  }
+);
+  Future<Object> closeFuture=executor.submit(new Callable<Object>(){
+    @Override public Object call() throws Exception {
+      pf.close();
+      return null;
+    }
+  }
+);
+  try {
+    closeFuture.get(10,TimeUnit.MILLISECONDS);
+    fail("Expected a TimeoutException here");
+  }
+ catch (  TimeoutException e) {
+  }
+  unlockLatch.countDown();
+  try {
+    closeFuture.get(200,TimeUnit.MILLISECONDS);
+    try {
+      secondThreadGotLockLatch.countDown();
+      takeLockFuture.get();
+      fail("Expected takeLockFuture.get() to throw an ExecutionException");
+    }
+ catch (    ExecutionException e) {
+      Throwable cause=e.getCause();
+      assertThat(cause,instanceOf(IllegalStateException.class));
+      assertThat(cause.getMessage(),is("File has been unmapped"));
+    }
+  }
+ catch (  TimeoutException e) {
+    secondThreadGotLockLatch.countDown();
+    closeFuture.get(200,TimeUnit.MILLISECONDS);
+  }
+}

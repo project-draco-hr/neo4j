@@ -1,16 +1,12 @@
 {
   int initialPages=3;
   generateFileWithRecords(file,recordsPerFilePage * initialPages,recordSize);
-  PageCache cache=getPageCache(fs,maxPages,pageCachePageSize,PageCacheMonitor.NULL);
-  PagedFile pagedFile=cache.map(file,filePageSize);
+  getPageCache(fs,maxPages,pageCachePageSize,PageCacheMonitor.NULL);
   int pagesChecked=0;
-  try (PageCursor cursor=pagedFile.io(0L,PF_SHARED_LOCK)){
+  try (PagedFile pagedFile=pageCache.map(file,filePageSize);PageCursor cursor=pagedFile.io(0L,PF_SHARED_LOCK)){
     while (cursor.next()) {
       pagesChecked++;
     }
   }
-  finally {
-    cache.unmap(file);
-  }
-  assertThat(pagesChecked,is(initialPages));
+   assertThat(pagesChecked,is(initialPages));
 }

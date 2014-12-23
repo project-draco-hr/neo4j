@@ -4,8 +4,7 @@
   fs.create(fileA).close();
   ThreadLocalRandom rng=ThreadLocalRandom.current();
   getPageCache(fs,maxPages,pageCachePageSize,PageCacheMonitor.NULL);
-  PagedFile pagedFile=pageCache.map(fileA,filePageSize);
-  try (PageCursor cursor=pagedFile.io(0,PF_EXCLUSIVE_LOCK)){
+  try (PagedFile pagedFile=pageCache.map(fileA,filePageSize);PageCursor cursor=pagedFile.io(0,PF_EXCLUSIVE_LOCK)){
     for (int i=0; i < 100; i++) {
       assertTrue(cursor.next());
       for (int j=0; j < filePageSize; j++) {
@@ -13,14 +12,12 @@
       }
     }
   }
-   pageCache.unmap(fileA);
-  pageCache.close();
+   pageCache.close();
   pageCache=null;
   System.gc();
   System.gc();
   getPageCache(fs,maxPages,pageCachePageSize,PageCacheMonitor.NULL);
-  pagedFile=pageCache.map(fileB,filePageSize);
-  try (PageCursor cursor=pagedFile.io(0,PF_EXCLUSIVE_LOCK)){
+  try (PagedFile pagedFile=pageCache.map(fileB,filePageSize);PageCursor cursor=pagedFile.io(0,PF_EXCLUSIVE_LOCK)){
     for (int i=0; i < 100; i++) {
       assertTrue(cursor.next());
       for (int j=0; j < filePageSize; j++) {
@@ -28,7 +25,4 @@
       }
     }
   }
-  finally {
-    pageCache.unmap(fileB);
-  }
-}
+ }

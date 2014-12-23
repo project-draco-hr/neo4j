@@ -3,8 +3,7 @@
   DefaultPageCacheMonitor monitor=new DefaultPageCacheMonitor();
   fs.create(file).close();
   getPageCache(fs,maxPages,pageCachePageSize,monitor);
-  PagedFile pagedFile=pageCache.map(file,filePageSize);
-  try (PageCursor cursor=pagedFile.io(0,PF_EXCLUSIVE_LOCK)){
+  try (PagedFile pagedFile=pageCache.map(file,filePageSize);PageCursor cursor=pagedFile.io(0,PF_EXCLUSIVE_LOCK)){
     for (long i=0; i < pagesToGenerate; i++) {
       assertTrue(cursor.next());
       assertThat(cursor.getCurrentPageId(),is(i));
@@ -13,10 +12,7 @@
       writeRecords(cursor);
     }
   }
-  finally {
-    pageCache.unmap(file);
-  }
-  assertThat("wrong count of pins",monitor.countPins(),is(pagesToGenerate * 2));
+   assertThat("wrong count of pins",monitor.countPins(),is(pagesToGenerate * 2));
   assertThat("wrong count of unpins",monitor.countUnpins(),is(pagesToGenerate * 2));
   long faults=monitor.countFaults();
   assertThat("wrong count of faults",faults,greaterThanOrEqualTo(pagesToGenerate));

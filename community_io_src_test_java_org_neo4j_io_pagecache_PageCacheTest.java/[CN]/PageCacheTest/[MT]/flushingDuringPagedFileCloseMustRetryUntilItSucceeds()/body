@@ -1,0 +1,28 @@
+{
+  FileSystemAbstraction fs=new DelegatingFileSystemAbstraction(this.fs){
+    @Override public StoreChannel open(    File fileName,    String mode) throws IOException {
+      return new DelegatingStoreChannel(super.open(fileName,mode)){
+        private int writeCount=0;
+        @Override public void writeAll(        ByteBuffer src,        long position) throws IOException {
+          if (writeCount++ < 10) {
+            throw new IOException("This is a benign exception that we expect to be thrown " + "during a flush of a PagedFile.");
+          }
+          super.writeAll(src,position);
+        }
+      }
+;
+    }
+  }
+;
+  getPageCache(fs,maxPages,pageCachePageSize,PageCacheMonitor.NULL);
+  PrintStream oldSystemErr=System.err;
+  try (PagedFile pf=pageCache.map(file,filePageSize);PageCursor cursor=pf.io(0,PF_EXCLUSIVE_LOCK)){
+    assertTrue(cursor.next());
+    writeRecords(cursor);
+    System.setErr(new PrintStream(new ByteArrayOutputStream()));
+  }
+  finally {
+    System.setErr(oldSystemErr);
+  }
+  verifyRecordsInFile(file,recordsPerFilePage);
+}

@@ -4,9 +4,8 @@
   int actualPageCounter=0;
   int filePageCount=recordCount / recordsPerFilePage;
   int expectedPageCounterResult=numberOfRewindsToTest * filePageCount;
-  PageCache cache=getPageCache(fs,maxPages,pageCachePageSize,PageCacheMonitor.NULL);
-  PagedFile pagedFile=cache.map(file,filePageSize);
-  try (PageCursor cursor=pagedFile.io(0,PF_SHARED_LOCK)){
+  getPageCache(fs,maxPages,pageCachePageSize,PageCacheMonitor.NULL);
+  try (PagedFile pagedFile=pageCache.map(file,filePageSize);PageCursor cursor=pagedFile.io(0,PF_SHARED_LOCK)){
     for (int i=0; i < numberOfRewindsToTest; i++) {
       while (cursor.next()) {
         verifyRecordsMatchExpected(cursor);
@@ -15,8 +14,5 @@
       cursor.rewind();
     }
   }
-  finally {
-    pageCache.unmap(file);
-  }
-  assertThat(actualPageCounter,is(expectedPageCounterResult));
+   assertThat(actualPageCounter,is(expectedPageCounterResult));
 }

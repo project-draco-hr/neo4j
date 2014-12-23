@@ -2,9 +2,8 @@
   DefaultPageCacheMonitor monitor=new DefaultPageCacheMonitor();
   generateFileWithRecords(file,recordCount,recordSize);
   getPageCache(fs,maxPages,pageCachePageSize,monitor);
-  PagedFile pagedFile=pageCache.map(file,filePageSize);
   long countedPages=0;
-  try (PageCursor cursor=pagedFile.io(0,PF_SHARED_LOCK)){
+  try (PagedFile pagedFile=pageCache.map(file,filePageSize);PageCursor cursor=pagedFile.io(0,PF_SHARED_LOCK)){
     while (cursor.next()) {
       assertTrue(cursor.next(cursor.getCurrentPageId()));
       countedPages++;
@@ -15,5 +14,4 @@
   long faults=monitor.countFaults();
   assertThat("wrong count of faults",faults,greaterThanOrEqualTo(countedPages));
   assertThat("wrong count of evictions",monitor.countEvictions(),both(greaterThanOrEqualTo(countedPages - maxPages)).and(lessThanOrEqualTo(countedPages + faults)));
-  pageCache.unmap(file);
 }

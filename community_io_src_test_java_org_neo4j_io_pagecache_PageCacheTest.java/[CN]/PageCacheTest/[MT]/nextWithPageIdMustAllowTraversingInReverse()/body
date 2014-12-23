@@ -1,16 +1,12 @@
 {
   generateFileWithRecords(file,recordCount,recordSize);
   long lastFilePageId=(recordCount / recordsPerFilePage) - 1;
-  PageCache cache=getPageCache(fs,maxPages,pageCachePageSize,PageCacheMonitor.NULL);
-  PagedFile pagedFile=cache.map(file,filePageSize);
-  try (PageCursor cursor=pagedFile.io(0,PF_SHARED_LOCK)){
+  getPageCache(fs,maxPages,pageCachePageSize,PageCacheMonitor.NULL);
+  try (PagedFile pagedFile=pageCache.map(file,filePageSize);PageCursor cursor=pagedFile.io(0,PF_SHARED_LOCK)){
     for (long currentPageId=lastFilePageId; currentPageId >= 0; currentPageId--) {
       assertTrue("next( currentPageId = " + currentPageId + " )",cursor.next(currentPageId));
       assertThat(cursor.getCurrentPageId(),is(currentPageId));
       verifyRecordsMatchExpected(cursor);
     }
   }
-  finally {
-    pageCache.unmap(file);
-  }
-}
+ }
