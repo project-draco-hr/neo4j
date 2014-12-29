@@ -7,6 +7,16 @@
     }
   }
 );
+  when(nodeActions.newRelationshipProxy(anyLong(),anyLong(),anyInt(),anyLong())).then(new Answer<Relationship>(){
+    @Override public Relationship answer(    InvocationOnMock invocation) throws Throwable {
+      Long id=(Long)invocation.getArguments()[0];
+      Long startNode=(Long)invocation.getArguments()[1];
+      Integer type=(Integer)invocation.getArguments()[2];
+      Long endNode=(Long)invocation.getArguments()[3];
+      return new RelationshipProxy(relActions,id,startNode,type,endNode);
+    }
+  }
+);
   GraphDatabaseService gds=mock(GraphDatabaseService.class);
   when(gds.getRelationshipById(REL_ID)).thenReturn(mock(Relationship.class));
   when(gds.getRelationshipById(REL_ID + 1)).thenReturn(mock(Relationship.class));
@@ -17,6 +27,31 @@
   when(stmt.readOperations()).thenReturn(readOps);
   when(nodeActions.statement()).thenReturn(stmt);
   when(readOps.relationshipTypeGetForName(loves.name())).thenReturn(2);
-  when(readOps.nodeGetRelationships(1,Direction.OUTGOING,2)).thenReturn(iterator(relIds));
+  when(readOps.nodeGetRelationships(eq(1L),eq(Direction.OUTGOING),eq(new int[]{2}),any(RelationshipVisitor.class))).thenAnswer(new Answer<Cursor>(){
+    @Override public Cursor answer(    InvocationOnMock invocation) throws Throwable {
+      Object[] arguments=invocation.getArguments();
+      @SuppressWarnings("unchecked") final RelationshipVisitor<RuntimeException> visitor=(RelationshipVisitor)arguments[arguments.length - 1];
+      return new Cursor(){
+        int pos;
+        @Override public boolean next(){
+          if (pos < relIds.length) {
+            long relId=relIds[pos++];
+            visitor.visit(relId,2,1,10 * relId + 2);
+            return true;
+          }
+ else {
+            return false;
+          }
+        }
+        @Override public void reset(){
+          throw new UnsupportedOperationException("not implemented");
+        }
+        @Override public void close(){
+        }
+      }
+;
+    }
+  }
+);
   return nodeImpl;
 }
