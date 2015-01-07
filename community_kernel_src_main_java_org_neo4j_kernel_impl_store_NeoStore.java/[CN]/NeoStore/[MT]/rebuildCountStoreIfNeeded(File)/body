@@ -1,0 +1,18 @@
+{
+  if (counts != null) {
+    return;
+  }
+  stringLogger.warn("Missing counts store, rebuilding it.");
+  final String storeVersion=buildTypeDescriptorAndVersion(STORE_DESCRIPTOR);
+  CountsTracker.createEmptyCountsStore(pageCache,storeFileBase,storeVersion);
+  CountsTracker tracker=new CountsTracker(stringLogger,fileSystemAbstraction,pageCache,storeFileBase);
+  CountsComputer.computeCounts(nodeStore,relStore).accept(new CountsAccessor.Initializer(tracker));
+  try {
+    tracker.rotate(getLastCommittedTransactionId());
+  }
+ catch (  IOException e) {
+    tracker.close();
+    throw new UnderlyingStorageException("Unable to recreate CountsStore",e);
+  }
+  counts=tracker;
+}

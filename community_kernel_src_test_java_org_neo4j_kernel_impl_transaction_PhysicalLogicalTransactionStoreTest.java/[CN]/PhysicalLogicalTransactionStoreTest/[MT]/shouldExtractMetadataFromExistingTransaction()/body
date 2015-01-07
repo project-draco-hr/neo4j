@@ -17,7 +17,7 @@
   }
   life=new LifeSupport();
   final AtomicInteger recoveredTransactions=new AtomicInteger();
-  final LogFileRecoverer recoverer=new LogFileRecoverer(new LogEntryReaderFactory().versionable(),new Visitor<CommittedTransactionRepresentation,IOException>(){
+  final LogFileRecoverer recoverer=new LogFileRecoverer(new LogEntryReaderFactory().versionable(),new CloseableVisitor<CommittedTransactionRepresentation,IOException>(){
     @Override public boolean visit(    CommittedTransactionRepresentation committedTx) throws IOException {
       TransactionRepresentation transaction=committedTx.getTransactionRepresentation();
       assertArrayEquals(additionalHeader,transaction.additionalHeader());
@@ -28,6 +28,8 @@
       assertEquals(latestCommittedTxWhenStarted,transaction.getLatestCommittedTxWhenStarted());
       recoveredTransactions.incrementAndGet();
       return false;
+    }
+    @Override public void close() throws IOException {
     }
   }
 );
