@@ -2,14 +2,13 @@
   long x=ThreadLocalRandom.current().nextLong();
   long y=ThreadLocalRandom.current().nextLong();
   int z=ThreadLocalRandom.current().nextInt();
-  int pageSize=20;
-  Page page=createPage(pageSize);
+  Page page=createPage(cachePageSize);
   page.putLong(x,0);
   page.putLong(y,8);
   page.putInt(z,16);
   File file=new File("a");
   fs.create(file).close();
-  PageSwapper swapper=swapperFactory.createPageSwapper(file,pageSize,NO_CALLBACK);
+  PageSwapper swapper=swapperFactory.createPageSwapper(file,cachePageSize,NO_CALLBACK);
   Thread.currentThread().interrupt();
   long stamp=writeLock(page);
   try {
@@ -20,11 +19,11 @@
   }
   assertTrue(Thread.interrupted());
   swapper.force();
-  ByteBuffer buf=ByteBuffer.allocate(pageSize);
+  ByteBuffer buf=ByteBuffer.allocate(cachePageSize);
   StoreChannel channel=fs.open(file,"r");
   int bytesRead=channel.read(buf);
   channel.close();
-  assertThat(bytesRead,is(pageSize));
+  assertThat(bytesRead,is(cachePageSize));
   buf.flip();
   assertThat(buf.getLong(),is(x));
   assertThat(buf.getLong(),is(y));
