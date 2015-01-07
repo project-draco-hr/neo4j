@@ -1,0 +1,30 @@
+{
+  GraphDatabaseAPI graphDb=db.getGraphDatabaseAPI();
+  Provider<Statement> statementProvider=graphDb.getDependencyResolver().resolveDependency(ThreadToStatementContextBridge.class);
+  Label label=label("Foo");
+  String propertyKey="bar";
+  String conflictingValue="baz";
+  try (Transaction tx=graphDb.beginTx()){
+    graphDb.schema().constraintFor(label).assertPropertyIsUnique(propertyKey).create();
+    tx.success();
+  }
+   try (Transaction tx=graphDb.beginTx()){
+    Statement statement=statementProvider.instance();
+    int labelId=statement.readOperations().labelGetForName(label.name());
+    int propertyKeyId=statement.readOperations().propertyKeyGetForName(propertyKey);
+    statement.readOperations().nodesGetFromIndexLookup(new IndexDescriptor(labelId,propertyKeyId),"The value is irrelevant, we just want to perform some sort of lookup against this index");
+    threads.execute(createNode(label,propertyKey,conflictingValue),graphDb).get();
+    long node=statement.dataWriteOperations().nodeCreate();
+    statement.dataWriteOperations().nodeAddLabel(node,labelId);
+    try {
+      statement.dataWriteOperations().nodeSetProperty(node,property(propertyKeyId,conflictingValue));
+      fail("exception expected");
+    }
+ catch (    UniqueConstraintViolationKernelException e) {
+      assertEquals(labelId,e.labelId());
+      assertEquals(propertyKeyId,e.propertyKeyId());
+      assertEquals(conflictingValue,e.propertyValue());
+    }
+    tx.success();
+  }
+ }
