@@ -1,0 +1,37 @@
+{
+  new Thread(new Runnable(){
+    private final GraphDatabaseService db=cluster.getMaster();
+    @Override public void run(){
+      while (true) {
+        Transaction tx=db.beginTx();
+        Node node=db.createNode();
+        node.setProperty("name","node" + nodeCount);
+        tx.success();
+        tx.finish();
+        nodeCount++;
+        startedDataWriting.countDown();
+        if (doneBackup) {
+          break;
+        }
+      }
+      doneDataWriting.countDown();
+      System.out.println("***Done data writing***");
+    }
+  }
+).start();
+  new Thread(new Runnable(){
+    @Override public void run(){
+      try {
+        startedDataWriting.await();
+      }
+ catch (      InterruptedException e) {
+        e.printStackTrace();
+      }
+      OnlineBackup backup=OnlineBackup.from("127.0.0.1",BACKUP_PORT);
+      backup.backup(BACKUP_PATH.getPath());
+      doneBackup=true;
+      System.out.println("***Done backup***");
+    }
+  }
+).start();
+}
