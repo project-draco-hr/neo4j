@@ -1,0 +1,39 @@
+{
+  GraphDatabaseFactory factory=new GraphDatabaseFactory();
+  GraphDatabaseBuilder builder=factory.newEmbeddedDatabaseBuilder(storeDir.absolutePath());
+  builder.setConfig(GraphDatabaseSettings.logical_log_rotation_threshold.name(),"1M");
+  db=(GraphDatabaseAPI)builder.newGraphDatabase();
+  executor=Executors.newCachedThreadPool();
+  startLogRotationLatch=new CountDownLatch(1);
+  completeLogRotationLatch=new CountDownLatch(1);
+  writerStopped=new AtomicBoolean();
+  monitors=db.getDependencyResolver().resolveDependency(Monitors.class);
+  rotationListener=new LogRotationMonitor(){
+    @Override public void rotatingLog(    long currentVersion){
+      startLogRotationLatch.countDown();
+      try {
+        completeLogRotationLatch.await();
+      }
+ catch (      InterruptedException e) {
+        throw new RuntimeException(e);
+      }
+    }
+  }
+;
+  monitors.addMonitorListener(rotationListener,"logicallog");
+  label=DynamicLabel.label("Label");
+  Runnable writerTask=new Runnable(){
+    @Override public void run(){
+      while (!writerStopped.get()) {
+        try (Transaction tx=db.beginTx()){
+          Node node=db.createNode(label);
+          node.setProperty("a",1);
+          tx.success();
+        }
+       }
+    }
+  }
+;
+  writerTaskFuture=executor.submit(writerTask);
+  startLogRotationLatch.await();
+}
