@@ -1,0 +1,34 @@
+{
+  TransactionIdStore txIdStore=new DeadSimpleTransactionIdStore();
+  LogFile logFile=mock(LogFile.class);
+  when(logFile.getWriter()).thenReturn(new InMemoryLogChannel());
+  final Barrier.Control inBetweenCommittedAndClosed=new Barrier.Control();
+  final ControlledParkStrategy controlledBatchedWritesParking=new ControlledParkStrategy();
+  LogRotationControl rotationControl=new LogRotationControl(txIdStore,mock(IndexingService.class),mock(LabelScanStore.class),Iterables.<IndexImplementation,IndexImplementation>iterable()){
+    @Override public void awaitAllTransactionsClosed(){
+      controlledBatchedWritesParking.releaseIndefinitely();
+      inBetweenCommittedAndClosed.release();
+      super.awaitAllTransactionsClosed();
+    }
+  }
+;
+  KernelHealth health=mock(KernelHealth.class);
+  LogRotationImpl rotation=new LogRotationImpl(mock(LogRotation.Monitor.class),logFile,rotationControl,health);
+  TransactionAppender appender=new BatchingPhysicalTransactionAppender(logFile,rotation,new TransactionMetadataCache(10,10),txIdStore,mock(IdOrderingQueue.class),Counter.ATOMIC_LONG,controlledBatchedWritesParking,health){
+    @Override protected void forceAfterAppend(    long ticket) throws IOException {
+      inBetweenCommittedAndClosed.reached();
+      super.forceAfterAppend(ticket);
+    }
+  }
+;
+  controlledBatchedWritesParking.awaitIdle();
+  LogicalTransactionStore txStore=mock(LogicalTransactionStore.class);
+  when(txStore.getAppender()).thenReturn(appender);
+  TransactionCommitProcess commitProcess=new TransactionRepresentationCommitProcess(txStore,health,txIdStore,mock(TransactionRepresentationStoreApplier.class),TransactionApplicationMode.INTERNAL);
+  Future<Void> appendFuture=committer.execute(commitArbitraryTransaction(commitProcess));
+  inBetweenCommittedAndClosed.await();
+  when(logFile.rotationNeeded()).thenReturn(true);
+  Future<Void> rotateFuture=rotator.execute(commitArbitraryTransaction(commitProcess));
+  appendFuture.get(100,TimeUnit.SECONDS);
+  rotateFuture.get(100,TimeUnit.SECONDS);
+}
