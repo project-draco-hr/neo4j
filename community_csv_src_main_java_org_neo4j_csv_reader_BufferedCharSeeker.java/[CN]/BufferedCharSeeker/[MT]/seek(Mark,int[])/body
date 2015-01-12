@@ -7,6 +7,7 @@
   int endOffset=1;
   int skippedChars=0;
   int quoteDepth=0;
+  boolean isQuoted=false;
   while (!eof) {
     ch=nextChar(skippedChars);
     if (quoteDepth == 0) {
@@ -21,13 +22,14 @@
  else {
         for (int i=0; i < untilOneOfChars.length; i++) {
           if (ch == untilOneOfChars[i]) {
-            mark.set(lineNumber,seekStartPos,bufferPos - endOffset - skippedChars,ch,endOffset + skippedChars > 1);
+            mark.set(lineNumber,seekStartPos,bufferPos - endOffset - skippedChars,ch,isQuoted);
             return true;
           }
         }
       }
     }
  else {
+      isQuoted=true;
       if (ch == quoteChar) {
         int nextCh=peekChar();
         if (nextCh == quoteChar) {
@@ -55,7 +57,7 @@
     return eof(mark);
   }
   skippedChars+=skipEolChars();
-  mark.set(lineNumber,seekStartPos,bufferPos - endOffset - skippedChars,END_OF_LINE_CHARACTER,endOffset + skippedChars > 1);
+  mark.set(lineNumber,seekStartPos,bufferPos - endOffset - skippedChars,END_OF_LINE_CHARACTER,isQuoted);
   lineNumber++;
   lineStartPos=bufferPos;
   return true;
