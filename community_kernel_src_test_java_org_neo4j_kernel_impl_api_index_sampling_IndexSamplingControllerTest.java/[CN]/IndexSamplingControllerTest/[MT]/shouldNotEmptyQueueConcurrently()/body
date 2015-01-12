@@ -3,8 +3,18 @@
   final AtomicInteger concurrentCount=new AtomicInteger(0);
   final DoubleLatch jobLatch=new DoubleLatch();
   final DoubleLatch testLatch=new DoubleLatch();
+  final ThreadLocal<Boolean> hasRun=new ThreadLocal<Boolean>(){
+    @Override protected Boolean initialValue(){
+      return false;
+    }
+  }
+;
   IndexSamplingJobFactory jobFactory=new IndexSamplingJobFactory(){
     @Override public IndexSamplingJob create(    IndexProxy indexProxy){
+      if (hasRun.get()) {
+        return null;
+      }
+      hasRun.set(true);
       if (!concurrentCount.compareAndSet(0,1)) {
         throw new IllegalStateException("count !== 0 on create");
       }
@@ -19,7 +29,7 @@
   }
 ;
   final IndexSamplingController controller=new IndexSamplingController(samplingConfig,jobFactory,jobQueue,tracker,snapshotProvider,scheduler,FALSE);
-  when(tracker.canExecuteMoreSamplingJobs()).thenReturn(true,true,false);
+  when(tracker.canExecuteMoreSamplingJobs()).thenReturn(true);
   when(indexProxy.getState()).thenReturn(ONLINE);
   new Thread(runController(controller,BACKGROUND_REBUILD_UPDATED)).start();
   jobLatch.start();
@@ -30,6 +40,5 @@
   jobLatch.finish();
   testLatch.awaitFinish();
   assertEquals(0,concurrentCount.get());
-  int expected=totalCount.get();
-  assertTrue("Expected 1 or 2, got " + expected,expected == 1 || expected == 2);
+  assertEquals(1,totalCount.get());
 }
