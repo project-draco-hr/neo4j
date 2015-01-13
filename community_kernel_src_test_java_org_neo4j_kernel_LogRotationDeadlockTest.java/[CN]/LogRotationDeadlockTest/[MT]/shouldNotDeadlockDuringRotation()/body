@@ -2,6 +2,8 @@
   TransactionIdStore txIdStore=new DeadSimpleTransactionIdStore();
   LogFile logFile=mock(LogFile.class);
   when(logFile.getWriter()).thenReturn(new InMemoryLogChannel());
+  Logging logging=mock(Logging.class);
+  when(logging.getMessagesLog(Matchers.<Class>any())).thenReturn(mock(StringLogger.class));
   final Barrier.Control inBetweenCommittedAndClosed=new Barrier.Control();
   final ControlledParkStrategy controlledBatchedWritesParking=new ControlledParkStrategy();
   LogRotationControl rotationControl=new LogRotationControl(txIdStore,mock(IndexingService.class),mock(LabelScanStore.class),Iterables.<IndexImplementation,IndexImplementation>iterable()){
@@ -13,7 +15,7 @@
   }
 ;
   KernelHealth health=mock(KernelHealth.class);
-  LogRotationImpl rotation=new LogRotationImpl(mock(LogRotation.Monitor.class),logFile,rotationControl,health);
+  LogRotationImpl rotation=new LogRotationImpl(mock(LogRotation.Monitor.class),logFile,rotationControl,health,logging);
   TransactionAppender appender=new BatchingPhysicalTransactionAppender(logFile,rotation,new TransactionMetadataCache(10,10),txIdStore,mock(IdOrderingQueue.class),Counter.ATOMIC_LONG,controlledBatchedWritesParking,health){
     @Override protected void forceAfterAppend(    long ticket) throws IOException {
       inBetweenCommittedAndClosed.reached();
