@@ -1,0 +1,19 @@
+{
+  DefaultPageCacheTracer tracer=new DefaultPageCacheTracer();
+  generateFileWithRecords(file,recordCount,recordSize);
+  getPageCache(fs,maxPages,pageCachePageSize,tracer);
+  long countedPages=0;
+  try (PagedFile pagedFile=pageCache.map(file,filePageSize);PageCursor cursor=pagedFile.io(0,PF_SHARED_LOCK)){
+    while (cursor.next()) {
+      assertTrue(cursor.next(cursor.getCurrentPageId()));
+      countedPages++;
+    }
+  }
+   assertThat("wrong count of pins",tracer.countPins(),is(countedPages * 2));
+  assertThat("wrong count of unpins",tracer.countUnpins(),is(countedPages * 2));
+  long faults=tracer.countFaults();
+  long bytesRead=tracer.countBytesRead();
+  assertThat("wrong count of faults",faults,greaterThanOrEqualTo(countedPages));
+  assertThat("wrong number of bytes read",bytesRead,greaterThanOrEqualTo(countedPages * filePageSize));
+  assertThat("wrong count of evictions",tracer.countEvictions(),both(greaterThanOrEqualTo(countedPages - maxPages)).and(lessThanOrEqualTo(countedPages + faults)));
+}

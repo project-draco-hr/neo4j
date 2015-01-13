@@ -1,0 +1,29 @@
+{
+  final AtomicInteger exclusiveCount=new AtomicInteger();
+  final AtomicInteger sharedCount=new AtomicInteger();
+  DefaultPageCacheTracer tracer=new DefaultPageCacheTracer(){
+    @Override public PinEvent beginPin(    boolean exclusiveLock,    long filePageId,    PageSwapper swapper){
+      (exclusiveLock ? exclusiveCount : sharedCount).getAndIncrement();
+      return super.beginPin(exclusiveLock,filePageId,swapper);
+    }
+  }
+;
+  generateFileWithRecords(file,recordCount,recordSize);
+  getPageCache(fs,maxPages,pageCachePageSize,tracer);
+  int pinsForSharing=13;
+  int pinsForExclusive=42;
+  try (PagedFile pagedFile=pageCache.map(file,filePageSize)){
+    try (PageCursor cursor=pagedFile.io(0,PF_SHARED_LOCK)){
+      for (int i=0; i < pinsForSharing; i++) {
+        assertTrue(cursor.next());
+      }
+    }
+     try (PageCursor cursor=pagedFile.io(0,PF_EXCLUSIVE_LOCK)){
+      for (int i=0; i < pinsForExclusive; i++) {
+        assertTrue(cursor.next());
+      }
+    }
+   }
+   assertThat("wrong shared pin count",sharedCount.get(),is(pinsForSharing));
+  assertThat("wrong exclusive pin count",exclusiveCount.get(),is(pinsForExclusive));
+}

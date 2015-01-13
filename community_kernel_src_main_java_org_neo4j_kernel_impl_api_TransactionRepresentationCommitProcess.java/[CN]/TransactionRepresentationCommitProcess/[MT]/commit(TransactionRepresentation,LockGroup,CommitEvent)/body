@@ -1,0 +1,14 @@
+{
+  long transactionId=commitTransaction(transaction,commitEvent);
+  commitEvent.setTransactionId(transactionId);
+  try (StoreApplyEvent storeApplyEvent=commitEvent.beginStoreApply()){
+    storeApplier.apply(transaction,locks,transactionId,mode);
+  }
+ catch (  Throwable e) {
+    throw exception(Status.Transaction.CouldNotCommit,e,"Could not apply the transaction to the store after written to log");
+  }
+ finally {
+    transactionIdStore.transactionClosed(transactionId);
+  }
+  return transactionId;
+}

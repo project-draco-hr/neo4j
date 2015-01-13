@@ -1,0 +1,24 @@
+{
+  long pagesToGenerate=142;
+  DefaultPageCacheTracer tracer=new DefaultPageCacheTracer();
+  fs.create(file).close();
+  getPageCache(fs,maxPages,pageCachePageSize,tracer);
+  try (PagedFile pagedFile=pageCache.map(file,filePageSize);PageCursor cursor=pagedFile.io(0,PF_EXCLUSIVE_LOCK)){
+    for (long i=0; i < pagesToGenerate; i++) {
+      assertTrue(cursor.next());
+      assertThat(cursor.getCurrentPageId(),is(i));
+      assertTrue(cursor.next(i));
+      assertThat(cursor.getCurrentPageId(),is(i));
+      writeRecords(cursor);
+    }
+  }
+   assertThat("wrong count of pins",tracer.countPins(),is(pagesToGenerate * 2));
+  assertThat("wrong count of unpins",tracer.countUnpins(),is(pagesToGenerate * 2));
+  long faults=tracer.countFaults();
+  assertThat("wrong count of faults",faults,greaterThanOrEqualTo(pagesToGenerate));
+  assertThat("wrong count of evictions",tracer.countEvictions(),both(greaterThanOrEqualTo(pagesToGenerate - maxPages)).and(lessThanOrEqualTo(pagesToGenerate + faults)));
+  long flushes=tracer.countFlushes();
+  long bytesWritten=tracer.countBytesWritten();
+  assertThat("wrong count of flushes",flushes,greaterThanOrEqualTo(pagesToGenerate));
+  assertThat("wrong count of bytes written",bytesWritten,greaterThanOrEqualTo(pagesToGenerate * filePageSize));
+}
