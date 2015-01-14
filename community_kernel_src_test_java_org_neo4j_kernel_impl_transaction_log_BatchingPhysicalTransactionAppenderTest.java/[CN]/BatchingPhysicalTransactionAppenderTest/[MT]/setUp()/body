@@ -1,0 +1,31 @@
+{
+  logFile=mock(LogFile.class);
+  logRotation=LogRotation.NO_ROTATION;
+  transactionMetadataCache=new TransactionMetadataCache(10,10);
+  transactionIdStore=new DeadSimpleTransactionIdStore();
+  legacyindexTransactionOrdering=IdOrderingQueue.BYPASS;
+  kernelHealth=mock(KernelHealth.class);
+  channelCommandQueue=new LinkedBlockingQueue<>();
+  forceSemaphore=new Semaphore(0);
+  channel=new InMemoryLogChannel(){
+    @Override public void force() throws IOException {
+      try {
+        forceSemaphore.release();
+        channelCommandQueue.put(ChannelCommand.force);
+      }
+ catch (      InterruptedException e) {
+        throw new IOException(e);
+      }
+    }
+    @Override public void emptyBufferIntoChannelAndClearIt(){
+      try {
+        channelCommandQueue.put(ChannelCommand.emptyBufferIntoChannelAndClearIt);
+      }
+ catch (      InterruptedException e) {
+        throw new RuntimeException(e);
+      }
+    }
+  }
+;
+  when(logFile.getWriter()).thenReturn(channel);
+}

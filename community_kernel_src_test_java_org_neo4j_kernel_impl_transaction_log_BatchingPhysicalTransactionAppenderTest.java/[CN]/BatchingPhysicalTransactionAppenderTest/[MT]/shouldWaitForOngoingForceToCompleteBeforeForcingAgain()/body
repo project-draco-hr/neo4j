@@ -1,0 +1,18 @@
+{
+  channelCommandQueue=new LinkedBlockingQueue<>(2);
+  channelCommandQueue.put(ChannelCommand.dummy);
+  final BatchingPhysicalTransactionAppender appender=new BatchingPhysicalTransactionAppender(logFile,logRotation,transactionMetadataCache,transactionIdStore,legacyindexTransactionOrdering,kernelHealth);
+  Runnable runnable=createForceAfterAppendRunnable(appender);
+  Future<?> future=executor.submit(runnable);
+  forceSemaphore.acquire();
+  Thread otherThread=fork(runnable);
+  awaitThreadState(otherThread,5000,Thread.State.TIMED_WAITING);
+  assertThat(channelCommandQueue.take(),is(ChannelCommand.dummy));
+  assertThat(channelCommandQueue.take(),is(ChannelCommand.emptyBufferIntoChannelAndClearIt));
+  assertThat(channelCommandQueue.take(),is(ChannelCommand.force));
+  assertThat(channelCommandQueue.take(),is(ChannelCommand.emptyBufferIntoChannelAndClearIt));
+  assertThat(channelCommandQueue.take(),is(ChannelCommand.force));
+  future.get();
+  otherThread.join();
+  assertTrue(channelCommandQueue.isEmpty());
+}
