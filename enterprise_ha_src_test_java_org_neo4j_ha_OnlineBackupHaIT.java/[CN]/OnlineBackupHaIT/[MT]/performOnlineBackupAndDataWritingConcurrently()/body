@@ -1,8 +1,22 @@
 {
-  new Thread(new Runnable(){
-    private final GraphDatabaseService db=cluster.getMaster();
+  final Future<?> backupFuture=executor.submit(new Runnable(){
     @Override public void run(){
-      while (true) {
+      try {
+        startedDataWriting.await();
+      }
+ catch (      InterruptedException e) {
+        throw new RuntimeException(e);
+      }
+      OnlineBackup backup=OnlineBackup.from("127.0.0.1",BACKUP_PORT);
+      backup.backup(BACKUP_PATH.getPath());
+      System.out.println("***Done backup***");
+    }
+  }
+);
+  Future<?> writeFuture=executor.submit(new Runnable(){
+    @Override public void run(){
+      GraphDatabaseService db=cluster.getMaster();
+      while (!backupFuture.isDone()) {
         Transaction tx=db.beginTx();
         Node node=db.createNode();
         node.setProperty("name","node" + nodeCount);
@@ -10,28 +24,10 @@
         tx.finish();
         nodeCount++;
         startedDataWriting.countDown();
-        if (doneBackup) {
-          break;
-        }
       }
-      doneDataWriting.countDown();
       System.out.println("***Done data writing***");
     }
   }
-).start();
-  new Thread(new Runnable(){
-    @Override public void run(){
-      try {
-        startedDataWriting.await();
-      }
- catch (      InterruptedException e) {
-        e.printStackTrace();
-      }
-      OnlineBackup backup=OnlineBackup.from("127.0.0.1",BACKUP_PORT);
-      backup.backup(BACKUP_PATH.getPath());
-      doneBackup=true;
-      System.out.println("***Done backup***");
-    }
-  }
-).start();
+);
+  writeFuture.get();
 }
