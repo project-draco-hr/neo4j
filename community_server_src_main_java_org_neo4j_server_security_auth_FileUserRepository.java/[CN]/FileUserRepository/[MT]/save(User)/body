@@ -1,26 +1,30 @@
 {
-  if (user.token() != User.NO_TOKEN && !isValidToken(user.token())) {
+  if (!isValidToken(user.token())) {
     throw new IllegalTokenException("Invalid token provided, cannot store user.");
   }
   if (!isValidName(user.name())) {
     throw new IllegalUsernameException("'" + user.name() + "' is not a valid user name.");
   }
   List<User> newUsers=new ArrayList<>(users);
-  boolean replacedExisting=false;
+  User existingUser=null;
   for (int i=0; i < newUsers.size(); i++) {
     User other=newUsers.get(i);
     if (other.name().equals(user.name())) {
+      existingUser=other;
       newUsers.set(i,user);
-      replacedExisting=true;
     }
- else     if (user.token() != User.NO_TOKEN && other.tokenEquals(user.token())) {
+ else     if (other.token().equals(user.token())) {
       throw new IllegalTokenException("The specified token is already in use.");
     }
   }
-  if (!replacedExisting) {
+  if (existingUser == null) {
     newUsers.add(user);
   }
   users=newUsers;
   commitToDisk();
   usersByName.put(user.name(),user);
+  if (existingUser != null) {
+    usersByToken.remove(existingUser.token());
+  }
+  usersByToken.put(user.token(),user);
 }
