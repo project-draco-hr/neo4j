@@ -1,13 +1,16 @@
 {
   assumeFalse(System.getProperty("os.name").toLowerCase().startsWith("win"));
   List<String> myQuery=Arrays.asList("[source, cypher]","----","LOAD CSV FROM \"my_file.csv\" AS line","RETURN line;","----");
-  Block block=new Block(myQuery,BlockType.QUERY);
-  QueryExecutionEngine engine=mock(QueryExecutionEngine.class);
+  Block block=new Block(myQuery,BlockType.CYPHER);
+  DocsExecutionEngine engine=mock(DocsExecutionEngine.class);
+  ExtendedExecutionResult result=mock(ExtendedExecutionResult.class);
+  ResourceIterator iterator=mock(ResourceIterator.class);
   ArgumentCaptor<String> fileQuery=ArgumentCaptor.forClass(String.class);
   ArgumentCaptor<String> httpQuery=ArgumentCaptor.forClass(String.class);
-  when(engine.profileQuery(fileQuery.capture(),anyMapOf(String.class,Object.class),any(QuerySession.class))).thenReturn(mock(org.neo4j.graphdb.Result.class));
+  when(engine.profile(fileQuery.capture(),Matchers.eq(Collections.<String,Object>emptyMap()))).thenReturn(result);
+  when(result.iterator()).thenReturn(iterator);
   when(engine.prettify(httpQuery.capture())).thenReturn("apa");
-  state=new State(engine,database,new File("/dev/null"),"http://myurl");
+  state=new State(engine,database,null,new File("/dev/null"),"http://myurl");
   state.knownFiles.add("my_file.csv");
   block.process(state);
   assertThat(fileQuery.getValue(),containsString("file:/dev/null/my_file.csv"));
