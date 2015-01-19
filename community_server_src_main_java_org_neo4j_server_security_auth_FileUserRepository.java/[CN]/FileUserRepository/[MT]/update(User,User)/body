@@ -1,0 +1,32 @@
+{
+  if (!existingUser.name().equals(updatedUser.name())) {
+    throw new IllegalArgumentException("updatedUser has a different name");
+  }
+  if (!isValidToken(updatedUser.token())) {
+    throw new IllegalTokenException("Invalid token");
+  }
+synchronized (this) {
+    List<User> newUsers=new ArrayList<>();
+    boolean foundUser=false;
+    for (    User other : users) {
+      if (other.equals(existingUser)) {
+        foundUser=true;
+        newUsers.add(updatedUser);
+      }
+ else       if (other.token().equals(updatedUser.token())) {
+        throw new IllegalTokenException("The specified token is already in use");
+      }
+ else {
+        newUsers.add(other);
+      }
+    }
+    if (!foundUser) {
+      throw new ConcurrentModificationException();
+    }
+    users=newUsers;
+    commitToDisk();
+    usersByName.put(updatedUser.name(),updatedUser);
+    usersByToken.remove(existingUser.token());
+    usersByToken.put(updatedUser.token(),updatedUser);
+  }
+}
