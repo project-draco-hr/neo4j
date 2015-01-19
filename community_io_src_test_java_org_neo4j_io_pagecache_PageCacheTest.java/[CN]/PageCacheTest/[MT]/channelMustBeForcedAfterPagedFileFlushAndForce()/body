@@ -1,0 +1,17 @@
+{
+  final AtomicInteger writeCounter=new AtomicInteger();
+  final AtomicInteger forceCounter=new AtomicInteger();
+  FileSystemAbstraction fs=writeAndForceCountingFs(writeCounter,forceCounter);
+  getPageCache(fs,maxPages,pageCachePageSize,PageCacheTracer.NULL);
+  try (PagedFile pagedFile=pageCache.map(file,filePageSize)){
+    try (PageCursor cursor=pagedFile.io(0,PF_EXCLUSIVE_LOCK)){
+      assertTrue(cursor.next());
+      cursor.putInt(1);
+      assertTrue(cursor.next());
+      cursor.putInt(1);
+    }
+     pagedFile.flushAndForce();
+    assertThat(writeCounter.get(),is(2));
+    assertThat(forceCounter.get(),is(1));
+  }
+ }
