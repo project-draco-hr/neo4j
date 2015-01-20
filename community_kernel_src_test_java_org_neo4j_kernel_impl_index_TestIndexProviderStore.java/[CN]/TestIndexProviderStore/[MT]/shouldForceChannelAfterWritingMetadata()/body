@@ -1,7 +1,8 @@
 {
   final StoreChannel[] channelUsedToCreateFile={null};
   FileSystemAbstraction fs=spy(fileSystem);
-  when(fs.open(file,"rw")).then(new Answer<StoreChannel>(){
+  StoreChannel tempChannel;
+  when(tempChannel=fs.open(file,"rw")).then(new Answer<StoreChannel>(){
     @Override public StoreChannel answer(    InvocationOnMock _) throws Throwable {
       StoreChannel channel=fileSystem.open(file,"rw");
       if (channelUsedToCreateFile[0] == null) {
@@ -13,11 +14,13 @@
     }
   }
 );
+  tempChannel.close();
   fs.deleteFile(file);
-  new IndexProviderStore(file,fs,versionStringToLong("3.5"),false);
+  IndexProviderStore store=new IndexProviderStore(file,fs,versionStringToLong("3.5"),false);
   StoreChannel channel=channelUsedToCreateFile[0];
   verify(channel).write(any(ByteBuffer.class),eq(0L));
   verify(channel).force(true);
   verify(channel).close();
   verifyNoMoreInteractions(channel);
+  store.close();
 }
