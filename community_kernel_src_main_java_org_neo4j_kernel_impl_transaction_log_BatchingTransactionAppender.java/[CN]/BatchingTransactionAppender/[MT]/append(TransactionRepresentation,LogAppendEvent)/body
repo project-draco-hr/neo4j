@@ -1,0 +1,25 @@
+{
+  long transactionId=-1;
+  int phase=0;
+  logAppendEvent.setLogRotated(logRotation.rotateLogIfNeeded(logAppendEvent));
+  TransactionCommitment commit;
+  try {
+synchronized (logFile) {
+      try (SerializeTransactionEvent serialiseEvent=logAppendEvent.beginSerializeTransaction()){
+        transactionId=transactionIdStore.nextCommittingTransactionId();
+        phase=1;
+        commit=appendToLog(transaction,transactionId);
+      }
+     }
+    forceAfterAppend(logAppendEvent);
+    commit.publishAsCommitted();
+    orderLegacyIndexChanges(commit);
+    phase=2;
+    return transactionId;
+  }
+  finally {
+    if (phase == 1) {
+      transactionIdStore.transactionClosed(transactionId);
+    }
+  }
+}
