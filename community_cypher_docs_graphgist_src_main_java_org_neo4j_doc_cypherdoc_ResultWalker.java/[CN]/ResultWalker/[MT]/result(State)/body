@@ -1,0 +1,25 @@
+{
+  final Set<Node> nodes=new HashSet<>();
+  for (  long nodeId : state.latestResult.nodeIds) {
+    nodes.add(state.database.getNodeById(nodeId));
+  }
+  for (  long relationshipId : state.latestResult.relationshipIds) {
+    Relationship rel=state.database.getRelationshipById(relationshipId);
+    nodes.add(rel.getStartNode());
+    nodes.add(rel.getEndNode());
+  }
+  return new Walker(){
+    @Override public <R,E extends Throwable>R accept(    Visitor<R,E> visitor) throws E {
+      for (      Node node : nodes) {
+        visitor.visitNode(node);
+        for (        Relationship relationship : node.getRelationships()) {
+          if (nodes.contains(relationship.getOtherNode(node))) {
+            visitor.visitRelationship(relationship);
+          }
+        }
+      }
+      return visitor.done();
+    }
+  }
+;
+}
