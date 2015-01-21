@@ -1,0 +1,23 @@
+{
+  List<String> groupOneNodeIds=asList("1","2","3");
+  List<String> groupTwoNodeIds=asList("4","5","2");
+  List<Triplet<String,String,String>> rels=asList(Triplet.of("1","4","TYPE"),Triplet.of("2","5","TYPE"),Triplet.of("3","2","TYPE"));
+  Configuration config=Configuration.COMMAS;
+  String groupOne="Actor";
+  String groupTwo="Movie";
+  ImportTool.main(arguments("--into",directory.absolutePath(),"--nodes",nodeHeader(config,groupOne) + MULTI_FILE_DELIMITER + nodeData(false,config,groupOneNodeIds,alwaysTrue()),"--nodes",nodeHeader(config,groupTwo) + MULTI_FILE_DELIMITER + nodeData(false,config,groupTwoNodeIds,alwaysTrue()),"--relationships",relationshipHeader(config,groupOne,groupTwo) + MULTI_FILE_DELIMITER + relationshipData(false,config,rels.iterator(),alwaysTrue(),true)));
+  GraphDatabaseService db=new GraphDatabaseFactory().newEmbeddedDatabase(directory.absolutePath());
+  try (Transaction tx=db.beginTx()){
+    int nodeCount=0;
+    for (    Node node : GlobalGraphOperations.at(db).getAllNodes()) {
+      assertTrue(node.hasProperty("name"));
+      nodeCount++;
+      assertEquals(1,count(node.getRelationships()));
+    }
+    assertEquals(6,nodeCount);
+    tx.success();
+  }
+  finally {
+    db.shutdown();
+  }
+}
