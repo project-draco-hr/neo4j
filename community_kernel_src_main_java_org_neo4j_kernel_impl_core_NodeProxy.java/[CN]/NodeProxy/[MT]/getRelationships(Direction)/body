@@ -1,10 +1,23 @@
 {
-  Statement statement=statementContextProvider.instance();
-  try {
-    return map2rels(statement,statement.readOperations().nodeGetRelationships(nodeId,dir));
+  assertInUnterminatedTransaction();
+  return new ResourceIterable<Relationship>(){
+    @Override public ResourceIterator<Relationship> iterator(){
+      Statement statement=actions.statement();
+      try {
+        RelationshipConversion result=new RelationshipConversion(actions);
+        result.cursor=statement.readOperations().nodeGetRelationships(nodeId,dir,result);
+        result.statement=statement;
+        return result;
+      }
+ catch (      EntityNotFoundException e) {
+        statement.close();
+        throw new NotFoundException(format("Node %d not found",nodeId),e);
+      }
+catch (      Throwable e) {
+        statement.close();
+        throw e;
+      }
+    }
   }
- catch (  EntityNotFoundException e) {
-    statement.close();
-    throw new NotFoundException(format("Node %d not found",nodeId),e);
-  }
+;
 }
