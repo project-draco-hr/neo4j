@@ -1,0 +1,31 @@
+{
+  NeoStore neoStore=newNeoStore(GraphDatabaseSettings.dense_node_threshold.name(),"1");
+  NeoStoreTransactionContextSupplier supplier=new NeoStoreTransactionContextSupplier(neoStore);
+  NeoStoreTransactionContext context=new NeoStoreTransactionContext(supplier,neoStore);
+  context.bind(mock(Locks.Client.class));
+  TransactionRecordState recordState=new TransactionRecordState(neoStore,mock(IntegrityValidator.class),context);
+  long nodeId=0, relId1=1, relId2=2, relId3=3;
+  recordState.nodeCreate(nodeId);
+  recordState.relCreate(relId1,0,nodeId,nodeId);
+  recordState.relCreate(relId2,0,nodeId,nodeId);
+  recordState.nodeAddProperty(nodeId,0,101);
+  NeoCommandHandler applier=new NeoStoreTransactionApplier(neoStore,mock(CacheAccessBackDoor.class),LockService.NO_LOCK_SERVICE,new LockGroup(),1);
+  apply(applier,transaction(recordState));
+  context=new NeoStoreTransactionContext(supplier,neoStore);
+  context.bind(mock(Locks.Client.class));
+  recordState=new TransactionRecordState(neoStore,mock(IntegrityValidator.class),context);
+  recordState.nodeChangeProperty(nodeId,0,102);
+  recordState.relCreate(relId3,0,nodeId,nodeId);
+  recordState.relAddProperty(relId1,0,123);
+  Collection<Command> commands=new ArrayList<>();
+  recordState.extractCommands(commands);
+  Iterator<Command> commandIterator=commands.iterator();
+  assertCommand(commandIterator.next(),PropertyCommand.class);
+  assertCommand(commandIterator.next(),RelationshipCommand.class);
+  assertCommand(commandIterator.next(),PropertyCommand.class);
+  assertCommand(commandIterator.next(),RelationshipCommand.class);
+  assertCommand(commandIterator.next(),RelationshipCommand.class);
+  assertCommand(commandIterator.next(),Command.RelationshipGroupCommand.class);
+  assertCommand(commandIterator.next(),NodeCommand.class);
+  assertFalse(commandIterator.hasNext());
+}
