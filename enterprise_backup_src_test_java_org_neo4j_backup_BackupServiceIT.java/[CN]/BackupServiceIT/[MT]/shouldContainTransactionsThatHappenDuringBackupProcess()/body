@@ -5,6 +5,10 @@
   final CountDownLatch firstStoreFinishedStreaming=new CountDownLatch(1);
   final CountDownLatch transactionCommitted=new CountDownLatch(1);
   final GraphDatabaseAPI db=(GraphDatabaseAPI)new GraphDatabaseFactory().newEmbeddedDatabaseBuilder(storeDir.getAbsolutePath()).setConfig(params).newGraphDatabase();
+  createAndIndexNode(db,1);
+  XaDataSourceManager xaDataSourceManager=db.getDependencyResolver().resolveDependency(XaDataSourceManager.class);
+  long expectedTxIdInNeoStore=xaDataSourceManager.getXaDataSource(DEFAULT_DATA_SOURCE_NAME).getLastCommittedTxId();
+  long expectedTxIdInLuceneStore=xaDataSourceManager.getXaDataSource(DEFAULT_NAME).getLastCommittedTxId();
   Config config=new Config(defaultBackupPortHostParams());
   Monitors monitors=new Monitors();
   monitors.addMonitorListener(new BackupMonitor(){
@@ -64,18 +68,9 @@
     @Override public void run(){
       try {
         firstStoreFinishedStreaming.await();
-        Transaction tx=db.beginTx();
-        try {
-          Node node1=db.createNode();
-          Node node2=db.createNode();
-          node1.createRelationshipTo(node2,DynamicRelationshipType.withName("foobydoo"));
-          tx.success();
-        }
-  finally {
-          tx.finish();
-          db.getDependencyResolver().resolveDependency(XaDataSourceManager.class).getNeoStoreDataSource().getNeoStore().flushAll();
-          transactionCommitted.countDown();
-        }
+        createAndIndexNode(db,1);
+        db.getDependencyResolver().resolveDependency(XaDataSourceManager.class).getNeoStoreDataSource().getNeoStore().flushAll();
+        transactionCommitted.countDown();
       }
  catch (      Exception e) {
         e.printStackTrace();
@@ -90,4 +85,6 @@
   db.shutdown();
   assertEquals(DbRepresentation.of(storeDir),DbRepresentation.of(backupDir));
   assertTrue(backupOutcome.isConsistent());
+  checkPreviousCommittedTxIdFromFirstLog(DEFAULT_DATA_SOURCE_NAME,0,expectedTxIdInNeoStore);
+  checkPreviousCommittedTxIdFromFirstLog(DEFAULT_NAME,0,expectedTxIdInLuceneStore);
 }
