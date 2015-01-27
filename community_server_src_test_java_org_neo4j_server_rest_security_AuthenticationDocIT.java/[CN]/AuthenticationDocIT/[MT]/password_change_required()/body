@@ -1,10 +1,9 @@
 {
   startServer(true);
-  RESTDocsGenerator.ResponseEntity response=gen.get().noGraph().expectedStatus(200).payload(quotedJson("{'username':'neo4j', 'password':'neo4j'}")).post(authURL());
+  RESTDocsGenerator.ResponseEntity response=gen.get().noGraph().expectedStatus(403).withHeader(HttpHeaders.AUTHORIZATION,challengeResponse("neo4j","neo4j")).get(dataURL());
   JsonNode data=JsonHelper.jsonNode(response.entity());
-  assertThat(data.get("username").asText(),equalTo("neo4j"));
-  assertThat(data.has("authorization_token"),is(false));
-  assertThat(data.has("authorization_token_change"),is(false));
-  assertThat(data.get("password_change_required").asBoolean(),equalTo(true));
-  assertThat(data.get("password_change").asText(),equalTo(server.baseUri().resolve("user/neo4j/password").toString()));
+  JsonNode firstError=data.get("errors").get(0);
+  assertThat(firstError.get("code").asText(),equalTo("Neo.ClientError.Security.AuthorizationFailed"));
+  assertThat(firstError.get("message").asText(),equalTo("User is required to change their password."));
+  assertThat(data.get("password_change").asText(),equalTo(passwordURL("neo4j")));
 }
