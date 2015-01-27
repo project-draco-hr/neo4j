@@ -1,19 +1,8 @@
 {
   GraphDatabaseAPI db=(GraphDatabaseAPI)new GraphDatabaseFactory().newEmbeddedDatabase(backupDir.getAbsolutePath());
-  ReadableByteChannel logicalLog=null;
-  try {
-    XaDataSourceManager xaDataSourceManager=db.getDependencyResolver().resolveDependency(XaDataSourceManager.class);
-    XaDataSource dataSource=xaDataSourceManager.getXaDataSource(dataSourceName);
-    logicalLog=dataSource.getLogicalLog(1);
-    ByteBuffer buffer=ByteBuffer.allocate(64);
-    long[] headerData=LogIoUtils.readLogHeader(buffer,logicalLog,true);
-    long previousCommittedTxIdFromFirstLog=headerData[1];
-    assertEquals(previousCommittedTxIdFromFirstLog,dataSource.getLastCommittedTxId() - 1);
-  }
-  finally {
-    db.shutdown();
-    if (logicalLog != null) {
-      logicalLog.close();
-    }
-  }
+  XaDataSourceManager xaDataSourceManager=db.getDependencyResolver().resolveDependency(XaDataSourceManager.class);
+  XaDataSource dataSource=xaDataSourceManager.getXaDataSource(dataSourceName);
+  long expectedTxId=dataSource.getLastCommittedTxId() - 1;
+  db.shutdown();
+  checkPreviousCommittedTxIdFromFirstLog(dataSourceName,1,expectedTxId);
 }
