@@ -1,6 +1,15 @@
 {
-  try (StoreChannel channel=fs.open(neoStoreFile(storeDir,StoreFileType.STORE),"r")){
-    ByteBuffer buf=ByteBuffer.allocate(Position.values().length * RECORD_SIZE);
+  File neoStoreFile=neoStoreFile(storeDir,StoreFileType.STORE);
+  String currentTypeDescriptorAndVersion=NeoStore.buildTypeDescriptorAndVersion(TYPE_DESCRIPTOR);
+  boolean storeHasTrailer=hasTrailer(neoStoreFile,fs,currentTypeDescriptorAndVersion);
+  try (StoreChannel channel=fs.open(neoStoreFile,"r")){
+    int contentSize=(int)channel.size();
+    if (storeHasTrailer) {
+      int trailerSize=encode(currentTypeDescriptorAndVersion).length;
+      contentSize-=trailerSize;
+    }
+    int records=contentSize / RECORD_SIZE;
+    ByteBuffer buf=ByteBuffer.allocate(records * RECORD_SIZE);
     channel.read(buf);
     buf.flip();
     for (int i=0; buf.remaining() >= RECORD_SIZE && i < Position.values().length; i++) {
