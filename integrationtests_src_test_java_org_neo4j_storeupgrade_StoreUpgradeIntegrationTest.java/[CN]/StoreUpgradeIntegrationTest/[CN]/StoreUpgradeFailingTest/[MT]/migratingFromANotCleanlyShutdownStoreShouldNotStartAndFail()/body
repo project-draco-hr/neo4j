@@ -1,0 +1,18 @@
+{
+  File dir=AbstractNeo4jTestCase.unzip(StoreUpgradeIntegrationTest.class,"0.A.3-to-be-recovered.zip");
+  new File(dir,"messages.log").delete();
+  GraphDatabaseFactory factory=new GraphDatabaseFactory();
+  GraphDatabaseBuilder builder=factory.newEmbeddedDatabaseBuilder(dir.getAbsolutePath());
+  builder.setConfig(GraphDatabaseSettings.allow_store_upgrade,"true");
+  try {
+    GraphDatabaseService db=builder.newGraphDatabase();
+    db.shutdown();
+    fail("It should have failed.");
+  }
+ catch (  RuntimeException ex) {
+    final UpgradingStoreVersionNotFoundException expected=new UpgradingStoreVersionNotFoundException("neostore.nodestore.db");
+    final Throwable cause=ex.getCause().getCause().getCause();
+    assertEquals(expected.getClass(),cause.getClass());
+    assertEquals(expected.getMessage(),cause.getMessage());
+  }
+}
