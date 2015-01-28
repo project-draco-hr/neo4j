@@ -5,6 +5,10 @@
   final CountDownLatch firstStoreFinishedStreaming=new CountDownLatch(1);
   final CountDownLatch transactionCommitted=new CountDownLatch(1);
   final GraphDatabaseAPI db=(GraphDatabaseAPI)new GraphDatabaseFactory().newEmbeddedDatabaseBuilder(storeDir.getAbsolutePath()).setConfig(params).newGraphDatabase();
+  createAndIndexNode(db,1);
+  NeoStoreDataSource ds=db.getDependencyResolver().resolveDependency(DataSourceManager.class).getDataSource();
+  long expectedLastTxId=ds.getNeoStore().getLastCommittedTransactionId();
+  BackupService.BackupOutcome backupOutcome;
   try {
     Config config=new Config(defaultBackupPortHostParams());
     Monitors monitors=new Monitors();
@@ -16,28 +20,21 @@
     executor.execute(new Runnable(){
       @Override public void run(){
         awaitLatch(firstStoreFinishedStreaming);
-        try (Transaction tx=db.beginTx()){
-          Node node1=db.createNode();
-          Node node2=db.createNode();
-          node1.createRelationshipTo(node2,DynamicRelationshipType.withName("foobydoo"));
-          tx.success();
-        }
-  finally {
-          db.getDependencyResolver().resolveDependency(LogRotationControl.class).forceEverything();
-          transactionCommitted.countDown();
-        }
+        createAndIndexNode(db,1);
+        db.getDependencyResolver().resolveDependency(DataSourceManager.class).getDataSource().getNeoStore().flush();
+        transactionCommitted.countDown();
       }
     }
 );
-    BackupService.BackupOutcome backupOutcome=backupService.doFullBackup(BACKUP_HOST,backupPort,backupDir.getAbsolutePath(),true,new Config(params),BackupClient.BIG_READ_TIMEOUT);
+    backupOutcome=backupService.doFullBackup(BACKUP_HOST,backupPort,backupDir.getAbsolutePath(),true,new Config(params),BackupClient.BIG_READ_TIMEOUT);
     backup.stop();
     executor.shutdown();
     executor.awaitTermination(30,TimeUnit.SECONDS);
-    db.shutdown();
-    assertEquals(DbRepresentation.of(storeDir),DbRepresentation.of(backupDir));
-    assertTrue(backupOutcome.isConsistent());
   }
   finally {
     db.shutdown();
   }
+  assertEquals(DbRepresentation.of(storeDir),DbRepresentation.of(backupDir));
+  assertTrue(backupOutcome.isConsistent());
+  checkPreviousCommittedTxIdFromFirstLog(expectedLastTxId);
 }

@@ -1,0 +1,21 @@
+{
+  NeoStore neoStore=newNeoStore(GraphDatabaseSettings.dense_node_threshold.name(),"1");
+  NeoStoreTransactionContextSupplier supplier=new NeoStoreTransactionContextSupplier(neoStore);
+  NeoStoreTransactionContext context=new NeoStoreTransactionContext(supplier,neoStore);
+  context.bind(mock(Locks.Client.class));
+  TransactionRecordState recordState=new TransactionRecordState(neoStore,mock(IntegrityValidator.class),context);
+  long nodeId=0, relId=1;
+  recordState.nodeCreate(nodeId);
+  recordState.relCreate(relId++,0,nodeId,nodeId);
+  recordState.relCreate(relId,0,nodeId,nodeId);
+  recordState.nodeAddProperty(nodeId,0,101);
+  Collection<Command> commands=new ArrayList<>();
+  recordState.extractCommands(commands);
+  Iterator<Command> commandIterator=commands.iterator();
+  assertCommand(commandIterator.next(),PropertyCommand.class);
+  assertCommand(commandIterator.next(),RelationshipCommand.class);
+  assertCommand(commandIterator.next(),RelationshipCommand.class);
+  assertCommand(commandIterator.next(),Command.RelationshipGroupCommand.class);
+  assertCommand(commandIterator.next(),NodeCommand.class);
+  assertFalse(commandIterator.hasNext());
+}

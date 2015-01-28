@@ -1,15 +1,15 @@
 {
   assertValidToken(token);
-  User user=users.findByName(name);
-  if (user == null) {
+  User existingUser=users.findByName(name);
+  if (existingUser == null) {
     return null;
   }
-  User updatedUser=user.augment().withToken(token).build();
+  User updatedUser=existingUser.augment().withToken(token).build();
   try {
-    users.save(updatedUser);
+    users.update(existingUser,updatedUser);
     return updatedUser;
   }
- catch (  IllegalUsernameException e) {
-    throw new ThisShouldNotHappenError("Jake","Username has already been accepted, we are modifying the token only.");
+ catch (  ConcurrentModificationException e) {
+    return setToken(name,token);
   }
 }

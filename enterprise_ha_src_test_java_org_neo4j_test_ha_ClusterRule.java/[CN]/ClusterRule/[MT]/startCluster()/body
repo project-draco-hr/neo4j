@@ -1,3 +1,14 @@
 {
-  return startCluster(new HighlyAvailableGraphDatabaseFactory(),stringMap());
+  clusterManager=new Builder(storeDirectory).withCommonConfig(config).withProvider(provider).withDbFactory(factory).build();
+  try {
+    clusterManager.start();
+  }
+ catch (  Throwable throwable) {
+    throw new RuntimeException(throwable);
+  }
+  ClusterManager.ManagedCluster cluster=clusterManager.getDefaultCluster();
+  for (  Predicate<ManagedCluster> availabilityCheck : availabilityChecks) {
+    cluster.await(availabilityCheck);
+  }
+  return cluster;
 }

@@ -1,0 +1,27 @@
+{
+  PageCache pageCache=mock(PageCache.class);
+  PagedFile storeFile=mock(PagedFile.class);
+  when(pageCache.map(any(File.class),anyInt())).thenReturn(storeFile);
+  DynamicStringStore stringPropertyStore=mock(DynamicStringStore.class);
+  PageCursor cursor=mock(PageCursor.class);
+  when(cursor.next()).thenReturn(true);
+  when(storeFile.io(anyInt(),anyInt())).thenReturn(cursor);
+  when(storeFile.pageSize()).thenReturn(8);
+  org.neo4j.kernel.configuration.Config config=mock(org.neo4j.kernel.configuration.Config.class);
+  when(config.get(PropertyStore.Configuration.rebuild_idgenerators_fast)).thenReturn(true);
+  PropertyStore store=new PropertyStore(path,config,new JumpingIdGeneratorFactory(1),pageCache,fileSystemAbstraction,StringLogger.DEV_NULL,stringPropertyStore,mock(PropertyKeyTokenStore.class),mock(DynamicArrayStore.class),null,null);
+  store.makeStoreOk();
+  long l=store.nextId();
+  PropertyRecord record=new PropertyRecord(l);
+  record.setInUse(true);
+  DynamicRecord dynamicRecord=dynamicRecord();
+  PropertyBlock propertyBlock=propertyBlockWith(dynamicRecord);
+  record.setPropertyBlock(propertyBlock);
+  store.updateRecord(record);
+  InOrderImpl inOrder=new InOrderImpl(Arrays.<Object>asList(stringPropertyStore,cursor));
+  inOrder.verify(stringPropertyStore).updateRecord(dynamicRecord);
+  inOrder.verify(cursor).putByte((byte)0);
+  inOrder.verify(cursor,times(2)).putInt(-1);
+  inOrder.verify(cursor).putLong(propertyBlock.getValueBlocks()[0]);
+  inOrder.verify(cursor).putLong(0);
+}

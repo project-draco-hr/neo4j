@@ -1,11 +1,15 @@
 {
-  User user=users.findByName(name);
-  if (user != null) {
+  User existingUser=users.findByName(name);
+  if (existingUser != null) {
     try {
-      users.save(user.augment().withRequiredPasswordChange(true).build());
+      User updatedUser=existingUser.augment().withRequiredPasswordChange(true).build();
+      users.update(existingUser,updatedUser);
     }
- catch (    IllegalTokenException|IllegalUsernameException e) {
-      throw new ThisShouldNotHappenError("Jake","Token/username are not being modified.",e);
+ catch (    ConcurrentModificationException e) {
+      requirePasswordChange(name);
+    }
+catch (    IllegalTokenException e) {
+      throw new ThisShouldNotHappenError("Jake","Token is not being modified.",e);
     }
   }
  else {
