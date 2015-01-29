@@ -1,14 +1,16 @@
 {
+  lineNumber++;
+  int fieldIndex=0;
   try {
     Header.Entry[] entries=header.entries();
-    for (int i=0; i < entries.length; i++) {
+    for (; fieldIndex < entries.length; fieldIndex++) {
       if (!data.seek(mark,delimiter)) {
-        if (i > 0) {
+        if (fieldIndex > 0) {
           throw new UnexpectedEndOfInputException("Near " + mark);
         }
         return null;
       }
-      Header.Entry entry=entries[i];
+      Header.Entry entry=entries[fieldIndex];
       Object value=data.tryExtract(mark,entry.extractor()) ? entry.extractor().value() : null;
       boolean handled=true;
 switch (entry.type()) {
@@ -38,6 +40,18 @@ return entity;
 }
  catch (IOException e) {
 throw new InputException("Unable to read more data from input stream",e);
+}
+catch (final RuntimeException e) {
+String stringValue=null;
+try {
+Extractors extractors=new Extractors('?');
+if (data.tryExtract(mark,extractors.string())) {
+stringValue=extractors.string().value();
+}
+}
+ catch (Exception e1) {
+}
+throw Exceptions.withMessage(e,"ERROR in input data on data line " + lineNumber + " in field "+ (fieldIndex + 1)+ " (1-based)."+ "\n  Header: "+ header+ "\n  Original error: "+ e.getMessage()+ (stringValue != null ? "\n  Raw field value: '" + stringValue + "'" : ""));
 }
  finally {
 propertiesCursor=0;
