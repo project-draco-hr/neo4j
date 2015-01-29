@@ -1,0 +1,27 @@
+{
+  final String comExceptionMessage="The ComException";
+  MadeUpCommunicationInterface communication=mock(MadeUpCommunicationInterface.class,new Answer<Response<?>>(){
+    @Override public Response<?> answer(    InvocationOnMock _) throws ComException {
+      throw new ComException(comExceptionMessage);
+    }
+  }
+);
+  ComExceptionHandler handler=mock(ComExceptionHandler.class);
+  life.add(builder.server(communication));
+  MadeUpClient client=life.add(builder.client());
+  client.addComExceptionHandler(handler);
+  life.start();
+  ComException exceptionThrownOnRequest=null;
+  try {
+    client.multiply(1,10);
+  }
+ catch (  ComException e) {
+    exceptionThrownOnRequest=e;
+  }
+  assertNotNull(exceptionThrownOnRequest);
+  assertEquals(comExceptionMessage,exceptionThrownOnRequest.getMessage());
+  ArgumentCaptor<ComException> exceptionCaptor=ArgumentCaptor.forClass(ComException.class);
+  verify(handler).handle(exceptionCaptor.capture());
+  assertEquals(comExceptionMessage,exceptionCaptor.getValue().getMessage());
+  verifyNoMoreInteractions(handler);
+}
