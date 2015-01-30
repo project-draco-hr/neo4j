@@ -1,18 +1,5 @@
 {
-  try (@SuppressWarnings("UnusedDeclaration") LockWrapper _=new LockWrapper(updateLock.writeLock())){
-    CountsTrackerState state=this.state;
-    long stateTxId=state.lastTxId();
-    if (stateTxId > lastCommittedTxId) {
-      throw new IllegalStateException(String.format("Ask to rotate on an already used txId, storeTxId=%d and got lastTxId=%d",stateTxId,lastCommittedTxId));
-    }
-    if (state.hasChanges() || stateTxId < lastCommittedTxId) {
-      logger.debug("Start writing new counts store with txId=" + lastCommittedTxId);
-      try (CountsStore.Writer<CountsKey,CopyableDoubleLongRegister> writer=nextWriter(state,lastCommittedTxId)){
-        state.accept(writer);
-        this.state=new ConcurrentCountsTrackerState(writer.openForReading());
-      }
-       logger.debug("Completed writing of counts store with txId=" + lastCommittedTxId);
-      state.close();
-    }
-  }
- }
+  logger.debug("Start writing new counts store with txId=" + txId);
+  rotate(new Metadata.Diff(txId));
+  logger.debug("Completed writing of counts store with txId=" + txId);
+}

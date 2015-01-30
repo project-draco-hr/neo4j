@@ -1,0 +1,20 @@
+{
+  BigEndianByteArrayBuffer searchKey=buffer(keySize), key=buffer(keySize), value=buffer(valueSize);
+  search.searchKey(searchKey);
+  int page=findPage(searchKey,pageCatalogue);
+  if (page < 0) {
+    return false;
+  }
+  try (PageCursor cursor=file.io(page,PF_NO_GROW | PF_SHARED_LOCK)){
+    if (!cursor.next()) {
+      return false;
+    }
+    int offset=findOffset(cursor,searchKey,key,value);
+    try {
+      return Arrays.equals(searchKey.buffer,key.buffer);
+    }
+  finally {
+      visitKeyValuePairs(file.pageSize(),cursor,offset,visitor,false,key,value);
+    }
+  }
+ }

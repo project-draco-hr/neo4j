@@ -1,0 +1,40 @@
+{
+  if (keySize <= 0 || keySize > maxSize || valueSize <= 0 || valueSize > maxSize) {
+    throw new IllegalArgumentException(String.format("Invalid sizes: keySize=%d, valueSize=%d, format maxSize=%d",keySize,valueSize,maxSize));
+  }
+  BigEndianByteArrayBuffer key=new BigEndianByteArrayBuffer(new byte[keySize]);
+  BigEndianByteArrayBuffer value=new BigEndianByteArrayBuffer(new byte[valueSize]);
+  writeFormatSpecifier(value);
+  if (!validFormatSpecifier(value.buffer,keySize)) {
+    throw new IllegalArgumentException("Invalid Format specifier: " + BigEndianByteArrayBuffer.toString(value.buffer));
+  }
+  int pageSize=pageSize(pages,keySize,valueSize);
+  try (KeyValueWriter<META> writer=newWriter(fs,path,value,pages,pageSize,keySize,valueSize);DataProvider data=dataProvider){
+    if (!writer.writeHeader(key,value)) {
+      throw new IllegalStateException("The format specifier should be a valid header value");
+    }
+    for (    HeaderField<META,?> header : headerFields) {
+      header.write(metadata,value);
+      if (!writer.writeHeader(key,value)) {
+        throw new IllegalArgumentException("Invalid metadata value. " + header + ": "+ value);
+      }
+    }
+    if (headerFields.length == 0) {
+      if (!writer.writeHeader(key,value)) {
+        throw new IllegalStateException("A padding header should be valid.");
+      }
+    }
+    long dataEntries=0;
+    for (; data != null && data.visit(key,value); dataEntries++) {
+      writer.writeData(key,value);
+    }
+    key.clear();
+    value.clear();
+    value.putIntegerAtEnd(dataEntries);
+    if (!writer.writeHeader(key,value)) {
+      throw new IllegalStateException("The trailing size header should be valid");
+    }
+    writer.writeTrailer(extractFileTrailer(metadata));
+    return writer.openStoreFile();
+  }
+ }

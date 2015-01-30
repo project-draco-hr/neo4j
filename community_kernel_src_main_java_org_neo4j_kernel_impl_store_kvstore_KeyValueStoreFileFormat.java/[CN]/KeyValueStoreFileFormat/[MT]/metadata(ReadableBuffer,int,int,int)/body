@@ -1,0 +1,26 @@
+{
+  byte[] format=new byte[formatSpecifier.size()];
+  for (int i=0; i < format.length; i++) {
+    format[i]=formatSpecifier.getByte(i);
+  }
+  final BigEndianByteArrayBuffer specifier=new BigEndianByteArrayBuffer(format);
+  HeaderField<META,?>[] headerFields=headerFields(formatSpecifier);
+  return new MetadataCollector<META>(pageSize / (keySize + valueSize),headerFields){
+    @Override boolean verifyFormatSpecifier(    ReadableBuffer value){
+      int size=value.size();
+      if (size == specifier.size()) {
+        for (int i=0; i < size; i++) {
+          if (value.getByte(i) != specifier.getByte(i)) {
+            return false;
+          }
+        }
+        return true;
+      }
+      return false;
+    }
+    @Override META metadata(){
+      return buildMetadata(specifier,this);
+    }
+  }
+;
+}

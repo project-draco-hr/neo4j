@@ -1,0 +1,21 @@
+{
+  byte[] value=changes.get(update.key);
+  if (value == null) {
+    final byte[] proposal=new byte[keys.valueSize()];
+synchronized (proposal) {
+      value=changes.putIfAbsent(update.key,proposal);
+      if (value == null) {
+        BigEndianByteArrayBuffer buffer=new BigEndianByteArrayBuffer(proposal);
+        PreviousValue<Key> lookup=new PreviousValue<>(keys,update.key,proposal);
+        if (!store.scan(lookup,lookup)) {
+          buffer.clear();
+        }
+        update.update(buffer);
+        return;
+      }
+    }
+  }
+synchronized (value) {
+    update.update(new BigEndianByteArrayBuffer(value));
+  }
+}

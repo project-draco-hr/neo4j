@@ -1,0 +1,28 @@
+{
+class Impl extends Store {
+    Impl(){
+      super("txId");
+    }
+    @Override void initialMetadata(    String key,    BigEndianByteArrayBuffer buffer){
+      if ("txId".equals(key)) {
+        buffer.putLong(buffer.size() - 8,1);
+      }
+ else {
+        super.initialMetadata(key,buffer);
+      }
+    }
+    @Override protected int compareMetadata(    Map<String,byte[]> lhs,    Map<String,byte[]> rhs){
+      return Long.compare(lastLong(lhs.get("txId")),lastLong(rhs.get("txId")));
+    }
+  }
+  try (Lifespan life=new Lifespan()){
+    Store store=life.add(new Impl());
+    for (int txId=2; txId <= 10; txId++) {
+      store.rotate(Collections.singletonMap("txId",txId(txId)));
+    }
+  }
+   try (Lifespan life=new Lifespan()){
+    Store store=life.add(new Impl());
+    assertEquals(10,lastLong(store.metadata().get("txId")));
+  }
+ }
