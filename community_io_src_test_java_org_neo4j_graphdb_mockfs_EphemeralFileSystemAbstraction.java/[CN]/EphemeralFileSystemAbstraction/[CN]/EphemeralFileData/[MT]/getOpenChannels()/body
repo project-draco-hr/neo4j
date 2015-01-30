@@ -1,24 +1,13 @@
 {
   final Iterator<WeakReference<EphemeralFileChannel>> refs=channels.iterator();
-  return new Iterator<EphemeralFileChannel>(){
-    private EphemeralFileChannel current=fetchNextOrNull();
-    private EphemeralFileChannel fetchNextOrNull(){
+  return new PrefetchingIterator<EphemeralFileChannel>(){
+    @Override protected EphemeralFileChannel fetchNextOrNull(){
       while (refs.hasNext()) {
         EphemeralFileChannel channel=refs.next().get();
-        if (channel != null) {
-          return channel;
-        }
+        if (channel != null)         return channel;
         refs.remove();
       }
       return null;
-    }
-    @Override public boolean hasNext(){
-      return current != null;
-    }
-    @Override public EphemeralFileChannel next(){
-      EphemeralFileChannel value=current;
-      current=fetchNextOrNull();
-      return value;
     }
     @Override public void remove(){
       refs.remove();
