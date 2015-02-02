@@ -22,17 +22,15 @@
     executeStages(relationshipStage);
     writerFactory.awaitEverythingWritten();
     neoStore.switchToUpdateMode();
-    idMapper=null;
-    idGenerator=null;
     nodeLabelsCache=new NodeLabelsCache(AUTO,neoStore.getLabelRepository().getHighId());
     StoreProcessor<NodeRecord> nodeFirstRelationshipProcessor=new NodeFirstRelationshipProcessor(neoStore.getRelationshipGroupStore(),nodeRelationshipLink);
     StoreProcessor<NodeRecord> nodeCountsProcessor=new NodeCountsProcessor(neoStore.getNodeStore(),nodeLabelsCache,neoStore.getLabelRepository().getHighId(),neoStore.getCountsStore());
     StoreProcessor<RelationshipRecord> relationshipLinkerProcessor=new RelationshipLinkbackProcessor(nodeRelationshipLink);
     StoreProcessor<RelationshipRecord> relationshipCountsProcessor=new RelationshipCountsProcessor(nodeLabelsCache,neoStore.getLabelRepository().getHighId(),neoStore.getRelationshipTypeRepository().getHighId(),neoStore.getCountsStore());
-    if (enoughAvailableMemoryForRemainingProcessors(nodeRelationshipLink)) {
-      executeStages(new NodeStoreProcessorStage("Node --> Relationship + counts",config,neoStore.getNodeStore(),new StoreProcessor.Multiple<>(nodeFirstRelationshipProcessor,nodeCountsProcessor)));
+    if (disableParallelizationSinceItCausesWrongCountsComputations() && enoughAvailableMemoryForRemainingProcessors(nodeRelationshipLink)) {
+      executeStages(new NodeStoreProcessorStage("Node --> Relationship + Node counts",config,neoStore.getNodeStore(),new StoreProcessor.Multiple<>(nodeFirstRelationshipProcessor,nodeCountsProcessor)));
       nodeRelationshipLink.clearRelationships();
-      executeStages(new RelationshipStoreProcessorStage("Relationship --> Relationship + counts",config,neoStore.getRelationshipStore(),new StoreProcessor.Multiple<>(relationshipLinkerProcessor,relationshipCountsProcessor)));
+      executeStages(new RelationshipStoreProcessorStage("Relationship --> Relationship + Relationship counts",config,neoStore.getRelationshipStore(),new StoreProcessor.Multiple<>(relationshipLinkerProcessor,relationshipCountsProcessor)));
     }
  else {
       executeStages(new NodeStoreProcessorStage("Node --> Relationship",config,neoStore.getNodeStore(),nodeFirstRelationshipProcessor));
@@ -40,8 +38,8 @@
       executeStages(new RelationshipStoreProcessorStage("Relationship --> Relationship",config,neoStore.getRelationshipStore(),relationshipLinkerProcessor));
       nodeRelationshipLink.close();
       nodeRelationshipLink=null;
-      executeStages(new NodeStoreProcessorStage("Node --> Relationship",config,neoStore.getNodeStore(),nodeCountsProcessor));
-      executeStages(new RelationshipStoreProcessorStage("Relationship --> Relationship",config,neoStore.getRelationshipStore(),relationshipCountsProcessor));
+      executeStages(new NodeStoreProcessorStage("Node --> Node counts",config,neoStore.getNodeStore(),nodeCountsProcessor));
+      executeStages(new RelationshipStoreProcessorStage("Relationship --> Relationship Count",config,neoStore.getRelationshipStore(),relationshipCountsProcessor));
     }
     long totalTimeMillis=currentTimeMillis() - startTime;
     executionPoller.done(totalTimeMillis);
