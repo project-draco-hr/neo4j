@@ -3,15 +3,18 @@
   while (read < length) {
     int readThisTime=current.read(buffer,offset + read,length - read);
     if (readThisTime == -1) {
-      if (actual.hasNext()) {
+      if (read == 0 && actual.hasNext()) {
         previousReadersCollectivePosition+=current.position();
         closeCurrent();
         current=actual.next();
-        if (readFromCurrent > 0) {
+        for (        SourceMonitor monitor : monitors) {
+          monitor.notify(toString());
+        }
+        if (!lastEndedInNewLine) {
           buffer[offset + read++]='\n';
           previousReadersCollectivePosition++;
-          readFromCurrent=0;
         }
+        lastEndedInNewLine=false;
       }
  else {
         break;
@@ -19,7 +22,7 @@
     }
  else {
       read+=readThisTime;
-      readFromCurrent+=readThisTime;
+      lastEndedInNewLine=buffer[readThisTime - 1] == '\n' || buffer[readThisTime - 1] == '\r';
     }
   }
   return read == 0 ? -1 : read;

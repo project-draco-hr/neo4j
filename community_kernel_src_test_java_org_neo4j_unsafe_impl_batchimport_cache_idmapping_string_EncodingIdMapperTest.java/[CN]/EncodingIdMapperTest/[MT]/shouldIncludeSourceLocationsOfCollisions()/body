@@ -1,0 +1,40 @@
+{
+  IdMapper mapper=new EncodingIdMapper(NumberArrayFactory.HEAP,new StringEncoder(),new Radix.String());
+  final List<Object> idList=Arrays.<Object>asList("10","9","10");
+  ResourceIterable<Object> ids=new ResourceIterable<Object>(){
+    @Override public ResourceIterator<Object> iterator(){
+      return new PrefetchingResourceIterator<Object>(){
+        private final Iterator<Object> idIterator=idList.iterator();
+        private int cursor;
+        @Override public void close(){
+        }
+        @Override protected Object fetchNextOrNull(){
+          if (idIterator.hasNext()) {
+            cursor++;
+            return idIterator.next();
+          }
+          return null;
+        }
+        @Override public String toString(){
+          return "source:" + cursor;
+        }
+      }
+;
+    }
+  }
+;
+  try (ResourceIterator<Object> iterator=ids.iterator()){
+    for (int i=0; iterator.hasNext(); i++) {
+      mapper.put(iterator.next(),i,GLOBAL);
+    }
+  }
+   try {
+    mapper.prepare(ids);
+    fail("Should have failed");
+  }
+ catch (  IllegalStateException e) {
+    assertTrue(e.getMessage().contains("10"));
+    assertTrue(e.getMessage().contains("source:1"));
+    assertTrue(e.getMessage().contains("source:3"));
+  }
+}
