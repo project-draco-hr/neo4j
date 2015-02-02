@@ -7,7 +7,17 @@
   long checksumBefore2=fs.get().checksum();
   assertThat(checksumBefore,Matchers.equalTo(checksumBefore2));
   EphemeralFileSystemAbstraction snapshot=fs.snapshot(shutdownDb(db));
-  assertThat(snapshot.checksum(),equalTo(checksumBefore));
+  long snapshotChecksum=snapshot.checksum();
+  if (snapshotChecksum != checksumBefore) {
+    TestDirectory testDir=TargetDirectory.testDirForTest(getClass());
+    try (OutputStream out=new FileOutputStream(testDir.file("snapshot.zip"))){
+      snapshot.dumpZip(out);
+    }
+     try (OutputStream out=new FileOutputStream(testDir.file("fs.zip"))){
+      fs.get().dumpZip(out);
+    }
+   }
+  assertThat(snapshotChecksum,equalTo(checksumBefore));
   assertNumberOfFreeIdsEquals(storeDir,snapshot,0);
   GraphDatabaseAPI newDb=(GraphDatabaseAPI)new TestGraphDatabaseFactory().setFileSystem(snapshot).newImpermanentDatabaseBuilder(storeDir).setConfig(GraphDatabaseSettings.rebuild_idgenerators_fast,Settings.FALSE).newGraphDatabase();
   Map<IdType,Long> highIdsAfterCrash=getHighIds(newDb);
