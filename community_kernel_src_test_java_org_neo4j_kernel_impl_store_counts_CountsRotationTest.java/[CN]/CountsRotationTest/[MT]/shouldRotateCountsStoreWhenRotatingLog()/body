@@ -1,17 +1,18 @@
 {
-  GraphDatabaseAPI db=(GraphDatabaseAPI)dbBuilder.setConfig(GraphDatabaseSettings.logical_log_rotation_threshold,"1").newGraphDatabase();
+  GraphDatabaseAPI db=(GraphDatabaseAPI)dbBuilder.newGraphDatabase();
   try (Transaction tx=db.beginTx()){
     db.createNode(B);
     tx.success();
   }
-   try (Transaction tx=db.beginTx()){
+   rotateLog(db);
+  try (Transaction tx=db.beginTx()){
     db.createNode(C);
     tx.success();
   }
    assertTrue(fs.fileExists(alphaStoreFile()));
   assertTrue(fs.fileExists(betaStoreFile()));
   final PageCache pageCache=db.getDependencyResolver().resolveDependency(PageCache.class);
-  try (CountsStore store=CountsStore.open(fs,pageCache,alphaStoreFile())){
+  try (CountsStore store=CountsStore.open(fs,pageCache,betaStoreFile())){
     assertEquals(BASE_TX_ID + 1 + 1,store.lastTxId());
     assertEquals(BASE_MINOR_VERSION,store.minorVersion());
     assertEquals(1 + 1,store.totalRecordsStored());
