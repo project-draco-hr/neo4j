@@ -1,2 +1,33 @@
 {
+  final long[] nodes=repeatCreateNamedPeopleFor(NAMES.length * CREATION_MULTIPLIER);
+  int initialNodes=nodes.length;
+  int threads=5;
+  ExecutorService executorService=Executors.newFixedThreadPool(threads);
+  final IndexDescriptor index=createIndex("Person","name");
+  final Collection<Callable<UpdatesTracker>> jobs=new ArrayList<>(threads);
+  for (int i=0; i < threads; i++) {
+    jobs.add(new Callable<UpdatesTracker>(){
+      @Override public UpdatesTracker call() throws Exception {
+        return executeCreationsDeletionsAndUpdates(nodes,index,CREATION_MULTIPLIER);
+      }
+    }
+);
+  }
+  List<Future<UpdatesTracker>> futures=executorService.invokeAll(jobs);
+  UpdatesTracker result=new UpdatesTracker();
+  result.notifyPopulationCompleted();
+  for (  Future<UpdatesTracker> future : futures) {
+    result.add(future.get());
+  }
+  awaitOnline(index);
+  executorService.awaitTermination(1,TimeUnit.SECONDS);
+  executorService.shutdown();
+  int tolerance=MISSED_UPDATES_TOLERANCE * threads;
+  double doubleTolerance=DOUBLE_ERROR_TOLERANCE * threads;
+  int seenWhilePopulating=initialNodes + result.createdDuringPopulation() - result.deletedDuringPopulation();
+  double expectedSelectivity=UNIQUE_NAMES / (seenWhilePopulating);
+  assertCorrectIndexSelectivity(expectedSelectivity,indexSelectivity(index),doubleTolerance);
+  assertCorrectIndexSize("Tracker had " + result,seenWhilePopulating,indexSize(index),tolerance);
+  int expectedIndexUpdates=result.deletedAfterPopulation() + result.createdAfterPopulation();
+  assertCorrectIndexUpdates("Tracker had " + result,expectedIndexUpdates,indexUpdates(index),tolerance);
 }

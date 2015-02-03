@@ -1,8 +1,37 @@
 {
-  long[] nodes=new long[totalNumberOfPeople];
-  int counts=0;
-  while (counts < totalNumberOfPeople) {
-    counts+=createNamedPeople(nodes,counts);
+  final long[] nodes=new long[totalNumberOfPeople];
+  final int threads=100;
+  final int peoplePerThread=totalNumberOfPeople / threads;
+  final ExecutorService service=Executors.newFixedThreadPool(threads);
+  final AtomicReference<KernelException> exception=new AtomicReference<>();
+  final List<Callable<Void>> jobs=new ArrayList<>(threads);
+  for (int i=0; i < threads; i++) {
+    final int finalI=i;
+    jobs.add(new Callable<Void>(){
+      @Override public Void call() throws Exception {
+        int offset=finalI * peoplePerThread;
+        while (offset < (finalI + 1) * peoplePerThread) {
+          try {
+            offset+=createNamedPeople(nodes,offset);
+          }
+ catch (          KernelException e) {
+            exception.compareAndSet(null,e);
+            throw new RuntimeException(e);
+          }
+        }
+        return null;
+      }
+    }
+);
+  }
+  for (  Future<?> job : service.invokeAll(jobs)) {
+    job.get();
+  }
+  service.awaitTermination(1,TimeUnit.SECONDS);
+  service.shutdown();
+  Exception ex=exception.get();
+  if (ex != null) {
+    throw ex;
   }
   return nodes;
 }
