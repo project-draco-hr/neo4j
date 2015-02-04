@@ -1,0 +1,40 @@
+{
+  final String copyDir=new File(testDir.directory(),"copy").getAbsolutePath();
+  final String originalDir=new File(testDir.directory(),"original").getAbsolutePath();
+  Config config=new Config(MapUtil.stringMap(store_dir.name(),copyDir));
+  Logging logging=LogbackWeakDependency.tryLoadLogbackService(config,null,null);
+  ConsoleLogger console=new ConsoleLogger(StringLogger.SYSTEM);
+  final AtomicBoolean cancelStoreCopy=new AtomicBoolean(false);
+  CancellationRequest cancellationRequest=new CancellationRequest(){
+    @Override public boolean cancellationRequested(){
+      return cancelStoreCopy.get();
+    }
+  }
+;
+  StoreCopyMonitor.Adaptor storeCopyMonitor=new StoreCopyMonitor.Adaptor(){
+    @Override public void finishedCopyingStoreFiles(){
+      cancelStoreCopy.set(true);
+    }
+  }
+;
+  StoreCopyClient copier=new StoreCopyClient(config,loadKernelExtensions(),console,logging,fs,storeCopyMonitor);
+  final GraphDatabaseAPI original=(GraphDatabaseAPI)new GraphDatabaseFactory().newEmbeddedDatabase(originalDir);
+  try (Transaction tx=original.beginTx()){
+    original.createNode(label("BeforeCopyBegins"));
+    tx.success();
+  }
+   StoreCopyClient.StoreCopyRequester storeCopyRequest=storeCopyRequest(originalDir,original);
+  copier.copyStore(storeCopyRequest,cancellationRequest);
+  GraphDatabaseService copy=new GraphDatabaseFactory().newEmbeddedDatabase(copyDir);
+  try (Transaction tx=copy.beginTx()){
+    GlobalGraphOperations globalOps=GlobalGraphOperations.at(copy);
+    long nodesCount=Iterables.count(globalOps.getAllNodesWithLabel(label("BeforeCopyBegins")));
+    assertThat(nodesCount,equalTo(0l));
+    tx.success();
+  }
+  finally {
+    copy.shutdown();
+    original.shutdown();
+  }
+  verify(storeCopyRequest,times(1)).done();
+}

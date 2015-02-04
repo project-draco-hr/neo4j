@@ -1,0 +1,26 @@
+{
+  return spy(new StoreCopyClient.StoreCopyRequester(){
+    public Response<?> response;
+    @Override public Response<?> copyStore(    StoreWriter writer){
+      NeoStoreDataSource neoStoreDataSource=original.getDependencyResolver().resolveDependency(NeoStoreDataSource.class);
+      TransactionIdStore transactionIdStore=original.getDependencyResolver().resolveDependency(TransactionIdStore.class);
+      LogicalTransactionStore logicalTransactionStore=original.getDependencyResolver().resolveDependency(LogicalTransactionStore.class);
+      LogRotationControl logRotationControl=original.getDependencyResolver().resolveDependency(LogRotationControl.class);
+      RequestContext requestContext=new StoreCopyServer(transactionIdStore,neoStoreDataSource,logRotationControl,fs,new File(originalDir)).flushStoresAndStreamStoreFiles(writer);
+      final StoreId storeId=original.getDependencyResolver().resolveDependency(StoreId.class);
+      ResponsePacker responsePacker=new ResponsePacker(logicalTransactionStore,transactionIdStore,new Provider<StoreId>(){
+        @Override public StoreId instance(){
+          return storeId;
+        }
+      }
+);
+      response=spy(responsePacker.packTransactionStreamResponse(requestContext,null));
+      return response;
+    }
+    @Override public void done(){
+      assertNotNull(response);
+      verify(response,times(1)).close();
+    }
+  }
+);
+}
