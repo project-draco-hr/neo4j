@@ -4,13 +4,13 @@
   Config config=new Config(MapUtil.stringMap(store_dir.name(),copyDir));
   ConsoleLogger consoleLog=new ConsoleLogger(StringLogger.DEV_NULL);
   TestLogging logging=new TestLogging();
-  RemoteStoreCopier copier=new RemoteStoreCopier(config,loadKernelExtensions(),consoleLog,logging,fs);
+  RemoteStoreCopier copier=new RemoteStoreCopier(config,loadKernelExtensions(),consoleLog,logging,fs,new Monitors());
   copier.copyStore(new RemoteStoreCopier.StoreCopyRequester(){
     @Override public Response<?> copyStore(    StoreWriter writer){
       GraphDatabaseAPI original=(GraphDatabaseAPI)new GraphDatabaseFactory().addKernelExtension(new MyDSExtension.Factory(new File(testDir.directory(),"irrelephant.log"))).newEmbeddedDatabase(originalDir);
       try {
         XaDataSourceManager dsManager=original.getDependencyResolver().resolveDependency(XaDataSourceManager.class);
-        RequestContext ctx=ServerUtil.rotateLogsAndStreamStoreFiles(originalDir,dsManager,original.getDependencyResolver().resolveDependency(KernelPanicEventGenerator.class),StringLogger.SYSTEM,false,writer,fs,original.getDependencyResolver().resolveDependency(Monitors.class).newMonitor(BackupMonitor.class));
+        RequestContext ctx=ServerUtil.rotateLogsAndStreamStoreFiles(originalDir,dsManager,original.getDependencyResolver().resolveDependency(KernelPanicEventGenerator.class),StringLogger.SYSTEM,false,writer,fs,original.getDependencyResolver().resolveDependency(Monitors.class).newMonitor(StoreCopyMonitor.class));
         return ServerUtil.packResponse(original.storeId(),dsManager,ctx,null,ServerUtil.ALL);
       }
   finally {

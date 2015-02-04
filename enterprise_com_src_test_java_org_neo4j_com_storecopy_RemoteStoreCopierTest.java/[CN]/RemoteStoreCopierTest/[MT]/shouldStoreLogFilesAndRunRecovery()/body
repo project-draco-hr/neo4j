@@ -4,7 +4,9 @@
   Config config=new Config(stringMap(store_dir.name(),copyDir));
   ConsoleLogger consoleLog=new ConsoleLogger(StringLogger.SYSTEM);
   Logging logging=new DevNullLoggingService();
-  RemoteStoreCopier copier=new RemoteStoreCopier(config,loadKernelExtensions(),consoleLog,logging,fs);
+  Monitors monitors=new Monitors();
+  monitors.addMonitorListener(StoreCopyMonitor.NONE);
+  RemoteStoreCopier copier=new RemoteStoreCopier(config,loadKernelExtensions(),consoleLog,logging,fs,monitors);
   final GraphDatabaseAPI original=(GraphDatabaseAPI)new GraphDatabaseFactory().newEmbeddedDatabase(originalDir);
   RemoteStoreCopier.StoreCopyRequester requester=spy(new RemoteStoreCopier.StoreCopyRequester(){
     public Response<Object> response;
@@ -14,7 +16,7 @@
         tx.success();
       }
        XaDataSourceManager dsManager=original.getDependencyResolver().resolveDependency(XaDataSourceManager.class);
-      RequestContext ctx=ServerUtil.rotateLogsAndStreamStoreFiles(originalDir,dsManager,original.getDependencyResolver().resolveDependency(KernelPanicEventGenerator.class),StringLogger.SYSTEM,false,writer,fs,original.getDependencyResolver().resolveDependency(Monitors.class).newMonitor(BackupMonitor.class));
+      RequestContext ctx=ServerUtil.rotateLogsAndStreamStoreFiles(originalDir,dsManager,original.getDependencyResolver().resolveDependency(KernelPanicEventGenerator.class),StringLogger.SYSTEM,false,writer,fs,original.getDependencyResolver().resolveDependency(Monitors.class).newMonitor(StoreCopyMonitor.class));
       try (Transaction tx=original.beginTx()){
         original.createNode(label("AfterCopy"));
         tx.success();

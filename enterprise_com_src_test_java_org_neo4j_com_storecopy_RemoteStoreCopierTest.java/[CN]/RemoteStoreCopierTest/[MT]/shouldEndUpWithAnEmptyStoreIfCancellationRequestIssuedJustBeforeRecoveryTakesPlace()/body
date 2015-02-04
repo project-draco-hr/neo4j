@@ -1,0 +1,53 @@
+{
+  final String copyDir=new File(testDir.directory(),"copy").getAbsolutePath();
+  final String originalDir=new File(testDir.directory(),"original").getAbsolutePath();
+  Config config=new Config(MapUtil.stringMap(store_dir.name(),copyDir));
+  Logging logging=LogbackWeakDependency.tryLoadLogbackService(config,null);
+  final AtomicBoolean cancelStoreCopy=new AtomicBoolean(false);
+  CancellationRequest cancellationRequest=new CancellationRequest(){
+    @Override public boolean cancellationRequested(){
+      return cancelStoreCopy.get();
+    }
+  }
+;
+  Monitors monitors=new Monitors();
+  monitors.addMonitorListener(new StoreCopyMonitor.Adaptor(){
+    @Override public void finishedCopyingStoreFiles(){
+      cancelStoreCopy.set(true);
+    }
+  }
+);
+  RemoteStoreCopier copier=new RemoteStoreCopier(config,loadKernelExtensions(),new ConsoleLogger(StringLogger.SYSTEM),logging,fs,monitors);
+  final GraphDatabaseAPI original=(GraphDatabaseAPI)new GraphDatabaseFactory().newEmbeddedDatabase(originalDir);
+  try (Transaction tx=original.beginTx()){
+    original.createNode(label("BeforeCopyBegins"));
+    tx.success();
+  }
+   RemoteStoreCopier.StoreCopyRequester requester=spy(new RemoteStoreCopier.StoreCopyRequester(){
+    public Response<Object> response;
+    @Override public Response<?> copyStore(    StoreWriter writer){
+      XaDataSourceManager dsManager=original.getDependencyResolver().resolveDependency(XaDataSourceManager.class);
+      RequestContext ctx=ServerUtil.rotateLogsAndStreamStoreFiles(originalDir,dsManager,original.getDependencyResolver().resolveDependency(KernelPanicEventGenerator.class),StringLogger.SYSTEM,false,writer,fs,original.getDependencyResolver().resolveDependency(Monitors.class).newMonitor(StoreCopyMonitor.class));
+      response=spy(ServerUtil.packResponse(original.storeId(),dsManager,ctx,null,ServerUtil.ALL));
+      return response;
+    }
+    @Override public void done(){
+      assertNotNull(response);
+      verify(response,times(1)).close();
+    }
+  }
+);
+  copier.copyStore(requester,cancellationRequest);
+  GraphDatabaseService copy=new GraphDatabaseFactory().newEmbeddedDatabase(copyDir);
+  try (Transaction tx=copy.beginTx()){
+    GlobalGraphOperations globalOps=GlobalGraphOperations.at(copy);
+    long nodesCount=Iterables.count(globalOps.getAllNodesWithLabel(label("BeforeCopyBegins")));
+    assertThat(nodesCount,equalTo(0l));
+    tx.success();
+  }
+  finally {
+    copy.shutdown();
+    original.shutdown();
+  }
+  verify(requester,times(1)).done();
+}

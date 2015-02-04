@@ -11,20 +11,14 @@
   long expectedTxIdInLuceneStore=xaDataSourceManager.getXaDataSource(DEFAULT_NAME).getLastCommittedTxId();
   Config config=defaultConfig();
   Monitors monitors=new Monitors();
-  monitors.addMonitorListener(new BackupMonitor(){
-    @Override public void startCopyingFiles(){
-    }
-    @Override public void finishedCopyingStoreFiles(){
-    }
-    @Override public void finishedRotatingLogicalLogs(){
-    }
-    @Override public void streamedFile(    File storefile){
+  monitors.addMonitorListener(new StoreCopyMonitor.Adaptor(){
+    @Override public void streamedFile(    File file){
       if (neitherStoreHasBeenStreamed()) {
-        if (storefile.getAbsolutePath().contains(NODE_STORE)) {
+        if (file.getAbsolutePath().contains(NODE_STORE)) {
           storesThatHaveBeenStreamed.add(NODE_STORE);
           firstStoreFinishedStreaming.countDown();
         }
- else         if (storefile.getAbsolutePath().contains(RELATIONSHIP_STORE)) {
+ else         if (file.getAbsolutePath().contains(RELATIONSHIP_STORE)) {
           storesThatHaveBeenStreamed.add(RELATIONSHIP_STORE);
           firstStoreFinishedStreaming.countDown();
         }
@@ -33,8 +27,8 @@
     private boolean neitherStoreHasBeenStreamed(){
       return storesThatHaveBeenStreamed.isEmpty();
     }
-    @Override public void streamingFile(    File storefile){
-      if (storefile.getAbsolutePath().contains(RELATIONSHIP_STORE)) {
+    @Override public void streamingFile(    File file){
+      if (file.getAbsolutePath().contains(RELATIONSHIP_STORE)) {
         if (streamedFirst(NODE_STORE)) {
           try {
             transactionCommitted.await();
@@ -44,7 +38,7 @@
           }
         }
       }
- else       if (storefile.getAbsolutePath().contains(NODE_STORE)) {
+ else       if (file.getAbsolutePath().contains(NODE_STORE)) {
         if (streamedFirst(RELATIONSHIP_STORE)) {
           try {
             transactionCommitted.await();
