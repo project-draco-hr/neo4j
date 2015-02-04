@@ -1,0 +1,21 @@
+{
+  counts.start();
+  if (counts.txId() == -1) {
+    stringLogger.warn("Missing counts store, rebuilding it.");
+    try {
+      try (CountsAccessor.Updater updater=counts.updater()){
+        CountsComputer.computeCounts(nodeStore,relStore).accept(new CountsAccessor.Initializer(updater));
+      }
+       counts.rotate(getLastCommittedTransactionId());
+    }
+ catch (    Throwable failure) {
+      try {
+        counts.shutdown();
+      }
+ catch (      Throwable err) {
+        failure.addSuppressed(err);
+      }
+      throw failure;
+    }
+  }
+}

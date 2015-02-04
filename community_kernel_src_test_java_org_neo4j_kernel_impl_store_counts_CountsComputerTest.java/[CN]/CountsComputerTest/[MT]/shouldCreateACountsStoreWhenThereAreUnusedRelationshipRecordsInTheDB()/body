@@ -13,8 +13,9 @@
   db.shutdown();
   cleanupCountsForRebuilding();
   rebuildCounts(countsState,lastCommittedTransactionId);
-  try (CountsStore store=CountsStore.open(fs,pageCache,betaStoreFile())){
-    assertEquals(BASE_TX_ID + 1 + 1+ 1+ 1+ 1,store.lastTxId());
+  try (Lifespan life=new Lifespan()){
+    CountsTracker store=life.add(new CountsTracker(StringLogger.DEV_NULL,fs,pageCache,new File(dir,COUNTS_STORE_BASE)));
+    assertEquals(BASE_TX_ID + 1 + 1+ 1+ 1+ 1,store.txId());
     assertEquals(9,store.totalRecordsStored());
     assertEquals(2,get(store,nodeKey(-1)));
     assertEquals(1,get(store,nodeKey(0)));

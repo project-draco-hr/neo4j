@@ -1,8 +1,8 @@
 {
-  CountsTracker.createEmptyCountsStore(pageCache(),storeFile(),VERSION);
-  CountsOracle oracle=oracle();
+  CountsOracle oracle=someData();
   int newTxId=2;
-  try (CountsTracker tracker=new CountsTracker(StringLogger.DEV_NULL,fs.get(),pageCache(),storeFile())){
+  try (Lifespan life=new Lifespan()){
+    CountsTracker tracker=life.add(newTracker());
     oracle.update(tracker);
     tracker.rotate(newTxId);
   }
@@ -14,9 +14,16 @@
     delta.relationship(n2,2,n1);
   }
   delta.update(oracle);
-  Barrier.Control barrier=new Barrier.Control();
-  try (CountsTracker tracker=new InstrumentedCountsTracker(fs.get(),pageCache(),storeFile(),barrier)){
-    @SuppressWarnings("deprecation") Future<Void> task=threading.execute(new Function<CountsTracker,Void>(){
+  final Barrier.Control barrier=new Barrier.Control();
+  try (Lifespan life=new Lifespan()){
+    CountsTracker tracker=life.add(new CountsTracker(the.logger(),the.fileSystem(),the.pageCache(),the.testPath()){
+      @Override protected boolean include(      CountsKey countsKey,      ReadableBuffer value){
+        barrier.reached();
+        return super.include(countsKey,value);
+      }
+    }
+);
+    Future<Void> task=threading.execute(new Function<CountsTracker,Void>(){
       @Override public Void apply(      CountsTracker tracker){
         try {
           delta.update(tracker);

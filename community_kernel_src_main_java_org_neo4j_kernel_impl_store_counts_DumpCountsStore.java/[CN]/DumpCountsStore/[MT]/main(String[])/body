@@ -4,20 +4,19 @@
     System.exit(1);
   }
   final FileSystemAbstraction fs=new DefaultFileSystemAbstraction();
-  final File storeFile=new File(args[0]);
-  try (StandalonePageCache pageCache=createPageCache(fs,"counts-store-dump");CountsStore counts=CountsStore.open(fs,pageCache,storeFile)){
-    System.out.println("Counts Store: " + counts.file());
-    System.out.println("\ttxId: " + counts.lastTxId());
-    System.out.println("\tminor version: " + counts.minorVersion());
-    System.out.println("\tentries: " + counts.totalRecordsStored());
-    System.out.println("Entries:");
-    counts.accept(new KeyValueRecordVisitor<CountsKey,CopyableDoubleLongRegister>(){
-      private final DoubleLongRegister tmp=newDoubleLongRegister();
-      @Override public void visit(      CountsKey key,      CopyableDoubleLongRegister register){
-        register.copyTo(tmp);
-        System.out.println("\t" + key + ": ("+ tmp.readFirst()+ ", "+ tmp.readSecond()+ ")");
+  File path=new File(args[0]);
+  try (StandalonePageCache pages=createPageCache(fs,"counts-store-dump");Lifespan life=new Lifespan()){
+    if (fs.isDirectory(path)) {
+      life.add(new StoreFactory(fs,path,pages,DEV_NULL,new Monitors()).newCountsStore()).visitFile(new DumpCountsStore());
+    }
+ else {
+      CountsTracker tracker=new CountsTracker(DEV_NULL,fs,pages,path);
+      if (fs.fileExists(path)) {
+        tracker.visitFile(path,new DumpCountsStore());
+      }
+ else {
+        life.add(tracker).visitFile(new DumpCountsStore());
       }
     }
-,newDoubleLongRegister());
   }
  }

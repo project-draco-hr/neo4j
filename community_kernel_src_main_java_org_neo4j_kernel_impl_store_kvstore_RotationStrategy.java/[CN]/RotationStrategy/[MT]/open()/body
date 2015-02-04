@@ -1,0 +1,27 @@
+{
+  KeyValueStoreFile<Meta> result=null;
+  File path=null;
+  for (  File candidatePath : candidateFiles()) {
+    KeyValueStoreFile<Meta> file;
+    if (fs.fileExists(candidatePath)) {
+      try {
+        file=format.openStore(fs,pages,candidatePath);
+      }
+ catch (      Exception e) {
+        format.failedToOpenStoreFile(candidatePath,e);
+        continue;
+      }
+      if (result == null || format.compareMetadata(result.metadata(),file.metadata()) < 0) {
+        if (result != null) {
+          result.close();
+        }
+        result=file;
+        path=candidatePath;
+      }
+ else {
+        file.close();
+      }
+    }
+  }
+  return result == null ? null : Pair.of(path,result);
+}

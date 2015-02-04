@@ -1,0 +1,30 @@
+{
+  int pageId=headerRecords * (keySize + valueSize) / file.pageSize();
+  final PageCursor cursor=file.io(pageId,PF_NO_GROW | PF_SHARED_LOCK);
+  return new DataProvider(){
+    int offset=headerRecords * (keySize + valueSize);
+    boolean done=!cursor.next();
+    @Override public boolean visit(    WritableBuffer key,    WritableBuffer value) throws IOException {
+      if (done) {
+        return false;
+      }
+      readKeyValuePair(cursor,offset,key,value);
+      if (key.allZeroes()) {
+        done=true;
+        return false;
+      }
+      offset+=key.size() + value.size();
+      if (offset >= file.pageSize()) {
+        offset=0;
+        if (!cursor.next()) {
+          done=true;
+        }
+      }
+      return true;
+    }
+    @Override public void close() throws IOException {
+      cursor.close();
+    }
+  }
+;
+}

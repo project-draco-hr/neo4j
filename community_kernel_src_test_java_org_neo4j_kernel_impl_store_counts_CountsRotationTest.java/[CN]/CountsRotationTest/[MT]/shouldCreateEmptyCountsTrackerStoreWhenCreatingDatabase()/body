@@ -3,13 +3,15 @@
   db.shutdown();
   assertTrue(fs.fileExists(alphaStoreFile()));
   assertTrue(fs.fileExists(betaStoreFile()));
-  try (CountsStore store=CountsStore.open(fs,pageCache,alphaStoreFile())){
-    assertEquals(BASE_TX_ID,store.lastTxId());
+  try (Lifespan life=new Lifespan()){
+    CountsTracker store=life.add(new CountsTracker(StringLogger.DEV_NULL,fs,pageCache,new File(dir.getPath(),COUNTS_STORE_BASE)));
+    assertEquals(BASE_TX_ID,store.txId());
     assertEquals(0,store.totalRecordsStored());
     assertEquals(0,allRecords(store).size());
   }
-   try (CountsStore store=CountsStore.open(fs,pageCache,betaStoreFile())){
-    assertEquals(BASE_TX_ID,store.lastTxId());
+   try (Lifespan life=new Lifespan()){
+    CountsTracker store=life.add(new CountsTracker(StringLogger.DEV_NULL,fs,pageCache,new File(dir.getPath(),COUNTS_STORE_BASE)));
+    assertEquals(BASE_TX_ID,store.txId());
     assertEquals(BASE_MINOR_VERSION,store.minorVersion());
     assertEquals(0,store.totalRecordsStored());
     assertEquals(0,allRecords(store).size());

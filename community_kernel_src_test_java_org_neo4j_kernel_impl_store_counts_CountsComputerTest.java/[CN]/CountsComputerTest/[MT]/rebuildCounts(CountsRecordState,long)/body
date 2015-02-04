@@ -1,6 +1,9 @@
 {
-  CountsTracker tracker=new CountsTracker(StringLogger.DEV_NULL,fs,pageCache,new File(dir,COUNTS_STORE_BASE));
-  countsState.accept(new CountsAccessor.Initializer(tracker));
-  tracker.rotate(lastCommittedTransactionId);
-  tracker.close();
-}
+  try (Lifespan life=new Lifespan()){
+    CountsTracker tracker=life.add(new CountsTracker(StringLogger.DEV_NULL,fs,pageCache,new File(dir,COUNTS_STORE_BASE)));
+    try (CountsAccessor.Updater updater=tracker.updater()){
+      countsState.accept(new CountsAccessor.Initializer(updater));
+    }
+     tracker.rotate(lastCommittedTransactionId);
+  }
+ }

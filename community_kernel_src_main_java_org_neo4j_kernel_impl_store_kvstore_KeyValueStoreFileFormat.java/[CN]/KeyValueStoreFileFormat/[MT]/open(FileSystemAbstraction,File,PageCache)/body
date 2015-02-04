@@ -1,0 +1,52 @@
+{
+  ByteBuffer buffer=ByteBuffer.wrap(new byte[maxSize * 4]);
+  try (StoreChannel file=fs.open(path,"r")){
+    while (buffer.hasRemaining()) {
+      int bytes=file.read(buffer);
+      if (bytes == -1) {
+        break;
+      }
+    }
+  }
+   buffer.flip();
+  int keySize=0;
+  while (buffer.hasRemaining() && buffer.get() == 0) {
+    if (++keySize > maxSize) {
+      throw new IOException("Invalid header, key size too large.");
+    }
+  }
+  int valueSize=1;
+  for (int zeros=0; zeros <= keySize; zeros++) {
+    if (!buffer.hasRemaining()) {
+      throw new IOException("Invalid value size: " + valueSize);
+    }
+    if (buffer.get() != 0) {
+      zeros=0;
+    }
+    if (++valueSize - keySize > maxSize) {
+      throw new IOException("Invalid header, value size too large.");
+    }
+  }
+  valueSize-=keySize;
+  int pageSize=pageSize(pages,keySize,valueSize);
+{
+    PagedFile file=pages.map(path,pageSize);
+    try {
+      BigEndianByteArrayBuffer key=new BigEndianByteArrayBuffer(new byte[keySize]);
+      BigEndianByteArrayBuffer value=new BigEndianByteArrayBuffer(new byte[valueSize]);
+      buffer.position(keySize);
+      buffer.limit(keySize + valueSize);
+      value.dataFrom(buffer);
+      MetadataCollector<META> metadata=metadata(value,pageSize,keySize,valueSize);
+      KeyValueStoreFile.scanAll(file,0,metadata,key,value);
+      KeyValueStoreFile<META> storeFile=new KeyValueStoreFile<>(file,keySize,valueSize,metadata);
+      file=null;
+      return storeFile;
+    }
+  finally {
+      if (file != null) {
+        file.close();
+      }
+    }
+  }
+}
