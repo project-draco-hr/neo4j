@@ -1,0 +1,33 @@
+{
+  SwitchToSlave switchToSlave=mock(SwitchToSlave.class);
+  when(switchToSlave.switchToSlave(any(LifeSupport.class),any(URI.class),any(URI.class),any(CancellationRequest.class))).thenReturn(URI.create("http://localhost"));
+  ClusterMemberAvailability memberAvailability=mock(ClusterMemberAvailability.class);
+  Election election=mock(Election.class);
+  final CountDownLatch modeSwitchHappened=new CountDownLatch(1);
+  HighAvailabilityModeSwitcher modeSwitcher=new HighAvailabilityModeSwitcher(switchToSlave,mock(SwitchToMaster.class),election,memberAvailability,StringLogger.DEV_NULL){
+    @Override ScheduledExecutorService createExecutor(){
+      ScheduledExecutorService executor=mock(ScheduledExecutorService.class);
+      doAnswer(new Answer(){
+        @Override public Object answer(        InvocationOnMock invocation) throws Throwable {
+          ((Runnable)invocation.getArguments()[0]).run();
+          modeSwitchHappened.countDown();
+          return mock(Future.class);
+        }
+      }
+).when(executor).submit(any(Runnable.class));
+      return executor;
+    }
+  }
+;
+  modeSwitcher.init();
+  modeSwitcher.start();
+  modeSwitcher.forceElections();
+  reset(memberAvailability,election);
+  modeSwitcher.masterIsAvailable(new HighAvailabilityMemberChangeEvent(PENDING,TO_SLAVE,new InstanceId(1),URI.create("http://localhost:9090?serverId=42")));
+  modeSwitchHappened.await();
+  modeSwitcher.forceElections();
+  InOrder inOrder=inOrder(memberAvailability,election);
+  inOrder.verify(memberAvailability).memberIsUnavailable(HighAvailabilityModeSwitcher.SLAVE);
+  inOrder.verify(election).performRoleElections();
+  inOrder.verifyNoMoreInteractions();
+}
