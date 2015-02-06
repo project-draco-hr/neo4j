@@ -1,30 +1,38 @@
 {
+  if (!req.getUserPrincipal().getName().equals(username)) {
+    return output.notFound();
+  }
+  final Map<String,Object> deserialized;
   try {
-    Map<String,Object> deserialized=input.readMap(payload);
-    String password=getString(deserialized,PASSWORD);
-    String newPassword=getString(deserialized,NEW_PASSWORD);
-    if (password.equals(newPassword)) {
-      return output.response(UNPROCESSABLE,new ExceptionRepresentation(new Neo4jError(Status.Request.Invalid,"Old password and new password cannot be the same.")));
-    }
-    if (security.authenticate(user,password)) {
-      User updatedUser=security.setPassword(user,newPassword);
-      return output.ok(new AuthorizationRepresentation(updatedUser));
-    }
- else {
-      log.warn("Failed authentication attempt for '%s' from %s",user,req.getRemoteAddr());
-    }
-    return output.response(UNPROCESSABLE,new ExceptionRepresentation(new Neo4jError(Status.Security.AuthenticationFailed,"Invalid username and/or password.")));
+    deserialized=input.readMap(payload);
   }
  catch (  BadInputException e) {
-    return output.badRequestWithoutLegacyStacktrace(e);
+    return output.response(BAD_REQUEST,new ExceptionRepresentation(new Neo4jError(Status.Request.InvalidFormat,e.getMessage())));
   }
-catch (  IllegalArgumentException e) {
-    return output.response(UNPROCESSABLE,new ExceptionRepresentation(new Neo4jError(Status.Request.Invalid,e.getMessage())));
+  Object o=deserialized.get(PASSWORD);
+  if (o == null) {
+    return output.response(UNPROCESSABLE,new ExceptionRepresentation(new Neo4jError(Status.Request.InvalidFormat,String.format("Required parameter '%s' is missing.",PASSWORD))));
   }
-catch (  TooManyAuthenticationAttemptsException e) {
-    return output.response(TOO_MANY,new ExceptionRepresentation(new Neo4jError(e.status(),e)));
+  if (!(o instanceof String)) {
+    return output.response(UNPROCESSABLE,new ExceptionRepresentation(new Neo4jError(Status.Request.InvalidFormat,String.format("Expected '%s' to be a string.",PASSWORD))));
   }
-catch (  IOException e) {
+  String newPassword=(String)o;
+  final User currentUser=authManager.getUser(username);
+  if (currentUser == null) {
+    return output.notFound();
+  }
+  if (currentUser.credentials().matchesPassword(newPassword)) {
+    return output.response(UNPROCESSABLE,new ExceptionRepresentation(new Neo4jError(Status.Request.Invalid,"Old password and new password cannot be the same.")));
+  }
+  final User updatedUser;
+  try {
+    updatedUser=authManager.setPassword(username,newPassword);
+  }
+ catch (  IOException e) {
     return output.serverErrorWithoutLegacyStacktrace(e);
   }
+  if (updatedUser == null) {
+    return output.notFound();
+  }
+  return output.ok();
 }

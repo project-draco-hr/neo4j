@@ -1,12 +1,40 @@
 {
   validateRequestType(servletRequest);
   validateResponseType(servletResponse);
-  HttpServletRequest request=(HttpServletRequest)servletRequest;
-  HttpServletResponse response=(HttpServletResponse)servletResponse;
-  if (authorized(request) || whitelisted(request)) {
+  final HttpServletRequest request=(HttpServletRequest)servletRequest;
+  final HttpServletResponse response=(HttpServletResponse)servletResponse;
+  final String path=request.getContextPath() + (request.getPathInfo() == null ? "" : request.getPathInfo());
+  if (whitelisted(path)) {
     filterChain.doFilter(servletRequest,servletResponse);
+    return;
   }
- else {
-    errorType(request).reply(response,request);
+  final String header=request.getHeader(HttpHeaders.AUTHORIZATION);
+  if (header == null) {
+    noHeader().writeResponse(response);
+    return;
   }
+  final String[] usernameAndPassword=extractCredential(header);
+  if (usernameAndPassword == null) {
+    badHeader().writeResponse(response);
+    return;
+  }
+  final String username=usernameAndPassword[0];
+  final String password=usernameAndPassword[1];
+switch (authManager.authenticate(username,password)) {
+case PASSWORD_CHANGE_REQUIRED:
+    if (!passwordChangeWhitelist.matches(path)) {
+      passwordChangeRequired(username,baseURL(request)).writeResponse(response);
+      return;
+    }
+case SUCCESS:
+  filterChain.doFilter(new AuthorizedRequestWrapper(BASIC_AUTH,username,request),servletResponse);
+return;
+case TOO_MANY_ATTEMPTS:
+tooManyAttemptes().writeResponse(response);
+return;
+default :
+log.warn("Failed authentication attempt for '%s' from %s",username,request.getRemoteAddr());
+invalidCredential().writeResponse(response);
+return;
+}
 }

@@ -1,7 +1,8 @@
 {
   startServerWithConfiguredUser();
-  RESTDocsGenerator.ResponseEntity response=gen.get().noGraph().expectedStatus(422).payload(quotedJson("{'username':'bob', 'password':'incorrect'}")).post(authURL());
+  RESTDocsGenerator.ResponseEntity response=gen.get().noGraph().expectedStatus(401).withHeader(HttpHeaders.AUTHORIZATION,challengeResponse("neo4j","incorrect")).expectedHeader("WWW-Authenticate","None").post(dataURL());
   JsonNode data=JsonHelper.jsonNode(response.entity());
-  assertThat(data.get("errors").get(0).get("code").asText(),equalTo("Neo.ClientError.Security.AuthenticationFailed"));
-  assertThat(data.get("errors").get(0).get("message").asText(),equalTo("Invalid username and/or password."));
+  JsonNode firstError=data.get("errors").get(0);
+  assertThat(firstError.get("code").asText(),equalTo("Neo.ClientError.Security.AuthorizationFailed"));
+  assertThat(firstError.get("message").asText(),equalTo("Invalid username or password."));
 }

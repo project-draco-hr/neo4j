@@ -1,11 +1,6 @@
 {
-  startServerWithConfiguredUser();
-  String originalToken=HTTP.POST(authURL(),HTTP.RawPayload.quotedJson("{'username':'neo4j','password':'secret'}")).get("authorization_token").asText();
-  RESTDocsGenerator.ResponseEntity response=gen.get().noGraph().expectedStatus(200).payload(quotedJson("{'password':'secret', 'new_password':'qwerty'}")).post(server.baseUri().resolve("/user/neo4j/password").toString());
-  JsonNode data=JsonHelper.jsonNode(response.entity());
-  String newToken=data.get("authorization_token").asText();
-  assertThat(newToken,equalTo(originalToken));
-  assertThat(newToken.length(),not(0));
-  assertEquals(200,HTTP.POST(authURL(),HTTP.RawPayload.quotedJson("{'username':'neo4j','password':'qwerty'}")).status());
-  assertEquals(422,HTTP.POST(authURL(),HTTP.RawPayload.quotedJson("{'username':'neo4j','password':'secret'}")).status());
+  startServer(true);
+  RESTDocsGenerator.ResponseEntity response=gen.get().noGraph().expectedStatus(200).withHeader(HttpHeaders.AUTHORIZATION,challengeResponse("neo4j","neo4j")).payload(quotedJson("{'password':'secret'}")).post(server.baseUri().resolve("/user/neo4j/password").toString());
+  assertEquals(200,HTTP.withHeaders(HttpHeaders.AUTHORIZATION,challengeResponse("neo4j","secret")).GET(dataURL()).status());
+  assertEquals(401,HTTP.withHeaders(HttpHeaders.AUTHORIZATION,challengeResponse("neo4j","neo4j")).POST(dataURL()).status());
 }
