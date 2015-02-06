@@ -1,9 +1,16 @@
 {
   idGeneratorFactory=new HaIdGeneratorFactory(masterDelegateInvocationHandler,logging,requestContextFactory);
   ConsoleLogger consoleLog=logging.getConsoleLog(HighAvailabilityModeSwitcher.class);
-  SwitchToSlave switchToSlaveInstance=new SwitchToSlave(consoleLog,config,getDependencyResolver(),(HaIdGeneratorFactory)idGeneratorFactory,logging,masterDelegateInvocationHandler,clusterMemberAvailability,clusterClient,requestContextFactory,kernelExtensions.listFactories(),responseUnpacker,monitors.newMonitor(ByteCounterMonitor.class,SlaveServer.class),monitors.newMonitor(RequestMonitor.class,SlaveServer.class),monitors.newMonitor(SwitchToSlave.Monitor.class),monitors.newMonitor(StoreCopyMonitor.class));
+  InvalidEpochExceptionHandler invalidEpochHandler=new InvalidEpochExceptionHandler(){
+    @Override public void handle(){
+      highAvailabilityModeSwitcher.forceElections();
+    }
+  }
+;
+  MasterClientResolver masterClientResolver=new MasterClientResolver(logging,responseUnpacker,invalidEpochHandler,config.get(HaSettings.read_timeout).intValue(),config.get(HaSettings.lock_read_timeout).intValue(),config.get(HaSettings.max_concurrent_channels_per_slave),config.get(HaSettings.com_chunk_size).intValue());
+  SwitchToSlave switchToSlaveInstance=new SwitchToSlave(consoleLog,config,getDependencyResolver(),(HaIdGeneratorFactory)idGeneratorFactory,logging,masterDelegateInvocationHandler,clusterMemberAvailability,requestContextFactory,kernelExtensions.listFactories(),masterClientResolver,monitors.newMonitor(ByteCounterMonitor.class,SlaveServer.class),monitors.newMonitor(RequestMonitor.class,SlaveServer.class),monitors.newMonitor(SwitchToSlave.Monitor.class),monitors.newMonitor(StoreCopyMonitor.class));
   SwitchToMaster switchToMasterInstance=new SwitchToMaster(logging,consoleLog,this,(HaIdGeneratorFactory)idGeneratorFactory,config,dependencies.provideDependency(SlaveFactory.class),masterDelegateInvocationHandler,clusterMemberAvailability,dataSourceManager,monitors.newMonitor(ByteCounterMonitor.class,MasterServer.class),monitors.newMonitor(RequestMonitor.class,MasterServer.class),monitors.newMonitor(MasterImpl.Monitor.class,MasterImpl.class));
-  HighAvailabilityModeSwitcher highAvailabilityModeSwitcher=new HighAvailabilityModeSwitcher(switchToSlaveInstance,switchToMasterInstance,clusterClient,clusterMemberAvailability,getDependencyResolver(),logging);
+  highAvailabilityModeSwitcher=new HighAvailabilityModeSwitcher(switchToSlaveInstance,switchToMasterInstance,clusterClient,clusterMemberAvailability,getDependencyResolver(),logging);
   clusterClient.addBindingListener(highAvailabilityModeSwitcher);
   memberStateMachine.addHighAvailabilityMemberListener(highAvailabilityModeSwitcher);
   paxosLife.add(highAvailabilityModeSwitcher);

@@ -1,0 +1,16 @@
+{
+  SwitchToSlave switchToSlave=newSwitchToSlaveSpy();
+  MasterClient masterClient=mock(MasterClient.class);
+  Response<HandshakeResult> response=mock(Response.class);
+  when(response.response()).thenReturn(new HandshakeResult(1,2));
+  when(masterClient.handshake(anyLong(),any(StoreId.class))).thenReturn(response);
+  NeoStoreDataSource dataSource=dataSourceMock();
+  when(dataSource.getStoreId()).thenReturn(new StoreId(1,2,3,4));
+  try {
+    switchToSlave.checkDataConsistency(masterClient,dataSource,null,false);
+    fail("Should have thrown " + MismatchingStoreIdException.class.getSimpleName() + " exception");
+  }
+ catch (  MismatchingStoreIdException e) {
+  }
+  verify(switchToSlave).stopServicesAndHandleBranchedStore(any(BranchedDataPolicy.class));
+}
