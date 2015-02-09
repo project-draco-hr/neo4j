@@ -1,0 +1,18 @@
+{
+  long existingLabelsField=node.getLabelField();
+  long existingLabelsBits=parseLabelsBody(existingLabelsField);
+  Collection<DynamicRecord> changedDynamicRecords=node.getDynamicLabelRecords();
+  if (labelField != 0) {
+    nodeStore.ensureHeavy(node,existingLabelsBits);
+    changedDynamicRecords=node.getDynamicLabelRecords();
+    setNotInUse(changedDynamicRecords);
+  }
+  if (!new InlineNodeLabels(labelField,node).tryInlineInNodeRecord(labelIds,changedDynamicRecords)) {
+    Set<DynamicRecord> allRecords=new HashSet<>(changedDynamicRecords);
+    Collection<DynamicRecord> allocatedRecords=NodeStore.allocateRecordsForDynamicLabels(node.getId(),labelIds,changedDynamicRecords.iterator(),allocator);
+    allRecords.addAll(allocatedRecords);
+    node.setLabelField(dynamicPointer(allocatedRecords),allocatedRecords);
+    changedDynamicRecords=allRecords;
+  }
+  return changedDynamicRecords;
+}
