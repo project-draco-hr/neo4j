@@ -1,13 +1,14 @@
 {
   CountsTracker counts=db.getDependencyResolver().resolveDependency(NeoStoreDataSource.class).getNeoStore().getCounts();
+  ThreadToStatementContextBridge bridge=db.getDependencyResolver().resolveDependency(ThreadToStatementContextBridge.class);
   Iterator<IndexDescriptor> indexes=getAllIndexes(db);
   DoubleLongRegister register=Registers.newDoubleLongRegister();
   for (int i=0; indexes.hasNext(); i++) {
     IndexDescriptor descriptor=indexes.next();
+    awaitOnline(db,bridge,descriptor);
     assertDoubleLongEquals(store.indexCounts[i][0],store.indexCounts[i][1],counts.indexUpdatesAndSize(descriptor.getLabelId(),descriptor.getPropertyKeyId(),register));
     assertDoubleLongEquals(store.indexCounts[i][2],store.indexCounts[i][3],counts.indexSample(descriptor.getLabelId(),descriptor.getPropertyKeyId(),register));
     try (Transaction ignored=db.beginTx()){
-      ThreadToStatementContextBridge bridge=db.getDependencyResolver().resolveDependency(ThreadToStatementContextBridge.class);
       Statement statement=bridge.instance();
       double selectivity=statement.readOperations().indexUniqueValuesSelectivity(descriptor);
       assertEquals(store.indexSelectivity[i],selectivity,0.0000001d);

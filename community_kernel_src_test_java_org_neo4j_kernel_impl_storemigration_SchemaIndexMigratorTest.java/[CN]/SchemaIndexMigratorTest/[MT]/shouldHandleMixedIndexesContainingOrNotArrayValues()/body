@@ -1,0 +1,31 @@
+{
+  int anotherIndexRuleId=1;
+  int otherIndexRuleId=2;
+  int yetAnotherIndexRuleId=3;
+  when(upgradableDatabase.checkUpgradeable(storeDir)).thenReturn(Legacy21Store.LEGACY_VERSION);
+  Iterator<SchemaRule> iterator=Arrays.asList(schemaRule(indexRuleId,42,21),schemaRule(anotherIndexRuleId,41,20),schemaRule(otherIndexRuleId,40,19),schemaRule(yetAnotherIndexRuleId,40,19)).iterator();
+  when(schemaStore.loadAllSchemaRules()).thenReturn(iterator);
+  when(schemaIndexProvider.getOnlineAccessor(indexRuleId,indexConfig,samplingConfig)).thenReturn(accessor);
+  IndexAccessor anotherAccessor=mock(IndexAccessor.class);
+  when(schemaIndexProvider.getOnlineAccessor(anotherIndexRuleId,indexConfig,samplingConfig)).thenReturn(anotherAccessor);
+  IndexAccessor otherAccessor=mock(IndexAccessor.class);
+  when(schemaIndexProvider.getOnlineAccessor(otherIndexRuleId,indexConfig,samplingConfig)).thenReturn(otherAccessor);
+  IndexAccessor yetAnotherIndexAccessor=mock(IndexAccessor.class);
+  when(schemaIndexProvider.getOnlineAccessor(yetAnotherIndexRuleId,indexConfig,samplingConfig)).thenReturn(yetAnotherIndexAccessor);
+  when(accessor.newReader()).thenReturn(indexReader);
+  IndexReader anotherIndexReader=mock(IndexReader.class);
+  when(anotherAccessor.newReader()).thenReturn(anotherIndexReader);
+  IndexReader otherIndexReader=mock(IndexReader.class);
+  when(otherAccessor.newReader()).thenReturn(otherIndexReader);
+  IndexReader yetAnotherIndexReader=mock(IndexReader.class);
+  when(yetAnotherIndexAccessor.newReader()).thenReturn(yetAnotherIndexReader);
+  when(indexReader.valueTypesInIndex()).thenReturn(asSet(String.class,Boolean.class));
+  when(anotherIndexReader.valueTypesInIndex()).thenReturn(asSet(Number.class,Array.class));
+  when(otherIndexReader.valueTypesInIndex()).thenReturn(asSet(String.class));
+  when(yetAnotherIndexReader.valueTypesInIndex()).thenReturn(asSet(Array.class));
+  migrator.migrate(storeDir,migrationDir,schemaIndexProvider,pageCache);
+  verify(fs,never()).deleteRecursively(new File(getRootDirectory(storeDir,schemaIndexProvider.getProviderDescriptor().getKey()),"" + indexRuleId));
+  verify(fs).deleteRecursively(new File(getRootDirectory(storeDir,schemaIndexProvider.getProviderDescriptor().getKey()),"" + anotherIndexRuleId));
+  verify(fs,never()).deleteRecursively(new File(getRootDirectory(storeDir,schemaIndexProvider.getProviderDescriptor().getKey()),"" + otherIndexRuleId));
+  verify(fs).deleteRecursively(new File(getRootDirectory(storeDir,schemaIndexProvider.getProviderDescriptor().getKey()),"" + yetAnotherIndexRuleId));
+}
