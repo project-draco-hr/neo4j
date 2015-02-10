@@ -1,0 +1,52 @@
+{
+  final EphemeralFileSystemAbstraction fs=fileSystemRule.get();
+  fs.mkdir(new File("/tmp"));
+  String pathToDb="/tmp/bar2";
+  TestGraphDatabaseFactory dbFactory=new TestGraphDatabaseFactory();
+  dbFactory.setFileSystem(fs);
+  final EphemeralFileSystemAbstraction[] storeInNeedOfRecovery=new EphemeralFileSystemAbstraction[1];
+  final AtomicBoolean monitorCalled=new AtomicBoolean(false);
+  Monitors monitors=new Monitors();
+  monitors.addMonitorListener(new IndexingService.MonitorAdapter(){
+    @Override public void verifyDeferredConstraints(){
+      monitorCalled.set(true);
+      db.getDependencyResolver().resolveDependency(NeoStoreProvider.class).evaluate().getSchemaStore().flushAll();
+      storeInNeedOfRecovery[0]=fs.snapshot();
+    }
+  }
+);
+  dbFactory.setMonitors(monitors);
+  db=(GraphDatabaseAPI)dbFactory.newImpermanentDatabase(pathToDb);
+  try (Transaction tx=db.beginTx()){
+    for (int i=0; i < 2; i++) {
+      Node node1=db.createNode(LABEL);
+      node1.setProperty("prop",true);
+    }
+    tx.success();
+  }
+   try (Transaction tx=db.beginTx()){
+    db.schema().constraintFor(LABEL).assertPropertyIsUnique("prop").create();
+    fail("Should have failed with ConstraintViolationException");
+    tx.success();
+  }
+ catch (  ConstraintViolationException ignored) {
+  }
+  db.shutdown();
+  assertTrue(monitorCalled.get());
+  dbFactory=new TestGraphDatabaseFactory();
+  dbFactory.setFileSystem(storeInNeedOfRecovery[0]);
+  db=(GraphDatabaseAPI)dbFactory.newImpermanentDatabase(pathToDb);
+  try (Transaction tx=db.beginTx()){
+    db.schema().awaitIndexesOnline(5000,TimeUnit.MILLISECONDS);
+  }
+   try (Transaction tx=db.beginTx()){
+    assertEquals(2,Iterables.count(GlobalGraphOperations.at(db).getAllNodes()));
+  }
+   try (Transaction tx=db.beginTx()){
+    assertEquals(0,Iterables.count(Iterables.toList(db.schema().getConstraints())));
+  }
+   try (Transaction tx=db.beginTx()){
+    assertEquals(0,Iterables.count(Iterables.toList(db.schema().getIndexes())));
+  }
+   db.shutdown();
+}
