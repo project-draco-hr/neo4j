@@ -1,0 +1,30 @@
+{
+  final IOException exception=new IOException("simulated IO Exception on create");
+  FileSystem moveFailingFileSystem=new DelegatingFileSystem(fs){
+    @Override protected DelegatingFileSystemProvider createDelegate(    FileSystemProvider provider){
+      return new WrappedProvider(provider,this){
+        @Override public void move(        Path source,        Path target,        CopyOption... options) throws IOException {
+          if (authFile.getFileName().toString().equals(target.getFileName().toString())) {
+            throw exception;
+          }
+          super.move(source,target,options);
+        }
+      }
+;
+    }
+  }
+;
+  Path authFile=moveFailingFileSystem.getPath("dbms","auth.db");
+  FileUserRepository users=new FileUserRepository(authFile,DEV_NULL);
+  users.start();
+  User user=new User("jake",Credential.INACCESSIBLE,true);
+  try {
+    users.create(user);
+    fail("Expected an IOException");
+  }
+ catch (  IOException e) {
+    assertSame(exception,e);
+  }
+  assertFalse(Files.exists(authFile));
+  assertFalse(Files.newDirectoryStream(authFile.getParent()).iterator().hasNext());
+}
