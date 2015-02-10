@@ -1,6 +1,7 @@
 {
   File indexRoot=getRootDirectory(storeDir,schemaIndexProvider.getProviderDescriptor().getKey());
   IndexSamplingConfig samplingConfig=new IndexSamplingConfig(new Config());
+  List<File> indexesToBeDeleted=new ArrayList<>();
   try (SchemaStore schema=schemaStoreProvider.provide(storeDir,pageCache)){
     Iterator<SchemaRule> rules=schema.loadAllSchemaRules();
     while (rules.hasNext()) {
@@ -9,10 +10,13 @@
       try (IndexAccessor accessor=schemaIndexProvider.getOnlineAccessor(rule.getId(),indexConfig,samplingConfig)){
         try (IndexReader reader=accessor.newReader()){
           if (reader.valueTypesInIndex().contains(Array.class)) {
-            fileSystem.deleteRecursively(new File(indexRoot,"" + rule.getId()));
+            indexesToBeDeleted.add(new File(indexRoot,"" + rule.getId()));
           }
         }
        }
      }
   }
- }
+   for (  File index : indexesToBeDeleted) {
+    fileSystem.deleteRecursively(index);
+  }
+}
