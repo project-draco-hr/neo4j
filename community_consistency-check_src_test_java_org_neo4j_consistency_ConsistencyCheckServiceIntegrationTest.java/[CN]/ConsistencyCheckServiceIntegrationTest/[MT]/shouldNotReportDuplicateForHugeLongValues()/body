@@ -1,0 +1,19 @@
+{
+  ConsistencyCheckService service=new ConsistencyCheckService();
+  Config configuration=new Config(stringMap(),GraphDatabaseSettings.class,ConsistencyCheckSettings.class);
+  GraphDatabaseService db=new GraphDatabaseFactory().newEmbeddedDatabase(testDirectory.absolutePath());
+  String propertyKey="itemId";
+  Label label=DynamicLabel.label("Item");
+  try (Transaction tx=db.beginTx()){
+    db.schema().constraintFor(label).assertPropertyIsUnique(propertyKey).create();
+    tx.success();
+  }
+   try (Transaction tx=db.beginTx()){
+    set(db.createNode(label),property(propertyKey,973305894188596880L));
+    set(db.createNode(label),property(propertyKey,973305894188596864L));
+    tx.success();
+  }
+   db.shutdown();
+  Result result=service.runFullConsistencyCheck(testDirectory.absolutePath(),configuration,ProgressMonitorFactory.NONE,StringLogger.DEV_NULL);
+  assertEquals(ConsistencyCheckService.Result.SUCCESS,result);
+}
