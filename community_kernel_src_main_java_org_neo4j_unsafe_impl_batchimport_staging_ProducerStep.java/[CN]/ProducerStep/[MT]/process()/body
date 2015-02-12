@@ -1,14 +1,14 @@
 {
-  List<T> batch=new ArrayList<>(batchSize);
+  T[] batch=newBatch();
   int size=0;
   long startTime=currentTimeMillis();
   T next=null;
   while ((next=nextOrNull()) != null) {
-    batch.add(next);
-    if (++size == batchSize) {
+    batch[size++]=next;
+    if (size == batchSize) {
       totalProcessingTime.add(currentTimeMillis() - startTime);
-      sendDownstream(nextTicket(),batch);
-      batch=new ArrayList<>(batchSize);
+      sendDownstream(nextTicket(),constructBatch(batch));
+      batch=newBatch();
       size=0;
       assertHealthy();
       startTime=currentTimeMillis();
@@ -16,6 +16,6 @@
   }
   if (size > 0) {
     totalProcessingTime.add(currentTimeMillis() - startTime);
-    sendDownstream(nextTicket(),batch);
+    sendDownstream(nextTicket(),constructBatch(Arrays.copyOf(batch,size)));
   }
 }
