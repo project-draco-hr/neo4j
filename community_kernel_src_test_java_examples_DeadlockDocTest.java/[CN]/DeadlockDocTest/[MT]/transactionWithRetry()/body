@@ -1,0 +1,39 @@
+{
+  GraphDatabaseService graphDatabaseService=rule.getGraphDatabaseService();
+  Throwable txEx=null;
+  int RETRIES=5;
+  int BACKOFF=3000;
+  for (int i=0; i < RETRIES; i++) {
+    try (Transaction tx=graphDatabaseService.beginTx()){
+      Object result=doStuff(tx);
+      tx.success();
+      return result;
+    }
+ catch (    Throwable ex) {
+      txEx=ex;
+      if (!(ex instanceof DeadlockDetectedException)) {
+        break;
+      }
+    }
+    if (i < RETRIES - 1) {
+      try {
+        Thread.sleep(BACKOFF);
+      }
+ catch (      InterruptedException e) {
+        throw new TransactionFailureException("Interrupted",e);
+      }
+    }
+  }
+  if (txEx instanceof TransactionFailureException) {
+    throw ((TransactionFailureException)txEx);
+  }
+ else   if (txEx instanceof Error) {
+    throw ((Error)txEx);
+  }
+ else   if (txEx instanceof RuntimeException) {
+    throw ((RuntimeException)txEx);
+  }
+ else {
+    throw new TransactionFailureException("Failed",txEx);
+  }
+}
