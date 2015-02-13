@@ -4,11 +4,17 @@
   int batchSize=10;
   long batches=1000;
   final long items=batches * batchSize;
-  stage.add(new ProducerStep<Object>(stage.control(),"Producer",batchSize,100,Object.class){
-    private long i=0;
+  stage.add(new ProducerStep<Object>(stage.control(),"Producer",batchSize,100){
     private final Object theObject=new Object();
-    @Override protected Object nextOrNull(){
-      return ++i > items ? null : theObject;
+    private long i;
+    @Override protected Object nextBatchOrNull(    int batchSize){
+      if (i >= items) {
+        return null;
+      }
+      Object[] batch=new Object[batchSize];
+      Arrays.fill(batch,theObject);
+      i+=batchSize;
+      return batch;
     }
   }
 );

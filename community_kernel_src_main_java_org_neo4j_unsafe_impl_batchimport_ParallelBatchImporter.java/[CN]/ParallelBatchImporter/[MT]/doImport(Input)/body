@@ -26,7 +26,7 @@
     StoreProcessor<NodeRecord> nodeFirstRelationshipProcessor=new NodeFirstRelationshipProcessor(neoStore.getRelationshipGroupStore(),nodeRelationshipLink);
     StoreProcessor<NodeRecord> nodeCountsProcessor=new NodeCountsProcessor(neoStore.getNodeStore(),nodeLabelsCache,neoStore.getLabelRepository().getHighId(),neoStore.getCountsStore());
     StoreProcessor<RelationshipRecord> relationshipLinkerProcessor=new RelationshipLinkbackProcessor(nodeRelationshipLink);
-    StoreProcessor<RelationshipRecord> relationshipCountsProcessor=new RelationshipCountsProcessor(nodeLabelsCache,neoStore.getLabelRepository().getHighId(),neoStore.getRelationshipTypeRepository().getHighId(),neoStore.getCountsStore());
+    RelationshipCountsProcessor relationshipCountsProcessor=new RelationshipCountsProcessor(nodeLabelsCache,neoStore.getLabelRepository().getHighId(),neoStore.getRelationshipTypeRepository().getHighId(),neoStore.getCountsStore());
     if (disableParallelizationSinceItCausesWrongCountsComputations() && enoughAvailableMemoryForRemainingProcessors(nodeRelationshipLink)) {
       executeStages(new NodeStoreProcessorStage("Node --> Relationship + Node counts",config,neoStore.getNodeStore(),new StoreProcessor.Multiple<>(nodeFirstRelationshipProcessor,nodeCountsProcessor)));
       nodeRelationshipLink.clearRelationships();
@@ -39,10 +39,10 @@
       nodeRelationshipLink.close();
       nodeRelationshipLink=null;
       executeStages(new NodeStoreProcessorStage("Node --> Node counts",config,neoStore.getNodeStore(),nodeCountsProcessor));
-      executeStages(new RelationshipStoreProcessorStage("Relationship --> Relationship Count",config,neoStore.getRelationshipStore(),relationshipCountsProcessor));
+      executeStages(new RelationshipCountsStage(config,nodeLabelsCache,neoStore.getRelationshipStore(),neoStore.getLabelRepository().getHighId(),neoStore.getRelationshipTypeRepository().getHighId(),neoStore.getCountsStore()));
     }
     long totalTimeMillis=currentTimeMillis() - startTime;
-    executionPoller.done(totalTimeMillis);
+    executionMonitor.done(totalTimeMillis);
     logger.info("Import completed, took " + Format.duration(totalTimeMillis));
   }
  catch (  Throwable t) {
