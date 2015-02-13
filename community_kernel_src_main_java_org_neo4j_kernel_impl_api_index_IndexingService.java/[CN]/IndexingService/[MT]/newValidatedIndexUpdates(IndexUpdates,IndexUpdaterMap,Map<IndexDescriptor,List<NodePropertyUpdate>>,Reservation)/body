@@ -1,0 +1,22 @@
+{
+  return new ValidatedIndexUpdates(){
+    @Override public void flush() throws IOException, IndexEntryConflictException, IndexCapacityExceededException {
+      for (      Map.Entry<IndexDescriptor,List<NodePropertyUpdate>> entry : updatesByIndex.entrySet()) {
+        IndexDescriptor indexDescriptor=entry.getKey();
+        List<NodePropertyUpdate> updates=entry.getValue();
+        IndexUpdater updater=indexUpdaters.getUpdater(indexDescriptor);
+        for (        NodePropertyUpdate update : updates) {
+          updater.process(update);
+        }
+      }
+    }
+    @Override public Set<Long> changedNodeIds(){
+      return indexUpdates.changedNodeIds();
+    }
+    @Override public void close(){
+      reservation.release();
+      indexUpdaters.close();
+    }
+  }
+;
+}

@@ -1,0 +1,14 @@
+{
+  when(storeView.nodeAsUpdates(anyLong())).thenAnswer(nodePropertyUpdates());
+  IndexingService indexing=spy(newIndexingServiceWithMockedDependencies(populator,accessor,withData()));
+  ValidatedIndexUpdates validatedUpdates=mock(ValidatedIndexUpdates.class);
+  when(validatedUpdates.changedNodeIds()).thenReturn(asSet(1L,2L,3L));
+  indexing.updateIndexes(validatedUpdates);
+  ValidatedIndexUpdates validatedRecoveredUpdates=mock(ValidatedIndexUpdates.class);
+  when(indexing.validate(any(IndexUpdates.class))).thenReturn(validatedRecoveredUpdates);
+  indexing.startIndexes();
+  InOrder inOrder=inOrder(indexing,validatedRecoveredUpdates);
+  inOrder.verify(indexing).validate(any(IndexUpdates.class));
+  inOrder.verify(validatedRecoveredUpdates).flush();
+  inOrder.verify(validatedRecoveredUpdates).close();
+}
