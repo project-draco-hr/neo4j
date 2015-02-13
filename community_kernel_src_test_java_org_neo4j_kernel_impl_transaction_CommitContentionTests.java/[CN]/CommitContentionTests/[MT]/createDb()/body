@@ -7,6 +7,9 @@
         public boolean skip;
         @Override public void transactionFinished(        boolean successful){
           super.transactionFinished(successful);
+          if (isTheRemoveOrphanedConstraintIndexesOnStartupTransaction()) {
+            return;
+          }
           if (successful) {
             if (skip) {
               return;
@@ -15,6 +18,14 @@
             signalFirstTransactionStartedPushing();
             waitForSecondTransactionToFinish();
           }
+        }
+        private boolean isTheRemoveOrphanedConstraintIndexesOnStartupTransaction(){
+          for (          StackTraceElement element : Thread.currentThread().getStackTrace()) {
+            if (element.getClassName().contains(RemoveOrphanConstraintIndexesOnStartup.class.getSimpleName())) {
+              return true;
+            }
+          }
+          return false;
         }
       }
 ;
