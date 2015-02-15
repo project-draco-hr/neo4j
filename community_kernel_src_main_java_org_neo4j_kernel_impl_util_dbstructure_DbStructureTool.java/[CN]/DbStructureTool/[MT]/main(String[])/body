@@ -1,0 +1,32 @@
+{
+  if (args.length != 2 && args.length != 3) {
+    System.err.println("arguments: <generated clazz name> [<output source root>] <database dir>");
+    System.exit(1);
+  }
+  boolean writeToFile=args.length == 3;
+  String generatedClazz=args[0];
+  String dbDir=writeToFile ? args[2] : args[1];
+  GraphDatabaseService graph=new GraphDatabaseFactory().newEmbeddedDatabase(dbDir);
+  try {
+    InvocationTracer<DbStructureVisitor> tracer=new InvocationTracer<>(generatedClazz,DbStructureVisitor.class);
+    DbStructureVisitor visitor=tracer.newProxy();
+    DbStructureGuide guide=new DbStructureGuide(graph);
+    guide.accept(visitor);
+    if (writeToFile) {
+      File sourceRoot=new File(args[1]);
+      String outputPackageDir=tracer.getGeneratedPackageName().replace('.',File.separatorChar);
+      String outputFileName=tracer.getGeneratedClassName() + ".java";
+      File outputDir=new File(sourceRoot,outputPackageDir);
+      File outputFile=new File(outputDir,outputFileName);
+      try (PrintWriter writer=new PrintWriter(outputFile)){
+        writer.print(tracer.toString());
+      }
+     }
+ else {
+      System.out.print(tracer.toString());
+    }
+  }
+  finally {
+    graph.shutdown();
+  }
+}
