@@ -1,0 +1,27 @@
+{
+  if (entries == null) {
+    return null;
+  }
+  LogEntryStart start=null;
+  List<Command> commands=new ArrayList<>();
+  while (entries.next()) {
+    LogEntry entry=entries.get();
+    if (entry instanceof LogEntryStart) {
+      start=(LogEntryStart)entry;
+      commands.clear();
+    }
+ else     if (entry instanceof LogEntryCommit && start != null) {
+      LogEntryCommit commit=(LogEntryCommit)entry;
+      if (commit.getTxId() > files[file].cap) {
+        return null;
+      }
+      PhysicalTransactionRepresentation transaction=new PhysicalTransactionRepresentation(commands);
+      transaction.setHeader(start.getAdditionalHeader(),start.getMasterId(),start.getLocalId(),start.getTimeWritten(),start.getLastCommittedTxWhenTransactionStarted(),commit.getTimeWritten(),-1);
+      return new CommittedTransactionRepresentation(start,transaction,commit);
+    }
+ else {
+      commands.add(entry.<LogEntryCommand>as().getXaCommand());
+    }
+  }
+  return null;
+}

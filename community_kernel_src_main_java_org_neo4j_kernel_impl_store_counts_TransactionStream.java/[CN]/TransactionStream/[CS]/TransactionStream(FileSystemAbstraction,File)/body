@@ -1,0 +1,34 @@
+{
+  this.fs=fs;
+{
+    ByteBuffer buffer=ByteBuffer.allocateDirect(9 + MAXGTRIDSIZE + MAXBQUALSIZE * 10);
+    File[] files=fs.listFiles(path,new TxFileFilter(fs));
+    ArrayList<LogFile> logFiles=new ArrayList<>(files.length);
+    for (    File file : files) {
+      LogFile logFile=new LogFile(fs,file,buffer);
+      if (logFile.lastTxId > 0) {
+        logFiles.add(logFile);
+      }
+    }
+    this.files=logFiles.toArray(new LogFile[logFiles.size()]);
+  }
+  Arrays.sort(files);
+{
+    LogFile first=null, last=null;
+    boolean isContiguous=true;
+    for (    LogFile file : files) {
+      if (last == null) {
+        first=file;
+      }
+ else       if (last.lastTxId < file.header.lastCommittedTxId) {
+        isContiguous=false;
+      }
+      last=file;
+    }
+    if (first == null) {
+      throw new IOException(path + " does not contain any log files");
+    }
+    this.firstFile=first;
+    this.isContiguous=isContiguous;
+  }
+}
