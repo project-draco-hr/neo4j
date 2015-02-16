@@ -1,12 +1,21 @@
 {
-  if (!key.allZeroes()) {
-    throw new IllegalStateException("Expecting a valid format specifier.");
+  if (key.allZeroes()) {
+    if (value.allZeroes()) {
+      collector.state=done;
+      return false;
+    }
+    if (collector.header > collector.headerFields.length) {
+      throw new IllegalStateException("Too many header fields, expected only " + collector.headerFields.length);
+    }
+    int header=collector.header - 1;
+    collector.header++;
+    collector.readHeader(header,value);
+    return true;
   }
-  if (!collector.verifyFormatSpecifier(value)) {
-    collector.state=in_error;
-    throw new ConcurrentModificationException("Format header has changed.");
+ else {
+    if (collector.headerFields.length >= collector.header) {
+      throw new IllegalStateException("Expected " + collector.headerFields.length + " header fields, only "+ (collector.header - 1)+ " seen.");
+    }
+    return (collector.state=reading_data).visit(collector,key,value);
   }
-  collector.header=1;
-  collector.state=expecting_header;
-  return true;
 }
