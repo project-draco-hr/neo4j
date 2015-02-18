@@ -1,0 +1,12 @@
+{
+  String credentials=Base64.encodeBase64String("foo:bar".getBytes(Charsets.UTF_8));
+  when(servletRequest.getMethod()).thenReturn("GET");
+  when(servletRequest.getContextPath()).thenReturn("/db/data");
+  when(servletRequest.getHeader(HttpHeaders.AUTHORIZATION)).thenReturn("BASIC realm=neo4j " + credentials);
+  when(authManager.authenticate("foo","bar")).thenReturn(AuthenticationResult.TOO_MANY_ATTEMPTS);
+  filter.doFilter(servletRequest,servletResponse,filterChain);
+  verifyNoMoreInteractions(filterChain);
+  verify(servletResponse).setStatus(429);
+  assertThat(outputStream.toString(Charsets.UTF_8.name()),containsString("\"code\" : \"Neo.ClientError.Security.AuthenticationRateLimit\""));
+  assertThat(outputStream.toString(Charsets.UTF_8.name()),containsString("\"message\" : \"Too many failed authentication requests. Please wait 5 seconds and try again.\""));
+}
