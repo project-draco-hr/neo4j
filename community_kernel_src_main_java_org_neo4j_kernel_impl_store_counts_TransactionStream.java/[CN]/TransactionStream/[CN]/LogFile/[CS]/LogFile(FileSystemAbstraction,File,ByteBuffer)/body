@@ -1,0 +1,19 @@
+{
+  this.file=file;
+  try (StoreChannel channel=fs.open(file,"r")){
+    header=readLogHeader(buffer,channel,false);
+    try (IOCursor<LogEntry> cursor=logEntryCursor(channel,header)){
+      long txId=header.lastCommittedTxId;
+      while (cursor.next()) {
+        LogEntry entry=cursor.get();
+        if (entry instanceof LogEntryCommit) {
+          txId=((LogEntryCommit)entry).getTxId();
+        }
+      }
+      this.lastTxId=txId;
+    }
+   }
+  finally {
+    buffer.clear();
+  }
+}
