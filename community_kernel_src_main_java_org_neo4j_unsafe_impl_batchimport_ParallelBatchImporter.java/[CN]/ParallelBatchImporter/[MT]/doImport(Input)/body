@@ -3,14 +3,16 @@
   NodeRelationshipLink nodeRelationshipLink=null;
   NodeLabelsCache nodeLabelsCache=null;
   long startTime=currentTimeMillis();
-  try (BatchingNeoStore neoStore=new BatchingNeoStore(fileSystem,storeDir,config,writeMonitor,logging,monitors,writerFactory,additionalInitialIds)){
+  File badRelationshipsFile=new File(config.badFileName());
+  boolean hasBadRelationships=false;
+  try (BatchingNeoStore neoStore=new BatchingNeoStore(fileSystem,storeDir,config,writeMonitor,logging,monitors,writerFactory,additionalInitialIds);OutputStream badRelationshipsOutput=new BufferedOutputStream(fileSystem.openAsOutputStream(badRelationshipsFile,false));Collector<InputRelationship> badRelationships=input.badRelationshipsCollector(badRelationshipsOutput)){
     IdMapper idMapper=input.idMapper();
     IdGenerator idGenerator=input.idGenerator();
     nodeRelationshipLink=new NodeRelationshipLinkImpl(AUTO,config.denseNodeThreshold());
     final InputIterable<InputNode> nodes=input.nodes();
     final InputIterable<InputRelationship> relationships=input.relationships();
     final NodeStage nodeStage=new NodeStage(nodes,idMapper,idGenerator,neoStore);
-    final CalculateDenseNodesStage calculateDenseNodesStage=new CalculateDenseNodesStage(relationships,nodeRelationshipLink,idMapper);
+    final CalculateDenseNodesStage calculateDenseNodesStage=new CalculateDenseNodesStage(relationships,nodeRelationshipLink,idMapper,badRelationships);
     if (idMapper.needsPreparation()) {
       executeStages(nodeStage);
       executeStages(calculateDenseNodesStage);
@@ -44,6 +46,10 @@
     long totalTimeMillis=currentTimeMillis() - startTime;
     executionMonitor.done(totalTimeMillis);
     logger.info("Import completed, took " + Format.duration(totalTimeMillis));
+    hasBadRelationships=badRelationships.badEntries() > 0;
+    if (hasBadRelationships) {
+      logger.warn("There were " + badRelationships.badEntries() + " bad relationships which were skipped "+ "and logged into "+ badRelationshipsFile.getAbsolutePath());
+    }
   }
  catch (  Throwable t) {
     logger.error("Error during import",t);
@@ -56,6 +62,9 @@
     }
     if (nodeLabelsCache != null) {
       nodeLabelsCache.close();
+    }
+    if (!hasBadRelationships) {
+      fileSystem.deleteFile(badRelationshipsFile);
     }
   }
 }
