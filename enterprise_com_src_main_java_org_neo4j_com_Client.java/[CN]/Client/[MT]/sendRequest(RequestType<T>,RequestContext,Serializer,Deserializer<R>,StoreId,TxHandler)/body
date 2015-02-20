@@ -1,23 +1,10 @@
 {
-  boolean success=true;
-  Triplet<Channel,ChannelBuffer,ByteBuffer> channelContext;
+  ChannelContext channelContext=acquireChannelContext(type);
   Throwable failure=null;
-  Channel channel;
-  ChannelBuffer output;
-  ByteBuffer input;
   try {
-    channelContext=getChannel(type);
-    channel=channelContext.first();
-    output=channelContext.second();
-    input=channelContext.third();
-  }
- catch (  Throwable e) {
-    throw Exceptions.launderedException(ComException.class,e);
-  }
-  try {
-    notifyRequestMonitor(type,context,channel);
-    protocol.serializeRequest(channel,output,type,context,serializer);
-    @SuppressWarnings("unchecked") Response<R> response=protocol.deserializeResponse((BlockingReadHandler<ChannelBuffer>)channel.getPipeline().get("blockingHandler"),input,getReadTimeout(type,readTimeout),deserializer,resourcePoolReleaser);
+    requestMonitor.beginRequest(channelContext.channel().getRemoteAddress(),type,context);
+    protocol.serializeRequest(channelContext.channel(),channelContext.output(),type,context,serializer);
+    Response<R> response=protocol.deserializeResponse(extractBlockingReadHandler(channelContext),channelContext.input(),getReadTimeout(type,readTimeout),deserializer,resourcePoolReleaser);
     if (type.responseShouldBeUnpacked()) {
       responseUnpacker.unpackResponse(response,txHandler);
     }
@@ -33,21 +20,16 @@
   }
  catch (  ComException e) {
     failure=e;
-    success=false;
     comExceptionHandler.handle(e);
     throw e;
   }
 catch (  Throwable e) {
     failure=e;
-    success=false;
-    if (channelContext != null) {
-      closeChannel(channelContext);
-    }
     throw Exceptions.launderedException(ComException.class,e);
   }
  finally {
-    if (!success) {
-      releaseChannel();
+    if (failure != null) {
+      dispose(channelContext);
     }
     requestMonitor.endRequest(failure);
   }
