@@ -1,21 +1,10 @@
 {
-  T[] batch=newBatch();
-  int size=0;
+  Object batch=null;
   long startTime=currentTimeMillis();
-  T next=null;
-  while ((next=nextOrNull()) != null) {
-    batch[size++]=next;
-    if (size == batchSize) {
-      totalProcessingTime.add(currentTimeMillis() - startTime);
-      sendDownstream(nextTicket(),constructBatch(batch));
-      batch=newBatch();
-      size=0;
-      assertHealthy();
-      startTime=currentTimeMillis();
-    }
-  }
-  if (size > 0) {
+  while ((batch=nextBatchOrNull(batchSize)) != null) {
     totalProcessingTime.add(currentTimeMillis() - startTime);
-    sendDownstream(nextTicket(),constructBatch(Arrays.copyOf(batch,size)));
+    sendDownstream(doneBatches.incrementAndGet(),batch);
+    assertHealthy();
+    startTime=currentTimeMillis();
   }
 }
