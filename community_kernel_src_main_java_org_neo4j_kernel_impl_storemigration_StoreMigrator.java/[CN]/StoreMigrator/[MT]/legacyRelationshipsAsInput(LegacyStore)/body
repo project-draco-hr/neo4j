@@ -1,19 +1,27 @@
 {
   final LegacyRelationshipStoreReader reader=legacyStore.getRelStoreReader();
-  return new Iterable<InputRelationship>(){
-    @Override public Iterator<InputRelationship> iterator(){
-      Iterator<RelationshipRecord> source;
+  return new InputIterable<InputRelationship>(){
+    @Override public InputIterator<InputRelationship> iterator(){
+      final Iterator<RelationshipRecord> source;
       try {
         source=reader.iterator(0);
       }
  catch (      IOException e) {
         throw new RuntimeException(e);
       }
-      return new IteratorWrapper<InputRelationship,RelationshipRecord>(source){
-        @Override protected InputRelationship underlyingObjectToObject(        RelationshipRecord record){
-          InputRelationship result=new InputRelationship(NO_PROPERTIES,record.getNextProp(),record.getFirstNode(),record.getSecondNode(),null,record.getType());
+      final StoreSourceTraceability traceability=new StoreSourceTraceability("legacy relationships",reader.getRecordSize());
+      return new SourceInputIterator<InputRelationship,RelationshipRecord>(traceability){
+        @Override protected InputRelationship fetchNextOrNull(){
+          if (!source.hasNext()) {
+            return null;
+          }
+          RelationshipRecord record=source.next();
+          InputRelationship result=new InputRelationship("legacy store",record.getId(),record.getId() * RelationshipStore.RECORD_SIZE,InputEntity.NO_PROPERTIES,record.getNextProp(),record.getFirstNode(),record.getSecondNode(),null,record.getType());
           result.setSpecificId(record.getId());
+          traceability.atId(record.getId());
           return result;
+        }
+        @Override public void close(){
         }
       }
 ;
