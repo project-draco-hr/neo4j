@@ -1,0 +1,24 @@
+{
+  long transactionId=-1;
+  boolean hasLegacyIndexChanges;
+  int phase=0;
+  logAppendEvent.setLogRotated(logRotation.rotateLogIfNeeded(logAppendEvent));
+  try {
+synchronized (logFile) {
+      try (SerializeTransactionEvent serialiseEvent=logAppendEvent.beginSerializeTransaction()){
+        transactionId=transactionIdStore.nextCommittingTransactionId();
+        hasLegacyIndexChanges=append0(transaction,transactionId);
+        phase=1;
+      }
+     }
+    forceAfterAppend(logAppendEvent);
+    coordinateMultipleThreadsApplyingLegacyIndexChanges(hasLegacyIndexChanges,transactionId);
+    phase=2;
+    return transactionId;
+  }
+  finally {
+    if (phase == 1) {
+      transactionIdStore.transactionClosed(transactionId);
+    }
+  }
+}

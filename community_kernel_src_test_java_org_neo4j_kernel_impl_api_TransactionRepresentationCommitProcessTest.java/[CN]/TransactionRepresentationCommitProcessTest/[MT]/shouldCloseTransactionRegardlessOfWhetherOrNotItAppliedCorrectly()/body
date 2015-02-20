@@ -2,7 +2,7 @@
   LogicalTransactionStore logicalTransactionStore=mock(LogicalTransactionStore.class);
   TransactionAppender appender=mock(TransactionAppender.class);
   long txId=11;
-  when(appender.append(any(TransactionRepresentation.class))).thenReturn(txId);
+  when(appender.append(any(TransactionRepresentation.class),any(LogAppendEvent.class))).thenReturn(txId);
   when(logicalTransactionStore.getAppender()).thenReturn(appender);
   IOException rootCause=new IOException("Mock exception");
   KernelHealth kernelHealth=mock(KernelHealth.class);
@@ -12,7 +12,7 @@
   TransactionCommitProcess commitProcess=new TransactionRepresentationCommitProcess(logicalTransactionStore,kernelHealth,transactionIdStore,storeApplier,INTERNAL);
   TransactionRepresentation transaction=mockedTransaction();
   try (LockGroup locks=new LockGroup()){
-    commitProcess.commit(transaction,locks);
+    commitProcess.commit(transaction,locks,commitEvent);
   }
  catch (  TransactionFailureException e) {
     assertThat(e.getMessage(),containsString("Could not apply the transaction to the store"));

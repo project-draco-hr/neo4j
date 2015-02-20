@@ -1,0 +1,23 @@
+{
+  ThreadLink threadLink=new ThreadLink(Thread.currentThread());
+  threadLink.next=threadLinkHead.getAndSet(threadLink);
+  int waitTicks=127;
+  try (LogForceWaitEvent logForceWaitEvent=logAppendEvent.beginLogForceWait()){
+    do {
+      if (forceLock.tryLock()) {
+        try {
+          forceLog(logAppendEvent);
+        }
+  finally {
+          forceLock.unlock();
+          ThreadLink nextWaiter=threadLinkHead.get();
+          nextWaiter.unpark();
+        }
+      }
+ else {
+        waitTicks=waitForLogForce(waitTicks);
+      }
+    }
+ while (!threadLink.done);
+  }
+ }
