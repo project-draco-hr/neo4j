@@ -1,0 +1,24 @@
+{
+  final Latch latch=new Latch();
+  Runnable awaiter=new Runnable(){
+    @Override public void run(){
+      latch.await();
+    }
+  }
+;
+  int awaiters=24;
+  Future<?>[] futures=new Future<?>[awaiters];
+  for (int i=0; i < awaiters; i++) {
+    futures[i]=executor.submit(awaiter);
+  }
+  try {
+    futures[0].get(10,TimeUnit.MILLISECONDS);
+    fail("Call should have timed out");
+  }
+ catch (  TimeoutException ignore) {
+  }
+  latch.release();
+  for (  Future<?> future : futures) {
+    future.get();
+  }
+}

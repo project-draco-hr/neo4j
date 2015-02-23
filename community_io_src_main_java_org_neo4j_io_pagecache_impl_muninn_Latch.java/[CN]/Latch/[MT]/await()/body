@@ -1,0 +1,19 @@
+{
+  Node state=stack;
+  if (state != released) {
+    Waiter waiter=new Waiter();
+    state=(Node)getAndSetObject(this,stackOffset,waiter);
+    if (state == released) {
+      Node others=(Node)getAndSetObject(this,stackOffset,released);
+      waiter.next=released;
+      unparkAll(others);
+    }
+ else {
+      waiter.next=state == null ? end : state;
+      do {
+        LockSupport.park(this);
+      }
+ while (!isReleased());
+    }
+  }
+}
