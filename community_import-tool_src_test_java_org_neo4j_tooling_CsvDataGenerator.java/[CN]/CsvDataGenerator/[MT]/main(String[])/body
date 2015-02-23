@@ -2,13 +2,16 @@
   Args args=Args.parse(arguments);
   int nodeCount=args.getNumber("nodes",null).intValue();
   int relationshipCount=args.getNumber("relationships",null).intValue();
+  int labelCount=args.getNumber("labels",4).intValue();
+  int relationshipTypeCount=args.getNumber("relationship-types",4).intValue();
   Configuration config=Configuration.COMMAS;
   Extractors extractors=new Extractors(config.arrayDelimiter());
-  Header nodeHeader=new Header(new Entry[]{new Entry(null,Type.ID,null,extractors.string()),new Entry("name",Type.PROPERTY,null,extractors.string()),new Entry("age",Type.PROPERTY,null,extractors.int_()),new Entry("something",Type.PROPERTY,null,extractors.string()),new Entry(null,Type.LABEL,null,extractors.stringArray())});
-  Header relationshipHeader=new Header(new Entry[]{new Entry(null,Type.START_ID,null,extractors.string()),new Entry(null,Type.END_ID,null,extractors.string()),new Entry(null,Type.TYPE,null,extractors.string())});
+  IdType idType=IdType.ACTUAL;
+  Header nodeHeader=sillyNodeHeader(idType,extractors);
+  Header relationshipHeader=bareboneRelationshipHeader(idType,extractors);
   ProgressListener progress=textual(System.out).singlePart("Generating",nodeCount + relationshipCount);
-  CsvDataGenerator generator=new CsvDataGenerator(nodeHeader,relationshipHeader,config);
-  writeData(generator.serializeNodeHeader(),generator.pullNodeData(),new File("target","nodes.csv"),progress,nodeCount);
-  writeData(generator.serializeRelationshipHeader(),generator.pullRelationshipData(),new File("target","relationships.csv"),progress,relationshipCount);
+  CsvDataGenerator<String,String> generator=new CsvDataGenerator<>(nodeHeader,relationshipHeader,config,nodeCount,relationshipCount,new StringDeserialization(config),new StringDeserialization(config),labelCount,relationshipTypeCount);
+  writeData(generator.serializeNodeHeader(),generator.nodeData(),new File("target","nodes.csv"),progress);
+  writeData(generator.serializeRelationshipHeader(),generator.relationshipData(),new File("target","relationships.csv"),progress);
   progress.done();
 }
