@@ -1,0 +1,32 @@
+{
+  if (args.length != 2 && args.length != 3) {
+    System.err.println("arguments: <generated class name> [<output source root>] <database dir>");
+    System.exit(1);
+  }
+  boolean writeToFile=args.length == 3;
+  String generatedClassWithPackage=args[0];
+  String dbDir=writeToFile ? args[2] : args[1];
+  Pair<String,String> parsedGenerated=parseClassNameWithPackage(generatedClassWithPackage);
+  String generatedClassPackage=parsedGenerated.first();
+  String generatedClassName=parsedGenerated.other();
+  String generator=format("%s %s [<output source root>] <db-dir>",DbStructureTool.class.getCanonicalName(),generatedClassWithPackage);
+  GraphDatabaseService graph=new GraphDatabaseFactory().newEmbeddedDatabase(dbDir);
+  try {
+    if (writeToFile) {
+      File sourceRoot=new File(args[1]);
+      String outputPackageDir=generatedClassPackage.replace('.',File.separatorChar);
+      String outputFileName=generatedClassName + ".java";
+      File outputDir=new File(sourceRoot,outputPackageDir);
+      File outputFile=new File(outputDir,outputFileName);
+      try (PrintWriter writer=new PrintWriter(outputFile)){
+        traceDb(generator,generatedClassPackage,generatedClassName,graph,writer);
+      }
+     }
+ else {
+      traceDb(generator,generatedClassPackage,generatedClassName,graph,System.out);
+    }
+  }
+  finally {
+    graph.shutdown();
+  }
+}

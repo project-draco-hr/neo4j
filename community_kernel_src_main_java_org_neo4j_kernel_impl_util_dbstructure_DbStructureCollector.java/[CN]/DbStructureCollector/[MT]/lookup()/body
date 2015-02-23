@@ -1,0 +1,44 @@
+{
+  return new DbStructureLookup(){
+    @Override public Iterator<Pair<Integer,String>> labels(){
+      return labels.iterator();
+    }
+    @Override public Iterator<Pair<Integer,String>> properties(){
+      return propertyKeys.iterator();
+    }
+    @Override public Iterator<Pair<Integer,String>> relationshipTypes(){
+      return relationshipTypes.iterator();
+    }
+    @Override public Iterator<Pair<String,String>> knownIndices(){
+      return regularIndices.iterator();
+    }
+    @Override public Iterator<Pair<String,String>> knownUniqueIndices(){
+      return uniqueIndices.iterator();
+    }
+    @Override public Iterator<Pair<String,String>> knownUniqueConstraints(){
+      return Iterables.map(new Function<UniquenessConstraint,Pair<String,String>>(){
+        @Override public Pair<String,String> apply(        UniquenessConstraint uniquenessConstraint) throws RuntimeException {
+          String label=labels.byIdOrFail(uniquenessConstraint.label());
+          String propertyKey=propertyKeys.byIdOrFail(uniquenessConstraint.propertyKeyId());
+          return Pair.of(label,propertyKey);
+        }
+      }
+,uniquenessConstraint.iterator());
+    }
+    @Override public long nodesWithLabelCardinality(    int labelId){
+      Long result=labelId == -1 ? allNodesCount : nodeCounts.get(labelId);
+      return result == null ? 0l : result;
+    }
+    @Override public long cardinalityByLabelsAndRelationshipType(    int fromLabelId,    int relTypeId,    int toLabelId){
+      RelSpecifier specifier=new RelSpecifier(fromLabelId,relTypeId,toLabelId);
+      Long result=relCounts.get(specifier);
+      return result == null ? 0l : result;
+    }
+    @Override public double indexSelectivity(    int labelId,    int propertyKeyId){
+      Double result1=regularIndices.getIndex(labelId,propertyKeyId);
+      Double result2=result1 == null ? uniqueIndices.getIndex(labelId,propertyKeyId) : result1;
+      return result2 == null ? Double.NaN : result2;
+    }
+  }
+;
+}
