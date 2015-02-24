@@ -1,0 +1,58 @@
+{
+  System.gc();
+  final CountDownLatch firstMasterAvailableHandled=new CountDownLatch(1);
+  final CountDownLatch secondMasterAvailableComes=new CountDownLatch(1);
+  final CountDownLatch secondMasterAvailableHandled=new CountDownLatch(1);
+  SwitchToSlave switchToSlave=mock(SwitchToSlave.class);
+  Logging mock=mock(Logging.class);
+  when(mock.getMessagesLog(any(Class.class))).thenReturn(mock(StringLogger.class));
+  when(mock.getConsoleLog(any(Class.class))).thenReturn(mock(ConsoleLogger.class));
+  HighAvailabilityModeSwitcher toTest=new HighAvailabilityModeSwitcher(switchToSlave,mock(SwitchToMaster.class),mock(Election.class),mock(ClusterMemberAvailability.class),mock(DependencyResolver.class),mock){
+    @Override ScheduledExecutorService createExecutor(){
+      final ScheduledExecutorService executor=mock(ScheduledExecutorService.class);
+      final ExecutorService realExecutor=Executors.newSingleThreadExecutor();
+      when(executor.submit(any(Runnable.class))).thenAnswer(new Answer<Future<?>>(){
+        @Override public Future<?> answer(        final InvocationOnMock invocation) throws Throwable {
+          return realExecutor.submit(new Runnable(){
+            @Override public void run(){
+              ((Runnable)invocation.getArguments()[0]).run();
+            }
+          }
+);
+        }
+      }
+);
+      when(executor.schedule(any(Runnable.class),anyLong(),any(TimeUnit.class))).thenAnswer(new Answer<Future<?>>(){
+        @Override public Future<?> answer(        final InvocationOnMock invocation) throws Throwable {
+          realExecutor.submit(new Callable<Void>(){
+            @Override public Void call() throws Exception {
+              firstMasterAvailableHandled.countDown();
+              secondMasterAvailableComes.await();
+              ((Runnable)invocation.getArguments()[0]).run();
+              secondMasterAvailableHandled.countDown();
+              return null;
+            }
+          }
+);
+          return mock(ScheduledFuture.class);
+        }
+      }
+);
+      return executor;
+    }
+  }
+;
+  toTest.init();
+  toTest.start();
+  toTest.listeningAt(URI.create("ha://server3?serverId=3"));
+  URI uri1=URI.create("ha://server1");
+  doThrow(new ComException("Fail to switch to slave and reschedule to retry")).when(switchToSlave).switchToSlave(any(LifeSupport.class),any(URI.class),eq(uri1),any(CancellationRequest.class));
+  toTest.masterIsAvailable(new HighAvailabilityMemberChangeEvent(PENDING,TO_SLAVE,new InstanceId(1),uri1));
+  firstMasterAvailableHandled.await();
+  verify(switchToSlave).switchToSlave(any(LifeSupport.class),any(URI.class),eq(uri1),any(CancellationRequest.class));
+  URI uri2=URI.create("ha://server2");
+  toTest.masterIsAvailable(new HighAvailabilityMemberChangeEvent(TO_SLAVE,TO_SLAVE,new InstanceId(2),uri2));
+  secondMasterAvailableComes.countDown();
+  secondMasterAvailableHandled.await();
+  verify(switchToSlave).switchToSlave(any(LifeSupport.class),any(URI.class),eq(uri2),any(CancellationRequest.class));
+}
