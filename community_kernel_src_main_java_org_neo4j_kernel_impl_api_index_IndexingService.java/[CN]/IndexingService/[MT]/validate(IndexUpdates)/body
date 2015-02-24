@@ -1,0 +1,32 @@
+{
+  IndexUpdateMode updateMode=null;
+  if (state == State.RUNNING) {
+    updateMode=IndexUpdateMode.ONLINE;
+  }
+ else   if (state == State.STARTING) {
+    updateMode=IndexUpdateMode.RECOVERY;
+  }
+  if (updateMode != null) {
+    IndexUpdaterMap updaterMap=indexMapReference.getIndexUpdaterMap(updateMode);
+    boolean updaterMapShouldBeClosed=true;
+    try {
+      Map<IndexDescriptor,List<NodePropertyUpdate>> updatesByIndex=groupUpdatesByIndexDescriptor(updates,updaterMap);
+      if (updatesByIndex.isEmpty()) {
+        return newValidatedIndexUpdates(updates);
+      }
+      AggregatedReservation aggregatedReservation=new AggregatedReservation(updatesByIndex.size());
+      for (      Map.Entry<IndexDescriptor,List<NodePropertyUpdate>> entry : updatesByIndex.entrySet()) {
+        validateAndRecordReservation(entry.getValue(),aggregatedReservation,updaterMap,entry.getKey());
+      }
+      ValidatedIndexUpdates validatedUpdates=newValidatedIndexUpdates(updates,updaterMap,updatesByIndex,aggregatedReservation);
+      updaterMapShouldBeClosed=false;
+      return validatedUpdates;
+    }
+  finally {
+      if (updaterMapShouldBeClosed) {
+        updaterMap.close();
+      }
+    }
+  }
+  return newValidatedIndexUpdates(updates);
+}
