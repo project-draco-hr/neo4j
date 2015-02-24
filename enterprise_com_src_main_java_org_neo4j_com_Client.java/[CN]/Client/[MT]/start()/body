@@ -1,29 +1,30 @@
 {
   bootstrap=new ClientBootstrap(new NioClientSocketChannelFactory(newCachedThreadPool(daemon(getClass().getSimpleName() + "-boss@" + address)),newCachedThreadPool(daemon(getClass().getSimpleName() + "-worker@" + address))));
   bootstrap.setPipelineFactory(this);
-  channelPool=new ResourcePool<Triplet<Channel,ChannelBuffer,ByteBuffer>>(maxUnusedChannels,new ResourcePool.CheckStrategy.TimeoutCheckStrategy(DEFAULT_CHECK_INTERVAL,SYSTEM_CLOCK),new LoggingResourcePoolMonitor(msgLog)){
-    @Override protected Triplet<Channel,ChannelBuffer,ByteBuffer> create(){
+  channelPool=new ResourcePool<ChannelContext>(maxUnusedChannels,new ResourcePool.CheckStrategy.TimeoutCheckStrategy(DEFAULT_CHECK_INTERVAL,SYSTEM_CLOCK),new LoggingResourcePoolMonitor(msgLog)){
+    @Override protected ChannelContext create(){
       ChannelFuture channelFuture=bootstrap.connect(address);
       channelFuture.awaitUninterruptibly(5,TimeUnit.SECONDS);
-      Triplet<Channel,ChannelBuffer,ByteBuffer> channel;
       if (channelFuture.isSuccess()) {
-        channel=Triplet.of(channelFuture.getChannel(),ChannelBuffers.dynamicBuffer(),ByteBuffer.allocate(1024 * 1024));
-        msgLog.logMessage("Opened a new channel to " + address,true);
-        return channel;
+        msgLog.logMessage(threadInfo() + "Opened a new channel to " + address,true);
+        return new ChannelContext(channelFuture.getChannel(),ChannelBuffers.dynamicBuffer(),ByteBuffer.allocate(1024 * 1024));
       }
       String msg=Client.this.getClass().getSimpleName() + " could not connect to " + address;
       msgLog.logMessage(msg,true);
       throw new ComException(msg,channelFuture.getCause());
     }
-    @Override protected boolean isAlive(    Triplet<Channel,ChannelBuffer,ByteBuffer> resource){
-      return resource.first().isConnected();
+    @Override protected boolean isAlive(    ChannelContext context){
+      return context.channel().isConnected();
     }
-    @Override protected void dispose(    Triplet<Channel,ChannelBuffer,ByteBuffer> resource){
-      Channel channel=resource.first();
+    @Override protected void dispose(    ChannelContext context){
+      Channel channel=context.channel();
       if (channel.isConnected()) {
-        msgLog.debug("Closing channel: " + channel + ". Channel pool size is now "+ currentSize());
+        msgLog.logMessage(threadInfo() + "Closing: " + context+ ". "+ "Channel pool size is now "+ currentSize(),true);
         channel.close();
       }
+    }
+    private String threadInfo(){
+      return "Thread[" + Thread.currentThread().getId() + ", "+ Thread.currentThread().getName()+ "] ";
     }
   }
 ;
