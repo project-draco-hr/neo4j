@@ -1,0 +1,20 @@
+{
+  long nodeId=neoStore.getNodeStore().nextId();
+  long labelId=neoStore.getLabelTokenStore().nextId();
+  long propertyId=neoStore.getPropertyStore().nextId();
+  long propertyKeyId=neoStore.getPropertyStore().getPropertyKeyTokenStore().nextId();
+  String value="foo";
+  ValidatedIndexUpdates validatedIndexUpdates=mock(ValidatedIndexUpdates.class);
+  when(mockIndexing.validate(any(IndexUpdates.class))).thenReturn(validatedIndexUpdates);
+  NeoStoreTransaction tx=newWriteTransaction(mockIndexing).first();
+  tx.setRecovered();
+  tx.injectCommand(nodeCreateCommand(nodeId,labelId));
+  tx.injectCommand(propertyCommand(propertyId,nodeId,(int)propertyKeyId,value));
+  tx.commit();
+  ArgumentCaptor<IndexUpdates> captor=ArgumentCaptor.forClass(IndexUpdates.class);
+  verify(mockIndexing).validate(captor.capture());
+  IndexUpdates updates=captor.getValue();
+  assertEquals(asSet(add(nodeId,(int)propertyKeyId,value,new long[]{labelId})),asSet(updates));
+  assertEquals(asSet(nodeId),updates.changedNodeIds());
+  verify(mockIndexing).updateIndexes(validatedIndexUpdates);
+}
