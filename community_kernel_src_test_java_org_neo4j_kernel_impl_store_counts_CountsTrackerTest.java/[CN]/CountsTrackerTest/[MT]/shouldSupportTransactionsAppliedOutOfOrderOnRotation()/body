@@ -1,0 +1,36 @@
+{
+  final CountsTracker tracker=the.managed(newTracker());
+  try (CountsAccessor.Updater tx=tracker.apply(1)){
+    tx.incrementNodeCount(1,1);
+  }
+   try (CountsAccessor.Updater tx=tracker.apply(3)){
+    tx.incrementNodeCount(1,1);
+  }
+   Future<Long> rotated=threading.executeAndAwait(new Rotation(2),tracker,new Predicate<Thread>(){
+    @Override public boolean accept(    Thread thread){
+switch (thread.getState()) {
+case BLOCKED:
+case WAITING:
+case TIMED_WAITING:
+case TERMINATED:
+        return true;
+default :
+      return false;
+  }
+}
+}
+,10,SECONDS);
+try (CountsAccessor.Updater tx=tracker.apply(4)){
+tx.incrementNodeCount(1,1);
+}
+ try (CountsAccessor.Updater tx=tracker.apply(2)){
+tx.incrementNodeCount(1,1);
+}
+ assertEquals("rotated transaction",3,rotated.get().longValue());
+assertEquals("stored transaction",3,tracker.txId());
+assertEquals("count",4,tracker.nodeCount(1,Registers.newDoubleLongRegister()).readSecond());
+CountsVisitor visitor=mock(CountsVisitor.class);
+tracker.visitFile(tracker.currentFile(),visitor);
+verify(visitor).visitNodeCount(1,3);
+verifyNoMoreInteractions(visitor);
+}
