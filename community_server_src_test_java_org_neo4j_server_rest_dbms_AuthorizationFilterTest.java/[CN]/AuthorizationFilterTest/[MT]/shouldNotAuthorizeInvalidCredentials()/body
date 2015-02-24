@@ -1,0 +1,14 @@
+{
+  String credentials=Base64.encodeBase64String("foo:bar".getBytes(Charsets.UTF_8));
+  when(servletRequest.getMethod()).thenReturn("GET");
+  when(servletRequest.getContextPath()).thenReturn("/db/data");
+  when(servletRequest.getHeader(HttpHeaders.AUTHORIZATION)).thenReturn("BASIC " + credentials);
+  when(servletRequest.getRemoteAddr()).thenReturn("remote_ip_address");
+  when(authManager.authenticate("foo","bar")).thenReturn(AuthenticationResult.NOT_AUTHORIZED);
+  filter.doFilter(servletRequest,servletResponse,filterChain);
+  verifyNoMoreInteractions(filterChain);
+  verify(logger).warn("Failed authentication attempt for '%s' from %s","foo","remote_ip_address");
+  verify(servletResponse).setStatus(401);
+  assertThat(outputStream.toString(Charsets.UTF_8.name()),containsString("\"code\" : \"Neo.ClientError.Security.AuthorizationFailed\""));
+  assertThat(outputStream.toString(Charsets.UTF_8.name()),containsString("\"message\" : \"Invalid username or password.\""));
+}

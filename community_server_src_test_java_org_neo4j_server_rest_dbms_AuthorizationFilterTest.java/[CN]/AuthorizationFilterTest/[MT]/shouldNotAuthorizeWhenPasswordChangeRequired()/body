@@ -1,0 +1,15 @@
+{
+  String credentials=Base64.encodeBase64String("foo:bar".getBytes(Charsets.UTF_8));
+  when(servletRequest.getMethod()).thenReturn("GET");
+  when(servletRequest.getContextPath()).thenReturn("/db/data");
+  when(servletRequest.getRequestURL()).thenReturn(new StringBuffer("http://bar.baz:7474/db/data/"));
+  when(servletRequest.getRequestURI()).thenReturn("/db/data/");
+  when(servletRequest.getHeader(HttpHeaders.AUTHORIZATION)).thenReturn("BASIC " + credentials);
+  when(authManager.authenticate("foo","bar")).thenReturn(AuthenticationResult.PASSWORD_CHANGE_REQUIRED);
+  filter.doFilter(servletRequest,servletResponse,filterChain);
+  verifyNoMoreInteractions(filterChain);
+  verify(servletResponse).setStatus(403);
+  assertThat(outputStream.toString(Charsets.UTF_8.name()),containsString("\"password_change\" : \"http://bar.baz:7474/user/foo/password\""));
+  assertThat(outputStream.toString(Charsets.UTF_8.name()),containsString("\"code\" : \"Neo.ClientError.Security.AuthorizationFailed\""));
+  assertThat(outputStream.toString(Charsets.UTF_8.name()),containsString("\"message\" : \"User is required to change their password.\""));
+}
