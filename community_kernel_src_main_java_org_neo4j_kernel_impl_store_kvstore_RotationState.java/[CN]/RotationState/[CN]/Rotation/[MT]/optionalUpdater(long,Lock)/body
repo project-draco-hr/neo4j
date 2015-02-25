@@ -1,0 +1,21 @@
+{
+  final EntryUpdater<Key> post=postState.updater(version,lock);
+  if (version <= threshold) {
+    final EntryUpdater<Key> pre=preState.updater(version,lock);
+    return Optionals.<EntryUpdater<Key>>some(new EntryUpdater<Key>(lock){
+      @Override public void apply(      Key key,      ValueUpdate update) throws IOException {
+        post.apply(key,update);
+        pre.apply(key,update);
+      }
+      @Override public void close(){
+        post.close();
+        pre.close();
+        super.close();
+      }
+    }
+);
+  }
+ else {
+    return Optionals.some(post);
+  }
+}

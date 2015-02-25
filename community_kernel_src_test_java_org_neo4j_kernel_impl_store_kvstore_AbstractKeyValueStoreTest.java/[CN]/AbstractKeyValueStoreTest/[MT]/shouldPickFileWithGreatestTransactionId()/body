@@ -14,11 +14,18 @@ class Impl extends Store {
     @Override protected int compareHeaders(    Headers lhs,    Headers rhs){
       return Long.compare(lhs.get(TX_ID),rhs.get(TX_ID));
     }
+    @Override protected long version(    Headers headers){
+      return headers.get(TX_ID);
+    }
+    @Override protected void updateHeaders(    Headers.Builder headers,    long version){
+      headers.put(TX_ID,version);
+    }
   }
   try (Lifespan life=new Lifespan()){
     Store store=life.add(new Impl());
     for (long txId=2; txId <= 10; txId++) {
-      store.rotate(Collections.singletonMap("txId",(Object)txId));
+      store.updater(txId).get().close();
+      store.prepareRotation(txId).rotate();
     }
   }
    try (Lifespan life=new Lifespan()){

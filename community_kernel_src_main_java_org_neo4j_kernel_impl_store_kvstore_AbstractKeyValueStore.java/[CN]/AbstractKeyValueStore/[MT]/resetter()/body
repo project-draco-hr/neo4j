@@ -1,16 +1,15 @@
 {
-  return new EntryUpdater<Key>(updateLock.writeLock()){
-    private final KeyValueStoreState<Key> state=AbstractKeyValueStore.this.state;
-{
-      if (state.hasChanges()) {
-        close();
-        throw new IllegalStateException("Cannot reset when there are changes!");
+  try (LockWrapper lock=writeLock(updateLock)){
+    return state.resetter(lock.get(),new Runnable(){
+      @Override public void run(){
+        try {
+          prepareRotation(version(headers())).rotate();
+        }
+ catch (        IOException e) {
+          throw new UnderlyingStorageException(e);
+        }
       }
     }
-    @Override public void apply(    Key key,    ValueUpdate update) throws IOException {
-      ensureOpen();
-      state.apply(key,update,true);
-    }
+);
   }
-;
-}
+ }
