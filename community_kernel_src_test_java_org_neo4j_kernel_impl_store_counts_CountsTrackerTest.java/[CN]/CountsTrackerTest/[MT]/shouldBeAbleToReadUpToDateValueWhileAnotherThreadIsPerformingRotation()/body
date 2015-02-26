@@ -1,10 +1,10 @@
 {
   CountsOracle oracle=someData();
-  int newTxId=2;
+  final int firstTransaction=2, secondTransaction=3;
   try (Lifespan life=new Lifespan()){
     CountsTracker tracker=life.add(newTracker());
-    oracle.update(tracker);
-    tracker.rotate(newTxId);
+    oracle.update(tracker,firstTransaction);
+    tracker.rotate(firstTransaction);
   }
    final CountsOracle delta=new CountsOracle();
 {
@@ -14,8 +14,8 @@
     delta.relationship(n2,2,n1);
   }
   delta.update(oracle);
-  final Barrier.Control barrier=new Barrier.Control();
   try (Lifespan life=new Lifespan()){
+    final Barrier.Control barrier=new Barrier.Control();
     CountsTracker tracker=life.add(new CountsTracker(the.logger(),the.fileSystem(),the.pageCache(),the.testPath()){
       @Override protected boolean include(      CountsKey countsKey,      ReadableBuffer value){
         barrier.reached();
@@ -26,8 +26,8 @@
     Future<Void> task=threading.execute(new Function<CountsTracker,Void>(){
       @Override public Void apply(      CountsTracker tracker){
         try {
-          delta.update(tracker);
-          tracker.rotate(2);
+          delta.update(tracker,secondTransaction);
+          tracker.rotate(secondTransaction);
         }
  catch (        IOException e) {
           throw new AssertionError(e);

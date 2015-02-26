@@ -1,0 +1,27 @@
+{
+  byte[] value=changes.get(key);
+  if (value == null) {
+    final byte[] proposal=new byte[store.keyFormat().valueSize()];
+synchronized (proposal) {
+      value=changes.putIfAbsent(key,proposal);
+      if (value == null) {
+        BigEndianByteArrayBuffer buffer=new BigEndianByteArrayBuffer(proposal);
+        if (!reset) {
+          PreviousValue lookup=new PreviousValue(proposal);
+          if (!store.lookup(key,lookup)) {
+            buffer.clear();
+          }
+        }
+        update.update(buffer);
+        return;
+      }
+    }
+  }
+synchronized (value) {
+    BigEndianByteArrayBuffer target=new BigEndianByteArrayBuffer(value);
+    if (reset) {
+      target.clear();
+    }
+    update.update(target);
+  }
+}
