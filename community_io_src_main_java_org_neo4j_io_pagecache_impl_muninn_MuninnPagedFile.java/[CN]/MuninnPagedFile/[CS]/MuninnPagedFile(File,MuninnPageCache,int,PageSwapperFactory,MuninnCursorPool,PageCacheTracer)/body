@@ -3,13 +3,14 @@
   this.pageSize=pageSize;
   this.cursorPool=cursorPool;
   this.tracer=tracer;
-  translationTables=new PrimitiveLongObjectMap[translationTableStripeLevel];
-  translationTableLocks=new StampedLock[translationTableStripeLevel];
-  for (int i=0; i < translationTableStripeLevel; i++) {
-    translationTables[i]=Primitive.longObjectMap(8);
-    translationTableLocks[i]=new StampedLock();
-  }
-  PageEvictionCallback onEviction=new MuninnPageEvictionCallback(translationTables,translationTableLocks);
+  PageEvictionCallback onEviction=new MuninnPageEvictionCallback(this);
   swapper=swapperFactory.createPageSwapper(file,pageSize,onEviction);
-  initialiseLastPageId(swapper.getLastPageId());
+  long lastPageId=swapper.getLastPageId();
+  int initialChunks=1 + computeChunkId(lastPageId);
+  Object[][] tt=new Object[initialChunks][];
+  for (int i=0; i < initialChunks; i++) {
+    tt[i]=new Object[translationTableChunkSize];
+  }
+  translationTable=tt;
+  initialiseLastPageId(lastPageId);
 }

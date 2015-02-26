@@ -1,0 +1,36 @@
+{
+  PageSwapper swapper=pagedFile.swapper;
+  pinEvent=pagedFile.tracer.beginPin(exclusive,filePageId,swapper);
+  int chunkId=pagedFile.computeChunkId(filePageId);
+  long chunkOffset=pagedFile.computeChunkOffset(filePageId);
+  Object[][] tt=pagedFile.translationTable;
+  if (tt.length <= chunkId) {
+    tt=pagedFile.expandCapacity(chunkId);
+  }
+  Object[] chunk=tt[chunkId];
+  Object item;
+  do {
+    item=getObjectVolatile(chunk,chunkOffset);
+    if (item == null) {
+      Latch latch=new Latch();
+      if (compareAndSwapObject(chunk,chunkOffset,null,latch)) {
+        item=pageFault(filePageId,swapper,chunkOffset,chunk,latch);
+      }
+    }
+ else     if (item.getClass() == Latch.class) {
+      Latch latch=(Latch)item;
+      latch.await();
+      item=null;
+    }
+ else {
+      MuninnPage page=(MuninnPage)item;
+      lockPage(page);
+      if (!page.isBoundTo(swapper,filePageId)) {
+        unlockPage(page);
+        item=null;
+      }
+    }
+  }
+ while (item == null);
+  pinCursorToPage((MuninnPage)item,filePageId,swapper);
+}
