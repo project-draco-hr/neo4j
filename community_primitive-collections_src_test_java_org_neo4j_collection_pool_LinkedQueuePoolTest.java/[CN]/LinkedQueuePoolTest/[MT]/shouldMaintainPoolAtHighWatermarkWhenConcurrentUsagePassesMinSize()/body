@@ -6,16 +6,19 @@
   FakeClock clock=new FakeClock();
   final LinkedQueuePool<Object> pool=getLinkedQueuePool(stateMonitor,clock,MIN_SIZE);
   List<FlyweightHolder<Object>> holders=new LinkedList<>();
-  buildAPeakOfAcquiredFlyweightsAndTriggerAlarmWithSideEffects(MAX_SIZE,clock,pool,holders);
+  ExecutorService executor=Executors.newCachedThreadPool();
+  buildAPeakOfAcquiredFlyweightsAndTriggerAlarmWithSideEffects(MAX_SIZE,clock,pool,holders,executor);
   clock.forward(110,TimeUnit.MILLISECONDS);
   for (int i=0; i < 10; i++) {
     CountDownLatch release=new CountDownLatch(MID_SIZE);
-    for (    FlyweightHolder holder : acquireFromPool(pool,MID_SIZE)) {
+    for (    FlyweightHolder holder : acquireFromPool(pool,MID_SIZE,executor)) {
       holder.release(release);
     }
     release.await();
     clock.forward(110,TimeUnit.MILLISECONDS);
   }
+  executor.shutdown();
+  executor.awaitTermination(10,TimeUnit.SECONDS);
   assertEquals(MID_SIZE,stateMonitor.currentPeakSize.get());
   assertEquals(MID_SIZE,stateMonitor.targetSize.get());
   assertEquals(MAX_SIZE - MID_SIZE + 1,stateMonitor.disposed.get());

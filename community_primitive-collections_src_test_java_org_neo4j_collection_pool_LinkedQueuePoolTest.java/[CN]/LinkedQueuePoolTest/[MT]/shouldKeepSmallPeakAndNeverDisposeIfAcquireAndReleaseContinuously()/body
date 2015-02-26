@@ -3,14 +3,17 @@
   StatefulMonitor stateMonitor=new StatefulMonitor();
   FakeClock clock=new FakeClock();
   final LinkedQueuePool<Object> pool=getLinkedQueuePool(stateMonitor,clock,MIN_SIZE);
+  ExecutorService executor=Executors.newCachedThreadPool();
   for (int i=0; i < 200; i++) {
-    List<FlyweightHolder<Object>> newOnes=acquireFromPool(pool,1);
+    List<FlyweightHolder<Object>> newOnes=acquireFromPool(pool,1,executor);
     CountDownLatch release=new CountDownLatch(newOnes.size());
     for (    FlyweightHolder newOne : newOnes) {
       newOne.release(release);
     }
     release.await();
   }
+  executor.shutdown();
+  executor.awaitTermination(10,TimeUnit.SECONDS);
   assertEquals(-1,stateMonitor.currentPeakSize.get());
   assertEquals(1,stateMonitor.created.get());
   assertEquals(0,stateMonitor.disposed.get());
