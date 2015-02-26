@@ -13,12 +13,19 @@
     if (storeDirInitializer != null) {
       storeDirInitializer.initializeStoreDir(serverId.toIntegerIndex(),storeDir);
     }
-    GraphDatabaseBuilder graphDatabaseBuilder=dbFactory.newHighlyAvailableDatabaseBuilder(storeDir.getAbsolutePath()).setConfig(ClusterSettings.cluster_name,name).setConfig(ClusterSettings.initial_hosts,initialHosts.toString()).setConfig(ClusterSettings.server_id,serverId + "").setConfig(ClusterSettings.cluster_server,"0.0.0.0:" + clusterPort).setConfig(HaSettings.ha_server,":" + haPort).setConfig(OnlineBackupSettings.online_backup_enabled,Settings.FALSE).setConfig(commonConfig);
+    GraphDatabaseBuilder builder=dbFactory.newHighlyAvailableDatabaseBuilder(storeDir.getAbsolutePath());
+    builder.setConfig(ClusterSettings.cluster_name,name);
+    builder.setConfig(ClusterSettings.initial_hosts,initialHosts.toString());
+    builder.setConfig(ClusterSettings.server_id,serverId + "");
+    builder.setConfig(ClusterSettings.cluster_server,"0.0.0.0:" + clusterPort);
+    builder.setConfig(HaSettings.ha_server,":" + haPort);
+    builder.setConfig(OnlineBackupSettings.online_backup_enabled,Settings.FALSE);
+    builder.setConfig(commonConfig);
     if (instanceConfig.containsKey(serverId.toIntegerIndex())) {
-      graphDatabaseBuilder.setConfig(instanceConfig.get(serverId.toIntegerIndex()));
+      builder.setConfig(instanceConfig.get(serverId.toIntegerIndex()));
     }
-    config(graphDatabaseBuilder,name,serverId);
-    final HighlyAvailableGraphDatabaseProxy graphDatabase=new HighlyAvailableGraphDatabaseProxy(graphDatabaseBuilder);
+    config(builder,name,serverId);
+    final HighlyAvailableGraphDatabaseProxy graphDatabase=new HighlyAvailableGraphDatabaseProxy(builder);
     members.put(serverId,graphDatabase);
     life.add(new LifecycleAdapter(){
       @Override public void stop() throws Throwable {
