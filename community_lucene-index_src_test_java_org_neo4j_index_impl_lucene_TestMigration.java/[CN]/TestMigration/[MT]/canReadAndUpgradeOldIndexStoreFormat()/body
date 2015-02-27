@@ -1,13 +1,11 @@
 {
-  String path="target/var/old-index-store";
-  Neo4jTestCase.deleteFileOrDirectory(new File(path));
-  GraphDatabaseService db=new GraphDatabaseFactory().newEmbeddedDatabase(path);
-  db.shutdown();
+  File path=new File("target/var/old-index-store");
+  Neo4jTestCase.deleteFileOrDirectory(path);
+  startDatabase(path).shutdown();
   InputStream stream=getClass().getClassLoader().getResourceAsStream("old-index.db");
   writeFile(stream,new File(path,"index.db"));
-  db=new GraphDatabaseFactory().newEmbeddedDatabase(path);
-  Transaction transaction=db.beginTx();
-  try {
+  GraphDatabaseService db=startDatabase(path);
+  try (Transaction ignore=db.beginTx()){
     assertTrue(db.index().existsForNodes("indexOne"));
     Index<Node> indexOne=db.index().forNodes("indexOne");
     verifyConfiguration(db,indexOne,LuceneIndexImplementation.EXACT_CONFIG);
@@ -18,8 +16,5 @@
     Index<Relationship> indexThree=db.index().forRelationships("indexThree");
     verifyConfiguration(db,indexThree,LuceneIndexImplementation.EXACT_CONFIG);
   }
-  finally {
-    transaction.finish();
-  }
-  db.shutdown();
+   db.shutdown();
 }

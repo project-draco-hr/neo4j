@@ -1,22 +1,24 @@
 {
-  GraphDatabaseAPI db1=createDb(storeDir,defaultBackupPortHostParams());
+  defaultBackupPortHostParams();
+  Config defaultConfig=dbRule.getConfigCopy();
+  GraphDatabaseAPI db1=dbRule.getGraphDatabaseAPI();
   createAndIndexNode(db1,1);
-  new BackupService(fileSystem).doFullBackup(BACKUP_HOST,backupPort,backupDir.getAbsolutePath(),false,defaultConfig(),BackupClient.BIG_READ_TIMEOUT);
-  db1.shutdown();
-  deleteAllBackedUpTransactionLogs();
-  fileSystem.deleteRecursively(storeDir);
-  fileSystem.mkdir(storeDir);
-  GraphDatabaseAPI db2=createDb(storeDir,defaultBackupPortHostParams());
+  new BackupService(fileSystem).doFullBackup(BACKUP_HOST,backupPort,backupDir.getAbsolutePath(),false,defaultConfig,BackupClient.BIG_READ_TIMEOUT);
+  GraphDatabaseAPI db2=dbRule.restartDatabase(new DatabaseRule.RestartAction(){
+    @Override public void run(    FileSystemAbstraction fs,    File storeDirectory) throws IOException {
+      deleteAllBackedUpTransactionLogs();
+      fileSystem.deleteRecursively(storeDir);
+      fileSystem.mkdir(storeDir);
+    }
+  }
+);
   createAndIndexNode(db2,2);
   try {
-    new BackupService(fileSystem).doIncrementalBackupOrFallbackToFull(BACKUP_HOST,backupPort,backupDir.getAbsolutePath(),false,defaultConfig(),BackupClient.BIG_READ_TIMEOUT);
+    new BackupService(fileSystem).doIncrementalBackupOrFallbackToFull(BACKUP_HOST,backupPort,backupDir.getAbsolutePath(),false,defaultConfig,BackupClient.BIG_READ_TIMEOUT);
     fail("Should have thrown exception about mismatching store ids");
   }
  catch (  RuntimeException e) {
     assertThat(e.getMessage(),equalTo(BackupService.DIFFERENT_STORE));
     assertThat(e.getCause(),instanceOf(MismatchingStoreIdException.class));
-  }
- finally {
-    db2.shutdown();
   }
 }
