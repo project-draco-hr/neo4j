@@ -1,20 +1,15 @@
 {
   Configuration config=movingAverageConfig(10);
-  DynamicProcessorAssigner assigner=new DynamicProcessorAssigner(config,2);
+  DynamicProcessorAssigner assigner=new DynamicProcessorAssigner(config,3);
   ControlledStep<?> slowStep=spy(new ControlledStep<>("slow",true));
   slowStep.setStat(Keys.avg_processing_time,10);
   slowStep.setStat(Keys.done_batches,10);
-  ControlledStep<?> fastStep=spy(new ControlledStep<>("fast",true));
+  ControlledStep<?> fastStep=spy(new ControlledStep<>("fast",true,2));
   fastStep.setStat(Keys.avg_processing_time,2);
   fastStep.setStat(Keys.done_batches,10);
   StageExecution[] execution=executionOf(config,slowStep,fastStep);
   assigner.start(execution);
   assigner.check(execution);
-  verify(slowStep,times(1)).incrementNumberOfProcessors();
-  verify(fastStep,times(1)).decrementNumberOfProcessors();
-  slowStep.setStat(Keys.done_batches,25);
-  fastStep.setStat(Keys.done_batches,25);
-  assigner.check(execution);
-  verify(slowStep,times(0)).decrementNumberOfProcessors();
+  verify(fastStep,times(0)).incrementNumberOfProcessors();
   verify(fastStep,times(1)).decrementNumberOfProcessors();
 }
