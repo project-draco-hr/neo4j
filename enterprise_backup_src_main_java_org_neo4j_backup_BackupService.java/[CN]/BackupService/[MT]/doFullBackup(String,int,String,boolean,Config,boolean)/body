@@ -1,0 +1,50 @@
+{
+  if (directoryContainsDb(targetDirectory)) {
+    throw new RuntimeException(targetDirectory + " already contains a database");
+  }
+  Map<String,String> params=tuningConfiguration.getParams();
+  params.put(GraphDatabaseSettings.store_dir.name(),targetDirectory);
+  tuningConfiguration.applyChanges(params);
+  long timestamp=System.currentTimeMillis();
+  Map<String,Long> lastCommittedTxs=new TreeMap<>();
+  boolean consistent=!checkConsistency;
+  GraphDatabaseAPI targetDb=null;
+  try {
+    RemoteStoreCopier storeCopier=new RemoteStoreCopier(tuningConfiguration,loadKernelExtensions(),new ConsoleLogger(StringLogger.SYSTEM),new DefaultFileSystemAbstraction(),new Monitors());
+    storeCopier.copyStore(new RemoteStoreCopier.StoreCopyRequester(){
+      private BackupClient client;
+      @Override public Response<?> copyStore(      StoreWriter writer){
+        client=new BackupClient(sourceHostNameOrIp,sourcePort,new DevNullLoggingService(),new Monitors(),null);
+        client.start();
+        return client.fullBackup(writer,forensics);
+      }
+      @Override public void done(){
+        client.stop();
+      }
+    }
+,CancellationRequest.NONE);
+    targetDb=startTemporaryDb(targetDirectory,VerificationLevel.NONE);
+    new LogicalLogSeeder(logger).ensureAtLeastOneLogicalLogPresent(sourceHostNameOrIp,sourcePort,targetDb);
+  }
+ catch (  IOException e) {
+    throw new RuntimeException(e);
+  }
+ finally {
+    if (targetDb != null) {
+      targetDb.shutdown();
+    }
+  }
+  bumpLogFile(targetDirectory,timestamp);
+  if (checkConsistency) {
+    try {
+      consistent=new ConsistencyCheckService().runFullConsistencyCheck(targetDirectory,tuningConfiguration,ProgressMonitorFactory.textual(System.err),logger).isSuccessful();
+    }
+ catch (    ConsistencyCheckIncompleteException e) {
+      logger.error("Consistency check incomplete",e);
+    }
+ finally {
+      logger.flush();
+    }
+  }
+  return new BackupOutcome(lastCommittedTxs,consistent);
+}
