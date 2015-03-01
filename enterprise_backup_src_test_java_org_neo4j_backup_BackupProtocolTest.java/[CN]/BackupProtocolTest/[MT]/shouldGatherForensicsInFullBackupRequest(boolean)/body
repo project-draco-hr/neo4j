@@ -1,0 +1,20 @@
+{
+  StoreId storeId=new StoreId();
+  DevNullLoggingService logging=new DevNullLoggingService();
+  Monitors monitors=new Monitors();
+  String host="localhost";
+  int port=BackupServer.DEFAULT_PORT;
+  LifeSupport life=new LifeSupport();
+  BackupClient client=life.add(new BackupClient(host,port,logging,monitors,storeId));
+  ControlledBackupInterface backup=new ControlledBackupInterface();
+  BackupServer server=life.add(new BackupServer(backup,new HostnamePort(host,port),logging,monitors));
+  life.start();
+  try {
+    StoreWriter writer=mock(StoreWriter.class);
+    client.fullBackup(writer,forensics);
+    assertEquals(forensics,backup.receivedForensics.booleanValue());
+  }
+  finally {
+    life.shutdown();
+  }
+}

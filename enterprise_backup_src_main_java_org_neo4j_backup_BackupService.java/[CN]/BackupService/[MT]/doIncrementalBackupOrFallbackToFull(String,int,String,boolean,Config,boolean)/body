@@ -1,0 +1,19 @@
+{
+  if (!directoryContainsDb(targetDirectory)) {
+    return doFullBackup(sourceHostNameOrIp,sourcePort,targetDirectory,verification,config,forensics);
+  }
+  try {
+    return doIncrementalBackup(sourceHostNameOrIp,sourcePort,targetDirectory,verification);
+  }
+ catch (  IncrementalBackupNotPossibleException e) {
+    try {
+      logger.info("Existing backup is too far out of date, a new full backup will be performed.");
+      File targetDirFile=new File(targetDirectory);
+      FileUtils.deleteRecursively(targetDirFile);
+      return doFullBackup(sourceHostNameOrIp,sourcePort,targetDirFile.getAbsolutePath(),verification,config,forensics);
+    }
+ catch (    Exception fullBackupFailure) {
+      throw new RuntimeException("Failed to perform incremental backup, fell back to full backup, " + "but that failed as well: '" + fullBackupFailure.getMessage() + "'.",fullBackupFailure);
+    }
+  }
+}
