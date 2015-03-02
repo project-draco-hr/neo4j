@@ -1,17 +1,25 @@
 {
-  logger.debug("Applying recovered updates: " + recoveredNodeIds);
+  if (logger.isDebugEnabled()) {
+    logger.debug("Applying recovered updates: " + recoveredNodeIds);
+  }
   monitor.applyingRecoveredData(recoveredNodeIds);
   if (!recoveredNodeIds.isEmpty()) {
     try (IndexUpdaterMap updaterMap=indexMapRef.createIndexUpdaterMap(IndexUpdateMode.RECOVERY)){
       for (      IndexUpdater updater : updaterMap) {
         updater.remove(recoveredNodeIds);
       }
-      for (      long nodeId : recoveredNodeIds) {
-        Iterable<NodePropertyUpdate> updates=storeView.nodeAsUpdates(nodeId);
-        applyUpdates(updates,updaterMap);
-        monitor.appliedRecoveredData(updates);
-      }
     }
-   }
+     List<NodePropertyUpdate> recoveredUpdates=new ArrayList<>();
+    for (    long nodeId : recoveredNodeIds) {
+      Iterables.addAll(recoveredUpdates,storeView.nodeAsUpdates(nodeId));
+    }
+    try (ValidatedIndexUpdates validatedUpdates=validate(recoveredUpdates)){
+      validatedUpdates.flush();
+      monitor.appliedRecoveredData(recoveredUpdates);
+    }
+ catch (    IndexEntryConflictException|IndexCapacityExceededException e) {
+      throw new UnderlyingStorageException(e);
+    }
+  }
   recoveredNodeIds.clear();
 }

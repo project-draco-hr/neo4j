@@ -1,0 +1,28 @@
+{
+  final long nodeId1=1;
+  final long nodeId2=2;
+  final Set<Long> nodeIds=asSet(nodeId1,nodeId2);
+  final NodePropertyUpdate nodeUpdate1=add(nodeId1,"foo");
+  final NodePropertyUpdate nodeUpdate2=add(nodeId2,"bar");
+  final Set<NodePropertyUpdate> nodeUpdates=asSet(nodeUpdate1,nodeUpdate2);
+  final AtomicBoolean applyingRecoveredDataCalled=new AtomicBoolean();
+  final AtomicBoolean appliedRecoveredDataCalled=new AtomicBoolean();
+  IndexingService.Monitor monitor=new IndexingService.MonitorAdapter(){
+    @Override public void applyingRecoveredData(    Set<Long> recoveredNodeIds){
+      assertEquals(nodeIds,recoveredNodeIds);
+      applyingRecoveredDataCalled.set(true);
+    }
+    @Override public void appliedRecoveredData(    Iterable<NodePropertyUpdate> updates){
+      assertEquals(nodeUpdates,asSet(updates));
+      appliedRecoveredDataCalled.set(true);
+    }
+  }
+;
+  IndexingService indexing=newIndexingServiceWithMockedDependencies(populator,accessor,withData(),monitor);
+  when(storeView.nodeAsUpdates(nodeId1)).thenReturn(asSet(nodeUpdate1));
+  when(storeView.nodeAsUpdates(nodeId2)).thenReturn(asSet(nodeUpdate2));
+  indexing.addRecoveredNodeIds(nodeIds);
+  life.start();
+  assertTrue("applyingRecoveredData was not called",applyingRecoveredDataCalled.get());
+  assertTrue("appliedRecoveredData was not called",appliedRecoveredDataCalled.get());
+}

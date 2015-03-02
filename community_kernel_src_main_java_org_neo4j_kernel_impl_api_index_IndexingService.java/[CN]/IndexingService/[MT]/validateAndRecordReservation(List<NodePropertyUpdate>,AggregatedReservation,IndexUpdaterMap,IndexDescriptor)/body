@@ -1,0 +1,22 @@
+{
+  boolean exceptionThrown=false;
+  try {
+    IndexUpdater updater=updaterMap.getUpdater(descriptor);
+    Reservation reservation=updater.validate(indexUpdates);
+    aggregatedReservation.add(reservation);
+  }
+ catch (  IOException|IndexCapacityExceededException e) {
+    exceptionThrown=true;
+    String indexName=descriptor.userDescription(tokenNameLookup);
+    throw new UnderlyingStorageException("Validation of updates for index " + indexName + " failed",e);
+  }
+catch (  Throwable t) {
+    exceptionThrown=true;
+    throw t;
+  }
+ finally {
+    if (exceptionThrown) {
+      aggregatedReservation.release();
+    }
+  }
+}
