@@ -5,23 +5,23 @@
   long startTime=currentTimeMillis();
   File badRelationshipsFile=new File(config.badFileName());
   boolean hasBadRelationships=false;
-  try (BatchingNeoStore neoStore=new BatchingNeoStore(fileSystem,storeDir,config,writeMonitor,logging,monitors,writerFactory,additionalInitialIds);OutputStream badRelationshipsOutput=new BufferedOutputStream(fileSystem.openAsOutputStream(badRelationshipsFile,false));Collector<InputRelationship> badRelationships=input.badRelationshipsCollector(badRelationshipsOutput);CountsAccessor.Updater countsUpdater=neoStore.getCountsStore().reset()){
+  try (BatchingNeoStore neoStore=new BatchingNeoStore(fileSystem,storeDir,config,writeMonitor,logging,monitors,writerFactory,additionalInitialIds);OutputStream badRelationshipsOutput=new BufferedOutputStream(fileSystem.openAsOutputStream(badRelationshipsFile,false));Collector<InputRelationship> badRelationships=input.badRelationshipsCollector(badRelationshipsOutput);CountsAccessor.Updater countsUpdater=neoStore.getCountsStore().reset();InputCache inputCache=new InputCache(fileSystem,new File(storeDir))){
     IdMapper idMapper=input.idMapper();
     IdGenerator idGenerator=input.idGenerator();
     nodeRelationshipLink=new NodeRelationshipLinkImpl(AUTO,config.denseNodeThreshold());
-    final InputIterable<InputNode> nodes=input.nodes();
-    final InputIterable<InputRelationship> relationships=input.relationships();
-    final NodeStage nodeStage=new NodeStage(nodes,idMapper,idGenerator,neoStore);
-    final CalculateDenseNodesStage calculateDenseNodesStage=new CalculateDenseNodesStage(relationships,nodeRelationshipLink,idMapper,badRelationships);
+    InputIterable<InputNode> nodes=input.nodes();
+    InputIterable<InputRelationship> relationships=input.relationships();
+    final NodeStage nodeStage=new NodeStage(nodes,idMapper,idGenerator,neoStore,inputCache);
+    final CalculateDenseNodesStage calculateDenseNodesStage=new CalculateDenseNodesStage(relationships,nodeRelationshipLink,idMapper,badRelationships,inputCache);
     if (idMapper.needsPreparation()) {
       executeStages(nodeStage);
-      executeStages(new IdMapperPreparationStage(config,idMapper,nodes));
+      executeStages(new IdMapperPreparationStage(config,idMapper,nodes,inputCache));
       executeStages(calculateDenseNodesStage);
     }
  else {
       executeStages(nodeStage,calculateDenseNodesStage);
     }
-    final RelationshipStage relationshipStage=new RelationshipStage(relationships,idMapper,neoStore,nodeRelationshipLink,input.specificRelationshipIds());
+    final RelationshipStage relationshipStage=new RelationshipStage(relationships.supportsMultiplePasses() ? relationships : inputCache.relationships(),idMapper,neoStore,nodeRelationshipLink,input.specificRelationshipIds());
     executeStages(relationshipStage);
     neoStore.flush();
     writerFactory.awaitEverythingWritten();
