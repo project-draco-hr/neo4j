@@ -1,0 +1,32 @@
+{
+  List<URI> allMembers=new ArrayList<URI>(3);
+  URI instance1=URI.create("c:/1");
+  URI instance2=URI.create("c:/2");
+  URI instance3=URI.create("c:/3");
+  URI instance4=URI.create("c:/4");
+  allMembers.add(instance1);
+  allMembers.add(instance2);
+  allMembers.add(instance3);
+  allMembers.add(instance4);
+  Set<org.neo4j.cluster.InstanceId> aliveInstanceIds=new HashSet<org.neo4j.cluster.InstanceId>();
+  org.neo4j.cluster.InstanceId id2=new org.neo4j.cluster.InstanceId(2);
+  org.neo4j.cluster.InstanceId id4=new org.neo4j.cluster.InstanceId(4);
+  aliveInstanceIds.add(id2);
+  aliveInstanceIds.add(id4);
+  LearnerState state=LearnerState.learner;
+  LearnerContext ctx=mock(LearnerContext.class);
+  MessageHolder outgoing=mock(MessageHolder.class);
+  InstanceId paxosInstanceIdIAskedFor=new InstanceId(4);
+  when(ctx.getLastDeliveredInstanceId()).thenReturn(3l);
+  when(ctx.getLastKnownLearnedInstanceInCluster()).thenReturn(5l);
+  when(ctx.getMemberURIs()).thenReturn(allMembers);
+  when(ctx.getAlive()).thenReturn(aliveInstanceIds);
+  when(ctx.getUriForId(id2)).thenReturn(instance2);
+  when(ctx.getUriForId(id4)).thenReturn(instance4);
+  when(ctx.getPaxosInstance(paxosInstanceIdIAskedFor)).thenReturn(new PaxosInstance(mock(PaxosInstanceStore.class),paxosInstanceIdIAskedFor));
+  Message<LearnerMessage> theCause=Message.to(LearnerMessage.catchUp,instance2);
+  state.handle(ctx,Message.timeout(LearnerMessage.learnTimedout,theCause),outgoing);
+  verify(outgoing,times(1)).offer(Matchers.<Message<? extends MessageType>>argThat(new MessageArgumentMatcher().onMessageType(LearnerMessage.learnRequest).to(instance2)));
+  verify(outgoing,times(1)).offer(Matchers.<Message<? extends MessageType>>argThat(new MessageArgumentMatcher().onMessageType(LearnerMessage.learnRequest).to(instance4)));
+  verifyNoMoreInteractions(outgoing);
+}
