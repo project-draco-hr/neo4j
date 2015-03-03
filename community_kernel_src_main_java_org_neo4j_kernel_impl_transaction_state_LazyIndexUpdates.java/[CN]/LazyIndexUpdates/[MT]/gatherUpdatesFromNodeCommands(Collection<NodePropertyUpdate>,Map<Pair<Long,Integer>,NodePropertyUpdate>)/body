@@ -1,28 +1,9 @@
 {
-  for (  NodeCommand nodeCommand : nodeCommands.values()) {
-    long nodeId=nodeCommand.getKey();
-    long[] labelsBefore=parseLabelsField(nodeCommand.getBefore()).get(nodeStore);
-    long[] labelsAfter=parseLabelsField(nodeCommand.getAfter()).get(nodeStore);
-    if (nodeCommand.getMode() == Mode.DELETE) {
-      continue;
-    }
-    LabelChangeSummary summary=new LabelChangeSummary(labelsBefore,labelsAfter);
-    if (!summary.hasAddedLabels() && !summary.hasRemovedLabels()) {
-      continue;
-    }
-    Iterator<DefinedProperty> properties=nodeFullyLoadProperties(nodeId);
-    while (properties.hasNext()) {
-      DefinedProperty property=properties.next();
-      int propertyKeyId=property.propertyKeyId();
-      if (summary.hasAddedLabels()) {
-        Object value=property.value();
-        propertyUpdates.add(add(nodeId,propertyKeyId,value,summary.getAddedLabels()));
-      }
-      if (summary.hasRemovedLabels()) {
-        NodePropertyUpdate propertyChange=propertyLookup.get(Pair.of(nodeId,propertyKeyId));
-        Object value=propertyChange == null ? property.value() : propertyChange.getValueBefore();
-        propertyUpdates.add(remove(nodeId,propertyKeyId,value,summary.getRemovedLabels()));
-      }
+  nodeCommands.visitEntries(new PrimitiveLongObjectVisitor<NodeCommand,RuntimeException>(){
+    @Override public boolean visited(    long key,    NodeCommand nodeCommand){
+      gatherUpdatesFromNodeCommand(nodeCommand,propertyUpdates,propertyLookup);
+      return false;
     }
   }
+);
 }
