@@ -29,7 +29,8 @@
   LifeSupport life=new LifeSupport();
   Logging logging=life.add(new ClassicLoggingService(new Config(stringMap(store_dir.name(),storeDir.getAbsolutePath()))));
   life.start();
-  BatchImporter importer=new ParallelBatchImporter(storeDir.getPath(),importConfiguration(processors,badFileName),logging,ExecutionMonitors.defaultVisible());
+  org.neo4j.unsafe.impl.batchimport.Configuration config=importConfiguration(processors,badFileName);
+  BatchImporter importer=new ParallelBatchImporter(storeDir.getPath(),config,logging,ExecutionMonitors.defaultVisible());
   boolean success=false;
   try {
     importer.doImport(input);
@@ -39,6 +40,10 @@
     throw andPrintError("Import error",e,enableStacktrace);
   }
  finally {
+    File badRelationships=new File(config.badFileName());
+    if (badRelationships.exists()) {
+      out.println("There were bad relationships which were skipped " + "and logged into " + badRelationships.getAbsolutePath());
+    }
     life.shutdown();
     if (!success) {
       try {

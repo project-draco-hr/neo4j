@@ -1,0 +1,40 @@
+{
+  File movies=file("ops","movies10.csv");
+  try (PrintStream out=new PrintStream(movies)){
+    out.println("movieId:ID,title,year:int,:LABEL");
+    out.println("tt0099892,\"Joe Versus the Volcano\",1990,Movie");
+  }
+   File actors=file("ops","actors10.csv");
+  try (PrintStream out=new PrintStream(actors)){
+    out.println("personId:ID,name,:LABEL");
+    out.println("meg,\"Meg Ryan\",Actor");
+  }
+   File roles=file("ops","roles10.csv");
+  try (PrintStream out=new PrintStream(roles)){
+    out.println(":START_ID,roles:string[],:END_ID,:TYPE");
+    out.println("meg,\"DeDe;Angelica Graynamore;Patricia Graynamore\",tt0099892,ACTED_IN");
+  }
+   String[] arguments=arguments("--into",directory.absolutePath(),"--nodes",movies.getAbsolutePath(),"--nodes",actors.getAbsolutePath(),"--relationships",roles.getAbsolutePath());
+  ImportTool.main(arguments);
+  String realDir=movies.getParentFile().getAbsolutePath();
+  printCommandToFile(arguments,realDir,"property-types.adoc");
+  GraphDatabaseService db=new GraphDatabaseFactory().newEmbeddedDatabase(directory.absolutePath());
+  try (Transaction tx=db.beginTx()){
+    int nodeCount=0, relationshipCount=0;
+    for (    Node ignored : GlobalGraphOperations.at(db).getAllNodes()) {
+      nodeCount++;
+    }
+    assertEquals(2,nodeCount);
+    for (    Relationship relationship : GlobalGraphOperations.at(db).getAllRelationships()) {
+      assertTrue(relationship.hasProperty("roles"));
+      String[] retrievedRoles=(String[])relationship.getProperty("roles");
+      assertEquals(3,retrievedRoles.length);
+      relationshipCount++;
+    }
+    assertEquals(1,relationshipCount);
+    tx.success();
+  }
+  finally {
+    db.shutdown();
+  }
+}
