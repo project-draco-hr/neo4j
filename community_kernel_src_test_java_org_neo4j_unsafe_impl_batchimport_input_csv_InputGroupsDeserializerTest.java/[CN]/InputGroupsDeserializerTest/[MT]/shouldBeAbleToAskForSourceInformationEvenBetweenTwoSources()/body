@@ -1,0 +1,21 @@
+{
+  List<DataFactory<InputNode>> data=asList(data(":ID\n1"),data("2"));
+  final AtomicInteger flips=new AtomicInteger();
+  InputGroupsDeserializer<InputNode> deserializer=new InputGroupsDeserializer<InputNode>(data.iterator(),defaultFormatNodeFileHeader(),lowBufferSize(COMMAS),INTEGER){
+    @Override protected InputEntityDeserializer<InputNode> entityDeserializer(    CharSeeker dataStream,    Header dataHeader,    Function<InputNode,InputNode> decorator){
+      if (flips.get() == 0) {
+        assertNotNull(sourceDescription());
+      }
+ else {
+        assertEquals("" + flips.get(),sourceDescription());
+      }
+      flips.incrementAndGet();
+      @SuppressWarnings("unchecked") InputEntityDeserializer<InputNode> result=mock(InputEntityDeserializer.class);
+      when(result.sourceDescription()).thenReturn(String.valueOf(flips.get()));
+      return result;
+    }
+  }
+;
+  count(deserializer);
+  assertEquals(2,flips.get());
+}
