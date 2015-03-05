@@ -1,10 +1,21 @@
 {
-  TestLogging logging=new TestLogging();
+  Logging logging=mock(Logging.class);
   LearnerContextImpl ctx=new LearnerContextImpl(new InstanceId(1),mock(CommonContextState.class),logging,mock(Timeouts.class),mock(PaxosInstanceStore.class),mock(AcceptorInstanceStore.class),mock(ObjectInputStreamFactory.class),mock(ObjectOutputStreamFactory.class),mock(HeartbeatContextImpl.class));
+  final List<String> logs=new ArrayList<>();
+  ConsoleLogger consoleLogger=new ConsoleLogger(null){
+    @Override public void log(    String message){
+      logs.add(message);
+    }
+  }
+;
+  doReturn(consoleLogger).when(logging).getConsoleLog(Matchers.<Class>any());
   ctx.notifyLearnMiss(new org.neo4j.cluster.protocol.atomicbroadcast.multipaxos.InstanceId(1l));
   ctx.notifyLearnMiss(new org.neo4j.cluster.protocol.atomicbroadcast.multipaxos.InstanceId(1l));
   ctx.notifyLearnMiss(new org.neo4j.cluster.protocol.atomicbroadcast.multipaxos.InstanceId(2l));
   ctx.notifyLearnMiss(new org.neo4j.cluster.protocol.atomicbroadcast.multipaxos.InstanceId(2l));
   ctx.notifyLearnMiss(new org.neo4j.cluster.protocol.atomicbroadcast.multipaxos.InstanceId(1l));
-  logging.getDelegatedConsoleLog(LearnerState.class).assertExactly(unknown("Did not have learned value for Paxos instance 1. This generally indicates that this instance has missed too many " + "cluster events and is failing to catch up. If this error does not resolve soon it " + "may become necessary to restart this cluster member so normal operation can resume."),unknown("Did not have learned value for Paxos instance 2. This generally indicates that this instance has missed too many " + "cluster events and is failing to catch up. If this error does not resolve soon it " + "may become necessary to restart this cluster member so normal operation can resume."),unknown("Did not have learned value for Paxos instance 1. This generally indicates that this instance has missed too many " + "cluster events and is failing to catch up. If this error does not resolve soon it " + "may become necessary to restart this cluster member so normal operation can resume."));
+  assertEquals(3,logs.size());
+  assertTrue(logs.get(0).startsWith("Did not have learned value for Paxos instance 1."));
+  assertTrue(logs.get(1).startsWith("Did not have learned value for Paxos instance 2."));
+  assertTrue(logs.get(2).startsWith("Did not have learned value for Paxos instance 1."));
 }
