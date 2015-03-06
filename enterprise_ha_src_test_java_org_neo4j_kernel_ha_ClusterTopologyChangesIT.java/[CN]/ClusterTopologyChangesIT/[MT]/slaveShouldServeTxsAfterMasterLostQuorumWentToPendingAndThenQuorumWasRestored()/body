@@ -25,9 +25,25 @@
   slave2RepairKit.repair();
   cluster.await(allSeesAllAsAvailable());
   HighlyAvailableGraphDatabase newMaster=cluster.getMaster();
-  HighlyAvailableGraphDatabase newSlave1=cluster.getAnySlave();
-  HighlyAvailableGraphDatabase newSlave2=cluster.getAnySlave(newSlave1);
+  final HighlyAvailableGraphDatabase newSlave1=cluster.getAnySlave();
+  final HighlyAvailableGraphDatabase newSlave2=cluster.getAnySlave(newSlave1);
+  final CountDownLatch slave1Unavailable=new CountDownLatch(1);
+  final CountDownLatch slave2Unavailable=new CountDownLatch(1);
+  ClusterMemberEvents clusterEvents=((GraphDatabaseAPI)newMaster).getDependencyResolver().resolveDependency(ClusterMemberEvents.class);
+  clusterEvents.addClusterMemberListener(new ClusterMemberListener.Adapter(){
+    @Override public void memberIsUnavailable(    String role,    InstanceId unavailableId){
+      if (instanceIdOf(newSlave1).equals(unavailableId)) {
+        slave1Unavailable.countDown();
+      }
+ else       if (instanceIdOf(newSlave2).equals(unavailableId)) {
+        slave2Unavailable.countDown();
+      }
+    }
+  }
+);
   attemptTransactions(newSlave1,newSlave2);
+  slave1Unavailable.await(60,TimeUnit.SECONDS);
+  slave2Unavailable.await(60,TimeUnit.SECONDS);
   cluster.await(allSeesAllAsAvailable());
   assertNotNull(createNodeOn(newMaster));
   assertNotNull(createNodeOn(newSlave1));
