@@ -1,13 +1,20 @@
 {
-  Configuration config=new Configuration.Default();
+  Configuration config=new Configuration.Overridden(DEFAULT){
+    @Override public int batchSize(){
+      return 10;
+    }
+    @Override public int workAheadSize(){
+      return 20;
+    }
+  }
+;
   Stage stage=new Stage("Test stage",config,true);
-  int batchSize=10;
   long batches=1000;
-  final long items=batches * batchSize;
-  stage.add(new ProducerStep<Object>(stage.control(),"Producer",batchSize,100){
+  final long items=batches * config.batchSize();
+  stage.add(new ProducerStep(stage.control(),"Producer",config){
     private final Object theObject=new Object();
     private long i;
-    @Override protected Object nextBatchOrNull(    int batchSize){
+    @Override protected Object nextBatchOrNull(    long ticket,    int batchSize){
       if (i >= items) {
         return null;
       }
@@ -19,13 +26,13 @@
   }
 );
   for (int i=0; i < 3; i++) {
-    stage.add(new ReceiveOrderAssertingStep(stage.control(),"Step" + i,20,2,i));
+    stage.add(new ReceiveOrderAssertingStep(stage.control(),"Step" + i,config,i,false));
   }
-  stage.add(new LastReceiveOrderAssertingStep(stage.control(),"Final step",20,2,0));
+  stage.add(new ReceiveOrderAssertingStep(stage.control(),"Final step",config,0,true));
   StageExecution execution=stage.execute();
   new ExecutionSupervisor(ExecutionMonitors.invisible()).supervise(execution);
   for (  Step<?> step : execution.steps()) {
-    assertEquals(batches,step.stats().stat(Keys.done_batches).asLong());
+    assertEquals("For " + step,batches,step.stats().stat(Keys.done_batches).asLong());
   }
   stage.close();
 }
