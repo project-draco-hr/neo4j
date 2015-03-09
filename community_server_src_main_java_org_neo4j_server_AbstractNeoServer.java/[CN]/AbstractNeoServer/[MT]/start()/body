@@ -10,6 +10,8 @@
       StringLogger diagnosticsLog=diagnosticsManager.getTargetLog();
       diagnosticsLog.info("--- SERVER STARTED START ---");
       databaseActions=createDatabaseActions();
+      rrdDbScheduler=new RoundRobinJobScheduler(dependencies.logging());
+      rrdDbWrapper=new RrdFactory(configurator.configuration(),dependencies.logging()).createRrdDbAndSampler(database,rrdDbScheduler);
       transactionFacade=createTransactionalActions();
       cypherExecutor=new CypherExecutor(database);
       configureWebServer();
@@ -25,6 +27,7 @@
  catch (  Throwable t) {
     Thread.interrupted();
     if (interruptStartupTimer.wasTriggered()) {
+      stopRrdDb();
       life.shutdown();
       throw new ServerStartupException("Startup took longer than " + interruptStartupTimer.getTimeoutMillis() + "ms, "+ "and was stopped. You can disable this behavior by setting '"+ ServerInternalSettings.startup_timeout.name()+ "' to 0.",1);
     }
