@@ -1,0 +1,31 @@
+{
+  Group group=readGroup(0);
+  Object id=readValue();
+  byte labelsMode=channel.get();
+  Object labels;
+  if (labelsMode == HAS_LABEL_FIELD) {
+    labels=channel.getLong();
+  }
+ else   if (labelsMode == END_OF_LABEL_CHANGES) {
+    labels=previousLabels;
+  }
+ else {
+    String[] newLabels=previousLabels.clone();
+    int cursor=newLabels.length;
+    while (labelsMode != END_OF_LABEL_CHANGES) {
+switch (labelsMode) {
+case LABEL_REMOVAL:
+        remove(readToken(),newLabels,cursor--);
+      break;
+case LABEL_ADDITION:
+    (newLabels=ensureRoomForOneMore(newLabels,cursor))[cursor++]=readToken();
+  break;
+default :
+throw new IllegalArgumentException("Unrecognized label mode " + labelsMode);
+}
+labelsMode=channel.get();
+}
+labels=previousLabels=cursor == newLabels.length ? newLabels : Arrays.copyOf(newLabels,cursor);
+}
+return new InputNode(sourceDescription(),lineNumber(),position(),group,id,properties.getClass().isArray() ? (Object[])properties : NO_PROPERTIES,properties.getClass().isArray() ? null : (Long)properties,labels.getClass().isArray() ? (String[])labels : NO_LABELS,labels.getClass().isArray() ? null : (Long)labels);
+}
