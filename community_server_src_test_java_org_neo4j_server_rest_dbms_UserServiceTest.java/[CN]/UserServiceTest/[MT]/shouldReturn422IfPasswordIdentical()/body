@@ -1,0 +1,14 @@
+{
+  HttpServletRequest req=mock(HttpServletRequest.class);
+  when(req.getUserPrincipal()).thenReturn(NEO4J_PRINCIPLE);
+  AuthManager authManager=mock(AuthManager.class);
+  when(authManager.getUser("neo4j")).thenReturn(NEO4J_USER);
+  OutputFormat outputFormat=new EntityOutputFormat(new JsonFormat(),new URI("http://www.example.com"),null);
+  UserService userService=new UserService(authManager,new JsonFormat(),outputFormat);
+  Response response=userService.setPassword("neo4j",req,"{ \"password\" : \"neo4j\" }");
+  assertThat(response.getStatus(),equalTo(422));
+  String json=new String((byte[])response.getEntity());
+  assertNotNull(json);
+  assertThat(json,containsString("\"code\" : \"Neo.ClientError.Request.Invalid\""));
+  assertThat(json,containsString("\"message\" : \"Old password and new password cannot be the same.\""));
+}
