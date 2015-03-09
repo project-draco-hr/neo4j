@@ -1,7 +1,8 @@
 {
   long txId=transaction.getCommitEntry().getTxId();
-  try (LockGroup locks=new LockGroup()){
-    storeApplier.apply(transaction.getTransactionRepresentation(),locks,txId,TransactionApplicationMode.RECOVERY);
+  TransactionRepresentation txRepresentation=transaction.getTransactionRepresentation();
+  try (LockGroup locks=new LockGroup();ValidatedIndexUpdates indexUpdates=prepareIndexUpdates(txRepresentation)){
+    storeApplier.apply(txRepresentation,indexUpdates,locks,txId,RECOVERY);
   }
    lastTransactionIdApplied=txId;
   lastTransactionChecksum=LogEntryStart.checksum(transaction.getStartEntry());

@@ -1,0 +1,15 @@
+{
+  Reservation reservation=mock(Reservation.class);
+  when(updater.validate(any(Iterable.class))).thenReturn(reservation);
+  when(accessor.newUpdater(any(IndexUpdateMode.class))).thenReturn(updater);
+  IndexingService indexing=newIndexingServiceWithMockedDependencies(populator,accessor,withData());
+  life.start();
+  indexing.createIndex(indexRule(0,labelId,propertyKeyId,PROVIDER_DESCRIPTOR));
+  verify(populator,timeout(1000)).close(true);
+  try (ValidatedIndexUpdates updates=indexing.validate(asList(add(1,"1"),add(2,"2")))){
+    verifyZeroInteractions(reservation);
+    updates.flush();
+    verifyZeroInteractions(reservation);
+  }
+   verify(reservation).release();
+}

@@ -1,0 +1,16 @@
+{
+  when(accessor.newUpdater(any(IndexUpdateMode.class))).thenReturn(updater);
+  IndexingService indexing=newIndexingServiceWithMockedDependencies(populator,accessor,withData());
+  life.start();
+  indexing.createIndex(indexRule(0,labelId,propertyKeyId,PROVIDER_DESCRIPTOR));
+  verify(populator,timeout(1000)).close(true);
+  try (ValidatedIndexUpdates updates=indexing.validate(asList(add(1,"foo"),add(2,"bar")))){
+    updates.flush();
+  }
+   InOrder inOrder=inOrder(updater);
+  inOrder.verify(updater).validate(asList(add(1,"foo"),add(2,"bar")));
+  inOrder.verify(updater).process(add(1,"foo"));
+  inOrder.verify(updater).process(add(2,"bar"));
+  inOrder.verify(updater).close();
+  inOrder.verifyNoMoreInteractions();
+}
