@@ -1,3 +1,32 @@
 {
-  throw new UnsupportedOperationException();
+  final NodeRecord node=nodeStore.loadRecord(nodeId,null);
+  if (node == null) {
+    throw new EntityNotFoundException(EntityType.NODE,nodeId);
+  }
+  if (node.isDense()) {
+    return new PrimitiveIntCollections.PrimitiveIntBaseIterator(){
+      private long groupId=node.getNextRel();
+      @Override protected boolean fetchNext(){
+        if (groupId == Record.NO_NEXT_RELATIONSHIP.intValue()) {
+          return false;
+        }
+        RelationshipGroupRecord group=relationshipGroupStore.getRecord(groupId);
+        try {
+          return next(group.getType());
+        }
+  finally {
+          groupId=group.getNext();
+        }
+      }
+    }
+;
+  }
+  StoreRelationshipIterator relationships=nodeListRelationships(nodeId,Direction.BOTH);
+  PrimitiveIntSet types=Primitive.intSet(5);
+  while (relationships.hasNext()) {
+    relationships.next();
+    RelationshipRecord record=relationships.record();
+    types.add(record.getType());
+  }
+  return types.iterator();
 }

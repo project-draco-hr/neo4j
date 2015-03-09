@@ -15,21 +15,10 @@
   tracers=createTracers(config,msgLog);
   this.storeLocker=life.add(new StoreLockerLifecycleAdapter(new StoreLocker(fileSystem),storeDir));
   new JvmChecker(msgLog,new JvmMetadataRepository()).checkJvmCompatibilityAndIssueWarning();
-  String cacheTypeName=config.get(Configuration.cache_type);
-  CacheProvider cacheProvider=cacheProviders.get(cacheTypeName);
-  if (cacheProvider == null) {
-    if (config.get(Configuration.cache_type).equals(CacheLayer.EXPERIMENTAL_OFF)) {
-      cacheProvider=new NoCacheProvider();
-    }
- else {
-      throw new IllegalArgumentException("No provider for cache type '" + cacheTypeName + "'. "+ "Cache providers are loaded using java service loading where they"+ " "+ "register themselves in resource (plain-text) files found on the "+ "class path under "+ "META-INF/services/"+ CacheProvider.class.getName()+ ". This missing provider may have "+ "been caused by either such a missing registration, "+ "or by the lack of the provider class itself.");
-    }
-  }
   jobScheduler=life.add(createJobScheduler());
   pageCache=createPageCache();
   life.add(pageCache);
   kernelEventHandlers=new KernelEventHandlers(logging.getMessagesLog(KernelEventHandlers.class));
-  caches=createCaches();
   diagnosticsManager=life.add(createDiagnosticsManager());
   monitors.addMonitorListener(new RollingLogMonitor(){
     @Override public void rolledOver(){
@@ -51,9 +40,6 @@
   propertyKeyTokenHolder=life.add(new PropertyKeyTokenHolder(createPropertyKeyCreator()));
   labelTokenHolder=life.add(new LabelTokenHolder(createLabelIdCreator()));
   relationshipTypeTokenHolder=life.add(new RelationshipTypeTokenHolder(createRelationshipTypeCreator()));
-  caches.configure(cacheProvider,config);
-  diagnosticsManager.tryAppendProvider(caches.node());
-  diagnosticsManager.tryAppendProvider(caches.relationship());
   threadToTransactionBridge=life.add(new ThreadToStatementContextBridge());
   nodeManager=createNodeManager();
   transactionEventHandlers=new TransactionEventHandlers(createNodeActions(),createRelationshipActions(),threadToTransactionBridge);

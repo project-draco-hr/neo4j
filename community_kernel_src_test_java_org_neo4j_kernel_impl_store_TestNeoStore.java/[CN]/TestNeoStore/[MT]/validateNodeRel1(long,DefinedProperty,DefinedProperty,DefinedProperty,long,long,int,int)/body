@@ -31,26 +31,31 @@
   }
   assertEquals(3,count);
   count=0;
-  MutableRelationshipLoadingPosition pos=getPosition(node);
-  while (true) {
-    Iterable<RelationshipRecord> relData=getMore(node,pos);
-    if (!relData.iterator().hasNext()) {
-      break;
+  PrimitiveLongIterator relationships=storeLayer.nodeListRelationships(node,Direction.BOTH);
+  while (relationships.hasNext()) {
+    long rel=relationships.next();
+    if (rel == rel1) {
+      storeLayer.relationshipVisit(rel,new RelationshipVisitor<RuntimeException>(){
+        @Override public void visit(        long relId,        int type,        long startNode,        long endNode) throws RuntimeException {
+          assertEquals(node,startNode);
+          assertEquals(relType1,type);
+        }
+      }
+);
     }
-    for (    RelationshipRecord rel : relData) {
-      if (rel.getId() == rel1) {
-        assertEquals(node,rel.getFirstNode());
-        assertEquals(relType1,rel.getType());
+ else     if (rel == rel2) {
+      storeLayer.relationshipVisit(rel,new RelationshipVisitor<RuntimeException>(){
+        @Override public void visit(        long relId,        int type,        long startNode,        long endNode) throws RuntimeException {
+          assertEquals(node,endNode);
+          assertEquals(relType2,type);
+        }
       }
- else       if (rel.getId() == rel2) {
-        assertEquals(node,rel.getSecondNode());
-        assertEquals(relType2,rel.getType());
-      }
+);
+    }
  else {
-        throw new IOException();
-      }
-      count++;
+      throw new IOException();
     }
+    count++;
   }
   assertEquals(2,count);
 }
