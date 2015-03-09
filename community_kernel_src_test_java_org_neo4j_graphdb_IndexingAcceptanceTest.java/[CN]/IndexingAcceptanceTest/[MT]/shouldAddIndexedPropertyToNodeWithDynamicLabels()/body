@@ -1,0 +1,33 @@
+{
+  int indexesCount=20;
+  String labelPrefix="foo";
+  String propertyKeyPrefix="bar";
+  String propertyValuePrefix="baz";
+  GraphDatabaseService db=dbRule.getGraphDatabaseService();
+  for (int i=0; i < indexesCount; i++) {
+    createIndex(db,DynamicLabel.label(labelPrefix + i),propertyKeyPrefix + i);
+  }
+  long nodeId;
+  try (Transaction tx=db.beginTx()){
+    nodeId=db.createNode().getId();
+    tx.success();
+  }
+   try (Transaction tx=db.beginTx()){
+    Node node=db.getNodeById(nodeId);
+    for (int i=0; i < indexesCount; i++) {
+      node.addLabel(DynamicLabel.label(labelPrefix + i));
+      node.setProperty(propertyKeyPrefix + i,propertyValuePrefix + i);
+    }
+    tx.success();
+  }
+   try (Transaction tx=db.beginTx()){
+    for (int i=0; i < indexesCount; i++) {
+      Label label=DynamicLabel.label(labelPrefix + i);
+      String key=propertyKeyPrefix + i;
+      String value=propertyValuePrefix + i;
+      ResourceIterable<Node> nodes=db.findNodesByLabelAndProperty(label,key,value);
+      assertEquals(1,Iterables.count(nodes));
+    }
+    tx.success();
+  }
+ }

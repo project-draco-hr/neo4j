@@ -1,0 +1,24 @@
+{
+  long indexId1=1;
+  long indexId2=2;
+  int labelId1=24;
+  int labelId2=42;
+  IndexingService indexing=newIndexingServiceWithMockedDependencies(populator,accessor,withData());
+  IndexAccessor accessor1=mock(IndexAccessor.class);
+  IndexUpdater updater1=mock(IndexUpdater.class);
+  when(accessor1.newUpdater(IndexUpdateMode.ONLINE)).thenReturn(updater1);
+  IndexAccessor accessor2=mock(IndexAccessor.class);
+  IndexUpdater updater2=mock(IndexUpdater.class);
+  when(accessor2.newUpdater(IndexUpdateMode.ONLINE)).thenReturn(updater2);
+  when(indexProvider.getOnlineAccessor(eq(1L),any(IndexConfiguration.class),any(IndexSamplingConfig.class))).thenReturn(accessor1);
+  when(indexProvider.getOnlineAccessor(eq(2L),any(IndexConfiguration.class),any(IndexSamplingConfig.class))).thenReturn(accessor2);
+  life.start();
+  indexing.createIndex(indexRule(indexId1,labelId1,propertyKeyId,PROVIDER_DESCRIPTOR));
+  indexing.createIndex(indexRule(indexId2,labelId2,propertyKeyId,PROVIDER_DESCRIPTOR));
+  verify(populator,timeout(1000).times(2)).close(true);
+  try (ValidatedIndexUpdates updates=indexing.validate(asList(NodePropertyUpdate.add(1,propertyKeyId,"foo",new long[]{labelId1}),NodePropertyUpdate.add(2,propertyKeyId,"bar",new long[]{labelId2})))){
+    updates.flush();
+  }
+   verify(updater1).close();
+  verify(updater2).close();
+}
