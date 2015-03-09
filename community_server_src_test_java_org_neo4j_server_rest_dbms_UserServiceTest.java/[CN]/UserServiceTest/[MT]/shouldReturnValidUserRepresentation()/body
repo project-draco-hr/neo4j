@@ -1,0 +1,15 @@
+{
+  HttpServletRequest req=mock(HttpServletRequest.class);
+  when(req.getUserPrincipal()).thenReturn(NEO4J_PRINCIPLE);
+  AuthManager authManager=mock(AuthManager.class);
+  when(authManager.getUser("neo4j")).thenReturn(NEO4J_USER);
+  OutputFormat outputFormat=new EntityOutputFormat(new JsonFormat(),new URI("http://www.example.com"),null);
+  UserService userService=new UserService(authManager,new JsonFormat(),outputFormat);
+  Response response=userService.getUser("neo4j",req);
+  assertThat(response.getStatus(),equalTo(200));
+  String json=new String((byte[])response.getEntity());
+  assertNotNull(json);
+  assertThat(json,containsString("\"username\" : \"neo4j\""));
+  assertThat(json,containsString("\"password_change\" : \"http://www.example.com/user/neo4j/password\""));
+  assertThat(json,containsString("\"password_change_required\" : true"));
+}
