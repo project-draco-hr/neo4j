@@ -3,9 +3,9 @@
   NodeRelationshipCache nodeRelationshipCache=null;
   NodeLabelsCache nodeLabelsCache=null;
   long startTime=currentTimeMillis();
-  boolean hasBadRelationships=false;
+  boolean hasBadEntries=false;
   File badFile=new File(storeDir,Configuration.BAD_FILE_NAME);
-  try (BatchingNeoStore neoStore=new BatchingNeoStore(fileSystem,storeDir,config,writeMonitor,logging,monitors,writerFactory,additionalInitialIds);OutputStream badRelationshipsOutput=new BufferedOutputStream(fileSystem.openAsOutputStream(badFile,false));Collector<InputRelationship> badRelationships=input.badRelationshipsCollector(badRelationshipsOutput);CountsAccessor.Updater countsUpdater=neoStore.getCountsStore().reset(neoStore.getLastCommittedTransactionId());InputCache inputCache=new InputCache(fileSystem,storeDir)){
+  try (BatchingNeoStore neoStore=new BatchingNeoStore(fileSystem,storeDir,config,writeMonitor,logging,monitors,writerFactory,additionalInitialIds);OutputStream badOutput=new BufferedOutputStream(fileSystem.openAsOutputStream(badFile,false));Collector badCollector=input.badCollector(badOutput);CountsAccessor.Updater countsUpdater=neoStore.getCountsStore().reset(neoStore.getLastCommittedTransactionId());InputCache inputCache=new InputCache(fileSystem,storeDir)){
     IdMapper idMapper=input.idMapper();
     IdGenerator idGenerator=input.idGenerator();
     nodeRelationshipCache=new NodeRelationshipCache(AUTO,config.denseNodeThreshold());
@@ -13,10 +13,10 @@
     InputIterable<InputNode> nodes=input.nodes();
     InputIterable<InputRelationship> relationships=input.relationships();
     NodeStage nodeStage=new NodeStage(config,writeMonitor,writerFactory,nodes,idMapper,idGenerator,neoStore,inputCache,memoryUsageStats);
-    CalculateDenseNodesStage calculateDenseNodesStage=new CalculateDenseNodesStage(config,relationships,nodeRelationshipCache,idMapper,badRelationships,inputCache);
+    CalculateDenseNodesStage calculateDenseNodesStage=new CalculateDenseNodesStage(config,relationships,nodeRelationshipCache,idMapper,badCollector,inputCache);
     if (idMapper.needsPreparation()) {
       executeStages(nodeStage);
-      executeStages(new IdMapperPreparationStage(config,idMapper,nodes,inputCache,memoryUsageStats));
+      executeStages(new IdMapperPreparationStage(config,idMapper,nodes,inputCache,badCollector,memoryUsageStats));
       executeStages(calculateDenseNodesStage);
     }
  else {
@@ -28,7 +28,7 @@
     nodeRelationshipCache.fixateGroups();
     neoStore.flush();
     writerFactory.awaitEverythingWritten();
-    executeStages(new NodeFirstRelationshipStage(config,neoStore.getNodeStore(),neoStore.getRelationshipGroupStore(),nodeRelationshipCache));
+    executeStages(new NodeFirstRelationshipStage(config,neoStore.getNodeStore(),neoStore.getRelationshipGroupStore(),nodeRelationshipCache,badCollector));
     nodeRelationshipCache.clearRelationships();
     executeStages(new RelationshipLinkbackStage(config,neoStore.getRelationshipStore(),nodeRelationshipCache));
     nodeRelationshipCache.close();
@@ -40,9 +40,9 @@
     long totalTimeMillis=currentTimeMillis() - startTime;
     executionMonitor.done(totalTimeMillis);
     logger.info("Import completed, took " + Format.duration(totalTimeMillis));
-    hasBadRelationships=badRelationships.badEntries() > 0;
-    if (hasBadRelationships) {
-      logger.warn("There were " + badRelationships.badEntries() + " bad relationships which were skipped "+ "and logged into "+ badFile.getAbsolutePath());
+    hasBadEntries=badCollector.badEntries() > 0;
+    if (hasBadEntries) {
+      logger.warn("There were " + badCollector.badEntries() + " bad entries which were skipped "+ "and logged into "+ badFile.getAbsolutePath());
     }
   }
  catch (  Throwable t) {
@@ -57,7 +57,7 @@
     if (nodeLabelsCache != null) {
       nodeLabelsCache.close();
     }
-    if (!hasBadRelationships) {
+    if (!hasBadEntries) {
       fileSystem.deleteFile(badFile);
     }
   }

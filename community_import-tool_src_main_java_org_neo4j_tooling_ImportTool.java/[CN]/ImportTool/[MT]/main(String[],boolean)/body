@@ -12,6 +12,7 @@
   Input input=null;
   int badTolerance;
   Charset inputEncoding;
+  boolean skipBadRelationships, skipDuplicateNodes;
   try {
     storeDir=args.interpretOption(Options.STORE_DIR.key(),Converters.<File>mandatory(),Converters.toFile(),Validators.DIRECTORY_IS_WRITABLE,Validators.CONTAINS_NO_EXISTING_DATABASE);
     nodesFiles=INPUT_FILES_EXTRACTOR.apply(args,Options.NODE_DATA.key());
@@ -22,7 +23,9 @@
     IdType idType=args.interpretOption(Options.ID_TYPE.key(),withDefault((IdType)Options.ID_TYPE.defaultValue()),TO_ID_TYPE);
     badTolerance=args.getNumber(Options.BAD_TOLERANCE.key(),(Number)Options.BAD_TOLERANCE.defaultValue()).intValue();
     inputEncoding=Charset.forName(args.get(Options.INPUT_ENCODING.key(),defaultCharset().name()));
-    input=new CsvInput(nodeData(inputEncoding,nodesFiles),defaultFormatNodeFileHeader(),relationshipData(inputEncoding,relationshipsFiles),defaultFormatRelationshipFileHeader(),idType,csvConfiguration(args,defaultSettingsSuitableForTests),Collectors.badRelationships(badTolerance));
+    skipBadRelationships=args.getBoolean(Options.SKIP_BAD_RELATIONSHIPS.key(),(Boolean)Options.SKIP_BAD_RELATIONSHIPS.defaultValue(),true);
+    skipDuplicateNodes=args.getBoolean(Options.SKIP_DUPLICATE_NODES.key(),(Boolean)Options.SKIP_DUPLICATE_NODES.defaultValue(),true);
+    input=new CsvInput(nodeData(inputEncoding,nodesFiles),defaultFormatNodeFileHeader(),relationshipData(inputEncoding,relationshipsFiles),defaultFormatRelationshipFileHeader(),idType,csvConfiguration(args,defaultSettingsSuitableForTests),badCollector(badTolerance,collect(skipBadRelationships,skipDuplicateNodes)));
   }
  catch (  IllegalArgumentException e) {
     throw andPrintError("Input error",e,false);
@@ -42,9 +45,9 @@
     throw andPrintError("Import error",e,enableStacktrace);
   }
  finally {
-    File badRelationships=new File(storeDir,BAD_FILE_NAME);
-    if (badRelationships.exists()) {
-      out.println("There were bad relationships which were skipped " + "and logged into " + badRelationships.getAbsolutePath());
+    File badFile=new File(storeDir,BAD_FILE_NAME);
+    if (badFile.exists()) {
+      out.println("There were bad entries which were skipped and logged into " + badFile.getAbsolutePath());
     }
     life.shutdown();
     if (!success) {
