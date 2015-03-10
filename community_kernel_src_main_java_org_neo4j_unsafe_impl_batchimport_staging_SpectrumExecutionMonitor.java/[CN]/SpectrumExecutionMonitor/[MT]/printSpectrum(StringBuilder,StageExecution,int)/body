@@ -1,28 +1,36 @@
 {
   long[] values=values(execution);
   long total=total(values);
-  width-=values.length + 1 + 4;
+  width-=2 + 4;
   Pair<Step<?>,Float> bottleNeck=execution.stepsOrderedBy(Keys.avg_processing_time,false).iterator().next();
   QuantizedProjection projection=new QuantizedProjection(total,width);
   long lastDoneBatches=0;
   int stepIndex=0;
+  boolean hasProgressed=false;
+  builder.append('[');
   for (  Step<?> step : execution.steps()) {
     StepStats stats=step.stats();
     if (!projection.next(avg(stats))) {
       break;
     }
     long stepWidth=total == 0 && stepIndex == 0 ? width : projection.step();
-    boolean isBottleNeck=bottleNeck.first() == step;
-    String name=(isBottleNeck ? "*" : "") + stats.toString(DetailLevel.IMPORTANT) + (step.numberOfProcessors() > 1 ? "(" + step.numberOfProcessors() + ")" : "");
-    builder.append(stepIndex++ == 0 ? '[' : '|');
-    int charIndex=0;
-    char backgroundChar=step.numberOfProcessors() > 1 ? '=' : '-';
-    for (int i=0; i < stepWidth; i++, charIndex++) {
-      char ch=backgroundChar;
-      if (charIndex >= 0 && charIndex < name.length() && charIndex < stepWidth) {
-        ch=name.charAt(charIndex);
+    if (stepWidth > 0) {
+      if (hasProgressed) {
+        stepWidth--;
+        builder.append('|');
       }
-      builder.append(ch);
+      boolean isBottleNeck=bottleNeck.first() == step;
+      String name=(isBottleNeck ? "*" : "") + stats.toString(DetailLevel.IMPORTANT) + (step.numberOfProcessors() > 1 ? "(" + step.numberOfProcessors() + ")" : "");
+      int charIndex=0;
+      char backgroundChar=step.numberOfProcessors() > 1 ? '=' : '-';
+      for (int i=0; i < stepWidth; i++, charIndex++) {
+        char ch=backgroundChar;
+        if (charIndex >= 0 && charIndex < name.length() && charIndex < stepWidth) {
+          ch=name.charAt(charIndex);
+        }
+        builder.append(ch);
+      }
+      hasProgressed=true;
     }
     lastDoneBatches=stats.stat(Keys.done_batches).asLong();
   }
