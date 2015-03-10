@@ -1,0 +1,15 @@
+{
+  LifeSupport life=new LifeSupport();
+  LogicalTransactionStore transactionStore=life.add(new ReadOnlyTransactionStore(fileSystem,backupDir,monitors,mock(KernelHealth.class)));
+  life.start();
+  try (IOCursor<CommittedTransactionRepresentation> cursor=transactionStore.getTransactions(txId)){
+    assertTrue(cursor.next());
+    assertEquals(txId,cursor.get().getCommitEntry().getTxId());
+    assertFalse(cursor.next());
+  }
+  finally {
+    life.shutdown();
+  }
+  NeoStoreUtil store=new NeoStoreUtil(backupDir,fileSystem);
+  assertEquals(txId,store.getLastCommittedTx());
+}
