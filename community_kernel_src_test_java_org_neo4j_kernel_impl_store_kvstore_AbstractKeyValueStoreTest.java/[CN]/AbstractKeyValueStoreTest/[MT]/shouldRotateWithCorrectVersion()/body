@@ -1,0 +1,34 @@
+{
+  final Store store=the.managed(new Store(TX_ID){
+    @SuppressWarnings("unchecked") @Override <Value>Value initialHeader(    HeaderField<Value> field){
+      if (field == TX_ID) {
+        return (Value)(Object)1l;
+      }
+ else {
+        return super.initialHeader(field);
+      }
+    }
+    @Override protected void updateHeaders(    Headers.Builder headers,    long version){
+      headers.put(TX_ID,version);
+    }
+    @Override protected int compareHeaders(    Headers lhs,    Headers rhs){
+      return Long.compare(lhs.get(TX_ID),rhs.get(TX_ID));
+    }
+  }
+);
+  IOFunction<Long,Void> update=new IOFunction<Long,Void>(){
+    @Override public Void apply(    Long update) throws IOException {
+      try (EntryUpdater<String> updater=store.updater(update).get()){
+        updater.apply("key " + update,store.value("value " + update));
+      }
+       return null;
+    }
+  }
+;
+  update.apply(1l);
+  PreparedRotation rotation=store.prepareRotation(2);
+  update.apply(2l);
+  rotation.rotate();
+  assertEquals(2,store.headers().get(TX_ID).longValue());
+  store.prepareRotation(2).rotate();
+}
