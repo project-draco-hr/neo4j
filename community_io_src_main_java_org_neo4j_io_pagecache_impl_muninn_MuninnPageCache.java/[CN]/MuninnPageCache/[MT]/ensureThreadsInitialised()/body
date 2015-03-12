@@ -3,8 +3,18 @@
     return;
   }
   threadsInitialised=true;
-  String threadNamePrefix="MuninnPageCache[" + pageCacheId + "]";
-  String name=threadNamePrefix + "-EvictionThread";
-  EvictionRunner evictionRunner=new EvictionRunner(this,name);
-  backgroundThreadExecutor.execute(evictionRunner);
+  try {
+    backgroundThreadExecutor.execute(new EvictionTask(this));
+    backgroundThreadExecutor.execute(new FlushTask(this));
+  }
+ catch (  Exception e) {
+    IOException exception=new IOException(e);
+    try {
+      close();
+    }
+ catch (    IOException closeException) {
+      exception.addSuppressed(closeException);
+    }
+    throw exception;
+  }
 }
