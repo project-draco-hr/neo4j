@@ -1,51 +1,17 @@
 {
   DefaultFileSystemAbstraction fileSystem=new DefaultFileSystemAbstraction();
-  Monitors monitors=new Monitors();
   tuningConfiguration=configForStoreDir(tuningConfiguration,new File(storeDir));
-  Neo4jJobScheduler jobScheduler=new Neo4jJobScheduler();
-  PageSwapperFactory swapperFactory=new SingleFilePageSwapperFactory(fileSystem);
-  LifecycledPageCache pageCache=new LifecycledPageCache(swapperFactory,jobScheduler,tuningConfiguration,PageCacheTracer.NULL);
-  StoreFactory factory=new StoreFactory(tuningConfiguration,new DefaultIdGeneratorFactory(),pageCache,fileSystem,logger,monitors);
-  jobScheduler.init();
-  pageCache.start();
-  ConsistencySummaryStatistics summary;
-  File reportFile=chooseReportPath(tuningConfiguration);
-  StringLogger report=StringLogger.lazyLogger(reportFile);
-  try (NeoStore neoStore=factory.newNeoStore(false)){
-    neoStore.makeStoreOk();
-    StoreAccess store=new StoreAccess(neoStore);
-    LabelScanStore labelScanStore=null;
-    try {
-      labelScanStore=new LuceneLabelScanStoreBuilder(storeDir,store.getRawNeoStore(),fileSystem,logger).build();
-      SchemaIndexProvider indexes=new LuceneSchemaIndexProvider(DirectoryFactory.PERSISTENT,tuningConfiguration);
-      DirectStoreAccess stores=new DirectStoreAccess(store,labelScanStore,indexes);
-      FullCheck check=new FullCheck(tuningConfiguration,progressFactory);
-      summary=check.execute(stores,StringLogger.tee(logger,report));
-    }
-  finally {
-      try {
-        if (null != labelScanStore) {
-          labelScanStore.shutdown();
-        }
-      }
- catch (      IOException e) {
-        logger.error("Failure during shutdown of label scan store",e);
-      }
-    }
+  ConfiguringPageCacheFactory pageCacheFactory=new ConfiguringPageCacheFactory(fileSystem,tuningConfiguration,PageCacheTracer.NULL);
+  PageCache pageCache=pageCacheFactory.getOrCreatePageCache();
+  try {
+    return runFullConsistencyCheck(storeDir,tuningConfiguration,progressFactory,logger,fileSystem,pageCache);
   }
   finally {
-    report.close();
     try {
-      pageCache.stop();
+      pageCache.close();
     }
  catch (    IOException e) {
       logger.error("Failure during shutdown of the page cache",e);
     }
-    jobScheduler.shutdown();
   }
-  if (!summary.isConsistent()) {
-    logger.logMessage(String.format("See '%s' for a detailed consistency report.",reportFile.getPath()));
-    return Result.FAILURE;
-  }
-  return Result.SUCCESS;
 }

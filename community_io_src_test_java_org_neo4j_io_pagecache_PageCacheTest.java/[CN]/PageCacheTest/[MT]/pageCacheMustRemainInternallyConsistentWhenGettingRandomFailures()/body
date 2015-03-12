@@ -5,11 +5,12 @@
   File fileA=new File("a");
   File fileB=new File("b");
   ThreadLocalRandom rng=ThreadLocalRandom.current();
-  getPageCache(fs,maxPages,pageCachePageSize,PageCacheTracer.NULL);
+  LinearHistoryPageCacheTracer tracer=new LinearHistoryPageCacheTracer();
+  getPageCache(fs,maxPages,pageCachePageSize,tracer);
   PagedFile pfA=pageCache.map(fileA,filePageSize);
   PagedFile pfB=pageCache.map(fileB,filePageSize / 2 + 1);
   adversary.setProbabilityFactor(1.0);
-  for (int i=0; i < 50000; i++) {
+  for (int i=0; i < 1000; i++) {
     PagedFile pagedFile=rng.nextBoolean() ? pfA : pfB;
     long maxPageId=pagedFile.getLastPageId();
     boolean performingRead=rng.nextBoolean() && maxPageId != -1;
@@ -41,8 +42,14 @@ catch (    Throwable throwable) {
   }
   adversary.setProbabilityFactor(0.0);
   pageCache.flush();
-  verifyAdversarialPagedContent(pfA);
-  verifyAdversarialPagedContent(pfB);
-  pfA.close();
-  pfB.close();
+  try {
+    verifyAdversarialPagedContent(pfA);
+    verifyAdversarialPagedContent(pfB);
+    pfA.close();
+    pfB.close();
+  }
+ catch (  Throwable e) {
+    tracer.printHistory(System.err);
+    throw e;
+  }
 }

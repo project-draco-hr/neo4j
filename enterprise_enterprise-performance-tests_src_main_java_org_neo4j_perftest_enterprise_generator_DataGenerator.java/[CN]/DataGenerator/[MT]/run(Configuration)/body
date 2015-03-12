@@ -2,18 +2,16 @@
   String storeDir=configuration.get(store_dir);
   FileUtils.deleteRecursively(new File(storeDir));
   DataGenerator generator=new DataGenerator(configuration);
-  BatchInserter batchInserter=BatchInserters.inserter(storeDir,batchInserterConfig(configuration));
+  Map<String,String> config=batchInserterConfig(configuration);
+  BatchInserter batchInserter=BatchInserters.inserter(storeDir,config);
   try {
     generator.generateData(batchInserter);
   }
   finally {
     batchInserter.shutdown();
   }
-  Neo4jJobScheduler jobScheduler=new Neo4jJobScheduler();
-  jobScheduler.init();
-  PageSwapperFactory swapperFactory=new SingleFilePageSwapperFactory(new DefaultFileSystemAbstraction());
-  LifecycledPageCache pageCache=new LifecycledPageCache(swapperFactory,jobScheduler,new Config(),PageCacheTracer.NULL);
-  pageCache.start();
+  ConfiguringPageCacheFactory pageCacheFactory=new ConfiguringPageCacheFactory(new DefaultFileSystemAbstraction(),new Config(config),PageCacheTracer.NULL);
+  PageCache pageCache=pageCacheFactory.getOrCreatePageCache();
   StoreAccess stores=new StoreAccess(pageCache,storeDir);
   try {
     printCount(stores.getNodeStore());
@@ -31,7 +29,5 @@
     stores.close();
     pageCache.flush();
     pageCache.close();
-    pageCache.stop();
-    jobScheduler.shutdown();
   }
 }
