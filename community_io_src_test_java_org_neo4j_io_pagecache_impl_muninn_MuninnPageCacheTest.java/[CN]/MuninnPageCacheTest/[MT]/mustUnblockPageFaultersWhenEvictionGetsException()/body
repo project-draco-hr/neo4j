@@ -11,30 +11,14 @@
     }
   }
 ;
-  MuninnPageCache pageCache=new MuninnPageCache(fs,2,8,PageCacheTracer.NULL);
+  MuninnPageCache pageCache=createPageCache(fs,2,8,PageCacheTracer.NULL);
   final PagedFile pagedFile=pageCache.map(file,8);
-  Future<?> task=executor.submit(new Callable<Object>(){
-    @Override public Object call() throws Exception {
-      try (PageCursor cursor=pagedFile.io(0,PF_EXCLUSIVE_LOCK)){
-        for (; ; ) {
-          assertTrue(cursor.next());
-        }
-      }
-     }
+  try (PageCursor cursor=pagedFile.io(0,PF_EXCLUSIVE_LOCK)){
+    for (int i=0; i < 1000; i++) {
+      assertTrue(cursor.next());
+    }
+    fail("Expected an exception at this point");
   }
-);
-  try {
-    task.get(100,TimeUnit.MILLISECONDS);
-    fail("expected a timeout");
-  }
- catch (  TimeoutException ignore) {
-  }
-  pageCache.evictPages(1,0,EvictionRunEvent.NULL);
-  try {
-    task.get();
-    fail("expected an execution exception");
-  }
- catch (  ExecutionException e) {
-    assertThat(e.getCause(),instanceOf(IOException.class));
+ catch (  IOException ignore) {
   }
 }
