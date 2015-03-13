@@ -8,7 +8,7 @@
     life.start();
     WritableLogChannel channel=logFile.getWriter();
     final TransactionLogWriter writer=new TransactionLogWriter(new LogEntryWriterv1(channel,new CommandWriter(channel)));
-    final AtomicLong firstTxId=new AtomicLong(-1);
+    final AtomicLong firstTxId=new AtomicLong(BASE_TX_ID);
     response.accept(new Response.Handler(){
       @Override public void obligation(      long txId) throws IOException {
         throw new UnsupportedOperationException("Shouldn't be called");
@@ -17,8 +17,10 @@
         return new Visitor<CommittedTransactionRepresentation,IOException>(){
           @Override public boolean visit(          CommittedTransactionRepresentation transaction) throws IOException {
             long txId=transaction.getCommitEntry().getTxId();
+            if (firstTxId.compareAndSet(BASE_TX_ID,txId)) {
+              monitor.startReceivingTransactions(txId);
+            }
             writer.append(transaction.getTransactionRepresentation(),txId);
-            firstTxId.compareAndSet(-1,txId);
             return false;
           }
         }
@@ -26,7 +28,11 @@
       }
     }
 );
-    writeLogHeader(fs,logFiles.getLogFileForVersion(logVersionRepository.getCurrentLogVersion()),logVersionRepository.getCurrentLogVersion(),firstTxId.get() != -1 ? firstTxId.get() - 1 : 0);
+    long endTxId=firstTxId.get();
+    if (endTxId != BASE_TX_ID) {
+      monitor.finishReceivingTransactions(endTxId);
+    }
+    writeLogHeader(fs,logFiles.getLogFileForVersion(logVersionRepository.getCurrentLogVersion()),logVersionRepository.getCurrentLogVersion(),max(BASE_TX_ID,endTxId - 1));
   }
   finally {
     life.shutdown();

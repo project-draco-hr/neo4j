@@ -2,17 +2,19 @@
   File storeDir=config.get(InternalAbstractGraphDatabase.Configuration.store_dir);
   File tempStore=new File(storeDir,TEMP_COPY_DIRECTORY_NAME);
   cleanDirectory(tempStore);
-  try (Response<?> response=requester.copyStore(decorateWithProgressIndicator(new ToFileStoreWriter(tempStore)))){
+  monitor.startReceivingStoreFiles();
+  try (Response<?> response=requester.copyStore(decorateWithProgressIndicator(new ToFileStoreWriter(tempStore,monitor)))){
+    monitor.finishReceivingStoreFiles();
     writeTransactionsToActiveLogFile(tempStore,response);
   }
   finally {
     requester.done();
   }
-  storeCopyMonitor.finishedCopyingStoreFiles();
   checkCancellation(cancellationRequest,tempStore);
+  monitor.startRecoveringStore();
   GraphDatabaseService graphDatabaseService=newTempDatabase(tempStore);
   graphDatabaseService.shutdown();
-  storeCopyMonitor.recoveredStore();
+  monitor.finishRecoveringStore();
   for (  File candidate : tempStore.listFiles(STORE_FILE_FILTER)) {
     FileUtils.moveFileToDirectory(candidate,storeDir);
   }
