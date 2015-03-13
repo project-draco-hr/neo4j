@@ -1,7 +1,13 @@
 {
-  NodeRecord nodeRecord=neoStore.getNodeStore().getRecord(nodeId);
-  if (nodeRecord.isDense()) {
-    return new DenseIterator(nodeRecord);
+  return new PrefetchingIterator<T>(){
+    private final RelationshipIterator storeIterator=storeIterable.iterator();
+    @Override protected T fetchNextOrNull(){
+      if (!storeIterator.hasNext()) {
+        return null;
+      }
+      long relationshipId=storeIterator.next();
+      return nextFrom(relationshipId,storeIterator);
+    }
   }
-  return new SparseIterator(nodeRecord);
+;
 }

@@ -15,18 +15,22 @@
     }
   }
  else {
-    PrimitiveIntObjectMap<int[]> degrees=Primitive.intObjectMap(5);
-    StoreRelationshipIterator relationships;
+    final PrimitiveIntObjectMap<int[]> degrees=Primitive.intObjectMap(5);
+    RelationshipVisitor<RuntimeException> typeVisitor=new RelationshipVisitor<RuntimeException>(){
+      @Override public void visit(      long relId,      int type,      long startNode,      long endNode) throws RuntimeException {
+        int[] byType=degrees.get(type);
+        if (byType == null) {
+          degrees.put(type,byType=new int[3]);
+        }
+        byType[directionOf(nodeId,relId,startNode,endNode).ordinal()]++;
+      }
+    }
+;
+    RelationshipIterator relationships;
     try {
       relationships=nodeListRelationships(nodeId,Direction.BOTH);
       while (relationships.hasNext()) {
-        relationships.next();
-        RelationshipRecord record=relationships.record();
-        int[] byType=degrees.get(record.getType());
-        if (byType == null) {
-          degrees.put(record.getType(),byType=new int[3]);
-        }
-        byType[directionOf(nodeId,record).ordinal()]++;
+        relationships.relationshipVisit(relationships.next(),typeVisitor);
       }
       degrees.visitEntries(new PrimitiveIntObjectVisitor<int[],RuntimeException>(){
         @Override public boolean visited(        int type,        int[] degrees) throws RuntimeException {
