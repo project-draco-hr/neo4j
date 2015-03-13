@@ -3,25 +3,22 @@
   Config defaultConfig=dbRule.getConfigCopy();
   dbRule.setConfig(OnlineBackupSettings.online_backup_enabled,"false");
   Config withOnlineBackupEnabled=dbRule.getConfigCopy();
-  final List<String> storesThatHaveBeenStreamed=new ArrayList<>();
-  final CountDownLatch firstStoreFinishedStreaming=new CountDownLatch(1);
-  final CountDownLatch transactionCommitted=new CountDownLatch(1);
+  final Barrier.Control barrier=new Barrier.Control();
   final GraphDatabaseAPI db=dbRule.getGraphDatabaseAPI();
   createAndIndexNode(db,1);
   NeoStoreDataSource ds=db.getDependencyResolver().resolveDependency(DataSourceManager.class).getDataSource();
   long expectedLastTxId=ds.getNeoStore().getLastCommittedTransactionId();
-  Monitors monitors=new Monitors();
-  monitors.addMonitorListener(new StoreSnoopingMonitor(firstStoreFinishedStreaming,transactionCommitted,storesThatHaveBeenStreamed));
+  monitors.addMonitorListener(new StoreSnoopingMonitor(barrier));
   OnlineBackupKernelExtension backup=new OnlineBackupKernelExtension(defaultConfig,db,db.getDependencyResolver().resolveDependency(KernelPanicEventGenerator.class),new DevNullLoggingService(),monitors);
   backup.start();
-  BackupService backupService=new BackupService(fileSystem);
+  BackupService backupService=backupService();
   ExecutorService executor=Executors.newSingleThreadExecutor();
   executor.execute(new Runnable(){
     @Override public void run(){
-      awaitLatch(firstStoreFinishedStreaming);
+      barrier.awaitUninterruptibly();
       createAndIndexNode(db,1);
-      db.getDependencyResolver().resolveDependency(DataSourceManager.class).getDataSource().getNeoStore().flush();
-      transactionCommitted.countDown();
+      db.getDependencyResolver().resolveDependency(NeoStoreProvider.class).evaluate().flush();
+      barrier.release();
     }
   }
 );
@@ -29,7 +26,8 @@
   backup.stop();
   executor.shutdown();
   executor.awaitTermination(30,TimeUnit.SECONDS);
+  checkPreviousCommittedTxIdFromLog(0,expectedLastTxId);
+  checkLastCommittedTxIdInLogAndNeoStore(expectedLastTxId + 1);
   assertEquals(DbRepresentation.of(db),DbRepresentation.of(backupDir));
   assertTrue(backupOutcome.isConsistent());
-  checkPreviousCommittedTxIdFromFirstLog(expectedLastTxId);
 }

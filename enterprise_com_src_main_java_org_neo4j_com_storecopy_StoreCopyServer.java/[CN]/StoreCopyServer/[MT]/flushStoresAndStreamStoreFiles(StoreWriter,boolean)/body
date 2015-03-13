@@ -1,17 +1,25 @@
 {
   try {
     long lastAppliedTransaction=transactionIdStore.getLastClosedTransactionId();
+    monitor.startFlushingEverything();
     logRotationControl.forceEverything();
+    monitor.finishFlushingEverything();
     ByteBuffer temporaryBuffer=ByteBuffer.allocateDirect(1024 * 1024);
+    monitor.startStreamingStoreFiles();
     try (ResourceIterator<File> files=dataSource.listStoreFiles(includeLogs)){
       while (files.hasNext()) {
         File file=files.next();
         try (StoreChannel fileChannel=fileSystem.open(file,"r")){
+          monitor.startStreamingStoreFile(file);
           writer.write(relativePath(storeDirectory,file),fileChannel,temporaryBuffer,file.length() > 0);
+          monitor.finishStreamingStoreFile(file);
         }
        }
     }
-     return anonymous(lastAppliedTransaction);
+  finally {
+      monitor.finishStreamingStoreFiles();
+    }
+    return anonymous(lastAppliedTransaction);
   }
  catch (  IOException e) {
     throw new ServerFailureException(e);
