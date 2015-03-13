@@ -1,0 +1,25 @@
+{
+  PhysicalLogNeoCommandReaderV1 reader=new PhysicalLogNeoCommandReaderV1();
+  InMemoryLogChannel data=new InMemoryLogChannel();
+  CommandWriter writer=new CommandWriter(data);
+  long id=5;
+  int keyId=6;
+  byte[] data1=new byte[]{1,2,3,4,5};
+  byte[] data2=new byte[]{6,7,8,9,10};
+  long value=1234;
+  PropertyCommand command=new PropertyCommand();
+  PropertyRecord property=new PropertyRecord(id);
+  property.setInUse(true);
+  property.addPropertyBlock(propertyBlockWithSomeDynamicRecords(keyId,STRING,value,data1,data2));
+  property.addDeletedRecord(dynamicRecord(false,null,STRING.intValue()));
+  property.addDeletedRecord(dynamicRecord(false,null,STRING.intValue()));
+  command.init(new PropertyRecord(id),property);
+  writer.visitPropertyCommand(command);
+  PropertyCommand readCommand=(PropertyCommand)reader.read(data);
+  PropertyRecord readRecord=readCommand.getAfter();
+  assertEquals(id,readRecord.getId());
+  PropertyBlock readBlock=single((Iterable<PropertyBlock>)readRecord);
+  assertArrayEquals(data1,readBlock.getValueRecords().get(0).getData());
+  assertArrayEquals(data2,readBlock.getValueRecords().get(1).getData());
+  assertEquals(2,readRecord.getDeletedRecords().size());
+}
