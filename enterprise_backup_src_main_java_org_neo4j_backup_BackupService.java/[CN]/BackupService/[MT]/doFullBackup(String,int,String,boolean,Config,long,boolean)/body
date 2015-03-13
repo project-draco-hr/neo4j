@@ -8,7 +8,7 @@
   long timestamp=System.currentTimeMillis();
   long lastCommittedTx=-1;
   boolean consistent=!checkConsistency;
-  try (StandalonePageCache pageCache=createPageCache(fileSystem,"BackupService PageCache")){
+  try (PageCache pageCache=createPageCache(fileSystem)){
     StoreCopyClient storeCopier=new StoreCopyClient(tuningConfiguration,loadKernelExtensions(),new ConsoleLogger(StringLogger.SYSTEM),new DevNullLoggingService(),new DefaultFileSystemAbstraction(),pageCache,monitors.newMonitor(StoreCopyClient.Monitor.class,getClass()));
     storeCopier.copyStore(new StoreCopyClient.StoreCopyRequester(){
       private BackupClient client;
@@ -22,21 +22,21 @@
       }
     }
 ,CancellationRequest.NEVER_CANCELLED);
+    bumpMessagesDotLogFile(targetDirectory,timestamp);
+    if (checkConsistency) {
+      try {
+        consistent=new ConsistencyCheckService().runFullConsistencyCheck(targetDirectory,tuningConfiguration,ProgressMonitorFactory.textual(System.err),logger,fileSystem,pageCache).isSuccessful();
+      }
+ catch (      ConsistencyCheckIncompleteException e) {
+        logger.error("Consistency check incomplete",e);
+      }
+ finally {
+        logger.flush();
+      }
+    }
+    return new BackupOutcome(lastCommittedTx,consistent);
   }
  catch (  IOException e) {
     throw new RuntimeException(e);
   }
-  bumpMessagesDotLogFile(targetDirectory,timestamp);
-  if (checkConsistency) {
-    try {
-      consistent=new ConsistencyCheckService().runFullConsistencyCheck(targetDirectory,tuningConfiguration,ProgressMonitorFactory.textual(System.err),logger).isSuccessful();
-    }
- catch (    ConsistencyCheckIncompleteException e) {
-      logger.error("Consistency check incomplete",e);
-    }
- finally {
-      logger.flush();
-    }
-  }
-  return new BackupOutcome(lastCommittedTx,consistent);
 }

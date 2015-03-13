@@ -1,0 +1,44 @@
+{
+  int iterations=1000;
+  List<WeakReference<PageCache>> refs=new LinkedList<>();
+  final Queue<Throwable> caughtExceptions=new ConcurrentLinkedQueue<>();
+  final Thread.UncaughtExceptionHandler exceptionHandler=new Thread.UncaughtExceptionHandler(){
+    @Override public void uncaughtException(    Thread t,    Throwable e){
+      e.printStackTrace();
+      caughtExceptions.offer(e);
+    }
+  }
+;
+  Thread.UncaughtExceptionHandler defaultUncaughtExceptionHandler=Thread.getDefaultUncaughtExceptionHandler();
+  Thread.setDefaultUncaughtExceptionHandler(exceptionHandler);
+  try {
+    generateFileWithRecords(file,recordCount,recordSize);
+    int filePagesInTotal=recordCount / recordsPerFilePage;
+    for (int i=0; i < iterations; i++) {
+      PageCache cache=createPageCache(fs,maxPages,pageCachePageSize,PageCacheTracer.NULL);
+      PagedFile pagedFile=cache.map(file,filePageSize);
+      try (PageCursor cursor=pagedFile.io(0,PF_SHARED_LOCK)){
+        for (int j=0; j < filePagesInTotal; j++) {
+          assertTrue(cursor.next());
+        }
+      }
+       pagedFile.close();
+      cache.close();
+      refs.add(new WeakReference<>(cache));
+      assertTrue(caughtExceptions.isEmpty());
+    }
+    System.gc();
+    Thread.sleep(100);
+    System.gc();
+    Thread.sleep(100);
+    System.gc();
+    Thread.sleep(100);
+    System.gc();
+    for (    WeakReference<PageCache> ref : refs) {
+      assertNull(ref.get());
+    }
+  }
+  finally {
+    Thread.setDefaultUncaughtExceptionHandler(defaultUncaughtExceptionHandler);
+  }
+}

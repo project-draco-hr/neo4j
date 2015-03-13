@@ -14,13 +14,16 @@
   }
  catch (  IllegalArgumentException e) {
   }
-  try (StandalonePageCache pageCache=createPageCache(fs,config,"migration-tool")){
+  try (PageCache pageCache=createPageCache(fs,config)){
     long startTime=System.currentTimeMillis();
     migrationProcess.migrateIfNeeded(new File(legacyStoreDirectory),schemaIndexProvider,pageCache);
     long duration=System.currentTimeMillis() - startTime;
     logging.getMessagesLog(StoreMigrationTool.class).info(format("Migration completed in %d s%n",duration / 1000));
   }
-  finally {
+ catch (  IOException e) {
+    throw new StoreUpgrader.UnableToUpgradeException("Failure during upgrade",e);
+  }
+ finally {
     life.shutdown();
   }
 }

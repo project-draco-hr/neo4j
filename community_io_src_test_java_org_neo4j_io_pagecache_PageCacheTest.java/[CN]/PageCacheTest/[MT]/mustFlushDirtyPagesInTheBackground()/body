@@ -1,0 +1,28 @@
+{
+  final CountDownLatch swapOutLatch=new CountDownLatch(1);
+  PageSwapperFactory swapperFactory=new SingleFilePageSwapperFactory(fs){
+    @Override public PageSwapper createPageSwapper(    File file,    int filePageSize,    PageEvictionCallback onEviction) throws IOException {
+      PageSwapper delegate=super.createPageSwapper(file,filePageSize,onEviction);
+      return new DelegatingPageSwapper(delegate){
+        @Override public int write(        long filePageId,        Page page) throws IOException {
+          try {
+            return super.write(filePageId,page);
+          }
+  finally {
+            swapOutLatch.countDown();
+          }
+        }
+      }
+;
+    }
+  }
+;
+  try (PageCache pageCache=createPageCache(swapperFactory,maxPages,pageCachePageSize,PageCacheTracer.NULL);PagedFile pagedFile=pageCache.map(file,filePageSize)){
+    try (PageCursor cursor=pagedFile.io(0,PF_EXCLUSIVE_LOCK)){
+      assertTrue(cursor.next());
+      writeRecords(cursor);
+    }
+     swapOutLatch.await();
+    verifyRecordsInFile(file,recordsPerFilePage);
+  }
+ }

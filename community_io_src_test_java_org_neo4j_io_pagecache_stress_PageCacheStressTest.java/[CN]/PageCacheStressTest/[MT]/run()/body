@@ -1,10 +1,8 @@
 {
-  RunnablePageCache pageCacheUnderTest=new MuninnPageCache(new DefaultFileSystemAbstraction(),numberOfCachePages,cachePageSize,tracer);
-  RunnablePageCache pageCacheKeepingCount=new MuninnPageCache(new DefaultFileSystemAbstraction(),numberOfCachePages,cachePageSize,tracer);
-  Thread thread1=new Thread(pageCacheUnderTest);
-  Thread thread2=new Thread(pageCacheKeepingCount);
-  thread1.start();
-  thread2.start();
+  DefaultFileSystemAbstraction fs=new DefaultFileSystemAbstraction();
+  PageSwapperFactory swapperFactory=new SingleFilePageSwapperFactory(fs);
+  PageCache pageCacheUnderTest=new MuninnPageCache(swapperFactory,numberOfCachePages,cachePageSize,tracer);
+  PageCache pageCacheKeepingCount=new MuninnPageCache(swapperFactory,numberOfCachePages,cachePageSize,tracer);
   try {
     File file=Files.createTempFile(get(workingDirectory),"pagecachekeepingcounts",".bin").toFile();
     file.deleteOnExit();
@@ -15,10 +13,7 @@
     pagedFile.close();
   }
   finally {
-    thread1.interrupt();
-    thread2.interrupt();
-    thread1.join();
-    thread2.join();
     pageCacheUnderTest.close();
+    pageCacheKeepingCount.close();
   }
 }

@@ -1,7 +1,7 @@
 {
   EphemeralFileSystemAbstraction fs=fsRule.get();
   File path=new File("/store.db");
-  MuninnPageCache cache=new MuninnPageCache(fs,1024,1024,PageCacheTracer.NULL);
+  PageCache cache=pageCacheRule.getPageCache(fsRule.get());
   Store<TestRecord,TestCursor> store=newStore(fs,path,cache);
   store.write(new TestRecord(2,1));
   cache.flush();
@@ -12,5 +12,7 @@
   when(toolkit.firstRecordId()).thenReturn(4l);
   IdGeneratorRebuilder.FullDefragmentationRebuilderFactory rebuilder=new IdGeneratorRebuilder.FullDefragmentationRebuilderFactory();
   rebuilder.newIdGeneratorRebuilder(store,toolkit,idGenerator).rebuildIdGenerator();
+  store.stop();
+  store.shutdown();
   verify(idGenerator).rebuild(4);
 }

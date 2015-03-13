@@ -1,0 +1,40 @@
+{
+  HEvent events=history.getAndSet(null);
+  if (events == null) {
+    out.println("No events recorded.");
+  }
+  events=reverse(events);
+  List<HEvent> concurrentIntervals=new LinkedList<>();
+  while (events != end) {
+    String exceptionLinePrefix=exceptionLinePrefix(concurrentIntervals.size());
+    if (events.getClass() == EndHEvent.class) {
+      EndHEvent endHEvent=(EndHEvent)events;
+      int idx=concurrentIntervals.indexOf(endHEvent.event);
+      putcs(out,'|',idx);
+      out.print('-');
+      int left=concurrentIntervals.size() - idx - 1;
+      putcs(out,'|',left);
+      out.print("   ");
+      endHEvent.print(out,exceptionLinePrefix);
+      concurrentIntervals.remove(idx);
+      if (left > 0) {
+        putcs(out,'|',idx);
+        putcs(out,'/',left);
+        out.println();
+      }
+    }
+ else     if (events instanceof IntervalHEven) {
+      putcs(out,'|',concurrentIntervals.size());
+      out.print("+   ");
+      events.print(out,exceptionLinePrefix);
+      concurrentIntervals.add(events);
+      out.println();
+    }
+ else {
+      putcs(out,'|',concurrentIntervals.size());
+      out.print(">   ");
+      events.print(out,exceptionLinePrefix);
+    }
+    events=events.prev;
+  }
+}
