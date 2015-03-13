@@ -1,3 +1,32 @@
 {
-  throw new UnsupportedOperationException("expected to be answered by cache");
+  NodeRecord node=nodeStore.loadRecord(nodeId,null);
+  if (node == null) {
+    throw new EntityNotFoundException(EntityType.NODE,nodeId);
+  }
+  if (node.isDense()) {
+    long groupId=node.getNextRel();
+    while (groupId != Record.NO_NEXT_RELATIONSHIP.intValue()) {
+      RelationshipGroupRecord group=relationshipGroupStore.getRecord(groupId);
+      if (group.getType() == relType) {
+        long loopCount=countByFirstPrevPointer(nodeId,group.getFirstLoop());
+switch (direction) {
+case OUTGOING:
+          return (int)(countByFirstPrevPointer(nodeId,group.getFirstOut()) + loopCount);
+case INCOMING:
+        return (int)(countByFirstPrevPointer(nodeId,group.getFirstIn()) + loopCount);
+case BOTH:
+      return (int)(countByFirstPrevPointer(nodeId,group.getFirstOut()) + countByFirstPrevPointer(nodeId,group.getFirstIn()) + loopCount);
+  }
+}
+groupId=group.getNext();
+}
+return 0;
+}
+StoreRelationshipIterator relationships=nodeListRelationships(nodeId,direction,new int[]{relType});
+int degree=0;
+while (relationships.hasNext()) {
+relationships.next();
+degree++;
+}
+return degree;
 }
