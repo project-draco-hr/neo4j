@@ -3,9 +3,9 @@
   NodeRelationshipLink nodeRelationshipLink=null;
   NodeLabelsCache nodeLabelsCache=null;
   long startTime=currentTimeMillis();
-  File badRelationshipsFile=new File(config.badFileName());
   boolean hasBadRelationships=false;
-  try (BatchingNeoStore neoStore=new BatchingNeoStore(fileSystem,storeDir,config,writeMonitor,logging,monitors,writerFactory,additionalInitialIds);OutputStream badRelationshipsOutput=new BufferedOutputStream(fileSystem.openAsOutputStream(badRelationshipsFile,false));Collector<InputRelationship> badRelationships=input.badRelationshipsCollector(badRelationshipsOutput);CountsAccessor.Updater countsUpdater=neoStore.getCountsStore().reset();InputCache inputCache=new InputCache(fileSystem,new File(storeDir))){
+  File badFile=config.badFile(storeDir);
+  try (BatchingNeoStore neoStore=new BatchingNeoStore(fileSystem,storeDir,config,writeMonitor,logging,monitors,writerFactory,additionalInitialIds);OutputStream badRelationshipsOutput=new BufferedOutputStream(fileSystem.openAsOutputStream(badFile,false));Collector<InputRelationship> badRelationships=input.badRelationshipsCollector(badRelationshipsOutput);CountsAccessor.Updater countsUpdater=neoStore.getCountsStore().reset();InputCache inputCache=new InputCache(fileSystem,storeDir)){
     IdMapper idMapper=input.idMapper();
     IdGenerator idGenerator=input.idGenerator();
     nodeRelationshipLink=new NodeRelationshipLinkImpl(AUTO,config.denseNodeThreshold());
@@ -38,7 +38,7 @@
     logger.info("Import completed, took " + Format.duration(totalTimeMillis));
     hasBadRelationships=badRelationships.badEntries() > 0;
     if (hasBadRelationships) {
-      logger.warn("There were " + badRelationships.badEntries() + " bad relationships which were skipped "+ "and logged into "+ badRelationshipsFile.getAbsolutePath());
+      logger.warn("There were " + badRelationships.badEntries() + " bad relationships which were skipped "+ "and logged into "+ badFile.getAbsolutePath());
     }
   }
  catch (  Throwable t) {
@@ -54,7 +54,7 @@
       nodeLabelsCache.close();
     }
     if (!hasBadRelationships) {
-      fileSystem.deleteFile(badRelationshipsFile);
+      fileSystem.deleteFile(badFile);
     }
   }
 }
