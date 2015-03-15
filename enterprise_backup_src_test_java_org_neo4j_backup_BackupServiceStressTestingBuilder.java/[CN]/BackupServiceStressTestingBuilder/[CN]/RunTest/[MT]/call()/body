@@ -1,0 +1,76 @@
+{
+  final GraphDatabaseAPI db=(GraphDatabaseAPI)new GraphDatabaseFactory().newEmbeddedDatabaseBuilder(storeDir.getAbsolutePath()).setConfig(OnlineBackupSettings.online_backup_server,backupHostname + ":" + backupPort).setConfig(GraphDatabaseSettings.keep_logical_logs,"true").newGraphDatabase();
+  try {
+    createIndex(db);
+    createSomeData(db);
+    rotateLog(db);
+    final AtomicBoolean keepGoing=new AtomicBoolean(true);
+    final OnlineBackupKernelExtension backup=new OnlineBackupKernelExtension(new Config(),db,db.getDependencyResolver().resolveDependency(KernelPanicEventGenerator.class),new DevNullLoggingService(),new Monitors());
+    try {
+      backup.init();
+      backup.start();
+    }
+ catch (    Throwable t) {
+      throw new RuntimeException(t);
+    }
+    ExecutorService executor=Executors.newFixedThreadPool(2);
+    executor.execute(new Runnable(){
+      @Override public void run(){
+        while (keepGoing.get() && until.evaluate()) {
+          createSomeData(db);
+        }
+      }
+    }
+);
+    final AtomicInteger inconsistentDbs=new AtomicInteger(0);
+    executor.execute(new Runnable(){
+      private final BackupService backupService=new BackupService(fileSystem,StringLogger.DEV_NULL,new Monitors());
+      @Override public void run(){
+        while (keepGoing.get() && until.evaluate()) {
+          cleanup(backupDir);
+          BackupService.BackupOutcome backupOutcome=backupService.doFullBackup(backupHostname,backupPort,backupDir.getAbsolutePath(),true,new Config(),BackupClient.BIG_READ_TIMEOUT,false);
+          if (!backupOutcome.isConsistent()) {
+            keepGoing.set(false);
+            int num=inconsistentDbs.incrementAndGet();
+            File dir=new File(brokenDir,"" + num);
+            fileSystem.mkdir(dir);
+            copyRecursively(backupDir,dir);
+          }
+        }
+      }
+      private void copyRecursively(      File from,      File to){
+        try {
+          fileSystem.copyRecursively(from,to);
+        }
+ catch (        IOException e) {
+          throw new RuntimeException(e);
+        }
+      }
+      private void cleanup(      File dir){
+        try {
+          fileSystem.deleteRecursively(dir);
+        }
+ catch (        IOException e) {
+          throw new RuntimeException(e);
+        }
+      }
+    }
+);
+    while (keepGoing.get() && until.evaluate()) {
+      Thread.sleep(500);
+    }
+    executor.shutdown();
+    assertTrue(executor.awaitTermination(30,TimeUnit.SECONDS));
+    try {
+      backup.stop();
+      backup.shutdown();
+    }
+ catch (    Throwable t) {
+      throw new RuntimeException(t);
+    }
+    return inconsistentDbs.get();
+  }
+  finally {
+    db.shutdown();
+  }
+}
