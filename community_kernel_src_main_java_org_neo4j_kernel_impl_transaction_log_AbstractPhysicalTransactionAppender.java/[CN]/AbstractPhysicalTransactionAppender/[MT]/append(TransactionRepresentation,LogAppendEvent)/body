@@ -1,18 +1,18 @@
 {
   long transactionId=-1;
-  boolean hasLegacyIndexChanges;
   int phase=0;
   logAppendEvent.setLogRotated(logRotation.rotateLogIfNeeded(logAppendEvent));
   try {
+    Commitment commit;
 synchronized (logFile) {
       try (SerializeTransactionEvent serialiseEvent=logAppendEvent.beginSerializeTransaction()){
         transactionId=transactionIdStore.nextCommittingTransactionId();
-        hasLegacyIndexChanges=append0(transaction,transactionId);
+        commit=append0(transaction,transactionId);
         phase=1;
       }
      }
     forceAfterAppend(logAppendEvent);
-    coordinateMultipleThreadsApplyingLegacyIndexChanges(hasLegacyIndexChanges,transactionId);
+    commit.complete();
     phase=2;
     return transactionId;
   }
