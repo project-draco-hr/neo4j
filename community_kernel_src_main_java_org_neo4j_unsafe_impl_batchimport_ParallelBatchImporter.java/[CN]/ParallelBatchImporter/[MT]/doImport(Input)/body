@@ -9,13 +9,14 @@
     IdMapper idMapper=input.idMapper();
     IdGenerator idGenerator=input.idGenerator();
     nodeRelationshipLink=new NodeRelationshipLinkImpl(AUTO,config.denseNodeThreshold());
+    StatsProvider memoryUsageStats=new MemoryUsageStatsProvider(nodeRelationshipLink,idMapper);
     InputIterable<InputNode> nodes=input.nodes();
     InputIterable<InputRelationship> relationships=input.relationships();
-    final NodeStage nodeStage=new NodeStage(nodes,idMapper,idGenerator,neoStore,inputCache);
-    final CalculateDenseNodesStage calculateDenseNodesStage=new CalculateDenseNodesStage(relationships,nodeRelationshipLink,idMapper,badRelationships,inputCache);
+    NodeStage nodeStage=new NodeStage(nodes,idMapper,idGenerator,neoStore,inputCache,memoryUsageStats);
+    CalculateDenseNodesStage calculateDenseNodesStage=new CalculateDenseNodesStage(relationships,nodeRelationshipLink,idMapper,badRelationships,inputCache);
     if (idMapper.needsPreparation()) {
       executeStages(nodeStage);
-      executeStages(new IdMapperPreparationStage(config,idMapper,nodes,inputCache));
+      executeStages(new IdMapperPreparationStage(config,idMapper,nodes,inputCache,memoryUsageStats));
       executeStages(calculateDenseNodesStage);
     }
  else {
@@ -25,13 +26,14 @@
     executeStages(relationshipStage);
     neoStore.flush();
     writerFactory.awaitEverythingWritten();
-    nodeLabelsCache=new NodeLabelsCache(AUTO,neoStore.getLabelRepository().getHighId());
     executeStages(new NodeFirstRelationshipStage(config,neoStore.getNodeStore(),neoStore.getRelationshipGroupStore(),nodeRelationshipLink));
     nodeRelationshipLink.clearRelationships();
     executeStages(new RelationshipLinkbackStage(config,neoStore.getRelationshipStore(),nodeRelationshipLink));
     nodeRelationshipLink.close();
     nodeRelationshipLink=null;
-    executeStages(new NodeCountsStage(config,nodeLabelsCache,neoStore.getNodeStore(),neoStore.getLabelRepository().getHighId(),countsUpdater));
+    nodeLabelsCache=new NodeLabelsCache(AUTO,neoStore.getLabelRepository().getHighId());
+    memoryUsageStats=new MemoryUsageStatsProvider(nodeLabelsCache);
+    executeStages(new NodeCountsStage(config,nodeLabelsCache,neoStore.getNodeStore(),neoStore.getLabelRepository().getHighId(),countsUpdater,memoryUsageStats));
     executeStages(new RelationshipCountsStage(config,nodeLabelsCache,neoStore.getRelationshipStore(),neoStore.getLabelRepository().getHighId(),neoStore.getRelationshipTypeRepository().getHighId(),countsUpdater));
     long totalTimeMillis=currentTimeMillis() - startTime;
     executionMonitor.done(totalTimeMillis);
