@@ -1,0 +1,31 @@
+{
+  final AtomicBoolean enabled=new AtomicBoolean();
+  final GraphDatabaseService db=new ImpermanentGraphDatabase(){
+    @Override protected PageCache createPageCache(){
+      return new ShutdownControlledPageCache(super.createPageCache(),enabled);
+    }
+    @Override protected void createDatabaseAvailability(){
+      life.add(new DatabaseAvailability(availabilityGuard,transactionMonitor,0));
+    }
+  }
+;
+  Future<Void> commit=committer.execute(createNode(db));
+  beginBarrier.await();
+  enabled.set(true);
+  Future<Void> shutdown=closer.execute(shutdown(db));
+  try {
+    expectTimeoutOrTransactionFailure(committer,commit);
+  }
+  finally {
+    commitBarrier.reached();
+  }
+  shutdown.get();
+  try {
+    commit.get();
+  }
+ catch (  ExecutionException e) {
+    if (!contains(e,TransactionFailureException.class) && !contains(e,org.neo4j.graphdb.TransactionFailureException.class)) {
+      throw e;
+    }
+  }
+}
