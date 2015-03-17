@@ -1,0 +1,21 @@
+{
+  File prototypePath=new File(dir.graphDbDir(),"prototype");
+  GraphDatabaseService prototype=db(prototypePath);
+  try {
+    for (    Transaction transaction : work) {
+      transaction.applyTo(prototype);
+    }
+  }
+  finally {
+    prototype.shutdown();
+  }
+  File rebuildPath=new File(dir.graphDbDir(),"rebuild");
+  GraphDatabaseAPI rebuilt=db(rebuildPath);
+  try {
+    new RebuildFromLogs(rebuilt).applyTransactionsFrom(ProgressListener.NONE,prototypePath);
+  }
+  finally {
+    rebuilt.shutdown();
+  }
+  assertEquals(DbRepresentation.of(prototypePath),DbRepresentation.of(rebuildPath));
+}
