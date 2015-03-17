@@ -1,0 +1,21 @@
+{
+  final TaskExecutor executor=new DynamicTaskExecutor(2,10,new ParkStrategy.Park(1),getClass().getSimpleName());
+  IOException exception=new IOException("Failure");
+  FailingTask failingTask=new FailingTask(exception);
+  executor.submit(failingTask);
+  failingTask.latch.await();
+  try (OtherThreadExecutor<Void> closer=new OtherThreadExecutor<>("closer",null)){
+    Future<Void> shutdown=closer.executeDontWait(new WorkerCommand<Void,Void>(){
+      @Override public Void doWork(      Void state) throws Exception {
+        executor.shutdown(true);
+        return null;
+      }
+    }
+);
+    while (!closer.waitUntilWaiting().isAt(DynamicTaskExecutor.class,"shutdown")) {
+      Thread.sleep(10);
+    }
+    failingTask.latch.release();
+    shutdown.get();
+  }
+ }
