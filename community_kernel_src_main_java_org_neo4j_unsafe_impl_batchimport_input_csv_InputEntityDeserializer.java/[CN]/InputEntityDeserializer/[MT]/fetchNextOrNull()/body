@@ -1,22 +1,7 @@
 {
-  int fieldIndex=0;
-  Header.Entry[] entries=header.entries();
   try {
-    for (; fieldIndex < entries.length; fieldIndex++) {
-      if (!data.seek(mark,delimiter)) {
-        if (fieldIndex > 0) {
-          throw new UnexpectedEndOfInputException("Near " + mark);
-        }
-        return null;
-      }
-      Header.Entry entry=entries[fieldIndex];
-      if (entry.type() != Type.IGNORE) {
-        Object value=data.tryExtract(mark,entry.extractor()) ? entry.extractor().value() : null;
-        deserialization.handle(entry,value);
-      }
-      if (mark.isEndOfLine()) {
-        break;
-      }
+    if (!deserializeNextFromSource()) {
+      return null;
     }
     ENTITY entity=deserialization.materialize();
     while (!mark.isEndOfLine()) {
@@ -28,22 +13,6 @@
   }
  catch (  IOException e) {
     throw new InputException("Unable to read more data from input stream",e);
-  }
-catch (  final RuntimeException e) {
-    String stringValue=null;
-    try {
-      Extractors extractors=new Extractors('?');
-      if (data.tryExtract(mark,extractors.string())) {
-        stringValue=extractors.string().value();
-      }
-    }
- catch (    Exception e1) {
-    }
-    String message=format("ERROR in input" + "%n  data source: %s" + "%n  in field: %s"+ "%n  for header: %s"+ "%n  raw field value: %s"+ "%n  original error: %s",data,entries[fieldIndex] + ":" + (fieldIndex + 1),header,stringValue != null ? stringValue : "??",e.getMessage());
-    if (e instanceof InputException) {
-      throw Exceptions.withMessage(e,message);
-    }
-    throw new InputException(message,e);
   }
  finally {
     deserialization.clear();
