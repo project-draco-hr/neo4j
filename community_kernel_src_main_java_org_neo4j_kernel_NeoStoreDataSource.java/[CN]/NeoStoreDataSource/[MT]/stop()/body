@@ -4,11 +4,14 @@
   }
   LogRotationControl logRotationControl=transactionLogModule.logRotationControl();
   logRotationControl.awaitAllTransactionsClosed();
-synchronized (transactionLogModule.logFile()) {
-    logRotationControl.awaitAllTransactionsClosed();
-    logRotationControl.forceEverything();
-    neoStoreModule.neoStore().incrementAndGetVersion();
-    life.shutdown();
+  LogFile logFile=transactionLogModule.logFile();
+synchronized (logFile) {
+synchronized (logFile.getWriter()) {
+      logRotationControl.awaitAllTransactionsClosed();
+      logRotationControl.forceEverything();
+      neoStoreModule.neoStore().incrementAndGetVersion();
+      life.shutdown();
+    }
   }
   neoStoreModule.neoStore().close();
   msgLog.info("NeoStore closed");
