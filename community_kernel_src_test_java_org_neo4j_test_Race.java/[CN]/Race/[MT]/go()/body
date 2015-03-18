@@ -1,0 +1,31 @@
+{
+  readySet=new CountDownLatch(contestants.size());
+  for (  Contestant contestant : contestants) {
+    contestant.start();
+  }
+  readySet.await();
+  go.countDown();
+  int errorCount=0;
+  for (  Contestant contestant : contestants) {
+    contestant.join();
+    if (contestant.error != null) {
+      errorCount++;
+    }
+  }
+  if (errorCount > 1) {
+    Throwable errors=new Throwable("Multiple errors found");
+    for (    Contestant contestant : contestants) {
+      if (contestant.error != null) {
+        errors.addSuppressed(contestant.error);
+      }
+    }
+    throw errors;
+  }
+  if (errorCount == 1) {
+    for (    Contestant contestant : contestants) {
+      if (contestant.error != null) {
+        throw contestant.error;
+      }
+    }
+  }
+}
