@@ -1,0 +1,39 @@
+{
+  Header.Entry[] entries=header.entries();
+  int fieldIndex=0;
+  try {
+    for (; fieldIndex < entries.length; fieldIndex++) {
+      if (!data.seek(mark,delimiter)) {
+        if (fieldIndex > 0) {
+          throw new UnexpectedEndOfInputException("Near " + mark);
+        }
+        return false;
+      }
+      Header.Entry entry=entries[fieldIndex];
+      if (entry.type() != Type.IGNORE) {
+        Object value=data.tryExtract(mark,entry.extractor()) ? entry.extractor().value() : null;
+        deserialization.handle(entry,value);
+      }
+      if (mark.isEndOfLine()) {
+        break;
+      }
+    }
+    return true;
+  }
+ catch (  final RuntimeException e) {
+    String stringValue=null;
+    try {
+      Extractors extractors=new Extractors('?');
+      if (data.tryExtract(mark,extractors.string())) {
+        stringValue=extractors.string().value();
+      }
+    }
+ catch (    Exception e1) {
+    }
+    String message=format("ERROR in input" + "%n  data source: %s" + "%n  in field: %s"+ "%n  for header: %s"+ "%n  raw field value: %s"+ "%n  original error: %s",data,entries[fieldIndex] + ":" + (fieldIndex + 1),header,stringValue != null ? stringValue : "??",e.getMessage());
+    if (e instanceof InputException) {
+      throw Exceptions.withMessage(e,message);
+    }
+    throw new InputException(message,e);
+  }
+}
