@@ -1,0 +1,24 @@
+{
+  client.fieldBits.clear(false);
+  client.fieldScratch[0]=cache.get(nodeId);
+  if (client.fieldScratch[0] == 0) {
+    target[0]=-1;
+    return target;
+  }
+  int length=client.fieldBits.getInt(bitsPerLabel);
+  int longsInUse=((bitsPerLabel * (length + 1)) - 1) / Long.SIZE + 1;
+  target=ensureCapacity(target,length);
+  if (longsInUse == 1) {
+    decode(client.fieldBits,length,target);
+  }
+ else {
+    long spillOverIndex=client.fieldBits.getLong(Long.SIZE - bitsPerLabel);
+    client.labelBits.clear(false);
+    for (int i=0; i < longsInUse; i++) {
+      client.labelScratch[i]=spillOver.get(spillOverIndex + i);
+    }
+    client.labelBits.getInt(bitsPerLabel);
+    decode(client.labelBits,length,target);
+  }
+  return target;
+}
