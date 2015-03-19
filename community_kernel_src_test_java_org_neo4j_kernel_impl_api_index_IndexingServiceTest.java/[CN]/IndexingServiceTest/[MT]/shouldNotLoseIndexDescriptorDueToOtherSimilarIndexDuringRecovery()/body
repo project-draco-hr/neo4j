@@ -1,0 +1,21 @@
+{
+  long nodeId=0, indexId=1, otherIndexId=2;
+  NodePropertyUpdate update=add(nodeId,"value");
+  when(storeView.nodeAsUpdates(nodeId)).thenReturn(asList(update));
+  DoubleLongRegister register=mock(DoubleLongRegister.class);
+  when(register.readSecond()).thenReturn(42L);
+  when(storeView.indexSample(any(IndexDescriptor.class),any(DoubleLongRegister.class))).thenReturn(register);
+  IndexAccessor accessor=spy(new TrackingIndexAccessor());
+  IndexRule index=indexRule(1,labelId,propertyKeyId,PROVIDER_DESCRIPTOR);
+  IndexingService indexing=newIndexingServiceWithMockedDependencies(populator,accessor,withData(update),index);
+  when(indexProvider.getInitialState(indexId)).thenReturn(ONLINE);
+  life.init();
+  IndexRule otherIndex=indexRule(otherIndexId,labelId,propertyKeyId,PROVIDER_DESCRIPTOR);
+  indexing.createIndex(otherIndex);
+  indexing.dropIndex(otherIndex);
+  indexing.addRecoveredNodeIds(setOf(nodeId));
+  indexing.createIndex(index);
+  reset(accessor);
+  life.start();
+  verify(accessor,times(2)).newUpdater(RECOVERY);
+}
