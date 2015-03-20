@@ -1,0 +1,25 @@
+{
+  long idleTime=await(catchUp,workAheadSize);
+  incrementQueue();
+  executor.submit(new Task<Sender>(){
+    @Override public void run(    Sender sender){
+      assertHealthy();
+      sender.initialize(ticket);
+      long startTime=currentTimeMillis();
+      try {
+        process(batch,sender);
+        if (downstream == null) {
+          doneBatches.incrementAndGet();
+        }
+        totalProcessingTime.add(currentTimeMillis() - startTime - sender.sendTime);
+        decrementQueue();
+        checkNotifyEndDownstream();
+      }
+ catch (      Throwable e) {
+        issuePanic(e);
+      }
+    }
+  }
+);
+  return idleTime;
+}
