@@ -1,0 +1,24 @@
+{
+  return new AbstractAssigner(Clock.SYSTEM_CLOCK,100,TimeUnit.MILLISECONDS){
+    private int processors=availableProcessor;
+    @Override public void check(    StageExecution[] executions){
+      if (processors == 0) {
+        return;
+      }
+      Random random=ThreadLocalRandom.current();
+      int maxThisCheck=random.nextInt(processors - 1) + 1;
+      for (      StageExecution execution : executions) {
+        for (        Step<?> step : execution.steps()) {
+          if (random.nextBoolean() && step.incrementNumberOfProcessors()) {
+            processors--;
+            if (--maxThisCheck == 0) {
+              return;
+            }
+          }
+        }
+      }
+      registerProcessorCount(executions);
+    }
+  }
+;
+}
