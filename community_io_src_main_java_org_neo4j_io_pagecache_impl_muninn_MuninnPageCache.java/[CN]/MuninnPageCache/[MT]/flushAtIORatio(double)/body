@@ -1,13 +1,19 @@
 {
   Thread thread=Thread.currentThread();
-  long sleepDebtNanos=0;
-  long sleepPaymentThreshold=TimeUnit.MILLISECONDS.toNanos(10);
-  boolean flushedAnything=false;
+  long sleepPaymentThreshold=TimeUnit.MILLISECONDS.toNanos(backgroundFlushSleepDebtThreshold);
+  boolean seenDirtyPages=false;
+  boolean flushedPages=false;
+  double sleepFactor=(1 - ratio) / ratio;
   try (MajorFlushEvent event=tracer.beginCacheFlush()){
     for (    MuninnPage page : pages) {
       if (page == null || thread.isInterrupted()) {
         thread.interrupt();
-        return true;
+        return 0;
+      }
+      boolean thisPageIsDirty=false;
+      if (page.isWriteLocked() || !(thisPageIsDirty=page.isDirty()) || !page.decrementUsage()) {
+        seenDirtyPages|=thisPageIsDirty;
+        continue;
       }
       long stamp=page.tryReadLock();
       if (stamp != 0) {
@@ -18,8 +24,8 @@
           long startNanos=System.nanoTime();
           page.flush(event.flushEventOpportunity());
           long elapsedNanos=System.nanoTime() - startNanos;
-          sleepDebtNanos+=(elapsedNanos / ratio) - elapsedNanos;
-          flushedAnything=true;
+          sleepDebtNanos+=elapsedNanos * sleepFactor;
+          flushedPages=true;
         }
  catch (        Throwable ignore) {
         }
@@ -33,5 +39,5 @@
       }
     }
   }
-   return flushedAnything;
+   return seenDirtyPages ? flushedPages ? backgroundFlushMediumBreak : backgroundFlushBusyBreak : backgroundFlushLongBreak;
 }
