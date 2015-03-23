@@ -1,0 +1,19 @@
+{
+  GraphDatabaseService db=new GraphDatabaseFactory().newEmbeddedDatabase(testDirectory.absolutePath());
+  try {
+    db.execute("create ()");
+  }
+  finally {
+    db.shutdown();
+  }
+  final Neo4jRule ruleWithDirectory=new Neo4jRule(testDirectory.directory()).copyFrom(testDirectory.directory());
+  ruleWithDirectory.apply(new Statement(){
+    @Override public void evaluate() throws Throwable {
+      Result result=ruleWithDirectory.getGraphDatabaseService().execute("match (n) return count(n) as " + "count");
+      List<Object> column=IteratorUtil.asList(result.columnAs("count"));
+      assertEquals(1,column.size());
+      assertEquals(1,column.get(0));
+    }
+  }
+,null);
+}

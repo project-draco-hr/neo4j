@@ -1,0 +1,33 @@
+{
+  Path dir=Files.createTempDirectory(getClass().getSimpleName() + "_shouldRunBuilderOnExistingStorageDir");
+  try {
+    GraphDatabaseService db=new GraphDatabaseFactory().newEmbeddedDatabase(dir.toString());
+    try {
+      db.execute("create ()");
+    }
+  finally {
+      db.shutdown();
+    }
+    try (ServerControls server=newInProcessBuilder(testDir.directory()).copyFrom(dir.toFile()).newServer()){
+      try (Transaction tx=server.graph().beginTx()){
+        ResourceIterable<Node> allNodes=GlobalGraphOperations.at(server.graph()).getAllNodes();
+        assertTrue(IteratorUtil.count(allNodes) > 0);
+        server.graph().createNode();
+        tx.success();
+      }
+     }
+     db=new GraphDatabaseFactory().newEmbeddedDatabase(dir.toString());
+    try {
+      try (Transaction tx=db.beginTx()){
+        assertEquals(1,IteratorUtil.count(GlobalGraphOperations.at(db).getAllNodes()));
+        tx.success();
+      }
+     }
+  finally {
+      db.shutdown();
+    }
+  }
+  finally {
+    FileUtils.forceDelete(dir.toFile());
+  }
+}
