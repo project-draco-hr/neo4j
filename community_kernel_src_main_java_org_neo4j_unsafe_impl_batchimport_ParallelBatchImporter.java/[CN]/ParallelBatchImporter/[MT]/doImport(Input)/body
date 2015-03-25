@@ -1,6 +1,6 @@
 {
   logger.info("Import starting");
-  NodeRelationshipLink nodeRelationshipLink=null;
+  NodeRelationshipCache nodeRelationshipCache=null;
   NodeLabelsCache nodeLabelsCache=null;
   long startTime=currentTimeMillis();
   boolean hasBadRelationships=false;
@@ -8,12 +8,12 @@
   try (BatchingNeoStore neoStore=new BatchingNeoStore(fileSystem,storeDir,config,writeMonitor,logging,monitors,writerFactory,additionalInitialIds);OutputStream badRelationshipsOutput=new BufferedOutputStream(fileSystem.openAsOutputStream(badFile,false));Collector<InputRelationship> badRelationships=input.badRelationshipsCollector(badRelationshipsOutput);CountsAccessor.Updater countsUpdater=neoStore.getCountsStore().reset(neoStore.getLastCommittedTransactionId());InputCache inputCache=new InputCache(fileSystem,storeDir)){
     IdMapper idMapper=input.idMapper();
     IdGenerator idGenerator=input.idGenerator();
-    nodeRelationshipLink=new NodeRelationshipLinkImpl(AUTO,config.denseNodeThreshold());
-    StatsProvider memoryUsageStats=new MemoryUsageStatsProvider(nodeRelationshipLink,idMapper);
+    nodeRelationshipCache=new NodeRelationshipCache(AUTO,config.denseNodeThreshold());
+    StatsProvider memoryUsageStats=new MemoryUsageStatsProvider(nodeRelationshipCache,idMapper);
     InputIterable<InputNode> nodes=input.nodes();
     InputIterable<InputRelationship> relationships=input.relationships();
     NodeStage nodeStage=new NodeStage(nodes,idMapper,idGenerator,neoStore,inputCache,memoryUsageStats);
-    CalculateDenseNodesStage calculateDenseNodesStage=new CalculateDenseNodesStage(relationships,nodeRelationshipLink,idMapper,badRelationships,inputCache);
+    CalculateDenseNodesStage calculateDenseNodesStage=new CalculateDenseNodesStage(relationships,nodeRelationshipCache,idMapper,badRelationships,inputCache);
     if (idMapper.needsPreparation()) {
       executeStages(nodeStage);
       executeStages(new IdMapperPreparationStage(config,idMapper,nodes,inputCache,memoryUsageStats));
@@ -22,15 +22,16 @@
  else {
       executeStages(nodeStage,calculateDenseNodesStage);
     }
-    final RelationshipStage relationshipStage=new RelationshipStage(relationships.supportsMultiplePasses() ? relationships : inputCache.relationships(),idMapper,neoStore,nodeRelationshipLink,input.specificRelationshipIds());
+    final RelationshipStage relationshipStage=new RelationshipStage(relationships.supportsMultiplePasses() ? relationships : inputCache.relationships(),idMapper,neoStore,nodeRelationshipCache,input.specificRelationshipIds());
     executeStages(relationshipStage);
+    nodeRelationshipCache.fixate();
     neoStore.flush();
     writerFactory.awaitEverythingWritten();
-    executeStages(new NodeFirstRelationshipStage(config,neoStore.getNodeStore(),neoStore.getRelationshipGroupStore(),nodeRelationshipLink));
-    nodeRelationshipLink.clearRelationships();
-    executeStages(new RelationshipLinkbackStage(config,neoStore.getRelationshipStore(),nodeRelationshipLink));
-    nodeRelationshipLink.close();
-    nodeRelationshipLink=null;
+    executeStages(new NodeFirstRelationshipStage(config,neoStore.getNodeStore(),neoStore.getRelationshipGroupStore(),nodeRelationshipCache));
+    nodeRelationshipCache.clearRelationships();
+    executeStages(new RelationshipLinkbackStage(config,neoStore.getRelationshipStore(),nodeRelationshipCache));
+    nodeRelationshipCache.close();
+    nodeRelationshipCache=null;
     nodeLabelsCache=new NodeLabelsCache(AUTO,neoStore.getLabelRepository().getHighId());
     memoryUsageStats=new MemoryUsageStatsProvider(nodeLabelsCache);
     executeStages(new NodeCountsStage(config,nodeLabelsCache,neoStore.getNodeStore(),neoStore.getLabelRepository().getHighId(),countsUpdater,memoryUsageStats));
@@ -49,8 +50,8 @@
   }
  finally {
     writerFactory.shutdown();
-    if (nodeRelationshipLink != null) {
-      nodeRelationshipLink.close();
+    if (nodeRelationshipCache != null) {
+      nodeRelationshipCache.close();
     }
     if (nodeLabelsCache != null) {
       nodeLabelsCache.close();
