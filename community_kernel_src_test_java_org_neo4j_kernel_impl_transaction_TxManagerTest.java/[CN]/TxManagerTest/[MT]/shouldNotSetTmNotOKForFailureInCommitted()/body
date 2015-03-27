@@ -3,7 +3,10 @@
   TransactionStateFactory stateFactory=new TransactionStateFactory(logging);
   TxIdGenerator txIdGenerator=mock(TxIdGenerator.class);
   doThrow(RuntimeException.class).when(txIdGenerator).committed(any(XaDataSource.class),anyInt(),anyLong(),any(Integer.class));
-  stateFactory.setDependencies(mock(Locks.class),mock(NodeManager.class),mock(RemoteTxHook.class),txIdGenerator);
+  Locks mockLocks=mock(Locks.class);
+  Locks.Client mockLock=mock(Locks.Client.class);
+  when(mockLocks.newClient()).thenReturn(mockLock);
+  stateFactory.setDependencies(mockLocks,mock(NodeManager.class),mock(RemoteTxHook.class),txIdGenerator);
   XaDataSourceManager xaDataSourceManager=life.add(new XaDataSourceManager(DEV_NULL));
   KernelHealth kernelHealth=new KernelHealth(panicGenerator,logging);
   AbstractTransactionManager txManager=life.add(new TxManager(directory,xaDataSourceManager,logging.getMessagesLog(TxManager.class),fs.get(),stateFactory,xidFactory,kernelHealth,monitors));
