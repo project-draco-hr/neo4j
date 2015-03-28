@@ -1,9 +1,14 @@
 {
-  File storeDir=TargetDirectory.forTest(TestBrokenStoreRecovery.class).cleanDirectory("propertyStore");
-  Process process=Runtime.getRuntime().exec(new String[]{"java","-cp",System.getProperty("java.class.path"),ProduceUncleanStore.class.getName(),storeDir.getAbsolutePath()});
-  assertEquals(0,new ProcessStreamHandler(process,true).waitForResult());
-  trimFileToSize(new File(storeDir,"neostore.propertystore.db"),42);
+  EphemeralFileSystemAbstraction snapshot=produceUncleanStore();
+  File propertyStoreFile=new File(storeDir,"neostore.propertystore.db");
+  trimFileToSize(snapshot,propertyStoreFile,42);
   File log=new File(storeDir,"nioneo_logical.log.1");
-  trimFileToSize(log,78);
-  new GraphDatabaseFactory().newEmbeddedDatabase(storeDir.getAbsolutePath()).shutdown();
+  trimFileToSize(snapshot,log,78);
+  GraphDatabaseService db=newDb();
+  try {
+    assertEquals(0L,((GraphDatabaseAPI)db).getDependencyResolver().resolveDependency(XaDataSourceManager.class).getNeoStoreDataSource().getNeoStore().getPropertyStore().getHighId());
+  }
+  finally {
+    db.shutdown();
+  }
 }
