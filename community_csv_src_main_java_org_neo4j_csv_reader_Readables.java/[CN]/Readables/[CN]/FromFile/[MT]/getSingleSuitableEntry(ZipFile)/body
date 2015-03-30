@@ -1,0 +1,20 @@
+{
+  List<String> unsuitableEntries=new ArrayList<>();
+  Enumeration<? extends ZipEntry> enumeration=zipFile.entries();
+  ZipEntry found=null;
+  while (enumeration.hasMoreElements()) {
+    ZipEntry entry=enumeration.nextElement();
+    if (entry.isDirectory() || invalidZipEntry(entry.getName())) {
+      unsuitableEntries.add(entry.getName());
+      continue;
+    }
+    if (found != null) {
+      throw new IOException("Multiple suitable files found in zip file " + zipFile.getName() + ", at least "+ found.getName()+ " and "+ entry.getName()+ ". Only a single file per zip file is supported");
+    }
+    found=entry;
+  }
+  if (found == null) {
+    throw new IOException("No suitable file found in zip file " + zipFile.getName() + "."+ (!unsuitableEntries.isEmpty() ? " Although found these unsuitable entries " + unsuitableEntries : ""));
+  }
+  return found;
+}
