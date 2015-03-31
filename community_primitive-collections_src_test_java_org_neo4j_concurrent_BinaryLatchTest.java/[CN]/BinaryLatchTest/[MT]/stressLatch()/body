@@ -1,0 +1,26 @@
+{
+  final AtomicReference<BinaryLatch> latchRef=new AtomicReference<>(new BinaryLatch());
+  Runnable awaiter=new Runnable(){
+    @Override public void run(){
+      BinaryLatch latch;
+      while ((latch=latchRef.get()) != null) {
+        latch.await();
+      }
+    }
+  }
+;
+  int awaiters=6;
+  Future<?>[] futures=new Future<?>[awaiters];
+  for (int i=0; i < awaiters; i++) {
+    futures[i]=executor.submit(awaiter);
+  }
+  ThreadLocalRandom rng=ThreadLocalRandom.current();
+  for (int i=0; i < 500000; i++) {
+    latchRef.getAndSet(new BinaryLatch()).release();
+    spinwaitu(rng.nextLong(0,10));
+  }
+  latchRef.getAndSet(null).release();
+  for (  Future<?> future : futures) {
+    future.get();
+  }
+}

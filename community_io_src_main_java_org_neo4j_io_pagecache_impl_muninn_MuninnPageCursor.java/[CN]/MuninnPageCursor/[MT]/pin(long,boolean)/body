@@ -12,23 +12,23 @@
   do {
     item=UnsafeUtil.getObjectVolatile(chunk,chunkOffset);
     if (item == null) {
-      Latch latch=new Latch();
+      BinaryLatch latch=new BinaryLatch();
       if (UnsafeUtil.compareAndSwapObject(chunk,chunkOffset,null,latch)) {
         item=pageFault(filePageId,swapper,chunkOffset,chunk,latch);
       }
     }
- else     if (item.getClass() == Latch.class) {
-      Latch latch=(Latch)item;
-      latch.await();
-      item=null;
-    }
- else {
+ else     if (item.getClass() == MuninnPage.class) {
       MuninnPage page=(MuninnPage)item;
       lockPage(page);
       if (!page.isBoundTo(swapper,filePageId)) {
         unlockPage(page);
         item=null;
       }
+    }
+ else {
+      BinaryLatch latch=(BinaryLatch)item;
+      latch.await();
+      item=null;
     }
   }
  while (item == null);
