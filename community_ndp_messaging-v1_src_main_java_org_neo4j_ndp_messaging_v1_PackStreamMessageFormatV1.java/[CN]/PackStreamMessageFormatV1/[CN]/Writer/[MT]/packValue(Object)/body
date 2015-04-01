@@ -1,0 +1,125 @@
+{
+  if (obj == null) {
+    packer.packNull();
+  }
+ else   if (obj instanceof Boolean) {
+    packer.pack((boolean)obj);
+  }
+ else   if (obj instanceof Byte || obj instanceof Short || obj instanceof Integer|| obj instanceof Long) {
+    packer.pack(((Number)obj).longValue());
+  }
+ else   if (obj instanceof Float || obj instanceof Double) {
+    packer.pack(((Number)obj).doubleValue());
+  }
+ else   if (obj instanceof String) {
+    packer.pack((String)obj);
+  }
+ else   if (obj instanceof Map) {
+    Map<Object,Object> map=(Map<Object,Object>)obj;
+    packer.packMapHeader(map.size());
+    for (    Map.Entry<?,?> entry : map.entrySet()) {
+      packer.pack(entry.getKey().toString());
+      packValue(entry.getValue());
+    }
+  }
+ else   if (obj instanceof Collection) {
+    List list=(List)obj;
+    packer.packListHeader(list.size());
+    for (    Object item : list) {
+      packValue(item);
+    }
+  }
+ else   if (obj instanceof byte[]) {
+    throw new UnsupportedOperationException("Binary values cannot be packed.");
+  }
+ else   if (obj instanceof short[]) {
+    short[] arr=(short[])obj;
+    packer.packListHeader(arr.length);
+    for (int i=0; i < arr.length; i++) {
+      packer.pack(arr[i]);
+    }
+  }
+ else   if (obj instanceof int[]) {
+    int[] arr=(int[])obj;
+    packer.packListHeader(arr.length);
+    for (int i=0; i < arr.length; i++) {
+      packer.pack(arr[i]);
+    }
+  }
+ else   if (obj instanceof long[]) {
+    long[] arr=(long[])obj;
+    packer.packListHeader(arr.length);
+    for (int i=0; i < arr.length; i++) {
+      packer.pack(arr[i]);
+    }
+  }
+ else   if (obj instanceof float[]) {
+    float[] arr=(float[])obj;
+    packer.packListHeader(arr.length);
+    for (int i=0; i < arr.length; i++) {
+      packValue(arr[i]);
+    }
+  }
+ else   if (obj instanceof double[]) {
+    double[] arr=(double[])obj;
+    packer.packListHeader(arr.length);
+    for (int i=0; i < arr.length; i++) {
+      packValue(arr[i]);
+    }
+  }
+ else   if (obj instanceof boolean[]) {
+    boolean[] arr=(boolean[])obj;
+    packer.packListHeader(arr.length);
+    for (int i=0; i < arr.length; i++) {
+      packValue(arr[i]);
+    }
+  }
+ else   if (obj.getClass().isArray()) {
+    Object[] arr=(Object[])obj;
+    packer.packListHeader(arr.length);
+    for (int i=0; i < arr.length; i++) {
+      packValue(arr[i]);
+    }
+  }
+ else   if (obj instanceof Node) {
+    Node node=(Node)obj;
+    packer.packStructHeader(3,NODE);
+    packer.pack("node/" + node.getId());
+    Collection<Label> labels=Iterables.toList(node.getLabels());
+    packer.packListHeader(labels.size());
+    for (    Label label : labels) {
+      packer.pack(label.name());
+    }
+    Collection<String> propertyKeys=Iterables.toList(node.getPropertyKeys());
+    packer.packMapHeader(propertyKeys.size());
+    for (    String propertyKey : propertyKeys) {
+      packer.pack(propertyKey);
+      packValue(node.getProperty(propertyKey));
+    }
+  }
+ else   if (obj instanceof Relationship) {
+    Relationship rel=(Relationship)obj;
+    packer.packStructHeader(5,RELATIONSHIP);
+    packer.pack("rel/" + rel.getId());
+    packer.pack("node/" + rel.getStartNode().getId());
+    packer.pack("node/" + rel.getEndNode().getId());
+    packer.pack(rel.getType().name());
+    Collection<String> propertyKeys=Iterables.toList(rel.getPropertyKeys());
+    packer.packMapHeader(propertyKeys.size());
+    for (    String propertyKey : propertyKeys) {
+      packer.pack(propertyKey);
+      packValue(rel.getProperty(propertyKey));
+    }
+  }
+ else   if (obj instanceof Path) {
+    Path path=(Path)obj;
+    packer.packStructHeader(1,PATH);
+    packer.packListHeader(path.length() * 2 + 1);
+    for (    PropertyContainer pc : path) {
+      packValue(pc);
+    }
+  }
+ else {
+    throw new RuntimeException("Unpackable value " + obj.toString() + " of type "+ obj.getClass().getName());
+  }
+}

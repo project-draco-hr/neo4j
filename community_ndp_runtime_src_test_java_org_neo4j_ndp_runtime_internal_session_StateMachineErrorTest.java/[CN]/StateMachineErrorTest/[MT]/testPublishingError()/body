@@ -1,0 +1,14 @@
+{
+  RecordingCallback failingCallback=new RecordingCallback(){
+    @Override public void result(    Object result,    Object attachment){
+      throw new RuntimeException("Well, that didn't work out very well.");
+    }
+  }
+;
+  when(runner.run(any(SessionState.class),any(String.class),any(Map.class))).thenReturn(mock(RecordStream.class));
+  SessionStateMachine machine=new SessionStateMachine(db,txBridge,runner,StringLogger.DEV_NULL);
+  machine.run("something",null,null,Session.Callback.NO_OP);
+  machine.pullAll(null,failingCallback);
+  assertThat(failingCallback.next(),failedWith(Status.General.UnknownFailure));
+  assertThat(machine.state(),equalTo(ERROR));
+}
