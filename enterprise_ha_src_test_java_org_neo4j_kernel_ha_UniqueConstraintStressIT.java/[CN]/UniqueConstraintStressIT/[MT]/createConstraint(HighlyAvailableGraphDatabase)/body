@@ -1,0 +1,19 @@
+{
+  return new OtherThreadExecutor.WorkerCommand<Object,Boolean>(){
+    @Override public Boolean doWork(    Object state) throws Exception {
+      boolean constraintCreationFailed=false;
+      try (Transaction tx=master.beginTx()){
+        master.schema().constraintFor(label).assertPropertyIsUnique(property).create();
+        tx.success();
+      }
+ catch (      ConstraintViolationException e) {
+        constraintCreationFailed=true;
+      }
+catch (      TransactionFailureException e) {
+        constraintCreationFailed=true;
+      }
+      return constraintCreationFailed;
+    }
+  }
+;
+}
