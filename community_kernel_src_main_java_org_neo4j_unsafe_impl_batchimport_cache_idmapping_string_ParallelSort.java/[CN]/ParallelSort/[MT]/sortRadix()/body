@@ -1,2 +1,61 @@
 {
+  int[][] rangeParams=new int[threads][2];
+  int[] bucketRange=new int[threads];
+  TrackerInitializer[] initializers=new TrackerInitializer[threads];
+  sortBuckets=new long[threads][2];
+  int bucketSize=safeCastLongToInt(dataStats.size() / threads);
+  int count=0, fullCount=0 + 0;
+  rangeParams[0][0]=0;
+  bucketRange[0]=0;
+  progress.started("SPLIT");
+  for (int i=0, threadIndex=0; i < radixIndexCount.length && threadIndex < threads; i++) {
+    if ((count + radixIndexCount[i]) > bucketSize) {
+      bucketRange[threadIndex]=count == 0 ? i : i - 1;
+      rangeParams[threadIndex][0]=fullCount;
+      if (count != 0) {
+        rangeParams[threadIndex][1]=count;
+        fullCount+=count;
+        progress.add(count);
+        count=radixIndexCount[i];
+      }
+ else {
+        rangeParams[threadIndex][1]=radixIndexCount[i];
+        fullCount+=radixIndexCount[i];
+        progress.add(radixIndexCount[i]);
+      }
+      initializers[threadIndex]=new TrackerInitializer(threadIndex,rangeParams[threadIndex],threadIndex > 0 ? bucketRange[threadIndex - 1] : -1,bucketRange[threadIndex],sortBuckets[threadIndex]);
+      threadIndex++;
+    }
+ else {
+      count+=radixIndexCount[i];
+    }
+    if (threadIndex == threads - 1 || i == radixIndexCount.length - 1) {
+      bucketRange[threadIndex]=radixIndexCount.length;
+      rangeParams[threadIndex][0]=fullCount;
+      rangeParams[threadIndex][1]=safeCastLongToInt(dataStats.size() - fullCount);
+      initializers[threadIndex]=new TrackerInitializer(threadIndex,rangeParams[threadIndex],threadIndex > 0 ? bucketRange[threadIndex - 1] : -1,bucketRange[threadIndex],sortBuckets[threadIndex]);
+      break;
+    }
+  }
+  progress.done();
+  int[] bucketIndex=new int[threads];
+  Throwable error=null;
+  long highestIndex=-1, size=0;
+  for (int i=0; i < initializers.length; i++) {
+    TrackerInitializer initializer=initializers[i];
+    if (initializer != null) {
+      Throwable initializerError=initializer.await();
+      if (initializerError != null) {
+        error=initializerError;
+      }
+      bucketIndex[i]=initializer.bucketIndex;
+      highestIndex=max(highestIndex,initializer.highestIndex);
+      size+=initializer.size;
+    }
+  }
+  trackerStats.set(size,highestIndex);
+  if (error != null) {
+    throw new AssertionError(error.getMessage() + "\n" + dumpBuckets(rangeParams,bucketRange,bucketIndex));
+  }
+  return rangeParams;
 }
