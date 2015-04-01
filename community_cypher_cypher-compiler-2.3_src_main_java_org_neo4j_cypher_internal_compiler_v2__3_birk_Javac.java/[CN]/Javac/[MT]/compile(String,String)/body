@@ -1,0 +1,20 @@
+{
+  JavaCompiler compiler=ToolProvider.getSystemJavaCompiler();
+  JavaFileManager manager=new InMemFileManager();
+  DiagnosticCollector<JavaFileObject> diagnosticsCollector=new DiagnosticCollector<>();
+  Iterable<? extends JavaFileObject> sources=Arrays.asList(new InMemSource(className,classBody));
+  CompilationTask task=compiler.getTask(null,manager,diagnosticsCollector,null,null,sources);
+  if (!task.call()) {
+    StringBuilder sb=new StringBuilder();
+    int number=1;
+    for (    Diagnostic<?> diagnostic : diagnosticsCollector.getDiagnostics()) {
+      sb.append(diagnostic.getKind() + "  : " + number+ " Type : "+ diagnostic.getMessage(Locale.getDefault()));
+      sb.append(" at column : " + diagnostic.getColumnNumber());
+      sb.append(" Line number : " + diagnostic.getLineNumber() + System.lineSeparator());
+      number++;
+    }
+    throw new CompilerError(sb.toString());
+  }
+  Class<InternalExecutionResult> clazz=(Class<InternalExecutionResult>)manager.getClassLoader(null).loadClass(className);
+  return clazz;
+}
