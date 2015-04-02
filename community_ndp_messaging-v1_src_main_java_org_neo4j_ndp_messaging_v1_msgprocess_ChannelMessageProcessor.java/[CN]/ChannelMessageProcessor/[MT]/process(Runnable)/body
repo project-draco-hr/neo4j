@@ -1,0 +1,33 @@
+{
+  boolean sessionsMustDie=false;
+  inFlight.set(1);
+  try {
+    try {
+      this.onAllMessagesCompleted=onAllMessagesCompleted;
+      while (reader.hasNext()) {
+        inFlight.incrementAndGet();
+        reader.read(transportBridge);
+      }
+    }
+ catch (    PackStream.PackstreamException e) {
+      sessionsMustDie=true;
+      handleRequestFormatError();
+    }
+catch (    Throwable e) {
+      sessionsMustDie=true;
+      handleUnexpectedError(session,e);
+    }
+  }
+ catch (  IOException e) {
+    sessionsMustDie=true;
+    log.error("Network failure while processing messages for '" + session + "'.",e);
+  }
+ finally {
+    if (sessionsMustDie) {
+      onFatalSessionError.accept(session);
+    }
+ else {
+      onEachCompletedRequest.run();
+    }
+  }
+}

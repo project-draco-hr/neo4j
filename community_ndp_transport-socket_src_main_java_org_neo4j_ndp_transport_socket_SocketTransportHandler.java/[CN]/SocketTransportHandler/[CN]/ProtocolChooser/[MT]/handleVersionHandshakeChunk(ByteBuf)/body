@@ -1,0 +1,22 @@
+{
+  if (suggestedVersions.remaining() > buffer.readableBytes()) {
+    suggestedVersions.limit(suggestedVersions.position() + buffer.readableBytes());
+    buffer.readBytes(suggestedVersions);
+    suggestedVersions.limit(suggestedVersions.capacity());
+  }
+ else {
+    buffer.readBytes(suggestedVersions);
+  }
+  if (suggestedVersions.remaining() == 0) {
+    suggestedVersions.flip();
+    for (int i=0; i < 4; i++) {
+      long suggestion=suggestedVersions.getInt() & 0xFFFFFFFFL;
+      if (availableVersions.containsKey(suggestion)) {
+        protocol=availableVersions.get(suggestion).newInstance();
+        return HandshakeOutcome.PROTOCOL_CHOSEN;
+      }
+    }
+    return HandshakeOutcome.NO_APPLICABLE_PROTOCOL;
+  }
+  return HandshakeOutcome.PARTIAL_HANDSHAKE;
+}
