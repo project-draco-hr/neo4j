@@ -1,0 +1,29 @@
+{
+  int mappedFilesCount=mappedFiles.size();
+  if (mappedFilesCount == 0) {
+    return null;
+  }
+  final File file=mappedFiles.get(rng.nextInt(mappedFilesCount));
+  List<Integer> recordsWritten=recordsWrittenTo.get(file);
+  int recordSize=recordFormat.getRecordSize();
+  int recordsPerPage=cache.pageSize() / recordSize;
+  final int recordId=recordsWritten.isEmpty() ? rng.nextInt(filePageCount * recordsPerPage) : recordsWritten.get(rng.nextInt(recordsWritten.size()));
+  final int pageId=recordId / recordsPerPage;
+  final int pageOffset=(recordId % recordsPerPage) * recordSize;
+  final Record expectedRecord=recordFormat.createRecord(file,recordId);
+  return new Action(Command.ReadRecord,"[file=%s, recordId=%s, pageId=%s, pageOffset=%s, expectedRecord=%s]",file,recordId,pageId,pageOffset,expectedRecord){
+    @Override public void perform() throws Exception {
+      PagedFile pagedFile=fileMap.get(file);
+      if (pagedFile != null) {
+        try (PageCursor cursor=pagedFile.io(pageId,PagedFile.PF_SHARED_LOCK)){
+          if (cursor.next()) {
+            cursor.setOffset(pageOffset);
+            Record actualRecord=recordFormat.readRecord(cursor);
+            assertThat(actualRecord,isOneOf(expectedRecord,recordFormat.zeroRecord()));
+          }
+        }
+       }
+    }
+  }
+;
+}
