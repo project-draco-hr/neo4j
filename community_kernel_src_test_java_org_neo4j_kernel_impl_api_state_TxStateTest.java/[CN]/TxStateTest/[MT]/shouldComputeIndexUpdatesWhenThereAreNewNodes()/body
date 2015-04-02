@@ -1,0 +1,22 @@
+{
+  int labelId=2;
+  int propertyKeyId1=3;
+  int propertyKeyId2=4;
+  long[] nodeIds={42L,43L,44L};
+  IndexDescriptor rule=new IndexDescriptor(labelId,propertyKeyId1);
+  for (  long nodeId : nodeIds) {
+    state.nodeDoCreate(nodeId);
+    state.nodeDoAddLabel(labelId,nodeId);
+    Property propertyBefore=noNodeProperty(nodeId,propertyKeyId1);
+    String value="value" + nodeId;
+    DefinedProperty propertyAfter=stringProperty(propertyKeyId1,value);
+    if (nodeId == 44L) {
+      propertyBefore=noNodeProperty(nodeId,propertyKeyId2);
+      propertyAfter=stringProperty(propertyKeyId2,value);
+    }
+    state.nodeDoReplaceProperty(nodeId,propertyBefore,propertyAfter);
+    state.indexDoUpdateProperty(rule,nodeId,null,propertyAfter);
+  }
+  ReadableDiffSets<Long> diffSets=state.indexUpdates(rule,null);
+  assertEquals(asSet(nodeIds[0],nodeIds[1]),diffSets.getAdded());
+}
