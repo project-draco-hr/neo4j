@@ -1,30 +1,28 @@
 {
-  generateFileWithRecords(file,recordCount,recordSize);
-  getPageCache(fs,500,pageCachePageSize,PageCacheTracer.NULL);
-  final PagedFile pagedFile=pageCache.map(file,filePageSize);
-  for (int i=0; i < 100; i++) {
-    try (PageCursor cursor=pagedFile.io(0,PF_EXCLUSIVE_LOCK | PF_NO_GROW)){
-      while (cursor.next()) {
-        verifyRecordsMatchExpected(cursor);
-      }
-    }
-     int threads=2;
-    final CountDownLatch readyLatch=new CountDownLatch(threads);
-    List<Future<?>> futures=new ArrayList<>();
-    for (int j=0; j < threads; j++) {
-      futures.add(executor.submit(new Callable<Object>(){
-        @Override public Object call() throws Exception {
-          readyLatch.countDown();
-          readyLatch.await();
-          pagedFile.flushAndForce();
-          return null;
+  final RecordFormat recordFormat=new StandardRecordFormat();
+  final int filePageCount=100;
+  RandomPageCacheTestHarness harness=new RandomPageCacheTestHarness();
+  harness.setConcurrencyLevel(6);
+  harness.setUseAdversarialIO(false);
+  harness.setCachePageCount(100);
+  harness.setFilePageCount(filePageCount);
+  harness.setCachePageSize(pageCachePageSize);
+  harness.setFilePageSize(pageCachePageSize);
+  harness.setInitialMappedFiles(3);
+  harness.setCommandCount(10000);
+  harness.disableCommands(Command.MapFile,Command.UnmapFile,Command.ReadRecord);
+  harness.setVerification(new Phase(){
+    @Override public void run(    PageCache pageCache,    EphemeralFileSystemAbstraction fs,    Set<File> filesTouched) throws Exception {
+      for (      File file : filesTouched) {
+        try (PagedFile pf=pageCache.map(file,pageCachePageSize);PageCursor cursor=pf.io(0,PF_SHARED_LOCK)){
+          for (int pageId=0; pageId < filePageCount; pageId++) {
+            cursor.next();
+            recordFormat.assertRecordsWrittenCorrectly(cursor);
+          }
         }
-      }
-));
-    }
-    for (    Future<?> future : futures) {
-      future.get();
+       }
     }
   }
-  pagedFile.close();
+);
+  harness.run(10,TimeUnit.SECONDS);
 }
