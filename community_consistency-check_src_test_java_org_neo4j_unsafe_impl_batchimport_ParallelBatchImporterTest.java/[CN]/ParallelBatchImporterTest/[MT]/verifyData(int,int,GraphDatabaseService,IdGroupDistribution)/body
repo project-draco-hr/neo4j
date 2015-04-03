@@ -1,0 +1,43 @@
+{
+  Set<Label> expectedLabels=new HashSet<>();
+  for (  String label : LABELS) {
+    expectedLabels.add(DynamicLabel.label(label));
+  }
+  GlobalGraphOperations globalOps=GlobalGraphOperations.at(db);
+  Set<Label> allLabels=Iterables.toSet(globalOps.getAllLabels());
+  assertEquals(allLabels,expectedLabels);
+  try (InputIterator<InputNode> nodes=nodes(nodeCount,inputIdGenerator,groups).iterator();InputIterator<InputRelationship> relationships=relationships(relationshipCount,inputIdGenerator,groups).iterator()){
+    Map<String,Node> nodeByInputId=new HashMap<>(nodeCount);
+    Iterator<Node> dbNodes=GlobalGraphOperations.at(db).getAllNodes().iterator();
+    int verifiedNodes=0;
+    while (nodes.hasNext()) {
+      InputNode input=nodes.next();
+      Node node=dbNodes.next();
+      assertNodeEquals(input,node);
+      String inputId=uniqueId(input.group(),node);
+      assertNull(nodeByInputId.put(inputId,node));
+      verifiedNodes++;
+    }
+    assertEquals(nodeCount,verifiedNodes);
+    Map<String,Relationship> relationshipByName=new HashMap<>();
+    for (    Relationship relationship : GlobalGraphOperations.at(db).getAllRelationships()) {
+      relationshipByName.put((String)relationship.getProperty("name"),relationship);
+    }
+    int verifiedRelationships=0;
+    while (relationships.hasNext()) {
+      InputRelationship input=relationships.next();
+      String name=(String)propertyOf(input,"name");
+      Relationship relationship=relationshipByName.get(name);
+      assertEquals(nodeByInputId.get(uniqueId(input.startNodeGroup(),input.startNode())),relationship.getStartNode());
+      assertEquals(nodeByInputId.get(uniqueId(input.endNodeGroup(),input.endNode())),relationship.getEndNode());
+      assertRelationshipEquals(input,relationship);
+      verifiedRelationships++;
+    }
+    assertEquals(relationshipCount,verifiedRelationships);
+  }
+   Label firstLabel=DynamicLabel.label(LABELS[0]);
+  ResourceIterator<Node> allNodesWithLabel=db.findNodes(firstLabel);
+  assertEquals(count(allNodesWithLabel),nodeCount);
+  ResourceIterator<Node> foundNodes=db.findNodes(firstLabel,"age",10);
+  assertEquals(count(foundNodes),nodeCount);
+}
