@@ -3,12 +3,13 @@
   final BatchImporter inserter=new ParallelBatchImporter(directory.absolutePath(),new DefaultFileSystemAbstraction(),config,new DevNullLoggingService(),processorAssigner,writerFactory,EMPTY);
   boolean successful=false;
   IdGroupDistribution groups=new IdGroupDistribution(NODE_COUNT,5,random.random());
+  long nodeRandomSeed=random.nextLong(), relationshipRandomSeed=random.nextLong();
   try {
-    inserter.doImport(Inputs.input(nodes(NODE_COUNT,inputIdGenerator,groups),relationships(RELATIONSHIP_COUNT,inputIdGenerator,groups),idMapper,idGenerator,false));
+    inserter.doImport(Inputs.input(nodes(nodeRandomSeed,NODE_COUNT,inputIdGenerator,groups),relationships(relationshipRandomSeed,RELATIONSHIP_COUNT,inputIdGenerator,groups),idMapper,idGenerator,false));
     GraphDatabaseService db=new TestGraphDatabaseFactory().newEmbeddedDatabase(directory.absolutePath());
     try (Transaction tx=db.beginTx()){
       inputIdGenerator.reset();
-      verifyData(NODE_COUNT,RELATIONSHIP_COUNT,db,groups);
+      verifyData(NODE_COUNT,RELATIONSHIP_COUNT,db,groups,nodeRandomSeed,relationshipRandomSeed);
       tx.success();
     }
   finally {
@@ -23,7 +24,8 @@
       try (PrintStream out=new PrintStream(failureFile)){
         out.println("Seed used in this failing run: " + random.seed());
         out.println(inputIdGenerator);
-        for (        InputRelationship relationship : relationships(RELATIONSHIP_COUNT,inputIdGenerator,groups)) {
+        inputIdGenerator.reset();
+        for (        InputRelationship relationship : relationships(relationshipRandomSeed,RELATIONSHIP_COUNT,inputIdGenerator,groups)) {
           out.println((relationship.hasSpecificId() ? relationship.specificId() + " " : "") + relationship.startNode() + "-[:"+ relationship.type()+ "]->"+ relationship.endNode());
         }
         out.println();
