@@ -1,28 +1,40 @@
 {
   if (args == null || args.length == 0) {
-    System.err.println("WARNING: no files specified...");
+    System.err.println("SYNTAX: [file[:id[,id]*]]+");
     return;
   }
   StoreFactory storeFactory=new StoreFactory(new Config(),new DefaultIdGeneratorFactory(),new DefaultWindowPoolFactory(),new DefaultFileSystemAbstraction(),logger(),null);
   for (  String arg : args) {
     File file=new File(arg);
-    if (!file.isFile()) {
-      throw new IllegalArgumentException("No such file: " + arg);
+    long[] ids=null;
+    if (file.isFile()) {
+    }
+ else     if (!file.isDirectory() && file.getName().indexOf(':') != -1) {
+      int idStart=arg.lastIndexOf(':');
+      String[] idStrings=arg.substring(idStart + 1).split(",");
+      ids=new long[idStrings.length];
+      for (int i=0; i < ids.length; i++) {
+        ids[i]=Long.parseLong(idStrings[i]);
+      }
+      file=new File(arg.substring(0,idStart));
+      if (!file.isFile()) {
+        throw new IllegalArgumentException("No such file: " + arg);
+      }
     }
     if ("neostore.nodestore.db".equals(file.getName())) {
-      dumpNodeStore(file,storeFactory);
+      dumpNodeStore(file,storeFactory,ids);
     }
  else     if ("neostore.relationshipstore.db".equals(file.getName())) {
-      dumpRelationshipStore(file,storeFactory);
+      dumpRelationshipStore(file,storeFactory,ids);
     }
  else     if ("neostore.propertystore.db".equals(file.getName())) {
-      dumpPropertyStore(file,storeFactory);
+      dumpPropertyStore(file,storeFactory,ids);
     }
  else     if ("neostore.propertystore.db.index".equals(file.getName())) {
-      dumpPropertyKeys(file,storeFactory);
+      dumpPropertyKeys(file,storeFactory,ids);
     }
  else     if ("neostore.relationshiptypestore.db".equals(file.getName())) {
-      dumpRelationshipTypes(file,storeFactory);
+      dumpRelationshipTypes(file,storeFactory,ids);
     }
  else {
       throw new IllegalArgumentException("Unknown store file: " + arg);
