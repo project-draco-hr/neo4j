@@ -1,35 +1,47 @@
 {
   if (args == null || args.length == 0) {
-    System.err.println("WARNING: no files specified...");
+    System.err.println("SYNTAX: [file[:id[,id]*]]+");
     return;
   }
   StoreFactory storeFactory=new StoreFactory(new Config(),new DefaultIdGeneratorFactory(),new DefaultWindowPoolFactory(),new DefaultFileSystemAbstraction(),logger(),null);
   for (  String arg : args) {
     File file=new File(arg);
-    if (!file.isFile()) {
-      throw new IllegalArgumentException("No such file: " + arg);
+    long[] ids=null;
+    if (file.isFile()) {
+    }
+ else     if (!file.isDirectory() && file.getName().indexOf(':') != -1) {
+      int idStart=arg.lastIndexOf(':');
+      String[] idStrings=arg.substring(idStart + 1).split(",");
+      ids=new long[idStrings.length];
+      for (int i=0; i < ids.length; i++) {
+        ids[i]=Long.parseLong(idStrings[i]);
+      }
+      file=new File(arg.substring(0,idStart));
+      if (!file.isFile()) {
+        throw new IllegalArgumentException("No such file: " + arg);
+      }
     }
 switch (file.getName()) {
 case "neostore.nodestore.db":
-      dumpNodeStore(file,storeFactory);
+      dumpNodeStore(file,storeFactory,ids);
     break;
 case "neostore.relationshipstore.db":
-  dumpRelationshipStore(file,storeFactory);
+  dumpRelationshipStore(file,storeFactory,ids);
 break;
 case "neostore.propertystore.db":
-dumpPropertyStore(file,storeFactory);
+dumpPropertyStore(file,storeFactory,ids);
 break;
 case "neostore.schemastore.db":
-dumpSchemaStore(file,storeFactory);
+dumpSchemaStore(file,storeFactory,ids);
 break;
 case "neostore.propertystore.db.index":
-dumpPropertyKeys(file,storeFactory);
+dumpPropertyKeys(file,storeFactory,ids);
 break;
 case "neostore.labeltokenstore.db":
-dumpLabels(file,storeFactory);
+dumpLabels(file,storeFactory,ids);
 break;
 case "neostore.relationshiptypestore.db":
-dumpRelationshipTypes(file,storeFactory);
+dumpRelationshipTypes(file,storeFactory,ids);
 break;
 default :
 throw new IllegalArgumentException("Unknown store file: " + arg);
