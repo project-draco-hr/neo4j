@@ -12,8 +12,8 @@
     StatsProvider memoryUsageStats=new MemoryUsageStatsProvider(nodeRelationshipLink,idMapper);
     InputIterable<InputNode> nodes=input.nodes();
     InputIterable<InputRelationship> relationships=input.relationships();
-    NodeStage nodeStage=new NodeStage(nodes,idMapper,idGenerator,neoStore,inputCache,memoryUsageStats);
-    CalculateDenseNodesStage calculateDenseNodesStage=new CalculateDenseNodesStage(relationships,nodeRelationshipLink,idMapper,badRelationships,inputCache);
+    NodeStage nodeStage=new NodeStage(config,writeMonitor,writerFactory,nodes,idMapper,idGenerator,neoStore,inputCache,memoryUsageStats);
+    CalculateDenseNodesStage calculateDenseNodesStage=new CalculateDenseNodesStage(config,relationships,nodeRelationshipLink,idMapper,badRelationships,inputCache);
     if (idMapper.needsPreparation()) {
       executeStages(nodeStage);
       executeStages(new IdMapperPreparationStage(config,idMapper,nodes,inputCache,memoryUsageStats));
@@ -22,7 +22,7 @@
  else {
       executeStages(nodeStage,calculateDenseNodesStage);
     }
-    final RelationshipStage relationshipStage=new RelationshipStage(relationships.supportsMultiplePasses() ? relationships : inputCache.relationships(),idMapper,neoStore,nodeRelationshipLink,input.specificRelationshipIds());
+    final RelationshipStage relationshipStage=new RelationshipStage(config,writeMonitor,writerFactory,relationships.supportsMultiplePasses() ? relationships : inputCache.relationships(),idMapper,neoStore,nodeRelationshipLink,input.specificRelationshipIds());
     executeStages(relationshipStage);
     neoStore.flush();
     writerFactory.awaitEverythingWritten();

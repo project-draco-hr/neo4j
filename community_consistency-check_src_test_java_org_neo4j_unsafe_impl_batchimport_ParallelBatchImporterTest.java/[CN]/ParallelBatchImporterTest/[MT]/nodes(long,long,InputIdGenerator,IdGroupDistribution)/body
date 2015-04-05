@@ -1,0 +1,34 @@
+{
+  return new InputIterable<InputNode>(){
+    private int calls;
+    @Override public InputIterator<InputNode> iterator(){
+      calls++;
+      assertTrue("Unexpected use of input iterator " + multiPassIterators + ", "+ calls,multiPassIterators || (!multiPassIterators && calls == 1));
+      return new SimpleInputIterator<InputNode>("test nodes"){
+        private final Random random=new Random(randomSeed);
+        private final Randoms randoms=new Randoms(random,Randoms.DEFAULT);
+        private int cursor;
+        @Override protected InputNode fetchNextOrNull(){
+          if (cursor < count) {
+            Object nodeId=inputIdGenerator.nextNodeId(random);
+            Object[] properties=randomProperties(randoms,nodeId);
+            String[] labels=randoms.selection(TOKENS,0,TOKENS.length,true);
+            try {
+              Group group=groups.groupOf(cursor);
+              return new InputNode(sourceDescription,itemNumber,itemNumber,group,nodeId,properties,null,labels,null);
+            }
+  finally {
+              cursor++;
+            }
+          }
+          return null;
+        }
+      }
+;
+    }
+    @Override public boolean supportsMultiplePasses(){
+      return multiPassIterators;
+    }
+  }
+;
+}
