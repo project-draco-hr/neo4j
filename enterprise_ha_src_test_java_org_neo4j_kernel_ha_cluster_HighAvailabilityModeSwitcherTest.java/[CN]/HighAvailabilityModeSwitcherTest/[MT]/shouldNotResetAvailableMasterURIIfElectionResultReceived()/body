@@ -1,0 +1,31 @@
+{
+  SwitchToSlave switchToSlave=mock(SwitchToSlave.class);
+  final CountDownLatch firstCallMade=new CountDownLatch(1);
+  final CountDownLatch secondCallMade=new CountDownLatch(1);
+  final CountDownLatch waitForSecondMessage=new CountDownLatch(1);
+  HighAvailabilityModeSwitcher toTest=new HighAvailabilityModeSwitcher(switchToSlave,mock(SwitchToMaster.class),mock(Election.class),mock(ClusterMemberAvailability.class),StringLogger.DEV_NULL);
+  URI uri1=URI.create("ha://server1");
+  toTest.init();
+  toTest.start();
+  toTest.listeningAt(URI.create("ha://server3?serverId=3"));
+  when(switchToSlave.switchToSlave(any(LifeSupport.class),any(URI.class),any(URI.class),any(CancellationRequest.class))).thenAnswer(new Answer<URI>(){
+    @Override public URI answer(    InvocationOnMock invocation) throws Throwable {
+      firstCallMade.countDown();
+      waitForSecondMessage.await();
+      throw new NoSuchLogVersionException(1);
+    }
+  }
+).thenAnswer(new Answer<URI>(){
+    @Override public URI answer(    InvocationOnMock invocation) throws Throwable {
+      secondCallMade.countDown();
+      return URI.create("ha://server3");
+    }
+  }
+);
+  toTest.masterIsAvailable(new HighAvailabilityMemberChangeEvent(PENDING,TO_SLAVE,new InstanceId(1),uri1));
+  firstCallMade.await();
+  toTest.masterIsElected(new HighAvailabilityMemberChangeEvent(TO_SLAVE,TO_SLAVE,new InstanceId(1),null));
+  waitForSecondMessage.countDown();
+  secondCallMade.await();
+  verify(switchToSlave,times(2)).switchToSlave(any(LifeSupport.class),any(URI.class),eq(uri1),any(CancellationRequest.class));
+}
