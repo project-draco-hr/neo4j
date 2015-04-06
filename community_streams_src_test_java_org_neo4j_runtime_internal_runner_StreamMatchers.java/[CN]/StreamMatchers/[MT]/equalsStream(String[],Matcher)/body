@@ -1,0 +1,29 @@
+{
+  return new TypeSafeMatcher<RecordStream>(){
+    @Override protected boolean matchesSafely(    RecordStream item){
+      if (!Arrays.equals(fieldNames,item.fieldNames())) {
+        return false;
+      }
+      final Iterator<Matcher> expected=asList(records).iterator();
+      final AtomicBoolean matched=new AtomicBoolean(true);
+      try {
+        item.visitAll(new RecordStream.Visitor(){
+          @Override public void visit(          Record record){
+            if (!expected.hasNext() || !expected.next().matches(record)) {
+              matched.set(false);
+            }
+          }
+        }
+);
+      }
+ catch (      Exception e) {
+        throw new RuntimeException(e);
+      }
+      return matched.get() && !expected.hasNext();
+    }
+    @Override public void describeTo(    Description description){
+      description.appendText("Stream[").appendValueList(" fieldNames=[",",","]",fieldNames).appendList(", records=[",",","]",asList(records));
+    }
+  }
+;
+}

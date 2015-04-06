@@ -1,0 +1,22 @@
+{
+  final Config config=dependencies.config();
+  final GraphDatabaseService gdb=dependencies.db();
+  final GraphDatabaseAPI api=(GraphDatabaseAPI)gdb;
+  final StringLogger log=dependencies.logging().getMessagesLog(Sessions.class);
+  final JobScheduler scheduler=dependencies.scheduler();
+  final LifeSupport life=new LifeSupport();
+  if (config.get(Settings.ndp_enabled)) {
+    final Sessions env=life.add(new StandardSessions(api,log));
+    final SessionRegistry sessions=life.add(new SessionRegistry(env));
+    scheduler.scheduleRecurring(serverTransactionTimeout,new Runnable(){
+      @Override public void run(){
+        sessions.destroyIdleSessions(config.get(Settings.session_max_idle),TimeUnit.MILLISECONDS);
+      }
+    }
+,5,TimeUnit.SECONDS);
+    HostnamePort bindTo=config.get(Settings.http_address);
+    life.add(new HttpTransport(bindTo.getHost("localhost"),bindTo.getPort(),sessions,log));
+    log.info("NDP Server extension loaded.");
+  }
+  return life;
+}

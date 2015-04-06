@@ -1,0 +1,27 @@
+{
+  ensure(1);
+  final byte markerByte=buffer.get();
+  final byte markerHighNibble=(byte)(markerByte & 0xF0);
+  final byte markerLowNibble=(byte)(markerByte & 0x0F);
+  if (markerHighNibble == TINY_TEXT) {
+    return unpackBytes(markerLowNibble);
+  }
+switch (markerByte) {
+case TEXT_8:
+    return unpackBytes(unpackUINT8());
+case TEXT_16:
+  return unpackBytes(unpackUINT16());
+case TEXT_32:
+{
+  long size=unpackUINT32();
+  if (size <= Integer.MAX_VALUE) {
+    return unpackBytes((int)size);
+  }
+ else {
+    throw new Overflow("TEXT_32 too long for Java");
+  }
+}
+default :
+throw new Unexpected("Expected a string, but got: " + toHexString(markerByte));
+}
+}
