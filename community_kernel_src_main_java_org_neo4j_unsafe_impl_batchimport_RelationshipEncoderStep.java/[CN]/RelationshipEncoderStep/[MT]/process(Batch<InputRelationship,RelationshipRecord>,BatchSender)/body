@@ -1,0 +1,36 @@
+{
+  InputRelationship[] input=batch.input;
+  batch.records=new RelationshipRecord[input.length];
+  long[] ids=batch.ids;
+  for (int i=0; i < input.length; i++) {
+    InputRelationship batchRelationship=input[i];
+    if (specificIds != batchRelationship.hasSpecificId()) {
+      throw new IllegalStateException("Input was declared to have specificRelationshipIds=" + specificIds + ", but "+ batchRelationship+ " didn't honor that");
+    }
+    long relationshipId=specificIds ? batchRelationship.specificId() : nextRelationshipId++;
+    long startNodeId=ids[i * 2];
+    long endNodeId=ids[i * 2 + 1];
+    if (startNodeId == -1 || endNodeId == -1) {
+      batch.records[i]=null;
+      continue;
+    }
+    relationshipStore.setHighestPossibleIdInUse(relationshipId);
+    int typeId=batchRelationship.hasTypeId() ? batchRelationship.typeId() : relationshipTypeRepository.getOrCreateId(batchRelationship.type());
+    RelationshipRecord relationshipRecord=batch.records[i]=new RelationshipRecord(relationshipId,startNodeId,endNodeId,typeId);
+    relationshipRecord.setInUse(true);
+    boolean loop=startNodeId == endNodeId;
+    long firstNextRel=cache.getAndPutRelationship(startNodeId,typeId,loop ? BOTH : OUTGOING,relationshipId,true);
+    relationshipRecord.setFirstNextRel(firstNextRel);
+    if (loop) {
+      relationshipRecord.setSecondNextRel(firstNextRel);
+    }
+ else {
+      relationshipRecord.setSecondNextRel(cache.getAndPutRelationship(endNodeId,typeId,INCOMING,relationshipId,true));
+    }
+    relationshipRecord.setFirstInFirstChain(false);
+    relationshipRecord.setFirstInSecondChain(false);
+    relationshipRecord.setFirstPrevRel(Record.NO_NEXT_RELATIONSHIP.intValue());
+    relationshipRecord.setSecondPrevRel(Record.NO_NEXT_RELATIONSHIP.intValue());
+  }
+  sender.send(batch);
+}
