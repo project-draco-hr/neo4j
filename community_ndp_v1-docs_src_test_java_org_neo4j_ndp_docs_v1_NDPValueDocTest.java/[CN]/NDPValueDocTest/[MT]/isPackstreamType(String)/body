@@ -1,0 +1,47 @@
+{
+  return new TypeSafeMatcher<byte[]>(){
+    @Override protected boolean matchesSafely(    byte[] recordWithValue){
+      if (packStreamType.equalsIgnoreCase("identity")) {
+        return true;
+      }
+      PackStream.Unpacker unpacker=new PackStream.Unpacker(64);
+      unpacker.reset(new ArrayByteChannel(recordWithValue));
+      try {
+        unpacker.unpackStructHeader();
+        unpacker.unpackStructSignature();
+        unpacker.unpackListHeader();
+        PackType type=unpacker.peekNextType();
+        if (type.name().equalsIgnoreCase("struct")) {
+          String structName=null;
+          unpacker.unpackStructHeader();
+          char sig=unpacker.unpackStructSignature();
+switch (sig) {
+case PackStreamMessageFormatV1.NODE:
+            structName="node";
+          break;
+case PackStreamMessageFormatV1.RELATIONSHIP:
+        structName="relationship";
+      break;
+case PackStreamMessageFormatV1.PATH:
+    structName="path";
+  break;
+default :
+fail("Unknown struct type: " + sig);
+}
+assertThat(structName,equalTo(packStreamType.toLowerCase()));
+}
+ else {
+assertThat(type.name().toLowerCase(),equalTo(packStreamType.toLowerCase()));
+}
+}
+ catch (IOException e) {
+throw new RuntimeException(e);
+}
+return true;
+}
+@Override public void describeTo(Description description){
+description.appendText("PackStream type " + packStreamType);
+}
+}
+;
+}
