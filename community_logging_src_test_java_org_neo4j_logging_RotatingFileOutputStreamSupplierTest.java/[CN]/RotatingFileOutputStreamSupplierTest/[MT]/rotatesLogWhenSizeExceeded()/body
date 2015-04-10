@@ -1,0 +1,20 @@
+{
+  RotatingFileOutputStreamSupplier supplier=new RotatingFileOutputStreamSupplier(fileSystem,logFile,10,0,10,DIRECT_EXECUTOR);
+  OutputStream outputStream=supplier.get();
+  assertThat(fileSystem.fileExists(logFile),is(true));
+  assertThat(fileSystem.fileExists(archiveLogFile1),is(false));
+  write(outputStream,"A string longer than 10 bytes");
+  OutputStream outputStream2=supplier.get();
+  assertThat(outputStream2,not(outputStream));
+  assertThat(fileSystem.fileExists(logFile),is(true));
+  assertThat(fileSystem.fileExists(archiveLogFile1),is(true));
+  assertThat(fileSystem.fileExists(archiveLogFile2),is(false));
+  write(outputStream2,"Short");
+  assertThat(supplier.get(),is(outputStream2));
+  write(outputStream2,"A string longer than 10 bytes");
+  OutputStream outputStream3=supplier.get();
+  assertThat(outputStream3,not(outputStream2));
+  assertThat(fileSystem.fileExists(logFile),is(true));
+  assertThat(fileSystem.fileExists(archiveLogFile1),is(true));
+  assertThat(fileSystem.fileExists(archiveLogFile2),is(true));
+}
