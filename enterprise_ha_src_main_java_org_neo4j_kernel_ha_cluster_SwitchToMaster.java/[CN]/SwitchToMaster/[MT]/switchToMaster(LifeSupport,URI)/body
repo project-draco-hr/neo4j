@@ -1,21 +1,21 @@
 {
-  console.log("I am " + myId() + ", moving to master");
+  userLog.info("I am %s, moving to master",myId());
 {
     idGeneratorFactory.switchToMaster();
     NeoStoreDataSource neoStoreXaDataSource=dataSourceManager.getDataSource();
     neoStoreXaDataSource.afterModeSwitch();
     MasterImpl.SPI spi=new DefaultMasterImplSPI(graphDb);
-    MasterImpl masterImpl=new MasterImpl(spi,masterImplMonitor,logging,config);
+    MasterImpl masterImpl=new MasterImpl(spi,masterImplMonitor,config);
     DependencyResolver resolver=neoStoreXaDataSource.getDependencyResolver();
     TransactionChecksumLookup txChecksumLookup=new TransactionChecksumLookup(resolver.resolveDependency(TransactionIdStore.class),resolver.resolveDependency(LogicalTransactionStore.class));
-    MasterServer masterServer=new MasterServer(masterImpl,logging,serverConfig(),new BranchDetectingTxVerifier(logging.getMessagesLog(BranchDetectingTxVerifier.class),txChecksumLookup),masterByteCounterMonitor,masterRequestMonitor);
+    MasterServer masterServer=new MasterServer(masterImpl,logService.getInternalLogProvider(),serverConfig(),new BranchDetectingTxVerifier(logService.getInternalLogProvider(),txChecksumLookup),masterByteCounterMonitor,masterRequestMonitor);
     haCommunicationLife.add(masterImpl);
     haCommunicationLife.add(masterServer);
     masterDelegateHandler.setDelegate(masterImpl);
     haCommunicationLife.start();
     URI masterHaURI=getMasterUri(me,masterServer);
     clusterMemberAvailability.memberIsAvailable(MASTER,masterHaURI,neoStoreXaDataSource.getStoreId());
-    console.log("I am " + myId() + ", successfully moved to master");
+    userLog.info("I am %s, successfully moved to master",myId());
     slaveFactorySupplier.get().setStoreId(neoStoreXaDataSource.getStoreId());
     return masterHaURI;
   }

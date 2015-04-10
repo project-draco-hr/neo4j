@@ -12,8 +12,8 @@
   }
 );
   ObjectStreamFactory objectStreamFactory=new ObjectStreamFactory();
-  clusterClient=dependencies.satisfyDependency(new ClusterClient(monitors,ClusterClient.adapt(config),logging,electionCredentialsProvider,objectStreamFactory,objectStreamFactory));
-  PaxosClusterMemberEvents localClusterEvents=new PaxosClusterMemberEvents(clusterClient,clusterClient,clusterClient,clusterClient,logging,new org.neo4j.function.Predicate<PaxosClusterMemberEvents.ClusterMembersSnapshot>(){
+  clusterClient=dependencies.satisfyDependency(new ClusterClient(monitors,ClusterClient.adapt(config),logService,electionCredentialsProvider,objectStreamFactory,objectStreamFactory));
+  PaxosClusterMemberEvents localClusterEvents=new PaxosClusterMemberEvents(clusterClient,clusterClient,clusterClient,clusterClient,logService.getInternalLogProvider(),new org.neo4j.function.Predicate<PaxosClusterMemberEvents.ClusterMembersSnapshot>(){
     @Override public boolean test(    PaxosClusterMemberEvents.ClusterMembersSnapshot item){
       for (      MemberIsAvailable member : item.getCurrentAvailableMembers()) {
         if (member.getRoleUri().getScheme().equals("ha")) {
@@ -40,16 +40,16 @@
   }
 );
   HighAvailabilityMemberContext localMemberContext=new SimpleHighAvailabilityMemberContext(clusterClient.getServerId(),config.get(HaSettings.slave_only));
-  PaxosClusterMemberAvailability localClusterMemberAvailability=new PaxosClusterMemberAvailability(clusterClient.getServerId(),clusterClient,clusterClient,logging,objectStreamFactory,objectStreamFactory);
+  PaxosClusterMemberAvailability localClusterMemberAvailability=new PaxosClusterMemberAvailability(clusterClient.getServerId(),clusterClient,clusterClient,logService.getInternalLogProvider(),objectStreamFactory,objectStreamFactory);
   memberContextDelegateInvocationHandler.setDelegate(localMemberContext);
   clusterEventsDelegateInvocationHandler.setDelegate(localClusterEvents);
   clusterMemberAvailabilityDelegateInvocationHandler.setDelegate(localClusterMemberAvailability);
   members=dependencies.satisfyDependency(new ClusterMembers(clusterClient,clusterClient,clusterEvents,config.get(ClusterSettings.server_id)));
-  memberStateMachine=new HighAvailabilityMemberStateMachine(memberContext,availabilityGuard,members,clusterEvents,clusterClient,logging.getMessagesLog(HighAvailabilityMemberStateMachine.class));
-  HighAvailabilityConsoleLogger highAvailabilityConsoleLogger=new HighAvailabilityConsoleLogger(logging.getConsoleLog(HighAvailabilityConsoleLogger.class),config.get(ClusterSettings.server_id));
-  availabilityGuard.addListener(highAvailabilityConsoleLogger);
-  clusterEvents.addClusterMemberListener(highAvailabilityConsoleLogger);
-  clusterClient.addClusterListener(highAvailabilityConsoleLogger);
+  memberStateMachine=new HighAvailabilityMemberStateMachine(memberContext,availabilityGuard,members,clusterEvents,clusterClient,logService.getInternalLogProvider());
+  HighAvailabilityLogger highAvailabilityLogger=new HighAvailabilityLogger(logService.getUserLogProvider(),config.get(ClusterSettings.server_id));
+  availabilityGuard.addListener(highAvailabilityLogger);
+  clusterEvents.addClusterMemberListener(highAvailabilityLogger);
+  clusterClient.addClusterListener(highAvailabilityLogger);
   paxosLife.add(clusterClient);
   paxosLife.add(memberStateMachine);
   paxosLife.add(clusterEvents);

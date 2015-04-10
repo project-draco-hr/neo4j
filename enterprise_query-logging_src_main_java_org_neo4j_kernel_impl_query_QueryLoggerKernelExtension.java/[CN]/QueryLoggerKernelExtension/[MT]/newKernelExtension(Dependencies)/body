@@ -1,8 +1,20 @@
 {
-  if (the.config().get(GraphDatabaseSettings.log_queries)) {
-    QueryLogger logger=new QueryLogger(Clock.SYSTEM_CLOCK,new LoggerFactory(the.filesystem(),the.config().get(GraphDatabaseSettings.log_queries_filename)),the.config().get(GraphDatabaseSettings.log_queries_threshold));
-    the.monitoring().addMonitorListener(logger);
-    return logger;
+  if (!deps.config().get(GraphDatabaseSettings.log_queries)) {
+    return null;
   }
-  return null;
+  return new LifecycleAdapter(){
+    OutputStream logOutputStream;
+    @Override public void init() throws Throwable {
+      final FileSystemAbstraction filesystem=deps.filesystem();
+      final File logFile=deps.config().get(GraphDatabaseSettings.log_queries_filename);
+      logOutputStream=createOrOpenAsOuputStream(filesystem,logFile,true);
+      Long thresholdMillis=deps.config().get(GraphDatabaseSettings.log_queries_threshold);
+      QueryLogger logger=new QueryLogger(Clock.SYSTEM_CLOCK,FormattedLog.toOutputStream(logOutputStream),thresholdMillis);
+      deps.monitoring().addMonitorListener(logger);
+    }
+    @Override public void shutdown() throws Throwable {
+      logOutputStream.close();
+    }
+  }
+;
 }
