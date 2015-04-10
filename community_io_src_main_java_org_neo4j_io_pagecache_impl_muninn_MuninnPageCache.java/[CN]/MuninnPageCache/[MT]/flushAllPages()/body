@@ -1,17 +1,9 @@
 {
   try (MajorFlushEvent cacheFlush=tracer.beginCacheFlush()){
-    for (    MuninnPage page : pages) {
-      long stamp=page.readLock();
-      try {
-        page.flush(cacheFlush.flushEventOpportunity());
-      }
-  finally {
-        page.unlockRead(stamp);
-      }
-    }
+    FlushEventOpportunity flushOpportunity=cacheFlush.flushEventOpportunity();
     FileMapping fileMapping=mappedFiles;
     while (fileMapping != null) {
-      fileMapping.pagedFile.force();
+      fileMapping.pagedFile.flushAndForceInternal(flushOpportunity);
       fileMapping=fileMapping.next;
     }
   }
