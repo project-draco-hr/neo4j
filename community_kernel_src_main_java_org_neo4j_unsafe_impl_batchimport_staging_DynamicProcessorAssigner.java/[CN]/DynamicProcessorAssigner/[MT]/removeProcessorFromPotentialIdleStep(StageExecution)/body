@@ -1,7 +1,11 @@
 {
   for (  Pair<Step<?>,Float> fast : execution.stepsOrderedBy(Keys.avg_processing_time,true)) {
-    float threshold=1f - (1f / fast.first().numberOfProcessors());
-    if (fast.other() < threshold) {
+    int numberOfProcessors=fast.first().numberOfProcessors();
+    if (numberOfProcessors == 1) {
+      continue;
+    }
+    float factorWithDecrementedProcessorCount=fast.other().floatValue() * numberOfProcessors / (numberOfProcessors - 1);
+    if (factorWithDecrementedProcessorCount < 0.8f) {
       Step<?> fastestStep=fast.first();
       long doneBatches=batches(fastestStep);
       if (batchesPassedSinceLastChange(fastestStep,doneBatches) >= config.movingAverageSize()) {
