@@ -1,0 +1,24 @@
+{
+  File logFile=new File(storeDirectory,INTERNAL_LOG_NAME);
+  FormattedLogProvider internalLogProvider;
+  if (internalLogRotationThreshold == 0) {
+    OutputStream outputStream=createOrOpenAsOuputStream(fileSystem,logFile,true);
+    internalLogProvider=FormattedLogProvider.toOutputStream(outputStream);
+    rotationListener.accept(internalLogProvider);
+    this.closeable=outputStream;
+  }
+ else {
+    RotatingFileOutputStreamSupplier rotatingSupplier=new RotatingFileOutputStreamSupplier(fileSystem,logFile,internalLogRotationThreshold,internalLogRotationDelay,maxInternalLogArchives,rotationExecutor,new RotatingFileOutputStreamSupplier.RotationListener(){
+      @Override public void outputFileCreated(      OutputStream newStream,      OutputStream oldStream){
+        FormattedLogProvider logProvider=FormattedLogProvider.toOutputStream(newStream);
+        logProvider.getLog(StoreLogService.class).info("Opened new internal log file");
+        rotationListener.accept(logProvider);
+        logProvider.getLog(StoreLogService.class).info("Rotated internal log file");
+      }
+    }
+);
+    internalLogProvider=FormattedLogProvider.toOutputStream(rotatingSupplier);
+    this.closeable=rotatingSupplier;
+  }
+  this.logService=new SimpleLogService(userLogProvider,internalLogProvider);
+}

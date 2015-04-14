@@ -3,7 +3,8 @@
   ProgressTxHandler handler=new ProgressTxHandler();
   TransactionCommittingResponseUnpacker unpacker=new TransactionCommittingResponseUnpacker(resolver);
   Monitors monitors=resolver.resolveDependency(Monitors.class);
-  BackupClient client=new BackupClient(sourceHostNameOrIp,sourcePort,resolver.resolveDependency(Logging.class),targetDb.storeId(),timeout,unpacker,monitors.newMonitor(ByteCounterMonitor.class,BackupClient.class),monitors.newMonitor(RequestMonitor.class,BackupClient.class));
+  LogProvider logProvider=resolver.resolveDependency(LogService.class).getInternalLogProvider();
+  BackupClient client=new BackupClient(sourceHostNameOrIp,sourcePort,logProvider,targetDb.storeId(),timeout,unpacker,monitors.newMonitor(ByteCounterMonitor.class,BackupClient.class),monitors.newMonitor(RequestMonitor.class,BackupClient.class));
   boolean consistent=false;
   try {
     client.start();
@@ -31,7 +32,7 @@ catch (  Throwable throwable) {
       unpacker.stop();
     }
  catch (    Throwable throwable) {
-      logger.warn("Unable to stop backup client",throwable);
+      log.warn("Unable to stop backup client",throwable);
     }
   }
   return new BackupOutcome(handler.getLastSeenTransactionId(),consistent);

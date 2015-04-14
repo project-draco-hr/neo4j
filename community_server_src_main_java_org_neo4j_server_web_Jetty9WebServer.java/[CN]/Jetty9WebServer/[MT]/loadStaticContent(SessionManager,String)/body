@@ -1,6 +1,6 @@
 {
   String contentLocation=staticContent.get(mountPoint);
-  console.log("Mounting static content at [%s] from [%s]",mountPoint,contentLocation);
+  log.info("Mounting static content at %s",mountPoint);
   try {
     SessionHandler sessionHandler=new SessionHandler(sm);
     sessionHandler.setServer(getJetty());
@@ -11,21 +11,19 @@
     staticContext.setInitParameter("org.eclipse.jetty.servlet.Default.dirAllowed","false");
     URL resourceLoc=getClass().getClassLoader().getResource(contentLocation);
     if (resourceLoc != null) {
-      log.debug(format("Found [%s]",resourceLoc));
       URL url=resourceLoc.toURI().toURL();
       final Resource resource=Resource.newResource(url);
       staticContext.setBaseResource(resource);
-      log.debug(format("Mounting static content from [%s] at [%s]",url,mountPoint));
       addFiltersTo(staticContext);
       staticContext.addFilter(new FilterHolder(new NoCacheHtmlFilter()),"/*",EnumSet.of(DispatcherType.REQUEST,DispatcherType.FORWARD));
       handlers.addHandler(staticContext);
     }
  else {
-      console.log("No static content available for Neo Server at port [%d], " + "management console may not be available.",jettyHttpPort);
+      log.warn("No static content available for Neo Server at port %d, management console may not be available.",jettyHttpPort);
     }
   }
  catch (  Exception e) {
-    console.error("Unknown error loading static content",e);
+    log.error("Unknown error loading static content",e);
     e.printStackTrace();
     throw new RuntimeException(e);
   }

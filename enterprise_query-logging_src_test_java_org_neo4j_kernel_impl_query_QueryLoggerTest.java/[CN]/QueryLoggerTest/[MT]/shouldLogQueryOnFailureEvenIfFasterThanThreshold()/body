@@ -1,12 +1,11 @@
 {
-  StringLogger logger=mock(StringLogger.class);
-  QuerySession session=session("{the session}");
+  final AssertableLogProvider logProvider=new AssertableLogProvider();
+  QuerySession session=session(SESSION_1_NAME);
   FakeClock clock=new FakeClock();
-  QueryLogger queryLogger=new QueryLogger(clock,new LoggerFactory(logger),10);
-  queryLogger.init();
+  QueryLogger queryLogger=new QueryLogger(clock,logProvider.getLog(getClass()),10);
   RuntimeException failure=new RuntimeException();
-  queryLogger.startQueryExecution(session,"MATCH (n) RETURN n");
+  queryLogger.startQueryExecution(session,QUERY_1);
   clock.forward(1,TimeUnit.MILLISECONDS);
   queryLogger.endFailure(session,failure);
-  verify(logger).logMessage("FAILURE 1 ms: {the session} - MATCH (n) RETURN n",failure);
+  logProvider.assertExactly(inLog(getClass()).error(is("1 ms: {session one} - MATCH (n) RETURN n"),sameInstance(failure)));
 }

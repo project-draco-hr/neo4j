@@ -1,5 +1,4 @@
 {
-  TestLogger logger=new TestLogger();
   SchemaIndexProvider provider=mock(SchemaIndexProvider.class);
   when(provider.getProviderDescriptor()).thenReturn(PROVIDER_DESCRIPTOR);
   SchemaIndexProviderMap providerMap=new DefaultSchemaIndexProviderMap(provider);
@@ -7,7 +6,7 @@
   IndexRule onlineIndex=indexRule(1,1,1,PROVIDER_DESCRIPTOR);
   IndexRule populatingIndex=indexRule(2,1,2,PROVIDER_DESCRIPTOR);
   IndexRule failedIndex=indexRule(3,2,2,PROVIDER_DESCRIPTOR);
-  IndexingService indexingService=IndexingService.create(new IndexSamplingConfig(new Config()),mock(JobScheduler.class),providerMap,storeView,mockLookup,mock(UpdateableSchemaState.class),asList(onlineIndex,populatingIndex,failedIndex),mockLogging(logger),IndexingService.NO_MONITOR);
+  IndexingService indexingService=IndexingService.create(new IndexSamplingConfig(new Config()),mock(JobScheduler.class),providerMap,storeView,mockLookup,mock(UpdateableSchemaState.class),asList(onlineIndex,populatingIndex,failedIndex),logProvider,IndexingService.NO_MONITOR);
   when(provider.getInitialState(onlineIndex.getId())).thenReturn(ONLINE);
   when(provider.getInitialState(populatingIndex.getId())).thenReturn(InternalIndexState.POPULATING);
   when(provider.getInitialState(failedIndex.getId())).thenReturn(InternalIndexState.FAILED);
@@ -17,10 +16,8 @@
   when(mockLookup.propertyKeyGetName(1)).thenReturn("propertyOne");
   when(mockLookup.propertyKeyGetName(2)).thenReturn("propertyTwo");
   when(storeView.indexSample(any(IndexDescriptor.class),any(DoubleLongRegister.class))).thenReturn(newDoubleLongRegister(32l,32l));
-  logger.clear();
+  logProvider.clear();
   indexingService.start();
   verify(provider).getPopulationFailure(3);
-  logger.assertAtLeastOnce(info("IndexingService.start: index 1 on :LabelOne(propertyOne) is ONLINE"));
-  logger.assertAtLeastOnce(info("IndexingService.start: index 2 on :LabelOne(propertyTwo) is POPULATING"));
-  logger.assertAtLeastOnce(info("IndexingService.start: index 3 on :LabelTwo(propertyTwo) is FAILED"));
+  logProvider.assertAtLeastOnce(logMatch.info("IndexingService.start: index 1 on :LabelOne(propertyOne) is ONLINE"),logMatch.info("IndexingService.start: index 2 on :LabelOne(propertyTwo) is POPULATING"),logMatch.info("IndexingService.start: index 3 on :LabelTwo(propertyTwo) is FAILED"));
 }

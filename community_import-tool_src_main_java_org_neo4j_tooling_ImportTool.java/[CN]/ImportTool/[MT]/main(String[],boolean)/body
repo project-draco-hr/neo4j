@@ -32,10 +32,11 @@
     throw andPrintError("Input error",e,false);
   }
   LifeSupport life=new LifeSupport();
-  Logging logging=life.add(new ClassicLoggingService(new Config(stringMap(store_dir.name(),storeDir.getAbsolutePath()))));
+  JobScheduler jobScheduler=life.add(new Neo4jJobScheduler());
+  LogService logService=life.add(new StoreLogService(NullLogProvider.getInstance(),fs,storeDir,jobScheduler));
   life.start();
   org.neo4j.unsafe.impl.batchimport.Configuration config=importConfiguration(processors,badFileName,defaultSettingsSuitableForTests);
-  BatchImporter importer=new ParallelBatchImporter(storeDir.getPath(),config,logging,ExecutionMonitors.defaultVisible());
+  BatchImporter importer=new ParallelBatchImporter(storeDir.getPath(),config,logService.getInternalLogProvider(),ExecutionMonitors.defaultVisible());
   boolean success=false;
   try {
     importer.doImport(input);
@@ -47,7 +48,7 @@
  finally {
     File badFile=config.badFile(storeDir);
     if (badFile.exists()) {
-      out.println("There were bad entries which were skipped and logged into " + badFile.getAbsolutePath());
+      System.out.println("There were bad entries which were skipped and logged into " + badFile.getAbsolutePath());
     }
     life.shutdown();
     if (!success) {

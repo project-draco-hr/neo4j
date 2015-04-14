@@ -1,29 +1,32 @@
 {
+  LogProvider userLogProvider=new ContextLessLogProviderDelegate(FormattedLogProvider.toOutputStream(System.out));
+  JULBridge.resetJUL();
+  Logger.getLogger("").setLevel(Level.WARNING);
+  JULBridge.forwardTo(userLogProvider);
+  JettyLogBridge.setLogProvider(userLogProvider);
+  log=userLogProvider.getLog(getClass());
+  serverPort=(configurator == null) ? "unknown port" : String.valueOf(configurator.configuration().get(ServerSettings.webserver_port));
   try {
-    dependencies=dependencies.monitors(new Monitors());
-    BufferingConsoleLogger consoleBuffer=new BufferingConsoleLogger();
-    configurator=createConfigurationBuilder(consoleBuffer);
-    dependencies=dependencies.logging(createLogging(configurator,dependencies.monitors()));
-    log=dependencies.logging().getConsoleLog(getClass());
-    consoleBuffer.replayInto(log);
+    configurator=createConfigurationBuilder(log);
+    dependencies=dependencies.userLogProvider(userLogProvider);
     life.start();
     checkCompatibility();
-    server=createNeoServer();
+    server=createNeoServer(configurator,dependencies,userLogProvider);
     server.start();
     addShutdownHook();
     return OK;
   }
  catch (  TransactionFailureException tfe) {
     String locationMsg=(server == null) ? "" : " Another process may be using database location " + server.getDatabase().getLocation();
-    log.error(format("Failed to start Neo Server on port [%s].",webServerPort()) + locationMsg,tfe);
+    log.error(format("Failed to start Neo Server on port [%s].",serverPort) + locationMsg,tfe);
     return GRAPH_DATABASE_STARTUP_ERROR_CODE;
   }
 catch (  IllegalArgumentException e) {
-    log.error(format("Failed to start Neo Server on port [%s]",webServerPort()),e);
+    log.error(format("Failed to start Neo Server on port [%s]",serverPort),e);
     return WEB_SERVER_STARTUP_ERROR_CODE;
   }
 catch (  Exception e) {
-    log.error(format("Failed to start Neo Server on port [%s]",webServerPort()),e);
+    log.error(format("Failed to start Neo Server on port [%s]",serverPort),e);
     return WEB_SERVER_STARTUP_ERROR_CODE;
   }
 }

@@ -1,11 +1,12 @@
 {
   createNode(map(name,"irrelephant"),FIRST);
-  TestLogger logger=new TestLogger();
+  AssertableLogProvider logProvider=new AssertableLogProvider();
   FlippableIndexProxy index=mock(FlippableIndexProxy.class);
   IndexPopulator populator=spy(inMemoryPopulator(false));
-  IndexPopulationJob job=newIndexPopulationJob(FIRST,name,populator,index,indexStoreView,logger,false);
-  IllegalStateException failure=new IllegalStateException("not successful");
+  IndexPopulationJob job=newIndexPopulationJob(FIRST,name,populator,index,indexStoreView,logProvider,false);
+  Throwable failure=new IllegalStateException("not successful");
   doThrow(failure).when(populator).create();
   job.run();
-  logger.assertAtLeastOnce(error("Failed to populate index: [:FIRST(name)]",failure));
+  LogMatcherBuilder match=inLog(IndexPopulationJob.class);
+  logProvider.assertAtLeastOnce(match.error(is("Failed to populate index: [:FIRST(name)]"),sameInstance(failure)));
 }

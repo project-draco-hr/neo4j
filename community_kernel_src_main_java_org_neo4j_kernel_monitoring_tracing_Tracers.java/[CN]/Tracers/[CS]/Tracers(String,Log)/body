@@ -1,0 +1,27 @@
+{
+  if ("null".equalsIgnoreCase(desiredImplementationName)) {
+    pageCacheTracer=PageCacheTracer.NULL;
+    transactionTracer=TransactionTracer.NULL;
+  }
+ else {
+    TracerFactory foundFactory=new DefaultTracerFactory();
+    boolean found=desiredImplementationName == null;
+    for (    TracerFactory factory : Service.load(TracerFactory.class)) {
+      try {
+        if (factory.getImplementationName().equalsIgnoreCase(desiredImplementationName)) {
+          foundFactory=factory;
+          found=true;
+          break;
+        }
+      }
+ catch (      Exception e) {
+        msgLog.warn("Failed to instantiate desired tracer implementations '" + desiredImplementationName + "'",e);
+      }
+    }
+    if (!found) {
+      msgLog.warn("Using default tracer implementations instead of '%s'",desiredImplementationName);
+    }
+    pageCacheTracer=foundFactory.createPageCacheTracer();
+    transactionTracer=foundFactory.createTransactionTracer();
+  }
+}

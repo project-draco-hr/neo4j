@@ -1,0 +1,37 @@
+{
+  if (rotating.getAndSet(true)) {
+    return;
+  }
+  rotationExecutor.execute(new Runnable(){
+    @Override public void run(){
+      OutputStream newStream;
+      try {
+        if (fileSystem.fileExists(outputFile)) {
+          shiftArchivedOutputFiles();
+          fileSystem.renameFile(outputFile,archivedOutputFile(1));
+        }
+        newStream=openOutputFile();
+      }
+ catch (      Exception e) {
+        rotationListener.rotationError(e,outRef.get());
+        rotating.set(false);
+        return;
+      }
+      OutputStream oldStream=outRef.get();
+      rotationListener.outputFileCreated(newStream,oldStream);
+synchronized (outRef) {
+        if (!closed.get()) {
+          outRef.set(newStream);
+          removeCollectedReferences(archivedStreams);
+          archivedStreams.add(new WeakReference<>(oldStream));
+        }
+      }
+      if (rotationDelaySeconds > 0) {
+        earliestRotationTimeRef.set(currentTimeSupplier.getAsLong() + rotationDelaySeconds);
+      }
+      rotationListener.rotationCompleted(newStream,oldStream);
+      rotating.set(false);
+    }
+  }
+);
+}
