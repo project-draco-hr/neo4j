@@ -1,0 +1,25 @@
+{
+  PlatformModule platform=createPlatform(params,dependencies,graphDatabaseFacade);
+  EditionModule edition=createEdition(platform);
+  final DataSourceModule dataSource=createDataSource(dependencies,platform,edition);
+  graphDatabaseFacade.init(platform,edition,dataSource);
+  boolean failed=false;
+  try {
+    enableAvailabilityLogging(platform.availabilityGuard,platform.logging.getInternalLog(getClass()).infoLogger());
+    platform.life.start();
+  }
+ catch (  final Throwable throwable) {
+    failed=true;
+    throw new RuntimeException("Error starting " + getClass().getName() + ", "+ platform.storeDir.getAbsolutePath(),throwable);
+  }
+ finally {
+    if (failed) {
+      try {
+        graphDatabaseFacade.shutdown();
+      }
+ catch (      Throwable shutdownError) {
+      }
+    }
+  }
+  return graphDatabaseFacade;
+}

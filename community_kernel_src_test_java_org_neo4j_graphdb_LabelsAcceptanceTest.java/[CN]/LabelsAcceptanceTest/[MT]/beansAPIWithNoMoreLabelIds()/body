@@ -26,9 +26,22 @@ TestGraphDatabaseFactory dbFactory=new TestGraphDatabaseFactory(){
 @Override protected GraphDatabaseBuilder.DatabaseCreator createImpermanentDatabaseCreator(final String storeDir,final TestGraphDatabaseFactoryState state){
   return new GraphDatabaseBuilder.DatabaseCreator(){
     @Override public GraphDatabaseService newDatabase(    Map<String,String> config){
-      return new ImpermanentGraphDatabase(storeDir,config,state.databaseDependencies()){
-        @Override protected IdGeneratorFactory createIdGeneratorFactory(){
-          return idFactory;
+      return new ImpermanentGraphDatabase(storeDir,config,GraphDatabaseDependencies.newDependencies(state.databaseDependencies())){
+        @Override protected void create(        Map<String,String> params,        GraphDatabaseFacadeFactory.Dependencies dependencies){
+          new CommunityFacadeFactory(){
+            @Override protected EditionModule createEdition(            PlatformModule platformModule){
+              return new CommunityEditionModule(platformModule){
+                @Override protected IdGeneratorFactory createIdGeneratorFactory(){
+                  return idFactory;
+                }
+              }
+;
+            }
+            @Override protected PlatformModule createPlatform(            Map<String,String> params,            Dependencies dependencies,            GraphDatabaseFacade graphDatabaseFacade){
+              return new ImpermanentPlatformModule(params,dependencies,graphDatabaseFacade);
+            }
+          }
+.newFacade(params,dependencies,this);
         }
       }
 ;

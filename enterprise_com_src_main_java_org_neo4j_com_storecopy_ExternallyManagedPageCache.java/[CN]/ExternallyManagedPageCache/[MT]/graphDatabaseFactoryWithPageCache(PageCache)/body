@@ -1,12 +1,18 @@
 {
   return new GraphDatabaseFactory(){
-    @Override protected GraphDatabaseService newDatabase(    String path,    Map<String,String> config,    InternalAbstractGraphDatabase.Dependencies dependencies){
-      return new EmbeddedGraphDatabase(path,config,dependencies){
-        @Override protected PageCache createPageCache(){
-          return new ExternallyManagedPageCache(delegatePageCache);
+    @Override protected GraphDatabaseService newDatabase(    String path,    Map<String,String> config,    GraphDatabaseFacadeFactory.Dependencies dependencies){
+      config.put(GraphDatabaseFacadeFactory.Configuration.store_dir.name(),path);
+      return new CommunityFacadeFactory(){
+        @Override protected PlatformModule createPlatform(        Map<String,String> params,        Dependencies dependencies,        GraphDatabaseFacade graphDatabaseFacade){
+          return new PlatformModule(params,dependencies,graphDatabaseFacade){
+            @Override protected PageCache createPageCache(            FileSystemAbstraction fileSystem,            Config config,            LogService logging,            Tracers tracers){
+              return new ExternallyManagedPageCache(delegatePageCache);
+            }
+          }
+;
         }
       }
-;
+.newFacade(config,dependencies);
     }
   }
 ;

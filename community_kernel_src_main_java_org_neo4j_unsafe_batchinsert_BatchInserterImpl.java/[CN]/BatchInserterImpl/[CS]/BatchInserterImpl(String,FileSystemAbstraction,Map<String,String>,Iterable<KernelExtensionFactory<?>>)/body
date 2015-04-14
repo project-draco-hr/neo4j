@@ -32,7 +32,14 @@
   relationshipTypeTokens=new BatchTokenHolder(types);
   indexStore=life.add(new IndexConfigStore(this.storeDir,fileSystem));
   schemaCache=new SchemaCache(neoStore.getSchemaStore());
-  KernelExtensions extensions=life.add(new KernelExtensions(kernelExtensions,new DependencyResolverImpl(),UnsatisfiedDependencyStrategies.ignore()));
+  Dependencies deps=new Dependencies();
+  deps.satisfyDependencies(fileSystem,config,logService,new NeoStoreSupplier(){
+    @Override public NeoStore get(){
+      return neoStore;
+    }
+  }
+);
+  KernelExtensions extensions=life.add(new KernelExtensions(kernelExtensions,deps,UnsatisfiedDependencyStrategies.ignore()));
   SchemaIndexProvider provider=extensions.resolveDependency(SchemaIndexProvider.class,SchemaIndexProvider.HIGHEST_PRIORITIZED_OR_NONE);
   schemaIndexProviders=new DefaultSchemaIndexProviderMap(provider);
   labelScanStore=life.add(extensions.resolveDependency(LabelScanStoreProvider.class,LabelScanStoreProvider.HIGHEST_PRIORITIZED).getLabelScanStore());

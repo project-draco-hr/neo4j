@@ -1,34 +1,39 @@
 {
   GraphDatabaseFactoryState state=new GraphDatabaseFactoryState();
-  return new EmbeddedGraphDatabase(storeLocation.absolutePath(),stringMap(),state.databaseDependencies()){
-    @Override protected TransactionCounters createTransactionCounters(){
-      return new TransactionCounters(){
-        public boolean skip;
-        @Override public void transactionFinished(        boolean successful){
-          super.transactionFinished(successful);
-          if (isTheRemoveOrphanedConstraintIndexesOnStartupTransaction()) {
-            return;
-          }
-          if (successful) {
-            if (skip) {
-              return;
+  return new CommunityFacadeFactory(){
+    @Override protected PlatformModule createPlatform(    Map<String,String> params,    Dependencies dependencies,    GraphDatabaseFacade graphDatabaseFacade){
+      return new PlatformModule(params,dependencies,graphDatabaseFacade){
+        @Override protected TransactionCounters createTransactionCounters(){
+          return new TransactionCounters(){
+            public boolean skip;
+            @Override public void transactionFinished(            boolean successful){
+              super.transactionFinished(successful);
+              if (isTheRemoveOrphanedConstraintIndexesOnStartupTransaction()) {
+                return;
+              }
+              if (successful) {
+                if (skip) {
+                  return;
+                }
+                skip=true;
+                signalFirstTransactionStartedPushing();
+                waitForSecondTransactionToFinish();
+              }
             }
-            skip=true;
-            signalFirstTransactionStartedPushing();
-            waitForSecondTransactionToFinish();
-          }
-        }
-        private boolean isTheRemoveOrphanedConstraintIndexesOnStartupTransaction(){
-          for (          StackTraceElement element : Thread.currentThread().getStackTrace()) {
-            if (element.getClassName().contains(RemoveOrphanConstraintIndexesOnStartup.class.getSimpleName())) {
-              return true;
+            private boolean isTheRemoveOrphanedConstraintIndexesOnStartupTransaction(){
+              for (              StackTraceElement element : Thread.currentThread().getStackTrace()) {
+                if (element.getClassName().contains(RemoveOrphanConstraintIndexesOnStartup.class.getSimpleName())) {
+                  return true;
+                }
+              }
+              return false;
             }
           }
-          return false;
+;
         }
       }
 ;
     }
   }
-;
+.newFacade(stringMap(GraphDatabaseSettings.store_dir.name(),storeLocation.absolutePath()),state.databaseDependencies());
 }
