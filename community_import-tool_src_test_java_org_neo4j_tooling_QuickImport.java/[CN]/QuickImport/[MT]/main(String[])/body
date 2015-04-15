@@ -1,13 +1,15 @@
 {
   Args args=Args.parse(arguments);
-  long nodeCount=args.getNumber("nodes",null).longValue();
-  long relationshipCount=args.getNumber("relationships",null).longValue();
+  long nodeCount=parseLongWithUnit(args.get("nodes",null));
+  long relationshipCount=parseLongWithUnit(args.get("relationships",null));
   int labelCount=args.getNumber("labels",4).intValue();
   int relationshipTypeCount=args.getNumber("relationship-types",4).intValue();
   String dir=args.get(ImportTool.Options.STORE_DIR.key());
   Extractors extractors=new Extractors(COMMAS.arrayDelimiter());
   IdType idType=IdType.ACTUAL;
-  Input input=new CsvDataGeneratorInput(bareboneNodeHeader(idType,extractors),bareboneRelationshipHeader(idType,extractors),COMMAS,nodeCount,relationshipCount,new Groups(),idType,labelCount,relationshipTypeCount);
+  Header nodeHeader=parseNodeHeader(args,idType,extractors);
+  Header relationshipHeader=parseRelationshipHeader(args,idType,extractors);
+  Input input=new CsvDataGeneratorInput(nodeHeader,relationshipHeader,COMMAS,nodeCount,relationshipCount,new Groups(),idType,labelCount,relationshipTypeCount);
   BatchImporter importer=new ParallelBatchImporter(dir,DEFAULT,FormattedLogProvider.toOutputStream(System.out),defaultVisible());
   importer.doImport(input);
 }
