@@ -2,19 +2,19 @@
   endPreviousGroup();
 synchronized (this) {
     dataCache=dataCache.fixate();
-    trackerCache=cacheFactory.newIntArray(dataCache.length(),-1);
+    trackerCache=cacheFactory.newIntArray(dataCacheStats.highestIndex() + 1,-1);
     try {
-      sortBuckets=new ParallelSort(radix,dataCache,dataStats,trackerCache,trackerStats,processorsForSorting,progress).run();
+      sortBuckets=new ParallelSort(radix,dataCache,dataCacheStats,trackerCache,trackerStats,processorsForSorting,progress).run();
+      if (detectAndMarkCollisions(progress) > 0) {
+        try (InputIterator<Object> idIterator=ids.iterator()){
+          buildCollisionInfo(idIterator,progress);
+        }
+       }
     }
  catch (    InterruptedException e) {
       Thread.interrupted();
       throw new RuntimeException("Got interrupted while preparing the index. Throwing this exception " + "onwards will cause a chain reaction which will cause a panic in the whole import, " + "so mission accomplished");
     }
   }
-  if (detectAndMarkCollisions(progress) > 0) {
-    try (InputIterator<Object> idIterator=ids.iterator()){
-      buildCollisionInfo(idIterator,progress);
-    }
-   }
   readyForUse=true;
 }

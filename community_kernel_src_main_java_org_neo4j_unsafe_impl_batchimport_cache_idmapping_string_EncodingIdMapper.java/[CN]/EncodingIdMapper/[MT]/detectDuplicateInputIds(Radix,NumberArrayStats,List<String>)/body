@@ -1,0 +1,30 @@
+{
+  NumberArrayStats collisionTrackerCacheStats=new NumberArrayStats();
+  new ParallelSort(radix,collisionDataCache,collisionDataCacheStats,collisionTrackerCache,collisionTrackerCacheStats,processorsForSorting,ProgressListener.NONE).run();
+  long previousEid=0;
+  int previousGroupId=0;
+  SourceInformation source=new SourceInformation();
+  SameInputIdDetector detector=new SameInputIdDetector();
+  for (int i=0; i < collisionTrackerCacheStats.size(); i++) {
+    int collisionIndex=collisionTrackerCache.get(i);
+    long eid=collisionDataCache.get(collisionIndex);
+    long sourceInformation=collisionSourceDataCache.get(collisionIndex);
+    source.decode(sourceInformation);
+    IdGroup group=groupOf(collisionNodeIdCache.get(i));
+    int groupId=group.id();
+    if (i == 0 || (eid == previousEid && previousGroupId == groupId)) {
+      Object inputId=collisionValues.get(collisionIndex);
+      int detectorIndex=detector.add(inputId,sourceInformation);
+      if (detectorIndex != -1) {
+        String firstDataPoint=detector.sourceInformation(detectorIndex).describe(sourceDescriptions);
+        String otherDataPoint=source.describe(sourceDescriptions);
+        throw new DuplicateInputIdException(inputId,group.name(),firstDataPoint,otherDataPoint);
+      }
+    }
+ else {
+      detector.clear();
+    }
+    previousEid=eid;
+    previousGroupId=groupId;
+  }
+}
