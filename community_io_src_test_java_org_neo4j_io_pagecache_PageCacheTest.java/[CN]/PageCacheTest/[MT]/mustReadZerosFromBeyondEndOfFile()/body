@@ -1,0 +1,27 @@
+{
+  StandardRecordFormat recordFormat=new StandardRecordFormat();
+  File[] files={new File("1"),new File("2"),new File("3"),new File("4"),new File("5"),new File("6"),new File("7"),new File("8"),new File("9"),new File("0"),new File("A"),new File("B")};
+  for (int fileId=0; fileId < files.length; fileId++) {
+    File file=files[fileId];
+    StoreChannel channel=fs.open(file,"rw");
+    for (int recordId=0; recordId < fileId + 1; recordId++) {
+      Record record=recordFormat.createRecord(file,recordId);
+      recordFormat.writeRecord(record,channel);
+    }
+    channel.close();
+  }
+  int pageSize=nextPowerOf2(recordFormat.getRecordSize() * (files.length + 1));
+  getPageCache(fs,2,pageSize,PageCacheTracer.NULL);
+  int fileId=files.length;
+  while (fileId-- > 0) {
+    File file=files[fileId];
+    try (PagedFile pf=pageCache.map(file,pageSize);PageCursor cursor=pf.io(0,PF_SHARED_LOCK)){
+      int pageCount=0;
+      while (cursor.next()) {
+        pageCount++;
+        recordFormat.assertRecordsWrittenCorrectly(cursor);
+      }
+      assertThat("pages in file " + file,pageCount,greaterThan(0));
+    }
+   }
+}
