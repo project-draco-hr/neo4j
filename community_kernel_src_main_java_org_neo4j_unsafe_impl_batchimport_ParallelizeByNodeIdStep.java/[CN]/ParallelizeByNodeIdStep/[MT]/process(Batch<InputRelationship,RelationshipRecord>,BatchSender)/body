@@ -1,0 +1,15 @@
+{
+  int concurrentNodeIdsRange=concurrentBatches * idBatchSize;
+  batch.parallelizableWithPrevious=concurrentBatches < MAX_PARALLELIZABLE_BATCHES && !anyIdCollides(concurrentNodeIds,concurrentNodeIdsRange,batch.sortedIds,batch.ids.length);
+  batch.firstRecordId=firstRecordId;
+  sender.send(batch);
+  firstRecordId+=batch.input.length;
+  if (batch.parallelizableWithPrevious) {
+    mergeSortedInto(batch.sortedIds,concurrentNodeIds,concurrentNodeIdsRange);
+    concurrentBatches++;
+  }
+ else {
+    System.arraycopy(batch.sortedIds,0,concurrentNodeIds,0,batch.sortedIds.length);
+    concurrentBatches=1;
+  }
+}
