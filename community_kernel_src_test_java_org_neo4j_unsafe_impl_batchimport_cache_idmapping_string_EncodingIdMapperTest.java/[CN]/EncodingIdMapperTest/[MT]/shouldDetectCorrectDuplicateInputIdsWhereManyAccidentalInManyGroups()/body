@@ -1,0 +1,44 @@
+{
+  final ControlledEncoder encoder=new ControlledEncoder(new LongEncoder());
+  IdMapper mapper=mapper(encoder,Radix.LONG,NO_MONITOR);
+  final int idsPerGroup=20, groups=5;
+  final AtomicReference<Group> group=new AtomicReference<>();
+  InputIterable<Object> ids=SimpleInputIteratorWrapper.wrap("source",new Iterable<Object>(){
+    @Override public Iterator<Object> iterator(){
+      return new PrefetchingIterator<Object>(){
+        private int i;
+        @Override protected Object fetchNextOrNull(){
+          if (i % idsPerGroup == 0) {
+            int groupId=i / idsPerGroup;
+            if (groupId == groups) {
+              return null;
+            }
+            group.set(new Group.Adapter(groupId,"Group " + groupId));
+          }
+          try {
+            if (i % idsPerGroup < 2) {
+              encoder.useThisIdToEncodeNoMatterWhatComesIn(Long.valueOf(1234567));
+              return Long.valueOf(i % idsPerGroup);
+            }
+            encoder.useThisIdToEncodeNoMatterWhatComesIn(Long.valueOf(123456 - group.get().id()));
+            return Long.valueOf(i);
+          }
+  finally {
+            i++;
+          }
+        }
+      }
+;
+    }
+  }
+);
+  long actualId=0;
+  for (  Object id : ids) {
+    mapper.put(id,actualId++,group.get());
+  }
+  mapper.prepare(ids,NONE);
+  actualId=0;
+  for (  Object id : ids) {
+    assertEquals(actualId++,mapper.get(id,group.get()));
+  }
+}
