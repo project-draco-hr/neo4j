@@ -3,23 +3,26 @@
   EditionModule edition=createEdition(platform);
   final DataSourceModule dataSource=createDataSource(dependencies,platform,edition);
   graphDatabaseFacade.init(platform,edition,dataSource);
-  boolean failed=false;
+  Throwable error=null;
   try {
     enableAvailabilityLogging(platform.availabilityGuard,platform.logging.getInternalLog(getClass()).infoLogger());
     platform.life.start();
   }
  catch (  final Throwable throwable) {
-    failed=true;
-    throw new RuntimeException("Error starting " + getClass().getName() + ", "+ platform.storeDir.getAbsolutePath(),throwable);
+    error=new RuntimeException("Error starting " + getClass().getName() + ", "+ platform.storeDir.getAbsolutePath(),throwable);
   }
  finally {
-    if (failed) {
+    if (error != null) {
       try {
         graphDatabaseFacade.shutdown();
       }
  catch (      Throwable shutdownError) {
+        error=Exceptions.withSuppressed(shutdownError,error);
       }
     }
+  }
+  if (error != null) {
+    throw Exceptions.launderedException(error);
   }
   return graphDatabaseFacade;
 }

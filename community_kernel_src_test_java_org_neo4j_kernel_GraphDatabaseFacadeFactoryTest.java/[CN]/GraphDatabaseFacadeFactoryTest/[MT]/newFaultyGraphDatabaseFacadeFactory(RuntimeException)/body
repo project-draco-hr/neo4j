@@ -1,16 +1,23 @@
 {
   return new GraphDatabaseFacadeFactory(){
     @Override protected PlatformModule createPlatform(    Map<String,String> params,    Dependencies dependencies,    GraphDatabaseFacade graphDatabaseFacade){
+      final LifeSupport lifeMock=mock(LifeSupport.class);
+      doThrow(startupError).when(lifeMock).start();
+      doAnswer(new Answer(){
+        @Override public Object answer(        InvocationOnMock invocationOnMock) throws Throwable {
+          return invocationOnMock.getArguments()[0];
+        }
+      }
+).when(lifeMock).add(any());
       PlatformModule module=new PlatformModule(mock(Map.class),mock(Dependencies.class,RETURNS_MOCKS),mock(GraphDatabaseFacade.class)){
         @Override public LifeSupport createLife(){
-          return mock(LifeSupport.class);
+          return lifeMock;
         }
         @Override public File getStoreDir(){
-          return mock(File.class);
+          return dir.graphDbDir();
         }
       }
 ;
-      doThrow(startupError).when(module.life).start();
       return module;
     }
     @Override protected EditionModule createEdition(    PlatformModule platformModule){
