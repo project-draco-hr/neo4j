@@ -1,18 +1,25 @@
 {
   create();
-  boolean failed=false;
+  Throwable error=null;
   try {
     enableAvailabilityLogging();
     registerRecovery();
     life.start();
   }
  catch (  final Throwable throwable) {
-    failed=true;
-    throw new RuntimeException("Error starting " + getClass().getName() + ", "+ storeDir.getAbsolutePath(),throwable);
+    error=new RuntimeException("Error starting " + getClass().getName() + ", "+ storeDir.getAbsolutePath(),throwable);
   }
  finally {
-    if (failed) {
-      shutdown();
+    if (error != null) {
+      try {
+        shutdown();
+      }
+ catch (      Throwable shutdownError) {
+        error=Exceptions.withSuppressed(shutdownError,error);
+      }
     }
+  }
+  if (error != null) {
+    throw Exceptions.launderedException(error);
   }
 }
