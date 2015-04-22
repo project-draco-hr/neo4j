@@ -1,0 +1,26 @@
+{
+  WorkUnit<Material,W> unit=new WorkUnit<>(work);
+  unit.next=stack.getAndSet(unit);
+  boolean wasInterrupted=false;
+  int tryCount=0;
+  do {
+    tryCount++;
+    try {
+      if (lock.tryLock(tryCount < 10 ? 0 : 10,TimeUnit.MILLISECONDS)) {
+        try {
+          doSynchronizedWork();
+        }
+  finally {
+          lock.unlock();
+        }
+      }
+    }
+ catch (    InterruptedException e) {
+      wasInterrupted=true;
+    }
+  }
+ while (!unit.done);
+  if (wasInterrupted) {
+    Thread.currentThread().interrupt();
+  }
+}

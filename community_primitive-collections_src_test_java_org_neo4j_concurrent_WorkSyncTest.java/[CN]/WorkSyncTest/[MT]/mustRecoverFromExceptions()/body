@@ -1,0 +1,25 @@
+{
+  final AtomicBoolean broken=new AtomicBoolean(true);
+  Adder adder=new Adder(){
+    @Override public void add(    int delta){
+      if (broken.get()) {
+        throw new IllegalStateException("boom!");
+      }
+      super.add(delta);
+    }
+  }
+;
+  sync=new WorkSync<>(adder);
+  ExecutorService executor=Executors.newSingleThreadExecutor();
+  try {
+    executor.submit(new RunnableWork(new AddWork(10))).get();
+    fail("Should have thrown");
+  }
+ catch (  ExecutionException exception) {
+    assertThat(exception.getCause(),instanceOf(IllegalStateException.class));
+  }
+  broken.set(false);
+  sync.apply(new AddWork(20));
+  assertThat(sum.get(),is(20));
+  assertThat(count.get(),is(1));
+}
