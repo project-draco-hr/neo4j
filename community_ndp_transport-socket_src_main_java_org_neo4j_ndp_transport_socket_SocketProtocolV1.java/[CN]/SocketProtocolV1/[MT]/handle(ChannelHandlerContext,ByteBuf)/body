@@ -1,28 +1,47 @@
 {
   onBatchOfMessagesStarted();
-  while (data.readableBytes() > 0) {
-    if (isReadingSplitChunk) {
-      collectChunk(data,splitChunkRemaining);
-    }
- else     if (data.readableBytes() == 1) {
-      currentHeader[0]=data.readByte();
-    }
+  try {
+    while (data.readableBytes() > 0) {
+switch (state) {
+case AWAITING_CHUNK:
+{
+          if (data.readableBytes() >= 2) {
+            chunkSize=data.readUnsignedShort();
+            handleHeader(channelContext);
+          }
  else {
-      int chunkSize;
-      if (isReadingSplitHeader) {
-        currentHeader[1]=data.readByte();
-        chunkSize=(currentHeader[0] << 8 | currentHeader[1]) & 0xffff;
+            chunkSize=data.readByte() << 8;
+            state=State.IN_HEADER;
+          }
+          break;
+        }
+case IN_HEADER:
+{
+        chunkSize=(chunkSize | data.readByte()) & 0xFFFF;
+        handleHeader(channelContext);
+        break;
+      }
+case IN_CHUNK:
+{
+      if (chunkSize < data.readableBytes()) {
+        input.addChunk(data.readSlice(chunkSize));
+        state=State.AWAITING_CHUNK;
+      }
+ else       if (chunkSize == data.readableBytes()) {
+        input.addChunk(data);
+        state=State.AWAITING_CHUNK;
       }
  else {
-        chunkSize=data.readUnsignedShort();
+        chunkSize-=data.readableBytes();
+        input.addChunk(data);
       }
-      if (chunkSize > 0) {
-        collectChunk(data,chunkSize);
-      }
- else {
-        processCollectedMessage(channelContext);
-      }
+      break;
     }
-  }
-  onBatchOfMessagesDone();
+}
+}
+}
+  finally {
+data.release();
+onBatchOfMessagesDone();
+}
 }
