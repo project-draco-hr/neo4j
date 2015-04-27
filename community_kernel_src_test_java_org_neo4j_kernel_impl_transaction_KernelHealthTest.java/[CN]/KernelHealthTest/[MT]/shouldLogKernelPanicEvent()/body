@@ -1,8 +1,9 @@
 {
-  BufferingLogging logging=new BufferingLogging();
-  KernelHealth kernelHealth=new KernelHealth(mock(KernelPanicEventGenerator.class),logging);
+  AssertableLogProvider logProvider=new AssertableLogProvider();
+  KernelHealth kernelHealth=new KernelHealth(mock(KernelPanicEventGenerator.class),logProvider.getLog(KernelHealth.class));
   kernelHealth.healed();
   String message="Listen everybody... panic!";
-  kernelHealth.panic(new Exception(message));
-  assertThat(logging.toString(),containsString(message));
+  Exception exception=new Exception(message);
+  kernelHealth.panic(exception);
+  logProvider.assertAtLeastOnce(inLog(KernelHealth.class).error(is("setting TM not OK. Kernel has encountered some problem, please perform neccesary action (tx recovery/restart)"),sameInstance(exception)));
 }

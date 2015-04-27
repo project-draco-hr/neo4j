@@ -1,16 +1,18 @@
 {
-  LifeSupport life=new LifeSupport();
   File file=forTest(testClass).file("failure-dump-" + currentTimeMillis());
-  Logging logging=life.add(new SingleLoggingService(logger(file)));
-  life.start();
+  FileOutputStream out=new FileOutputStream(file,false);
+  FormattedLogProvider logProvider=FormattedLogProvider.toOutputStream(out,false,false);
   try {
-    lm.accept(new DumpLocksVisitor(logging.getMessagesLog(LockWorkFailureDump.class)));
+    lm.accept(new DumpLocksVisitor(logProvider.getLog(LockWorkFailureDump.class)));
+    Log log=logProvider.getLog(getClass());
     for (    LockWorker worker : workers) {
-      logging.getMessagesLog(getClass()).logLongMessage("Worker " + worker,worker);
+      log.info("Worker %s",worker);
+      worker.dump(log.infoLogger());
     }
     return file;
   }
   finally {
-    life.shutdown();
+    out.flush();
+    out.close();
   }
 }

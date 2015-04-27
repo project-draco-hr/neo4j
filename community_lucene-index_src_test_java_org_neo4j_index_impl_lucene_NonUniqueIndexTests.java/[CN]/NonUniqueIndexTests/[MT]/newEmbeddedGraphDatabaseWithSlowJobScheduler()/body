@@ -1,8 +1,18 @@
 {
-  return new EmbeddedGraphDatabase(directory.absolutePath(),stringMap(),GraphDatabaseDependencies.newDependencies().logging(DevNullLoggingService.DEV_NULL)){
-    @Override protected Neo4jJobScheduler createJobScheduler(){
-      return newSlowJobScheduler();
+  GraphDatabaseFactoryState graphDatabaseFactoryState=new GraphDatabaseFactoryState();
+  graphDatabaseFactoryState.setUserLogProvider(NullLogService.getInstance().getUserLogProvider());
+  return new CommunityFacadeFactory(){
+    @Override protected PlatformModule createPlatform(    Map<String,String> params,    Dependencies dependencies,    GraphDatabaseFacade graphDatabaseFacade){
+      return new PlatformModule(params,dependencies,graphDatabaseFacade){
+        @Override protected Neo4jJobScheduler createJobScheduler(){
+          return newSlowJobScheduler();
+        }
+        @Override protected LogService createLogService(        LogProvider userLogProvider){
+          return NullLogService.getInstance();
+        }
+      }
+;
     }
   }
-;
+.newFacade(stringMap(GraphDatabaseSettings.store_dir.name(),directory.absolutePath()),graphDatabaseFactoryState.databaseDependencies());
 }

@@ -1,0 +1,14 @@
+{
+  this.configurator=configurator;
+  this.logProvider=logProvider;
+  this.dbConfig=new Config();
+  this.log=logProvider.getLog(getClass());
+  this.database=life.add(dependencyResolver.satisfyDependency(dbFactory.newDatabase(dbConfig,dependencies)));
+  FileUserRepository users=life.add(new FileUserRepository(configurator.configuration().get(ServerInternalSettings.auth_store).toPath(),logProvider));
+  this.authManager=life.add(new AuthManager(users,Clock.SYSTEM_CLOCK,configurator.configuration().get(ServerSettings.auth_enabled)));
+  this.preFlight=dependencyResolver.satisfyDependency(createPreflightTasks());
+  this.webServer=createWebServer();
+  for (  ServerModule moduleClass : createServerModules()) {
+    registerModule(moduleClass);
+  }
+}

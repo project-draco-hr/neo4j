@@ -1,19 +1,8 @@
 {
-  LoggerContext loggerContext=new LoggerContext();
-  loggerContext.putProperty("host",serverUri.toString());
-  JoranConfigurator configurator=new JoranConfigurator();
-  configurator.setContext(loggerContext);
-  try {
-    configurator.doConfigure(getClass().getResource("/test-logback.xml"));
-  }
- catch (  JoranException e) {
-    throw new IllegalStateException("Failed to configure logging",e);
-  }
-  Logging logging=new LogbackService(new Config(Collections.<String,String>emptyMap(),InternalAbstractGraphDatabase.Configuration.class,GraphDatabaseSettings.class),loggerContext);
-  ProtocolServerFactory protocolServerFactory=new MultiPaxosServerFactory(new ClusterConfiguration("default",StringLogger.SYSTEM),logging,monitors.newMonitor(StateMachines.Monitor.class));
+  ProtocolServerFactory protocolServerFactory=new MultiPaxosServerFactory(new ClusterConfiguration("default",logService.getInternalLogProvider()),logService,monitors.newMonitor(StateMachines.Monitor.class));
   ServerIdElectionCredentialsProvider electionCredentialsProvider=new ServerIdElectionCredentialsProvider();
   electionCredentialsProvider.listeningAt(serverUri);
-  TestProtocolServer protocolServer=new TestProtocolServer(timeoutStrategy,protocolServerFactory,serverUri,new InstanceId(serverId),new InMemoryAcceptorInstanceStore(),electionCredentialsProvider);
-  protocolServer.addStateTransitionListener(new StateTransitionLogger(logging));
+  TestProtocolServer protocolServer=new TestProtocolServer(logService.getInternalLogProvider(),timeoutStrategy,protocolServerFactory,serverUri,new InstanceId(serverId),new InMemoryAcceptorInstanceStore(),electionCredentialsProvider);
+  protocolServer.addStateTransitionListener(new StateTransitionLogger(logService.getInternalLogProvider()));
   return protocolServer;
 }

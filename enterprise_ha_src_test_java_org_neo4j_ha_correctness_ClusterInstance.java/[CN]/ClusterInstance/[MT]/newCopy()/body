@@ -3,13 +3,13 @@
   InMemoryAcceptorInstanceStore snapshotAcceptorInstances=acceptorInstanceStore.snapshot();
   ClusterInstanceOutput output=new ClusterInstanceOutput(uri);
   ClusterInstanceInput input=new ClusterInstanceInput();
-  DelayedDirectExecutor executor=new DelayedDirectExecutor(logging);
+  DelayedDirectExecutor executor=new DelayedDirectExecutor(logService.getInternalLogProvider());
   ObjectStreamFactory objectStreamFactory=new ObjectStreamFactory();
-  MultiPaxosContext snapshotCtx=ctx.snapshot(logging,timeoutsSnapshot,executor,snapshotAcceptorInstances,objectStreamFactory,objectStreamFactory,new DefaultElectionCredentialsProvider(server.getServerId(),new StateVerifierLastTxIdGetter(),new MemberInfoProvider()));
+  MultiPaxosContext snapshotCtx=ctx.snapshot(logService,timeoutsSnapshot,executor,snapshotAcceptorInstances,objectStreamFactory,objectStreamFactory,new DefaultElectionCredentialsProvider(server.getServerId(),new StateVerifierLastTxIdGetter(),new MemberInfoProvider()));
   List<StateMachine> snapshotMachines=new ArrayList<>();
   for (  StateMachine stateMachine : server.getStateMachines().getStateMachines()) {
-    snapshotMachines.add(snapshotStateMachine(logging,snapshotCtx,stateMachine));
+    snapshotMachines.add(snapshotStateMachine(logService.getInternalLogProvider(),snapshotCtx,stateMachine));
   }
   ProtocolServer snapshotProtocolServer=factory.constructSupportingInfrastructureFor(server.getServerId(),input,output,executor,timeoutsSnapshot,stateMachineExecutor,snapshotCtx,snapshotMachines.toArray(new StateMachine[snapshotMachines.size()]));
-  return new ClusterInstance(stateMachineExecutor,logging,factory,snapshotProtocolServer,snapshotCtx,snapshotAcceptorInstances,timeoutsSnapshot,input,output,uri);
+  return new ClusterInstance(stateMachineExecutor,logService,factory,snapshotProtocolServer,snapshotCtx,snapshotAcceptorInstances,timeoutsSnapshot,input,output,uri);
 }

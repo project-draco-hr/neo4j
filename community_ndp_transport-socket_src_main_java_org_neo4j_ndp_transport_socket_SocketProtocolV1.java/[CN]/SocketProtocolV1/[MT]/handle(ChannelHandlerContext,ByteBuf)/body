@@ -1,17 +1,27 @@
 {
   onBatchOfMessagesStarted();
   while (data.readableBytes() > 0) {
-    int chunkSize=data.readUnsignedShort();
-    if (chunkSize > 0) {
-      if (chunkSize <= data.readableBytes()) {
-        input.addChunk(data.readSlice(chunkSize));
-      }
- else {
-        throw new UnsupportedOperationException("Chunks split across packets not yet supported");
-      }
+    if (isReadingSplitChunk) {
+      collectChunk(data,splitChunkRemaining);
+    }
+ else     if (data.readableBytes() == 1) {
+      currentHeader[0]=data.readByte();
     }
  else {
-      processChunkedMessage(channelContext);
+      int chunkSize;
+      if (isReadingSplitHeader) {
+        currentHeader[1]=data.readByte();
+        chunkSize=(currentHeader[0] << 8 | currentHeader[1]) & 0xffff;
+      }
+ else {
+        chunkSize=data.readUnsignedShort();
+      }
+      if (chunkSize > 0) {
+        collectChunk(data,chunkSize);
+      }
+ else {
+        processCollectedMessage(channelContext);
+      }
     }
   }
   onBatchOfMessagesDone();

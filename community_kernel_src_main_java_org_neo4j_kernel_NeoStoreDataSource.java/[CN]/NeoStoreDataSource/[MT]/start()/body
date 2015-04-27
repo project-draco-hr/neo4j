@@ -7,7 +7,8 @@
     storeFactory.createNeoStore().close();
   }
   indexProvider=dependencyResolver.resolveDependency(SchemaIndexProvider.class,SchemaIndexProvider.HIGHEST_PRIORITIZED_OR_NONE);
-  LoggingLogFileMonitor loggingLogMonitor=new LoggingLogFileMonitor(logging.getMessagesLog(getClass()));
+  dependencies.satisfyDependency(lockService);
+  LoggingLogFileMonitor loggingLogMonitor=new LoggingLogFileMonitor(msgLog);
   monitors.addMonitorListener(loggingLogMonitor);
   monitors.addMonitorListener(new RecoveryVisitor.Monitor(){
     @Override public void transactionRecovered(    long txId){
@@ -20,9 +21,9 @@
     final NeoStoreModule neoStoreModule=buildNeoStore(storeFactory,labelTokens,relationshipTypeTokens,propertyKeyTokenHolder);
     this.neoStoreModule=neoStoreModule;
     CacheModule cacheModule=buildCaches(neoStoreModule.neoStore(),nodeManager,labelTokens,relationshipTypeTokens,propertyKeyTokenHolder);
-    IndexingModule indexingModule=buildIndexing(config,scheduler,indexProvider,lockService,tokenNameLookup,logging,indexingServiceMonitor,neoStoreModule.neoStore(),cacheModule.updateableSchemaState());
+    IndexingModule indexingModule=buildIndexing(config,scheduler,indexProvider,lockService,tokenNameLookup,logProvider,indexingServiceMonitor,neoStoreModule.neoStore(),cacheModule.updateableSchemaState());
     StoreLayerModule storeLayerModule=buildStoreLayer(config,neoStoreModule.neoStore(),propertyKeyTokenHolder,labelTokens,relationshipTypeTokens,indexingModule.indexingService(),cacheModule.schemaCache());
-    TransactionLogModule transactionLogModule=buildTransactionLogs(config,logging,indexingModule.labelScanStore(),fs,neoStoreModule.neoStore(),cacheModule.cacheAccess(),indexingModule.indexingService(),indexProviders.values());
+    TransactionLogModule transactionLogModule=buildTransactionLogs(config,logProvider,indexingModule.labelScanStore(),fs,neoStoreModule.neoStore(),cacheModule.cacheAccess(),indexingModule.indexingService(),indexProviders.values());
     buildRecovery(fs,cacheModule.cacheAccess(),indexingModule.indexingService(),indexingModule.indexUpdatesValidator(),indexingModule.labelScanStore(),neoStoreModule.neoStore(),monitors.newMonitor(RecoveryVisitor.Monitor.class),monitors.newMonitor(Recovery.Monitor.class),transactionLogModule.logFiles(),transactionLogModule.logRotationControl(),startupStatistics);
     KernelModule kernelModule=buildKernel(indexingModule.integrityValidator(),transactionLogModule.logicalTransactionStore(),neoStoreModule.neoStore(),transactionLogModule.storeApplier(),indexingModule.indexingService(),indexingModule.indexUpdatesValidator(),storeLayerModule.storeLayer(),cacheModule.updateableSchemaState(),indexingModule.labelScanStore(),indexingModule.schemaIndexProviderMap());
     this.cacheModule=cacheModule;
@@ -38,7 +39,7 @@
       neoStoreModule.neoStore().close();
     }
  catch (    Exception closeException) {
-      msgLog.logMessage("Couldn't close neostore after startup failure");
+      msgLog.error("Couldn't close neostore after startup failure");
     }
     throw Exceptions.launderedException(e);
   }
@@ -50,7 +51,7 @@
       neoStoreModule.neoStore().close();
     }
  catch (    Exception closeException) {
-      msgLog.logMessage("Couldn't close neostore after startup failure");
+      msgLog.error("Couldn't close neostore after startup failure");
     }
     throw Exceptions.launderedException(e);
   }

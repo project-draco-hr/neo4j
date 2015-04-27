@@ -1,0 +1,15 @@
+{
+  RuntimeException startupError=new RuntimeException();
+  RuntimeException shutdownError=new RuntimeException();
+  GraphDatabaseFacadeFactory db=newFaultyGraphDatabaseFacadeFactory(startupError);
+  GraphDatabaseFacade mockFacade=mock(GraphDatabaseFacade.class);
+  doThrow(shutdownError).when(mockFacade).shutdown();
+  try {
+    db.newFacade(Collections.<String,String>emptyMap(),mock(GraphDatabaseFacadeFactory.Dependencies.class),mockFacade);
+    fail("Should have thrown " + RuntimeException.class);
+  }
+ catch (  RuntimeException exception) {
+    assertEquals(shutdownError,exception);
+    assertEquals(startupError,Exceptions.rootCause(exception.getSuppressed()[0]));
+  }
+}

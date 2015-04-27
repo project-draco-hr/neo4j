@@ -9,22 +9,21 @@
   this.storeDir=new File(FileUtils.fixSeparatorsInPath(storeDir));
   ConfiguringPageCacheFactory pageCacheFactory=new ConfiguringPageCacheFactory(fileSystem,config,PageCacheTracer.NULL);
   PageCache pageCache=pageCacheFactory.getOrCreatePageCache();
-  msgLog=StringLogger.loggerDirectory(fileSystem,this.storeDir);
-  logging=new SingleLoggingService(msgLog);
+  JobScheduler jobScheduler=life.add(new Neo4jJobScheduler());
+  logService=life.add(new StoreLogService(NullLogProvider.getInstance(),fileSystem,this.storeDir,jobScheduler));
+  msgLog=logService.getInternalLog(getClass());
   storeLocker=new StoreLocker(fileSystem);
   storeLocker.checkLock(this.storeDir);
   boolean dump=config.get(GraphDatabaseSettings.dump_configuration);
   this.idGeneratorFactory=new DefaultIdGeneratorFactory();
-  StoreFactory sf=new StoreFactory(config,idGeneratorFactory,pageCache,fileSystem,msgLog,monitors);
+  StoreFactory sf=new StoreFactory(config,idGeneratorFactory,pageCache,fileSystem,logService.getInternalLogProvider(),monitors);
   if (dump) {
     dumpConfiguration(params);
   }
-  msgLog.logMessage(Thread.currentThread() + " Starting BatchInserter(" + this+ ")");
+  msgLog.info(Thread.currentThread() + " Starting BatchInserter(" + this+ ")");
   life.start();
   neoStore=sf.newNeoStore(true);
-  if (!neoStore.isStoreOk()) {
-    throw new IllegalStateException(storeDir + " store is not cleanly shutdown.");
-  }
+  neoStore.verifyStoreOk();
   neoStore.makeStoreOk();
   Token[] indexes=getPropertyKeyTokenStore().getTokens(10000);
   propertyKeyTokens=new BatchTokenHolder(indexes);
@@ -33,7 +32,14 @@
   relationshipTypeTokens=new BatchTokenHolder(types);
   indexStore=life.add(new IndexConfigStore(this.storeDir,fileSystem));
   schemaCache=new SchemaCache(neoStore.getSchemaStore());
-  KernelExtensions extensions=life.add(new KernelExtensions(kernelExtensions,new DependencyResolverImpl(),UnsatisfiedDependencyStrategies.ignore()));
+  Dependencies deps=new Dependencies();
+  deps.satisfyDependencies(fileSystem,config,logService,new NeoStoreSupplier(){
+    @Override public NeoStore get(){
+      return neoStore;
+    }
+  }
+);
+  KernelExtensions extensions=life.add(new KernelExtensions(kernelExtensions,deps,UnsatisfiedDependencyStrategies.ignore()));
   SchemaIndexProvider provider=extensions.resolveDependency(SchemaIndexProvider.class,SchemaIndexProvider.HIGHEST_PRIORITIZED_OR_NONE);
   schemaIndexProviders=new DefaultSchemaIndexProviderMap(provider);
   labelScanStore=life.add(extensions.resolveDependency(LabelScanStoreProvider.class,LabelScanStoreProvider.HIGHEST_PRIORITIZED).getLabelScanStore());

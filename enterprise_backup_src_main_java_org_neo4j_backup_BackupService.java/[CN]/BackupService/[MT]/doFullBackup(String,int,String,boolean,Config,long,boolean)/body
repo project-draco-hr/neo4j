@@ -9,11 +9,11 @@
   long lastCommittedTx=-1;
   boolean consistent=!checkConsistency;
   try (PageCache pageCache=createPageCache(fileSystem)){
-    StoreCopyClient storeCopier=new StoreCopyClient(tuningConfiguration,loadKernelExtensions(),new ConsoleLogger(StringLogger.SYSTEM),new DevNullLoggingService(),new DefaultFileSystemAbstraction(),pageCache,monitors.newMonitor(StoreCopyClient.Monitor.class,getClass()));
+    StoreCopyClient storeCopier=new StoreCopyClient(tuningConfiguration,loadKernelExtensions(),logProvider,new DefaultFileSystemAbstraction(),pageCache,monitors.newMonitor(StoreCopyClient.Monitor.class,getClass()));
     storeCopier.copyStore(new StoreCopyClient.StoreCopyRequester(){
       private BackupClient client;
       @Override public Response<?> copyStore(      StoreWriter writer){
-        client=new BackupClient(sourceHostNameOrIp,sourcePort,new DevNullLoggingService(),StoreId.DEFAULT,timeout,ResponseUnpacker.NO_OP_RESPONSE_UNPACKER,monitors.newMonitor(ByteCounterMonitor.class),monitors.newMonitor(RequestMonitor.class));
+        client=new BackupClient(sourceHostNameOrIp,sourcePort,NullLogProvider.getInstance(),StoreId.DEFAULT,timeout,ResponseUnpacker.NO_OP_RESPONSE_UNPACKER,monitors.newMonitor(ByteCounterMonitor.class),monitors.newMonitor(RequestMonitor.class));
         client.start();
         return client.fullBackup(writer,forensics);
       }
@@ -25,13 +25,10 @@
     bumpMessagesDotLogFile(targetDirectory,timestamp);
     if (checkConsistency) {
       try {
-        consistent=new ConsistencyCheckService().runFullConsistencyCheck(targetDirectory,tuningConfiguration,ProgressMonitorFactory.textual(System.err),logger,fileSystem,pageCache).isSuccessful();
+        consistent=new ConsistencyCheckService().runFullConsistencyCheck(targetDirectory,tuningConfiguration,ProgressMonitorFactory.textual(System.err),logProvider,fileSystem,pageCache).isSuccessful();
       }
  catch (      ConsistencyCheckIncompleteException e) {
-        logger.error("Consistency check incomplete",e);
-      }
- finally {
-        logger.flush();
+        log.error("Consistency check incomplete",e);
       }
     }
     return new BackupOutcome(lastCommittedTx,consistent);

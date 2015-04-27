@@ -1,0 +1,28 @@
+{
+  final CountDownLatch allowRotationComplete=new CountDownLatch(1);
+  final CountDownLatch rotationComplete=new CountDownLatch(1);
+  RotationListener rotationListener=spy(new RotationListener(){
+    @Override public void outputFileCreated(    OutputStream newStream,    OutputStream oldStream){
+      try {
+        allowRotationComplete.await();
+      }
+ catch (      InterruptedException e) {
+        throw new RuntimeException(e);
+      }
+    }
+    @Override public void rotationCompleted(    OutputStream newStream,    OutputStream oldStream){
+      rotationComplete.countDown();
+    }
+  }
+);
+  RotatingFileOutputStreamSupplier supplier=new RotatingFileOutputStreamSupplier(fileSystem,logFile,10,0,10,Executors.newSingleThreadExecutor(),rotationListener);
+  OutputStream outputStream=supplier.get();
+  write(outputStream,"A string longer than 10 bytes");
+  assertThat(supplier.get(),is(outputStream));
+  allowRotationComplete.countDown();
+  rotationComplete.await();
+  OutputStream outputStream2=supplier.get();
+  assertThat(outputStream2,not(outputStream));
+  verify(rotationListener).outputFileCreated(outputStream2,outputStream);
+  verify(rotationListener).rotationCompleted(outputStream2,outputStream);
+}

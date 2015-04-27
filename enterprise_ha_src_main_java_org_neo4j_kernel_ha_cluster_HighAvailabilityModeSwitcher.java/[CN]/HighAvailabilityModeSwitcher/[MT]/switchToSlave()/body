@@ -23,10 +23,10 @@
         }
       }
  catch (      UnableToCopyStoreFromOldMasterException|InconsistentlyUpgradedClusterException|UnavailableMembersException e) {
-        consoleLog.error("UNABLE TO START UP AS SLAVE: " + e.getMessage());
+        userLog.error("UNABLE TO START UP AS SLAVE: %s",e.getMessage());
         msgLog.error("Unable to start up as slave",e);
         clusterMemberAvailability.memberIsUnavailable(SLAVE);
-        ClusterClient clusterClient=dependencyResolver.resolveDependency(ClusterClient.class);
+        ClusterClient clusterClient=HighAvailabilityModeSwitcher.this.clusterClient;
         try {
           clusterClient.leave();
           clusterClient.stop();
@@ -42,11 +42,11 @@ catch (      MismatchingStoreIdException|NoSuchLogVersionException e) {
         run();
       }
 catch (      Throwable t) {
-        msgLog.logMessage("Error while trying to switch to slave",t);
+        msgLog.error("Error while trying to switch to slave",t);
         wait.set((1 + wait.get() * 2));
         wait.set(Math.min(wait.get(),5 * 60));
         modeSwitcherFuture=modeSwitcherExecutor.schedule(this,wait.get(),TimeUnit.SECONDS);
-        msgLog.logMessage("Attempting to switch to slave in " + wait.get() + "s");
+        msgLog.info("Attempting to switch to slave in %ds",wait.get());
       }
     }
   }

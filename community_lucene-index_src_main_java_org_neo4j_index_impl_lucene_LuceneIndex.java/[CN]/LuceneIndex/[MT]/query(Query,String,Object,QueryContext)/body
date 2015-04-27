@@ -1,15 +1,15 @@
 {
-  List<Long> ids=new ArrayList<>();
-  Collection<Long> removedIds=Collections.emptySet();
-  IndexSearcher additionsSearcher=null;
+  List<Long> simpleTransactionStateIds=new ArrayList<>();
+  Collection<Long> removedIdsFromTransactionState=Collections.emptySet();
+  IndexSearcher fulltextTransactionStateSearcher=null;
   if (transaction != null) {
     if (keyForDirectLookup != null) {
-      ids.addAll(transaction.getAddedIds(this,keyForDirectLookup,valueForDirectLookup));
+      simpleTransactionStateIds.addAll(transaction.getAddedIds(this,keyForDirectLookup,valueForDirectLookup));
     }
  else {
-      additionsSearcher=transaction.getAdditionsAsSearcher(this,additionalParametersOrNull);
+      fulltextTransactionStateSearcher=transaction.getAdditionsAsSearcher(this,additionalParametersOrNull);
     }
-    removedIds=keyForDirectLookup != null ? transaction.getRemovedIds(this,keyForDirectLookup,valueForDirectLookup) : transaction.getRemovedIds(this,query);
+    removedIdsFromTransactionState=keyForDirectLookup != null ? transaction.getRemovedIds(this,keyForDirectLookup,valueForDirectLookup) : transaction.getRemovedIds(this,query);
   }
   LegacyIndexHits idIterator=null;
   IndexReference searcher=null;
@@ -25,21 +25,19 @@
     LruCache<String,Collection<Long>> cachedIdsMap=null;
     if (keyForDirectLookup != null) {
       cachedIdsMap=dataSource.getFromCache(identifier,keyForDirectLookup);
-      foundInCache=fillFromCache(cachedIdsMap,ids,valueForDirectLookup.toString(),removedIds);
+      foundInCache=fillFromCache(cachedIdsMap,simpleTransactionStateIds,valueForDirectLookup.toString(),removedIdsFromTransactionState);
     }
     if (!foundInCache) {
-      DocToIdIterator searchedIds=new DocToIdIterator(search(searcher,query,additionalParametersOrNull,additionsSearcher,removedIds),removedIds,searcher);
-      if (ids.isEmpty()) {
-        idIterator=searchedIds;
+      try {
+        PrimitiveLongSet idsModifiedInTransactionState=gatherIdsModifiedInTransactionState(simpleTransactionStateIds,fulltextTransactionStateSearcher,query);
+        DocToIdIterator hits=new DocToIdIterator(search(searcher,fulltextTransactionStateSearcher,query,additionalParametersOrNull,removedIdsFromTransactionState),removedIdsFromTransactionState,searcher,idsModifiedInTransactionState);
+        idIterator=simpleTransactionStateIds.isEmpty() ? hits : new CombinedIndexHits(Arrays.<LegacyIndexHits>asList(hits,new ConstantScoreIterator(simpleTransactionStateIds,Float.NaN)));
       }
- else {
-        Collection<LegacyIndexHits> iterators=new ArrayList<>();
-        iterators.add(searchedIds);
-        iterators.add(new ConstantScoreIterator(ids,Float.NaN));
-        idIterator=new CombinedIndexHits(iterators);
+ catch (      IOException e) {
+        throw new RuntimeException("Unable to query " + this + " with "+ query,e);
       }
     }
   }
-  idIterator=idIterator == null ? new ConstantScoreIterator(ids,0) : idIterator;
+  idIterator=idIterator == null ? new ConstantScoreIterator(simpleTransactionStateIds,0) : idIterator;
   return idIterator;
 }

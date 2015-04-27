@@ -1,0 +1,35 @@
+{
+  this.raw=raw;
+  String currentActor=null;
+  String currentPayload="";
+  String currentMessage="";
+  Type type=Type.SEND;
+  for (  String line : raw.split("\n")) {
+    if (line.matches("[a-zA-Z]+\\s*:.*")) {
+      if (currentActor != null) {
+        addEvent(currentActor,currentPayload,currentMessage,type);
+      }
+      String[] parts=line.split(":",2);
+      currentActor=parts[0].trim();
+      currentPayload="";
+      currentMessage="";
+      line=parts[1].trim();
+      type=Type.SEND;
+    }
+    if (line.matches("^[(RUN)|(PULL_ALL)|(DISCARD_ALL)|(RECORD)|(SUCCESS)|(FAILURE)|(ACK_FAILURE)].+$")) {
+      currentMessage=line;
+    }
+ else     if (line.matches("^[a-fA-f0-9\\s]+$")) {
+      currentPayload+=line;
+    }
+ else     if (line.equals("<connect>")) {
+      type=Type.CONNECT;
+    }
+ else     if (line.equals("<disconnect>")) {
+      type=Type.DISCONNECT;
+    }
+  }
+  if (currentActor != null) {
+    addEvent(currentActor,currentPayload,currentMessage,type);
+  }
+}

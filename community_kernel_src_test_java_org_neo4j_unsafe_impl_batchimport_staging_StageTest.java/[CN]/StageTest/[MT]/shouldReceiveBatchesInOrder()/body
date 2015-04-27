@@ -8,7 +8,7 @@
     }
   }
 ;
-  Stage stage=new Stage("Test stage",config,true);
+  Stage stage=new Stage("Test stage",config,ORDER_SEND_DOWNSTREAM);
   long batches=1000;
   final long items=batches * config.batchSize();
   stage.add(new ProducerStep(stage.control(),"Producer",config){
@@ -30,6 +30,9 @@
   }
   stage.add(new ReceiveOrderAssertingStep(stage.control(),"Final step",config,0,true));
   StageExecution execution=stage.execute();
+  for (  Step<?> step : execution.steps()) {
+    step.incrementNumberOfProcessors();
+  }
   new ExecutionSupervisor(ExecutionMonitors.invisible()).supervise(execution);
   for (  Step<?> step : execution.steps()) {
     assertEquals("For " + step,batches,step.stats().stat(Keys.done_batches).asLong());

@@ -1,6 +1,14 @@
 {
-  Dependencies dependencies=GraphDatabaseDependencies.newDependencies().logging(logging);
-  InProcessServerControls controls=new InProcessServerControls(serverFolder,new CommunityNeoServer(new MapConfigurator(config,extensions.toList()),dependencies),logging);
+  final OutputStream logOutputStream;
+  try {
+    logOutputStream=createOrOpenAsOuputStream(fileSystem,new File(serverFolder,"neo4j.log"),true);
+  }
+ catch (  IOException e) {
+    throw new RuntimeException("Unable to create log file",e);
+  }
+  final FormattedLogProvider userLogProvider=FormattedLogProvider.toOutputStream(logOutputStream);
+  GraphDatabaseFacadeFactory.Dependencies dependencies=GraphDatabaseDependencies.newDependencies().userLogProvider(userLogProvider);
+  InProcessServerControls controls=new InProcessServerControls(serverFolder,new CommunityNeoServer(new MapConfigurator(config,extensions.toList()),dependencies,userLogProvider),logOutputStream);
   controls.start();
   try {
     fixtures.applyTo(controls.httpURI());

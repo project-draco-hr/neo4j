@@ -1,21 +1,19 @@
 {
-  Logging logging=mock(Logging.class);
-  LearnerContextImpl ctx=new LearnerContextImpl(new InstanceId(1),mock(CommonContextState.class),logging,mock(Timeouts.class),mock(PaxosInstanceStore.class),mock(AcceptorInstanceStore.class),mock(ObjectInputStreamFactory.class),mock(ObjectOutputStreamFactory.class),mock(HeartbeatContextImpl.class));
-  final List<String> logs=new ArrayList<>();
-  ConsoleLogger consoleLogger=new ConsoleLogger(null){
-    @Override public void log(    String message){
-      logs.add(message);
+  final AssertableLogProvider logProvider=new AssertableLogProvider();
+  LogService logService=new AbstractLogService(){
+    @Override public LogProvider getUserLogProvider(){
+      return NullLogProvider.getInstance();
+    }
+    @Override public LogProvider getInternalLogProvider(){
+      return logProvider;
     }
   }
 ;
-  doReturn(consoleLogger).when(logging).getConsoleLog(Matchers.<Class>any());
+  LearnerContextImpl ctx=new LearnerContextImpl(new InstanceId(1),mock(CommonContextState.class),logService,mock(Timeouts.class),mock(PaxosInstanceStore.class),mock(AcceptorInstanceStore.class),mock(ObjectInputStreamFactory.class),mock(ObjectOutputStreamFactory.class),mock(HeartbeatContextImpl.class));
   ctx.notifyLearnMiss(new org.neo4j.cluster.protocol.atomicbroadcast.multipaxos.InstanceId(1l));
   ctx.notifyLearnMiss(new org.neo4j.cluster.protocol.atomicbroadcast.multipaxos.InstanceId(1l));
   ctx.notifyLearnMiss(new org.neo4j.cluster.protocol.atomicbroadcast.multipaxos.InstanceId(2l));
   ctx.notifyLearnMiss(new org.neo4j.cluster.protocol.atomicbroadcast.multipaxos.InstanceId(2l));
   ctx.notifyLearnMiss(new org.neo4j.cluster.protocol.atomicbroadcast.multipaxos.InstanceId(1l));
-  assertEquals(3,logs.size());
-  assertTrue(logs.get(0).startsWith("Did not have learned value for Paxos instance 1."));
-  assertTrue(logs.get(1).startsWith("Did not have learned value for Paxos instance 2."));
-  assertTrue(logs.get(2).startsWith("Did not have learned value for Paxos instance 1."));
+  logProvider.assertExactly(inLog(LearnerState.class).warn(containsString("Did not have learned value for Paxos instance 1.")),inLog(LearnerState.class).warn(containsString("Did not have learned value for Paxos instance 2.")),inLog(LearnerState.class).warn(containsString("Did not have learned value for Paxos instance 1.")));
 }

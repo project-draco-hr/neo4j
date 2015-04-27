@@ -5,14 +5,20 @@
     @Override public void run(    Sender sender){
       assertHealthy();
       sender.initialize(ticket);
-      long startTime=currentTimeMillis();
       try {
-        process(batch,sender);
-        if (downstream == null) {
-          doneBatches.incrementAndGet();
+        if (guarantees(ORDER_PROCESS)) {
+          await(rightBeginTicket,ticket);
         }
-        totalProcessingTime.add(currentTimeMillis() - startTime - sender.sendTime);
-        decrementQueue();
+        try (Resource precondition=permit(batch)){
+          begunBatches.incrementAndGet();
+          long startTime=currentTimeMillis();
+          process(batch,sender);
+          if (downstream == null) {
+            doneBatches.incrementAndGet();
+          }
+          totalProcessingTime.add(currentTimeMillis() - startTime - sender.sendTime);
+        }
+         decrementQueue();
         checkNotifyEndDownstream();
       }
  catch (      Throwable e) {

@@ -1,0 +1,33 @@
+{
+  ConfigMapUpgradeConfiguration upgradeConfiguration=new ConfigMapUpgradeConfiguration(config);
+  StoreUpgrader migrationProcess=new StoreUpgrader(upgradeConfiguration,fs,monitor,userLogProvider);
+  LifeSupport life=new LifeSupport();
+  Dependencies deps=new Dependencies();
+  deps.satisfyDependencies(fs,config);
+  KernelExtensions kernelExtensions=life.add(new KernelExtensions(GraphDatabaseDependencies.newDependencies().kernelExtensions(),deps,ignore()));
+  JobScheduler jobScheduler=life.add(new Neo4jJobScheduler());
+  LogService logService=new StoreLogService(userLogProvider,fs,legacyStoreDirectory,jobScheduler);
+  config=StoreFactory.configForStoreDir(config,legacyStoreDirectory);
+  life.start();
+  SchemaIndexProvider schemaIndexProvider=kernelExtensions.resolveDependency(SchemaIndexProvider.class,SchemaIndexProvider.HIGHEST_PRIORITIZED_OR_NONE);
+  Log log=userLogProvider.getLog(StoreMigrationTool.class);
+  try {
+    UpgradableDatabase upgradableDatabase=new UpgradableDatabase(new StoreVersionCheck(fs));
+    migrationProcess.addParticipant(new StoreMigrator(new VisibleMigrationProgressMonitor(logService.getInternalLog(StoreMigrationTool.class)),fs,upgradableDatabase,config,logService));
+    migrationProcess.addParticipant(schemaIndexProvider.storeMigrationParticipant(fs,upgradableDatabase));
+  }
+ catch (  IllegalArgumentException e) {
+  }
+  try (PageCache pageCache=createPageCache(fs,config)){
+    long startTime=System.currentTimeMillis();
+    migrationProcess.migrateIfNeeded(legacyStoreDirectory,schemaIndexProvider,pageCache);
+    long duration=System.currentTimeMillis() - startTime;
+    log.info(format("Migration completed in %d s%n",duration / 1000));
+  }
+ catch (  IOException e) {
+    throw new StoreUpgrader.UnableToUpgradeException("Failure during upgrade",e);
+  }
+ finally {
+    life.shutdown();
+  }
+}

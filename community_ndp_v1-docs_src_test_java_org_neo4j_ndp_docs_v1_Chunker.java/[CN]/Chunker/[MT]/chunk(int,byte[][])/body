@@ -1,0 +1,25 @@
+{
+  ChunkedOutput out=new ChunkedOutput(maxChunkSize + 2);
+  final ByteBuffer outputBuffer=ByteBuffer.allocate(512);
+  ChannelHandlerContext ch=mock(ChannelHandlerContext.class);
+  when(ch.alloc()).thenReturn(UnpooledByteBufAllocator.DEFAULT);
+  when(ch.writeAndFlush(any())).then(new Answer<Object>(){
+    @Override public Object answer(    InvocationOnMock inv) throws Throwable {
+      ByteBuf buf=(ByteBuf)inv.getArguments()[0];
+      outputBuffer.limit(outputBuffer.position() + buf.readableBytes());
+      buf.readBytes(outputBuffer);
+      return null;
+    }
+  }
+);
+  out.setTargetChannel(ch);
+  for (  byte[] message : messages) {
+    out.put(message,0,message.length);
+    out.messageBoundaryHook().run();
+  }
+  out.flush();
+  byte[] bytes=new byte[outputBuffer.limit()];
+  outputBuffer.position(0);
+  outputBuffer.get(bytes);
+  return bytes;
+}

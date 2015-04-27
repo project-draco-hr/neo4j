@@ -1,11 +1,11 @@
 {
-  logger.info("Import starting");
+  log.info("Import starting");
   NodeRelationshipCache nodeRelationshipCache=null;
   NodeLabelsCache nodeLabelsCache=null;
   long startTime=currentTimeMillis();
   boolean hasBadEntries=false;
-  File badFile=config.badFile(storeDir);
-  try (BatchingNeoStore neoStore=new BatchingNeoStore(fileSystem,storeDir,config,writeMonitor,logging,monitors,writerFactory,additionalInitialIds);OutputStream badOutput=new BufferedOutputStream(fileSystem.openAsOutputStream(badFile,false));Collector badCollector=input.badCollector(badOutput);CountsAccessor.Updater countsUpdater=neoStore.getCountsStore().reset(neoStore.getLastCommittedTransactionId());InputCache inputCache=new InputCache(fileSystem,storeDir)){
+  File badFile=new File(storeDir,Configuration.BAD_FILE_NAME);
+  try (BatchingNeoStore neoStore=new BatchingNeoStore(fileSystem,storeDir,config,writeMonitor,logProvider,monitors,writerFactory,additionalInitialIds);OutputStream badOutput=new BufferedOutputStream(fileSystem.openAsOutputStream(badFile,false));Collector badCollector=input.badCollector(badOutput);CountsAccessor.Updater countsUpdater=neoStore.getCountsStore().reset(neoStore.getLastCommittedTransactionId());InputCache inputCache=new InputCache(fileSystem,storeDir)){
     IdMapper idMapper=input.idMapper();
     IdGenerator idGenerator=input.idGenerator();
     nodeRelationshipCache=new NodeRelationshipCache(AUTO,config.denseNodeThreshold());
@@ -39,14 +39,14 @@
     executeStages(new RelationshipCountsStage(config,nodeLabelsCache,neoStore.getRelationshipStore(),neoStore.getLabelRepository().getHighId(),neoStore.getRelationshipTypeRepository().getHighId(),countsUpdater,AUTO));
     long totalTimeMillis=currentTimeMillis() - startTime;
     executionMonitor.done(totalTimeMillis);
-    logger.info("Import completed, took " + Format.duration(totalTimeMillis));
+    log.info("Import completed, took " + Format.duration(totalTimeMillis));
     hasBadEntries=badCollector.badEntries() > 0;
     if (hasBadEntries) {
-      logger.warn("There were " + badCollector.badEntries() + " bad entries which were skipped "+ "and logged into "+ badFile.getAbsolutePath());
+      log.warn("There were " + badCollector.badEntries() + " bad entries which were skipped "+ "and logged into "+ badFile.getAbsolutePath());
     }
   }
  catch (  Throwable t) {
-    logger.error("Error during import",t);
+    log.error("Error during import",t);
     throw Exceptions.launderedException(IOException.class,t);
   }
  finally {
