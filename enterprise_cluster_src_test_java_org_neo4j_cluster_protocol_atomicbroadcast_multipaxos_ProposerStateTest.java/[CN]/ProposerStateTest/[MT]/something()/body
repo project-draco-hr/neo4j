@@ -1,0 +1,15 @@
+{
+  Object acceptorValue=new Object();
+  Object bookedValue=new Object();
+  org.neo4j.cluster.protocol.atomicbroadcast.multipaxos.InstanceId instanceId=new org.neo4j.cluster.protocol.atomicbroadcast.multipaxos.InstanceId(42);
+  PaxosInstanceStore paxosInstanceStore=new PaxosInstanceStore();
+  ProposerContext context=Mockito.mock(ProposerContext.class);
+  when(context.getPaxosInstance(instanceId)).thenReturn(paxosInstanceStore.getPaxosInstance(instanceId));
+  when(context.getMinimumQuorumSize(Mockito.anyList())).thenReturn(2);
+  PaxosInstance paxosInstance=new PaxosInstance(paxosInstanceStore,instanceId);
+  paxosInstance.propose(2001,Iterables.toList(Iterables.<URI,URI>iterable(create("http://something1"),create("http://something2"),create("http://something3"))));
+  Message message=Message.to(ProposerMessage.promise,create("http://something1"),new ProposerMessage.PromiseState(2001,acceptorValue));
+  message.setHeader(org.neo4j.cluster.protocol.atomicbroadcast.multipaxos.InstanceId.INSTANCE,instanceId.toString());
+  MessageHolder mockHolder=mock(MessageHolder.class);
+  ProposerState.proposer.handle(context,message,mockHolder);
+}
