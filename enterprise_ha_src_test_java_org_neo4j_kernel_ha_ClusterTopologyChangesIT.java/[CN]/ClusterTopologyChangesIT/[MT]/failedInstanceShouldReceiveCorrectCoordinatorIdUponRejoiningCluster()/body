@@ -5,18 +5,18 @@
   cluster.await(masterSeesSlavesAsAvailable(1));
   createNodeOn(cluster.getMaster());
   cluster.sync();
-  ClusterClient clusterClient=cleanup.add(newClusterClient(new InstanceId(1)));
+  ClusterClientModule clusterClient=newClusterClient(new InstanceId(1));
+  cleanup.add(clusterClient.life);
   final AtomicReference<InstanceId> coordinatorIdWhenReJoined=new AtomicReference<>();
   final CountDownLatch latch=new CountDownLatch(1);
-  clusterClient.addClusterListener(new ClusterListener.Adapter(){
+  clusterClient.clusterClient.addClusterListener(new ClusterListener.Adapter(){
     @Override public void enteredCluster(    ClusterConfiguration clusterConfiguration){
       coordinatorIdWhenReJoined.set(clusterConfiguration.getElected(COORDINATOR));
       latch.countDown();
     }
   }
 );
-  clusterClient.init();
-  clusterClient.start();
-  latch.await(2,SECONDS);
+  clusterClient.life.start();
+  latch.await(20,SECONDS);
   assertEquals(new InstanceId(2),coordinatorIdWhenReJoined.get());
 }

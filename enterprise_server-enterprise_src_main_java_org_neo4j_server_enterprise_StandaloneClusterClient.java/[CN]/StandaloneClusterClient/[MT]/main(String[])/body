@@ -13,8 +13,11 @@
   try {
     JobScheduler jobScheduler=new Neo4jJobScheduler();
     LogService logService=logService(new DefaultFileSystemAbstraction());
-    ObjectStreamFactory objectStreamFactory=new ObjectStreamFactory();
-    new StandaloneClusterClient(jobScheduler,new ClusterClient(new Monitors(),adapt(new Config(config)),logService,new NotElectableElectionCredentialsProvider(),objectStreamFactory,objectStreamFactory));
+    LifeSupport life=new LifeSupport();
+    life.add(jobScheduler);
+    Dependencies dependencies=new Dependencies();
+    ClusterClientModule clusterClientModule=new ClusterClientModule(life,dependencies,new Monitors(),new Config(config),logService,new NotElectableElectionCredentialsProvider());
+    new StandaloneClusterClient(life);
   }
  catch (  LifecycleException e) {
     @SuppressWarnings({"ThrowableResultOfMethodCallIgnored","unchecked"}) Throwable cause=peel(e,Predicates.<Throwable>instanceOf(LifecycleException.class));
