@@ -1,2 +1,40 @@
 {
+  Thread currentThread=Thread.currentThread();
+  while (pageCountToEvict > 0 && !currentThread.isInterrupted()) {
+    if (clockArm == pages.length) {
+      clockArm=0;
+    }
+    MuninnPage page=pages[clockArm];
+    if (page == null) {
+      currentThread.interrupt();
+      return 0;
+    }
+    if (page.isLoaded() && page.decrementUsage()) {
+      long stamp=page.tryWriteLock();
+      if (stamp != 0) {
+        pageCountToEvict--;
+        boolean pageEvicted;
+        try (EvictionEvent evictionEvent=evictionRunEvent.beginEviction()){
+          pageEvicted=page.isLoaded() && evictPage(page,evictionEvent);
+        }
+  finally {
+          page.unlockWrite(stamp);
+        }
+        if (pageEvicted) {
+          Object current;
+          Object nextListHead;
+          FreePage freePage=null;
+          do {
+            current=getFreelistHead();
+            freePage=freePage == null ? new FreePage(page) : freePage;
+            freePage.setNext((FreePage)current);
+            nextListHead=freePage;
+          }
+ while (!compareAndSetFreelistHead(current,nextListHead));
+        }
+      }
+    }
+    clockArm++;
+  }
+  return clockArm;
 }
