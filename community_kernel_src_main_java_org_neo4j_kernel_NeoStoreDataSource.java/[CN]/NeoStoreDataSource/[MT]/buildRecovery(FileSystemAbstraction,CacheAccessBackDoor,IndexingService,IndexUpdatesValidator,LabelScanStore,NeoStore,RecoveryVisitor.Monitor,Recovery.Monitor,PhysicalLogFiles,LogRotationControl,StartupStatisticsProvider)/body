@@ -1,6 +1,7 @@
 {
   final RecoveryLabelScanWriterProvider labelScanWriters=new RecoveryLabelScanWriterProvider(labelScanStore,1000);
-  final TransactionRepresentationStoreApplier storeRecoverer=new TransactionRepresentationStoreApplier(indexingService,labelScanWriters,neoStore,cacheAccess,lockService,legacyIndexProviderLookup,indexConfigStore,IdOrderingQueue.BYPASS);
+  final RecoveryLegacyIndexApplierLookup legacyIndexApplierLookup=new RecoveryLegacyIndexApplierLookup(new LegacyIndexApplierLookup.Direct(legacyIndexProviderLookup),1000);
+  final TransactionRepresentationStoreApplier storeRecoverer=new TransactionRepresentationStoreApplier(indexingService,labelScanWriters,neoStore,cacheAccess,lockService,legacyIndexApplierLookup,indexConfigStore,IdOrderingQueue.BYPASS);
   RecoveryVisitor recoveryVisitor=new RecoveryVisitor(neoStore,storeRecoverer,indexUpdatesValidator,recoveryVisitorMonitor);
   LogEntryReader<ReadableVersionableLogChannel> logEntryReader=new LogEntryReaderFactory().versionable();
   final Visitor<LogVersionedStoreChannel,IOException> logFileRecoverer=new LogFileRecoverer(logEntryReader,recoveryVisitor);
@@ -8,6 +9,7 @@
     @Override public void forceEverything(){
       try {
         labelScanWriters.close();
+        legacyIndexApplierLookup.close();
       }
  catch (      IOException e) {
         throw new UnderlyingStorageException(e);
