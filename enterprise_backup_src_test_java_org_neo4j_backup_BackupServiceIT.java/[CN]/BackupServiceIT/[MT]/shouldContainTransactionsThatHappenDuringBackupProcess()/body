@@ -9,7 +9,9 @@
   NeoStoreDataSource ds=db.getDependencyResolver().resolveDependency(DataSourceManager.class).getDataSource();
   long expectedLastTxId=ds.getNeoStore().getLastCommittedTransactionId();
   monitors.addMonitorListener(new StoreSnoopingMonitor(barrier));
-  OnlineBackupKernelExtension backup=new OnlineBackupKernelExtension(defaultConfig,db,db.getDependencyResolver().resolveDependency(KernelPanicEventGenerator.class),NullLogProvider.getInstance(),monitors);
+  Dependencies dependencies=new Dependencies(db.getDependencyResolver());
+  dependencies.satisfyDependencies(defaultConfig,monitors,NullLogProvider.getInstance());
+  OnlineBackupKernelExtension backup=(OnlineBackupKernelExtension)new OnlineBackupExtensionFactory().newKernelExtension(DependenciesProxy.dependencies(dependencies,OnlineBackupExtensionFactory.Dependencies.class));
   backup.start();
   BackupService backupService=backupService();
   ExecutorService executor=Executors.newSingleThreadExecutor();
