@@ -1,20 +1,19 @@
 {
   endPreviousGroup();
-synchronized (this) {
-    dataCache=dataCache.fixate();
-    trackerCache=cacheFactory.newIntArray(dataCacheStats.highestIndex() + 1,-1);
-    try {
-      sortBuckets=new ParallelSort(radix,dataCache,dataCacheStats,trackerCache,trackerStats,processorsForSorting,progress,DEFAULT).run();
-      if (detectAndMarkCollisions(progress) > 0) {
-        try (InputIterator<Object> idIterator=ids.iterator()){
-          buildCollisionInfo(idIterator,collector,progress);
-        }
-       }
-    }
- catch (    InterruptedException e) {
-      Thread.interrupted();
-      throw new RuntimeException("Got interrupted while preparing the index. Throwing this exception " + "onwards will cause a chain reaction which will cause a panic in the whole import, " + "so mission accomplished");
-    }
+  dataCache=dataCache.fixate();
+  trackerCache=cacheFactory.newIntArray(highestSetIndex + 1,-1);
+  try {
+    sortBuckets=new ParallelSort(radix,dataCache,highestSetIndex,trackerCache,processorsForSorting,progress,DEFAULT).run();
+    int numberOfCollisions=detectAndMarkCollisions(progress);
+    if (numberOfCollisions > 0) {
+      try (InputIterator<Object> idIterator=ids.iterator()){
+        buildCollisionInfo(idIterator,numberOfCollisions,collector,progress);
+      }
+     }
+  }
+ catch (  InterruptedException e) {
+    Thread.interrupted();
+    throw new RuntimeException("Got interrupted while preparing the index. Throwing this exception " + "onwards will cause a chain reaction which will cause a panic in the whole import, " + "so mission accomplished");
   }
   readyForUse=true;
 }
