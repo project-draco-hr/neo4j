@@ -1,19 +1,19 @@
 {
   long parkNanos=TimeUnit.MILLISECONDS.toNanos(10);
   for (; ; ) {
-    LockSupport.parkNanos(parkNanos);
+    parkEvictor(parkNanos);
     if (Thread.currentThread().isInterrupted() || closed) {
       return 0;
     }
     Object freelistHead=getFreelistHead();
-    if (freelistHead instanceof FreePage) {
+    if (freelistHead == null) {
+      return keepFree;
+    }
+ else     if (freelistHead.getClass() == FreePage.class) {
       int availablePages=((FreePage)freelistHead).count;
       if (availablePages < keepFree) {
         return keepFree - availablePages;
       }
-    }
- else     if (freelistHead instanceof FreePageWaiter) {
-      return keepFree;
     }
   }
 }

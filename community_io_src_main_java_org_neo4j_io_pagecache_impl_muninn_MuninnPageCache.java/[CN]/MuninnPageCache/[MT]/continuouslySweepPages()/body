@@ -1,15 +1,11 @@
 {
   evictionThread=Thread.currentThread();
   int clockArm=0;
-  while (!Thread.interrupted()) {
+  while (!closed) {
     int pageCountToEvict=parkUntilEvictionRequired(keepFree);
     try (EvictionRunEvent evictionRunEvent=tracer.beginPageEvictions(pageCountToEvict)){
       clockArm=evictPages(pageCountToEvict,clockArm,evictionRunEvent);
     }
    }
-  Object freelistHead=getAndSetFreelistHead(shutdownSignal);
-  if (freelistHead instanceof FreePageWaiter) {
-    FreePageWaiter waiters=(FreePageWaiter)freelistHead;
-    interruptAllWaiters(waiters);
-  }
+  getAndSetFreelistHead(shutdownSignal);
 }
