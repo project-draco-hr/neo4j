@@ -1,5 +1,6 @@
 {
-  RecordingCallback messages=new RecordingCallback();
+  RecordingCallback<StatementMetadata,Object> messages=new RecordingCallback<>();
+  RecordingCallback<RecordStream,Object> pulling=new RecordingCallback<>();
   SessionStateMachine machine=new SessionStateMachine(db,txBridge,runner,NullLog.getInstance());
   machine.commitTransaction();
   assertThat(machine.state(),equalTo(ERROR));
@@ -11,11 +12,11 @@
   assertThat(machine.state(),equalTo(ERROR));
   machine.rollbackTransaction();
   assertThat(machine.state(),equalTo(ERROR));
-  machine.run("src/test",EMPTY_MAP,null,messages);
+  machine.run("src/test",EMPTY_PARAMS,null,messages);
   assertThat(machine.state(),equalTo(ERROR));
   assertThat(messages.next(),ignored());
-  machine.pullAll(null,messages);
+  machine.pullAll(null,pulling);
   assertThat(machine.state(),equalTo(ERROR));
-  assertThat(messages.next(),ignored());
+  assertThat(pulling.next(),ignored());
   verifyNoMoreInteractions(db,runner);
 }
