@@ -16,16 +16,15 @@
     }
   }
 );
-  IOFunction<Long,Void> update=new IOFunction<Long,Void>(){
-    @Override public Void apply(    Long update) throws IOException {
+  ThrowingConsumer<Long,IOException> update=new ThrowingConsumer<Long,IOException>(){
+    @Override public void accept(    Long update) throws IOException {
       try (EntryUpdater<String> updater=store.updater(update).get()){
         updater.apply("key " + update,store.value("value " + update));
       }
-       return null;
-    }
+     }
   }
 ;
-  update.apply(1l);
+  update.accept(1l);
   Future<Long> rotation=threading.executeAndAwait(store.rotation,3l,new Predicate<Thread>(){
     @Override public boolean test(    Thread thread){
 switch (thread.getState()) {
@@ -43,15 +42,15 @@ default :
 assertFalse(rotation.isDone());
 SECONDS.sleep(1);
 assertFalse(rotation.isDone());
-update.apply(3l);
+update.accept(3l);
 assertFalse(rotation.isDone());
 SECONDS.sleep(1);
 assertFalse(rotation.isDone());
-update.apply(4l);
+update.accept(4l);
 assertFalse(rotation.isDone());
 SECONDS.sleep(1);
 assertFalse(rotation.isDone());
-update.apply(2l);
+update.accept(2l);
 assertEquals(3,rotation.get().longValue());
 assertEquals(3,store.headers().get(TX_ID).longValue());
 store.rotation.apply(4l);
