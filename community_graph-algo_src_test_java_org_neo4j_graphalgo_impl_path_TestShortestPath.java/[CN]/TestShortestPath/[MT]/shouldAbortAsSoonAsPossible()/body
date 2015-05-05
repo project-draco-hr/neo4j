@@ -1,0 +1,27 @@
+{
+  Label A=DynamicLabel.label("A");
+  Label B=DynamicLabel.label("B");
+  Label C=DynamicLabel.label("C");
+  Label D=DynamicLabel.label("D");
+  Label E=DynamicLabel.label("E");
+  Label F=DynamicLabel.label("F");
+  final RelationshipType relType=DynamicRelationshipType.withName("TO");
+  recursiveSnowFlake(null,0,4,5,new Label[]{A,B,C,D,E},relType);
+  Node a=graphDb.findNodes(A).next();
+  ResourceIterator<Node> allE=graphDb.findNodes(E);
+  while (allE.hasNext()) {
+    Node e=allE.next();
+    Node f=graphDb.createNode(F);
+    f.createRelationshipTo(e,relType);
+  }
+  CountingPathExpander countingPathExpander=new CountingPathExpander(PathExpanders.forTypeAndDirection(relType,Direction.OUTGOING));
+  ShortestPath shortestPath=new ShortestPath(Integer.MAX_VALUE,countingPathExpander,Integer.MAX_VALUE,false);
+  ResourceIterator<Node> allF=graphDb.findNodes(F);
+  long start=System.currentTimeMillis();
+  while (allF.hasNext()) {
+    Node f=allF.next();
+    shortestPath.findAllPaths(a,f);
+  }
+  long totalTime=System.currentTimeMillis() - start;
+  assertEquals("There are 625 different end nodes. The algorithm should start one traversal for each such node. " + "That is 625*2 visited nodes if traversal is interrupted correctly.",1250,countingPathExpander.nodesVisited.value);
+}
