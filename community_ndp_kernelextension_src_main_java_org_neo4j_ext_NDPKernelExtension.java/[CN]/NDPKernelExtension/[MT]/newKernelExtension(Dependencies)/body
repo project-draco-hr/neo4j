@@ -3,11 +3,19 @@
   final GraphDatabaseService gdb=dependencies.db();
   final GraphDatabaseAPI api=(GraphDatabaseAPI)gdb;
   final Log log=dependencies.logService().getInternalLog(Sessions.class);
-  final HostnamePort address=config.get(Settings.ndp_address);
+  final HostnamePort socketAddress=config.get(Settings.ndp_socket_address);
+  final HostnamePort webSocketAddress=config.get(Settings.ndp_ws_address);
   final LifeSupport life=new LifeSupport();
   if (config.get(Settings.ndp_enabled)) {
-    final Sessions env=life.add(new StandardSessions(api,log));
-    life.add(new SocketTransport(address,log,env));
+    final Sessions sessions=life.add(new StandardSessions(api,log));
+    PrimitiveLongObjectMap<Factory<SocketProtocol>> availableVersions=longObjectMap();
+    availableVersions.put(SocketProtocolV1.VERSION,new Factory<SocketProtocol>(){
+      @Override public SocketProtocol newInstance(){
+        return new SocketProtocolV1(log,sessions.newSession());
+      }
+    }
+);
+    life.add(new NettyServer(asList(new SocketTransport(socketAddress,availableVersions),new WebSocketTransport(webSocketAddress,availableVersions))));
     log.info("NDP Server extension loaded.");
   }
   return life;

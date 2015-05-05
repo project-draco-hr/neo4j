@@ -3,8 +3,18 @@
     @Override public void evaluate() throws Throwable {
       final GraphDatabaseService gdb=new TestGraphDatabaseFactory().newImpermanentDatabase();
       final GraphDatabaseAPI api=((GraphDatabaseAPI)gdb);
-      Log log=api.getDependencyResolver().resolveDependency(LogService.class).getInternalLog(Session.class);
-      transport=life.add(new SocketTransport(new HostnamePort("localhost:7687"),log,life.add(new StandardSessions(api,log))));
+      final Log log=api.getDependencyResolver().resolveDependency(LogService.class).getInternalLog(Session.class);
+      final Sessions sessions=life.add(new StandardSessions(api,log));
+      PrimitiveLongObjectMap<Factory<SocketProtocol>> availableVersions=longObjectMap();
+      availableVersions.put(SocketProtocolV1.VERSION,new Factory<SocketProtocol>(){
+        @Override public SocketProtocol newInstance(){
+          return new SocketProtocolV1(log,sessions.newSession());
+        }
+      }
+);
+      socketTransport=new SocketTransport(new HostnamePort("localhost:7687"),availableVersions);
+      wsTransport=new WebSocketTransport(new HostnamePort("localhost:7688"),availableVersions);
+      life.add(new NettyServer(asList(socketTransport,wsTransport)));
       life.start();
       try {
         statement.evaluate();
