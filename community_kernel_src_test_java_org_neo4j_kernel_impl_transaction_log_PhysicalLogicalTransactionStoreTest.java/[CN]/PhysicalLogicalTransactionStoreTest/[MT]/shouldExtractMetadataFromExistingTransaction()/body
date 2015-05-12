@@ -1,0 +1,47 @@
+{
+  TransactionIdStore transactionIdStore=new DeadSimpleTransactionIdStore(0l,0l);
+  TransactionMetadataCache positionCache=new TransactionMetadataCache(10,100);
+  final byte[] additionalHeader=new byte[]{1,2,5};
+  final int masterId=2, authorId=1;
+  final long timeStarted=12345, latestCommittedTxWhenStarted=4545, timeCommitted=timeStarted + 10;
+  LifeSupport life=new LifeSupport();
+  PhysicalLogFiles logFiles=new PhysicalLogFiles(testDir,DEFAULT_NAME,fs);
+  Monitor monitor=new Monitors().newMonitor(PhysicalLogFile.Monitor.class);
+  LogFile logFile=life.add(new PhysicalLogFile(fs,logFiles,1000,transactionIdStore,mock(LogVersionRepository.class),monitor,positionCache));
+  life.start();
+  try {
+    addATransactionAndRewind(logFile,positionCache,transactionIdStore,additionalHeader,masterId,authorId,timeStarted,latestCommittedTxWhenStarted,timeCommitted);
+  }
+  finally {
+    life.shutdown();
+  }
+  life=new LifeSupport();
+  final AtomicInteger recoveredTransactions=new AtomicInteger();
+  final LogFileRecoverer recoverer=new LogFileRecoverer(new LogEntryReaderFactory().versionable(),new CloseableVisitor<CommittedTransactionRepresentation,IOException>(){
+    @Override public boolean visit(    CommittedTransactionRepresentation committedTx) throws IOException {
+      TransactionRepresentation transaction=committedTx.getTransactionRepresentation();
+      assertArrayEquals(additionalHeader,transaction.additionalHeader());
+      assertEquals(masterId,transaction.getMasterId());
+      assertEquals(authorId,transaction.getAuthorId());
+      assertEquals(timeStarted,transaction.getTimeStarted());
+      assertEquals(timeCommitted,transaction.getTimeCommitted());
+      assertEquals(latestCommittedTxWhenStarted,transaction.getLatestCommittedTxWhenStarted());
+      recoveredTransactions.incrementAndGet();
+      return false;
+    }
+    @Override public void close() throws IOException {
+    }
+  }
+);
+  logFile=life.add(new PhysicalLogFile(fs,logFiles,1000,transactionIdStore,mock(LogVersionRepository.class),monitor,positionCache));
+  LogicalTransactionStore store=life.add(new PhysicalLogicalTransactionStore(logFile,LogRotation.NO_ROTATION,positionCache,transactionIdStore,BYPASS,mock(KernelHealth.class)));
+  life.start();
+  try {
+    recoverer.visit(PhysicalLogFile.openForVersion(logFiles,fs,0));
+    positionCache.clear();
+    assertThat(store.getMetadataFor(transactionIdStore.getLastCommittedTransactionId()).toString(),equalTo("TransactionMetadata[masterId=-1, authorId=-1, startPosition=LogPosition{logVersion=0, " + "byteOffset=16}, checksum=0]"));
+  }
+  finally {
+    life.shutdown();
+  }
+}
