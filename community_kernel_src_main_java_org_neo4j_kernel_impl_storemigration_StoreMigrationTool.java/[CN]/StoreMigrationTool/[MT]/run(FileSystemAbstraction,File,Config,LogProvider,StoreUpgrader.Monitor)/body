@@ -4,10 +4,18 @@
   LifeSupport life=new LifeSupport();
   Dependencies deps=new Dependencies();
   deps.satisfyDependencies(fs,config);
-  KernelExtensions kernelExtensions=life.add(new KernelExtensions(GraphDatabaseDependencies.newDependencies().kernelExtensions(),deps,ignore()));
+  KernelContext kernelContext=new KernelContext(){
+    @Override public FileSystemAbstraction fileSystem(){
+      return fs;
+    }
+    @Override public File storeDir(){
+      return legacyStoreDirectory;
+    }
+  }
+;
+  KernelExtensions kernelExtensions=life.add(new KernelExtensions(kernelContext,GraphDatabaseDependencies.newDependencies().kernelExtensions(),deps,ignore()));
   JobScheduler jobScheduler=life.add(new Neo4jJobScheduler());
   LogService logService=new StoreLogService(userLogProvider,fs,legacyStoreDirectory,jobScheduler);
-  config=StoreFactory.configForStoreDir(config,legacyStoreDirectory);
   life.start();
   SchemaIndexProvider schemaIndexProvider=kernelExtensions.resolveDependency(SchemaIndexProvider.class,SchemaIndexProvider.HIGHEST_PRIORITIZED_OR_NONE);
   Log log=userLogProvider.getLog(StoreMigrationTool.class);

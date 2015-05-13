@@ -1,12 +1,12 @@
 {
   final ClassGuardedAdversary adversary=new ClassGuardedAdversary(new CountingAdversary(1,false),"org.neo4j.kernel.impl.nioneo.xa.Command$RelationshipCommand");
   adversary.disable();
-  String storeDir=dir.directory().getAbsolutePath();
+  File storeDir=dir.graphDbDir();
   final EmbeddedGraphDatabase db=new TestEmbeddedGraphDatabase(storeDir,stringMap()){
-    @Override protected void create(    Map<String,String> params,    GraphDatabaseFacadeFactory.Dependencies dependencies){
+    @Override protected void create(    File storeDir,    Map<String,String> params,    GraphDatabaseFacadeFactory.Dependencies dependencies){
       new CommunityFacadeFactory(){
-        @Override protected PlatformModule createPlatform(        Map<String,String> params,        Dependencies dependencies,        GraphDatabaseFacade graphDatabaseFacade){
-          return new PlatformModule(params,dependencies,graphDatabaseFacade){
+        @Override protected PlatformModule createPlatform(        File storeDir,        Map<String,String> params,        Dependencies dependencies,        GraphDatabaseFacade graphDatabaseFacade){
+          return new PlatformModule(storeDir,params,dependencies,graphDatabaseFacade){
             @Override protected FileSystemAbstraction createFileSystemAbstraction(){
               return new AdversarialFileSystemAbstraction(adversary);
             }
@@ -14,7 +14,7 @@
 ;
         }
       }
-.newFacade(params,dependencies,this);
+.newFacade(storeDir,params,dependencies,this);
     }
   }
 ;
