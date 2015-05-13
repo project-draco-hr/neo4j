@@ -1,5 +1,13 @@
 {
-  FileSystemAbstraction fileSystemAbstraction=new CannedFileSystemAbstraction(true,null,null,false,NOTHING);
+  FileSystemAbstraction fileSystemAbstraction=new DelegatingFileSystemAbstraction(new DefaultFileSystemAbstraction()){
+    @Override public boolean fileExists(    File fileName){
+      return false;
+    }
+    @Override public FileLock tryLock(    File fileName,    StoreChannel channel) throws IOException {
+      throw new IOException("Unable to create lock file " + fileName);
+    }
+  }
+;
   StoreLocker storeLocker=new StoreLocker(fileSystemAbstraction);
   try {
     storeLocker.checkLock(target.cleanDirectory("unused"));
