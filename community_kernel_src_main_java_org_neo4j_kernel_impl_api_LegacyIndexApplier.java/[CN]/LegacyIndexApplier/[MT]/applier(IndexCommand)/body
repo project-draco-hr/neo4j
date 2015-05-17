@@ -1,7 +1,7 @@
 {
-  byte nameId=command.getIndexNameId();
-  String indexName=defineCommand.getIndexName(nameId);
-  NeoCommandHandler applier=appliers.get(indexName);
+  String indexName=defineCommand.getIndexName(command.getIndexNameId());
+  Map<String,NeoCommandHandler> applierByIndex=applierByIndexMap(command);
+  NeoCommandHandler applier=applierByIndex.get(indexName);
   if (applier == null) {
     IndexEntityType entityType=IndexEntityType.byId(command.getEntityType());
     Map<String,String> config=indexConfigStore.get(entityType.entityClass(),indexName);
@@ -9,9 +9,13 @@
       return NeoCommandHandler.EMPTY;
     }
     String providerName=config.get(PROVIDER);
-    applier=applierLookup.newApplier(providerName,mode.needsIdempotencyChecks());
-    applier.visitIndexDefineCommand(defineCommand);
-    appliers.put(indexName,applier);
+    applier=applierByProvider.get(providerName);
+    if (applier == null) {
+      applier=applierLookup.newApplier(providerName,mode.needsIdempotencyChecks());
+      applier.visitIndexDefineCommand(defineCommand);
+      applierByProvider.put(providerName,applier);
+    }
+    applierByIndex.put(indexName,applier);
   }
   return applier;
 }
