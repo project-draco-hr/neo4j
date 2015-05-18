@@ -5,6 +5,7 @@
   long startTime=currentTimeMillis();
   boolean hasBadEntries=false;
   File badFile=new File(storeDir,Configuration.BAD_FILE_NAME);
+  CountingStoreUpdateMonitor storeUpdateMonitor=new CountingStoreUpdateMonitor();
   try (BatchingNeoStore neoStore=new BatchingNeoStore(fileSystem,storeDir,config,writeMonitor,logging,monitors,writerFactory,additionalInitialIds);OutputStream badOutput=new BufferedOutputStream(fileSystem.openAsOutputStream(badFile,false));Collector badCollector=input.badCollector(badOutput);CountsAccessor.Updater countsUpdater=neoStore.getCountsStore().reset(neoStore.getLastCommittedTransactionId());InputCache inputCache=new InputCache(fileSystem,storeDir)){
     IdMapper idMapper=input.idMapper();
     IdGenerator idGenerator=input.idGenerator();
@@ -12,7 +13,7 @@
     StatsProvider memoryUsageStats=new MemoryUsageStatsProvider(nodeRelationshipCache,idMapper);
     InputIterable<InputNode> nodes=input.nodes();
     InputIterable<InputRelationship> relationships=input.relationships();
-    NodeStage nodeStage=new NodeStage(config,writeMonitor,writerFactory,nodes,idMapper,idGenerator,neoStore,inputCache,neoStore.getLabelScanStore(),memoryUsageStats);
+    NodeStage nodeStage=new NodeStage(config,writeMonitor,writerFactory,nodes,idMapper,idGenerator,neoStore,inputCache,neoStore.getLabelScanStore(),storeUpdateMonitor,memoryUsageStats);
     CalculateDenseNodesStage calculateDenseNodesStage=new CalculateDenseNodesStage(config,relationships,nodeRelationshipCache,idMapper,badCollector,inputCache);
     if (idMapper.needsPreparation()) {
       executeStages(nodeStage);
@@ -23,7 +24,7 @@
       executeStages(nodeStage,calculateDenseNodesStage);
     }
     nodeRelationshipCache.fixateNodes();
-    final RelationshipStage relationshipStage=new RelationshipStage(config,writeMonitor,writerFactory,relationships.supportsMultiplePasses() ? relationships : inputCache.relationships(),idMapper,neoStore,nodeRelationshipCache,input.specificRelationshipIds());
+    final RelationshipStage relationshipStage=new RelationshipStage(config,writeMonitor,writerFactory,relationships.supportsMultiplePasses() ? relationships : inputCache.relationships(),idMapper,neoStore,nodeRelationshipCache,input.specificRelationshipIds(),storeUpdateMonitor);
     executeStages(relationshipStage);
     nodeRelationshipCache.fixateGroups();
     neoStore.flush();
@@ -37,9 +38,10 @@
     memoryUsageStats=new MemoryUsageStatsProvider(nodeLabelsCache);
     executeStages(new NodeCountsStage(config,nodeLabelsCache,neoStore.getNodeStore(),neoStore.getLabelRepository().getHighId(),countsUpdater,memoryUsageStats));
     executeStages(new RelationshipCountsStage(config,nodeLabelsCache,neoStore.getRelationshipStore(),neoStore.getLabelRepository().getHighId(),neoStore.getRelationshipTypeRepository().getHighId(),countsUpdater,AUTO));
+    writerFactory.awaitEverythingWritten();
     long totalTimeMillis=currentTimeMillis() - startTime;
-    executionMonitor.done(totalTimeMillis);
-    logger.info("Import completed, took " + Format.duration(totalTimeMillis));
+    executionMonitor.done(totalTimeMillis,storeUpdateMonitor.toString());
+    logger.info("IMPORT DONE in " + Format.duration(totalTimeMillis) + ". "+ storeUpdateMonitor);
     hasBadEntries=badCollector.badEntries() > 0;
     if (hasBadEntries) {
       logger.warn("There were " + badCollector.badEntries() + " bad entries which were skipped "+ "and logged into "+ badFile.getAbsolutePath());
