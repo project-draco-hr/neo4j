@@ -19,8 +19,13 @@
       inserter.shutdown();
     }
   }
-  GraphDatabaseService db=new TestGraphDatabaseFactory().setFileSystem(fileSystem).newImpermanentDatabase(tempStoreDir);
+  TestGraphDatabaseFactory factory=new TestGraphDatabaseFactory();
+  factory.setFileSystem(fileSystem);
+  GraphDatabaseService db=factory.newImpermanentDatabase(tempStoreDir);
   try (Transaction tx=db.beginTx()){
+    db.schema().awaitIndexesOnline(10,TimeUnit.SECONDS);
+  }
+   try (Transaction tx=db.beginTx()){
     Label personLabelForTesting=DynamicLabel.label("Person");
     Node mNode=db.findNode(personLabelForTesting,"name","Mattias");
     Node cNode=mNode.getSingleRelationship(DynamicRelationshipType.withName("KNOWS"),Direction.OUTGOING).getEndNode();
