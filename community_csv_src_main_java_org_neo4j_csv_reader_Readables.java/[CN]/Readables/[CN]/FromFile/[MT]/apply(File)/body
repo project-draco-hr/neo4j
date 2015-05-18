@@ -1,6 +1,6 @@
 {
-  int magic=magic(file);
-  if (magic == ZIP_MAGIC) {
+  Magic magic=Magic.of(file);
+  if (magic == Magic.ZIP) {
     ZipFile zipFile=new ZipFile(file);
     ZipEntry entry=getSingleSuitableEntry(zipFile);
     return new InputStreamReader(zipFile.getInputStream(entry),charset){
@@ -10,7 +10,7 @@
     }
 ;
   }
- else   if ((magic >>> 16) == GZIP_MAGIC) {
+ else   if (magic == Magic.GZIP) {
     GZIPInputStream zipStream=new GZIPInputStream(new FileInputStream(file));
     return new InputStreamReader(zipStream,charset){
       @Override public String toString(){
@@ -19,10 +19,18 @@
     }
 ;
   }
-  return new InputStreamReader(new FileInputStream(file),charset){
-    @Override public String toString(){
-      return file.getPath();
+ else {
+    InputStream in=new FileInputStream(file);
+    Charset usedCharset=this.charset;
+    if (magic.impliesEncoding()) {
+      in.skip(magic.length());
+      usedCharset=magic.encoding();
     }
-  }
+    return new InputStreamReader(in,usedCharset){
+      @Override public String toString(){
+        return file.getPath();
+      }
+    }
 ;
+  }
 }
