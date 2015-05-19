@@ -1,0 +1,23 @@
+{
+  FutureTask<String> task1=new FutureTask<>(NOOP,"1");
+  FutureTask<String> task2=new FutureTask<>(NOOP,"2");
+  FutureTask<String> task3=new FutureTask<>(NOOP,"3");
+  Future<List<String>> combined=Futures.combine(task1,task2,task3);
+  try {
+    combined.get(10,TimeUnit.MILLISECONDS);
+    fail("should have timedout");
+  }
+ catch (  TimeoutException e) {
+  }
+  task3.run();
+  task2.run();
+  try {
+    combined.get(10,TimeUnit.MILLISECONDS);
+    fail("should have timedout");
+  }
+ catch (  TimeoutException e) {
+  }
+  task1.run();
+  List<String> result=combined.get();
+  assertThat(result,contains("1","2","3"));
+}
