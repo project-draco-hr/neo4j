@@ -1,0 +1,16 @@
+{
+  Session sess=mock(Session.class);
+  ChannelHandlerContext ch=mock(ChannelHandlerContext.class);
+  SocketProtocolV1 protocol=new SocketProtocolV1(NullLog.getInstance(),sess);
+  for (  ByteBuf fragment : fragments) {
+    fragment.readerIndex(0).retain();
+    protocol.handle(ch,fragment);
+  }
+  try {
+    assertEquals(AWAITING_CHUNK,protocol.state());
+    verify(sess).run(eq("Mj??lnir"),any(Map.class),any(),any(Session.Callback.class));
+  }
+ catch (  AssertionError e) {
+    throw new AssertionError("Failed to handle fragmented delivery.\n" + "Messages: " + Arrays.toString(messages) + "\n"+ "Chunk size: "+ chunkSize+ "\n"+ "Serialized data delivered in fragments: "+ describeFragments(fragments)+ "\n"+ "Unfragmented data: "+ HexPrinter.hex(unfragmented)+ "\n",e);
+  }
+}
