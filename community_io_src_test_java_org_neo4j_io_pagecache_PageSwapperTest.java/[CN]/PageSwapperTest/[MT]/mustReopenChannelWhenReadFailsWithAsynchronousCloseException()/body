@@ -1,0 +1,24 @@
+{
+  long x=ThreadLocalRandom.current().nextLong();
+  long y=ThreadLocalRandom.current().nextLong();
+  int z=ThreadLocalRandom.current().nextInt();
+  ByteBufferPage page=createPage(cachePageSize);
+  File file=new File("a");
+  StoreChannel channel=fs.create(file);
+  ByteBuffer buf=ByteBuffer.allocate(cachePageSize);
+  buf.putLong(x);
+  buf.putLong(y);
+  buf.putInt(z);
+  buf.flip();
+  channel.writeAll(buf);
+  channel.close();
+  PageSwapperFactory swapperFactory=swapperFactory(fs);
+  PageSwapper swapper=swapperFactory.createPageSwapper(file,cachePageSize,NO_CALLBACK);
+  Thread.currentThread().interrupt();
+  swapper.read(0,page);
+  assertTrue(Thread.interrupted());
+  assertThat(page.getLong(0),is(x));
+  assertThat(page.getLong(8),is(y));
+  assertThat(page.getInt(16),is(z));
+  swapper.force();
+}
