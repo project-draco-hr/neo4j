@@ -10,7 +10,7 @@
   LogFile logFile=life.add(new PhysicalLogFile(fs,logFiles,1000,transactionIdStore,mock(LogVersionRepository.class),monitor,positionCache));
   life.start();
   try {
-    addATransactionAndRewind(logFile,positionCache,transactionIdStore,additionalHeader,masterId,authorId,timeStarted,latestCommittedTxWhenStarted,timeCommitted);
+    addATransactionAndRewind(life,logFile,positionCache,transactionIdStore,additionalHeader,masterId,authorId,timeStarted,latestCommittedTxWhenStarted,timeCommitted);
   }
   finally {
     life.shutdown();
@@ -34,8 +34,8 @@
   }
 );
   logFile=life.add(new PhysicalLogFile(fs,logFiles,1000,transactionIdStore,mock(LogVersionRepository.class),monitor,positionCache));
-  PhysicalLogicalTransactionStore store=new PhysicalLogicalTransactionStore(logFile,LogRotation.NO_ROTATION,positionCache,transactionIdStore,BYPASS,mock(KernelHealth.class));
-  life.add(store);
+  TransactionAppender appender=new BatchingTransactionAppender(logFile,NO_ROTATION,positionCache,transactionIdStore,BYPASS,kernelHealth);
+  life.add(appender);
   life.add(new Recovery(new Recovery.SPI(){
     @Override public void forceEverything(){
     }

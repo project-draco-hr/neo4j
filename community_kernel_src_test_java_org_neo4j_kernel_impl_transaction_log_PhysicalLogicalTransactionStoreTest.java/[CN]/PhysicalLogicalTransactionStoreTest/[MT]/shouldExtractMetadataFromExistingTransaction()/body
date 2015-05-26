@@ -10,7 +10,7 @@
   LogFile logFile=life.add(new PhysicalLogFile(fs,logFiles,1000,transactionIdStore,mock(LogVersionRepository.class),monitor,positionCache));
   life.start();
   try {
-    addATransactionAndRewind(logFile,positionCache,transactionIdStore,additionalHeader,masterId,authorId,timeStarted,latestCommittedTxWhenStarted,timeCommitted);
+    addATransactionAndRewind(life,logFile,positionCache,transactionIdStore,additionalHeader,masterId,authorId,timeStarted,latestCommittedTxWhenStarted,timeCommitted);
   }
   finally {
     life.shutdown();
@@ -34,7 +34,8 @@
   }
 );
   logFile=life.add(new PhysicalLogFile(fs,logFiles,1000,transactionIdStore,mock(LogVersionRepository.class),monitor,positionCache));
-  LogicalTransactionStore store=life.add(new PhysicalLogicalTransactionStore(logFile,LogRotation.NO_ROTATION,positionCache,transactionIdStore,BYPASS,mock(KernelHealth.class)));
+  TransactionAppender appender=life.add(new BatchingTransactionAppender(logFile,NO_ROTATION,positionCache,transactionIdStore,BYPASS,kernelHealth));
+  final LogicalTransactionStore store=new PhysicalLogicalTransactionStore(logFile,positionCache,appender);
   life.start();
   try {
     recoverer.visit(PhysicalLogFile.openForVersion(logFiles,fs,0));
