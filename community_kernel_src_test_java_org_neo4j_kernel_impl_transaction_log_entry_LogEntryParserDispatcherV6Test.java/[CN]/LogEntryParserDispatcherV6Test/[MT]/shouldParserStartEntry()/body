@@ -1,0 +1,15 @@
+{
+  final LogEntryStart start=new LogEntryStart(version,1,2,3,4,new byte[]{5},position);
+  final InMemoryLogChannel channel=new InMemoryLogChannel();
+  channel.putInt(start.getMasterId());
+  channel.putInt(start.getLocalId());
+  channel.putLong(start.getTimeWritten());
+  channel.putLong(start.getLastCommittedTxWhenTransactionStarted());
+  channel.putInt(start.getAdditionalHeader().length);
+  channel.put(start.getAdditionalHeader(),start.getAdditionalHeader().length);
+  channel.getCurrentPosition(marker);
+  final LogEntryParser parser=dispatcher.dispatch(LogEntryByteCodes.TX_START);
+  final LogEntry logEntry=parser.parse(version,channel,marker,commandReaderFactory);
+  assertEquals(start,logEntry);
+  assertFalse(parser.skip());
+}
