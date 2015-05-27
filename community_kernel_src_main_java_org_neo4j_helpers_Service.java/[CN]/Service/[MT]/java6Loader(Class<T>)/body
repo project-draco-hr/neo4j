@@ -1,9 +1,13 @@
 {
   try {
-    Iterable<T> contextClassLoaderServices=ServiceLoader.load(type);
-    Iterable<T> currentClassLoaderServices=ServiceLoader.load(type,Service.class.getClassLoader());
     HashMap<String,T> services=new HashMap<>();
-    putAllInstancesToMap(currentClassLoaderServices,services);
+    ClassLoader currentCL=Service.class.getClassLoader();
+    ClassLoader contextCL=Thread.currentThread().getContextClassLoader();
+    Iterable<T> contextClassLoaderServices=ServiceLoader.load(type,contextCL);
+    if (currentCL != contextCL) {
+      Iterable<T> currentClassLoaderServices=ServiceLoader.load(type,currentCL);
+      putAllInstancesToMap(currentClassLoaderServices,services);
+    }
     putAllInstancesToMap(contextClassLoaderServices,services);
     return services.values();
   }
