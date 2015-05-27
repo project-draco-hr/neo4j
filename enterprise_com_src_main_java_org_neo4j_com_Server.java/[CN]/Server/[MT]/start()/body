@@ -10,27 +10,16 @@
   ExecutorService workerExecutor=newCachedThreadPool(daemon("Worker-" + className));
   bootstrap=new ServerBootstrap(new NioServerSocketChannelFactory(bossExecutor,workerExecutor,config.getMaxConcurrentTransactions()));
   bootstrap.setPipelineFactory(this);
-  Channel channel=null;
-  socketAddress=null;
-  int[] ports=config.getServerAddress().getPorts();
-  ChannelException ex=null;
-  for (int port=ports[0]; port <= ports[1]; port++) {
-    if (config.getServerAddress().getHost() == null || config.getServerAddress().getHost().equals(INADDR_ANY)) {
-      socketAddress=new InetSocketAddress(port);
-    }
- else {
-      socketAddress=new InetSocketAddress(config.getServerAddress().getHost(),port);
-    }
-    try {
-      channel=bootstrap.bind(socketAddress);
-      ex=null;
-      break;
-    }
- catch (    ChannelException e) {
-      ex=e;
-    }
+  PortRangeSocketBinder portRangeSocketBinder=new PortRangeSocketBinder(bootstrap);
+  try {
+    Connection connection=portRangeSocketBinder.bindToFirstAvailablePortInRange(config.getServerAddress());
+    Channel channel=connection.getChannel();
+    socketAddress=connection.getSocketAddress();
+    channelGroup=new DefaultChannelGroup();
+    channelGroup.add(channel);
+    msgLog.info(className + " communication server started and bound to " + socketAddress);
   }
-  if (ex != null) {
+ catch (  Exception ex) {
     msgLog.error("Failed to bind server to " + socketAddress,ex);
     bootstrap.releaseExternalResources();
     targetCallExecutor.shutdownNow();
@@ -38,7 +27,4 @@
     silentChannelExecutor.shutdownNow();
     throw new IOException(ex);
   }
-  channelGroup=new DefaultChannelGroup();
-  channelGroup.add(channel);
-  msgLog.info(className + " communication server started and bound to " + socketAddress);
 }
