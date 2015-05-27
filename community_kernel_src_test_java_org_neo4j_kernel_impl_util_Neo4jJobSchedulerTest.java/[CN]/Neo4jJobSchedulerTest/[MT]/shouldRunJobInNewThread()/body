@@ -1,0 +1,19 @@
+{
+  life.start();
+  final CountDownLatch threadStarted=new CountDownLatch(1);
+  final CountDownLatch unblockThread=new CountDownLatch(1);
+  scheduler.schedule(new JobScheduler.Group("MyGroup",NEW_THREAD),waitForLatch(threadStarted,unblockThread),stringMap(THREAD_ID,"MyTestThread"));
+  threadStarted.await();
+  try {
+    String threadName="neo4j.MyGroup/MyTestThread";
+    for (    String name : threadNames()) {
+      if (name.equals(threadName)) {
+        return;
+      }
+    }
+    fail("Expected a thread named '" + threadName + "' in "+ threadNames());
+  }
+  finally {
+    unblockThread.countDown();
+  }
+}
