@@ -1,0 +1,21 @@
+{
+  final GraphDatabaseAPI api=dependencyResolver.resolveDependency(GraphDatabaseAPI.class);
+  final LogService logging=dependencyResolver.resolveDependency(LogService.class);
+  final JobScheduler scheduler=dependencyResolver.resolveDependency(JobScheduler.class);
+  final Log log=logging.getInternalLog(Sessions.class);
+  final HostnamePort socketAddress=config.get(ServerSettings.ndp_socket_address);
+  final HostnamePort webSocketAddress=config.get(ServerSettings.ndp_ws_address);
+  if (config.get(ServerSettings.ndp_enabled)) {
+    final Sessions sessions=life.add(new ThreadedSessions(life.add(new StandardSessions(api,log)),scheduler,logging));
+    PrimitiveLongObjectMap<Function<Channel,SocketProtocol>> availableVersions=longObjectMap();
+    availableVersions.put(SocketProtocolV1.VERSION,new Function<Channel,SocketProtocol>(){
+      @Override public SocketProtocol apply(      Channel channel){
+        return new SocketProtocolV1(log,sessions.newSession(),channel);
+      }
+    }
+);
+    life.add(new NettyServer(asList(new SocketTransport(socketAddress,availableVersions),new WebSocketTransport(webSocketAddress,availableVersions))));
+    log.info("NDP Server extension loaded.");
+  }
+  life.start();
+}
