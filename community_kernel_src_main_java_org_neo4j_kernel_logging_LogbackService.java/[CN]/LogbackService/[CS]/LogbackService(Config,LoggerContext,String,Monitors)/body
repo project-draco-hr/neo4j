@@ -8,6 +8,17 @@
     if (!file.exists()) {
       file.mkdirs();
     }
+    File configuredInternalLog=config.get(GraphDatabaseSettings.internal_log_location);
+    final File internalLog;
+    if (configuredInternalLog != null) {
+      internalLog=configuredInternalLog;
+      if (!internalLog.getParentFile().exists()) {
+        internalLog.getParentFile().mkdirs();
+      }
+    }
+ else {
+      internalLog=new File(storeDir,StringLogger.DEFAULT_NAME);
+    }
     loggingLife.add(new LifecycleAdapter(){
       @Override public void start() throws Throwable {
         JoranConfigurator configurator=new JoranConfigurator();
@@ -16,6 +27,7 @@
           loggerContext.putProperty("host",config.getParams().get("ha.server_id"));
         }
         loggerContext.putProperty("neo_store",storeDir.getPath());
+        loggerContext.putProperty("internal_log",internalLog.getPath());
         loggerContext.putProperty("remote_logging_enabled",config.get(GraphDatabaseSettings.remote_logging_enabled).toString());
         loggerContext.putProperty("remote_logging_host",config.get(GraphDatabaseSettings.remote_logging_host));
         loggerContext.putProperty("remote_logging_port",config.get(GraphDatabaseSettings.remote_logging_port).toString());
