@@ -2,7 +2,10 @@
   propertyRecords.close();
   long highestId=0;
   RECORD[] records=batch.records;
-  int propertyBlockCursor=0;
+  if (records.length == 0) {
+    return;
+  }
+  int propertyBlockCursor=0, skipped=0;
   for (int i=0; i < records.length; i++) {
     RECORD record=records[i];
     int propertyBlockCount=batch.propertyBlocksLengths[i];
@@ -22,6 +25,7 @@
       entityStore.updateRecord(record);
     }
  else {
+      skipped++;
     }
     propertyBlockCursor+=propertyBlockCount;
   }
@@ -29,4 +33,6 @@
   for (  PropertyRecord propertyRecord : propertyRecords.records()) {
     propertyStore.updateRecord(propertyRecord);
   }
+  monitor.entitiesWritten(records[0].getClass(),records.length - skipped);
+  monitor.propertiesWritten(propertyBlockCursor);
 }
