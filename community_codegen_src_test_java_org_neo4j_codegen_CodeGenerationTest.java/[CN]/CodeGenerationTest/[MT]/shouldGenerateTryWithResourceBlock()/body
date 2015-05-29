@@ -1,0 +1,17 @@
+{
+  ClassHandle handle;
+  try (ClassGenerator simple=generateClass("SimpleClass")){
+    try (CodeBlock arm=simple.generate(MethodDeclaration.method(void.class,"arm",param(ResourceFactory.class,"factory")).throwsException(Exception.class))){
+      try (CodeBlock block=arm.tryBlock(AutoCloseable.class,"resource",invoke(arm.load("factory"),methodReference(ResourceFactory.class,AutoCloseable.class,"resource")))){
+        block.expression(invoke(block.load("factory"),methodReference(ResourceFactory.class,void.class,"inside")));
+      }
+     }
+     handle=simple.handle();
+  }
+   ResourceFactory factory=new ResourceFactory();
+  MethodHandle arm=instanceMethod(handle.newInstance(),"arm",ResourceFactory.class);
+  arm.invoke(factory);
+  assertEquals(1,factory.open);
+  assertEquals(1,factory.inside);
+  assertEquals(1,factory.close);
+}
