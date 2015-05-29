@@ -1,0 +1,19 @@
+{
+  final AtomicLong callbackFilePageId=new AtomicLong();
+  final AtomicReference<Page> callbackPage=new AtomicReference<>();
+  PageEvictionCallback callback=new PageEvictionCallback(){
+    @Override public void onEvict(    long filePageId,    Page page){
+      callbackFilePageId.set(filePageId);
+      callbackPage.set(page);
+    }
+  }
+;
+  File file=new File("file");
+  ensureFileExists(file);
+  PageSwapperFactory factory=swapperFactory();
+  PageSwapper swapper=factory.createPageSwapper(file,cachePageSize(),callback);
+  Page page=createPage();
+  swapper.evicted(42,page);
+  assertThat(callbackFilePageId.get(),is(42L));
+  assertThat(callbackPage.get(),sameInstance(page));
+}
