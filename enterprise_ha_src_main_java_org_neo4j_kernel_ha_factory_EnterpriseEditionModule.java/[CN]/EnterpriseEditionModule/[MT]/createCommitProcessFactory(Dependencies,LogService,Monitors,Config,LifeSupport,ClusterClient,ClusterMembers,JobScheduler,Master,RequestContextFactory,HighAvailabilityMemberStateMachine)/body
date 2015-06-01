@@ -4,12 +4,12 @@
   Slaves slaves=dependencies.satisfyDependency(life.add(new HighAvailabilitySlaves(members,clusterClient,slaveFactory)));
   final TransactionPropagator pusher=life.add(new TransactionPropagator(TransactionPropagator.from(config),logging.getInternalLog(TransactionPropagator.class),slaves,new CommitPusher(jobScheduler)));
   return new CommitProcessFactory(){
-    @Override public TransactionCommitProcess create(    LogicalTransactionStore logicalTransactionStore,    KernelHealth kernelHealth,    NeoStore neoStore,    TransactionRepresentationStoreApplier storeApplier,    NeoStoreInjectedTransactionValidator txValidator,    IndexUpdatesValidator indexUpdatesValidator,    TransactionApplicationMode mode,    Config config){
+    @Override public TransactionCommitProcess create(    TransactionAppender appender,    KernelHealth kernelHealth,    NeoStore neoStore,    TransactionRepresentationStoreApplier storeApplier,    NeoStoreInjectedTransactionValidator txValidator,    IndexUpdatesValidator indexUpdatesValidator,    TransactionApplicationMode mode,    Config config){
       if (config.get(GraphDatabaseSettings.read_only)) {
         return new ReadOnlyTransactionCommitProcess();
       }
  else {
-        TransactionCommitProcess inner=new TransactionRepresentationCommitProcess(logicalTransactionStore,kernelHealth,neoStore,storeApplier,indexUpdatesValidator,mode);
+        TransactionCommitProcess inner=new TransactionRepresentationCommitProcess(appender,kernelHealth,neoStore,storeApplier,indexUpdatesValidator,mode);
         new CommitProcessSwitcher(pusher,master,commitProcessDelegate,requestContextFactory,memberStateMachine,txValidator,inner);
         return (TransactionCommitProcess)Proxy.newProxyInstance(TransactionCommitProcess.class.getClassLoader(),new Class[]{TransactionCommitProcess.class},commitProcessDelegate);
       }

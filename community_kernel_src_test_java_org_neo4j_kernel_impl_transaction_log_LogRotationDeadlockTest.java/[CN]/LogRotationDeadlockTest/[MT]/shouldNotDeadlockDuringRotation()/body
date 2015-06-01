@@ -12,16 +12,15 @@
 ;
   KernelHealth health=mock(KernelHealth.class);
   LogRotationImpl rotation=new LogRotationImpl(mock(LogRotation.Monitor.class),logFile,rotationControl,health,NullLogProvider.getInstance());
-  TransactionAppender appender=new BatchingTransactionAppender(logFile,rotation,new TransactionMetadataCache(10,10),txIdStore,mock(IdOrderingQueue.class),health){
+  TransactionAppender appender=life.add(new BatchingTransactionAppender(logFile,rotation,new TransactionMetadataCache(10,10),txIdStore,mock(IdOrderingQueue.class),health){
     @Override protected void forceAfterAppend(    LogAppendEvent logAppendEvent) throws IOException {
       inBetweenCommittedAndClosed.reached();
       super.forceAfterAppend(logAppendEvent);
     }
   }
-;
-  LogicalTransactionStore txStore=mock(LogicalTransactionStore.class);
-  when(txStore.getAppender()).thenReturn(appender);
-  TransactionCommitProcess commitProcess=new TransactionRepresentationCommitProcess(txStore,health,txIdStore,mock(TransactionRepresentationStoreApplier.class),mock(IndexUpdatesValidator.class),TransactionApplicationMode.INTERNAL);
+);
+  life.start();
+  TransactionCommitProcess commitProcess=new TransactionRepresentationCommitProcess(appender,health,txIdStore,mock(TransactionRepresentationStoreApplier.class),mock(IndexUpdatesValidator.class),TransactionApplicationMode.INTERNAL);
   Future<Void> appendFuture=committer.execute(commitArbitraryTransaction(commitProcess));
   inBetweenCommittedAndClosed.await();
   when(logFile.rotationNeeded()).thenReturn(true);

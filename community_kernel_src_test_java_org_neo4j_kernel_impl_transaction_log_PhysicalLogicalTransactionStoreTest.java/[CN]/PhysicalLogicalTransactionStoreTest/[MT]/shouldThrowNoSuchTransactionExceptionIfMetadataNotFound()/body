@@ -1,12 +1,18 @@
 {
   LogFile logFile=mock(LogFile.class);
   TransactionMetadataCache cache=new TransactionMetadataCache(10,10);
-  TransactionIdStore txIdStore=mock(TransactionIdStore.class);
-  LogicalTransactionStore txStore=new PhysicalLogicalTransactionStore(logFile,LogRotation.NO_ROTATION,cache,txIdStore,BYPASS,mock(KernelHealth.class));
+  LifeSupport life=new LifeSupport();
+  final LogicalTransactionStore txStore=new PhysicalLogicalTransactionStore(logFile,cache);
   try {
-    txStore.getMetadataFor(10);
-    fail("Should have thrown");
+    life.start();
+    try {
+      txStore.getMetadataFor(10);
+      fail("Should have thrown");
+    }
+ catch (    NoSuchTransactionException e) {
+    }
   }
- catch (  NoSuchTransactionException e) {
+  finally {
+    life.shutdown();
   }
 }
