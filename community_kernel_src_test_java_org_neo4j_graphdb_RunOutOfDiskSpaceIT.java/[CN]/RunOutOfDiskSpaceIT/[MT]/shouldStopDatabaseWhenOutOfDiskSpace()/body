@@ -1,12 +1,18 @@
 {
   TransactionFailureException errorCaught=null;
-  LimitedFileSystemGraphDatabase db=cleanup.add(new LimitedFileSystemGraphDatabase());
+  String storeDir=testDirectory.absolutePath();
+  LimitedFileSystemGraphDatabase db=new LimitedFileSystemGraphDatabase(storeDir);
+  try (Transaction tx=db.beginTx()){
+    db.createNode();
+    tx.success();
+  }
+   long logVersion=db.getDependencyResolver().resolveDependency(NeoStore.class).getCurrentLogVersion();
   db.runOutOfDiskSpaceNao();
   Transaction tx=db.beginTx();
   db.createNode();
   tx.success();
   try {
-    tx.finish();
+    tx.close();
     fail("Expected tx finish to throw TransactionFailureException when filesystem is full.");
   }
  catch (  TransactionFailureException e) {
@@ -20,4 +26,6 @@
   }
   assertThat(errorCaught.getCause(),is(instanceOf(org.neo4j.kernel.api.exceptions.TransactionFailureException.class)));
   db.somehowGainMoreDiskSpace();
+  db.shutdown();
+  assertEquals(logVersion,new NeoStoreUtil(new File(storeDir),db.getFileSystem()).getLogVersion());
 }
