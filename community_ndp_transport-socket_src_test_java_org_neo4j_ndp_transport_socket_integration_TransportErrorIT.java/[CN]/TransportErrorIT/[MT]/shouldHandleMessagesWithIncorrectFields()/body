@@ -1,0 +1,12 @@
+{
+  final RecordingByteChannel rawData=new RecordingByteChannel();
+  final PackStream.Packer packer=new PackStream.Packer(new BufferedChannelOutput(rawData));
+  packer.packStructHeader(2,(char)PackStreamMessageFormatV1.MessageTypes.MSG_RUN);
+  packer.pack("RETURN 1");
+  packer.pack(1234);
+  packer.flush();
+  byte[] invalidMessage=rawData.getBytes();
+  client.connect(address).send(acceptedVersions(1,0,0,0)).send(chunk(32,invalidMessage));
+  assertThat(client,eventuallyRecieves(new byte[]{0,0,0,1}));
+  assertThat(client,eventuallyRecieves(msgFailure(new Neo4jError(Status.Request.InvalidFormat,"Unable to read MSG_RUN message. Error was: Wrong type received. Expected MAP, received: " + "INTEGER (0xff)."))));
+}

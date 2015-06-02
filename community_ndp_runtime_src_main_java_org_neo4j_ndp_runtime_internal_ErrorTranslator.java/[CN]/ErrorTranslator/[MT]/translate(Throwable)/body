@@ -1,15 +1,11 @@
 {
-  if (any instanceof KernelException) {
-    return new Neo4jError(((KernelException)any).status(),any.getMessage());
-  }
- else   if (any instanceof CypherException) {
-    return new Neo4jError(((CypherException)any).status(),any.getMessage());
-  }
- else {
-    if (any.getCause() != null) {
-      return translate(any.getCause());
+  for (Throwable cause=any; cause != null; cause=cause.getCause()) {
+    if (cause instanceof Status.HasStatus) {
+      return new Neo4jError(((Status.HasStatus)cause).status(),any.getMessage());
     }
-    log.warn("Client triggered unknown error: " + any.getMessage(),any);
-    return new Neo4jError(Status.General.UnknownFailure,"An unexpected failure occurred: '" + any.getMessage() + "'.");
   }
+  String reference=UUID.randomUUID().toString();
+  userLog.error(String.format("Client triggered unexpected error. Help us fix this error by emailing the " + "following report to issues@neotechnology.com: %n%s",generateReport(any,reference)),any);
+  internalLog.error(String.format("Client triggered unexpected error, reference %s.",reference),any);
+  return new Neo4jError(Status.General.UnknownFailure,String.format("An unexpected failure occurred, see details in the database " + "logs, reference number %s.%n%s",reference,Exceptions.stringify(any)));
 }
