@@ -2,15 +2,21 @@
   if (!life.isRunning()) {
     return;
   }
-  LogRotationControl logRotationControl=transactionLogModule.logRotationControl();
-  logRotationControl.awaitAllTransactionsClosed();
+  StoreFlusher storeFlusher=transactionLogModule.storeFlusher();
+  CheckPointer checkPointer=transactionLogModule.checkPointing();
+  awaitAllTransactionsClosed();
   LogFile logFile=transactionLogModule.logFile();
 synchronized (logFile) {
 synchronized (logFile.getWriter()) {
-      logRotationControl.awaitAllTransactionsClosed();
-      logRotationControl.forceEverything();
+      awaitAllTransactionsClosed();
+      storeFlusher.forceEverything();
       if (kernelHealth.isHealthy()) {
-        neoStoreModule.neoStore().incrementAndGetVersion();
+        try {
+          checkPointer.forceCheckPoint();
+        }
+ catch (        IOException e) {
+          throw new UnderlyingStorageException(e);
+        }
       }
       life.shutdown();
       neoStoreModule.neoStore().close();

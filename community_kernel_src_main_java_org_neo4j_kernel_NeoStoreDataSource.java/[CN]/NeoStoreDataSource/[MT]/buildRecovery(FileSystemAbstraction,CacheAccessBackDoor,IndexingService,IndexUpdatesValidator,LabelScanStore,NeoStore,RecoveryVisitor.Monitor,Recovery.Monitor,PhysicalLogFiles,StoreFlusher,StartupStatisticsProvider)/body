@@ -1,0 +1,19 @@
+{
+  final RecoveryLabelScanWriterProvider labelScanWriters=new RecoveryLabelScanWriterProvider(labelScanStore,1000);
+  final RecoveryLegacyIndexApplierLookup legacyIndexApplierLookup=new RecoveryLegacyIndexApplierLookup(new LegacyIndexApplierLookup.Direct(legacyIndexProviderLookup),1000);
+  final TransactionRepresentationStoreApplier storeRecoverer=new TransactionRepresentationStoreApplier(indexingService,labelScanWriters,neoStore,cacheAccess,lockService,legacyIndexApplierLookup,indexConfigStore,IdOrderingQueue.BYPASS);
+  RecoveryVisitor recoveryVisitor=new RecoveryVisitor(neoStore,storeRecoverer,indexUpdatesValidator,recoveryVisitorMonitor);
+  LogEntryReader<ReadableVersionableLogChannel> logEntryReader=new LogEntryReaderFactory().versionable();
+  final Visitor<LogVersionedStoreChannel,IOException> logFileRecoverer=new LogFileRecoverer(logEntryReader,recoveryVisitor);
+  final LatestCheckPointFinder checkPointFinder=new LatestCheckPointFinder(logFiles,fileSystemAbstraction,logEntryReader);
+  Recovery.SPI spi=new DefaultRecoverySPI(labelScanWriters,legacyIndexApplierLookup,storeFlusher,logFileRecoverer,logFiles,fileSystemAbstraction,neoStore,checkPointFinder);
+  Recovery recovery=new Recovery(spi,recoveryMonitor);
+  life.add(recovery);
+  life.add(new LifecycleAdapter(){
+    @Override public void start() throws Throwable {
+      startupStatistics.setNumberOfRecoveredTransactions(recoveredCount.get());
+      recoveredCount.set(0);
+    }
+  }
+);
+}

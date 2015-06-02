@@ -4,11 +4,16 @@
     return false;
   }
   PhysicalLogFiles logFiles=new PhysicalLogFiles(dataDir,fs);
-  File log=logFiles.getLogFileForVersion(currentLogVersion);
-  if (!fs.fileExists(log)) {
-    return false;
+  LogEntryReader<ReadableVersionableLogChannel> reader=new LogEntryReaderFactory().versionable();
+  LatestCheckPointFinder finder=new LatestCheckPointFinder(logFiles,fs,reader);
+  LatestCheckPointFinder.LatestCheckPoint result=finder.find(currentLogVersion);
+  if (result.checkPoint == null) {
+    if (result.oldestLogVersionFound == 0) {
+      return true;
+    }
+ else {
+      throw new UnderlyingStorageException("No check point found in any log file from version " + Math.max(INITIAL_LOG_VERSION,result.oldestLogVersionFound) + " to "+ currentLogVersion);
+    }
   }
-  try (StoreChannel logChannel=fs.open(log,"r")){
-    return LogRecoveryCheck.recoveryRequired(logChannel);
-  }
- }
+  return result.commitsAfterCheckPoint;
+}

@@ -9,7 +9,7 @@
   when(transactionIdStore.nextCommittingTransactionId()).thenReturn(txId);
   IdOrderingQueue idOrderingQueue=mock(IdOrderingQueue.class);
   doThrow(new RuntimeException(failureMessage)).when(idOrderingQueue).waitFor(anyLong());
-  TransactionAppender appender=life.add(new BatchingTransactionAppender(logFile,NO_ROTATION,metadataCache,transactionIdStore,idOrderingQueue,kernelHealth));
+  TransactionAppender appender=life.add(new BatchingTransactionAppender(logFile,NO_ROTATION,NO_CHECKPOINT,Consumers.LNOOP,metadataCache,transactionIdStore,idOrderingQueue,kernelHealth));
   life.start();
   TransactionRepresentation transaction=transactionWithLegacyIndexCommand();
   try {
@@ -19,7 +19,7 @@
  catch (  Exception e) {
     assertTrue(contains(e,failureMessage,RuntimeException.class));
     verify(transactionIdStore,times(1)).nextCommittingTransactionId();
-    verify(transactionIdStore,times(1)).transactionCommitted(eq(txId),anyLong());
+    verify(transactionIdStore,times(1)).transactionCommitted(eq(txId),anyLong(),anyLong(),anyLong());
     verify(transactionIdStore,times(1)).transactionClosed(txId);
     verifyNoMoreInteractions(transactionIdStore);
   }

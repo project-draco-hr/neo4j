@@ -1,0 +1,16 @@
+{
+  PhysicalLogFiles logFiles=new PhysicalLogFiles(storeDir,fileSystem);
+  File logFileForVersion=logFiles.getLogFileForVersion(logVersion);
+  if (!fileSystem.fileExists(logFileForVersion)) {
+    fileSystem.create(logFileForVersion);
+    writeLogHeader(fileSystem,logFileForVersion,logVersion,lastCommittedTx);
+  }
+  try (LogVersionedStoreChannel storeChannel=PhysicalLogFile.openForVersion(logFiles,fileSystem,logVersion)){
+    long offset=storeChannel.size();
+    storeChannel.position(offset);
+    try (PhysicalWritableLogChannel channel=new PhysicalWritableLogChannel(storeChannel)){
+      final TransactionLogWriter writer=new TransactionLogWriter(new LogEntryWriterV1(channel,new CommandWriter(channel)));
+      writer.checkPoint(new LogPosition(logVersion,offset));
+    }
+   }
+ }
