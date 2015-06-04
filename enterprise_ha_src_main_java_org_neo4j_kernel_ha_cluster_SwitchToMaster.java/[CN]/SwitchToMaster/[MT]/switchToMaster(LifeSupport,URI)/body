@@ -2,16 +2,13 @@
   userLog.info("I am %s, moving to master",myId());
 {
     idGeneratorFactory.switchToMaster();
-    NeoStoreDataSource neoStoreXaDataSource=dataSourceManager.getDataSource();
+    NeoStoreDataSource neoStoreXaDataSource=dataSourceSupplier.get();
     neoStoreXaDataSource.afterModeSwitch();
-    MasterImpl.SPI spi=new DefaultMasterImplSPI(graphDb);
-    MasterImpl masterImpl=new MasterImpl(spi,masterImplMonitor,config);
-    DependencyResolver resolver=neoStoreXaDataSource.getDependencyResolver();
-    TransactionChecksumLookup txChecksumLookup=new TransactionChecksumLookup(resolver.resolveDependency(TransactionIdStore.class),resolver.resolveDependency(LogicalTransactionStore.class));
-    MasterServer masterServer=new MasterServer(masterImpl,logService.getInternalLogProvider(),serverConfig(),new BranchDetectingTxVerifier(logService.getInternalLogProvider(),txChecksumLookup),masterByteCounterMonitor,masterRequestMonitor);
-    haCommunicationLife.add(masterImpl);
+    Master master=masterFactory.newInstance();
+    MasterServer masterServer=masterServerFactory.apply(master);
+    haCommunicationLife.add(master);
     haCommunicationLife.add(masterServer);
-    masterDelegateHandler.setDelegate(masterImpl);
+    masterDelegateHandler.setDelegate(master);
     haCommunicationLife.start();
     URI masterHaURI=getMasterUri(me,masterServer);
     clusterMemberAvailability.memberIsAvailable(MASTER,masterHaURI,neoStoreXaDataSource.getStoreId());

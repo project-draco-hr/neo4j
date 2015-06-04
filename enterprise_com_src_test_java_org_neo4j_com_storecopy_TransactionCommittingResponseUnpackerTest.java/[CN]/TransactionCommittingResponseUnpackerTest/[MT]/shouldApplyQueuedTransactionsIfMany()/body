@@ -1,19 +1,13 @@
 {
-  DependencyResolver dependencyResolver=mock(DependencyResolver.class);
-  TransactionIdStore txIdStore=mock(TransactionIdStore.class);
-  when(dependencyResolver.resolveDependency(TransactionIdStore.class)).thenReturn(txIdStore);
-  TransactionAppender appender=mockedTransactionAppender();
-  when(dependencyResolver.resolveDependency(TransactionAppender.class)).thenReturn(appender);
-  LogicalTransactionStore logicalTransactionStore=mock(LogicalTransactionStore.class);
-  when(dependencyResolver.resolveDependency(LogicalTransactionStore.class)).thenReturn(logicalTransactionStore);
-  when(dependencyResolver.resolveDependency(TransactionRepresentationStoreApplier.class)).thenReturn(mock(TransactionRepresentationStoreApplier.class));
-  setUpIndexUpdatesValidatorMocking(dependencyResolver);
-  LogFile logFile=mock(LogFile.class);
-  when(dependencyResolver.resolveDependency(LogFile.class)).thenReturn(logFile);
-  LogRotation logRotation=mock(LogRotation.class);
-  when(dependencyResolver.resolveDependency(LogRotation.class)).thenReturn(logRotation);
+  final TransactionIdStore txIdStore=mock(TransactionIdStore.class);
+  final TransactionRepresentationStoreApplier applier=mock(TransactionRepresentationStoreApplier.class);
+  final TransactionAppender appender=mockedTransactionAppender();
+  final IndexUpdatesValidator indexUpdatesValidator=setUpIndexUpdatesValidatorMocking();
+  final LogFile logFile=mock(LogFile.class);
+  final LogRotation logRotation=mock(LogRotation.class);
+  TransactionCommittingResponseUnpacker.Dependencies deps=buildDependencies(txIdStore,logFile,null,logRotation,indexUpdatesValidator,applier,appender,mock(TransactionObligationFulfiller.class));
   int maxBatchSize=3;
-  TransactionCommittingResponseUnpacker unpacker=new TransactionCommittingResponseUnpacker(dependencyResolver,maxBatchSize);
+  TransactionCommittingResponseUnpacker unpacker=new TransactionCommittingResponseUnpacker(deps,maxBatchSize);
   unpacker.start();
   int txCount=maxBatchSize * 2 - 1;
   unpacker.unpackResponse(new DummyTransactionResponse(2,txCount,appender,maxBatchSize),NO_OP_TX_HANDLER);
