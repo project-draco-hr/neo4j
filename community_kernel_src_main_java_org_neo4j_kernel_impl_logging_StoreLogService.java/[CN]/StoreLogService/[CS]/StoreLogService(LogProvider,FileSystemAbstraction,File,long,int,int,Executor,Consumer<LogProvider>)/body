@@ -1,24 +1,16 @@
 {
-  File internalLogLocation=config.get(GraphDatabaseSettings.internal_log_location);
-  final File logFile;
-  if (internalLogLocation != null) {
-    logFile=internalLogLocation;
-    if (!logFile.getParentFile().exists()) {
-      logFile.getParentFile().mkdirs();
-    }
-  }
- else {
-    logFile=new File(storeDir,StoreLogService.INTERNAL_LOG_NAME);
+  if (!internalLog.getParentFile().exists()) {
+    internalLog.getParentFile().mkdirs();
   }
   FormattedLogProvider internalLogProvider;
   if (internalLogRotationThreshold == 0) {
-    OutputStream outputStream=createOrOpenAsOuputStream(fileSystem,logFile,true);
+    OutputStream outputStream=createOrOpenAsOuputStream(fileSystem,internalLog,true);
     internalLogProvider=FormattedLogProvider.withUTCTimeZone().toOutputStream(outputStream);
     rotationListener.accept(internalLogProvider);
     this.closeable=outputStream;
   }
  else {
-    RotatingFileOutputStreamSupplier rotatingSupplier=new RotatingFileOutputStreamSupplier(fileSystem,logFile,internalLogRotationThreshold,internalLogRotationDelay,maxInternalLogArchives,rotationExecutor,new RotatingFileOutputStreamSupplier.RotationListener(){
+    RotatingFileOutputStreamSupplier rotatingSupplier=new RotatingFileOutputStreamSupplier(fileSystem,internalLog,internalLogRotationThreshold,internalLogRotationDelay,maxInternalLogArchives,rotationExecutor,new RotatingFileOutputStreamSupplier.RotationListener(){
       @Override public void outputFileCreated(      OutputStream newStream,      OutputStream oldStream){
         FormattedLogProvider logProvider=FormattedLogProvider.withUTCTimeZone().toOutputStream(newStream);
         logProvider.getLog(StoreLogService.class).info("Opened new internal log file");
