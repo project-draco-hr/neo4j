@@ -1,0 +1,47 @@
+{
+  NodeRecord node=nodeStore.loadRecord(nodeId,null);
+  if (node == null) {
+    return true;
+  }
+  if (node.isDense()) {
+    long groupId=node.getNextRel();
+    while (groupId != Record.NO_NEXT_RELATIONSHIP.intValue()) {
+      RelationshipGroupRecord group=relationshipGroupStore.getRecord(groupId);
+      long outCount=countByFirstPrevPointer(nodeId,group.getFirstOut());
+      long inCount=countByFirstPrevPointer(nodeId,group.getFirstIn());
+      long loopCount=countByFirstPrevPointer(nodeId,group.getFirstLoop());
+      visitor.visitDegree(group.getType(),(int)(outCount + loopCount),(int)(inCount + loopCount));
+      groupId=group.getNext();
+    }
+  }
+ else {
+    final PrimitiveIntObjectMap<int[]> degrees=Primitive.intObjectMap(5);
+    RelationshipVisitor<RuntimeException> typeVisitor=new RelationshipVisitor<RuntimeException>(){
+      @Override public void visit(      long relId,      int type,      long startNode,      long endNode) throws RuntimeException {
+        int[] byType=degrees.get(type);
+        if (byType == null) {
+          degrees.put(type,byType=new int[3]);
+        }
+        byType[directionOf(nodeId,relId,startNode,endNode).ordinal()]++;
+      }
+    }
+;
+    RelationshipIterator relationships;
+    try {
+      relationships=nodeListRelationships(statement,nodeId,Direction.BOTH);
+      while (relationships.hasNext()) {
+        relationships.relationshipVisit(relationships.next(),typeVisitor);
+      }
+      degrees.visitEntries(new PrimitiveIntObjectVisitor<int[],RuntimeException>(){
+        @Override public boolean visited(        int type,        int[] degrees) throws RuntimeException {
+          visitor.visitDegree(type,degrees[0] + degrees[2],degrees[1] + degrees[2]);
+          return false;
+        }
+      }
+);
+    }
+ catch (    EntityNotFoundException e) {
+    }
+  }
+  return false;
+}

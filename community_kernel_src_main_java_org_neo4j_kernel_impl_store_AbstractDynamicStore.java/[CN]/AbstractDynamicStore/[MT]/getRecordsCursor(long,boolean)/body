@@ -1,0 +1,43 @@
+{
+  try {
+    final PageCursor cursor=storeFile.io(0,PF_SHARED_LOCK);
+    return new GenericCursor<DynamicRecord>(){
+      long blockId=startBlockId;
+      int noNextBlock=Record.NO_NEXT_BLOCK.intValue();
+      @Override public boolean next(){
+        try {
+          if (blockId != noNextBlock && cursor.next(pageIdForRecord(blockId))) {
+            DynamicRecord record=new DynamicRecord(blockId);
+            int headerReadResult;
+            do {
+              cursor.setOffset(offsetForId(blockId));
+              headerReadResult=readRecordHeader(cursor,record,false);
+              if (headerReadResult == hasDataSignal && readBothHeaderAndData) {
+                readRecordData(cursor,record);
+              }
+            }
+ while (cursor.shouldRetry());
+            checkForInUse(headerReadResult,record);
+            checkForIllegalSize(headerReadResult,record);
+            current=record;
+            blockId=record.getNextBlock();
+            return true;
+          }
+ else {
+            return false;
+          }
+        }
+ catch (        IOException e) {
+          throw new UnderlyingStorageException(e);
+        }
+      }
+      @Override public void close(){
+        cursor.close();
+      }
+    }
+;
+  }
+ catch (  IOException e) {
+    throw new UnderlyingStorageException(e);
+  }
+}

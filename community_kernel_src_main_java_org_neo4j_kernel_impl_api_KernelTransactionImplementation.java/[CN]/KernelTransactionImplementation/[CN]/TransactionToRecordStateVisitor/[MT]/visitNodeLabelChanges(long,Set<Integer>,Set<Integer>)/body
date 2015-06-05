@@ -1,24 +1,26 @@
 {
-  if (!(added.isEmpty() && removed.isEmpty())) {
-    for (    Integer label : added) {
-      counts.incrementNodeCount(label,1);
-    }
-    for (    Integer label : removed) {
-      counts.incrementNodeCount(label,-1);
-    }
-    storeLayer.nodeVisitDegrees(id,new DegreeVisitor(){
-      @Override public void visitDegree(      int type,      int outgoing,      int incoming){
-        for (        Integer label : added) {
-          updateRelationshipsCountsFromDegrees(type,label,outgoing,incoming);
-        }
-        for (        Integer label : removed) {
-          updateRelationshipsCountsFromDegrees(type,label,-outgoing,-incoming);
+  try (StoreStatement statement=storeLayer.acquireStatement()){
+    if (!(added.isEmpty() && removed.isEmpty())) {
+      for (      Integer label : added) {
+        counts.incrementNodeCount(label,1);
+      }
+      for (      Integer label : removed) {
+        counts.incrementNodeCount(label,-1);
+      }
+      storeLayer.nodeVisitDegrees(statement,id,new DegreeVisitor(){
+        @Override public void visitDegree(        int type,        int outgoing,        int incoming){
+          for (          Integer label : added) {
+            updateRelationshipsCountsFromDegrees(type,label,outgoing,incoming);
+          }
+          for (          Integer label : removed) {
+            updateRelationshipsCountsFromDegrees(type,label,-outgoing,-incoming);
+          }
         }
       }
-    }
 );
+    }
   }
-  for (  Integer label : removed) {
+   for (  Integer label : removed) {
     recordState.removeLabelFromNode(label,id);
   }
   for (  Integer label : added) {
