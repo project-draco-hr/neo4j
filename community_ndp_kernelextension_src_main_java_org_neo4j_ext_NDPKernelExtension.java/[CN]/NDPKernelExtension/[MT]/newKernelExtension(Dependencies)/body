@@ -8,7 +8,10 @@
   final HostnamePort webSocketAddress=config.get(Settings.ndp_ws_address);
   final LifeSupport life=new LifeSupport();
   if (config.get(Settings.ndp_enabled)) {
-    final Sessions sessions=life.add(new ThreadedSessions(life.add(new StandardSessions(api,dependencies.usageData(),logging)),dependencies.scheduler(),logging));
+    final JobScheduler scheduler=dependencies.scheduler();
+    final Sessions sessions=life.add(new ThreadedSessions(life.add(new StandardSessions(api,dependencies.usageData(),logging)),scheduler,logging));
+    SelfSignedCertificate ssc=new SelfSignedCertificate();
+    SslContext sslCtx=SslContextBuilder.forServer(ssc.certificate(),ssc.privateKey()).build();
     PrimitiveLongObjectMap<Function<Channel,SocketProtocol>> availableVersions=longObjectMap();
     availableVersions.put(SocketProtocolV1.VERSION,new Function<Channel,SocketProtocol>(){
       @Override public SocketProtocol apply(      Channel channel){
@@ -16,7 +19,7 @@
       }
     }
 );
-    life.add(new NettyServer(asList(new SocketTransport(socketAddress,availableVersions),new WebSocketTransport(webSocketAddress,availableVersions))));
+    life.add(new NettyServer(scheduler.threadFactory(gapNetworkIO),asList(new SocketTransport(socketAddress,sslCtx,logging.getInternalLogProvider(),availableVersions),new WebSocketTransport(webSocketAddress,sslCtx,logging.getInternalLogProvider(),availableVersions))));
     log.info("NDP Server extension loaded.");
   }
   return life;
