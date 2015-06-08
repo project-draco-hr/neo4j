@@ -6,13 +6,21 @@
   kernelHealth.assertHealthy(IOException.class);
   msgLog.info(prefix(lastCommittedTransactionId) + " Starting store flush...");
   storeFlusher.forceEverything();
+synchronized (logFile) {
 synchronized (channel) {
-    kernelHealth.assertHealthy(IOException.class);
-    transactionLogWriter.checkPoint(logPosition);
-    channel.emptyBufferIntoChannelAndClearIt();
-    channel.force();
+      kernelHealth.assertHealthy(IOException.class);
+      try {
+        transactionLogWriter.checkPoint(logPosition);
+        channel.emptyBufferIntoChannelAndClearIt();
+        channel.force();
+      }
+ catch (      Throwable t) {
+        kernelHealth.panic(t);
+        throw t;
+      }
+    }
   }
-  enabler.checkPointHappened();
+  threshold.checkPointHappened(lastCommittedTransactionId);
   msgLog.info(prefix(lastCommittedTransactionId) + "Check pointing completed");
   logPruning.pruneLogs(logPosition.getLogVersion());
 }

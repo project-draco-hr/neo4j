@@ -1,20 +1,21 @@
 {
-  CheckPointerImpl checkPointing=new CheckPointerImpl(logFile,txIdStore,enabler,flusher,logPruning,health,NULL);
+  CheckPointerImpl checkPointing=new CheckPointerImpl(txIdStore,threshold,flusher,logPruning,health,NULL_LOG_PROVIDER,tracer,logFile);
   WritableLogChannel channel=spy(new InMemoryLogChannel());
   when(logFile.getWriter()).thenReturn(channel);
   when(logFile.currentLogVersion()).thenReturn(17l);
-  checkPointing.start();
-  when(enabler.isCheckPointingNeeded()).thenReturn(true,true,false);
+  when(threshold.isCheckPointingNeeded()).thenReturn(true,false);
   when(txIdStore.getLastCommittedTransaction()).thenReturn(new long[]{42l,0l,16l,233l});
-  checkPointing.checkPointIfNeeded(logAppendEvent);
+  checkPointing.start();
+  checkPointing.checkPointIfNeeded();
   verify(flusher,times(1)).forceEverything();
   verify(health,times(2)).assertHealthy(IOException.class);
   verify(channel,atLeastOnce()).put(anyByte());
   verify(channel,atLeastOnce()).putLong(anyLong());
   verify(channel,times(1)).emptyBufferIntoChannelAndClearIt();
   verify(channel,times(1)).force();
-  verify(enabler,times(1)).checkPointHappened();
-  verify(enabler,times(2)).isCheckPointingNeeded();
+  verify(threshold,times(1)).checkPointHappened(42l);
+  verify(threshold,times(1)).isCheckPointingNeeded();
   verify(logPruning,times(1)).pruneLogs(16l);
-  verifyNoMoreInteractions(flusher,health,channel,enabler);
+  verify(tracer,times(1)).beginCheckPoint();
+  verifyNoMoreInteractions(flusher,health,channel,threshold,tracer);
 }

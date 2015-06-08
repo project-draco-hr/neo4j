@@ -1,0 +1,19 @@
+{
+  List<CheckPoint> checkPoints=new ArrayList<>();
+  for (; version >= INITIAL_LOG_VERSION; version--) {
+    LogVersionedStoreChannel channel=PhysicalLogFile.tryOpenForVersion(logFiles,fileSystem,version);
+    if (channel == null) {
+      break;
+    }
+    ReadableVersionableLogChannel recoveredDataChannel=new ReadAheadLogChannel(channel,NO_MORE_CHANNELS,DEFAULT_READ_AHEAD_SIZE);
+    try (LogEntryCursor<ReadableVersionableLogChannel> cursor=new LogEntryCursor<>(recoveredDataChannel,logEntryReader)){
+      while (cursor.next()) {
+        LogEntry entry=cursor.get();
+        if (entry instanceof CheckPoint) {
+          checkPoints.add(entry.<CheckPoint>as());
+        }
+      }
+    }
+   }
+  return checkPoints;
+}

@@ -1,0 +1,19 @@
+{
+  CheckPointerImpl checkPointing=new CheckPointerImpl(txIdStore,threshold,flusher,logPruning,health,NULL_LOG_PROVIDER,tracer,logFile);
+  WritableLogChannel channel=mock(WritableLogChannel.class,RETURNS_MOCKS);
+  when(logFile.getWriter()).thenReturn(channel);
+  when(logFile.currentLogVersion()).thenReturn(17l);
+  when(threshold.isCheckPointingNeeded()).thenReturn(true,false);
+  when(txIdStore.getLastCommittedTransaction()).thenReturn(new long[]{42l,0l,16l,233l});
+  IOException ioex=new IOException("boom!");
+  doThrow(ioex).when(channel).force();
+  checkPointing.start();
+  try {
+    checkPointing.checkPointIfNeeded();
+    fail("should have thrown ");
+  }
+ catch (  IOException ex) {
+    assertEquals(ioex,ex);
+  }
+  verify(health,times(1)).panic(ioex);
+}
