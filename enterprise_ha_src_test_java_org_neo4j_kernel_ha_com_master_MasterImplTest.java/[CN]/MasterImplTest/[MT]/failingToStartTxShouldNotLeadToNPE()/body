@@ -1,11 +1,13 @@
 {
   MasterImpl.SPI spi=mockedSpi();
+  DefaultConversationSPI conversationSpi=mockedConversationSpi();
   Config config=config(20);
+  ConversationManager conversationManager=new ConversationManager(conversationSpi,config);
   when(spi.isAccessible()).thenReturn(true);
-  when(spi.acquireClient()).thenThrow(new RuntimeException("Nope"));
+  when(conversationSpi.acquireClient()).thenThrow(new RuntimeException("Nope"));
   when(spi.getTransactionChecksum(anyLong())).thenReturn(1L);
   mockEmptyResponse(spi);
-  MasterImpl instance=new MasterImpl(spi,mock(MasterImpl.Monitor.class),config);
+  MasterImpl instance=new MasterImpl(spi,conversationManager,mock(MasterImpl.Monitor.class),config);
   instance.start();
   Response<HandshakeResult> response=instance.handshake(1,new StoreId());
   HandshakeResult handshake=response.response();

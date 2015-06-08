@@ -1,0 +1,22 @@
+{
+  MasterImpl.SPI spi=mockedSpi();
+  DefaultConversationSPI conversationSpi=mockedConversationSpi();
+  Monitor monitor=mock(Monitor.class);
+  Config config=config(20);
+  Client client=mock(Client.class);
+  ConversationManager conversationManager=new ConversationManager(conversationSpi,config);
+  int machineId=1;
+  MasterImpl master=new MasterImpl(spi,conversationManager,monitor,config);
+  when(spi.isAccessible()).thenReturn(true);
+  when(conversationSpi.acquireClient()).thenReturn(client);
+  master.start();
+  HandshakeResult handshake=master.handshake(1,new StoreId()).response();
+  RequestContext requestContext=new RequestContext(handshake.epoch(),machineId,0,0,0);
+  master.newLockSession(requestContext);
+  master.acquireSharedLock(requestContext,ResourceTypes.NODE,1L);
+  conversationManager.remove(requestContext);
+  master.newLockSession(requestContext);
+  Map<Integer,Collection<RequestContext>> transactions=master.getOngoingTransactions();
+  assertEquals(1,transactions.size());
+  assertThat(transactions.get(machineId),org.hamcrest.Matchers.hasItem(requestContext));
+}

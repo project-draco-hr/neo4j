@@ -1,13 +1,15 @@
 {
   MasterImpl.SPI spi=mock(MasterImpl.SPI.class);
   Config config=config(20);
+  DefaultConversationSPI conversationSpi=mockedConversationSpi();
+  ConversationManager conversationManager=new ConversationManager(conversationSpi,config);
   Client locks=mock(Client.class);
   when(locks.trySharedLock(ResourceTypes.SCHEMA,ResourceTypes.schemaResource())).thenReturn(true);
   when(spi.isAccessible()).thenReturn(true);
   when(spi.getTransactionChecksum(anyLong())).thenReturn(1L);
-  when(spi.acquireClient()).thenReturn(locks);
+  when(conversationSpi.acquireClient()).thenReturn(locks);
   mockEmptyResponse(spi);
-  MasterImpl master=new MasterImpl(spi,mock(MasterImpl.Monitor.class),config);
+  MasterImpl master=new MasterImpl(spi,conversationManager,mock(MasterImpl.Monitor.class),config);
   master.start();
   HandshakeResult handshake=master.handshake(1,new StoreId()).response();
   int no_lock_session=-1;
