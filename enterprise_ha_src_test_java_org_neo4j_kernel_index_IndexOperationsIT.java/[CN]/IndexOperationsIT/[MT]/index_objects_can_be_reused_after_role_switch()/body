@@ -6,16 +6,12 @@
   Map<HighlyAvailableGraphDatabase,IndexManager> indexManagers=new HashMap<>();
   Map<HighlyAvailableGraphDatabase,Index<Node>> indexes=new HashMap<>();
   for (  HighlyAvailableGraphDatabase db : cluster.getAllMembers()) {
-    Transaction transaction=db.beginTx();
-    try {
+    try (Transaction transaction=db.beginTx()){
       indexManagers.put(db,db.index());
       indexes.put(db,db.index().forNodes(key));
       transaction.success();
     }
-  finally {
-      transaction.finish();
-    }
-  }
+   }
   cluster.shutdown(master);
   indexManagers.remove(master);
   indexes.remove(master);
@@ -23,25 +19,17 @@
   cluster.await(ClusterManager.masterSeesSlavesAsAvailable(1));
   for (  Map.Entry<HighlyAvailableGraphDatabase,IndexManager> entry : indexManagers.entrySet()) {
     HighlyAvailableGraphDatabase db=entry.getKey();
-    Transaction transaction=db.beginTx();
-    try {
+    try (Transaction transaction=db.beginTx()){
       IndexManager indexManager=entry.getValue();
       assertTrue(indexManager.existsForNodes(key));
       assertEquals(nodeId,indexManager.forNodes(key).get(key,value).getSingle().getId());
     }
-  finally {
-      transaction.finish();
-    }
-  }
+   }
   for (  Map.Entry<HighlyAvailableGraphDatabase,Index<Node>> entry : indexes.entrySet()) {
     HighlyAvailableGraphDatabase db=entry.getKey();
-    Transaction transaction=db.beginTx();
-    try {
+    try (Transaction transaction=db.beginTx()){
       Index<Node> index=entry.getValue();
       assertEquals(nodeId,index.get(key,value).getSingle().getId());
     }
-  finally {
-      transaction.finish();
-    }
-  }
+   }
 }

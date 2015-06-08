@@ -1,15 +1,14 @@
 {
-  final Set<HighlyAvailableGraphDatabase> exceptSet=new HashSet<>(asList(except));
+  final Collection<HighlyAvailableGraphDatabase> excludedNodes=asList(except);
   return new Predicate<ClusterManager.ManagedCluster>(){
     @Override public boolean test(    ManagedCluster cluster){
-      for (      HighlyAvailableGraphDatabase graphDatabaseService : cluster.getAllMembers()) {
-        if (!exceptSet.contains(graphDatabaseService)) {
-          if (graphDatabaseService.isAvailable(0) && graphDatabaseService.isMaster()) {
-            return true;
-          }
+      Predicate<HighlyAvailableGraphDatabase> filterMasterPredicate=new Predicate<HighlyAvailableGraphDatabase>(){
+        @Override public boolean test(        HighlyAvailableGraphDatabase node){
+          return !excludedNodes.contains(node) && node.isAvailable(0) && node.isMaster();
         }
       }
-      return false;
+;
+      return Iterables.filter(filterMasterPredicate,cluster.getAllMembers()).iterator().hasNext();
     }
     @Override public String toString(){
       return "There's an available master";

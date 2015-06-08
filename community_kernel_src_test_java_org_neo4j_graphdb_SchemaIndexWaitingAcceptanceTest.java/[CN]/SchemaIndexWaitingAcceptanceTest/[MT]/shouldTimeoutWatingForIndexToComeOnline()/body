@@ -1,13 +1,13 @@
 {
   GraphDatabaseService db=rule.getGraphDatabaseService();
   DoubleLatch latch=provider.installPopulationJobCompletionLatch();
-  Transaction tx=db.beginTx();
-  IndexDefinition index=db.schema().indexFor(DynamicLabel.label("Person")).on("name").create();
-  tx.success();
-  tx.finish();
-  latch.awaitStart();
-  tx=db.beginTx();
-  try {
+  IndexDefinition index;
+  try (Transaction tx=db.beginTx()){
+    index=db.schema().indexFor(DynamicLabel.label("Person")).on("name").create();
+    tx.success();
+  }
+   latch.awaitStart();
+  try (Transaction tx=db.beginTx()){
     db.schema().awaitIndexOnline(index,1,TimeUnit.MILLISECONDS);
     fail("Expected IllegalStateException to be thrown");
   }
@@ -15,7 +15,6 @@
     assertThat(e.getMessage(),containsString("come online"));
   }
  finally {
-    tx.finish();
     latch.finish();
   }
 }

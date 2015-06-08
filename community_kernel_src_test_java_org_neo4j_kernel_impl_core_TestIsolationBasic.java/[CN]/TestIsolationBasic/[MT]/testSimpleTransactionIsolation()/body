@@ -2,31 +2,23 @@
   commit();
   final CountDownLatch latch1=new CountDownLatch(1);
   final CountDownLatch latch2=new CountDownLatch(1);
-  Transaction tx=getGraphDb().beginTx();
   Node n1, n2;
   Relationship r1;
-  try {
+  try (Transaction tx=getGraphDb().beginTx()){
     n1=getGraphDb().createNode();
     n2=getGraphDb().createNode();
     r1=n1.createRelationshipTo(n2,DynamicRelationshipType.withName("TEST"));
     tx.success();
   }
-  finally {
-    tx.finish();
-  }
-  final Node node1=n1;
+   final Node node1=n1;
   final Node node2=n2;
   final Relationship rel1=r1;
-  tx=getGraphDb().beginTx();
-  try {
+  try (Transaction tx=getGraphDb().beginTx()){
     node1.setProperty("key","old");
     rel1.setProperty("key","old");
     tx.success();
   }
-  finally {
-    tx.finish();
-  }
-  assertPropertyEqual(node1,"key","old");
+   assertPropertyEqual(node1,"key","old");
   assertPropertyEqual(rel1,"key","old");
   assertRelationshipCount(node1,1);
   assertRelationshipCount(node2,1);
@@ -82,8 +74,7 @@
   if (t1Exception.get() != null) {
     throw t1Exception.get();
   }
-  tx=getGraphDb().beginTx();
-  try {
+  try (Transaction tx=getGraphDb().beginTx()){
     for (    Relationship rel : node1.getRelationships()) {
       rel.delete();
     }
@@ -91,7 +82,4 @@
     node2.delete();
     tx.success();
   }
-  finally {
-    tx.finish();
-  }
-}
+ }

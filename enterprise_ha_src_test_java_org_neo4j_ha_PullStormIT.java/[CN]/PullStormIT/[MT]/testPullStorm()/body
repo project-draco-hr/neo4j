@@ -7,25 +7,25 @@
     cluster.await(ClusterManager.masterSeesSlavesAsAvailable(1));
     final HighlyAvailableGraphDatabase master=cluster.getMaster();
 {
-      Transaction tx=master.beginTx();
-      for (int i=0; i < 1000; i++) {
-        master.createNode().setProperty("foo","bar");
+      try (Transaction tx=master.beginTx()){
+        for (int i=0; i < 1000; i++) {
+          master.createNode().setProperty("foo","bar");
+        }
+        tx.success();
       }
-      tx.success();
-      tx.finish();
-    }
+     }
     HighlyAvailableGraphDatabase slave=cluster.getAnySlave();
     ClusterManager.RepairKit repairKit=cluster.fail(slave);
     for (int i=0; i < 1000; i++) {
 {
-        Transaction tx=master.beginTx();
-        for (int j=0; j < 1000; j++) {
-          master.createNode().setProperty("foo","bar");
-          master.createNode().setProperty("foo","bar");
+        try (Transaction tx=master.beginTx()){
+          for (int j=0; j < 1000; j++) {
+            master.createNode().setProperty("foo","bar");
+            master.createNode().setProperty("foo","bar");
+          }
+          tx.success();
         }
-        tx.success();
-        tx.finish();
-      }
+       }
     }
     repairKit.repair();
     cluster.await(ClusterManager.masterSeesSlavesAsAvailable(1));
@@ -34,11 +34,11 @@
     for (int i=0; i < 20; i++) {
       executor.submit(new Runnable(){
         @Override public void run(){
-          Transaction tx=master.beginTx();
-          master.createNode().setProperty("foo","bar");
-          tx.success();
-          tx.finish();
-        }
+          try (Transaction tx=master.beginTx()){
+            master.createNode().setProperty("foo","bar");
+            tx.success();
+          }
+         }
       }
 );
     }

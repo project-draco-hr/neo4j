@@ -3,15 +3,11 @@
   HighlyAvailableGraphDatabase slave1=cluster.getAnySlave();
   HighlyAvailableGraphDatabase slave2=cluster.getAnySlave(slave1);
   Future<Boolean> created;
-  Transaction tx=slave1.beginTx();
-  try {
+  try (Transaction tx=slave1.beginTx()){
     slave1.createNode(label("Label1")).setProperty("key1","value1");
     created=otherThread.execute(createNode(slave2,"Label1","key1","value1"));
     assertThat(otherThread,isWaiting());
     tx.failure();
   }
-  finally {
-    tx.finish();
-  }
-  assertTrue("creating data that conflicts only with rolled back data should pass",created.get());
+   assertTrue("creating data that conflicts only with rolled back data should pass",created.get());
 }

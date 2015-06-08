@@ -2,12 +2,9 @@
   DbRepresentation someData=createSomeData();
   GraphDatabaseService readGraphDb=new TestGraphDatabaseFactory().setFileSystem(fs.get()).newImpermanentDatabaseBuilder(PATH).setConfig(GraphDatabaseSettings.read_only,Settings.TRUE).newGraphDatabase();
   assertEquals(someData,DbRepresentation.of(readGraphDb));
-  Transaction tx=readGraphDb.beginTx();
-  try {
+  try (Transaction tx=readGraphDb.beginTx()){
     readGraphDb.createNode();
     tx.success();
-    tx.close();
-    fail("expected exception");
   }
  catch (  TransactionFailureException e) {
     assertThat(e.getCause(),instanceOf(ReadOnlyDbException.class));

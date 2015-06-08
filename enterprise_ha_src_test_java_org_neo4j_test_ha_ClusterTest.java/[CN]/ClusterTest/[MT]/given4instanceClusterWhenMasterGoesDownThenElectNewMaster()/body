@@ -1,5 +1,5 @@
 {
-  ClusterManager clusterManager=new ClusterManager(fromXml(getClass().getResource("/fourinstances.xml").toURI()),TargetDirectory.forTest(getClass()).cleanDirectory("4instances"),MapUtil.stringMap());
+  ClusterManager clusterManager=new ClusterManager(fromXml(getClass().getResource("/fourinstances.xml").toURI()),testDirectory.directory("4instances"),MapUtil.stringMap());
   try {
     clusterManager.start();
     ClusterManager.ManagedCluster cluster=clusterManager.getDefaultCluster();
@@ -10,12 +10,12 @@
     cluster.await(ClusterManager.masterAvailable());
     GraphDatabaseService master=cluster.getMaster();
     logging.getLogger().info("CREATE NODE");
-    Transaction tx=master.beginTx();
-    master.createNode();
-    logging.getLogger().info("CREATED NODE");
-    tx.success();
-    tx.finish();
-    logging.getLogger().info("STOPPING CLUSTER");
+    try (Transaction tx=master.beginTx()){
+      master.createNode();
+      logging.getLogger().info("CREATED NODE");
+      tx.success();
+    }
+     logging.getLogger().info("STOPPING CLUSTER");
   }
   finally {
     clusterManager.stop();

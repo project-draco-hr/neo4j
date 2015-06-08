@@ -20,18 +20,14 @@
   }
 ;
   Node a, b, c, d;
-  Transaction tx=db.beginTx();
-  try {
+  try (Transaction tx=db.beginTx()){
     a=db.createNode();
     b=db.createNode();
     c=db.createNode();
     d=db.createNode();
     tx.success();
   }
-  finally {
-    tx.finish();
-  }
-  adversary.enable();
+   adversary.enable();
   CountDownLatch latch=new CountDownLatch(1);
   Thread t1=new Thread(createRelationship(db,a,b,latch),"T1");
   Thread t2=new Thread(createRelationship(db,c,d,latch),"T2");
@@ -44,8 +40,7 @@
   t2.join(25000);
   db.shutdown();
   EmbeddedGraphDatabase db2=new TestEmbeddedGraphDatabase(storeDir,params);
-  tx=db2.beginTx();
-  try {
+  try (Transaction tx=db2.beginTx()){
     Node x=db2.getNodeById(a.getId());
     Node y=db2.getNodeById(b.getId());
     Node z=db2.getNodeById(c.getId());
@@ -74,11 +69,6 @@
     }
   }
   finally {
-    try {
-      tx.finish();
-    }
-  finally {
-      db2.shutdown();
-    }
+    db2.shutdown();
   }
 }

@@ -1,25 +1,22 @@
 {
-  ClusterManager clusterManager=new ClusterManager(fromXml(getClass().getResource("/threeinstances.xml").toURI()),TargetDirectory.forTest(getClass()).cleanDirectory("testCluster"),MapUtil.stringMap(HaSettings.ha_server.name(),":6001-6005",HaSettings.tx_push_factor.name(),"2"));
+  ClusterManager clusterManager=new ClusterManager(fromXml(getClass().getResource("/threeinstances.xml").toURI()),testDirectory.directory("testCluster"),MapUtil.stringMap(HaSettings.ha_server.name(),":6001-6005",HaSettings.tx_push_factor.name(),"2"));
   try {
     clusterManager.start();
     clusterManager.getDefaultCluster().await(allSeesAllAsAvailable());
-    GraphDatabaseAPI master=clusterManager.getDefaultCluster().getMaster();
-    Transaction tx=master.beginTx();
-    Node node=master.createNode();
-    long nodeId=node.getId();
-    node.setProperty("foo","bar");
-    tx.success();
-    tx.finish();
-    HighlyAvailableGraphDatabase slave=clusterManager.getDefaultCluster().getAnySlave();
-    Transaction transaction=slave.beginTx();
-    try {
-      node=slave.getNodeById(nodeId);
+    long nodeId;
+    HighlyAvailableGraphDatabase master=clusterManager.getDefaultCluster().getMaster();
+    try (Transaction tx=master.beginTx()){
+      Node node=master.createNode();
+      nodeId=node.getId();
+      node.setProperty("foo","bar");
+      tx.success();
+    }
+     HighlyAvailableGraphDatabase slave=clusterManager.getDefaultCluster().getAnySlave();
+    try (Transaction transaction=slave.beginTx()){
+      Node node=slave.getNodeById(nodeId);
       assertThat(node.getProperty("foo").toString(),CoreMatchers.equalTo("bar"));
     }
-  finally {
-      transaction.finish();
-    }
-  }
+   }
   finally {
     clusterManager.stop();
   }

@@ -1,35 +1,17 @@
 {
   GraphDatabaseService graphdb=database.getGraphDatabaseService();
-  Transaction tx=graphdb.beginTx();
-  final Node root=graphdb.createNode();
-  try {
-    root.setProperty("counter",Long.valueOf(0L));
+  Node node=null;
+  try (Transaction tx=graphdb.beginTx()){
+    node=graphdb.createNode();
+    node.setProperty("counter",0L);
     tx.success();
   }
-  finally {
-    tx.finish();
-  }
-  graphdb.registerTransactionEventHandler(new TransactionEventHandler<Void>(){
-    @SuppressWarnings("boxing") @Override public Void beforeCommit(    TransactionData data) throws Exception {
-      if (count(data.createdRelationships()) == 0)       return null;
-      root.setProperty("counter",((Long)root.removeProperty("counter")) + 1);
-      return null;
-    }
-    @Override public void afterCommit(    TransactionData data,    Void state){
-    }
-    @Override public void afterRollback(    TransactionData data,    Void state){
-    }
-  }
-);
-  tx=graphdb.beginTx();
-  try {
-    root.setProperty("state","not broken yet");
-    root.createRelationshipTo(graphdb.createNode(),DynamicRelationshipType.withName("TEST"));
-    root.removeProperty("state");
+   graphdb.registerTransactionEventHandler(new RelationshipCounterTransactionEventHandler(node));
+  try (Transaction tx=graphdb.beginTx()){
+    node.setProperty("state","not broken yet");
+    node.createRelationshipTo(graphdb.createNode(),DynamicRelationshipType.withName("TEST"));
+    node.removeProperty("state");
     tx.success();
   }
-  finally {
-    tx.finish();
-  }
-  assertThat(root,inTx(graphdb,hasProperty("counter").withValue(1L)));
+   assertThat(node,inTx(graphdb,hasProperty("counter").withValue(1L)));
 }

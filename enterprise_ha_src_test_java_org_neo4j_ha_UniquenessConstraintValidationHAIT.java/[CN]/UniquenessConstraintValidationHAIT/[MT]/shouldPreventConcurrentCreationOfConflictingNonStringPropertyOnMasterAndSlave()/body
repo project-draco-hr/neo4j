@@ -3,15 +3,11 @@
   HighlyAvailableGraphDatabase master=cluster.getMaster();
   HighlyAvailableGraphDatabase slave=cluster.getAnySlave();
   Future<Boolean> created;
-  Transaction tx=master.beginTx();
-  try {
+  try (Transaction tx=master.beginTx()){
     master.createNode(label("Label1")).setProperty("key1",0x0099CC);
     created=otherThread.execute(createNode(slave,"Label1","key1",0x0099CC));
     assertThat(otherThread,isWaiting());
     tx.success();
   }
-  finally {
-    tx.finish();
-  }
-  assertFalse("creating violating data should fail",created.get());
+   assertFalse("creating violating data should fail",created.get());
 }

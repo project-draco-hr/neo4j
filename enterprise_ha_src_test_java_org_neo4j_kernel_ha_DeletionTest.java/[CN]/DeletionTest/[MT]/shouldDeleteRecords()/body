@@ -6,29 +6,17 @@
   HighlyAvailableGraphDatabase master=cluster.getMaster();
   HighlyAvailableGraphDatabase slave=cluster.getAnySlave();
   Relationship rel;
-  Transaction tx=slave.beginTx();
-  try {
+  try (Transaction tx=slave.beginTx()){
     rel=slave.createNode().createRelationshipTo(slave.createNode(),withName("FOO"));
     tx.success();
   }
-  finally {
-    tx.finish();
-  }
-  Transaction transaction=master.beginTx();
-  try {
+   try (Transaction transaction=master.beginTx()){
     assertNotNull(master.getRelationshipById(rel.getId()));
   }
-  finally {
-    transaction.finish();
-  }
-  tx=slave.beginTx();
-  try {
+   try (Transaction tx=slave.beginTx()){
     rel.delete();
     tx.success();
   }
-  finally {
-    tx.finish();
-  }
-  slave.shutdown();
+   slave.shutdown();
   master.shutdown();
 }
