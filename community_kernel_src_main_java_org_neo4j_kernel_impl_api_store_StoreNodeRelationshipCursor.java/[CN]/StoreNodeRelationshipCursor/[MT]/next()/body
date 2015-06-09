@@ -1,0 +1,47 @@
+{
+  while (relationshipId != Record.NO_NEXT_RELATIONSHIP.intValue()) {
+    relationshipRecord.setId(relationshipId);
+    if (!relationshipStore.fillRecord(relationshipId,relationshipRecord,RecordLoad.CHECK)) {
+      return false;
+    }
+    try {
+      if (direction != Direction.BOTH) {
+switch (direction) {
+case INCOMING:
+{
+            if (relationshipRecord.getSecondNode() != fromNodeId) {
+              continue;
+            }
+            break;
+          }
+case OUTGOING:
+{
+          if (relationshipRecord.getFirstNode() != fromNodeId) {
+            continue;
+          }
+          break;
+        }
+    }
+  }
+  if (!checkType(relationshipRecord.getType())) {
+    continue;
+  }
+  return true;
+}
+  finally {
+  if (relationshipRecord.getFirstNode() == fromNodeId) {
+    relationshipId=relationshipRecord.getFirstNextRel();
+  }
+ else   if (relationshipRecord.getSecondNode() == fromNodeId) {
+    relationshipId=relationshipRecord.getSecondNextRel();
+  }
+ else {
+    throw new InvalidRecordException("While loading relationships for Node[" + fromNodeId + "] a Relationship["+ relationshipRecord.getId()+ "] was encountered that had startNode:"+ " "+ relationshipRecord.getFirstNode()+ " and endNode: "+ relationshipRecord.getSecondNode()+ ", i.e. which had neither start nor end node as the node we're loading relationships for");
+  }
+  if (relationshipId == Record.NO_NEXT_RELATIONSHIP.intValue() && isDense) {
+    relationshipId=nextChainStart();
+  }
+}
+}
+return false;
+}

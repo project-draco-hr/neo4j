@@ -1,0 +1,18 @@
+{
+  try (PageCursor cursor=storeFile.io(pageIdForRecord(record.getId()),PF_SHARED_LOCK)){
+    PropertyRecord tmpRecord=null;
+    if (cursor.next()) {
+      do {
+        tmpRecord=getRecord(cursor,record);
+      }
+ while (cursor.shouldRetry());
+    }
+    if (tmpRecord == null || !tmpRecord.inUse()) {
+      throw new InvalidRecordException("PropertyRecord[" + record.getId() + "] not in use");
+    }
+    return record;
+  }
+ catch (  IOException e) {
+    throw new UnderlyingStorageException(e);
+  }
+}
