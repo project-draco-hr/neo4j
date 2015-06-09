@@ -6,20 +6,21 @@
   }
   final Clusters clusters=new Clusters();
   clusters.getClusters().add(cluster);
-  ClusterManager clusterManager=new ClusterManager(ClusterManager.provided(clusters),TargetDirectory.forTest(getClass()).cleanDirectory("testCluster"),MapUtil.stringMap(HaSettings.ha_server.name(),hostName + ":6001-6005",HaSettings.tx_push_factor.name(),"2"));
+  ClusterManager clusterManager=new ClusterManager(ClusterManager.provided(clusters),testDirectory.directory("testCluster"),MapUtil.stringMap(HaSettings.ha_server.name(),hostName + ":6001-6005",HaSettings.tx_push_factor.name(),"2"));
   try {
     clusterManager.start();
     clusterManager.getDefaultCluster().await(allSeesAllAsAvailable());
-    GraphDatabaseAPI master=clusterManager.getDefaultCluster().getMaster();
-    Transaction tx=master.beginTx();
-    Node node=master.createNode();
-    long nodeId=node.getId();
-    node.setProperty("foo","bar");
-    tx.success();
-    tx.finish();
-    HighlyAvailableGraphDatabase anySlave=clusterManager.getDefaultCluster().getAnySlave();
+    long nodeId;
+    HighlyAvailableGraphDatabase master=clusterManager.getDefaultCluster().getMaster();
+    try (Transaction tx=master.beginTx()){
+      Node node=master.createNode();
+      nodeId=node.getId();
+      node.setProperty("foo","bar");
+      tx.success();
+    }
+     HighlyAvailableGraphDatabase anySlave=clusterManager.getDefaultCluster().getAnySlave();
     try (Transaction ignore=anySlave.beginTx()){
-      node=anySlave.getNodeById(nodeId);
+      Node node=anySlave.getNodeById(nodeId);
       assertThat(node.getProperty("foo").toString(),CoreMatchers.equalTo("bar"));
     }
    }

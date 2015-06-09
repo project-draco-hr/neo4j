@@ -1,23 +1,26 @@
 {
-  TransactionFailureException errorCaught=null;
+  TransactionFailureException expectedCommitException=null;
+  TransactionFailureException expectedStartException=null;
   LimitedFileSystemGraphDatabase db=cleanup.add(new LimitedFileSystemGraphDatabase());
   db.runOutOfDiskSpaceNao();
-  Transaction tx=db.beginTx();
-  db.createNode();
-  tx.success();
-  try {
-    tx.finish();
-    fail("Expected tx finish to throw TransactionFailureException when filesystem is full.");
+  try (Transaction tx=db.beginTx()){
+    db.createNode();
+    tx.success();
   }
  catch (  TransactionFailureException e) {
+    expectedCommitException=e;
   }
-  try {
-    db.beginTx();
+ finally {
+    Assert.assertNotNull("Expected tx finish to throw TransactionFailureException when filesystem is full.",expectedCommitException);
+  }
+  try (Transaction transaction=db.beginTx()){
     fail("Expected tx begin to throw TransactionFailureException when tx manager breaks.");
   }
  catch (  TransactionFailureException e) {
-    errorCaught=e;
+    expectedStartException=e;
   }
-  assertThat(errorCaught.getCause(),is(instanceOf(org.neo4j.kernel.api.exceptions.TransactionFailureException.class)));
+ finally {
+    Assert.assertNotNull("Expected tx begin to throw TransactionFailureException when tx manager breaks.",expectedCommitException);
+  }
   db.somehowGainMoreDiskSpace();
 }

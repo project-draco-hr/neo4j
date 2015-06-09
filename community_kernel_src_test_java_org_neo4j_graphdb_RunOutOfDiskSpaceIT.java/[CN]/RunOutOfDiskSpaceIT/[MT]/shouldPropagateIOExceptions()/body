@@ -2,16 +2,16 @@
   TransactionFailureException exceptionThrown=null;
   LimitedFileSystemGraphDatabase db=cleanup.add(new LimitedFileSystemGraphDatabase());
   db.runOutOfDiskSpaceNao();
-  Transaction tx=db.beginTx();
-  db.createNode();
-  tx.success();
-  try {
-    tx.finish();
-    fail("Expected tx finish to throw TransactionFailureException when filesystem is full.");
+  try (Transaction tx=db.beginTx()){
+    db.createNode();
+    tx.success();
   }
  catch (  TransactionFailureException e) {
     exceptionThrown=e;
   }
-  assertTrue(Exceptions.contains(exceptionThrown,IOException.class));
+ finally {
+    Assert.assertNotNull("Expected tx finish to throw TransactionFailureException when filesystem is full.",exceptionThrown);
+    assertTrue(Exceptions.contains(exceptionThrown,IOException.class));
+  }
   db.somehowGainMoreDiskSpace();
 }

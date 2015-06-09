@@ -1,20 +1,17 @@
 {
-  Transaction tx=db.beginTx();
-  Schema schema=db.schema();
-  schema.indexFor(label).on(propertyKey).create();
-  tx.success();
-  tx.finish();
-  ConstraintViolationException caught=null;
-  tx=db.beginTx();
-  try {
+  Schema schema;
+  try (Transaction tx=db.beginTx()){
+    schema=db.schema();
+    schema.indexFor(label).on(propertyKey).create();
+    tx.success();
+  }
+   ConstraintViolationException caught=null;
+  try (Transaction tx=db.beginTx()){
     schema.indexFor(label).on(propertyKey).create();
     tx.success();
   }
  catch (  ConstraintViolationException e) {
     caught=e;
-  }
- finally {
-    tx.finish();
   }
   assertThat(caught,not(nullValue()));
 }

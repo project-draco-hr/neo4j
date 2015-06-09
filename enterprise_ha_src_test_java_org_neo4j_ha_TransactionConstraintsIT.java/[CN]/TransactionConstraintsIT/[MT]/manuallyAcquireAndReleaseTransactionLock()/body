@@ -4,8 +4,7 @@
   final Node node=createNode(master);
   cluster.sync();
   HighlyAvailableGraphDatabase slave=cluster.getAnySlave();
-  Transaction slaveTx=slave.beginTx();
-  try {
+  try (Transaction slaveTx=slave.beginTx()){
     Lock lock=slaveTx.acquireWriteLock(slave.getNodeById(node.getId()));
     lock.release();
     Transaction masterTx=masterWorker.execute(new BeginTx());
@@ -17,7 +16,6 @@
 ),1,SECONDS);
   }
   finally {
-    slaveTx.finish();
     masterWorker.close();
   }
 }

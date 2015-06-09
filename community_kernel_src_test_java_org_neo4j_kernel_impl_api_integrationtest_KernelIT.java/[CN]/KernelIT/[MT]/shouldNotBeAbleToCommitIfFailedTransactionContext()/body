@@ -1,27 +1,29 @@
 {
-  Transaction tx=db.beginTx();
-  Statement statement=statementContextSupplier.get();
   Node node=null;
   int labelId=-1;
-  try {
+  TransactionFailureException expectedException=null;
+  try (Transaction transaction=db.beginTx()){
+    Statement statement=statementContextSupplier.get();
     node=db.createNode();
     labelId=statement.dataWriteOperations().labelGetOrCreateForName("labello");
     statement.dataWriteOperations().nodeAddLabel(node.getId(),labelId);
     statement.close();
-    tx.failure();
-    tx.success();
-    tx.finish();
-    fail("Should have failed");
+    transaction.failure();
+    transaction.success();
   }
  catch (  TransactionFailureException e) {
+    expectedException=e;
   }
-  tx=db.beginTx();
-  statement=statementContextSupplier.get();
-  try {
-    statement.readOperations().nodeHasLabel(node.getId(),labelId);
-    fail("should have thrown exception");
+ finally {
+    Assert.assertNotNull("Should have failed",expectedException);
   }
- catch (  EntityNotFoundException e) {
+  try (Transaction tx=db.beginTx()){
+    Statement statement=statementContextSupplier.get();
+    try {
+      statement.readOperations().nodeHasLabel(node.getId(),labelId);
+      fail("should have thrown exception");
+    }
+ catch (    EntityNotFoundException e) {
+    }
   }
-  tx.finish();
-}
+ }
