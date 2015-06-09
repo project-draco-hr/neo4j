@@ -1,6 +1,12 @@
 {
   TransactionFailureException exceptionThrown=null;
-  LimitedFileSystemGraphDatabase db=cleanup.add(new LimitedFileSystemGraphDatabase());
+  String storeDir=testDirectory.absolutePath();
+  LimitedFileSystemGraphDatabase db=new LimitedFileSystemGraphDatabase(storeDir);
+  try (Transaction tx=db.beginTx()){
+    db.createNode();
+    tx.success();
+  }
+   long logVersion=db.getDependencyResolver().resolveDependency(NeoStore.class).getCurrentLogVersion();
   db.runOutOfDiskSpaceNao();
   try (Transaction tx=db.beginTx()){
     db.createNode();
@@ -14,4 +20,6 @@
     assertTrue(Exceptions.contains(exceptionThrown,IOException.class));
   }
   db.somehowGainMoreDiskSpace();
+  db.shutdown();
+  assertEquals(logVersion,new NeoStoreUtil(new File(storeDir),db.getFileSystem()).getLogVersion());
 }

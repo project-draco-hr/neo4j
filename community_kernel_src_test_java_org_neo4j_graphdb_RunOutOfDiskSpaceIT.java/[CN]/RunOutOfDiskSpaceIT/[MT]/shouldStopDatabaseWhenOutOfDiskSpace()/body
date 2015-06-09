@@ -1,7 +1,13 @@
 {
   TransactionFailureException expectedCommitException=null;
   TransactionFailureException expectedStartException=null;
-  LimitedFileSystemGraphDatabase db=cleanup.add(new LimitedFileSystemGraphDatabase());
+  String storeDir=testDirectory.absolutePath();
+  LimitedFileSystemGraphDatabase db=cleanup.add(new LimitedFileSystemGraphDatabase(storeDir));
+  try (Transaction tx=db.beginTx()){
+    db.createNode();
+    tx.success();
+  }
+   long logVersion=db.getDependencyResolver().resolveDependency(NeoStore.class).getCurrentLogVersion();
   db.runOutOfDiskSpaceNao();
   try (Transaction tx=db.beginTx()){
     db.createNode();
@@ -20,7 +26,9 @@
     expectedStartException=e;
   }
  finally {
-    Assert.assertNotNull("Expected tx begin to throw TransactionFailureException when tx manager breaks.",expectedCommitException);
+    Assert.assertNotNull("Expected tx begin to throw TransactionFailureException when tx manager breaks.",expectedStartException);
   }
   db.somehowGainMoreDiskSpace();
+  db.shutdown();
+  assertEquals(logVersion,new NeoStoreUtil(new File(storeDir),db.getFileSystem()).getLogVersion());
 }
