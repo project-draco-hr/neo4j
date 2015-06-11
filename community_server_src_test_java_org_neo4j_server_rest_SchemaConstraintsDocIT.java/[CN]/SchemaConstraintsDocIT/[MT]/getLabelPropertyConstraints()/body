@@ -1,18 +1,17 @@
 {
   data.get();
-  String labelName="User", propertyKey1="name1", propertyKey2="name2";
+  String labelName=labels.newInstance(), propertyKey1=properties.newInstance(), propertyKey2=properties.newInstance();
   createLabelUniquenessPropertyConstraint(labelName,propertyKey1);
   createLabelUniquenessPropertyConstraint(labelName,propertyKey2);
   String result=gen.get().noGraph().expectedStatus(200).get(getSchemaConstraintLabelUri(labelName)).entity();
   List<Map<String,Object>> serializedList=jsonToList(result);
-  assertEquals(2,serializedList.size());
-  Map<String,Object> serialized1=serializedList.get(0);
-  assertEquals(labelName,serialized1.get("label"));
-  assertEquals(ConstraintType.UNIQUENESS.name(),serialized1.get("type"));
-  List<String> keyList1=(List<String>)serialized1.get("property_keys");
-  Map<String,Object> serialized2=serializedList.get(1);
-  assertEquals(labelName,serialized2.get("label"));
-  assertEquals(ConstraintType.UNIQUENESS.name(),serialized2.get("type"));
-  List<String> keyList2=(List<String>)serialized2.get("property_keys");
-  assertEquals(asSet(asList(propertyKey1),asList(propertyKey2)),asSet(keyList1,keyList2));
+  Map<String,Object> constraint1=new HashMap<>();
+  constraint1.put("type",ConstraintType.UNIQUENESS.name());
+  constraint1.put("label",labelName);
+  constraint1.put("property_keys",singletonList(propertyKey1));
+  Map<String,Object> constraint2=new HashMap<>();
+  constraint2.put("type",ConstraintType.UNIQUENESS.name());
+  constraint2.put("label",labelName);
+  constraint2.put("property_keys",singletonList(propertyKey2));
+  assertThat(serializedList,hasItems(constraint1,constraint2));
 }
