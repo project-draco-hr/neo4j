@@ -6,26 +6,34 @@
     }
     long endNodeId=next.endNode().getId();
     Visit<P> stay=visits.get(endNodeId);
-    if (stay == null || !stay.visited) {
-      D cost=calculateValue(next);
-      P newPriority=addPriority(next,currentAggregatedValue,cost);
-      boolean newStay=stay == null;
-      if (newStay) {
-        stay=new Visit<P>(newPriority);
-        visits.put(endNodeId,stay);
-      }
-      if (newStay || interestPredicate.apply(stay,newPriority)) {
-        queue.put(next,newPriority);
+    D cost=calculateValue(next);
+    P newPriority=addPriority(next,currentAggregatedValue,cost);
+    boolean newStay=stay == null;
+    if (newStay) {
+      stay=new Visit<>(newPriority);
+      visits.put(endNodeId,stay);
+    }
+    if (newStay || !interest.canBeRuledOut(stay.visitCount,newPriority,stay.cost)) {
+      if (interest.comparator().compare(newPriority,stay.cost) < 0) {
         stay.cost=newPriority;
       }
+      queue.put(next,newPriority);
     }
   }
-  Entry<TraversalBranch,P> entry=queue.pop();
-  if (entry != null) {
-    current=entry.getEntity();
-    currentAggregatedValue=entry.getPriority();
-    visits.get(current.endNode().getId()).visited=true;
-    return current;
+  do {
+    Entry<TraversalBranch,P> entry=queue.pop();
+    if (entry != null) {
+      current=entry.getEntity();
+      Visit<P> stay=visits.get(current.endNode().getId());
+      stay.visitCount++;
+      if (interest.stillInteresting(stay.visitCount)) {
+        currentAggregatedValue=entry.getPriority();
+        return current;
+      }
+    }
+ else {
+      return null;
+    }
   }
-  return null;
+ while (true);
 }

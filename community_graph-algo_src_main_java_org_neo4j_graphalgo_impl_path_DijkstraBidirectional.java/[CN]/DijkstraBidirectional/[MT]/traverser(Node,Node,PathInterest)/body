@@ -1,0 +1,17 @@
+{
+  final MutableDouble shortestSoFar=new MutableDouble(Double.MAX_VALUE);
+  final MutableDouble startSideShortest=new MutableDouble(0);
+  final MutableDouble endSideShortest=new MutableDouble(0);
+  PathExpander dijkstraExpander=new DijkstraBidirectionalPathExpander(expander,shortestSoFar,true,startSideShortest,endSideShortest,epsilon);
+  TraversalDescription side=traversal().expand(dijkstraExpander,stateFactory).order(new DijkstraSelectorFactory(interest,costEvaluator)).evaluator(new DijkstraBidirectionalEvaluator(costEvaluator)).uniqueness(Uniqueness.NODE_PATH);
+  TraversalDescription startSide=side;
+  TraversalDescription endSide=side.reverse();
+  BidirectionalTraversalDescription traversal=bidirectionalTraversal().startSide(startSide).endSide(endSide).collisionEvaluator(Evaluators.all()).collisionPolicy(new BranchCollisionPolicy.CollisionPolicyAdapter(){
+    @Override public BranchCollisionDetector create(    Evaluator evaluator,    Predicate<Path> pathPredicate){
+      return new DijkstraBranchCollisionDetector(evaluator,costEvaluator,shortestSoFar,epsilon,pathPredicate);
+    }
+  }
+);
+  lastTraverser=traversal.traverse(start,end);
+  return lastTraverser;
+}
