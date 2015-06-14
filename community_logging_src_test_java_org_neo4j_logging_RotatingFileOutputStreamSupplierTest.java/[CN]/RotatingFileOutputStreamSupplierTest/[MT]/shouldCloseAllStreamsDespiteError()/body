@@ -1,0 +1,28 @@
+{
+  final List<OutputStream> mockStreams=new ArrayList<>();
+  FileSystemAbstraction fs=new DelegatingFileSystemAbstraction(fileSystem){
+    @Override public OutputStream openAsOutputStream(    File fileName,    boolean append) throws IOException {
+      final OutputStream stream=spy(super.openAsOutputStream(fileName,append));
+      mockStreams.add(stream);
+      return stream;
+    }
+  }
+;
+  RotatingFileOutputStreamSupplier supplier=new RotatingFileOutputStreamSupplier(fs,logFile,10,0,10,DIRECT_EXECUTOR);
+  OutputStream outputStream=supplier.get();
+  assertThat(outputStream,sameInstance(mockStreams.get(0)));
+  write(outputStream,"A string longer than 10 bytes");
+  OutputStream outputStream2=supplier.get();
+  assertThat(outputStream2,sameInstance(mockStreams.get(1)));
+  IOException exception1=new IOException("test exception");
+  doThrow(exception1).when(outputStream).close();
+  IOException exception2=new IOException("test exception");
+  doThrow(exception2).when(outputStream2).close();
+  try {
+    supplier.close();
+  }
+ catch (  IOException e) {
+    assertThat(e,sameInstance(exception2));
+  }
+  verify(outputStream).close();
+}
