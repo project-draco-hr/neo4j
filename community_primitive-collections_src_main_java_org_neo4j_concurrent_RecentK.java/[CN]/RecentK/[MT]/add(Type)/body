@@ -1,13 +1,20 @@
 {
-  Slot slot=index.get(item);
-  if (slot != null) {
-    markAsMostRecent(slot);
-  }
- else   if (index.size() >= maxItems) {
-    removeLeastRecent();
-    addNewItem(item);
+  AtomicLong counter=recentItems.get(item);
+  if (counter != null) {
+    counter.incrementAndGet();
   }
  else {
-    addNewItem(item);
+    if (recentItems.size() >= maxItems) {
+synchronized (recentItems) {
+        while (recentItems.size() >= maxItems) {
+          removeItemWithLowestCount();
+        }
+        halveCounts();
+        recentItems.putIfAbsent(item,new AtomicLong(1));
+      }
+    }
+ else {
+      recentItems.putIfAbsent(item,new AtomicLong(1));
+    }
   }
 }
