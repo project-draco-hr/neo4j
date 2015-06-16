@@ -1,21 +1,28 @@
 {
-  clusterManager=new ClusterManager(clusterOfSize(2),dir.cleanDirectory("propagation"),stringMap(tx_push_factor.name(),"1"));
+  clusterManager=new ClusterManager(clusterOfSize(2),dir.cleanDirectory("propagation"),stringMap(HaSettings.tx_push_factor.name(),"1"));
   clusterManager.start();
   ClusterManager.ManagedCluster cluster=clusterManager.getDefaultCluster();
   cluster.await(ClusterManager.allSeesAllAsAvailable());
-  long nodeId=0;
+  HighlyAvailableGraphDatabase master=cluster.getMaster();
   HighlyAvailableGraphDatabase slave=cluster.getAnySlave();
-  try (Transaction tx=slave.beginTx()){
-    Node node=slave.createNode();
-    node.setProperty("Hello","World");
+  long nodeId;
+  try (Transaction tx=master.beginTx()){
+    Node node=master.createNode();
     nodeId=node.getId();
+    node.setProperty("foo","bar");
     tx.success();
   }
-   HighlyAvailableGraphDatabase master=cluster.getMaster();
-  try (Transaction tx=master.beginTx()){
-    String value=master.getNodeById(nodeId).getProperty("Hello").toString();
-    logger.getLogger().info("Hello=" + value);
-    assertEquals("World",value);
+   try (Transaction tx=master.beginTx()){
+    master.getNodeById(nodeId).getProperty("foo");
+    tx.success();
+  }
+   slave.getDependencyResolver().resolveDependency(UpdatePullerClient.class).pullUpdates();
+  try (Transaction tx=slave.beginTx()){
+    slave.getNodeById(nodeId).setProperty("foo","bar2");
+    tx.success();
+  }
+   try (Transaction tx=master.beginTx()){
+    assertEquals("bar2",master.getNodeById(nodeId).getProperty("foo"));
     tx.success();
   }
  }
