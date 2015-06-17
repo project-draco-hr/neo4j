@@ -1,0 +1,37 @@
+{
+  when(config.jobLimit()).thenReturn(1);
+  JobScheduler jobScheduler=new Neo4jJobScheduler();
+  jobScheduler.init();
+  final IndexSamplingJobTracker jobTracker=new IndexSamplingJobTracker(config,jobScheduler);
+  final DoubleLatch latch=new DoubleLatch();
+  final AtomicBoolean lastJobExecuted=new AtomicBoolean();
+  jobTracker.scheduleSamplingJob(new IndexSamplingJob(){
+    @Override public IndexDescriptor descriptor(){
+      return new IndexDescriptor(1,1);
+    }
+    @Override public void run(){
+      latch.awaitStart();
+    }
+  }
+);
+  Executors.newSingleThreadExecutor().execute(new Runnable(){
+    @Override public void run(){
+      jobTracker.waitUntilCanExecuteMoreSamplingJobs();
+      jobTracker.scheduleSamplingJob(new IndexSamplingJob(){
+        @Override public IndexDescriptor descriptor(){
+          return new IndexDescriptor(2,2);
+        }
+        @Override public void run(){
+          lastJobExecuted.set(true);
+          latch.finish();
+        }
+      }
+);
+    }
+  }
+);
+  assertFalse(jobTracker.canExecuteMoreSamplingJobs());
+  latch.start();
+  latch.awaitFinish();
+  assertTrue(lastJobExecuted.get());
+}
