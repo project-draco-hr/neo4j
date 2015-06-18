@@ -1,0 +1,24 @@
+{
+  boolean exists=cursor.next();
+  long id=cursor.getId();
+  if (state.relationshipIsDeletedInThisTx(id)) {
+    visit(-1,-1,-1,-1);
+    throw new IllegalStateException("Relationship " + id + " has been deleted");
+  }
+  this.relationshipIsAddedInThisTx=state.relationshipIsAddedInThisTx(id);
+  if (exists || relationshipIsAddedInThisTx) {
+    if (relationshipIsAddedInThisTx) {
+      state.relationshipVisit(id,this);
+    }
+ else {
+      visit(id,cursor.getType(),cursor.getStartNode(),cursor.getEndNode());
+    }
+    relationshipState=state.getRelationshipState(cursor.getId());
+    return true;
+  }
+ else {
+    visit(-1,-1,-1,-1);
+    this.relationshipState=null;
+    return false;
+  }
+}

@@ -1,13 +1,13 @@
 {
-  if (state.hasTxStateWithChanges()) {
-    Iterator<DefinedProperty> properties=nodeGetAllProperties(state,nodeId);
-    while (properties.hasNext()) {
-      Property property=properties.next();
-      if (property.propertyKeyId() == propertyKeyId) {
-        return property;
+  try (NodeCursor storeNodeCursor=nodeCursor(state,nodeId)){
+    if (!storeNodeCursor.next()) {
+      throw new EntityNotFoundException(EntityType.NODE,nodeId);
+    }
+    try (PropertyCursor cursor=storeNodeCursor.properties()){
+      if (cursor.seek(propertyKeyId)) {
+        return cursor.getProperty();
       }
     }
-    return Property.noNodeProperty(nodeId,propertyKeyId);
+     return Property.noNodeProperty(nodeId,propertyKeyId);
   }
-  return storeLayer.nodeGetProperty(state.getStoreStatement(),nodeId,propertyKeyId);
-}
+ }

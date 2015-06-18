@@ -1,14 +1,8 @@
 {
-  if (state.hasTxStateWithChanges()) {
-    if (state.txState().relationshipIsAddedInThisTx(relationshipId)) {
-      return state.txState().addedAndChangedRelationshipProperties(relationshipId);
+  try (RelationshipCursor storeRelationshipCursor=relationshipCursor(state,relationshipId)){
+    if (!storeRelationshipCursor.next()) {
+      throw new EntityNotFoundException(EntityType.RELATIONSHIP,relationshipId);
     }
-    if (state.txState().relationshipIsDeletedInThisTx(relationshipId)) {
-      throw new IllegalStateException("Relationship " + relationshipId + " has been deleted");
-    }
-    return state.txState().augmentRelationshipProperties(relationshipId,storeLayer.relationshipGetAllProperties(state.getStoreStatement(),relationshipId));
+    return Cursors.iterator(storeRelationshipCursor.properties(),PropertyCursor.GET_PROPERTY);
   }
- else {
-    return storeLayer.relationshipGetAllProperties(state.getStoreStatement(),relationshipId);
-  }
-}
+ }

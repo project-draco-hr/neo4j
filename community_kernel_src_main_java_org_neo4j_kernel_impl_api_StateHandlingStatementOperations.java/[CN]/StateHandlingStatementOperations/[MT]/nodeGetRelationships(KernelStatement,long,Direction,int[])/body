@@ -1,15 +1,11 @@
 {
   relTypes=deduplicate(relTypes);
-  if (state.hasTxStateWithChanges()) {
-    ReadableTxState txState=state.txState();
-    RelationshipIterator stored;
-    if (txState.nodeIsAddedInThisTx(nodeId)) {
-      stored=RelationshipIterator.EMPTY;
+  try (final NodeCursor nodeCursor=nodeCursor(state,nodeId)){
+    if (nodeCursor.next()) {
+      return new CursorRelationshipIterator(nodeCursor.relationships(direction,relTypes));
     }
  else {
-      stored=storeLayer.nodeListRelationships(state.getStoreStatement(),nodeId,direction,relTypes);
+      throw new EntityNotFoundException(EntityType.NODE,nodeId);
     }
-    return txState.augmentRelationships(nodeId,direction,relTypes,stored);
   }
-  return storeLayer.nodeListRelationships(state.getStoreStatement(),nodeId,direction,relTypes);
-}
+ }
