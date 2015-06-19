@@ -2,39 +2,37 @@
   ConcurrentMap<Long,ForsetiLockManager.Lock> lockMap=lockMaps[resourceType.typeId()];
   PrimitiveLongIntMap heldShareLocks=sharedLockCounts[resourceType.typeId()];
   PrimitiveLongIntMap heldExclusiveLocks=exclusiveLockCounts[resourceType.typeId()];
-  for (  long resourceId : resourceIds) {
-    int heldCount=heldShareLocks.get(resourceId);
-    if (heldCount != -1) {
-      heldShareLocks.put(resourceId,heldCount + 1);
-      continue;
-    }
-    if (heldExclusiveLocks.containsKey(resourceId)) {
-      heldShareLocks.put(resourceId,1);
-      continue;
-    }
-    while (true) {
-      ForsetiLockManager.Lock existingLock=lockMap.get(resourceId);
-      if (existingLock == null) {
-        if (lockMap.putIfAbsent(resourceId,new SharedLock(this)) == null) {
-          break;
-        }
+  int heldCount=heldShareLocks.get(resourceId);
+  if (heldCount != -1) {
+    heldShareLocks.put(resourceId,heldCount + 1);
+    return true;
+  }
+  if (heldExclusiveLocks.containsKey(resourceId)) {
+    heldShareLocks.put(resourceId,1);
+    return true;
+  }
+  while (true) {
+    ForsetiLockManager.Lock existingLock=lockMap.get(resourceId);
+    if (existingLock == null) {
+      if (lockMap.putIfAbsent(resourceId,new SharedLock(this)) == null) {
+        break;
       }
- else       if (existingLock instanceof SharedLock) {
-        if (((SharedLock)existingLock).acquire(this)) {
-          break;
-        }
- else         if (((SharedLock)existingLock).isUpdateLock()) {
-          return false;
-        }
+    }
+ else     if (existingLock instanceof SharedLock) {
+      if (((SharedLock)existingLock).acquire(this)) {
+        break;
       }
- else       if (existingLock instanceof ExclusiveLock) {
+ else       if (((SharedLock)existingLock).isUpdateLock()) {
         return false;
       }
- else {
-        throw new UnsupportedOperationException("Unknown lock type: " + existingLock);
-      }
     }
-    heldShareLocks.put(resourceId,1);
+ else     if (existingLock instanceof ExclusiveLock) {
+      return false;
+    }
+ else {
+      throw new UnsupportedOperationException("Unknown lock type: " + existingLock);
+    }
   }
+  heldShareLocks.put(resourceId,1);
   return true;
 }
