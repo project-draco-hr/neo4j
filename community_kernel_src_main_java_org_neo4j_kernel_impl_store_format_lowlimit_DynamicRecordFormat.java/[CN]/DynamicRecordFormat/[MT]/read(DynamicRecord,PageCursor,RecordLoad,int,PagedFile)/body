@@ -1,0 +1,17 @@
+{
+  long firstInteger=cursor.getUnsignedInt();
+  boolean isStartRecord=(firstInteger & 0x80000000) == 0;
+  boolean inUse=(firstInteger & 0x10000000) != 0;
+  if (mode.shouldLoad(inUse)) {
+    int dataSize=recordSize - getRecordHeaderSize();
+    int nrOfBytes=(int)(firstInteger & 0xFFFFFF);
+    long nextBlock=cursor.getUnsignedInt();
+    long nextModifier=(firstInteger & 0xF000000L) << 8;
+    long longNextBlock=BaseRecordFormat.longFromIntAndMod(nextBlock,nextModifier);
+    record.initialize(inUse,isStartRecord,longNextBlock,-1,nrOfBytes);
+    if (longNextBlock != Record.NO_NEXT_BLOCK.intValue() && nrOfBytes < dataSize || nrOfBytes > dataSize) {
+      mode.report(format("Next block set[%d] current block illegal size[%d/%d]",record.getNextBlock(),record.getLength(),dataSize));
+    }
+    readData(record,cursor);
+  }
+}
