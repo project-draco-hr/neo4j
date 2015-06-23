@@ -3,14 +3,6 @@
   TransactionIdStore txIdStore=mock(TransactionIdStore.class);
   when(dependencyResolver.resolveDependency(TransactionIdStore.class)).thenReturn(txIdStore);
   TransactionAppender appender=mock(TransactionAppender.class);
-  when(appender.append(any(TransactionRepresentation.class),anyLong())).thenReturn(new Commitment(){
-    @Override public void publishAsCommitted(){
-    }
-    @Override public boolean markedAsCommitted(){
-      return true;
-    }
-  }
-);
   LogicalTransactionStore logicalTransactionStore=mock(LogicalTransactionStore.class);
   when(logicalTransactionStore.getAppender()).thenReturn(appender);
   when(dependencyResolver.resolveDependency(LogicalTransactionStore.class)).thenReturn(logicalTransactionStore);
@@ -24,19 +16,15 @@
   when(dependencyResolver.resolveDependency(KernelHealth.class)).thenReturn(kernelHealth);
   LogRotation logRotation=mock(LogRotation.class);
   when(dependencyResolver.resolveDependency(LogRotation.class)).thenReturn(logRotation);
-  Function<DependencyResolver,IndexUpdatesValidator> indexUpdatesValidatorFunction=Functions.constant(mock(IndexUpdatesValidator.class));
-  BatchingTransactionRepresentationStoreApplier applier=mock(BatchingTransactionRepresentationStoreApplier.class);
-  Function<DependencyResolver,BatchingTransactionRepresentationStoreApplier> transactionStoreApplierFunction=Functions.constant(applier);
-  final TransactionCommittingResponseUnpacker unpacker=new TransactionCommittingResponseUnpacker(dependencyResolver,100,indexUpdatesValidatorFunction,transactionStoreApplierFunction);
+  final TransactionCommittingResponseUnpacker unpacker=new TransactionCommittingResponseUnpacker(dependencyResolver,100);
   unpacker.start();
-  UnderlyingStorageException failure=new UnderlyingStorageException("Expected failure");
-  doThrow(failure).when(applier).apply(any(TransactionRepresentation.class),any(ValidatedIndexUpdates.class),any(LockGroup.class),anyLong(),any(TransactionApplicationMode.class));
+  IOException failure=new IOException("Expected failure");
+  doThrow(failure).when(appender).append(any(TransactionRepresentation.class),anyLong());
   try {
     unpacker.unpackResponse(new DummyTransactionResponse(BASE_TX_ID + 1,1,appender,10),NO_OP_TX_HANDLER);
     fail("Should have failed");
   }
- catch (  UnderlyingStorageException e) {
+ catch (  IOException e) {
     assertThat(e.getMessage(),containsString(failure.getMessage()));
-    verify(kernelHealth).panic(failure);
   }
 }
