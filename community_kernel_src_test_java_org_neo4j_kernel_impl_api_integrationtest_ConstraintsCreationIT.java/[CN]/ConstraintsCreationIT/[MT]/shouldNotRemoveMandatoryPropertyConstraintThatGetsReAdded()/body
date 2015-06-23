@@ -1,0 +1,20 @@
+{
+  PropertyConstraint constraint;
+{
+    SchemaWriteOperations statement=schemaWriteOperationsInNewTransaction();
+    constraint=statement.mandatoryPropertyConstraintCreate(labelId,propertyKeyId);
+    commit();
+  }
+  SchemaStateCheck schemaState=new SchemaStateCheck().setUp();
+{
+    SchemaWriteOperations statement=schemaWriteOperationsInNewTransaction();
+    statement.constraintDrop(constraint);
+    statement.mandatoryPropertyConstraintCreate(labelId,propertyKeyId);
+    commit();
+  }
+{
+    ReadOperations statement=readOperationsInNewTransaction();
+    assertEquals(singletonList(constraint),asCollection(statement.constraintsGetForLabelAndPropertyKey(labelId,propertyKeyId)));
+    schemaState.assertNotCleared(statement);
+  }
+}
