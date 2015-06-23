@@ -1,0 +1,31 @@
+{
+  if (indexUpdates == null) {
+    return null;
+  }
+  Map<DefinedProperty,DiffSets<Long>> updates=indexUpdates.get(descriptor.getLabelId());
+  if (updates == null) {
+    return null;
+  }
+  TreeMap<DefinedProperty,DiffSets<Long>> sortedUpdates=null;
+  if (updates instanceof TreeMap) {
+    sortedUpdates=(TreeMap<DefinedProperty,DiffSets<Long>>)updates;
+  }
+ else {
+    sortedUpdates=new TreeMap<>();
+    sortedUpdates.putAll(updates);
+    indexUpdates.put(descriptor.getLabelId(),sortedUpdates);
+  }
+  DiffSets<Long> diffs=new DiffSets<Long>();
+  DefinedProperty floor=DefinedProperty.stringProperty(descriptor.getPropertyKeyId(),prefix);
+  for (  Map.Entry<DefinedProperty,DiffSets<Long>> entry : sortedUpdates.tailMap(floor).entrySet()) {
+    if (entry.getKey().value().toString().startsWith(prefix)) {
+      DiffSets<Long> diffSets=entry.getValue();
+      diffs.addAll(diffSets.getAdded().iterator());
+      diffs.removeAll(diffSets.getRemoved().iterator());
+    }
+ else {
+      break;
+    }
+  }
+  return diffs;
+}

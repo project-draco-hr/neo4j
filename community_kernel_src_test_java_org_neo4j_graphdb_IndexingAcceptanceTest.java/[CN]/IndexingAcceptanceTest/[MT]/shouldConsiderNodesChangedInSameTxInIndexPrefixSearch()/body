@@ -1,0 +1,29 @@
+{
+  GraphDatabaseService db=dbRule.getGraphDatabaseService();
+  IndexDefinition index=createIndex(db,LABEL1,"name");
+  createNodes(db,LABEL1,"name","Mattias");
+  PrimitiveLongSet toChangeToMatch=createNodes(db,LABEL1,"name","Mats");
+  PrimitiveLongSet toChangeToNotMatch=createNodes(db,LABEL1,"name","Karlsson");
+  PrimitiveLongSet expected=createNodes(db,LABEL1,"name","Karl");
+  String prefix="Karl";
+  PrimitiveLongSet found=Primitive.longSet();
+  try (Transaction tx=db.beginTx()){
+    PrimitiveLongIterator toMatching=toChangeToMatch.iterator();
+    while (toMatching.hasNext()) {
+      long id=toMatching.next();
+      db.getNodeById(id).setProperty("name",prefix + "X" + id);
+      expected.add(id);
+    }
+    PrimitiveLongIterator toNotMatching=toChangeToNotMatch.iterator();
+    while (toNotMatching.hasNext()) {
+      long id=toNotMatching.next();
+      db.getNodeById(id).setProperty("name","X" + id);
+      expected.remove(id);
+    }
+    Statement statement=getStatement((GraphDatabaseAPI)db);
+    ReadOperations readOperations=statement.readOperations();
+    IndexDescriptor descriptor=indexDescriptor(readOperations,index);
+    found.addAll(readOperations.nodesGetFromIndexByPrefixSearch(descriptor,prefix));
+  }
+   assertThat(found,equalTo(expected));
+}
