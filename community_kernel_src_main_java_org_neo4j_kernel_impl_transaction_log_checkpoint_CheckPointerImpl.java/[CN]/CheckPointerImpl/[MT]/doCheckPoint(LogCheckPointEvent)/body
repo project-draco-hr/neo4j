@@ -1,0 +1,14 @@
+{
+  long[] lastCommittedTransaction=transactionIdStore.getLastCommittedTransaction();
+  long lastCommittedTransactionId=lastCommittedTransaction[0];
+  LogPosition logPosition=new LogPosition(lastCommittedTransaction[2],lastCommittedTransaction[3]);
+  msgLog.info(prefix(lastCommittedTransactionId) + "Starting check pointing...");
+  kernelHealth.assertHealthy(IOException.class);
+  msgLog.info(prefix(lastCommittedTransactionId) + " Starting store flush...");
+  storeFlusher.forceEverything();
+  kernelHealth.assertHealthy(IOException.class);
+  appender.checkPoint(logPosition,logCheckPointEvent);
+  threshold.checkPointHappened(lastCommittedTransactionId);
+  msgLog.info(prefix(lastCommittedTransactionId) + "Check pointing completed");
+  logPruning.pruneLogs(logPosition.getLogVersion());
+}

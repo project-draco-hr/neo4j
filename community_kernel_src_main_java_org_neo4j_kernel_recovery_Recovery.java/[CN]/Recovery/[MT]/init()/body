@@ -1,0 +1,19 @@
+{
+  LogPosition recoveryPosition=spi.getPositionToRecoverFrom();
+  if (LogPosition.UNSPECIFIED.equals(recoveryPosition)) {
+    return;
+  }
+  Iterator<LogVersionedStoreChannel> logFiles=spi.getLogFiles(recoveryPosition.getLogVersion());
+  monitor.recoveryRequired(recoveryPosition);
+  Visitor<LogVersionedStoreChannel,IOException> recoverer=spi.getRecoverer();
+  while (logFiles.hasNext()) {
+    try (LogVersionedStoreChannel toRecover=logFiles.next()){
+      toRecover.position(recoveryPosition.getByteOffset());
+      recoverer.visit(toRecover);
+      recoveryPosition=LogPosition.start(recoveryPosition.getLogVersion() + 1);
+    }
+   }
+  recoveredLog=true;
+  monitor.logRecovered(recoveryPosition);
+  spi.forceEverything();
+}

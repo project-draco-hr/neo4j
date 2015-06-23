@@ -1,0 +1,27 @@
+{
+  long durationInMinutes=parseLong(fromEnv("CHECK_POINT_LOG_ROTATION_STRESS_DURATION",DEFAULT_DURATION_IN_MINUTES));
+  File storeDir=ensureExists(fromEnv("CHECK_POINT_LOG_ROTATION_STORE_DIRECTORY",DEFAULT_STORE_DIR));
+  long nodeCount=parseLong(fromEnv("CHECK_POINT_LOG_ROTATION_NODE_COUNT",DEFAULT_NODE_COUNT));
+  int threads=parseInt(fromEnv("CHECK_POINT_LOG_ROTATION_WORKER_THREADS",DEFAULT_WORKER_THREADS));
+  String pageCacheMemory=fromEnv("CHECK_POINT_LOG_ROTATION_PAGE_CACHE_MEMORY",DEFAULT_PAGE_CACHE_MEMORY);
+  String pageSize=fromEnv("CHECK_POINT_LOG_ROTATION_PAGE_SIZE",DEFAULT_PAGE_SIZE);
+  System.out.println("1/5  Building initial store...");
+  new ParallelBatchImporter(storeDir,DEFAULT,NullLogService.getInstance(),ExecutionMonitors.defaultVisible()).doImport(new NodeCountInputs(nodeCount));
+  System.out.println("2/5  Starting database...");
+  GraphDatabaseService db=new GraphDatabaseFactory().newEmbeddedDatabaseBuilder(storeDir).setConfig(GraphDatabaseSettings.pagecache_memory,pageCacheMemory).setConfig(GraphDatabaseSettings.mapped_memory_page_size,pageSize).setConfig(GraphDatabaseFacadeFactory.Configuration.tracer,"timer").newGraphDatabase();
+  System.out.println("3/5  Starting workload...");
+  TransactionThroughputChecker throughput=new TransactionThroughputChecker();
+  try (Workload workload=new Workload(db,defaultRandomMutation(nodeCount,db),threads)){
+    workload.run(durationInMinutes,throughput);
+  }
+   System.out.println("4/5  Shutting down...");
+  db.shutdown();
+  try {
+    System.out.println("5/5  Asserts and printing recorded timings...");
+    TimerTransactionTracer.printStats(System.out);
+    throughput.assertUniformThroughput();
+  }
+  finally {
+    System.out.println("Done.");
+  }
+}

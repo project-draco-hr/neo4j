@@ -3,7 +3,8 @@
   PhysicalLogFile pLogFile=db.getDependencyResolver().resolveDependency(PhysicalLogFile.class);
   long version=ds.getCurrentLogVersion();
   db.getDependencyResolver().resolveDependency(LogRotation.class).rotateLogFile();
-  ReadableVersionableLogChannel logChannel=pLogFile.getReader(new LogPosition(version,LOG_HEADER_SIZE));
+  db.getDependencyResolver().resolveDependency(CheckPointer.class).forceCheckPoint();
+  ReadableVersionableLogChannel logChannel=pLogFile.getReader(LogPosition.start(version));
   LogDeserializer deserializer=new LogDeserializer();
   final AtomicBoolean success=new AtomicBoolean(false);
   try (IOCursor<LogEntry> cursor=deserializer.logEntries(logChannel)){
