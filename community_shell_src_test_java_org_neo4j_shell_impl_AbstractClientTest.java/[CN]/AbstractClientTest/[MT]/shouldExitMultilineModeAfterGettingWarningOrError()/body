@@ -1,0 +1,39 @@
+{
+  final CollectingOutput output=new CollectingOutput();
+  final String message="Test method called";
+  final String prompt="our test prompt";
+  AbstractClient client=new AbstractClient(null,null){
+    @Override public ShellServer getServer(){
+      ShellServer server=null;
+      try {
+        server=new GraphDatabaseShellServer(null){
+          @Override public Response interpretLine(          Serializable clientId,          String line,          Output out) throws ShellException {
+            try {
+              out.println(message);
+            }
+ catch (            RemoteException e) {
+            }
+            return new Response(prompt,line.endsWith(";") ? Continuation.EXCEPTION_CAUGHT : Continuation.INPUT_INCOMPLETE);
+          }
+        }
+;
+      }
+ catch (      RemoteException e) {
+      }
+      return server;
+    }
+    @Override public Output getOutput(){
+      return output;
+    }
+  }
+;
+  client.evaluate("RETURN ");
+  assertThat(client.getPrompt(),equalTo("> "));
+  client.evaluate("i;");
+  Set<String> messages=new HashSet<>();
+  for (  String s : output) {
+    messages.add(s);
+  }
+  assertThat(messages,contains(message));
+  assertThat(client.getPrompt(),equalTo(prompt));
+}
