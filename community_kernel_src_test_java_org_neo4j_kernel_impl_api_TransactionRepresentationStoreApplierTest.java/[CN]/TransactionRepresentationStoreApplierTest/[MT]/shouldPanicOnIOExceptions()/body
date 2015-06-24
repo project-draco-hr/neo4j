@@ -1,9 +1,15 @@
 {
   IdOrderingQueue queue=mock(IdOrderingQueue.class);
   TransactionRepresentationStoreApplier applier=new TransactionRepresentationStoreApplier(indexService,labelScanStore,neoStore,cacheAccess,lockService,legacyIndexProviderLookup,indexConfigStore,kernelHealth,queue);
-  TransactionRepresentation transaction=new PhysicalTransactionRepresentation(indexTransaction());
+  TransactionRepresentation transaction=mock(TransactionRepresentation.class);
+  IOException ioex=new IOException();
+  doThrow(ioex).when(transaction).accept(any(Visitor.class));
   try (LockGroup locks=new LockGroup()){
     applier.apply(transaction,ValidatedIndexUpdates.NONE,locks,transactionId,INTERNAL);
+    fail("should have thrown");
   }
-   verify(queue).removeChecked(transactionId);
+ catch (  IOException ex) {
+    assertSame(ioex,ex);
+    verify(kernelHealth,times(1)).panic(ioex);
+  }
 }
