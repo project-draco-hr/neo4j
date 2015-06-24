@@ -1,0 +1,21 @@
+{
+  GraphDatabaseService db=dbRule.getGraphDatabaseService();
+  IndexDefinition index=createIndex(db,LABEL1,"name");
+  createNodes(db,LABEL1,"name","Mattias");
+  PrimitiveLongSet toDelete=createNodes(db,LABEL1,"name","Karlsson","Mats");
+  PrimitiveLongSet expected=createNodes(db,LABEL1,"name","Karl");
+  PrimitiveLongSet found=Primitive.longSet();
+  try (Transaction tx=db.beginTx()){
+    PrimitiveLongIterator deleting=toDelete.iterator();
+    while (deleting.hasNext()) {
+      long id=deleting.next();
+      db.getNodeById(id).delete();
+      expected.remove(id);
+    }
+    Statement statement=getStatement((GraphDatabaseAPI)db);
+    ReadOperations readOperations=statement.readOperations();
+    IndexDescriptor descriptor=indexDescriptor(readOperations,index);
+    found.addAll(readOperations.nodesGetFromIndexSeekByPrefix(descriptor,"Karl"));
+  }
+   assertThat(found,equalTo(expected));
+}
