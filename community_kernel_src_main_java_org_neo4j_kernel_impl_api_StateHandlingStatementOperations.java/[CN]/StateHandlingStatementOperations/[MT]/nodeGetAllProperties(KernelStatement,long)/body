@@ -1,12 +1,8 @@
 {
-  if (state.hasTxStateWithChanges()) {
-    if (state.txState().nodeIsAddedInThisTx(nodeId)) {
-      return state.txState().addedAndChangedNodeProperties(nodeId);
+  try (NodeCursor storeNodeCursor=nodeCursor(state,nodeId)){
+    if (!storeNodeCursor.next()) {
+      throw new EntityNotFoundException(EntityType.NODE,nodeId);
     }
-    if (state.txState().nodeIsDeletedInThisTx(nodeId)) {
-      throw new IllegalStateException("Node " + nodeId + " has been deleted");
-    }
-    return state.txState().augmentNodeProperties(nodeId,storeLayer.nodeGetAllProperties(state.getStoreStatement(),nodeId));
+    return Cursors.iterator(storeNodeCursor.properties(),PropertyCursor.GET_PROPERTY);
   }
-  return storeLayer.nodeGetAllProperties(state.getStoreStatement(),nodeId);
-}
+ }
