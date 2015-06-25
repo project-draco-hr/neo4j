@@ -1,18 +1,19 @@
 {
   assertCorrectEpoch(context);
   if (context.getEventIdentifier() == -1) {
-    try (Locks.Client locks=spi.acquireClient()){
-      return commit0(context,preparedTransaction,locks);
+    try (Conversation conversation=conversationManager.acquire()){
+      return commit0(context,preparedTransaction,conversation.getLocks());
     }
    }
  else {
     try {
-      Locks.Client locks=slaveLockSessions.acquire(context);
+      Conversation conversation=conversationManager.acquire(context);
+      Locks.Client locks=conversation.getLocks();
       try {
         return commit0(context,preparedTransaction,locks);
       }
   finally {
-        slaveLockSessions.release(context);
+        conversationManager.release(context);
       }
     }
  catch (    NoSuchEntryException|ConcurrentAccessException e) {
