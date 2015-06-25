@@ -1,0 +1,23 @@
+{
+  final CompletableFuture<Integer> future=new CompletableFuture<>();
+  final CountDownLatch startedLatch=new CountDownLatch(1);
+  final Thread thread=new Thread(){
+    @Override public void run(){
+      startedLatch.countDown();
+      try {
+        future.get();
+      }
+ catch (      InterruptedException|ExecutionException e) {
+        throw new RuntimeException(e);
+      }
+    }
+  }
+;
+  thread.start();
+  startedLatch.await();
+  Thread.sleep(100);
+  assertThat(thread.isAlive(),is(true));
+  future.complete(1);
+  thread.join(10000);
+  assertThat(thread.isAlive(),is(false));
+}
