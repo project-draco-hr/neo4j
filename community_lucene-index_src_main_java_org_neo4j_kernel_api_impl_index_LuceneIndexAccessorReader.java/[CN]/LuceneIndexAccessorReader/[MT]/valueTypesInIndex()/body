@@ -1,19 +1,20 @@
 {
   Set<Class> types=new HashSet<>();
-  try (TermEnum terms=luceneIndexReader().terms()){
-    while (terms.next()) {
-      String field=terms.term().field();
-      if (!NODE_ID_KEY.equals(field)) {
+  for (  LeafReaderContext readerContext : luceneIndexReader().leaves()) {
+    try {
+      Fields fields=readerContext.reader().fields();
+      for (      String field : fields) {
+        if (!NODE_ID_KEY.equals(field)) {
 switch (ValueEncoding.fromKey(field)) {
 case Number:
-          types.add(Number.class);
-        break;
+            types.add(Number.class);
+          break;
 case String:
-      types.add(String.class);
-    break;
+        types.add(String.class);
+      break;
 case Array:
-  types.add(Array.class);
-break;
+    types.add(Array.class);
+  break;
 case Bool:
 types.add(Boolean.class);
 break;
@@ -21,8 +22,9 @@ break;
 }
 }
 }
- catch (IOException ex) {
-throw new RuntimeException(ex);
+ catch (IOException e) {
+throw new RuntimeException(e);
+}
 }
 return types;
 }

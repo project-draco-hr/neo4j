@@ -1,12 +1,17 @@
 {
-  final IndexSearcher searcher=searcherManager.acquire();
-  final TaskControl token=taskCoordinator.newInstance();
-  final Closeable closeable=new Closeable(){
-    @Override public void close() throws IOException {
-      searcherManager.release(searcher);
-      token.close();
+  try {
+    final IndexSearcher searcher=searcherManager.acquire();
+    final TaskControl token=taskCoordinator.newInstance();
+    final Closeable closeable=new Closeable(){
+      @Override public void close() throws IOException {
+        searcherManager.release(searcher);
+        token.close();
+      }
     }
-  }
 ;
-  return makeNewReader(searcher,closeable,token);
+    return makeNewReader(searcher,closeable,token);
+  }
+ catch (  IOException e) {
+    throw new RuntimeException(e);
+  }
 }

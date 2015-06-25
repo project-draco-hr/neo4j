@@ -1,22 +1,22 @@
 {
   final Collection<File> files=new ArrayList<>();
-  final Collection<SnapshotDeletionPolicy> snapshots=new ArrayList<>();
+  final Collection<Pair<SnapshotDeletionPolicy,IndexCommit>> snapshots=new ArrayList<>();
   makeSureAllIndexesAreInstantiated();
   for (  IndexReference writer : getAllIndexes()) {
     SnapshotDeletionPolicy deletionPolicy=(SnapshotDeletionPolicy)writer.getWriter().getConfig().getIndexDeletionPolicy();
     File indexDirectory=getFileDirectory(baseStorePath,writer.getIdentifier());
     IndexCommit commit;
     try {
-      commit=deletionPolicy.snapshot(SNAPSHOT_ID);
+      commit=deletionPolicy.snapshot();
     }
  catch (    IllegalStateException e) {
       writer.getWriter().commit();
-      commit=deletionPolicy.snapshot(SNAPSHOT_ID);
+      commit=deletionPolicy.snapshot();
     }
     for (    String fileName : commit.getFileNames()) {
       files.add(new File(indexDirectory,fileName));
     }
-    snapshots.add(deletionPolicy);
+    snapshots.add(Pair.of(deletionPolicy,commit));
   }
   return new PrefetchingResourceIterator<File>(){
     private final Iterator<File> filesIterator=files.iterator();
@@ -24,9 +24,9 @@
       return filesIterator.hasNext() ? filesIterator.next() : null;
     }
     @Override public void close(){
-      for (      SnapshotDeletionPolicy deletionPolicy : snapshots) {
+      for (      Pair<SnapshotDeletionPolicy,IndexCommit> policyAndCommit : snapshots) {
         try {
-          deletionPolicy.release(SNAPSHOT_ID);
+          policyAndCommit.first().release(policyAndCommit.other());
         }
  catch (        IOException e) {
           e.printStackTrace();
