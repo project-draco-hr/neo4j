@@ -2,7 +2,11 @@
   ServerBootstrap b=new ServerBootstrap();
   b.option(ChannelOption.ALLOCATOR,PooledByteBufAllocator.DEFAULT).group(bossGroup,workerGroup).channel(NioServerSocketChannel.class).childHandler(new ChannelInitializer<SocketChannel>(){
     @Override public void initChannel(    SocketChannel ch) throws Exception {
-      ch.pipeline().addLast(new SocketTransportHandler(new SocketTransportHandler.ProtocolChooser(protocolVersions)));
+      ch.config().setAllocator(PooledByteBufAllocator.DEFAULT);
+      if (sslCtx != null) {
+        ch.pipeline().addLast(sslCtx.newHandler(ch.alloc()));
+      }
+      ch.pipeline().addLast(new SocketTransportHandler(new SocketTransportHandler.ProtocolChooser(protocolVersions),logging));
     }
   }
 );
