@@ -1,4 +1,8 @@
 {
-  int mappedMemoryTotalSize=createInserterAndGetMemoryMappingConfig(stringMap(GraphDatabaseSettings.pagecache_memory.name(),"16K",GraphDatabaseSettings.mapped_memory_page_size.name(),"1K"));
+  BatchInserter inserter=BatchInserters.inserter(testDirectory.graphDbDir(),stringMap(GraphDatabaseSettings.pagecache_memory.name(),"16K",GraphDatabaseSettings.mapped_memory_page_size.name(),"1K"));
+  NeoStore neoStore=ReflectionUtil.getPrivateField(inserter,"neoStore",NeoStore.class);
+  PageCache pageCache=ReflectionUtil.getPrivateField(neoStore,"pageCache",PageCache.class);
+  inserter.shutdown();
+  int mappedMemoryTotalSize=pageCache.maxCachedPages() * pageCache.pageSize();
   assertThat("memory mapped config is active",mappedMemoryTotalSize,is(16 * 1024));
 }
