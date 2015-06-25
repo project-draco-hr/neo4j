@@ -5,9 +5,13 @@
     throw new IllegalArgumentException("Cannot map files with a filePageSize (" + filePageSize + ") that is greater than the cachePageSize ("+ cachePageSize+ ")");
   }
   boolean createIfNotExists=false;
+  boolean truncateExisting=false;
   for (  OpenOption option : openOptions) {
     if (option.equals(StandardOpenOption.CREATE)) {
       createIfNotExists=true;
+    }
+ else     if (option.equals(StandardOpenOption.TRUNCATE_EXISTING)) {
+      truncateExisting=true;
     }
  else     if (!ignoredOpenOptions.contains(option)) {
       throw new UnsupportedOperationException("Unsupported OpenOption: " + option);
@@ -21,12 +25,15 @@
         String msg="Cannot map file " + file + " with "+ "filePageSize "+ filePageSize+ " bytes, "+ "because it has already been mapped with a "+ "filePageSize of "+ pagedFile.pageSize()+ " bytes.";
         throw new IllegalArgumentException(msg);
       }
+      if (truncateExisting) {
+        throw new UnsupportedOperationException("Cannot truncate a file that is already mapped");
+      }
       pagedFile.incrementRefCount();
       return pagedFile;
     }
     current=current.next;
   }
-  MuninnPagedFile pagedFile=new MuninnPagedFile(file,this,filePageSize,swapperFactory,cursorPool,tracer,createIfNotExists);
+  MuninnPagedFile pagedFile=new MuninnPagedFile(file,this,filePageSize,swapperFactory,cursorPool,tracer,createIfNotExists,truncateExisting);
   pagedFile.incrementRefCount();
   current=new FileMapping(file,pagedFile);
   current.next=mappedFiles;
