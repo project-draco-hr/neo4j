@@ -6,8 +6,11 @@
   fileSystem.mkdir(new File(dbDirectory,StoreUpgrader.MIGRATION_LEFT_OVERS_DIRECTORY + "_2"));
   fileSystem.mkdir(new File(dbDirectory,StoreUpgrader.MIGRATION_LEFT_OVERS_DIRECTORY + "_42"));
   PageCache pageCache=pageCacheRule.getPageCache(fileSystem);
-  StoreMigrator migrator=spy(new StoreMigrator(new SilentMigrationProgressMonitor(),fileSystem,NullLogService.getInstance()));
+  UpgradableDatabase upgradableDatabase=new UpgradableDatabase(new StoreVersionCheck(pageCache));
+  SilentMigrationProgressMonitor progressMonitor=new SilentMigrationProgressMonitor();
+  NullLogService instance=NullLogService.getInstance();
+  StoreMigrator migrator=spy(new StoreMigrator(progressMonitor,fileSystem,pageCache,upgradableDatabase,new Config(),instance));
   when(migrator.needsMigration(dbDirectory)).thenReturn(false);
-  newUpgrader(ALLOW_UPGRADE,migrator,StoreUpgrader.NO_MONITOR).migrateIfNeeded(dbDirectory,schemaIndexProvider,pageCache);
+  newUpgrader(ALLOW_UPGRADE,migrator,StoreUpgrader.NO_MONITOR).migrateIfNeeded(dbDirectory,schemaIndexProvider);
   assertThat(migrationHelperDirs(),is(emptyCollectionOf(File.class)));
 }

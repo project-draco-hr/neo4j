@@ -1,6 +1,7 @@
 {
   LifeSupport life=new LifeSupport();
-  LogicalTransactionStore transactionStore=life.add(new ReadOnlyTransactionStore(fileSystem,backupDir,monitors));
+  PageCache pageCache=pageCacheRule.getPageCache(fileSystem);
+  LogicalTransactionStore transactionStore=life.add(new ReadOnlyTransactionStore(pageCache,fileSystem,backupDir,monitors));
   life.start();
   try (IOCursor<CommittedTransactionRepresentation> cursor=transactionStore.getTransactions(txId)){
     assertTrue(cursor.next());
@@ -10,6 +11,6 @@
   finally {
     life.shutdown();
   }
-  NeoStoreUtil store=new NeoStoreUtil(backupDir,fileSystem);
+  NeoStoreUtil store=new NeoStoreUtil(backupDir,pageCache);
   assertEquals(txId,store.getLastCommittedTx());
 }

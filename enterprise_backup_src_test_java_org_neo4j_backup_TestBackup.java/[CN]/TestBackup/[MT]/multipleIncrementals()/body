@@ -12,7 +12,8 @@
      OnlineBackup backup=OnlineBackup.from("127.0.0.1");
     backup.full(backupPath.getPath());
     assertTrue("Should be consistent",backup.isConsistent());
-    long lastCommittedTx=getLastCommittedTx(backupPath.getPath());
+    PageCache pageCache=pageCacheRule.getPageCache(new DefaultFileSystemAbstraction());
+    long lastCommittedTx=getLastCommittedTx(backupPath.getPath(),pageCache);
     for (int i=0; i < 5; i++) {
       try (Transaction tx=db.beginTx()){
         Node node=db.createNode();
@@ -21,7 +22,7 @@
       }
        backup=backup.incremental(backupPath.getPath());
       assertTrue("Should be consistent",backup.isConsistent());
-      assertEquals(lastCommittedTx + i + 1,getLastCommittedTx(backupPath.getPath()));
+      assertEquals(lastCommittedTx + i + 1,getLastCommittedTx(backupPath.getPath(),pageCache));
     }
   }
   finally {

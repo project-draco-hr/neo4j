@@ -1,0 +1,19 @@
+{
+  progressMonitor.started();
+  NeoStoreUtil neoStoreAccess=new NeoStoreUtil(storeDir,pageCache);
+  long lastTxId=neoStoreAccess.getLastCommittedTx();
+  long lastTxChecksum=extractTransactionChecksum(neoStoreAccess,storeDir,lastTxId);
+  LogPosition lastTxLogPosition=extractTransactionLogPosition(neoStoreAccess,lastTxId);
+  writeLastTxChecksum(migrationDir,lastTxChecksum);
+  writeLastTxLogPosition(migrationDir,lastTxLogPosition);
+  if (versionToUpgradeFrom(storeDir).equals(Legacy22Store.LEGACY_VERSION)) {
+  }
+ else   if (versionToUpgradeFrom(storeDir).equals(Legacy21Store.LEGACY_VERSION)) {
+    removeDuplicateEntityProperties(storeDir,migrationDir,pageCache,schemaIndexProvider);
+    rebuildCountsFromScratch(storeDir,migrationDir,lastTxId,pageCache);
+  }
+ else {
+    migrateWithBatchImporter(storeDir,migrationDir,lastTxId,lastTxChecksum,lastTxLogPosition.getLogVersion(),lastTxLogPosition.getByteOffset(),pageCache);
+  }
+  progressMonitor.finished();
+}
