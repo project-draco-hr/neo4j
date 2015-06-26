@@ -1,0 +1,32 @@
+{
+  File file=new File("file");
+  ensureFileExists(file);
+  PageSwapperFactory factory=swapperFactory();
+  PageSwapper swapper=factory.createPageSwapper(file,cachePageSize(),NO_CALLBACK,false);
+  assertThat(swapper.getLastPageId(),is(-1L));
+  ByteBufferPage page=createPage();
+  page.putInt(0xcafebabe,0);
+  swapper.write(10,page);
+  clear(page);
+  swapper.read(10,page);
+  assertThat(page.getInt(0),is(0xcafebabe));
+  assertThat(swapper.getLastPageId(),is(10L));
+  swapper.close();
+  swapper=factory.createPageSwapper(file,cachePageSize(),NO_CALLBACK,false);
+  clear(page);
+  swapper.read(10,page);
+  assertThat(page.getInt(0),is(0xcafebabe));
+  assertThat(swapper.getLastPageId(),is(10L));
+  swapper.truncate();
+  clear(page);
+  swapper.read(10,page);
+  assertThat(page.getInt(0),is(0));
+  assertThat(swapper.getLastPageId(),is(-1L));
+  swapper.close();
+  swapper=factory.createPageSwapper(file,cachePageSize(),NO_CALLBACK,false);
+  clear(page);
+  swapper.read(10,page);
+  assertThat(page.getInt(0),is(0));
+  assertThat(swapper.getLastPageId(),is(-1L));
+  swapper.close();
+}
