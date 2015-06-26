@@ -1,0 +1,21 @@
+{
+  try (org.neo4j.graphdb.Transaction tx=db.beginTx()){
+    assertEquals(Collections.<ConstraintDefinition>emptyList(),asList(db.schema().getConstraints()));
+    assertEquals(Collections.<IndexDefinition,Schema.IndexState>emptyMap(),indexesWithState(db.schema()));
+    db.createNode(label("Foo")).setProperty("foo","baz");
+    tx.success();
+  }
+   try (org.neo4j.graphdb.Transaction tx=db.beginTx()){
+    db.schema().constraintFor(label("Foo")).assertPropertyExists("bar").create();
+    tx.success();
+    fail("expected failure");
+  }
+ catch (  ConstraintViolationException e) {
+    assertTrue(e.getMessage().startsWith("Unable to create CONSTRAINT"));
+  }
+  try (org.neo4j.graphdb.Transaction tx=db.beginTx()){
+    assertEquals(Collections.<ConstraintDefinition>emptyList(),asList(db.schema().getConstraints()));
+    assertEquals(Collections.<IndexDefinition,Schema.IndexState>emptyMap(),indexesWithState(db.schema()));
+    tx.success();
+  }
+ }

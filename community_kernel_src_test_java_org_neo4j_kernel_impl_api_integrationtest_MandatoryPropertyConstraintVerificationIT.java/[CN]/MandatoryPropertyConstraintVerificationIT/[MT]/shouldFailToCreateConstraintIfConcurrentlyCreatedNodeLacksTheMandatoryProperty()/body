@@ -1,0 +1,19 @@
+{
+  try {
+    Future<Node> node;
+    try (Transaction tx=db.beginTx()){
+      db.schema().constraintFor(label("Foo")).assertPropertyExists("bar").create();
+      node=thread.executeAndAwait(db.tx(createNode().then(addLabel(label("Foo")))),db.getGraphDatabaseService(),waitingWhileIn(OperationsFacade.class,"nodeAddLabel"),5,SECONDS);
+      tx.success();
+    }
+     node.get();
+    fail("expected exception");
+  }
+ catch (  ConstraintViolationException e) {
+    assertThat(e.getCause(),instanceOf(CreateConstraintFailureException.class));
+  }
+catch (  ExecutionException e) {
+    assertThat(e.getCause(),instanceOf(ConstraintViolationException.class));
+    assertThat(e.getCause().getCause(),instanceOf(ConstraintViolationTransactionFailureException.class));
+  }
+}
