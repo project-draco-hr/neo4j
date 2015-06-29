@@ -6,14 +6,5 @@
   PhysicalLogFiles logFiles=new PhysicalLogFiles(dataDir,fs);
   LogEntryReader<ReadableVersionableLogChannel> reader=new LogEntryReaderFactory().versionable();
   LatestCheckPointFinder finder=new LatestCheckPointFinder(logFiles,fs,reader);
-  LatestCheckPointFinder.LatestCheckPoint result=finder.find(currentLogVersion);
-  if (result.checkPoint == null) {
-    if (result.oldestLogVersionFound == 0) {
-      return true;
-    }
- else {
-      throw new UnderlyingStorageException("No check point found in any log file from version " + Math.max(INITIAL_LOG_VERSION,result.oldestLogVersionFound) + " to "+ currentLogVersion);
-    }
-  }
-  return result.commitsAfterCheckPoint;
+  return new PositionToRecoverFrom(finder).apply(currentLogVersion) != LogPosition.UNSPECIFIED;
 }
