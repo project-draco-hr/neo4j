@@ -1,0 +1,31 @@
+{
+  TransactionIdStore store1=mock(TransactionIdStore.class);
+  TransactionIdStore store2=mock(TransactionIdStore.class);
+  @SuppressWarnings("unchecked") Supplier<TransactionIdStore> supplier=mock(Supplier.class);
+  when(supplier.get()).thenReturn(store1,store2);
+  doAnswer(new Answer<Void>(){
+    @Override public Void answer(    InvocationOnMock invocation) throws Throwable {
+      ((HighAvailabilityMemberListener)invocation.getArguments()[0]).slaveIsAvailable(new HighAvailabilityMemberChangeEvent(null,null,serverId,null));
+      return null;
+    }
+  }
+).when(machine).addHighAvailabilityMemberListener(any(HighAvailabilityMemberListener.class));
+  doAnswer(new Answer<Void>(){
+    @Override public Void answer(    InvocationOnMock invocation) throws Throwable {
+      ((HighAvailabilityMemberListener)invocation.getArguments()[0]).instanceStops(new HighAvailabilityMemberChangeEvent(null,null,serverId,null));
+      return null;
+    }
+  }
+).when(machine).removeHighAvailabilityMemberListener(any(HighAvailabilityMemberListener.class));
+  UpdatePullingTransactionObligationFulfiller fulfiller=new UpdatePullingTransactionObligationFulfiller(updatePuller,machine,serverId,supplier);
+  fulfiller.start();
+  fulfiller.fulfill(1);
+  fulfiller.stop();
+  fulfiller.fulfill(2);
+  fulfiller.start();
+  fulfiller.fulfill(3);
+  fulfiller.stop();
+  fulfiller.fulfill(4);
+  verify(store1,times(1)).getLastClosedTransactionId();
+  verify(store2,times(1)).getLastClosedTransactionId();
+}
