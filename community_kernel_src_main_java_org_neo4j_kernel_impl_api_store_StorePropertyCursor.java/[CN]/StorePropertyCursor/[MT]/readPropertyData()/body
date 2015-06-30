@@ -1,0 +1,108 @@
+{
+  buffer.clear();
+switch (type) {
+case BOOL:
+case BYTE:
+{
+      buffer.put((byte)header);
+      break;
+    }
+case SHORT:
+{
+    buffer.putShort((short)header);
+    break;
+  }
+case CHAR:
+{
+  buffer.putChar((char)header);
+  break;
+}
+case INT:
+{
+buffer.putInt((int)header);
+break;
+}
+case LONG:
+{
+if ((header & 0x1L) > 0) {
+buffer.putLong(header >>> 1);
+}
+ else {
+buffer.putLong(cursor.getLong());
+remainingBlocksToRead--;
+}
+break;
+}
+case FLOAT:
+{
+buffer.putInt((int)header);
+break;
+}
+case DOUBLE:
+{
+buffer.putLong(cursor.getLong());
+remainingBlocksToRead--;
+break;
+}
+case STRING:
+{
+int storeOffset=cursor.getOffset();
+cursor.close();
+if (stringRecordCursor == null) {
+stringRecordCursor=stringStore.newDynamicRecordCursor();
+}
+try (GenericCursor<DynamicRecord> stringRecords=stringStore.getRecordsCursor(header,true,stringRecordCursor)){
+while (stringRecords.next()) {
+DynamicRecord dynamicRecord=stringRecords.get();
+buffer.put(dynamicRecord.getData(),0,dynamicRecord.getData().length);
+}
+}
+ cursor=propertyStore.newReadCursor(currentRecordId);
+cursor.setOffset(storeOffset);
+break;
+}
+case ARRAY:
+{
+int storeOffset=cursor.getOffset();
+cursor.close();
+if (arrayRecordCursor == null) {
+arrayRecordCursor=arrayStore.newDynamicRecordCursor();
+}
+try (GenericCursor<DynamicRecord> arrayRecords=arrayStore.getRecordsCursor(header,true,arrayRecordCursor)){
+while (arrayRecords.next()) {
+DynamicRecord dynamicRecord=arrayRecords.get();
+while (true) {
+try {
+buffer.put(dynamicRecord.getData(),0,dynamicRecord.getData().length);
+break;
+}
+ catch (BufferOverflowException e) {
+buffer.flip();
+bytes=new byte[bytes.length * 2];
+ByteBuffer newBuffer=ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN);
+newBuffer.put(buffer);
+buffer=newBuffer;
+}
+}
+}
+}
+ cursor=propertyStore.newReadCursor(currentRecordId);
+cursor.setOffset(storeOffset);
+break;
+}
+case SHORT_STRING:
+case SHORT_ARRAY:
+{
+buffer.putLong(originalHeader);
+while (remainingBlocksToRead-- > 0) {
+buffer.putLong(cursor.getLong());
+}
+break;
+}
+default :
+{
+throw new IllegalStateException();
+}
+}
+buffer.flip();
+}

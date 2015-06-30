@@ -1,0 +1,27 @@
+{
+  try {
+    if (blockId != noNextBlock && cursor.next(pageIdForRecord(blockId))) {
+      record.setId(blockId);
+      int headerReadResult;
+      do {
+        cursor.setOffset(offsetForId(blockId));
+        headerReadResult=readRecordHeader(cursor,record,false);
+        if (headerReadResult == hasDataSignal && readBothHeaderAndData) {
+          readRecordData(cursor,record);
+        }
+      }
+ while (cursor.shouldRetry());
+      checkForInUse(headerReadResult,record);
+      checkForIllegalSize(headerReadResult,record);
+      current=record;
+      blockId=record.getNextBlock();
+      return true;
+    }
+ else {
+      return false;
+    }
+  }
+ catch (  IOException e) {
+    throw new UnderlyingStorageException(e);
+  }
+}

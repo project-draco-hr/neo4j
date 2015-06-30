@@ -1,34 +1,43 @@
 {
   try {
     for (    Long nodeId : state.addedAndRemovedNodes().getRemoved()) {
-      Iterator<DefinedProperty> props=storeReadLayer.nodeGetAllProperties(storeStatement,nodeId);
-      while (props.hasNext()) {
-        DefinedProperty prop=props.next();
-        removedNodeProperties.add(new NodePropertyEntryView(nodeId,storeReadLayer.propertyKeyGetName(prop.propertyKeyId()),null,prop.value()));
+      try (NodeCursor node=storeStatement.acquireSingleNodeCursor(nodeId)){
+        if (node.next()) {
+          try (PropertyCursor properties=node.properties()){
+            while (properties.next()) {
+              removedNodeProperties.add(new NodePropertyEntryView(nodeId,storeReadLayer.propertyKeyGetName(properties.propertyKeyId()),null,properties.value()));
+            }
+          }
+           try (LabelCursor labels=node.labels()){
+            while (labels.next()) {
+              removedLabels.add(new LabelEntryView(nodeId,storeReadLayer.labelGetName(labels.getLabel())));
+            }
+          }
+         }
       }
-      PrimitiveIntIterator labels=storeReadLayer.nodeGetLabels(storeStatement,nodeId);
-      while (labels.hasNext()) {
-        removedLabels.add(new LabelEntryView(nodeId,storeReadLayer.labelGetName(labels.next())));
-      }
-    }
+     }
     for (    Long relId : state.addedAndRemovedRelationships().getRemoved()) {
-      Relationship relationship=relationship(relId);
-      Iterator<DefinedProperty> props=storeReadLayer.relationshipGetAllProperties(storeStatement,relId);
-      while (props.hasNext()) {
-        DefinedProperty prop=props.next();
-        removedRelationshipProperties.add(new RelationshipPropertyEntryView(relationship,storeReadLayer.propertyKeyGetName(prop.propertyKeyId()),null,prop.value()));
+      Relationship relationshipProxy=relationship(relId);
+      try (RelationshipCursor relationship=storeStatement.acquireSingleRelationshipCursor(relId)){
+        if (relationship.next()) {
+          try (PropertyCursor properties=relationship.properties()){
+            while (properties.next()) {
+              removedRelationshipProperties.add(new RelationshipPropertyEntryView(relationshipProxy,storeReadLayer.propertyKeyGetName(properties.propertyKeyId()),null,properties.value()));
+            }
+          }
+         }
       }
-    }
+     }
     for (    NodeState nodeState : state.modifiedNodes()) {
       Iterator<DefinedProperty> added=nodeState.addedAndChangedProperties();
       while (added.hasNext()) {
         DefinedProperty property=added.next();
-        assignedNodeProperties.add(new NodePropertyEntryView(nodeState.getId(),storeReadLayer.propertyKeyGetName(property.propertyKeyId()),property.value(),committedValue(storeReadLayer,nodeState,property.propertyKeyId())));
+        assignedNodeProperties.add(new NodePropertyEntryView(nodeState.getId(),storeReadLayer.propertyKeyGetName(property.propertyKeyId()),property.value(),committedValue(nodeState,property.propertyKeyId())));
       }
       Iterator<Integer> removed=nodeState.removedProperties();
       while (removed.hasNext()) {
         Integer property=removed.next();
-        removedNodeProperties.add(new NodePropertyEntryView(nodeState.getId(),storeReadLayer.propertyKeyGetName(property),null,committedValue(storeReadLayer,nodeState,property)));
+        removedNodeProperties.add(new NodePropertyEntryView(nodeState.getId(),storeReadLayer.propertyKeyGetName(property),null,committedValue(nodeState,property)));
       }
       ReadableDiffSets<Integer> labels=nodeState.labelDiffSets();
       for (      Integer label : labels.getAdded()) {
@@ -52,7 +61,7 @@
       }
     }
   }
- catch (  EntityNotFoundException|PropertyKeyIdNotFoundKernelException|LabelNotFoundKernelException e) {
+ catch (  PropertyKeyIdNotFoundKernelException|LabelNotFoundKernelException e) {
     throw new ThisShouldNotHappenError("Jake","An entity that does not exist was modified.",e);
   }
 }

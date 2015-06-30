@@ -1,0 +1,92 @@
+{
+  if (type == null)   throw new IllegalStateException();
+switch (type) {
+case BOOL:
+{
+      return header == 1;
+    }
+case BYTE:
+{
+    return (byte)header;
+  }
+case SHORT:
+{
+  return (short)header;
+}
+case CHAR:
+{
+return (char)header;
+}
+case INT:
+{
+return (int)header;
+}
+case LONG:
+{
+if ((header & 0x1L) > 0) {
+return header >>> 1;
+}
+ else {
+remainingBlocksToRead--;
+return cursor.getLong();
+}
+}
+case FLOAT:
+{
+return Float.intBitsToFloat((int)header);
+}
+case DOUBLE:
+{
+remainingBlocksToRead--;
+return Double.longBitsToDouble(cursor.getLong());
+}
+case STRING:
+{
+try {
+readPropertyData();
+return UTF8.decode(bytes,0,buffer.limit());
+}
+ catch (IOException e) {
+throw new UnderlyingStorageException(e);
+}
+}
+case ARRAY:
+{
+try {
+readPropertyData();
+return getRightArray();
+}
+ catch (IOException e) {
+throw new UnderlyingStorageException(e);
+}
+}
+case SHORT_STRING:
+{
+try {
+readPropertyData();
+bits.clear(true);
+bits.put(bytes,0,buffer.limit());
+return LongerShortString.decode(bits);
+}
+ catch (IOException e) {
+throw new UnderlyingStorageException(e);
+}
+}
+case SHORT_ARRAY:
+{
+try {
+readPropertyData();
+bits.clear(true);
+bits.put(bytes,0,buffer.limit());
+return ShortArray.decode(bits);
+}
+ catch (IOException e) {
+throw new UnderlyingStorageException(e);
+}
+}
+default :
+{
+throw new IllegalStateException("No such type:" + type);
+}
+}
+}
