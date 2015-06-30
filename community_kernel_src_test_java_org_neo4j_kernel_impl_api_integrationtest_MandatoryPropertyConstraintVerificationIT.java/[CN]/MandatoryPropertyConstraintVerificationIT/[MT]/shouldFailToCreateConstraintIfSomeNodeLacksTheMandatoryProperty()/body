@@ -1,6 +1,7 @@
 {
+  long nodeId;
   try (Transaction tx=db.beginTx()){
-    db.createNode(label("Foo"));
+    nodeId=db.createNode(label("Foo")).getId();
     tx.success();
   }
    try {
@@ -11,6 +12,10 @@
      fail("expected exception");
   }
  catch (  ConstraintViolationException e) {
-    assertThat(e.getCause(),instanceOf(CreateConstraintFailureException.class));
+    Throwable cause=e.getCause();
+    assertThat(cause,instanceOf(CreateConstraintFailureException.class));
+    Throwable rootCause=cause.getCause();
+    assertThat(rootCause,instanceOf(ConstraintVerificationFailedKernelException.class));
+    assertThat(userMessageOf((KernelException)rootCause),containsString("Node(" + nodeId + ")"));
   }
 }

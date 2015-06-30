@@ -1,0 +1,16 @@
+{
+  ClusterManager.ManagedCluster cluster=clusterRule.startCluster();
+  HighlyAvailableGraphDatabase master=cluster.getMaster();
+  try (Transaction tx=master.beginTx()){
+    createConstraint(master,LABEL,PROPERTY_KEY);
+    tx.success();
+  }
+   cluster.sync();
+  for (  HighlyAvailableGraphDatabase clusterMember : cluster.getAllMembers()) {
+    try (Transaction tx=clusterMember.beginTx()){
+      ConstraintDefinition constraint=single(clusterMember.schema().getConstraints(LABEL));
+      assertEquals(PROPERTY_KEY,single(constraint.getPropertyKeys()));
+      tx.success();
+    }
+   }
+}

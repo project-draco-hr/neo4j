@@ -1,0 +1,29 @@
+{
+  ClusterManager.ManagedCluster cluster=clusterRule.config(HaSettings.read_timeout,"4000s").startCluster();
+  HighlyAvailableGraphDatabase slave=cluster.getAnySlave();
+  HighlyAvailableGraphDatabase master=cluster.getMaster();
+  ThreadToStatementContextBridge txBridge=threadToStatementContextBridge(slave);
+  createUser(master,"Bob");
+  slave.beginTx();
+  createConstraintOffendingNode(slave,LABEL,PROPERTY_KEY,"Bob");
+  TopLevelTransaction slaveTx=txBridge.getTopLevelTransactionBoundToThisThread(true);
+  txBridge.unbindTransactionFromCurrentThread();
+  try (Transaction tx=master.beginTx()){
+    createConstraint(master,LABEL,PROPERTY_KEY);
+    tx.success();
+  }
+   txBridge.bindTransactionToCurrentThread(slaveTx);
+  try {
+    slaveTx.success();
+    slaveTx.close();
+    fail("Expected this commit to fail :(");
+  }
+ catch (  org.neo4j.graphdb.TransactionFailureException e) {
+    assertThat(e.getCause().getCause(),instanceOf(org.neo4j.kernel.api.exceptions.TransactionFailureException.class));
+  }
+  assertConstraintHolds(master,LABEL,PROPERTY_KEY,"Bob");
+  cluster.sync();
+  assertConstraintHolds(slave,LABEL,PROPERTY_KEY,"Bob");
+  createUser(slave,"Steven");
+  createUser(master,"Caroline");
+}
