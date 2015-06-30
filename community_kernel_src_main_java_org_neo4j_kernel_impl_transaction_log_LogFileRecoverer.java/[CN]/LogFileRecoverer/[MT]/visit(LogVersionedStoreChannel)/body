@@ -1,7 +1,18 @@
 {
-  ReadableVersionableLogChannel recoveredDataChannel=new ReadAheadLogChannel(channel,NO_MORE_CHANNELS,DEFAULT_READ_AHEAD_SIZE);
-  try (PhysicalTransactionCursor<ReadableVersionableLogChannel> physicalTransactionCursor=new PhysicalTransactionCursor<>(recoveredDataChannel,logEntryReader)){
-    while (physicalTransactionCursor.next() && !visitor.visit(physicalTransactionCursor.get())) {
+  final ReadableVersionableLogChannel recoveredDataChannel=new ReadAheadLogChannel(channel,NO_MORE_CHANNELS,DEFAULT_READ_AHEAD_SIZE);
+  try (final PhysicalTransactionCursor<ReadableVersionableLogChannel> physicalTransactionCursor=new PhysicalTransactionCursor<>(recoveredDataChannel,logEntryReader)){
+    RecoverableTransaction recoverableTransaction=new RecoverableTransaction(){
+      @Override public CommittedTransactionRepresentation representation(){
+        return physicalTransactionCursor.get();
+      }
+      @Override public LogPosition positionAfterTx(){
+        long version=recoveredDataChannel.getVersion();
+        long byteOffset=physicalTransactionCursor.lastKnownGoodPosition();
+        return new LogPosition(version,byteOffset);
+      }
+    }
+;
+    while (physicalTransactionCursor.next() && !visitor.visit(recoverableTransaction)) {
     }
     long lastKnownGoodPosition=physicalTransactionCursor.lastKnownGoodPosition();
     if (channel.position() > lastKnownGoodPosition) {
