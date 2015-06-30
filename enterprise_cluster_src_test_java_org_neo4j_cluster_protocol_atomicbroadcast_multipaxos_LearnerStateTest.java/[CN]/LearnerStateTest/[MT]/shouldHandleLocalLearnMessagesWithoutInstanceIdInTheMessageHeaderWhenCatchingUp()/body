@@ -1,0 +1,17 @@
+{
+  LearnerState learner=LearnerState.learner;
+  org.neo4j.cluster.InstanceId instanceId=new org.neo4j.cluster.InstanceId(42);
+  long payload=12l;
+  LearnerContext context=mock(LearnerContext.class);
+  when(context.getMyId()).thenReturn(instanceId);
+  when(context.getLastKnownLearnedInstanceInCluster()).thenReturn(11l);
+  when(context.getLastLearnedInstanceId()).thenReturn(payload);
+  @SuppressWarnings("unchecked") Message<LearnerMessage> message=mock(Message.class);
+  when(message.getMessageType()).thenReturn(LearnerMessage.catchUp);
+  when(message.hasHeader(Message.INSTANCE_ID)).thenReturn(false);
+  when(message.getHeader(Message.INSTANCE_ID)).thenThrow(new IllegalArgumentException());
+  when(message.getPayload()).thenReturn(payload);
+  State<?,?> state=learner.handle(context,message,mock(MessageHolder.class));
+  assertSame(state,learner);
+  verify(context,times(1)).setLastKnownLearnedInstanceInCluster(payload,instanceId);
+}
