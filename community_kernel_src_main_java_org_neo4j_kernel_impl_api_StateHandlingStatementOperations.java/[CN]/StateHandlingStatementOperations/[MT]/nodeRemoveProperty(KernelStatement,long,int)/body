@@ -1,9 +1,20 @@
 {
-  Property existingProperty=nodeGetProperty(state,nodeId,propertyKeyId);
-  if (existingProperty.isDefined()) {
-    legacyPropertyTrackers.nodeRemoveStoreProperty(nodeId,(DefinedProperty)existingProperty);
-    state.txState().nodeDoRemoveProperty(nodeId,(DefinedProperty)existingProperty);
-    indexesUpdateProperty(state,nodeId,propertyKeyId,(DefinedProperty)existingProperty,null);
+  try (NodeCursor node=nodeCursor(state,nodeId)){
+    if (!node.next()) {
+      throw new EntityNotFoundException(EntityType.NODE,nodeId);
+    }
+    Property existingProperty;
+    try (PropertyCursor properties=node.properties()){
+      if (!properties.seek(propertyKeyId)) {
+        existingProperty=Property.noProperty(propertyKeyId,EntityType.NODE,nodeId);
+      }
+ else {
+        existingProperty=Property.property(properties.propertyKeyId(),properties.value());
+        legacyPropertyTrackers.nodeRemoveStoreProperty(nodeId,(DefinedProperty)existingProperty);
+        state.txState().nodeDoRemoveProperty(nodeId,(DefinedProperty)existingProperty);
+        indexesUpdateProperty(state,node,propertyKeyId,(DefinedProperty)existingProperty,null);
+      }
+    }
+     return existingProperty;
   }
-  return existingProperty;
-}
+ }
