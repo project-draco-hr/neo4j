@@ -1,9 +1,11 @@
 {
   AssertableLogProvider logProvider=new AssertableLogProvider();
-  StoreRecoverer recoverer=new StoreRecoverer();
+  DefaultFileSystemAbstraction fs=new DefaultFileSystemAbstraction();
+  PageCache pageCache=pageCacheRule.getPageCache(fs);
+  StoreRecoverer recoverer=new StoreRecoverer(fs,pageCache);
   Config config=buildProperties();
   new TestGraphDatabaseFactory().newEmbeddedDatabase(storeDirectory).shutdown();
-  createSomeDataAndCrash(storeDirectory,new DefaultFileSystemAbstraction());
+  createSomeDataAndCrash(storeDirectory,fs);
   assertThat("Store should need recovery",recoverer.recoveryNeededAt(storeDirectory),is(true));
   PerformRecoveryIfNecessary task=new PerformRecoveryIfNecessary(config,new HashMap<String,String>(),logProvider);
   assertThat("Recovery task should run successfully.",task.run(),is(true));

@@ -1,27 +1,30 @@
 {
   try {
     File storeDir=config.get(ServerInternalSettings.legacy_db_location);
-    if (new CurrentDatabase(new StoreVersionCheck(new DefaultFileSystemAbstraction())).storeFilesAtCurrentVersion(storeDir)) {
-      return true;
-    }
     FileSystemAbstraction fileSystem=new DefaultFileSystemAbstraction();
-    UpgradableDatabase upgradableDatabase=new UpgradableDatabase(new StoreVersionCheck(fileSystem));
-    if (!upgradableDatabase.storeFilesUpgradeable(storeDir)) {
-      return true;
+    try (PageCache pageCache=StandalonePageCacheFactory.createPageCache(fileSystem,config)){
+      StoreVersionCheck storeVersionCheck=new StoreVersionCheck(pageCache);
+      if (new CurrentDatabase(storeVersionCheck).storeFilesAtCurrentVersion(storeDir)) {
+        return true;
+      }
+      UpgradableDatabase upgradableDatabase=new UpgradableDatabase(storeVersionCheck);
+      if (!upgradableDatabase.storeFilesUpgradeable(storeDir)) {
+        return true;
+      }
+      try {
+        new StoreMigrationTool().run(fileSystem,storeDir,new Config(dbConfig),logProvider,monitor);
+      }
+ catch (      UpgradeNotAllowedByConfigurationException e) {
+        log.error(e.getMessage());
+        failureMessage=e.getMessage();
+        return false;
+      }
+catch (      StoreUpgrader.UnableToUpgradeException e) {
+        log.error("Unable to upgrade store",e);
+        return false;
+      }
     }
-    try {
-      new StoreMigrationTool().run(fileSystem,storeDir,new Config(dbConfig),logProvider,monitor);
-    }
- catch (    UpgradeNotAllowedByConfigurationException e) {
-      log.error(e.getMessage());
-      failureMessage=e.getMessage();
-      return false;
-    }
-catch (    StoreUpgrader.UnableToUpgradeException e) {
-      log.error("Unable to upgrade store",e);
-      return false;
-    }
-    return true;
+     return true;
   }
  catch (  Exception e) {
     log.error("Unknown error",e);

@@ -1,16 +1,13 @@
 {
-  StoreChannel fileChannel=null;
   String storeFilename=storeFile.getName();
-  byte[] expectedVersionBytes=UTF8.encode(expectedVersion);
-  try {
-    if (!fs.fileExists(storeFile)) {
-      return new Result(Outcome.missingStoreFile,null,storeFilename);
-    }
-    fileChannel=fs.open(storeFile,"r");
-    if (fileChannel.size() < expectedVersionBytes.length) {
+  try (PagedFile file=pageCache.map(storeFile,pageCache.pageSize())){
+    if (file.getLastPageId() == -1) {
       return new Result(Outcome.storeVersionNotFound,null,storeFilename);
     }
-    String actualVersion=readVersion(fileChannel,expectedVersionBytes.length);
+    String actualVersion=readVersion(file,expectedVersion.length());
+    if (actualVersion == null) {
+      return new Result(Outcome.storeVersionNotFound,null,storeFilename);
+    }
     if (!actualVersion.startsWith(typeDescriptor(expectedVersion))) {
       return new Result(Outcome.storeVersionNotFound,actualVersion,storeFilename);
     }
@@ -19,16 +16,7 @@
     }
   }
  catch (  IOException e) {
-    throw new RuntimeException(e);
-  }
- finally {
-    if (fileChannel != null) {
-      try {
-        fileChannel.close();
-      }
- catch (      IOException e) {
-      }
-    }
+    return new Result(Outcome.missingStoreFile,null,storeFilename);
   }
   return new Result(Outcome.ok,null,storeFilename);
 }

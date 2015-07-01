@@ -18,21 +18,19 @@
   life.start();
   SchemaIndexProvider schemaIndexProvider=kernelExtensions.resolveDependency(SchemaIndexProvider.class,SchemaIndexProvider.HIGHEST_PRIORITIZED_OR_NONE);
   Log log=userLogProvider.getLog(StoreMigrationTool.class);
-  try {
-    UpgradableDatabase upgradableDatabase=new UpgradableDatabase(new StoreVersionCheck(fs));
-    migrationProcess.addParticipant(new StoreMigrator(new VisibleMigrationProgressMonitor(logService.getInternalLog(StoreMigrationTool.class)),fs,upgradableDatabase,config,logService));
-    migrationProcess.addParticipant(schemaIndexProvider.storeMigrationParticipant(fs,upgradableDatabase));
-  }
- catch (  IllegalArgumentException e) {
-  }
   try (PageCache pageCache=createPageCache(fs,config)){
+    UpgradableDatabase upgradableDatabase=new UpgradableDatabase(new StoreVersionCheck(pageCache));
+    migrationProcess.addParticipant(new StoreMigrator(new VisibleMigrationProgressMonitor(logService.getInternalLog(StoreMigrationTool.class)),fs,pageCache,upgradableDatabase,config,logService));
+    migrationProcess.addParticipant(schemaIndexProvider.storeMigrationParticipant(fs,pageCache,upgradableDatabase));
     long startTime=System.currentTimeMillis();
-    migrationProcess.migrateIfNeeded(legacyStoreDirectory,schemaIndexProvider,pageCache);
+    migrationProcess.migrateIfNeeded(legacyStoreDirectory,schemaIndexProvider);
     long duration=System.currentTimeMillis() - startTime;
     log.info(format("Migration completed in %d s%n",duration / 1000));
   }
  catch (  IOException e) {
     throw new StoreUpgrader.UnableToUpgradeException("Failure during upgrade",e);
+  }
+catch (  IllegalArgumentException e) {
   }
  finally {
     life.shutdown();
