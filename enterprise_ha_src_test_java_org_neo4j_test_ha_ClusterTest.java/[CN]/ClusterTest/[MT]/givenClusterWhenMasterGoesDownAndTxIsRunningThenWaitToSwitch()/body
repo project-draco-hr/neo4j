@@ -1,0 +1,31 @@
+{
+  ClusterManager clusterManager=new ClusterManager(fromXml(getClass().getResource("/threeinstances.xml").toURI()),testDirectory.directory("waitfortx"),MapUtil.stringMap());
+  try {
+    clusterManager.start();
+    ClusterManager.ManagedCluster cluster=clusterManager.getDefaultCluster();
+    cluster.await(allSeesAllAsAvailable());
+    HighlyAvailableGraphDatabase slave=cluster.getAnySlave();
+    final AtomicBoolean afterTx=new AtomicBoolean();
+    final AtomicBoolean availableAfterTxFinished=new AtomicBoolean();
+    slave.platformModule.availabilityGuard.addListener(new AvailabilityGuard.AvailabilityListener(){
+      @Override public void available(){
+        availableAfterTxFinished.set(afterTx.get());
+      }
+      @Override public void unavailable(){
+      }
+    }
+);
+    try (Transaction tx=slave.beginTx()){
+      cluster.shutdown(cluster.getMaster());
+      Thread.sleep(8000);
+      tx.success();
+      afterTx.set(true);
+    }
+     cluster.await(masterAvailable());
+    cluster.await(masterSeesSlavesAsAvailable(1));
+    assertThat("Available after tx finished",availableAfterTxFinished.get(),is(true));
+  }
+  finally {
+    clusterManager.stop();
+  }
+}
