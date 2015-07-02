@@ -7,15 +7,20 @@
       throw new TransactionFailureException(Status.Transaction.CouldNotRollback,e,"Could not drop created constraint indexes");
     }
     if (txState != null) {
-      txState.accept(new TxStateVisitor.Adapter(){
-        @Override public void visitCreatedNode(        long id){
-          storeLayer.releaseNode(id);
+      try {
+        txState.accept(new TxStateVisitor.Adapter(){
+          @Override public void visitCreatedNode(          long id){
+            storeLayer.releaseNode(id);
+          }
+          @Override public void visitCreatedRelationship(          long id,          int type,          long startNode,          long endNode){
+            storeLayer.releaseRelationship(id);
+          }
         }
-        @Override public void visitCreatedRelationship(        long id,        int type,        long startNode,        long endNode){
-          storeLayer.releaseRelationship(id);
-        }
-      }
 );
+      }
+ catch (      ConstraintValidationKernelException e) {
+        throw new IllegalStateException("Releasing locks during rollback should perform no constraints checking.",e);
+      }
     }
   }
   finally {

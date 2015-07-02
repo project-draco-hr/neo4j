@@ -1,0 +1,18 @@
+{
+  try {
+    indexingService.getIndexProxy(indexId).awaitStoreScanCompleted();
+  }
+ catch (  IndexNotFoundKernelException e) {
+    throw new IllegalStateException(String.format("Index (indexId=%d) that we just created does not exist.",indexId));
+  }
+catch (  IndexPopulationFailedKernelException e) {
+    Throwable cause=e.getCause();
+    if (cause instanceof IndexEntryConflictException) {
+      Evidence evidence=Evidence.of((IndexEntryConflictException)cause);
+      throw new ConstraintVerificationFailedKernelException(constraint,evidence);
+    }
+ else {
+      throw new ConstraintVerificationFailedKernelException(constraint,cause);
+    }
+  }
+}

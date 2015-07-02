@@ -1,0 +1,26 @@
+{
+  HighlyAvailableGraphDatabase master=cluster.getMaster();
+  HighlyAvailableGraphDatabase slave=cluster.getAnySlave();
+  long end=System.currentTimeMillis() + runtime;
+  int successfulAttempts=0;
+  while (end > System.currentTimeMillis()) {
+{
+      setLabelAndPropertyForNextRound();
+      cluster.sync();
+      try {
+        slaveWork.execute(performInsert(slave)).get();
+      }
+ catch (      ExecutionException e) {
+        if (Exceptions.contains(e,"could not connect",ComException.class)) {
+          continue;
+        }
+      }
+    }
+{
+      ops.perform();
+      assertConstraintsNotViolated(ops.constraintCreation,ops.constraintViolation,master);
+      successfulAttempts++;
+    }
+  }
+  assertThat(successfulAttempts,greaterThan(0));
+}

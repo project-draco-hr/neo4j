@@ -1,17 +1,24 @@
 {
-  UniquenessConstraint constraint;
-  SchemaStateCheck schemaState;
+  for (int i=0; i < 2; i++) {
+    PropertyConstraint constraint;
+    SchemaStateCheck schemaState;
 {
-    SchemaWriteOperations statement=schemaWriteOperationsInNewTransaction();
-    constraint=statement.uniquenessConstraintCreate(labelId,propertyKeyId);
-    commit();
-    schemaState=new SchemaStateCheck().setUp();
-  }
+      SchemaWriteOperations statement=schemaWriteOperationsInNewTransaction();
+      if (i == 0) {
+        constraint=statement.uniquePropertyConstraintCreate(labelId,propertyKeyId);
+      }
+ else {
+        constraint=statement.mandatoryPropertyConstraintCreate(labelId,propertyKeyId);
+      }
+      commit();
+      schemaState=new SchemaStateCheck().setUp();
+    }
 {
-    SchemaWriteOperations statement=schemaWriteOperationsInNewTransaction();
-    statement.constraintDrop(constraint);
-    commit();
+      SchemaWriteOperations statement=schemaWriteOperationsInNewTransaction();
+      statement.constraintDrop(constraint);
+      commit();
+    }
+    schemaState.assertCleared(readOperationsInNewTransaction());
+    rollback();
   }
-  schemaWriteOperationsInNewTransaction();
-  schemaState.assertCleared();
 }

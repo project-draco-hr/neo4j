@@ -1,18 +1,20 @@
 {
+  for (  PropertyConstraint constraint : new PropertyConstraint[]{new UniquenessConstraint(labelId,propertyKeyId),new MandatoryPropertyConstraint(labelId,propertyKeyId)}) {
 {
-    SchemaWriteOperations statement=schemaWriteOperationsInNewTransaction();
-    try {
-      statement.constraintDrop(new UniquenessConstraint(labelId,propertyKeyId));
-      fail("Should not have dropped constraint");
+      SchemaWriteOperations statement=schemaWriteOperationsInNewTransaction();
+      try {
+        statement.constraintDrop(constraint);
+        fail("Should not have dropped constraint");
+      }
+ catch (      DropConstraintFailureException e) {
+        assertThat(e.getCause(),instanceOf(NoSuchConstraintException.class));
+      }
+      commit();
     }
- catch (    DropConstraintFailureException e) {
-      assertThat(e.getCause(),instanceOf(NoSuchConstraintException.class));
-    }
-    commit();
-  }
 {
-    SchemaWriteOperations statement=schemaWriteOperationsInNewTransaction();
-    assertEquals(emptySetOf(IndexDescriptor.class),asSet(statement.uniqueIndexesGetAll()));
-    commit();
+      ReadOperations statement=readOperationsInNewTransaction();
+      assertEquals(emptySetOf(IndexDescriptor.class),asSet(statement.uniqueIndexesGetAll()));
+      commit();
+    }
   }
 }
