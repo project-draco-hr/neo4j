@@ -2,10 +2,15 @@
   MasterImpl master=spy(newMasterImpl(mockMasterImplSpiWith(StoreId.DEFAULT)));
   doReturn(voidResponseWithTransactionLogs()).when(master).newLockSession(any(RequestContext.class));
   cleanupRule.add(newMasterServer(master));
+  final TransactionIdStore txIdStore=mock(TransactionIdStore.class);
   TransactionAppender txAppender=mock(TransactionAppender.class);
-  when(txAppender.append(any(TransactionRepresentation.class),anyLong())).thenReturn(mock(Commitment.class));
+  when(txAppender.append(any(TransactionRepresentation.class),anyLong())).thenAnswer(new Answer<Commitment>(){
+    @Override public Commitment answer(    InvocationOnMock invocation) throws Throwable {
+      return new FakeCommitment((Long)invocation.getArguments()[1],txIdStore);
+    }
+  }
+);
   TransactionRepresentationStoreApplier txApplier=mock(TransactionRepresentationStoreApplier.class);
-  TransactionIdStore txIdStore=mock(TransactionIdStore.class);
   IndexUpdatesValidator indexUpdatesValidator=mock(IndexUpdatesValidator.class);
   when(indexUpdatesValidator.validate(any(TransactionRepresentation.class),any(TransactionApplicationMode.class))).thenReturn(ValidatedIndexUpdates.NONE);
   final Dependencies deps=new Dependencies();
@@ -15,5 +20,5 @@
   masterClient.newLockSession(new RequestContext(1,2,3,4,5));
   verify(txAppender,times(TX_LOG_COUNT)).append(any(TransactionRepresentation.class),anyLong());
   verify(txApplier,times(TX_LOG_COUNT)).apply(any(TransactionRepresentation.class),any(ValidatedIndexUpdates.class),any(LockGroup.class),anyLong(),any(TransactionApplicationMode.class));
-  verify(txIdStore,times(TX_LOG_COUNT)).transactionClosed(anyLong());
+  verify(txIdStore,times(TX_LOG_COUNT)).transactionClosed(anyLong(),anyLong(),anyLong());
 }
