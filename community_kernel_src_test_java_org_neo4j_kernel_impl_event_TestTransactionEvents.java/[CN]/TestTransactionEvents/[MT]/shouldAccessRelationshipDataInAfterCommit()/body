@@ -1,6 +1,7 @@
 {
   GraphDatabaseService db=dbRule.getGraphDatabaseService();
   final AtomicInteger accessCount=new AtomicInteger();
+  final Map<Long,Triplet<Node,String,Node>> expectedRelationshipData=new HashMap<>();
   TransactionEventHandler<Void> handler=new TransactionEventHandler.Adapter<Void>(){
     @Override public void afterCommit(    TransactionData data,    Void state){
       accessCount.set(0);
@@ -16,9 +17,11 @@
     }
     private void accessData(    Relationship relationship){
       accessCount.incrementAndGet();
-      relationship.getStartNode();
-      relationship.getEndNode();
-      relationship.getType();
+      Triplet<Node,String,Node> expectancy=expectedRelationshipData.get(relationship.getId());
+      assertNotNull(expectancy);
+      assertEquals(expectancy.first(),relationship.getStartNode());
+      assertEquals(expectancy.second(),relationship.getType().name());
+      assertEquals(expectancy.third(),relationship.getEndNode());
     }
   }
 ;
@@ -27,12 +30,14 @@
     Relationship relationship;
     try (Transaction tx=db.beginTx()){
       relationship=db.createNode().createRelationshipTo(db.createNode(),MyRelTypes.TEST);
+      expectedRelationshipData.put(relationship.getId(),Triplet.of(relationship.getStartNode(),relationship.getType().name(),relationship.getEndNode()));
       tx.success();
     }
      assertEquals(1,accessCount.get());
     try (Transaction tx=db.beginTx()){
       relationship.setProperty("name","Smith");
-      db.createNode().createRelationshipTo(db.createNode(),MyRelTypes.TEST);
+      Relationship otherRelationship=db.createNode().createRelationshipTo(db.createNode(),MyRelTypes.TEST2);
+      expectedRelationshipData.put(otherRelationship.getId(),Triplet.of(otherRelationship.getStartNode(),otherRelationship.getType().name(),otherRelationship.getEndNode()));
       tx.success();
     }
      assertEquals(2,accessCount.get());
