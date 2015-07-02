@@ -3,15 +3,6 @@
   final File unwritableLogDir=createUnwritableDirectory();
   final File configFile=HTTPLoggingPreparednessRuleTest.createConfigFile(HTTPLoggingPreparednessRuleTest.createLogbackConfigXml(unwritableLogDir),confDir);
   Config config=new Config(MapUtil.stringMap(Configurator.HTTP_LOGGING,"true",Configurator.HTTP_LOG_CONFIG_LOCATION,configFile.getPath()));
+  exception.expect(InvalidSettingException.class);
   NeoServer server=CommunityServerBuilder.server().withDefaultDatabaseTuning().withPreflightTasks(new EnsurePreparedForHttpLogging(config)).withProperty(Configurator.HTTP_LOGGING,"true").withProperty(Configurator.HTTP_LOG_CONFIG_LOCATION,configFile.getPath()).usingDatabaseDir(confDir.getAbsolutePath()).build();
-  try {
-    server.start();
-    fail("should have thrown exception");
-  }
- catch (  ServerStartupException e) {
-    assertThat(e.getMessage(),containsString(String.format("HTTP log directory [%s]",unwritableLogDir.getAbsolutePath())));
-  }
- finally {
-    server.stop();
-  }
 }

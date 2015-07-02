@@ -1,38 +1,26 @@
 {
-  InterruptThreadTimer interruptStartupTimer=dependencyResolver.satisfyDependency(createInterruptStartupTimer());
   try {
-    runPreflightTasks();
-    interruptStartupTimer.startCountdown();
-    try {
-      this.dbConfig.applyChanges(reloadConfigFromDisk());
-      life.start();
-      DiagnosticsManager diagnosticsManager=resolveDependency(DiagnosticsManager.class);
-      Log diagnosticsLog=diagnosticsManager.getTargetLog();
-      diagnosticsLog.info("--- SERVER STARTED START ---");
-      databaseActions=createDatabaseActions();
-      if (getConfig().get(ServerInternalSettings.webadmin_enabled)) {
-        rrdDbScheduler=new RoundRobinJobScheduler(logProvider);
-        rrdDbWrapper=new RrdFactory(configurator.configuration(),logProvider).createRrdDbAndSampler(database,rrdDbScheduler);
-      }
-      transactionFacade=createTransactionalActions();
-      cypherExecutor=new CypherExecutor(database);
-      configureWebServer();
-      cypherExecutor.start();
-      startModules();
-      startWebServer();
-      diagnosticsLog.info("--- SERVER STARTED END ---");
+    this.dbConfig.applyChanges(reloadConfigFromDisk());
+    life.start();
+    DiagnosticsManager diagnosticsManager=resolveDependency(DiagnosticsManager.class);
+    Log diagnosticsLog=diagnosticsManager.getTargetLog();
+    diagnosticsLog.info("--- SERVER STARTED START ---");
+    databaseActions=createDatabaseActions();
+    if (getConfig().get(ServerInternalSettings.webadmin_enabled)) {
+      rrdDbScheduler=new RoundRobinJobScheduler(logProvider);
+      rrdDbWrapper=new RrdFactory(configurator.configuration(),logProvider).createRrdDbAndSampler(database,rrdDbScheduler);
     }
-  finally {
-      interruptStartupTimer.stopCountdown();
-    }
+    transactionFacade=createTransactionalActions();
+    cypherExecutor=new CypherExecutor(database);
+    configureWebServer();
+    cypherExecutor.start();
+    startModules();
+    startWebServer();
+    diagnosticsLog.info("--- SERVER STARTED END ---");
   }
  catch (  Throwable t) {
     stopRrdDb();
     life.shutdown();
-    Thread.interrupted();
-    if (interruptStartupTimer.wasTriggered()) {
-      throw new ServerStartupException("Startup took longer than " + interruptStartupTimer.getTimeoutMillis() + "ms, "+ "and was stopped. You can disable this behavior by setting '"+ ServerInternalSettings.startup_timeout.name()+ "' to 0.",1);
-    }
     throw new ServerStartupException(format("Starting Neo4j Server failed: %s",t.getMessage()),t);
   }
 }
