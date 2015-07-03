@@ -1,11 +1,12 @@
 {
   long[] arrayPropertyValue={42,23,87};
   createIndex(db,label,propertyKey);
-  Transaction tx=db.beginTx();
-  Node node1=createNode(label,propertyKey,arrayPropertyValue);
-  tx.success();
-  tx.finish();
-  restart();
+  Node node1;
+  try (Transaction tx=db.beginTx()){
+    node1=createNode(label,propertyKey,arrayPropertyValue);
+    tx.success();
+  }
+   restart();
   assertThat(getIndexes(db,label),inTx(db,haveState(db,IndexState.ONLINE)));
   assertThat(findNodesByLabelAndProperty(label,propertyKey,arrayPropertyValue,db),containsOnly(node1));
   assertThat(findNodesByLabelAndProperty(label,propertyKey,new long[]{42,23},db),isEmpty());
