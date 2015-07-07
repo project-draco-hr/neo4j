@@ -1,0 +1,18 @@
+{
+  if (!force) {
+    RotationTimerFactory.RotationTimer rotationTimer=timerFactory.createTimer();
+    for (long expected=threshold - preState.store.version(), sleep=10; preState.applied() < expected; sleep=Math.min(sleep * 2,100)) {
+      if (rotationTimer.isTimedOut()) {
+        throw new RotationTimeoutException(threshold,preState.store.version(),rotationTimer.getElapsedTimeMillis());
+      }
+      try {
+        Thread.sleep(sleep);
+      }
+ catch (      InterruptedException e) {
+        throw Exceptions.withCause(new InterruptedIOException("Rotation was interrupted."),e);
+      }
+    }
+  }
+  Pair<File,KeyValueStoreFile> next=strategy.next(file(),updateHeaders(headersUpdater),keyFormat().filter(preState.dataProvider()));
+  return postState.create(ReadableState.store(preState.keyFormat(),next.other()),next.first());
+}
