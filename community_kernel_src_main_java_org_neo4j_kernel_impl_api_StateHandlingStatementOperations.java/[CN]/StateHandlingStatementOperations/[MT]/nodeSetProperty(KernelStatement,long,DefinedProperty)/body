@@ -1,12 +1,21 @@
 {
-  Property existingProperty=nodeGetProperty(state,nodeId,property.propertyKeyId());
-  if (!existingProperty.isDefined()) {
-    legacyPropertyTrackers.nodeAddStoreProperty(nodeId,property);
-  }
+  try (NodeCursor node=nodeCursor(state,nodeId)){
+    if (!node.next()) {
+      throw new EntityNotFoundException(EntityType.NODE,nodeId);
+    }
+    Property existingProperty;
+    try (PropertyCursor properties=node.properties()){
+      if (!properties.seek(property.propertyKeyId())) {
+        legacyPropertyTrackers.nodeAddStoreProperty(nodeId,property);
+        existingProperty=Property.noProperty(property.propertyKeyId(),EntityType.NODE,nodeId);
+      }
  else {
-    legacyPropertyTrackers.nodeChangeStoreProperty(nodeId,(DefinedProperty)existingProperty,property);
+        existingProperty=Property.property(properties.propertyKeyId(),properties.value());
+        legacyPropertyTrackers.nodeChangeStoreProperty(nodeId,(DefinedProperty)existingProperty,property);
+      }
+    }
+     state.txState().nodeDoReplaceProperty(nodeId,existingProperty,property);
+    indexesUpdateProperty(state,node,property.propertyKeyId(),existingProperty instanceof DefinedProperty ? (DefinedProperty)existingProperty : null,property);
+    return existingProperty;
   }
-  state.txState().nodeDoReplaceProperty(nodeId,existingProperty,property);
-  indexesUpdateProperty(state,nodeId,property.propertyKeyId(),existingProperty instanceof DefinedProperty ? (DefinedProperty)existingProperty : null,property);
-  return existingProperty;
-}
+ }

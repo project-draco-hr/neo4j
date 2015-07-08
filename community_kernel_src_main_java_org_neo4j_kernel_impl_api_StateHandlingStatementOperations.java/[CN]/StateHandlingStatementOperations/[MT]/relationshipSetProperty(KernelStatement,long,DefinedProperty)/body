@@ -1,11 +1,20 @@
 {
-  Property existingProperty=relationshipGetProperty(state,relationshipId,property.propertyKeyId());
-  if (!existingProperty.isDefined()) {
-    legacyPropertyTrackers.relationshipAddStoreProperty(relationshipId,property);
-  }
+  try (RelationshipCursor relationship=relationshipCursor(state,relationshipId)){
+    if (!relationship.next()) {
+      throw new EntityNotFoundException(EntityType.RELATIONSHIP,relationshipId);
+    }
+    Property existingProperty;
+    try (PropertyCursor properties=relationship.properties()){
+      if (!properties.seek(property.propertyKeyId())) {
+        legacyPropertyTrackers.relationshipAddStoreProperty(relationshipId,property);
+        existingProperty=Property.noProperty(property.propertyKeyId(),EntityType.RELATIONSHIP,relationshipId);
+      }
  else {
-    legacyPropertyTrackers.relationshipChangeStoreProperty(relationshipId,(DefinedProperty)existingProperty,property);
+        existingProperty=Property.property(properties.propertyKeyId(),properties.value());
+        legacyPropertyTrackers.relationshipChangeStoreProperty(relationshipId,(DefinedProperty)existingProperty,property);
+      }
+    }
+     state.txState().relationshipDoReplaceProperty(relationshipId,existingProperty,property);
+    return existingProperty;
   }
-  state.txState().relationshipDoReplaceProperty(relationshipId,existingProperty,property);
-  return existingProperty;
-}
+ }
