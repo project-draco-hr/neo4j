@@ -3,13 +3,13 @@
   HighlyAvailableGraphDatabase slave=cluster.getAnySlave();
   HighlyAvailableGraphDatabase master=cluster.getMaster();
   ThreadToStatementContextBridge txBridge=threadToStatementContextBridge(slave);
-  createUser(master,"Bob");
+  createEntityInTx(master,TYPE,PROPERTY_KEY,"Foo");
   slave.beginTx();
-  createConstraintOffendingNode(slave,LABEL,PROPERTY_KEY,"Bob");
+  createConstraintViolation(slave,TYPE,PROPERTY_KEY,"Foo");
   TopLevelTransaction slaveTx=txBridge.getTopLevelTransactionBoundToThisThread(true);
   txBridge.unbindTransactionFromCurrentThread();
   try (Transaction tx=master.beginTx()){
-    createConstraint(master,LABEL,PROPERTY_KEY);
+    createConstraint(master,TYPE,PROPERTY_KEY);
     tx.success();
   }
    txBridge.bindTransactionToCurrentThread(slaveTx);
@@ -21,9 +21,9 @@
  catch (  org.neo4j.graphdb.TransactionFailureException e) {
     assertThat(e.getCause().getCause(),instanceOf(org.neo4j.kernel.api.exceptions.TransactionFailureException.class));
   }
-  assertConstraintHolds(master,LABEL,PROPERTY_KEY,"Bob");
+  assertConstraintHolds(master,TYPE,PROPERTY_KEY,"Foo");
   cluster.sync();
-  assertConstraintHolds(slave,LABEL,PROPERTY_KEY,"Bob");
-  createUser(slave,"Steven");
-  createUser(master,"Caroline");
+  assertConstraintHolds(slave,TYPE,PROPERTY_KEY,"Foo");
+  createEntityInTx(slave,TYPE,PROPERTY_KEY,"Bar");
+  createEntityInTx(master,TYPE,PROPERTY_KEY,"Baz");
 }

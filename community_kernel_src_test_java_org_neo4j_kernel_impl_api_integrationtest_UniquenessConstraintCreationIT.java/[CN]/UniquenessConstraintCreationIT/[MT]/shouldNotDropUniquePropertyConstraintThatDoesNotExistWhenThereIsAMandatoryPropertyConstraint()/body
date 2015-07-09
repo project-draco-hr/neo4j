@@ -1,0 +1,24 @@
+{
+  MandatoryNodePropertyConstraint constraint;
+{
+    SchemaWriteOperations statement=schemaWriteOperationsInNewTransaction();
+    constraint=statement.mandatoryNodePropertyConstraintCreate(typeId,propertyKeyId);
+    commit();
+  }
+  try {
+    SchemaWriteOperations statement=schemaWriteOperationsInNewTransaction();
+    statement.constraintDrop(new UniquenessConstraint(constraint.label(),constraint.propertyKey()));
+    fail("expected exception");
+  }
+ catch (  DropConstraintFailureException e) {
+    assertThat(e.getCause(),instanceOf(NoSuchConstraintException.class));
+  }
+ finally {
+    rollback();
+  }
+{
+    ReadOperations statement=readOperationsInNewTransaction();
+    Iterator<NodePropertyConstraint> constraints=statement.constraintsGetForLabelAndPropertyKey(typeId,propertyKeyId);
+    assertEquals(constraint,single(constraints));
+  }
+}

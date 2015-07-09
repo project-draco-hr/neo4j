@@ -1,12 +1,12 @@
 {
-  long nodeId;
+  long entityId;
   try (Transaction tx=db.beginTx()){
-    nodeId=db.createNode(label("Foo")).getId();
+    entityId=createOffender(db,KEY);
     tx.success();
   }
    try {
     try (Transaction tx=db.beginTx()){
-      db.schema().constraintFor(label("Foo")).assertPropertyExists("bar").create();
+      createConstraint(db,KEY,PROPERTY);
       tx.success();
     }
      fail("expected exception");
@@ -16,6 +16,6 @@
     assertThat(cause,instanceOf(CreateConstraintFailureException.class));
     Throwable rootCause=cause.getCause();
     assertThat(rootCause,instanceOf(ConstraintVerificationFailedKernelException.class));
-    assertThat(userMessageOf((KernelException)rootCause),containsString("Node(" + nodeId + ")"));
+    assertThat(userMessageOf((KernelException)rootCause),containsString(offenderType().getSimpleName() + "(" + entityId+ ")"));
   }
 }
