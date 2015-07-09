@@ -1,0 +1,18 @@
+{
+  StoreMigrator storeMigrator=new StoreMigrator(monitor,fs,pageCache,upgradableDatabase,config,NullLogService.getInstance());
+  upgrader(storeMigrator).migrateIfNeeded(find20FormatStoreDirectory(storeDir.directory()),schemaIndexProvider);
+  assertEquals(100,monitor.eventSize());
+  assertTrue(monitor.isStarted());
+  assertTrue(monitor.isFinished());
+  GraphDatabaseService database=new GraphDatabaseFactory().newEmbeddedDatabase(storeDir.absolutePath());
+  try {
+    verifyDatabaseContents(database);
+  }
+  finally {
+    database.shutdown();
+  }
+  try (NeoStore neoStore=storeFactory.newNeoStore(true)){
+    verifyNeoStore(neoStore);
+  }
+   assertConsistentStore(storeDir.directory());
+}
