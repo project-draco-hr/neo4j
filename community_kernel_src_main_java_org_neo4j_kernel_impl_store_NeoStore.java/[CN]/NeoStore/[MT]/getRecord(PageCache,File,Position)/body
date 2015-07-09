@@ -1,0 +1,25 @@
+{
+  try (PagedFile pagedFile=pageCache.map(neoStore,getPageSize(pageCache))){
+    if (pagedFile.getLastPageId() != -1) {
+      try (PageCursor cursor=pagedFile.io(0,PagedFile.PF_SHARED_LOCK)){
+        if (cursor.next()) {
+          byte recordByte;
+          long record;
+          do {
+            cursor.setOffset(RECORD_SIZE * recordPosition.id);
+            recordByte=cursor.getByte();
+            record=cursor.getLong();
+          }
+ while (cursor.shouldRetry());
+          if (recordByte == Record.IN_USE.byteValue()) {
+            return record;
+          }
+        }
+      }
+     }
+  }
+ catch (  IOException e) {
+    throw new RuntimeException(e);
+  }
+  return -1;
+}
