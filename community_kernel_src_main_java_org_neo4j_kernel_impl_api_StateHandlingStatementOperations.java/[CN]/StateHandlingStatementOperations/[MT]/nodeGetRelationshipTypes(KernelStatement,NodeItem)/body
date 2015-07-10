@@ -1,0 +1,27 @@
+{
+  if (state.hasTxStateWithChanges() && state.txState().nodeModifiedInThisTx(node.id())) {
+    ReadableTxState tx=state.txState();
+    if (tx.nodeIsDeletedInThisTx(node.id())) {
+      return PrimitiveIntCollections.emptyIterator();
+    }
+    if (tx.nodeIsAddedInThisTx(node.id())) {
+      return tx.nodeRelationshipTypes(node.id());
+    }
+    Set<Integer> types=new HashSet<>();
+    PrimitiveIntIterator typesInTx=tx.nodeRelationshipTypes(node.id());
+    while (typesInTx.hasNext()) {
+      types.add(typesInTx.next());
+    }
+    PrimitiveIntIterator committedTypes=storeLayer.nodeGetRelationshipTypes(state.getStoreStatement(),node.id());
+    while (committedTypes.hasNext()) {
+      int current=committedTypes.next();
+      if (!types.contains(current) && nodeGetDegree(state,node,Direction.BOTH,current) > 0) {
+        types.add(current);
+      }
+    }
+    return PrimitiveIntCollections.toPrimitiveIterator(types.iterator());
+  }
+ else {
+    return storeLayer.nodeGetRelationshipTypes(state.getStoreStatement(),node.id());
+  }
+}

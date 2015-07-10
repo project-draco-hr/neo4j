@@ -1,17 +1,15 @@
 {
   PrimitiveLongIterator relationships=relationshipsGetAll(state);
   while (relationships.hasNext()) {
-    long relationship=relationships.next();
-    try {
-      if (relationshipGetType(state,state.getStoreStatement(),relationship) == relTypeId && !relationshipHasProperty(state,relationship,propertyKeyId)) {
-        MandatoryRelationshipPropertyConstraint constraint=new MandatoryRelationshipPropertyConstraint(relTypeId,propertyKeyId);
-        throw new CreateConstraintFailureException(constraint,new MandatoryRelationshipPropertyConstraintVerificationFailedKernelException(constraint,relationship));
+    long relationshipId=relationships.next();
+    try (Cursor<RelationshipItem> relationship=relationshipCursor(state,relationshipId)){
+      if (relationship.next()) {
+        if (relationship.get().type() == relTypeId && !relationshipHasProperty(state,relationship.get(),propertyKeyId)) {
+          MandatoryRelationshipPropertyConstraint constraint=new MandatoryRelationshipPropertyConstraint(relTypeId,propertyKeyId);
+          throw new CreateConstraintFailureException(constraint,new MandatoryRelationshipPropertyConstraintVerificationFailedKernelException(constraint,relationshipId));
+        }
       }
     }
- catch (    EntityNotFoundException e) {
-      PropertyConstraint constraint=new MandatoryRelationshipPropertyConstraint(relTypeId,propertyKeyId);
-      throw new CreateConstraintFailureException(constraint,e);
-    }
-  }
+   }
   return schemaWriteOperations.mandatoryRelationshipPropertyConstraintCreate(state,relTypeId,propertyKeyId);
 }

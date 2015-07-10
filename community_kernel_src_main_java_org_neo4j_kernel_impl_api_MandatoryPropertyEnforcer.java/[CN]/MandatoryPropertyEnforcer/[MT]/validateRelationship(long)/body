@@ -1,9 +1,24 @@
 {
-  try {
-    int type=readOperations.relationshipGetType(txStateHolder,storeStatement,id);
-    validateRelationship(id,type);
+  try (Cursor<RelationshipItem> relationship=readOperations.relationshipCursor(txStateHolder,storeStatement,id)){
+    if (relationship.next()) {
+      propertyKeyIds.clear();
+      Iterator<RelationshipPropertyConstraint> constraints=storeLayer.constraintsGetForRelationshipType(relationship.get().type());
+      while (constraints.hasNext()) {
+        RelationshipPropertyConstraint constraint=constraints.next();
+        if (propertyKeyIds.isEmpty()) {
+          try (Cursor<PropertyItem> properties=relationship.get().properties()){
+            while (properties.next()) {
+              propertyKeyIds.add(properties.get().propertyKeyId());
+            }
+          }
+         }
+        if (!propertyKeyIds.contains(constraint.propertyKey())) {
+          throw new MandatoryRelationshipPropertyConstraintViolationKernelException(constraint.relationshipType(),constraint.propertyKey(),id);
+        }
+      }
+    }
+ else {
+      throw new IllegalStateException(format("Relationship %d with changes should exist.",id));
+    }
   }
- catch (  EntityNotFoundException e) {
-    throw new IllegalStateException("Relationship with changes should exist.",e);
-  }
-}
+ }

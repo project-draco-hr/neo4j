@@ -1,0 +1,17 @@
+{
+  Property existingProperty;
+  try (Cursor<PropertyItem> properties=node.property(property.propertyKeyId())){
+    if (!properties.next()) {
+      legacyPropertyTrackers.nodeAddStoreProperty(node.id(),property);
+      existingProperty=Property.noProperty(property.propertyKeyId(),EntityType.NODE,node.id());
+    }
+ else {
+      existingProperty=Property.property(properties.get().propertyKeyId(),properties.get().value());
+      legacyPropertyTrackers.nodeChangeStoreProperty(node.id(),(DefinedProperty)existingProperty,property);
+    }
+  }
+   state.txState().nodeDoReplaceProperty(node.id(),existingProperty,property);
+  PrimitiveIntCollection labelIds=getLabels(node);
+  indexesUpdateProperty(state,node.id(),labelIds,property.propertyKeyId(),existingProperty instanceof DefinedProperty ? (DefinedProperty)existingProperty : null,property);
+  return existingProperty;
+}
