@@ -7,18 +7,22 @@
       for (      Integer label : removed) {
         counts.incrementNodeCount(label,-1);
       }
-      storeLayer.nodeVisitDegrees(statement,id,new DegreeVisitor(){
-        @Override public void visitDegree(        int type,        int outgoing,        int incoming){
-          for (          Integer label : added) {
-            updateRelationshipsCountsFromDegrees(type,label,outgoing,incoming);
+      try (Cursor<NodeItem> node=statement.acquireSingleNodeCursor(id)){
+        if (node.next()) {
+          try (Cursor<DegreeItem> degrees=node.get().degrees()){
+            while (degrees.next()) {
+              DegreeItem degree=degrees.get();
+              for (              Integer label : added) {
+                updateRelationshipsCountsFromDegrees(degree.type(),label,degree.outgoing(),degree.incoming());
+              }
+              for (              Integer label : removed) {
+                updateRelationshipsCountsFromDegrees(degree.type(),label,-degree.outgoing(),-degree.incoming());
+              }
+            }
           }
-          for (          Integer label : removed) {
-            updateRelationshipsCountsFromDegrees(type,label,-outgoing,-incoming);
-          }
-        }
+         }
       }
-);
-    }
+     }
   }
    for (  Integer label : removed) {
     recordState.removeLabelFromNode(label,id);

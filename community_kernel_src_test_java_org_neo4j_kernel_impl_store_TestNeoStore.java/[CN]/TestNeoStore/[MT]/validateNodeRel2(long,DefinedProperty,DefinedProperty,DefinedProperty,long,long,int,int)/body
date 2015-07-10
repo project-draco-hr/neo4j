@@ -30,31 +30,25 @@
   }
   assertEquals(3,count);
   count=0;
-  PrimitiveLongIterator relationships=storeLayer.nodeListRelationships(((KernelStatement)tx.acquireStatement()).getStoreStatement(),node,Direction.BOTH);
-  while (relationships.hasNext()) {
-    long rel=relationships.next();
-    if (rel == rel1) {
-      storeLayer.relationshipVisit(rel,new RelationshipVisitor<RuntimeException>(){
-        @Override public void visit(        long relId,        int type,        long startNode,        long endNode) throws RuntimeException {
-          assertEquals(node,endNode);
-          assertEquals(relType1,type);
+  try (Cursor<NodeItem> nodeCursor=((KernelStatement)tx.acquireStatement()).getStoreStatement().acquireSingleNodeCursor(node)){
+    nodeCursor.next();
+    try (Cursor<RelationshipItem> relationships=nodeCursor.get().relationships(Direction.BOTH)){
+      while (relationships.next()) {
+        long rel=relationships.get().id();
+        if (rel == rel1) {
+          assertEquals(node,relationships.get().endNode());
+          assertEquals(relType1,relationships.get().type());
         }
-      }
-);
-    }
- else     if (rel == rel2) {
-      storeLayer.relationshipVisit(rel,new RelationshipVisitor<RuntimeException>(){
-        @Override public void visit(        long relId,        int type,        long startNode,        long endNode) throws RuntimeException {
-          assertEquals(node,startNode);
-          assertEquals(relType2,type);
+ else         if (rel == rel2) {
+          assertEquals(node,relationships.get().startNode());
+          assertEquals(relType2,relationships.get().type());
         }
-      }
-);
-    }
  else {
-      throw new IOException();
+          throw new IOException();
+        }
+        count++;
+      }
     }
-    count++;
-  }
-  assertEquals(2,count);
+   }
+   assertEquals(2,count);
 }

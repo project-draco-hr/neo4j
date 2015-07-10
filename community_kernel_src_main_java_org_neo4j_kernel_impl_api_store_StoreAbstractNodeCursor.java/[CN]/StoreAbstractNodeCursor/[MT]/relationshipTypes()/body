@@ -1,0 +1,50 @@
+{
+  if (nodeRecord.isDense()) {
+    return new Cursor<IntSupplier>(){
+      private long groupId=nodeRecord.getNextRel();
+      private final IntValue value=new IntValue();
+      @Override public boolean next(){
+        if (groupId == Record.NO_NEXT_RELATIONSHIP.intValue()) {
+          return false;
+        }
+        RelationshipGroupRecord group=neoStore.getRelationshipGroupStore().getRecord(groupId);
+        try {
+          value.setValue(group.getType());
+          return true;
+        }
+  finally {
+          groupId=group.getNext();
+        }
+      }
+      @Override public void close(){
+      }
+      @Override public IntSupplier get(){
+        return value;
+      }
+    }
+;
+  }
+ else {
+    final Cursor<RelationshipItem> relationships=relationships(Direction.BOTH);
+    return new Cursor<IntSupplier>(){
+      private final PrimitiveIntSet foundTypes=Primitive.intSet(5);
+      private final IntValue value=new IntValue();
+      @Override public boolean next(){
+        while (relationships.next()) {
+          if (!foundTypes.contains(relationships.get().type())) {
+            foundTypes.add(relationships.get().type());
+            value.setValue(relationships.get().type());
+            return true;
+          }
+        }
+        return false;
+      }
+      @Override public void close(){
+      }
+      @Override public IntSupplier get(){
+        return value;
+      }
+    }
+;
+  }
+}

@@ -1,0 +1,19 @@
+{
+  if (nodeIsAddedInThisTx) {
+    return new RelationshipTypeCursor(nodeState.relationshipTypes());
+  }
+  PrimitiveIntSet types=Primitive.intSet();
+  PrimitiveIntIterator typesInTx=nodeState.relationshipTypes();
+  while (typesInTx.hasNext()) {
+    types.add(typesInTx.next());
+  }
+  try (Cursor<IntSupplier> storeTypes=cursor.get().relationshipTypes()){
+    while (storeTypes.next()) {
+      int current=storeTypes.get().getAsInt();
+      if (!types.contains(current) && degree(Direction.BOTH,current) > 0) {
+        types.add(current);
+      }
+    }
+  }
+   return new RelationshipTypeCursor(types.iterator());
+}

@@ -16,11 +16,14 @@
   commitTx();
   startTx();
   for (int i=0; i < 3; i+=2) {
-    PrimitiveLongIterator relationships=storeLayer.nodeListRelationships(((KernelStatement)tx.acquireStatement()).getStoreStatement(),nodeIds[i],Direction.BOTH);
-    while (relationships.hasNext()) {
-      transaction.relDelete(relationships.next());
+    try (Cursor<NodeItem> nodeCursor=((KernelStatement)tx.acquireStatement()).getStoreStatement().acquireSingleNodeCursor(nodeIds[i])){
+      nodeCursor.next();
+      PrimitiveLongIterator relationships=nodeCursor.get().getRelationships(Direction.BOTH);
+      while (relationships.hasNext()) {
+        transaction.relDelete(relationships.next());
+      }
     }
-    transaction.nodeDelete(nodeIds[i]);
+     transaction.nodeDelete(nodeIds[i]);
   }
   commitTx();
   ds.stop();

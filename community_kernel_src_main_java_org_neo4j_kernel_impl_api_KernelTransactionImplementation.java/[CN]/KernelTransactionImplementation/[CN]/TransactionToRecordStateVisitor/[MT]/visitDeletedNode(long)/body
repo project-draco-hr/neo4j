@@ -1,23 +1,25 @@
 {
   try (StoreStatement statement=storeLayer.acquireStatement()){
     counts.incrementNodeCount(ANY_LABEL,-1);
-    PrimitiveIntIterator labels=storeLayer.nodeGetLabels(statement,id);
-    if (labels.hasNext()) {
-      final int[] removed=PrimitiveIntCollections.asArray(labels);
-      for (      int label : removed) {
-        counts.incrementNodeCount(label,-1);
-      }
-      storeLayer.nodeVisitDegrees(statement,id,new DegreeVisitor(){
-        @Override public void visitDegree(        int type,        int outgoing,        int incoming){
+    try (Cursor<NodeItem> node=statement.acquireSingleNodeCursor(id)){
+      if (node.next()) {
+        PrimitiveIntIterator labels=node.get().getLabels();
+        if (labels.hasNext()) {
+          final int[] removed=PrimitiveIntCollections.asArray(labels);
           for (          int label : removed) {
-            updateRelationshipsCountsFromDegrees(type,label,-outgoing,-incoming);
+            counts.incrementNodeCount(label,-1);
           }
-        }
+          try (Cursor<DegreeItem> degrees=node.get().degrees()){
+            while (degrees.next()) {
+              DegreeItem degree=degrees.get();
+              for (              int label : removed) {
+                updateRelationshipsCountsFromDegrees(degree.type(),label,-degree.outgoing(),-degree.incoming());
+              }
+            }
+          }
+         }
       }
-);
     }
-  }
- catch (  EntityNotFoundException e) {
-  }
-  recordState.nodeDelete(id);
+   }
+   recordState.nodeDelete(id);
 }
