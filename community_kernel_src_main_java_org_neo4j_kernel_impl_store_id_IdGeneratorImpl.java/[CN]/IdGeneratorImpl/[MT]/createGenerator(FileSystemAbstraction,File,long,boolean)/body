@@ -1,0 +1,22 @@
+{
+  if (fs == null) {
+    throw new IllegalArgumentException("Null filesystem");
+  }
+  if (fileName == null) {
+    throw new IllegalArgumentException("Null filename");
+  }
+  if (throwIfFileExists && fs.fileExists(fileName)) {
+    throw new IllegalStateException("Can't create IdGeneratorFile[" + fileName + "], file already exists");
+  }
+  try {
+    StoreChannel channel=fs.create(fileName);
+    ByteBuffer buffer=ByteBuffer.allocate(HEADER_SIZE);
+    buffer.put(CLEAN_GENERATOR).putLong(highId).flip();
+    channel.write(buffer);
+    channel.force(false);
+    channel.close();
+  }
+ catch (  IOException e) {
+    throw new UnderlyingStorageException("Unable to create id generator" + fileName,e);
+  }
+}
