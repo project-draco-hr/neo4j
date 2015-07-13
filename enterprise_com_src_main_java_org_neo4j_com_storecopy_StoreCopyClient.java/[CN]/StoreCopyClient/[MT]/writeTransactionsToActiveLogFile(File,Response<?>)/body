@@ -1,10 +1,10 @@
 {
   LifeSupport life=new LifeSupport();
   try {
-    PhysicalLogFiles logFiles=new PhysicalLogFiles(storeDir,fs);
+    PhysicalLogFiles logFiles=new PhysicalLogFiles(tempStoreDir,fs);
     TransactionMetadataCache transactionMetadataCache=new TransactionMetadataCache(10,100);
-    ReadOnlyLogVersionRepository logVersionRepository=new ReadOnlyLogVersionRepository(pageCache,storeDir);
-    LogFile logFile=life.add(new PhysicalLogFile(fs,logFiles,Long.MAX_VALUE,new ReadOnlyTransactionIdStore(pageCache,storeDir),logVersionRepository,new Monitors().newMonitor(PhysicalLogFile.Monitor.class),transactionMetadataCache));
+    ReadOnlyLogVersionRepository logVersionRepository=new ReadOnlyLogVersionRepository(pageCache,tempStoreDir);
+    LogFile logFile=life.add(new PhysicalLogFile(fs,logFiles,Long.MAX_VALUE,new ReadOnlyTransactionIdStore(pageCache,tempStoreDir),logVersionRepository,new Monitors().newMonitor(PhysicalLogFile.Monitor.class),transactionMetadataCache));
     life.start();
     WritableLogChannel channel=logFile.getWriter();
     final TransactionLogWriter writer=new TransactionLogWriter(new LogEntryWriterV1(channel,new CommandWriter(channel)));
@@ -36,6 +36,10 @@
     writer.checkPoint(new LogPosition(currentLogVersion,LOG_HEADER_SIZE));
     File currentLogFile=logFiles.getLogFileForVersion(currentLogVersion);
     writeLogHeader(fs,currentLogFile,currentLogVersion,max(BASE_TX_ID,endTxId - 1));
+    if (!forensics) {
+      File neoStore=new File(tempStoreDir,NeoStore.DEFAULT_NAME);
+      NeoStore.setRecord(fs,neoStore,NeoStore.Position.LAST_CLOSED_TRANSACTION_LOG_BYTE_OFFSET,LOG_HEADER_SIZE);
+    }
   }
   finally {
     life.shutdown();
