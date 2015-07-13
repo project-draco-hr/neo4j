@@ -5,7 +5,7 @@
   try (PageCursor pageCursor=pagedFile.io(Math.max(pagedFile.getLastPageId() + 1 - maximumNumberOfPagesVersionSpans,0),PagedFile.PF_SHARED_LOCK)){
     int currentPage=0;
     byte[] allData=new byte[pagedFile.pageSize() * maximumNumberOfPagesVersionSpans];
-    while (pageCursor.next()) {
+    while (currentPage < maximumNumberOfPagesVersionSpans && pageCursor.next()) {
       byte[] data=new byte[pagedFile.pageSize()];
       do {
         pageCursor.getBytes(data);
@@ -14,7 +14,7 @@
       System.arraycopy(data,0,allData,currentPage * data.length,data.length);
       currentPage++;
     }
-    int offset=findPattern(allData,UTF8.encode(expectedVersion.split(" ")[0]));
+    int offset=findTrailerOffset(allData,UTF8.encode(expectedVersion.split(" ")[0]));
     if (offset != -1) {
       version=new String(allData,offset,encodedExpectedVersion.length,Charsets.UTF_8);
     }

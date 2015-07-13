@@ -1,18 +1,12 @@
 {
   String expectedTypeDescriptorAndVersion=getTypeAndVersionDescriptor();
-  int length=UTF8.encode(expectedTypeDescriptorAndVersion).length;
-  byte bytes[]=new byte[length];
-  ByteBuffer buffer=ByteBuffer.wrap(bytes);
-  long fileSize=getFileChannel().size();
-  if (fileSize >= length) {
-    getFileChannel().position(fileSize - length);
+  try (PagedFile pagedFile=pageCache.map(storageFileName,pageCache.pageSize())){
+    readTypeDescriptorAndVersion=StoreVersionCheck.readVersion(pagedFile,expectedTypeDescriptorAndVersion);
   }
- else {
-    setStoreNotOk(new IllegalStateException("Invalid file size " + fileSize + " for "+ this+ ". Expected "+ length+ " or bigger"));
+   if (readTypeDescriptorAndVersion == null) {
+    setStoreNotOk(new IllegalStateException("No trailer present in store, expected " + expectedTypeDescriptorAndVersion));
     return;
   }
-  getFileChannel().read(buffer);
-  readTypeDescriptorAndVersion=UTF8.decode(bytes);
   if (!expectedTypeDescriptorAndVersion.equals(readTypeDescriptorAndVersion)) {
     if (readTypeDescriptorAndVersion.startsWith(getTypeDescriptor())) {
       versionMismatchHandler.mismatch(ALL_STORES_VERSION,readTypeDescriptorAndVersion);
