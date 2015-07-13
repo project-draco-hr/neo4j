@@ -1,4 +1,17 @@
 {
-  state.relationshipVisit(relId,relationshipData);
-  return new RelationshipProxy(relationshipActions,relId,relationshipData.startNode(),relationshipData.type(),relationshipData.endNode());
+  RelationshipProxy relationship=new RelationshipProxy(relationshipActions,relId);
+  if (!state.relationshipVisit(relId,relationship)) {
+    RelationshipProxy cached=relationshipsReadFromStore.get(relId);
+    if (cached != null) {
+      return relationship;
+    }
+    try {
+      store.relationshipVisit(relId,relationship);
+      relationshipsReadFromStore.put(relId,relationship);
+    }
+ catch (    EntityNotFoundException e) {
+      throw new ThisShouldNotHappenError("Mattias","Getting deleted relationship data should have been covered by the tx state");
+    }
+  }
+  return relationship;
 }
