@@ -3,7 +3,15 @@
   String failureMessage="Forces a failure";
   WritableLogChannel channel=spy(new InMemoryLogChannel());
   IOException failure=new IOException(failureMessage);
-  doThrow(failure).when(channel).force();
+  final Flushable flushable=mock(Flushable.class);
+  doAnswer(new Answer<Flushable>(){
+    @Override public Flushable answer(    InvocationOnMock invocation) throws Throwable {
+      invocation.callRealMethod();
+      return flushable;
+    }
+  }
+).when(channel).emptyBufferIntoChannelAndClearIt();
+  doThrow(failure).when(flushable).flush();
   LogFile logFile=mock(LogFile.class);
   when(logFile.getWriter()).thenReturn(channel);
   TransactionMetadataCache metadataCache=new TransactionMetadataCache(10,10);

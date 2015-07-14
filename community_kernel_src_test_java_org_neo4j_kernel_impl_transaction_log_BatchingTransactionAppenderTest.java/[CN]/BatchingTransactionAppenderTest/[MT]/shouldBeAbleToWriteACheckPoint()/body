@@ -1,6 +1,8 @@
 {
   BatchingTransactionAppender appender=new BatchingTransactionAppender(logFile,NO_ROTATION,positionCache,transactionIdStore,BYPASS,kernelHealth);
   WritableLogChannel channel=mock(WritableLogChannel.class,RETURNS_MOCKS);
+  Flushable flushable=mock(Flushable.class);
+  when(channel.emptyBufferIntoChannelAndClearIt()).thenReturn(flushable);
   when(channel.putLong(anyLong())).thenReturn(channel);
   when(logFile.getWriter()).thenReturn(channel);
   appender.start();
@@ -8,6 +10,6 @@
   verify(channel,times(1)).putLong(1l);
   verify(channel,times(1)).putLong(2l);
   verify(channel,times(1)).emptyBufferIntoChannelAndClearIt();
-  verify(channel,times(1)).force();
+  verify(flushable,times(1)).flush();
   verifyZeroInteractions(kernelHealth);
 }

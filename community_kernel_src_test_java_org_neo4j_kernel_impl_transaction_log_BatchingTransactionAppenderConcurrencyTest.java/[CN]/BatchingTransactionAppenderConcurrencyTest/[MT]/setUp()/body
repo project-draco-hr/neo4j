@@ -1,6 +1,15 @@
 {
-  WritableLogChannel channel=new InMemoryLogChannel(){
-    @Override public void force() throws IOException {
+class Channel extends InMemoryLogChannel implements Flushable {
+    @Override public Flushable emptyBufferIntoChannelAndClearIt(){
+      try {
+        channelCommandQueue.put(ChannelCommand.emptyBufferIntoChannelAndClearIt);
+      }
+ catch (      InterruptedException e) {
+        throw new RuntimeException(e);
+      }
+      return this;
+    }
+    @Override public void flush() throws IOException {
       try {
         forceSemaphore.release();
         channelCommandQueue.put(ChannelCommand.force);
@@ -9,15 +18,7 @@
         throw new IOException(e);
       }
     }
-    @Override public void emptyBufferIntoChannelAndClearIt(){
-      try {
-        channelCommandQueue.put(ChannelCommand.emptyBufferIntoChannelAndClearIt);
-      }
- catch (      InterruptedException e) {
-        throw new RuntimeException(e);
-      }
-    }
   }
-;
-  when(logFile.getWriter()).thenReturn(channel);
+  ;
+  when(logFile.getWriter()).thenReturn(new Channel());
 }
