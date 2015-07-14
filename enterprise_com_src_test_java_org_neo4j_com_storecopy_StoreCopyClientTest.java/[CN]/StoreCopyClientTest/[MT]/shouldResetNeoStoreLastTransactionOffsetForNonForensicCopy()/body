@@ -1,0 +1,33 @@
+{
+  File initialStore=testDir.directory("initialStore");
+  File backupStore=testDir.directory("backupStore");
+  PageCache pageCache=pageCacheRule.getPageCache(fs);
+  GraphDatabaseService initialDatabase=null;
+  try {
+    initialDatabase=startDatabase(initialStore);
+    for (int i=0; i < 10; i++)     try (Transaction tx=initialDatabase.beginTx()){
+      initialDatabase.createNode(label("Neo" + i));
+      tx.success();
+    }
+     initialDatabase.shutdown();
+    initialDatabase=startDatabase(initialStore);
+    long originalTransactionOffset=NeoStore.getRecord(pageCache,new File(initialStore,NeoStore.DEFAULT_NAME),NeoStore.Position.LAST_CLOSED_TRANSACTION_LOG_BYTE_OFFSET);
+    StoreCopyClient copier=new StoreCopyClient(backupStore,new Config(),loadKernelExtensions(),NullLogProvider.getInstance(),fs,pageCache,new StoreCopyClient.Monitor.Adapter(),false);
+    CancellationRequest falseCancellationRequest=new CancellationRequest(){
+      @Override public boolean cancellationRequested(){
+        return false;
+      }
+    }
+;
+    StoreCopyClient.StoreCopyRequester storeCopyRequest=storeCopyRequest(initialStore,(GraphDatabaseAPI)initialDatabase);
+    copier.copyStore(storeCopyRequest,falseCancellationRequest);
+    long updatedTransactionOffset=NeoStore.getRecord(pageCache,new File(backupStore,NeoStore.DEFAULT_NAME),NeoStore.Position.LAST_CLOSED_TRANSACTION_LOG_BYTE_OFFSET);
+    Assert.assertNotEquals(originalTransactionOffset,updatedTransactionOffset);
+    Assert.assertEquals(LogHeader.LOG_HEADER_SIZE,updatedTransactionOffset);
+  }
+  finally {
+    if (initialDatabase != null) {
+      initialDatabase.shutdown();
+    }
+  }
+}
