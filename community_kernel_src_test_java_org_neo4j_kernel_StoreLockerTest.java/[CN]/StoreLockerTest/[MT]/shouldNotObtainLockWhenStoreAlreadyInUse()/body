@@ -3,8 +3,13 @@
     @Override public boolean fileExists(    File fileName){
       return false;
     }
-    @Override public FileLock tryLock(    File fileName,    StoreChannel channel) throws IOException {
-      throw new IOException("Unable to create lock file " + fileName);
+    @Override public StoreChannel open(    File fileName,    String mode) throws IOException {
+      return new DelegatingStoreChannel(super.open(fileName,mode)){
+        @Override public FileLock tryLock() throws IOException {
+          return null;
+        }
+      }
+;
     }
   }
 ;
@@ -14,7 +19,7 @@
     fail();
   }
  catch (  StoreLockException e) {
-    assertThat(e.getMessage(),containsString("Unable to obtain lock on store lock file"));
+    assertThat(e.getMessage(),containsString("Store and its lock file has been locked by another process"));
   }
  finally {
     storeLocker.release();
