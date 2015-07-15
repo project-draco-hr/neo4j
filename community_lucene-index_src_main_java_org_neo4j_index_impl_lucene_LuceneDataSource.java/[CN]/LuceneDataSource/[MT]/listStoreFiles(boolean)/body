@@ -5,15 +5,18 @@
   for (  IndexReference writer : getAllIndexes()) {
     SnapshotDeletionPolicy deletionPolicy=(SnapshotDeletionPolicy)writer.getWriter().getConfig().getIndexDeletionPolicy();
     File indexDirectory=getFileDirectory(baseStorePath,writer.getIdentifier());
+    IndexCommit commit;
     try {
-      IndexCommit commit=deletionPolicy.snapshot(SNAPSHOT_ID);
-      for (      String fileName : commit.getFileNames()) {
-        files.add(new File(indexDirectory,fileName));
-      }
-      snapshots.add(deletionPolicy);
+      commit=deletionPolicy.snapshot(SNAPSHOT_ID);
     }
  catch (    IllegalStateException e) {
+      writer.getWriter().commit();
+      commit=deletionPolicy.snapshot(SNAPSHOT_ID);
     }
+    for (    String fileName : commit.getFileNames()) {
+      files.add(new File(indexDirectory,fileName));
+    }
+    snapshots.add(deletionPolicy);
   }
   return new PrefetchingResourceIterator<File>(){
     private final Iterator<File> filesIterator=files.iterator();
