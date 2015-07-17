@@ -4,17 +4,18 @@
       transaction.close();
     }
   }
- catch (  DeadlockDetectedException e) {
+ catch (  TransientFailureException e) {
     throw e;
   }
 catch (  ConstraintViolationTransactionFailureException e) {
     throw new ConstraintViolationException(e.getMessage(),e);
   }
 catch (  Exception e) {
-    if (transactionOutcome.successCalled()) {
-      throw new TransactionFailureException("Transaction was marked as successful, " + "but unable to commit transaction so rolled back.",e);
+    String userMessage=transactionOutcome.successCalled() ? "Transaction was marked as successful, but unable to commit transaction so rolled back." : "Unable to rollback transaction";
+    if (e instanceof KernelException && ((KernelException)e).status().code().classification() == Classification.TransientError) {
+      throw new TransientTransactionFailureException(userMessage,e);
     }
-    throw new TransactionFailureException("Unable to rollback transaction",e);
+    throw new TransactionFailureException(userMessage,e);
   }
  finally {
     stmtProvider.unbindTransactionFromCurrentThread();
