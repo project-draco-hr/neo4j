@@ -1,8 +1,15 @@
 {
   boolean success=false;
   try (CommitEvent commitEvent=transactionEvent.beginCommitEvent()){
-    if ((hooksState=hooks.beforeCommit(txState,this,storeLayer)) != null && hooksState.failed()) {
-      throw new TransactionFailureException(Status.Transaction.HookFailed,hooksState.failure(),"");
+    if (hasChanges() && !hasAnyTokenChanges()) {
+      try {
+        if ((hooksState=hooks.beforeCommit(txState,this,storeLayer)) != null && hooksState.failed()) {
+          throw new TransactionFailureException(Status.Transaction.HookFailed,hooksState.failure(),"");
+        }
+      }
+  finally {
+        beforeHookInvoked=true;
+      }
     }
     prepareRecordChangesFromTransactionState();
     if (hasChanges()) {
