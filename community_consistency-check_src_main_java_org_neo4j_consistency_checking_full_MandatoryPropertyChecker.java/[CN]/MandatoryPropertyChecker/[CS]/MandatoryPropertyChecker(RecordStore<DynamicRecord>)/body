@@ -1,14 +1,26 @@
 {
-  for (Iterator<MandatoryPropertyConstraintRule> rules=new SchemaStorage(schemaStore).schemaRules(MandatoryPropertyConstraintRule.class); safeHasNext(rules); ) {
-    MandatoryPropertyConstraintRule rule=rules.next();
-    int[] keys=nodes.get(rule.getLabel());
-    if (keys == null) {
-      keys=new int[]{rule.getPropertyKey()};
-    }
- else {
-      keys=Arrays.copyOf(keys,keys.length + 1);
-      keys[keys.length - 1]=rule.getPropertyKey();
-    }
-    nodes.put(rule.getLabel(),keys);
-  }
+  SchemaStorage schemaStorage=new SchemaStorage(schemaStore);
+  for (Iterator<PropertyConstraintRule> rules=schemaStorage.schemaRules(BASE_RULE); safeHasNext(rules); ) {
+    PropertyConstraintRule rule=rules.next();
+    PrimitiveIntObjectMap<int[]> storage;
+    int labelOrRelType;
+    int propertyKey;
+switch (rule.getKind()) {
+case MANDATORY_NODE_PROPERTY_CONSTRAINT:
+      storage=nodes;
+    MandatoryNodePropertyConstraintRule nodeRule=(MandatoryNodePropertyConstraintRule)rule;
+  labelOrRelType=nodeRule.getLabel();
+propertyKey=nodeRule.getPropertyKey();
+break;
+case MANDATORY_RELATIONSHIP_PROPERTY_CONSTRAINT:
+storage=relationships;
+MandatoryRelationshipPropertyConstraintRule relRule=(MandatoryRelationshipPropertyConstraintRule)rule;
+labelOrRelType=relRule.getRelationshipType();
+propertyKey=relRule.getPropertyKey();
+break;
+default :
+continue;
+}
+recordConstraint(labelOrRelType,propertyKey,storage);
+}
 }

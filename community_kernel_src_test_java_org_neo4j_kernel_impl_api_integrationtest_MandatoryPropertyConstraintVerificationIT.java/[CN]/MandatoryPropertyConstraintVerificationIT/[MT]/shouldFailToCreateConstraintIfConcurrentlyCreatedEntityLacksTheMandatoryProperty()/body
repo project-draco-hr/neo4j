@@ -1,0 +1,19 @@
+{
+  try {
+    Future<Void> nodeCreation;
+    try (Transaction tx=db.beginTx()){
+      createConstraint(db,KEY,PROPERTY);
+      nodeCreation=thread.executeAndAwait(createOffender(),null,waitingWhileIn(OperationsFacade.class,offenderCreationMethodName()),5,SECONDS);
+      tx.success();
+    }
+     nodeCreation.get();
+    fail("expected exception");
+  }
+ catch (  ConstraintViolationException e) {
+    assertThat(e.getCause(),instanceOf(CreateConstraintFailureException.class));
+  }
+catch (  ExecutionException e) {
+    assertThat(e.getCause(),instanceOf(ConstraintViolationException.class));
+    assertThat(e.getCause().getCause(),instanceOf(ConstraintViolationTransactionFailureException.class));
+  }
+}

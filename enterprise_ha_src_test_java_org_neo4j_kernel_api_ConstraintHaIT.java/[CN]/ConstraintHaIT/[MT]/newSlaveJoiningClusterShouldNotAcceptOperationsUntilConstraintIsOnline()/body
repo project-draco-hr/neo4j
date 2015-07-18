@@ -6,14 +6,14 @@
   ClusterManager.RepairKit shutdownSlave=cluster.shutdown(slave);
   deleteRecursively(slaveStoreDirectory);
   try (Transaction tx=master.beginTx()){
-    createConstraint(master,LABEL,PROPERTY_KEY);
+    createConstraint(master,TYPE,PROPERTY_KEY);
     tx.success();
   }
    slave=shutdownSlave.repair();
   try (Transaction ignored=slave.beginTx()){
-    assertThat(single(slave.schema().getConstraints()),instanceOf(PropertyConstraintDefinition.class));
-    PropertyConstraintDefinition constraint=(PropertyConstraintDefinition)single(slave.schema().getConstraints());
-    assertThat(single(constraint.getPropertyKeys()),equalTo(PROPERTY_KEY));
-    assertThat(constraint.getLabel(),equalTo(LABEL));
+    ConstraintDefinition definition=single(slave.schema().getConstraints());
+    assertThat(definition,instanceOf(constraintDefinitionClass()));
+    assertThat(single(definition.getPropertyKeys()),equalTo(PROPERTY_KEY));
+    validateLabelOrRelationshipType(definition);
   }
  }

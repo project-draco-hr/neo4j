@@ -1,0 +1,19 @@
+{
+  try (Statement statement=ctxSupplier.get()){
+    try {
+      int typeId=statement.schemaWriteOperations().relationshipTypeGetOrCreateForName(type.name());
+      int propertyKeyId=statement.schemaWriteOperations().propertyKeyGetOrCreateForName(propertyKey);
+      statement.schemaWriteOperations().mandatoryRelationshipPropertyConstraintCreate(typeId,propertyKeyId);
+      return new MandatoryRelationshipPropertyConstraintDefinition(this,type,propertyKey);
+    }
+ catch (    AlreadyConstrainedException|CreateConstraintFailureException e) {
+      throw new ConstraintViolationException(e.getUserMessage(new StatementTokenNameLookup(statement.readOperations())),e);
+    }
+catch (    IllegalTokenNameException e) {
+      throw new IllegalArgumentException(e);
+    }
+catch (    InvalidTransactionTypeKernelException e) {
+      throw new InvalidTransactionTypeException(e.getMessage(),e);
+    }
+  }
+ }
