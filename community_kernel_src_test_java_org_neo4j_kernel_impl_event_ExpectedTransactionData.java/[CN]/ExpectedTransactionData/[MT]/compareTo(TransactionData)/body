@@ -1,12 +1,14 @@
 {
-  Set<Node> expectedCreatedNodes=new HashSet<Node>(this.expectedCreatedNodes);
-  Set<Relationship> expectedCreatedRelationships=new HashSet<Relationship>(this.expectedCreatedRelationships);
+  Set<Node> expectedCreatedNodes=new HashSet<>(this.expectedCreatedNodes);
+  Set<Relationship> expectedCreatedRelationships=new HashSet<>(this.expectedCreatedRelationships);
   Set<Node> expectedDeletedNodes=new HashSet<Node>(this.expectedDeletedNodes);
-  Set<Relationship> expectedDeletedRelationships=new HashSet<Relationship>(this.expectedDeletedRelationships);
+  Set<Relationship> expectedDeletedRelationships=new HashSet<>(this.expectedDeletedRelationships);
   Map<Node,Map<String,PropertyEntryImpl<Node>>> expectedAssignedNodeProperties=clone(this.expectedAssignedNodeProperties);
   Map<Relationship,Map<String,PropertyEntryImpl<Relationship>>> expectedAssignedRelationshipProperties=clone(this.expectedAssignedRelationshipProperties);
   Map<Node,Map<String,PropertyEntryImpl<Node>>> expectedRemovedNodeProperties=clone(this.expectedRemovedNodeProperties);
   Map<Relationship,Map<String,PropertyEntryImpl<Relationship>>> expectedRemovedRelationshipProperties=clone(this.expectedRemovedRelationshipProperties);
+  Map<Node,Set<String>> expectedAssignedLabels=cloneLabelData(this.expectedAssignedLabels);
+  Map<Node,Set<String>> expectedRemovedLabels=cloneLabelData(this.expectedRemovedLabels);
   for (  Node node : data.createdNodes()) {
     assertTrue(expectedCreatedNodes.remove(node));
     assertFalse(data.isDeleted(node));
@@ -16,33 +18,41 @@
     assertTrue(expectedCreatedRelationships.remove(rel));
     assertFalse(data.isDeleted(rel));
   }
-  assertTrue(expectedCreatedRelationships.isEmpty());
+  assertTrue("Expected created relationships not encountered " + expectedCreatedRelationships,expectedCreatedRelationships.isEmpty());
   for (  Node node : data.deletedNodes()) {
     assertTrue("Unexpected deleted node " + node,expectedDeletedNodes.remove(node));
     assertTrue(data.isDeleted(node));
   }
-  assertTrue(expectedDeletedNodes.isEmpty());
+  assertTrue("Expected deleted nodes: " + expectedDeletedNodes,expectedDeletedNodes.isEmpty());
   for (  Relationship rel : data.deletedRelationships()) {
     assertTrue(expectedDeletedRelationships.remove(rel));
     assertTrue(data.isDeleted(rel));
   }
-  assertTrue(expectedDeletedRelationships.isEmpty());
+  assertTrue("Expected deleted relationships not encountered " + expectedDeletedRelationships,expectedDeletedRelationships.isEmpty());
   for (  PropertyEntry<Node> entry : data.assignedNodeProperties()) {
     checkAssigned(expectedAssignedNodeProperties,entry);
     assertFalse(data.isDeleted(entry.entity()));
   }
-  assertTrue("Expected node properties not encountered " + expectedAssignedNodeProperties,expectedAssignedNodeProperties.isEmpty());
+  assertTrue("Expected assigned node properties not encountered " + expectedAssignedNodeProperties,expectedAssignedNodeProperties.isEmpty());
   for (  PropertyEntry<Relationship> entry : data.assignedRelationshipProperties()) {
     checkAssigned(expectedAssignedRelationshipProperties,entry);
     assertFalse(data.isDeleted(entry.entity()));
   }
-  assertTrue(expectedAssignedRelationshipProperties.isEmpty());
+  assertTrue("Expected assigned relationship properties not encountered " + expectedAssignedRelationshipProperties,expectedAssignedRelationshipProperties.isEmpty());
   for (  PropertyEntry<Node> entry : data.removedNodeProperties()) {
     checkRemoved(expectedRemovedNodeProperties,entry);
   }
-  assertTrue(expectedRemovedNodeProperties.isEmpty());
+  assertTrue("Expected removed node properties not encountered " + expectedRemovedNodeProperties,expectedRemovedNodeProperties.isEmpty());
   for (  PropertyEntry<Relationship> entry : data.removedRelationshipProperties()) {
     checkRemoved(expectedRemovedRelationshipProperties,entry);
   }
-  assertTrue(expectedRemovedRelationshipProperties.isEmpty());
+  assertTrue("Expected removed relationship properties not encountered " + expectedRemovedRelationshipProperties,expectedRemovedRelationshipProperties.isEmpty());
+  for (  LabelEntry entry : data.assignedLabels()) {
+    check(expectedAssignedLabels,entry);
+  }
+  assertTrue("Expected assigned labels not encountered " + expectedAssignedLabels,expectedAssignedLabels.isEmpty());
+  for (  LabelEntry entry : data.removedLabels()) {
+    check(expectedRemovedLabels,entry);
+  }
+  assertTrue("Expected removed labels not encountered " + expectedRemovedLabels,expectedRemovedLabels.isEmpty());
 }
