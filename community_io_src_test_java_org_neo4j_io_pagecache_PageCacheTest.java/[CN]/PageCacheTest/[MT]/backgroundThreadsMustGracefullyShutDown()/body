@@ -31,14 +31,29 @@
   finally {
     Thread.setDefaultUncaughtExceptionHandler(defaultUncaughtExceptionHandler);
   }
-  System.gc();
-  Thread.sleep(100);
-  System.gc();
-  Thread.sleep(100);
-  System.gc();
-  Thread.sleep(100);
-  System.gc();
-  for (  WeakReference<PageCache> ref : refs) {
-    assertNull(ref.get());
+  int maxChecks=100;
+  boolean passed;
+  do {
+    System.gc();
+    Thread.sleep(100);
+    passed=true;
+    for (    WeakReference<PageCache> ref : refs) {
+      if (ref.get() != null) {
+        passed=false;
+      }
+    }
+  }
+ while (!passed && maxChecks-- > 0);
+  if (!passed) {
+    List<PageCache> nonNullPageCaches=new LinkedList<>();
+    for (    WeakReference<PageCache> ref : refs) {
+      PageCache pageCache=ref.get();
+      if (pageCache != null) {
+        nonNullPageCaches.add(pageCache);
+      }
+    }
+    if (!nonNullPageCaches.isEmpty()) {
+      fail("PageCaches should not be held live after close: " + nonNullPageCaches);
+    }
   }
 }
