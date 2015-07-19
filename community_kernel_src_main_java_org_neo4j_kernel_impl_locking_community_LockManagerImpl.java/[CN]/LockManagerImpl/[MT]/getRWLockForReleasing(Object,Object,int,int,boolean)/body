@@ -1,0 +1,18 @@
+{
+  assertValidArguments(resource,tx);
+synchronized (resourceLockMap) {
+    RWLock lock=resourceLockMap.get(resource);
+    if (lock == null) {
+      if (!strict) {
+        return null;
+      }
+      throw new LockNotFoundException("Lock not found for: " + resource + " tx:"+ tx);
+    }
+synchronized (lock) {
+      if (!lock.isMarked() && lock.getReadCount() == readCountPrerequisite && lock.getWriteCount() == writeCountPrerequisite && lock.getWaitingThreadsCount() == 0) {
+        resourceLockMap.remove(resource);
+      }
+    }
+    return lock;
+  }
+}

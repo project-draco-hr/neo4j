@@ -1,28 +1,41 @@
 {
   TxLockElement tle=getOrCreateLockElement(tx);
+  LockRequest lockRequest=null;
+  boolean addLockRequest=true;
   try {
-    tle.movedOn=false;
-    boolean shouldAddWait=true;
+    tle.incrementRequests();
     Thread currentThread=currentThread();
-    while (totalWriteCount > tle.writeCount || totalReadCount > tle.readCount) {
+    while (!tle.isTerminated() && (totalWriteCount > tle.writeCount || totalReadCount > tle.readCount)) {
       ragManager.checkWaitOn(this,tx);
-      if (shouldAddWait) {
-        waitingThreadList.addFirst(new WaitElement(tle,WRITE,currentThread));
+      if (addLockRequest) {
+        lockRequest=new LockRequest(tle,WRITE,currentThread);
+        waitingThreadList.addFirst(lockRequest);
       }
       try {
         wait();
-        shouldAddWait=false;
+        addLockRequest=false;
       }
  catch (      InterruptedException e) {
         interrupted();
-        shouldAddWait=true;
+        addLockRequest=true;
       }
       ragManager.stopWaitOn(this,tx);
     }
-    registerWriteLockAcquired(tx,tle);
+    if (!tle.isTerminated()) {
+      registerWriteLockAcquired(tx,tle);
+      return true;
+    }
+ else {
+      if (tle.requests == 1 && tle.isFree()) {
+        txLockElementMap.remove(tx);
+      }
+      return false;
+    }
   }
   finally {
-    tle.movedOn=true;
+    cleanupWaitingListRequests(lockRequest,tle,addLockRequest);
+    interrupted();
+    tle.decrementRequests();
     marked--;
   }
 }

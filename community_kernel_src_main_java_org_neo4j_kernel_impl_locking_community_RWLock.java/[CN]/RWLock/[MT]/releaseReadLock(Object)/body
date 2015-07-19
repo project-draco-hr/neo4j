@@ -6,34 +6,30 @@
   totalReadCount--;
   tle.readCount--;
   if (tle.isFree()) {
-    txLockElementMap.remove(tx);
     ragManager.lockReleased(this,tx);
+    if (tle.hasNoRequests()) {
+      txLockElementMap.remove(tx);
+    }
   }
-  if (waitingThreadList.size() > 0) {
-    WaitElement we=waitingThreadList.getLast();
-    if (we.lockType == LockType.WRITE) {
-      if (totalReadCount == we.element.readCount) {
+  if (!waitingThreadList.isEmpty()) {
+    LockRequest lockRequest=waitingThreadList.getLast();
+    if (lockRequest.lockType == LockType.WRITE) {
+      if (totalReadCount == lockRequest.element.readCount) {
         waitingThreadList.removeLast();
-        if (!we.element.movedOn) {
-          we.waitingThread.interrupt();
-        }
+        lockRequest.waitingThread.interrupt();
       }
  else {
-        ListIterator<WaitElement> listItr=waitingThreadList.listIterator(waitingThreadList.lastIndexOf(we));
+        ListIterator<LockRequest> listItr=waitingThreadList.listIterator(waitingThreadList.lastIndexOf(lockRequest));
         while (listItr.hasPrevious()) {
-          we=listItr.previous();
-          if (we.lockType == LockType.WRITE && totalReadCount == we.element.readCount) {
+          lockRequest=listItr.previous();
+          if (lockRequest.lockType == LockType.WRITE && totalReadCount == lockRequest.element.readCount) {
             listItr.remove();
-            if (!we.element.movedOn) {
-              we.waitingThread.interrupt();
-              break;
-            }
+            lockRequest.waitingThread.interrupt();
+            break;
           }
- else           if (we.lockType == LockType.READ) {
+ else           if (lockRequest.lockType == LockType.READ) {
             listItr.remove();
-            if (!we.element.movedOn) {
-              we.waitingThread.interrupt();
-            }
+            lockRequest.waitingThread.interrupt();
           }
         }
       }
@@ -41,9 +37,7 @@
  else {
       if (totalWriteCount == 0) {
         waitingThreadList.removeLast();
-        if (!we.element.movedOn) {
-          we.waitingThread.interrupt();
-        }
+        lockRequest.waitingThread.interrupt();
       }
     }
   }

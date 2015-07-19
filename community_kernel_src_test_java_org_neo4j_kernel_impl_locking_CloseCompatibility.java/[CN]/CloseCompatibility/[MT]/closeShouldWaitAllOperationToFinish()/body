@@ -1,0 +1,19 @@
+{
+  clientA.acquireShared(NODE,1L);
+  clientA.acquireShared(NODE,3L);
+  clientB.acquireShared(NODE,1L);
+  acquireShared(clientC,NODE,2L);
+  acquireExclusive(clientB,NODE,1L).callAndAssertWaiting();
+  acquireExclusive(clientC,NODE,1L).callAndAssertWaiting();
+  clientB.close();
+  clientC.close();
+  clientA.close();
+  final int[] counters=new int[1];
+  locks.accept(new Locks.Visitor(){
+    @Override public void visit(    Locks.ResourceType resourceType,    long resourceId,    String description,    long estimatedWaitTime){
+      counters[0]++;
+    }
+  }
+);
+  Assert.assertEquals(0,counters[0]);
+}
