@@ -6,14 +6,15 @@
   boolean hasBadEntries=false;
   File badFile=new File(storeDir,Configuration.BAD_FILE_NAME);
   CountingStoreUpdateMonitor storeUpdateMonitor=new CountingStoreUpdateMonitor();
-  try (BatchingNeoStore neoStore=new BatchingNeoStore(fileSystem,storeDir,config,writeMonitor,logService,monitors,writerFactory,additionalInitialIds);OutputStream badOutput=new BufferedOutputStream(fileSystem.openAsOutputStream(badFile,false));Collector badCollector=input.badCollector(badOutput);CountsAccessor.Updater countsUpdater=neoStore.getCountsStore().reset(neoStore.getLastCommittedTransactionId());InputCache inputCache=new InputCache(fileSystem,storeDir)){
+  try (BatchingNeoStore neoStore=new BatchingNeoStore(fileSystem,storeDir,config,logService,monitors,additionalInitialIds);OutputStream badOutput=new BufferedOutputStream(fileSystem.openAsOutputStream(badFile,false));Collector badCollector=input.badCollector(badOutput);CountsAccessor.Updater countsUpdater=neoStore.getCountsStore().reset(neoStore.getLastCommittedTransactionId());InputCache inputCache=new InputCache(fileSystem,storeDir)){
+    IoMonitor writeMonitor=new IoMonitor(neoStore.getIoTracer());
     IdMapper idMapper=input.idMapper();
     IdGenerator idGenerator=input.idGenerator();
     nodeRelationshipCache=new NodeRelationshipCache(AUTO,config.denseNodeThreshold());
     StatsProvider memoryUsageStats=new MemoryUsageStatsProvider(nodeRelationshipCache,idMapper);
     InputIterable<InputNode> nodes=input.nodes();
     InputIterable<InputRelationship> relationships=input.relationships();
-    NodeStage nodeStage=new NodeStage(config,writeMonitor,writerFactory,nodes,idMapper,idGenerator,neoStore,inputCache,neoStore.getLabelScanStore(),storeUpdateMonitor,memoryUsageStats);
+    NodeStage nodeStage=new NodeStage(config,writeMonitor,nodes,idMapper,idGenerator,neoStore,inputCache,neoStore.getLabelScanStore(),storeUpdateMonitor,memoryUsageStats);
     CalculateDenseNodesStage calculateDenseNodesStage=new CalculateDenseNodesStage(config,relationships,nodeRelationshipCache,idMapper,badCollector,inputCache);
     if (idMapper.needsPreparation()) {
       executeStages(nodeStage);
@@ -24,11 +25,9 @@
       executeStages(nodeStage,calculateDenseNodesStage);
     }
     nodeRelationshipCache.fixateNodes();
-    final RelationshipStage relationshipStage=new RelationshipStage(config,writeMonitor,writerFactory,relationships.supportsMultiplePasses() ? relationships : inputCache.relationships(),idMapper,neoStore,nodeRelationshipCache,input.specificRelationshipIds(),storeUpdateMonitor);
+    final RelationshipStage relationshipStage=new RelationshipStage(config,writeMonitor,relationships.supportsMultiplePasses() ? relationships : inputCache.relationships(),idMapper,neoStore,nodeRelationshipCache,input.specificRelationshipIds(),storeUpdateMonitor);
     executeStages(relationshipStage);
     nodeRelationshipCache.fixateGroups();
-    neoStore.flush();
-    writerFactory.awaitEverythingWritten();
     executeStages(new NodeFirstRelationshipStage(config,neoStore.getNodeStore(),neoStore.getRelationshipGroupStore(),nodeRelationshipCache,badCollector,neoStore.getLabelScanStore()));
     nodeRelationshipCache.clearRelationships();
     executeStages(new RelationshipLinkbackStage(config,neoStore.getRelationshipStore(),nodeRelationshipCache));
@@ -38,7 +37,6 @@
     memoryUsageStats=new MemoryUsageStatsProvider(nodeLabelsCache);
     executeStages(new NodeCountsStage(config,nodeLabelsCache,neoStore.getNodeStore(),neoStore.getLabelRepository().getHighId(),countsUpdater,memoryUsageStats));
     executeStages(new RelationshipCountsStage(config,nodeLabelsCache,neoStore.getRelationshipStore(),neoStore.getLabelRepository().getHighId(),neoStore.getRelationshipTypeRepository().getHighId(),countsUpdater,AUTO));
-    writerFactory.awaitEverythingWritten();
     long totalTimeMillis=currentTimeMillis() - startTime;
     executionMonitor.done(totalTimeMillis,storeUpdateMonitor.toString());
     log.info("Import completed, took " + Format.duration(totalTimeMillis) + ". "+ storeUpdateMonitor);
@@ -52,7 +50,6 @@
     throw Exceptions.launderedException(IOException.class,t);
   }
  finally {
-    writerFactory.shutdown();
     if (nodeRelationshipCache != null) {
       nodeRelationshipCache.close();
     }
