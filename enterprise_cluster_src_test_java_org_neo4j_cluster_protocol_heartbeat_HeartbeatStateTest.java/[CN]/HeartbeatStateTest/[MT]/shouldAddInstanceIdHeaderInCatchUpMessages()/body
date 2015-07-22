@@ -1,0 +1,20 @@
+{
+  InstanceId instanceId=new InstanceId(1);
+  HeartbeatState heartbeat=HeartbeatState.heartbeat;
+  ClusterConfiguration configuration=new ClusterConfiguration("whatever",StringLogger.DEV_NULL,"cluster://1","cluster://2");
+  configuration.joined(instanceId,URI.create("cluster://1"));
+  InstanceId otherInstance=new InstanceId(2);
+  configuration.joined(otherInstance,URI.create("cluster://2"));
+  Logging logging=mock(Logging.class);
+  when(logging.getMessagesLog(Matchers.<Class>any())).thenReturn(mock(StringLogger.class));
+  MultiPaxosContext context=new MultiPaxosContext(instanceId,Iterables.<ElectionRole,ElectionRole>iterable(new ElectionRole("coordinator")),configuration,Mockito.mock(Executor.class),logging,Mockito.mock(ObjectInputStreamFactory.class),Mockito.mock(ObjectOutputStreamFactory.class),Mockito.mock(AcceptorInstanceStore.class),Mockito.mock(Timeouts.class),mock(ElectionCredentialsProvider.class));
+  int lastDeliveredInstanceId=100;
+  context.getLearnerContext().setLastDeliveredInstanceId(lastDeliveredInstanceId);
+  lastDeliveredInstanceId+=20;
+  HeartbeatContext heartbeatContext=context.getHeartbeatContext();
+  Message received=Message.internal(HeartbeatMessage.i_am_alive,new HeartbeatMessage.IAmAliveState(otherInstance));
+  received.setHeader(Message.FROM,"cluster://2").setHeader(Message.INSTANCE_ID,"2").setHeader("last-learned",Integer.toString(lastDeliveredInstanceId));
+  MessageHolder holder=mock(MessageHolder.class);
+  heartbeat.handle(heartbeatContext,received,holder);
+  verify(holder,times(1)).offer(Matchers.argThat(new MessageArgumentMatcher<LearnerMessage>().onMessageType(LearnerMessage.catchUp).withHeader(Message.INSTANCE_ID,"2")));
+}
