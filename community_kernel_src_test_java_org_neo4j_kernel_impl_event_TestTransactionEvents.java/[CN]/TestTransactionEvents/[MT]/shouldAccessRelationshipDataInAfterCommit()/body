@@ -1,20 +1,23 @@
 {
-  GraphDatabaseService db=dbRule.getGraphDatabaseService();
+  final GraphDatabaseService db=dbRule.getGraphDatabaseService();
   final AtomicInteger accessCount=new AtomicInteger();
   final Map<Long,Triplet<Node,String,Node>> expectedRelationshipData=new HashMap<>();
   TransactionEventHandler<Void> handler=new TransactionEventHandler.Adapter<Void>(){
     @Override public void afterCommit(    TransactionData data,    Void state){
       accessCount.set(0);
-      for (      Relationship relationship : data.createdRelationships()) {
-        accessData(relationship);
+      try (Transaction tx=db.beginTx()){
+        for (        Relationship relationship : data.createdRelationships()) {
+          accessData(relationship);
+        }
+        for (        PropertyEntry<Relationship> change : data.assignedRelationshipProperties()) {
+          accessData(change.entity());
+        }
+        for (        PropertyEntry<Relationship> change : data.removedRelationshipProperties()) {
+          accessData(change.entity());
+        }
+        tx.success();
       }
-      for (      PropertyEntry<Relationship> change : data.assignedRelationshipProperties()) {
-        accessData(change.entity());
-      }
-      for (      PropertyEntry<Relationship> change : data.removedRelationshipProperties()) {
-        accessData(change.entity());
-      }
-    }
+     }
     private void accessData(    Relationship relationship){
       accessCount.incrementAndGet();
       Triplet<Node,String,Node> expectancy=expectedRelationshipData.get(relationship.getId());
