@@ -1,0 +1,36 @@
+{
+  try {
+    channel.getCurrentPosition(positionMarker);
+    while (true) {
+      LogEntryVersion version=null;
+      LogEntryParser<LogEntry> entryReader;
+      CommandReader commandReader;
+      try {
+        byte typeCode=channel.get();
+        byte versionCode=0;
+        if (typeCode < 0) {
+          versionCode=typeCode;
+          typeCode=channel.get();
+        }
+        version=byVersion(versionCode,logHeaderFormatVersion);
+        entryReader=version.entryParser(typeCode);
+        commandReader=commandReader(version);
+      }
+ catch (      ReadPastEndException e) {
+        throw e;
+      }
+catch (      Exception e) {
+        LogPosition position=positionMarker.newPosition();
+        e=withMessage(e,e.getMessage() + ". At position " + position+ " and entry version "+ version);
+        throw launderedException(IOException.class,e);
+      }
+      LogEntry entry=entryReader.parse(version,channel,positionMarker,commandReader);
+      if (!entryReader.skip()) {
+        return entry;
+      }
+    }
+  }
+ catch (  ReadPastEndException e) {
+    return null;
+  }
+}
