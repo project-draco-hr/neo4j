@@ -1,16 +1,12 @@
 {
   ThreadToStatementContextBridge bridge=mock(ThreadToStatementContextBridge.class);
   when(bridge.instance()).thenReturn(mock(Statement.class));
-  mockTopLevelTx=mock(TopLevelTransaction.class);
-  final TransactionOutcome outcome=new TransactionOutcome();
-  when(mockTopLevelTx.getTransactionOutcome()).thenReturn(outcome);
-  doAnswer(new Answer<Void>(){
-    @Override public Void answer(    InvocationOnMock invocation){
-      outcome.failed();
-      return null;
-    }
-  }
-).when(mockTopLevelTx).failure();
+  KernelTransaction kernelTransaction=mock(KernelTransaction.class);
+  Statement statement=mock(Statement.class);
+  ReadOperations readOperations=mock(ReadOperations.class);
+  when(statement.readOperations()).thenReturn(readOperations);
+  when(bridge.instance()).thenReturn(statement);
+  mockTopLevelTx=spy(new TopLevelTransaction(kernelTransaction,bridge));
   placeboTx=new PlaceboTransaction(mockTopLevelTx);
   resource=mock(Node.class);
   when(resource.getId()).thenReturn(1l);
