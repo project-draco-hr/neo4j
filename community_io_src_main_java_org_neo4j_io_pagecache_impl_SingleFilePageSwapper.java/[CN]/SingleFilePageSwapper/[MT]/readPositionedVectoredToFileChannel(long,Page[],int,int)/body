@@ -1,0 +1,28 @@
+{
+  long fileOffset=pageIdToPosition(startFilePageId);
+  FileChannel channel=unwrappedChannel(startFilePageId);
+  ByteBuffer[] srcs=convertToByteBuffers(pages,arrayOffset,length);
+  int bytesRead=lockPositionReadVector(startFilePageId,channel,fileOffset,srcs);
+  if (bytesRead == -1) {
+    for (    Page page : pages) {
+      UnsafeUtil.setMemory(page.address(),filePageSize,MuninnPageCache.ZERO_BYTE);
+    }
+    return 0;
+  }
+ else   if (bytesRead < filePageSize * length) {
+    int pagesRead=bytesRead / filePageSize;
+    int bytesReadIntoLastReadPage=bytesRead % filePageSize;
+    int pagesNeedingZeroing=length - pagesRead;
+    for (int i=0; i < pagesNeedingZeroing; i++) {
+      Page page=pages[arrayOffset + pagesRead + i];
+      long bytesToZero=filePageSize;
+      long address=page.address();
+      if (i == 0) {
+        address+=bytesReadIntoLastReadPage;
+        bytesToZero-=bytesReadIntoLastReadPage;
+      }
+      UnsafeUtil.setMemory(address,bytesToZero,MuninnPageCache.ZERO_BYTE);
+    }
+  }
+  return bytesRead;
+}
