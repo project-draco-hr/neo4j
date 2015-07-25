@@ -1,0 +1,19 @@
+{
+  try (Cursor<LabelItem> labels=node.label(labelId)){
+    if (labels.next()) {
+      return false;
+    }
+  }
+   state.txState().nodeDoAddLabel(labelId,node.id());
+  try (Cursor<PropertyItem> properties=node.properties()){
+    while (properties.next()) {
+      PropertyItem propertyItem=properties.get();
+      IndexDescriptor descriptor=indexesGetForLabelAndPropertyKey(state,labelId,propertyItem.propertyKeyId());
+      if (descriptor != null) {
+        DefinedProperty after=Property.property(propertyItem.propertyKeyId(),propertyItem.value());
+        state.txState().indexDoUpdateProperty(descriptor,node.id(),null,after);
+      }
+    }
+    return true;
+  }
+ }
