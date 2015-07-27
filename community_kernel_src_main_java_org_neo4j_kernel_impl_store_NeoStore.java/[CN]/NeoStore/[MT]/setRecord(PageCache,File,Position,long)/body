@@ -1,19 +1,11 @@
 {
   long previousValue=FIELD_NOT_INITIALIZED;
   try (PagedFile pagedFile=pageCache.map(neoStore,getPageSize(pageCache))){
-    if (pagedFile.getLastPageId() == -1) {
-      return previousValue;
-    }
+    String expectedTrailer=buildTypeDescriptorAndVersion(TYPE_DESCRIPTOR);
+    long trailerOffset=StoreVersionTrailerUtil.getTrailerOffset(pagedFile,expectedTrailer);
+    int recordOffset=RECORD_SIZE * position.id;
     try (PageCursor pageCursor=pagedFile.io(0,PagedFile.PF_EXCLUSIVE_LOCK)){
       if (pageCursor.next()) {
-        byte[] trailerData=UTF8.encode(buildTypeDescriptorAndVersion(TYPE_DESCRIPTOR));
-        byte[] allData=new byte[pagedFile.pageSize()];
-        do {
-          pageCursor.getBytes(allData);
-        }
- while (pageCursor.shouldRetry());
-        int trailerOffset=StoreVersionCheck.findTrailerOffset(allData,trailerData);
-        int recordOffset=RECORD_SIZE * position.id;
         if (recordOffset < trailerOffset) {
           long record;
           byte inUse;
@@ -33,16 +25,12 @@
           pageCursor.putLong(value);
         }
  while (pageCursor.shouldRetry());
-        int newTrailerOffset=recordOffset + RECORD_SIZE;
-        if (newTrailerOffset > trailerOffset) {
-          do {
-            pageCursor.setOffset(newTrailerOffset);
-            pageCursor.putBytes(trailerData);
-          }
- while (pageCursor.shouldRetry());
-        }
       }
     }
-   }
+     int newTrailerOffset=recordOffset + RECORD_SIZE;
+    if (newTrailerOffset > trailerOffset) {
+      StoreVersionTrailerUtil.writeTrailer(pagedFile,UTF8.encode(expectedTrailer),newTrailerOffset);
+    }
+  }
    return previousValue;
 }

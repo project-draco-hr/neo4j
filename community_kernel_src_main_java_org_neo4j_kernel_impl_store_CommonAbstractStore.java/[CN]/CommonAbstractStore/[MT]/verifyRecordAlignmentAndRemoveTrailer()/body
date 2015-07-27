@@ -1,0 +1,13 @@
+{
+  String versionTrailer=buildTypeDescriptorAndVersion(getTypeDescriptor());
+  int expectedVersionLength=UTF8.encode(versionTrailer).length;
+  try (PagedFile pagedFile=pageCache.map(getStorageFileName(),pageCache.pageSize() - pageCache.pageSize() % getRecordSize())){
+    long trailerOffset=getTrailerOffset(pagedFile,versionTrailer.split(" ")[0]);
+    if (trailerOffset != -1 && trailerOffset % getRecordSize() == 0) {
+      writeTrailer(pagedFile,new byte[expectedVersionLength],trailerOffset);
+    }
+ else {
+      setStoreNotOk(new IllegalStateException("Misaligned file size " + trailerOffset + " for "+ this+ ", expected version length:"+ expectedVersionLength));
+    }
+  }
+ }
