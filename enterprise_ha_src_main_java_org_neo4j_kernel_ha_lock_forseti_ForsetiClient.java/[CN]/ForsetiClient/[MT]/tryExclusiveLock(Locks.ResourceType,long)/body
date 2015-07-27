@@ -1,28 +1,36 @@
 {
-  ConcurrentMap<Long,ForsetiLockManager.Lock> lockMap=lockMaps[resourceType.typeId()];
-  PrimitiveLongIntMap heldLocks=exclusiveLockCounts[resourceType.typeId()];
-  int heldCount=heldLocks.get(resourceId);
-  if (heldCount != -1) {
-    heldLocks.put(resourceId,heldCount + 1);
-    return true;
-  }
-  ForsetiLockManager.Lock lock;
-  if ((lock=lockMap.putIfAbsent(resourceId,myExclusiveLock)) != null) {
-    if (lock instanceof SharedLock && sharedLockCounts[resourceType.typeId()].containsKey(resourceId)) {
-      SharedLock sharedLock=(SharedLock)lock;
-      if (sharedLock.tryAcquireUpdateLock(this)) {
-        if (sharedLock.numberOfHolders() == 1) {
-          heldLocks.put(resourceId,1);
-          return true;
-        }
- else {
-          sharedLock.releaseUpdateLock(this);
-          return false;
-        }
-      }
-    }
+  if (!stateHolder.incrementActiveClients()) {
     return false;
   }
-  heldLocks.put(resourceId,1);
-  return true;
+  try {
+    ConcurrentMap<Long,ForsetiLockManager.Lock> lockMap=lockMaps[resourceType.typeId()];
+    PrimitiveLongIntMap heldLocks=exclusiveLockCounts[resourceType.typeId()];
+    int heldCount=heldLocks.get(resourceId);
+    if (heldCount != -1) {
+      heldLocks.put(resourceId,heldCount + 1);
+      return true;
+    }
+    ForsetiLockManager.Lock lock;
+    if ((lock=lockMap.putIfAbsent(resourceId,myExclusiveLock)) != null) {
+      if (lock instanceof SharedLock && sharedLockCounts[resourceType.typeId()].containsKey(resourceId)) {
+        SharedLock sharedLock=(SharedLock)lock;
+        if (sharedLock.tryAcquireUpdateLock(this)) {
+          if (sharedLock.numberOfHolders() == 1) {
+            heldLocks.put(resourceId,1);
+            return true;
+          }
+ else {
+            sharedLock.releaseUpdateLock(this);
+            return false;
+          }
+        }
+      }
+      return false;
+    }
+    heldLocks.put(resourceId,1);
+    return true;
+  }
+  finally {
+    stateHolder.decrementActiveClients();
+  }
 }

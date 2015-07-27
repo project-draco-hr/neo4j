@@ -1,11 +1,33 @@
 {
-  if (releaseLocalLock(resourceType,resourceId,exclusiveLockCounts[resourceType.typeId()])) {
-    return;
+  if (!stateHolder.incrementActiveClients()) {
+    throw new LockClientAlreadyClosedException(String.format("%s is already closed",this));
   }
-  if (sharedLockCounts[resourceType.typeId()].containsKey(resourceId)) {
-    lockMaps[resourceType.typeId()].put(resourceId,new SharedLock(this));
-  }
+  try {
+    if (releaseLocalLock(resourceType,resourceId,exclusiveLockCounts[resourceType.typeId()])) {
+      return;
+    }
+    ConcurrentMap<Long,ForsetiLockManager.Lock> lockMap=lockMaps[resourceType.typeId()];
+    if (sharedLockCounts[resourceType.typeId()].containsKey(resourceId)) {
+      ForsetiLockManager.Lock lock=lockMap.get(resourceId);
+      if (lock instanceof SharedLock) {
+        SharedLock sharedLock=(SharedLock)lock;
+        if (sharedLock.isUpdateLock()) {
+          sharedLock.releaseUpdateLock(this);
+        }
  else {
-    releaseGlobalLock(lockMaps[resourceType.typeId()],resourceId);
+          throw new IllegalStateException("Incorrect state of exclusive lock. Lock should be updated " + "to exclusive before attempt to release it. Lock: " + this);
+        }
+      }
+ else {
+        SharedLock sharedLock=new SharedLock(this);
+        lockMap.put(resourceId,sharedLock);
+      }
+    }
+ else {
+      releaseGlobalLock(lockMap,resourceId);
+    }
+  }
+  finally {
+    stateHolder.decrementActiveClients();
   }
 }
