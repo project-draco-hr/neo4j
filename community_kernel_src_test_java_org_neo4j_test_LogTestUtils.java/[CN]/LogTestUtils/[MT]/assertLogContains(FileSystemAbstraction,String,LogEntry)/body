@@ -2,10 +2,9 @@
   ByteBuffer buffer=ByteBuffer.allocateDirect(9 + MAXGTRIDSIZE + MAXBQUALSIZE * 10);
   try (StoreChannel file=fileSystem.open(new File(logPath),"r")){
     LogHeader logHeader=readLogHeader(buffer,file,true);
-    LogDeserializer deserializer=new LogDeserializer();
     PhysicalLogVersionedStoreChannel channel=new PhysicalLogVersionedStoreChannel(file,logHeader.logVersion,logHeader.logFormatVersion);
     ReadableVersionableLogChannel logChannel=new ReadAheadLogChannel(channel,NO_MORE_CHANNELS,4096);
-    try (IOCursor<LogEntry> cursor=deserializer.logEntries(logChannel)){
+    try (IOCursor<LogEntry> cursor=new LogEntryCursor(logChannel)){
       int entryNo=0;
       while (cursor.next()) {
         assertThat("The log contained more entries than we expected!",entryNo < expectedEntries.length,is(true));
