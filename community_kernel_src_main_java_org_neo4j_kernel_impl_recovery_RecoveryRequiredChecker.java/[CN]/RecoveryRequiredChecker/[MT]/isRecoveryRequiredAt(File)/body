@@ -1,0 +1,12 @@
+{
+  File neoStore=new File(dataDir,NeoStore.DEFAULT_NAME);
+  boolean noStoreFound=!NeoStore.isStorePresent(pageCache,dataDir);
+  if (noStoreFound) {
+    return false;
+  }
+  long logVersion=NeoStore.getRecord(pageCache,neoStore,NeoStore.Position.LOG_VERSION);
+  PhysicalLogFiles logFiles=new PhysicalLogFiles(dataDir,fs);
+  LogEntryReader<ReadableLogChannel> reader=new VersionAwareLogEntryReader<>(LogEntryVersion.CURRENT.byteCode());
+  LatestCheckPointFinder finder=new LatestCheckPointFinder(logFiles,fs,reader);
+  return new PositionToRecoverFrom(finder).apply(logVersion) != LogPosition.UNSPECIFIED;
+}
