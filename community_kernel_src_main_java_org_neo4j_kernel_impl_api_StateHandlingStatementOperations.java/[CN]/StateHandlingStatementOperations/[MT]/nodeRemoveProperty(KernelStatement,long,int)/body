@@ -1,0 +1,19 @@
+{
+  try (Cursor<NodeItem> cursor=nodeCursorById(state,nodeId)){
+    NodeItem node=cursor.get();
+    PrimitiveIntCollection labelIds=getLabels(node);
+    Property existingProperty;
+    try (Cursor<PropertyItem> properties=node.property(propertyKeyId)){
+      if (!properties.next()) {
+        existingProperty=Property.noProperty(propertyKeyId,EntityType.NODE,node.id());
+      }
+ else {
+        existingProperty=Property.property(properties.get().propertyKeyId(),properties.get().value());
+        legacyPropertyTrackers.nodeRemoveStoreProperty(node.id(),(DefinedProperty)existingProperty);
+        state.txState().nodeDoRemoveProperty(node.id(),(DefinedProperty)existingProperty);
+        indexesUpdateProperty(state,node.id(),labelIds,propertyKeyId,(DefinedProperty)existingProperty,null);
+      }
+    }
+     return existingProperty;
+  }
+ }
