@@ -1,0 +1,27 @@
+{
+  assumeFalse(FileUtils.OS_IS_WINDOWS);
+  final AtomicInteger openFilesCounter=new AtomicInteger();
+  PageSwapperFactory factory=swapperFactory();
+  DefaultFileSystemAbstraction fs=new DefaultFileSystemAbstraction();
+  factory.setFileSystemAbstraction(new DelegatingFileSystemAbstraction(fs){
+    @Override public StoreChannel open(    File fileName,    String mode) throws IOException {
+      openFilesCounter.getAndIncrement();
+      return new DelegatingStoreChannel(super.open(fileName,mode)){
+        @Override public void close() throws IOException {
+          openFilesCounter.getAndDecrement();
+          super.close();
+        }
+      }
+;
+    }
+  }
+);
+  File file=testDir.file("file");
+  try (StoreChannel ch=fs.create(file);FileLock lock=ch.tryLock()){
+    factory.createPageSwapper(file,4,NO_CALLBACK,false).close();
+    fail("Creating a page swapper for a locked channel should have thrown");
+  }
+ catch (  FileLockException e) {
+  }
+  assertThat(openFilesCounter.get(),is(0));
+}

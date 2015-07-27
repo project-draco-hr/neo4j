@@ -1,2 +1,30 @@
 {
+  int blockSize=getEffectiveRecordSize();
+  if (blockSize <= 0) {
+    throw new InvalidRecordException("Illegal blockSize: " + blockSize);
+  }
+  log.debug("Rebuilding id generator for[" + getStorageFileName() + "] ...");
+  closeIdGenerator();
+  createIdGenerator(getIdFileName());
+  openIdGenerator();
+  long defraggedCount=0;
+  boolean fastRebuild=doFastIdGeneratorRebuild();
+  try {
+    long foundHighId=findHighIdBackwards();
+    setHighId(foundHighId);
+    if (!fastRebuild) {
+      try (PageCursor cursor=storeFile.io(0,PagedFile.PF_EXCLUSIVE_LOCK | PF_READ_AHEAD)){
+        defraggedCount=rebuildIdGeneratorSlow(cursor,recordsPerPage(),blockSize,foundHighId);
+      }
+     }
+  }
+ catch (  IOException e) {
+    throw new UnderlyingStorageException("Unable to rebuild id generator " + getStorageFileName(),e);
+  }
+  log.debug("[" + getStorageFileName() + "] high id="+ getHighId()+ " (defragged="+ defraggedCount+ ")");
+  log.debug(getStorageFileName() + " rebuild id generator, highId=" + getHighId()+ " defragged count="+ defraggedCount);
+  if (!fastRebuild) {
+    closeIdGenerator();
+    openIdGenerator();
+  }
 }

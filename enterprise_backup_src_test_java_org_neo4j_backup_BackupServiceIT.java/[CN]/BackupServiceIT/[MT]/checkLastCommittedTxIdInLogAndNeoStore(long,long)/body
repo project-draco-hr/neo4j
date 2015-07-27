@@ -1,0 +1,15 @@
+{
+  LifeSupport life=new LifeSupport();
+  PageCache pageCache=pageCacheRule.getPageCache(fileSystem);
+  LogicalTransactionStore transactionStore=life.add(new ReadOnlyTransactionStore(pageCache,fileSystem,backupDir,monitors));
+  life.start();
+  try (IOCursor<CommittedTransactionRepresentation> cursor=transactionStore.getTransactions(txId)){
+    assertTrue(cursor.next());
+    assertEquals(txId,cursor.get().getCommitEntry().getTxId());
+    assertFalse(cursor.next());
+  }
+  finally {
+    life.shutdown();
+  }
+  assertEquals(txId,txIdFromOrigin);
+}
