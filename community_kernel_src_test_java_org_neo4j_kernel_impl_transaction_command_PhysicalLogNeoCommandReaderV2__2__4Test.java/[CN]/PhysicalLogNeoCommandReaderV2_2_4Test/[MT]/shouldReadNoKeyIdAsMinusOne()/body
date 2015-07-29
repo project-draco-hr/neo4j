@@ -1,0 +1,19 @@
+{
+  InMemoryLogChannel channel=new InMemoryLogChannel();
+  CommandWriter writer=new CommandWriter(channel);
+  IndexDefineCommand definitions=new IndexDefineCommand();
+  int indexNameId=10;
+  definitions.init(MapUtil.<String,Integer>genericMap("myindex",indexNameId),MapUtil.<String,Integer>genericMap());
+  writer.visitIndexDefineCommand(definitions);
+  RemoveCommand removeCommand=new IndexCommand.RemoveCommand();
+  removeCommand.init(indexNameId,IndexEntityType.Node.id(),1234,-1,null);
+  writer.visitIndexRemoveCommand(removeCommand);
+  PhysicalLogNeoCommandReaderV2_2_4 reader=new PhysicalLogNeoCommandReaderV2_2_4();
+  assertTrue(reader.read(channel) instanceof IndexDefineCommand);
+  RemoveCommand readRemoveCommand=(RemoveCommand)reader.read(channel);
+  assertEquals(removeCommand.getIndexNameId(),readRemoveCommand.getIndexNameId());
+  assertEquals(removeCommand.getEntityType(),readRemoveCommand.getEntityType());
+  assertEquals(removeCommand.getEntityId(),readRemoveCommand.getEntityId());
+  assertEquals(removeCommand.getKeyId(),readRemoveCommand.getKeyId());
+  assertNull(removeCommand.getValue());
+}
