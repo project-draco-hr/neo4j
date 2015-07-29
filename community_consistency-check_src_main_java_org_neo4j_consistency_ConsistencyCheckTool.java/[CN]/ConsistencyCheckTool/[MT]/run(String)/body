@@ -2,15 +2,12 @@
   Args arguments=Args.withFlags(RECOVERY,PROP_OWNER).parse(args);
   File storeDir=determineStoreDirectory(arguments);
   Config tuningConfiguration=readTuningConfiguration(arguments);
-  try (PageCache pageCache=StandalonePageCacheFactory.createPageCache(fs,tuningConfiguration)){
-    recoveryChecker=new StoreRecoverer(fs,pageCache);
-    attemptRecoveryOrCheckStateOfLogicalLogs(arguments,storeDir);
-    LogProvider logProvider=FormattedLogProvider.toOutputStream(System.out);
-    try {
-      consistencyCheckService.runFullConsistencyCheck(storeDir,tuningConfiguration,ProgressMonitorFactory.textual(System.err),logProvider);
-    }
- catch (    ConsistencyCheckIncompleteException e) {
-      throw new ToolFailureException("Check aborted due to exception",e);
-    }
+  attemptRecoveryOrCheckStateOfLogicalLogs(arguments,storeDir,tuningConfiguration);
+  LogProvider logProvider=FormattedLogProvider.toOutputStream(System.out);
+  try {
+    consistencyCheckService.runFullConsistencyCheck(storeDir,tuningConfiguration,ProgressMonitorFactory.textual(System.err),logProvider);
   }
- }
+ catch (  ConsistencyCheckIncompleteException e) {
+    throw new ToolFailureException("Check aborted due to exception",e);
+  }
+}
