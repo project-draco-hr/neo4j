@@ -1,0 +1,27 @@
+{
+  Label label=label("Person");
+  String property="name";
+  BatchInserter inserter=newBatchInserter();
+  inserter.createDeferredConstraint(label).assertPropertyIsUnique(property).create();
+  inserter.createDeferredConstraint(label).assertPropertyExists(property).create();
+  GraphDatabaseService db=switchToEmbeddedGraphDatabaseService(inserter);
+  try {
+    try (Transaction tx=db.beginTx()){
+      List<ConstraintDefinition> constraints=asList(db.schema().getConstraints());
+      assertEquals(2,constraints.size());
+      for (      ConstraintDefinition constraint : constraints) {
+        if (constraint.getConstraintType() == ConstraintType.UNIQUENESS || constraint.getConstraintType() == ConstraintType.MANDATORY_NODE_PROPERTY) {
+          assertEquals(label.name(),constraint.getLabel().name());
+          assertEquals(property,single(constraint.getPropertyKeys()));
+        }
+ else {
+          fail("Unexpected constraint type found: " + constraint.getConstraintType());
+        }
+      }
+      tx.success();
+    }
+   }
+  finally {
+    db.shutdown();
+  }
+}

@@ -1,0 +1,26 @@
+{
+  Label label=label("Person");
+  String property="name";
+  BatchInserter inserter=newBatchInserter();
+  inserter.createDeferredSchemaIndex(label).on(property).create();
+  inserter.createDeferredConstraint(label).assertPropertyExists(property).create();
+  GraphDatabaseService db=switchToEmbeddedGraphDatabaseService(inserter);
+  try {
+    try (Transaction tx=db.beginTx()){
+      List<IndexDefinition> indexes=asList(db.schema().getIndexes());
+      assertEquals(1,indexes.size());
+      IndexDefinition index=indexes.get(0);
+      assertEquals(label.name(),index.getLabel().name());
+      assertEquals(property,single(index.getPropertyKeys()));
+      List<ConstraintDefinition> constraints=asList(db.schema().getConstraints());
+      assertEquals(1,constraints.size());
+      ConstraintDefinition constraint=constraints.get(0);
+      assertEquals(label.name(),constraint.getLabel().name());
+      assertEquals(property,single(constraint.getPropertyKeys()));
+      tx.success();
+    }
+   }
+  finally {
+    db.shutdown();
+  }
+}
