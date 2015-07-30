@@ -2,16 +2,14 @@
   try {
     indexData.iterateAll(new InMemoryIndexImplementation.IndexEntryIterator(){
       @Override public void visitEntry(      Object key,      Set<Long> nodeIds) throws Exception {
-        List<Entry> entries=new ArrayList<>();
+        Map<Object,Long> entries=new HashMap<>();
         for (        long nodeId : nodeIds) {
-          Property property=accessor.getProperty(nodeId,propertyKeyId);
-          Object value=property.value();
-          for (          Entry current : entries) {
-            if (current.property.valueEquals(value)) {
-              throw new PreexistingIndexEntryConflictException(value,current.nodeId,nodeId);
-            }
+          final Object value=accessor.getProperty(nodeId,propertyKeyId).value();
+          if (entries.containsKey(value)) {
+            long existingNodeId=entries.get(value);
+            throw new PreexistingIndexEntryConflictException(value,existingNodeId,nodeId);
           }
-          entries.add(new Entry(nodeId,property));
+          entries.put(value,nodeId);
         }
       }
     }
