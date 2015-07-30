@@ -1,0 +1,17 @@
+{
+  int headerRecord=0;
+  try (PagedFile pagedFile=pageCache.map(getStorageFileName(),pageCache.pageSize())){
+    try (PageCursor pageCursor=pagedFile.io(0,PF_SHARED_LOCK)){
+      if (pageCursor.next()) {
+        do {
+          headerRecord=pageCursor.getInt();
+        }
+ while (pageCursor.shouldRetry());
+      }
+    }
+   }
+   if (headerRecord <= 0) {
+    throw new InvalidRecordException("Illegal block size: " + headerRecord + " in "+ getStorageFileName());
+  }
+  return headerRecord;
+}
