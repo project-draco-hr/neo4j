@@ -1,0 +1,19 @@
+{
+  int pageSize=pagedFile.pageSize();
+  long pageIdTrailerStartsIn=trailerOffset / pageSize;
+  try (PageCursor pageCursor=pagedFile.io(pageIdTrailerStartsIn,PagedFile.PF_EXCLUSIVE_LOCK)){
+    int writtenOffset=0;
+    while (writtenOffset < trailer.length) {
+      pageCursor.next();
+      pageCursor.setOffset((int)((writtenOffset + trailerOffset) % pageSize));
+      do {
+        do {
+          pageCursor.putByte(trailer[writtenOffset]);
+        }
+ while (pageCursor.shouldRetry());
+        writtenOffset++;
+      }
+ while ((writtenOffset + trailerOffset) % pageSize != 0 && writtenOffset < trailer.length);
+    }
+  }
+ }

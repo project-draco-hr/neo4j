@@ -1,27 +1,29 @@
 {
-  PageCache pageCache=mock(PageCache.class);
-  PagedFile storeFile=mock(PagedFile.class);
-  when(pageCache.map(any(File.class),anyInt())).thenReturn(storeFile);
+  PageCache pageCache=pageCacheRule.getPageCache(fileSystemAbstraction);
+  Config config=new Config();
+  config.setProperty(PropertyStore.Configuration.rebuild_idgenerators_fast.name(),"true");
   DynamicStringStore stringPropertyStore=mock(DynamicStringStore.class);
-  PageCursor cursor=mock(PageCursor.class);
-  when(cursor.next()).thenReturn(true);
-  when(storeFile.io(anyInt(),anyInt())).thenReturn(cursor);
-  when(storeFile.pageSize()).thenReturn(8);
-  org.neo4j.kernel.configuration.Config config=mock(org.neo4j.kernel.configuration.Config.class);
-  when(config.get(PropertyStore.Configuration.rebuild_idgenerators_fast)).thenReturn(true);
-  PropertyStore store=new PropertyStore(path,config,new JumpingIdGeneratorFactory(1),pageCache,fileSystemAbstraction,NullLogProvider.getInstance(),stringPropertyStore,mock(PropertyKeyTokenStore.class),mock(DynamicArrayStore.class),null,null);
-  store.makeStoreOk();
-  long l=store.nextId();
-  PropertyRecord record=new PropertyRecord(l);
-  record.setInUse(true);
-  DynamicRecord dynamicRecord=dynamicRecord();
-  PropertyBlock propertyBlock=propertyBlockWith(dynamicRecord);
-  record.setPropertyBlock(propertyBlock);
-  store.updateRecord(record);
-  InOrderImpl inOrder=new InOrderImpl(Arrays.<Object>asList(stringPropertyStore,cursor));
-  inOrder.verify(stringPropertyStore).updateRecord(dynamicRecord);
-  inOrder.verify(cursor).putByte((byte)0);
-  inOrder.verify(cursor,times(2)).putInt(-1);
-  inOrder.verify(cursor).putLong(propertyBlock.getValueBlocks()[0]);
-  inOrder.verify(cursor).putLong(0);
+  final PropertyStore store=new PropertyStore(path,config,new JumpingIdGeneratorFactory(1),pageCache,fileSystemAbstraction,NullLogProvider.getInstance(),stringPropertyStore,mock(PropertyKeyTokenStore.class),mock(DynamicArrayStore.class),StoreVersionMismatchHandler.FORCE_CURRENT_VERSION,null);
+  try {
+    store.makeStoreOk();
+    final long propertyRecordId=store.nextId();
+    PropertyRecord record=new PropertyRecord(propertyRecordId);
+    record.setInUse(true);
+    DynamicRecord dynamicRecord=dynamicRecord();
+    PropertyBlock propertyBlock=propertyBlockWith(dynamicRecord);
+    record.setPropertyBlock(propertyBlock);
+    doAnswer(new Answer(){
+      @Override public Object answer(      InvocationOnMock invocation) throws Throwable {
+        PropertyRecord recordBeforeWrite=store.forceGetRecord(propertyRecordId);
+        assertFalse(recordBeforeWrite.inUse());
+        return null;
+      }
+    }
+).when(stringPropertyStore).updateRecord(dynamicRecord);
+    store.updateRecord(record);
+    verify(stringPropertyStore).updateRecord(dynamicRecord);
+  }
+  finally {
+    store.close();
+  }
 }
