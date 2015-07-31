@@ -1,0 +1,35 @@
+{
+  try {
+    startSignal.await();
+    for (int i=0; i < numberOfIterations; i++) {
+      try {
+        int depth=depthCount;
+        do {
+          float f=rand.nextFloat();
+          int n=rand.nextInt(resources.length);
+          lockAttempts++;
+          if (f < readWriteRatio) {
+            startedWaiting=currentTimeMillis();
+            lm.acquireShared(ResourceTypes.NODE,resources[n]);
+            startedWaiting=null;
+          }
+ else {
+            startedWaiting=currentTimeMillis();
+            lm.acquireExclusive(ResourceTypes.NODE,resources[n]);
+            startedWaiting=null;
+          }
+        }
+ while (--depth > 0);
+      }
+ catch (      DeadlockDetectedException e) {
+        deadlocks++;
+      }
+ finally {
+        lm.releaseAll();
+      }
+    }
+  }
+ catch (  Exception e) {
+    error=e;
+  }
+}
