@@ -1,0 +1,16 @@
+{
+  Label label=DynamicLabel.label("Foo");
+  String property="Bar";
+  String value="Baz";
+  BatchInserter inserter=newBatchInserter();
+  inserter.createDeferredConstraint(label).assertPropertyIsUnique(property).create();
+  inserter.createNode(Collections.<String,Object>singletonMap(property,value),label);
+  inserter.createNode(Collections.<String,Object>singletonMap(property,value),label);
+  try {
+    inserter.shutdown();
+    fail("Node that violates uniqueness constraint was created by batch inserter");
+  }
+ catch (  RuntimeException ex) {
+    assertEquals(new PreexistingIndexEntryConflictException(value,0,1),ex.getCause());
+  }
+}
