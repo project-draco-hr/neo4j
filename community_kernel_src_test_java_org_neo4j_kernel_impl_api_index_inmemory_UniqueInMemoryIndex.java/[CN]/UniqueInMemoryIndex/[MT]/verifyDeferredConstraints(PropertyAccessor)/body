@@ -1,18 +1,24 @@
 {
-  indexData.iterateAll(new InMemoryIndexImplementation.IndexEntryIterator(){
-    @Override public void visitEntry(    Object key,    Set<Long> nodeIds) throws Exception {
-      List<Entry> entries=new ArrayList<>();
-      for (      long nodeId : nodeIds) {
-        Property property=accessor.getProperty(nodeId,propertyKeyId);
-        Object value=property.value();
-        for (        Entry current : entries) {
-          if (current.property.valueEquals(value)) {
-            throw new PreexistingIndexEntryConflictException(value,current.nodeId,nodeId);
+  try {
+    indexData.iterateAll(new InMemoryIndexImplementation.IndexEntryIterator(){
+      @Override public void visitEntry(      Object key,      Set<Long> nodeIds) throws Exception {
+        Map<Object,Long> entries=new HashMap<>();
+        for (        long nodeId : nodeIds) {
+          final Object value=accessor.getProperty(nodeId,propertyKeyId).value();
+          if (entries.containsKey(value)) {
+            long existingNodeId=entries.get(value);
+            throw new PreexistingIndexEntryConflictException(value,existingNodeId,nodeId);
           }
+          entries.put(value,nodeId);
         }
-        entries.add(new Entry(nodeId,property));
       }
     }
-  }
 );
+  }
+ catch (  PreexistingIndexEntryConflictException e) {
+    throw e;
+  }
+catch (  Exception e) {
+    throw new RuntimeException(e);
+  }
 }
