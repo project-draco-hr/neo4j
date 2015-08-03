@@ -1,0 +1,24 @@
+{
+  File indexRoot=getRootDirectory(storeDir,schemaIndexProvider.getProviderDescriptor().getKey());
+  IndexSamplingConfig samplingConfig=new IndexSamplingConfig(new Config());
+  List<File> indexesToBeDeleted=new ArrayList<>();
+  storeFactory.setStoreDir(storeDir);
+  try (NeoStores neoStores=storeFactory.openNeoStores(false)){
+    SchemaStore schema=neoStores.getSchemaStore();
+    Iterator<SchemaRule> rules=schema.loadAllSchemaRules();
+    while (rules.hasNext()) {
+      SchemaRule rule=rules.next();
+      IndexConfiguration indexConfig=new IndexConfiguration(rule.getKind() == UNIQUENESS_CONSTRAINT);
+      try (IndexAccessor accessor=schemaIndexProvider.getOnlineAccessor(rule.getId(),indexConfig,samplingConfig)){
+        try (IndexReader reader=accessor.newReader()){
+          if (reader.valueTypesInIndex().contains(Array.class)) {
+            indexesToBeDeleted.add(new File(indexRoot,"" + rule.getId()));
+          }
+        }
+       }
+     }
+  }
+   for (  File index : indexesToBeDeleted) {
+    fileSystem.deleteRecursively(index);
+  }
+}

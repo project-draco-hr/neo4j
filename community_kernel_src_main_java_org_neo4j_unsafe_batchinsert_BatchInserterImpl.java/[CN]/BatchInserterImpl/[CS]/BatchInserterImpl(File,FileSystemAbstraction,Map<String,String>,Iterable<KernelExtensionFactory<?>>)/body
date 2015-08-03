@@ -21,20 +21,20 @@
   }
   msgLog.info(Thread.currentThread() + " Starting BatchInserter(" + this+ ")");
   life.start();
-  neoStore=sf.newNeoStore(true);
-  neoStore.verifyStoreOk();
-  neoStore.makeStoreOk();
+  neoStores=sf.openNeoStores(true);
+  neoStores.verifyStoreOk();
+  neoStores.makeStoreOk();
   List<Token> indexes=getPropertyKeyTokenStore().getTokens(10000);
   propertyKeyTokens=new BatchTokenHolder(indexes);
-  labelTokens=new BatchTokenHolder(neoStore.getLabelTokenStore().getTokens(Integer.MAX_VALUE));
+  labelTokens=new BatchTokenHolder(neoStores.getLabelTokenStore().getTokens(Integer.MAX_VALUE));
   List<RelationshipTypeToken> types=getRelationshipTypeStore().getTokens(Integer.MAX_VALUE);
   relationshipTypeTokens=new BatchTokenHolder(types);
   indexStore=life.add(new IndexConfigStore(this.storeDir,fileSystem));
-  schemaCache=new SchemaCache(new StandardConstraintSemantics(),neoStore.getSchemaStore());
+  schemaCache=new SchemaCache(new StandardConstraintSemantics(),neoStores.getSchemaStore());
   Dependencies deps=new Dependencies();
-  deps.satisfyDependencies(fileSystem,config,logService,new NeoStoreSupplier(){
-    @Override public NeoStore get(){
-      return neoStore;
+  deps.satisfyDependencies(fileSystem,config,logService,new NeoStoresSupplier(){
+    @Override public NeoStores get(){
+      return neoStores;
     }
   }
 );
@@ -52,8 +52,9 @@
   schemaIndexProviders=new DefaultSchemaIndexProviderMap(provider);
   labelScanStore=life.add(extensions.resolveDependency(LabelScanStoreProvider.class,LabelScanStoreProvider.HIGHEST_PRIORITIZED).getLabelScanStore());
   actions=new BatchSchemaActions();
-  recordAccess=new DirectRecordAccessSet(neoStore);
-  relationshipCreator=new RelationshipCreator(new NoOpClient(),new RelationshipGroupGetter(neoStore.getRelationshipGroupStore()),neoStore.getDenseNodeThreshold());
+  recordAccess=new DirectRecordAccessSet(neoStores);
+  RelationshipGroupStore relationshipGroupStore=neoStores.getRelationshipGroupStore();
+  relationshipCreator=new RelationshipCreator(new NoOpClient(),new RelationshipGroupGetter(relationshipGroupStore),relationshipGroupStore.getDenseNodeThreshold());
   propertyTraverser=new PropertyTraverser();
   propertyCreator=new PropertyCreator(getPropertyStore(),propertyTraverser);
   propertyDeletor=new PropertyDeleter(getPropertyStore(),propertyTraverser);

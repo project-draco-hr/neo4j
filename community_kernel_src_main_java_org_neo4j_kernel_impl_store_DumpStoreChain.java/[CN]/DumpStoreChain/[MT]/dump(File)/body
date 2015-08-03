@@ -3,17 +3,14 @@
   try (PageCache pageCache=createPageCache(fs)){
     DefaultIdGeneratorFactory idGeneratorFactory=new DefaultIdGeneratorFactory(fs);
     Config config=new Config();
-    StoreFactory storeFactory=new StoreFactory(null,config,idGeneratorFactory,pageCache,fs,logProvider());
-    RecordStore<RECORD> store=store(storeFactory,storeDir);
-    try {
+    StoreFactory storeFactory=new StoreFactory(storeDir,config,idGeneratorFactory,pageCache,fs,logProvider());
+    try (NeoStores neoStores=storeFactory.openNeoStores(false)){
+      RecordStore<RECORD> store=store(neoStores);
       for (long next=first; next != -1; ) {
         RECORD record=store.forceGetRecord(next);
         System.out.println(record);
         next=next(record);
       }
     }
-  finally {
-      store.close();
-    }
-  }
+   }
  }

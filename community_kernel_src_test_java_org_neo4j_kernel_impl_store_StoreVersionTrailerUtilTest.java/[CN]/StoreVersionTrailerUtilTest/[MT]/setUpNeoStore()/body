@@ -1,7 +1,13 @@
 {
   Config config=new Config(new HashMap<String,String>(),GraphDatabaseSettings.class);
-  pageCache=pageCacheRule.getPageCache(fs.get());
-  StoreFactory sf=new StoreFactory(dir.graphDbDir(),config,new DefaultIdGeneratorFactory(fs.get()),pageCache,fs.get(),NullLogProvider.getInstance());
-  sf.createNeoStore().close();
-  neoStoreFile=new File(dir.graphDbDir(),NeoStore.DEFAULT_NAME);
+  EphemeralFileSystemAbstraction fs=this.fs.get();
+  pageCache=pageCacheRule.getPageCache(fs);
+  File storeDir=dir.graphDbDir();
+  DefaultIdGeneratorFactory idGeneratorFactory=new DefaultIdGeneratorFactory(fs);
+  NullLogProvider logProvider=NullLogProvider.getInstance();
+  StoreFactory sf=new StoreFactory(storeDir,config,idGeneratorFactory,pageCache,fs,logProvider);
+  try (NeoStores neoStores=sf.openNeoStores(true)){
+    neoStores.getMetaDataStore();
+  }
+   neoStoreFile=new File(storeDir,MetaDataStore.DEFAULT_NAME);
 }

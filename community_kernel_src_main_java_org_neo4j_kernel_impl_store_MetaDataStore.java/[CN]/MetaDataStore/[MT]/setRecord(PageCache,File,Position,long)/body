@@ -1,0 +1,36 @@
+{
+  long previousValue=FIELD_NOT_INITIALIZED;
+  try (PagedFile pagedFile=pageCache.map(neoStore,getPageSize(pageCache))){
+    String expectedTrailer=buildTypeDescriptorAndVersion(TYPE_DESCRIPTOR);
+    long trailerOffset=StoreVersionTrailerUtil.getTrailerPosition(pagedFile,expectedTrailer);
+    int recordOffset=RECORD_SIZE * position.id;
+    try (PageCursor pageCursor=pagedFile.io(0,PagedFile.PF_EXCLUSIVE_LOCK)){
+      if (pageCursor.next()) {
+        if (recordOffset < trailerOffset) {
+          long record;
+          byte inUse;
+          do {
+            pageCursor.setOffset(recordOffset);
+            inUse=pageCursor.getByte();
+            record=pageCursor.getLong();
+          }
+ while (pageCursor.shouldRetry());
+          if (inUse == Record.IN_USE.byteValue()) {
+            previousValue=record;
+          }
+        }
+        do {
+          pageCursor.setOffset(recordOffset);
+          pageCursor.putByte(Record.IN_USE.byteValue());
+          pageCursor.putLong(value);
+        }
+ while (pageCursor.shouldRetry());
+      }
+    }
+     int newTrailerOffset=recordOffset + RECORD_SIZE;
+    if (newTrailerOffset > trailerOffset) {
+      StoreVersionTrailerUtil.writeTrailer(pagedFile,UTF8.encode(expectedTrailer),newTrailerOffset);
+    }
+  }
+   return previousValue;
+}

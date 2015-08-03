@@ -1,10 +1,12 @@
 {
-  final File storeFileBase=new File(migrationDir,NeoStore.DEFAULT_NAME + StoreFactory.COUNTS_STORE);
+  final File storeFileBase=new File(migrationDir,MetaDataStore.DEFAULT_NAME + StoreFactory.COUNTS_STORE);
   final StoreFactory storeFactory=new StoreFactory(fileSystem,storeDir,pageCache,NullLogProvider.getInstance(),StoreVersionMismatchHandler.ALLOW_OLD_VERSION);
-  try (NodeStore nodeStore=storeFactory.newNodeStore();RelationshipStore relationshipStore=storeFactory.newRelationshipStore()){
+  try (NeoStores neoStores=storeFactory.openNeoStores(false)){
+    NodeStore nodeStore=neoStores.getNodeStore();
+    RelationshipStore relationshipStore=neoStores.getRelationshipStore();
     try (Lifespan life=new Lifespan()){
-      int highLabelId=(int)storeFactory.getHighId(StoreFile.LABEL_TOKEN_STORE,LabelTokenStore.RECORD_SIZE);
-      int highRelationshipTypeId=(int)storeFactory.getHighId(StoreFile.RELATIONSHIP_TYPE_TOKEN_STORE,RelationshipTypeTokenStore.RECORD_SIZE);
+      int highLabelId=(int)neoStores.getLabelTokenStore().getHighId();
+      int highRelationshipTypeId=(int)neoStores.getRelationshipTypeTokenStore().getHighId();
       CountsComputer initializer=new CountsComputer(lastTxId,nodeStore,relationshipStore,highLabelId,highRelationshipTypeId);
       life.add(new CountsTracker(logService.getInternalLogProvider(),fileSystem,pageCache,config,storeFileBase).setInitializer(initializer));
     }

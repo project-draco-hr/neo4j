@@ -6,10 +6,9 @@
   DefaultFileSystemAbstraction fileSystemAbstraction=new DefaultFileSystemAbstraction();
   DefaultIdGeneratorFactory idGeneratorFactory=new DefaultIdGeneratorFactory(fileSystemAbstraction);
   PageCache pageCache=pageCacheRule.getPageCache(fileSystemAbstraction,config);
-  StoreFactory storeFactory=new StoreFactory(storeDir,config,idGeneratorFactory,pageCache,fileSystemAbstraction,NullLogProvider.getInstance());
-  File fileName=new File(storeDir,NeoStore.DEFAULT_NAME + ".nodestore.db");
-  storeFactory.createEmptyStore(fileName,StoreFactory.buildTypeDescriptorAndVersion(NodeStore.TYPE_DESCRIPTOR));
-  NodeStore nodeStore=new NodeStore(fileName,config,idGeneratorFactory,pageCache,fileSystemAbstraction,NullLogProvider.getInstance(),null,StoreVersionMismatchHandler.FORCE_CURRENT_VERSION);
+  StoreFactory storeFactory=new StoreFactory(storeDir,config,idGeneratorFactory,pageCache,fileSystemAbstraction,NullLogProvider.getInstance(),StoreVersionMismatchHandler.FORCE_CURRENT_VERSION);
+  NeoStores neoStores=storeFactory.openNeoStores(true);
+  NodeStore nodeStore=neoStores.getNodeStore();
   int iterations=2 * NUMBER_OF_RECORDS;
   long startingId=nodeStore.nextId();
   long nodeId=startingId;
@@ -26,5 +25,5 @@
     assertTrue("record[" + i + "] should be in use",record.inUse());
     assertThat("record[" + i + "] should have nextRelId of "+ i,record.getNextRel(),is((long)i));
   }
-  nodeStore.close();
+  neoStores.close();
 }
