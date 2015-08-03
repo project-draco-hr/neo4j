@@ -1,18 +1,26 @@
 {
-  PrimitiveLongObjectMap<LockResource> localLocks=localShared(resourceType);
-  LockResource resource=localLocks.get(resourceId);
-  if (resource != null) {
-    resource.acquireReference();
-    return true;
+  if (!stateHolder.incrementActiveClients()) {
+    return false;
   }
- else {
-    resource=new LockResource(resourceType,resourceId);
-    if (manager.tryReadLock(resource,lockTransaction)) {
-      localLocks.put(resourceId,resource);
+  try {
+    PrimitiveLongObjectMap<LockResource> localLocks=localShared(resourceType);
+    LockResource resource=localLocks.get(resourceId);
+    if (resource != null) {
+      resource.acquireReference();
       return true;
     }
  else {
-      return false;
+      resource=new LockResource(resourceType,resourceId);
+      if (manager.tryReadLock(resource,lockTransaction)) {
+        localLocks.put(resourceId,resource);
+        return true;
+      }
+ else {
+        return false;
+      }
     }
+  }
+  finally {
+    stateHolder.decrementActiveClients();
   }
 }

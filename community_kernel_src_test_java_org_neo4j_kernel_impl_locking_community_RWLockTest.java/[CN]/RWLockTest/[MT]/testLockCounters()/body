@@ -1,0 +1,33 @@
+{
+  RagManager ragManager=new RagManager();
+  LockResource resource=new LockResource(ResourceTypes.NODE,1l);
+  final RWLock lock=new RWLock(resource,ragManager);
+  LockTransaction lockTransaction=new LockTransaction();
+  LockTransaction anotherTransaction=new LockTransaction();
+  final LockTransaction writeTransaction=new LockTransaction();
+  final CountDownLatch writerCompletedLatch=new CountDownLatch(1);
+  lock.acquireReadLock(lockTransaction);
+  lock.acquireReadLock(anotherTransaction);
+  assertEquals(2,lock.getReadCount());
+  assertEquals(0,lock.getWriteCount());
+  assertEquals(2,lock.getTxLockElementCount());
+  Runnable writer=createWriter(lock,writeTransaction,writerCompletedLatch);
+  executor.submit(writer);
+  waitWaitingThreads(lock,1);
+  assertEquals(2,lock.getReadCount());
+  assertEquals(0,lock.getWriteCount());
+  assertEquals(3,lock.getTxLockElementCount());
+  assertEquals(1,lock.getWaitingThreadsCount());
+  lock.releaseReadLock(lockTransaction);
+  lock.releaseReadLock(anotherTransaction);
+  writerCompletedLatch.await();
+  assertEquals(0,lock.getReadCount());
+  assertEquals(1,lock.getWriteCount());
+  assertEquals(1,lock.getTxLockElementCount());
+  assertEquals(0,lock.getWaitingThreadsCount());
+  lock.releaseWriteLock(writeTransaction);
+  assertEquals(0,lock.getTxLockElementCount());
+  assertEquals(0,lock.getWaitingThreadsCount());
+  assertEquals(0,lock.getReadCount());
+  assertEquals(0,lock.getWriteCount());
+}

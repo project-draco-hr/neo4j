@@ -1,9 +1,17 @@
 {
-  PrimitiveLongObjectMap<LockResource> localLocks=localExclusive(resourceType);
-  LockResource resource=localLocks.get(resourceId);
-  if (resource.releaseReference() != 0) {
-    return;
+  if (!stateHolder.incrementActiveClients()) {
+    throw new LockClientAlreadyClosedException(String.format("%s is already closed",this));
   }
-  localLocks.remove(resourceId);
-  manager.releaseWriteLock(new LockResource(resourceType,resourceId),lockTransaction);
+  try {
+    PrimitiveLongObjectMap<LockResource> localLocks=localExclusive(resourceType);
+    LockResource resource=localLocks.get(resourceId);
+    if (resource.releaseReference() != 0) {
+      return;
+    }
+    localLocks.remove(resourceId);
+    manager.releaseWriteLock(new LockResource(resourceType,resourceId),lockTransaction);
+  }
+  finally {
+    stateHolder.decrementActiveClients();
+  }
 }

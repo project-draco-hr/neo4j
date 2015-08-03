@@ -6,19 +6,19 @@
   totalWriteCount--;
   tle.writeCount--;
   if (tle.isFree()) {
-    txLockElementMap.remove(tx);
     ragManager.lockReleased(this,tx);
+    if (tle.hasNoRequests()) {
+      txLockElementMap.remove(tx);
+    }
   }
   if (totalWriteCount == 0 && waitingThreadList.size() > 0) {
     do {
-      WaitElement we=waitingThreadList.removeLast();
-      if (!we.element.movedOn) {
-        we.waitingThread.interrupt();
-        if (we.lockType == LockType.WRITE) {
-          break;
-        }
+      LockRequest lockRequest=waitingThreadList.removeLast();
+      lockRequest.waitingThread.interrupt();
+      if (lockRequest.lockType == LockType.WRITE) {
+        break;
       }
     }
- while (waitingThreadList.size() > 0);
+ while (!waitingThreadList.isEmpty());
   }
 }

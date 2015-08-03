@@ -1,0 +1,24 @@
+{
+  RagManager ragManager=new RagManager();
+  LockResource node1=new LockResource(ResourceTypes.NODE,1l);
+  LockResource node2=new LockResource(ResourceTypes.NODE,2l);
+  LockResource node3=new LockResource(ResourceTypes.NODE,3l);
+  final RWLock lockNode1=new RWLock(node1,ragManager);
+  final RWLock lockNode2=new RWLock(node2,ragManager);
+  final RWLock lockNode3=new RWLock(node3,ragManager);
+  final LockTransaction client1Transaction=new LockTransaction();
+  final LockTransaction client2Transaction=new LockTransaction();
+  final LockTransaction client3Transaction=new LockTransaction();
+  final CountDownLatch deadLockDetector=new CountDownLatch(1);
+  lockNode1.acquireWriteLock(client1Transaction);
+  lockNode2.acquireWriteLock(client2Transaction);
+  lockNode3.acquireWriteLock(client3Transaction);
+  Runnable readerLockNode2=createReaderForDeadlock(lockNode3,client1Transaction,deadLockDetector);
+  Runnable readerLockNode3=createReaderForDeadlock(lockNode1,client2Transaction,deadLockDetector);
+  Runnable readerLockNode1=createReaderForDeadlock(lockNode2,client3Transaction,deadLockDetector);
+  executor.execute(readerLockNode2);
+  executor.execute(readerLockNode3);
+  executor.execute(readerLockNode1);
+  deadLockDetector.await(1000,TimeUnit.MILLISECONDS);
+  Assert.assertTrue("Deadlock was detected as expected.",true);
+}
