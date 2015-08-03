@@ -1,0 +1,15 @@
+{
+  int recordSize=getRecordSize();
+  long recordsInFile=channel.size() / recordSize;
+  ByteBuffer buffer=ByteBuffer.allocateDirect(recordSize);
+  StubPageCursor cursor=new StubPageCursor(0,buffer);
+  for (int i=0; i < recordsInFile; i++) {
+    assertThat("reading record id " + i,channel.read(buffer),is(recordSize));
+    buffer.flip();
+    Record expectedRecord=createRecord(file,i);
+    cursor.setOffset(0);
+    Record actualRecord=readRecord(cursor);
+    buffer.clear();
+    assertThat(actualRecord,isOneOf(expectedRecord,zeroRecord()));
+  }
+}
