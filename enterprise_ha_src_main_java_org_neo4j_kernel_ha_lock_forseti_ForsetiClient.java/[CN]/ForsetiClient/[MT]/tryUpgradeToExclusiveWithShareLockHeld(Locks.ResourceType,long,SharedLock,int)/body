@@ -2,6 +2,10 @@
   if (sharedLock.tryAcquireUpdateLock(this)) {
     try {
       while (sharedLock.numberOfHolders() > 1) {
+        if (stateHolder.isClosed()) {
+          sharedLock.releaseUpdateLock(this);
+          return false;
+        }
         waitStrategies[resourceType.typeId()].apply(tries++);
         markAsWaitingFor(sharedLock,resourceType,resourceId);
       }

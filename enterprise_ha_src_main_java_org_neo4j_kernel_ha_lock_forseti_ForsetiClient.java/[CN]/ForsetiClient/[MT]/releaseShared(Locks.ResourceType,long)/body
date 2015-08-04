@@ -1,8 +1,16 @@
 {
-  if (releaseLocalLock(resourceType,resourceId,sharedLockCounts[resourceType.typeId()])) {
-    return;
+  if (!stateHolder.incrementActiveClients()) {
+    throw new LockClientAlreadyClosedException(String.format("%s is already closed",this));
   }
-  if (!exclusiveLockCounts[resourceType.typeId()].containsKey(resourceId)) {
-    releaseGlobalLock(lockMaps[resourceType.typeId()],resourceId);
+  try {
+    if (releaseLocalLock(resourceType,resourceId,sharedLockCounts[resourceType.typeId()])) {
+      return;
+    }
+    if (!exclusiveLockCounts[resourceType.typeId()].containsKey(resourceId)) {
+      releaseGlobalLock(lockMaps[resourceType.typeId()],resourceId);
+    }
+  }
+  finally {
+    stateHolder.decrementActiveClients();
   }
 }

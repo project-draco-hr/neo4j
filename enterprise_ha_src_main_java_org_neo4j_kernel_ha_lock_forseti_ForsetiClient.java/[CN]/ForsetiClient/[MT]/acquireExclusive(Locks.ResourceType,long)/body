@@ -1,23 +1,34 @@
 {
-  ConcurrentMap<Long,ForsetiLockManager.Lock> lockMap=lockMaps[resourceType.typeId()];
-  PrimitiveLongIntMap heldLocks=exclusiveLockCounts[resourceType.typeId()];
-  int heldCount=heldLocks.get(resourceId);
-  if (heldCount != -1) {
-    heldLocks.put(resourceId,heldCount + 1);
-    return;
+  if (!stateHolder.incrementActiveClients()) {
+    throw new LockClientAlreadyClosedException(String.format("%s is already closed",this));
   }
-  ForsetiLockManager.Lock existingLock;
-  int tries=0;
-  while ((existingLock=lockMap.putIfAbsent(resourceId,myExclusiveLock)) != null) {
-    if (tries > 50 && existingLock instanceof SharedLock) {
-      SharedLock sharedLock=(SharedLock)existingLock;
-      if (tryUpgradeSharedToExclusive(resourceType,lockMap,resourceId,sharedLock)) {
-        break;
-      }
+  try {
+    ConcurrentMap<Long,ForsetiLockManager.Lock> lockMap=lockMaps[resourceType.typeId()];
+    PrimitiveLongIntMap heldLocks=exclusiveLockCounts[resourceType.typeId()];
+    int heldCount=heldLocks.get(resourceId);
+    if (heldCount != -1) {
+      heldLocks.put(resourceId,heldCount + 1);
+      return;
     }
-    waitStrategies[resourceType.typeId()].apply(tries++);
-    markAsWaitingFor(existingLock,resourceType,resourceId);
+    ForsetiLockManager.Lock existingLock;
+    int tries=0;
+    while ((existingLock=lockMap.putIfAbsent(resourceId,myExclusiveLock)) != null) {
+      if (stateHolder.isClosed()) {
+        throw new LockClientAlreadyClosedException(String.format("%s is already closed",this));
+      }
+      if (tries > 50 && existingLock instanceof SharedLock) {
+        SharedLock sharedLock=(SharedLock)existingLock;
+        if (tryUpgradeSharedToExclusive(resourceType,lockMap,resourceId,sharedLock)) {
+          break;
+        }
+      }
+      waitStrategies[resourceType.typeId()].apply(tries++);
+      markAsWaitingFor(existingLock,resourceType,resourceId);
+    }
+    clearWaitList();
+    heldLocks.put(resourceId,1);
   }
-  clearWaitList();
-  heldLocks.put(resourceId,1);
+  finally {
+    stateHolder.decrementActiveClients();
+  }
 }

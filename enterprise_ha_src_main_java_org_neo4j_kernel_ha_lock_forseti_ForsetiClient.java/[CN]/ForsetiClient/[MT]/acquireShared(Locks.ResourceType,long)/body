@@ -1,44 +1,55 @@
 {
-  ConcurrentMap<Long,ForsetiLockManager.Lock> lockMap=lockMaps[resourceType.typeId()];
-  PrimitiveLongIntMap heldShareLocks=sharedLockCounts[resourceType.typeId()];
-  PrimitiveLongIntMap heldExclusiveLocks=exclusiveLockCounts[resourceType.typeId()];
-  int heldCount=heldShareLocks.get(resourceId);
-  if (heldCount != -1) {
-    heldShareLocks.put(resourceId,heldCount + 1);
-    return;
+  if (!stateHolder.incrementActiveClients()) {
+    throw new LockClientAlreadyClosedException(String.format("%s is already closed",this));
   }
-  if (heldExclusiveLocks.containsKey(resourceId)) {
+  try {
+    ConcurrentMap<Long,ForsetiLockManager.Lock> lockMap=lockMaps[resourceType.typeId()];
+    PrimitiveLongIntMap heldShareLocks=sharedLockCounts[resourceType.typeId()];
+    PrimitiveLongIntMap heldExclusiveLocks=exclusiveLockCounts[resourceType.typeId()];
+    int heldCount=heldShareLocks.get(resourceId);
+    if (heldCount != -1) {
+      heldShareLocks.put(resourceId,heldCount + 1);
+      return;
+    }
+    if (heldExclusiveLocks.containsKey(resourceId)) {
+      heldShareLocks.put(resourceId,1);
+      return;
+    }
+    int tries=0;
+    SharedLock mySharedLock=null;
+    while (true) {
+      if (stateHolder.isClosed()) {
+        throw new LockClientAlreadyClosedException(String.format("%s is already closed",this));
+      }
+      ForsetiLockManager.Lock existingLock=lockMap.get(resourceId);
+      if (existingLock == null) {
+        if (mySharedLock == null) {
+          mySharedLock=new SharedLock(this);
+        }
+        if (lockMap.putIfAbsent(resourceId,mySharedLock) == null) {
+          break;
+        }
+ else {
+          continue;
+        }
+      }
+ else       if (existingLock instanceof SharedLock) {
+        if (((SharedLock)existingLock).acquire(this)) {
+          break;
+        }
+      }
+ else       if (existingLock instanceof ExclusiveLock) {
+      }
+ else {
+        throw new UnsupportedOperationException("Unknown lock type: " + existingLock);
+      }
+      waitStrategies[resourceType.typeId()].apply(tries++);
+      markAsWaitingFor(existingLock,resourceType,resourceId);
+    }
+    clearWaitList();
     heldShareLocks.put(resourceId,1);
-    return;
   }
-  int tries=0;
-  SharedLock mySharedLock=null;
-  while (true) {
-    ForsetiLockManager.Lock existingLock=lockMap.get(resourceId);
-    if (existingLock == null) {
-      if (mySharedLock == null) {
-        mySharedLock=new SharedLock(this);
-      }
-      if (lockMap.putIfAbsent(resourceId,mySharedLock) == null) {
-        break;
-      }
- else {
-        continue;
-      }
-    }
- else     if (existingLock instanceof SharedLock) {
-      if (((SharedLock)existingLock).acquire(this)) {
-        break;
-      }
-    }
- else     if (existingLock instanceof ExclusiveLock) {
-    }
- else {
-      throw new UnsupportedOperationException("Unknown lock type: " + existingLock);
-    }
-    waitStrategies[resourceType.typeId()].apply(tries++);
-    markAsWaitingFor(existingLock,resourceType,resourceId);
+  finally {
+    stateHolder.decrementActiveClients();
   }
-  clearWaitList();
-  heldShareLocks.put(resourceId,1);
 }
