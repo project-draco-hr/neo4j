@@ -1,0 +1,24 @@
+{
+  RECORD record=store.forceGetRecord(id);
+  Object transform=transform(record);
+  if (transform != null) {
+    if (!"".equals(transform)) {
+      out.println(transform);
+    }
+  }
+ else {
+    out.print(record);
+    byte[] data=new byte[size];
+    try (PageCursor pageCursor=store.storeFile.io(id / store.recordsPerPage(),PagedFile.PF_SHARED_LOCK)){
+      if (pageCursor.next()) {
+        do {
+          pageCursor.setOffset((int)(id % store.recordsPerPage() * size));
+          pageCursor.getBytes(data);
+        }
+ while (pageCursor.shouldRetry());
+      }
+    }
+     dumpHex(record,ByteBuffer.wrap(data),id,size);
+  }
+  return record.inUse();
+}
