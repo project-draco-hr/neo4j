@@ -1,19 +1,20 @@
 {
   int pageSize=pagedFile.pageSize();
-  long pageIdTrailerStartsIn=trailerOffset / pageSize;
-  try (PageCursor pageCursor=pagedFile.io(pageIdTrailerStartsIn,PagedFile.PF_EXCLUSIVE_LOCK)){
-    int writtenOffset=0;
-    while (writtenOffset < trailer.length) {
-      pageCursor.next();
-      pageCursor.setOffset((int)((writtenOffset + trailerOffset) % pageSize));
+  long startPageId=trailerOffset / pageSize;
+  int pageOffset=(int)(trailerOffset % pageSize);
+  int bytesLeftToWrite=trailer.length;
+  try (PageCursor cursor=pagedFile.io(startPageId,PagedFile.PF_EXCLUSIVE_LOCK)){
+    do {
+      cursor.next();
+      cursor.setOffset(pageOffset);
+      int bytesInThisPage=Math.min(bytesLeftToWrite,pageSize - pageOffset);
       do {
-        do {
-          pageCursor.putByte(trailer[writtenOffset]);
-        }
- while (pageCursor.shouldRetry());
-        writtenOffset++;
+        cursor.putBytes(trailer,trailer.length - bytesLeftToWrite,bytesInThisPage);
       }
- while ((writtenOffset + trailerOffset) % pageSize != 0 && writtenOffset < trailer.length);
+ while (cursor.shouldRetry());
+      bytesLeftToWrite-=bytesInThisPage;
+      pageOffset=0;
     }
+ while (bytesLeftToWrite > 0);
   }
  }

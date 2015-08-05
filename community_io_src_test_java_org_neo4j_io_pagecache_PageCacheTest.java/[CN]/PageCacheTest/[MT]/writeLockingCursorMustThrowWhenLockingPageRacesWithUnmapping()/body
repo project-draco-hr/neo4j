@@ -2,21 +2,21 @@
   generateFileWithRecords(file,recordsPerFilePage * 2,recordSize);
   getPageCache(fs,maxPages,pageCachePageSize,PageCacheTracer.NULL);
   final PagedFile pf=pageCache.map(file,filePageSize);
-  final CountDownLatch hasLockkLatch=new CountDownLatch(1);
+  final CountDownLatch hasLockLatch=new CountDownLatch(1);
   final CountDownLatch unlockLatch=new CountDownLatch(1);
   final CountDownLatch secondThreadGotLockLatch=new CountDownLatch(1);
   executor.submit(new Callable<Object>(){
     @Override public Object call() throws Exception {
       try (PageCursor cursor=pf.io(0,PF_EXCLUSIVE_LOCK)){
         cursor.next();
-        hasLockkLatch.countDown();
+        hasLockLatch.countDown();
         unlockLatch.await();
       }
        return null;
     }
   }
 );
-  hasLockkLatch.await();
+  hasLockLatch.await();
   Future<Object> takeLockFuture=executor.submit(new Callable<Object>(){
     @Override public Object call() throws Exception {
       try (PageCursor cursor=pf.io(0,PF_EXCLUSIVE_LOCK)){
