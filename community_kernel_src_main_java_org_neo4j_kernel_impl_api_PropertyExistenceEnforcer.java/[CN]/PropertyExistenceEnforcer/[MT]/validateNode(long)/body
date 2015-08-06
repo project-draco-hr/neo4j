@@ -1,0 +1,32 @@
+{
+  try (Cursor<NodeItem> node=readOperations.nodeCursor(txStateHolder,storeStatement,nodeId)){
+    if (node.next()) {
+      labelIds.clear();
+      try (Cursor<LabelItem> labels=node.get().labels()){
+        while (labels.next()) {
+          labelIds.add(labels.get().getAsInt());
+        }
+      }
+       propertyKeyIds.clear();
+      Iterator<PropertyConstraint> constraints=storeLayer.constraintsGetAll();
+      while (constraints.hasNext()) {
+        PropertyConstraint constraint=constraints.next();
+        if (constraint instanceof NodePropertyExistenceConstraint && labelIds.contains(((NodePropertyExistenceConstraint)constraint).label())) {
+          if (propertyKeyIds.isEmpty()) {
+            try (Cursor<PropertyItem> properties=node.get().properties()){
+              while (properties.next()) {
+                propertyKeyIds.add(properties.get().propertyKeyId());
+              }
+            }
+           }
+          if (!propertyKeyIds.contains(constraint.propertyKey())) {
+            throw new NodePropertyExistenceConstraintViolationKernelException(((NodePropertyExistenceConstraint)constraint).label(),constraint.propertyKey(),nodeId);
+          }
+        }
+      }
+    }
+ else {
+      throw new IllegalStateException(format("Node %d with changes should exist.",nodeId));
+    }
+  }
+ }

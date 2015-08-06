@@ -1,0 +1,28 @@
+{
+  RelationshipType type=DynamicRelationshipType.withName("KNOWS");
+  String propertyKey="since";
+  BatchInserter inserter=newBatchInserter();
+  inserter.createDeferredConstraint(type).assertPropertyExists(propertyKey).create();
+  GraphDatabaseService db=switchToEmbeddedGraphDatabaseService(inserter);
+  try {
+    try (Transaction tx=db.beginTx()){
+      List<ConstraintDefinition> constraints=asList(db.schema().getConstraints());
+      assertEquals(1,constraints.size());
+      ConstraintDefinition constraint=constraints.get(0);
+      assertEquals(type.name(),constraint.getRelationshipType().name());
+      assertEquals(propertyKey,single(constraint.getPropertyKeys()));
+      tx.success();
+    }
+     try (Transaction tx=db.beginTx()){
+      db.createNode().createRelationshipTo(db.createNode(),type);
+      tx.success();
+    }
+     fail("Relationship property existence constraint was violated, exception expected");
+  }
+ catch (  ConstraintViolationException e) {
+    assertEquals(e.getMessage(),"Relationship 0 with type \"" + type.name() + "\" does not have a \""+ propertyKey+ "\" property");
+  }
+ finally {
+    db.shutdown();
+  }
+}
