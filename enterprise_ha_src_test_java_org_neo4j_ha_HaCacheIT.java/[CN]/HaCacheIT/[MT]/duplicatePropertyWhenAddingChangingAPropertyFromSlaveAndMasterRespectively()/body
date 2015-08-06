@@ -1,0 +1,28 @@
+{
+  File storeDir=root.directory("ha-cluster");
+  FileUtils.deleteRecursively(storeDir);
+  ClusterManager clusterManager=new ClusterManager(new ClusterManager.Builder(storeDir).withProvider(clusterOfSize(3)));
+  clusterManager.start();
+  ClusterManager.ManagedCluster cluster=clusterManager.getDefaultCluster();
+  cluster.await(allSeesAllAsAvailable());
+  long id=init(cluster.getMaster());
+  cluster.sync();
+  GraphDatabaseService slave=cluster.getAnySlave();
+  try (Transaction tx=slave.beginTx()){
+    Node node=slave.getNodeById(id);
+    node.setProperty("1",1);
+    tx.success();
+  }
+   Thread.sleep(100);
+  GraphDatabaseService master=cluster.getMaster();
+  try (Transaction tx=master.beginTx()){
+    Node node=master.getNodeById(id);
+    node.setProperty("1",0);
+    tx.success();
+  }
+   clusterManager.stop();
+  clusterManager.shutdown();
+  String masterStoreDir=new File(storeDir,"neo4j.ha/server1").getAbsolutePath();
+  ConsistencyCheckService.Result result=new ConsistencyCheckService().runFullConsistencyCheck(masterStoreDir,new Config(),ProgressMonitorFactory.NONE,StringLogger.SYSTEM_ERR);
+  assertTrue(result.isSuccessful());
+}
