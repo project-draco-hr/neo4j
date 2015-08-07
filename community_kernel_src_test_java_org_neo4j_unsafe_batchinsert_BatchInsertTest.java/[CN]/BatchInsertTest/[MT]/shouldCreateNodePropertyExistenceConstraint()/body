@@ -1,0 +1,28 @@
+{
+  Label label=label("Person");
+  String propertyKey="name";
+  BatchInserter inserter=newBatchInserter();
+  inserter.createDeferredConstraint(label).assertPropertyExists(propertyKey).create();
+  GraphDatabaseService db=switchToEmbeddedGraphDatabaseService(inserter);
+  try {
+    try (Transaction tx=db.beginTx()){
+      List<ConstraintDefinition> constraints=asList(db.schema().getConstraints());
+      assertEquals(1,constraints.size());
+      ConstraintDefinition constraint=constraints.get(0);
+      assertEquals(label.name(),constraint.getLabel().name());
+      assertEquals(propertyKey,single(constraint.getPropertyKeys()));
+      tx.success();
+    }
+     try (Transaction tx=db.beginTx()){
+      db.createNode(label);
+      tx.success();
+    }
+     fail("Node property existence constraint was violated, exception expected");
+  }
+ catch (  ConstraintViolationException e) {
+    assertEquals(e.getMessage(),"Node 0 with label \"" + label.name() + "\" does not have a \""+ propertyKey+ "\" property");
+  }
+ finally {
+    db.shutdown();
+  }
+}
