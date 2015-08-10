@@ -1,0 +1,27 @@
+{
+  FlushEvent flush=null;
+  try {
+    MuninnPage firstPage=pages[0];
+    long startFilePageId=firstPage.getFilePageId();
+    flush=flushOpportunity.beginFlush(startFilePageId,firstPage.getCachePageId(),swapper);
+    long bytesWritten=swapper.write(startFilePageId,pages,0,pagesGrabbed);
+    flush.addBytesWritten(bytesWritten);
+    flush.addPagesFlushed(pagesGrabbed);
+    flush.done();
+    for (int j=0; j < pagesGrabbed; j++) {
+      pages[j].markAsClean();
+    }
+    return 0;
+  }
+ catch (  IOException ioe) {
+    if (flush != null) {
+      flush.done(ioe);
+    }
+    throw ioe;
+  }
+ finally {
+    for (int j=0; j < pagesGrabbed; j++) {
+      pages[j].unlockRead(stamps[j]);
+    }
+  }
+}

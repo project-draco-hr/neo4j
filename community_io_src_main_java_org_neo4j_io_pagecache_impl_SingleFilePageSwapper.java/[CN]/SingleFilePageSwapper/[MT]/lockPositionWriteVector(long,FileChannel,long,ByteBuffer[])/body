@@ -1,0 +1,18 @@
+{
+  try {
+synchronized (positionLock(channel)) {
+      channel.position(fileOffset);
+      return channel.write(srcs);
+    }
+  }
+ catch (  ClosedChannelException e) {
+    tryReopen(filePageId,e);
+    boolean interrupted=Thread.interrupted();
+    channel=unwrappedChannel(filePageId);
+    long bytesWritten=lockPositionWriteVector(filePageId,channel,fileOffset,srcs);
+    if (interrupted) {
+      Thread.currentThread().interrupt();
+    }
+    return bytesWritten;
+  }
+}

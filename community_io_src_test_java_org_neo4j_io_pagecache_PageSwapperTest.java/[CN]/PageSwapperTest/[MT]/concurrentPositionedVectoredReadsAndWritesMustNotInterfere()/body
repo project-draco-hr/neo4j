@@ -1,0 +1,54 @@
+{
+  File file=file("file");
+  PageSwapperFactory factory=swapperFactory();
+  final PageSwapper swapper=factory.createPageSwapper(file,4,NO_CALLBACK,true);
+  final int pageCount=100;
+  final int iterations=20000;
+  final CountDownLatch startLatch=new CountDownLatch(1);
+  ByteBufferPage output=createPage(4);
+  for (int i=0; i < pageCount; i++) {
+    output.putInt(i + 1,0);
+    swapper.write(i,output);
+  }
+  Callable<Void> work=new Callable<Void>(){
+    @Override public Void call() throws Exception {
+      ThreadLocalRandom rng=ThreadLocalRandom.current();
+      ByteBufferPage[] pages=new ByteBufferPage[10];
+      for (int i=0; i < pages.length; i++) {
+        pages[i]=createPage(4);
+      }
+      startLatch.await();
+      for (int i=0; i < iterations; i++) {
+        long startFilePageId=rng.nextLong(0,pageCount - pages.length);
+        if (rng.nextBoolean()) {
+          long bytesRead=swapper.read(startFilePageId,pages,0,pages.length);
+          assertThat(bytesRead,is(pages.length * 4L));
+          for (int j=0; j < pages.length; j++) {
+            int expectedValue=(int)(1 + j + startFilePageId);
+            int actualValue=pages[j].getInt(0);
+            assertThat(actualValue,is(expectedValue));
+          }
+        }
+ else {
+          for (int j=0; j < pages.length; j++) {
+            int value=(int)(1 + j + startFilePageId);
+            pages[j].putInt(value,0);
+          }
+          assertThat(swapper.write(startFilePageId,pages,0,pages.length),is(pages.length * 4L));
+        }
+      }
+      return null;
+    }
+  }
+;
+  int threads=8;
+  ExecutorService executor=Executors.newFixedThreadPool(threads);
+  List<Future<Void>> futures=new ArrayList<>(threads);
+  for (int i=0; i < threads; i++) {
+    futures.add(executor.submit(work));
+  }
+  startLatch.countDown();
+  for (  Future<Void> future : futures) {
+    future.get();
+  }
+}

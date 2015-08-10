@@ -1,18 +1,31 @@
 {
   pageCache.pauseBackgroundFlushTask();
+  long[] stamps=new long[translationTableChunkSize];
+  MuninnPage[] pages=new MuninnPage[translationTableChunkSize];
+  long filePageId=-1;
   try {
     for (    Object[] chunk : translationTable) {
+      int pagesGrabbed=0;
       for (      Object element : chunk) {
+        filePageId++;
         if (element instanceof MuninnPage) {
           MuninnPage page=(MuninnPage)element;
-          long stamp=page.readLock();
-          try {
-            page.flush(swapper,page.getFilePageId(),flushOpportunity);
+          stamps[pagesGrabbed]=page.readLock();
+          if (page.isBoundTo(swapper,filePageId) && page.isDirty()) {
+            pages[pagesGrabbed]=page;
+            pagesGrabbed++;
+            continue;
           }
-  finally {
-            page.unlockRead(stamp);
+ else {
+            page.unlockRead(stamps[pagesGrabbed]);
           }
         }
+        if (pagesGrabbed > 0) {
+          pagesGrabbed=vectoredFlush(stamps,pages,pagesGrabbed,flushOpportunity);
+        }
+      }
+      if (pagesGrabbed > 0) {
+        vectoredFlush(stamps,pages,pagesGrabbed,flushOpportunity);
       }
     }
     swapper.force();

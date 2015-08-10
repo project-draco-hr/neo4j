@@ -1,0 +1,29 @@
+{
+  File file=file("file");
+  PageSwapperFactory factory=swapperFactory();
+  PageSwapper swapper=factory.createPageSwapper(file,4,NO_CALLBACK,true);
+  ByteBufferPage pageA=createPage(4);
+  ByteBufferPage pageB=createPage(4);
+  ByteBufferPage pageC=createPage(4);
+  ByteBufferPage pageD=createPage(4);
+  pageA.putInt(1,0);
+  pageB.putInt(2,0);
+  pageC.putInt(3,0);
+  pageD.putInt(4,0);
+  Page[] pages={pageA,pageB,pageC,pageD};
+  long bytesWritten=swapper.write(0,pages,0,4);
+  assertThat(bytesWritten,is(16L));
+  pageB.putInt(6,0);
+  pageC.putInt(7,0);
+  bytesWritten=swapper.write(1,pages,1,2);
+  assertThat(bytesWritten,is(8L));
+  pageA.putInt(0,0);
+  pageB.putInt(0,0);
+  pageC.putInt(0,0);
+  pageD.putInt(0,0);
+  long bytesRead=swapper.read(0,pages,0,4);
+  assertThat(bytesRead,is(16L));
+  int[] actualValues={pageA.getInt(0),pageB.getInt(0),pageC.getInt(0),pageD.getInt(0)};
+  int[] expectedValues={1,6,7,4};
+  assertThat(actualValues,is(expectedValues));
+}
