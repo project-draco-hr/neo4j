@@ -1,0 +1,15 @@
+{
+  String version=null;
+  int pageSize=pagedFile.pageSize();
+  int encodedExpectedTrailerLength=UTF8.encode(expectedTrailer).length;
+  long lastPageId=pagedFile.getLastPageId();
+  long firstPageThatTrailerMightBeIn=getFirstPageThatTrailerMightBeIn(lastPageId,pageSize,encodedExpectedTrailerLength);
+  try (PageCursor pageCursor=pagedFile.io(firstPageThatTrailerMightBeIn,PagedFile.PF_SHARED_LOCK)){
+    byte[] data=getTheBytesThatWillContainTheTrailer(pageSize,firstPageThatTrailerMightBeIn,lastPageId,pageCursor);
+    int trailerPositionRelativeToFirstPageTrailerMightBeIn=findTrailerPositionInArray(data,UTF8.encode(expectedTrailer.split(" ")[0]));
+    if (trailerPositionRelativeToFirstPageTrailerMightBeIn != -1) {
+      version=new String(data,trailerPositionRelativeToFirstPageTrailerMightBeIn,encodedExpectedTrailerLength,Charsets.UTF_8);
+    }
+  }
+   return version;
+}
