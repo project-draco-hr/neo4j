@@ -1,0 +1,19 @@
+{
+  GraphDatabaseService db=dbRule.getGraphDatabaseAPI();
+  Label dead=DynamicLabel.label("dead");
+  Label alive=DynamicLabel.label("alive");
+  try (Transaction tx=db.beginTx()){
+    db.createNode(alive);
+    db.createNode(dead);
+    tx.success();
+  }
+   try (Transaction tx=db.beginTx()){
+    Node node=IteratorUtil.single(db.findNodes(dead));
+    node.delete();
+    tx.success();
+  }
+   GlobalGraphOperations gg=GlobalGraphOperations.at(db);
+  try (Transaction ignored=db.beginTx()){
+    assertThat(toSet(gg.getAllLabels()),equalTo(toSet(asList(alive,dead))));
+  }
+ }

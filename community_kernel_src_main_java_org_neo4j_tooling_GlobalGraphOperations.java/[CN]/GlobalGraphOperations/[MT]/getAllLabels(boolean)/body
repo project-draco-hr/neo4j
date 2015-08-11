@@ -1,0 +1,25 @@
+{
+  assertInUnterminatedTransaction();
+  return new ResourceIterable<Label>(){
+    @Override public ResourceIterator<Label> iterator(){
+      final Statement statement=statementCtxSupplier.get();
+      Iterator<Token> labels=statement.readOperations().labelsGetAllTokens();
+      if (inUse) {
+        labels=filter(new Predicate<Token>(){
+          @Override public boolean test(          Token token){
+            long count=statement.readOperations().countsForNode(token.id());
+            return count > 0;
+          }
+        }
+,labels);
+      }
+      return ResourceClosingIterator.newResourceIterator(statement,map(new Function<Token,Label>(){
+        @Override public Label apply(        Token labelToken){
+          return label(labelToken.name());
+        }
+      }
+,labels));
+    }
+  }
+;
+}
