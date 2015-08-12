@@ -1,0 +1,33 @@
+{
+  File prototypePath=new File(dir.graphDbDir(),"prototype");
+  GraphDatabaseAPI prototype=db(prototypePath);
+  long txId;
+  try {
+    for (    Transaction transaction : work) {
+      transaction.applyTo(prototype);
+    }
+  }
+  finally {
+    txId=prototype.getDependencyResolver().resolveDependency(NeoStore.class).getLastCommittedTransactionId();
+    prototype.shutdown();
+  }
+  File copy=new File(dir.graphDbDir(),"copy");
+  FileUtils.copyRecursively(prototypePath,copy);
+  GraphDatabaseAPI db=db(copy);
+  try (org.neo4j.graphdb.Transaction tx=db.beginTx()){
+    db.createNode();
+    tx.success();
+  }
+  finally {
+    db.shutdown();
+  }
+  File rebuildPath=new File(dir.graphDbDir(),"rebuild");
+  GraphDatabaseAPI rebuilt=db(rebuildPath);
+  try {
+    new RebuildFromLogs(rebuilt).applyTransactionsFrom(copy,txId);
+  }
+  finally {
+    rebuilt.shutdown();
+  }
+  assertEquals(DbRepresentation.of(prototypePath),DbRepresentation.of(rebuildPath));
+}
