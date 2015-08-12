@@ -1,0 +1,26 @@
+{
+  final int poolMinSize=50;
+  final int bellowPoolMinSize=poolMinSize / 5;
+  final int poolMaxSize=200;
+  StatefulMonitor stateMonitor=new StatefulMonitor();
+  FakeClock clock=new FakeClock();
+  final ResourcePool<Something> pool=getResourcePool(stateMonitor,clock,poolMinSize);
+  acquireResourcesAndExceedTimeout(pool,clock,poolMaxSize);
+  exceedTimeout(clock);
+  for (int i=0; i < 30; i++) {
+    CountDownLatch release=new CountDownLatch(bellowPoolMinSize);
+    for (    ResourceHolder holder : acquireFromPool(pool,bellowPoolMinSize)) {
+      holder.release(release);
+    }
+    release.await();
+    exceedTimeout(clock);
+  }
+  assertEquals(bellowPoolMinSize,stateMonitor.currentPeakSize.get());
+  assertEquals(poolMinSize,stateMonitor.targetSize.get());
+  assertEquals(poolMaxSize - poolMinSize + 1,stateMonitor.disposed.get());
+  stateMonitor.created.set(0);
+  stateMonitor.disposed.set(0);
+  acquireResourcesAndExceedTimeout(pool,clock,poolMaxSize);
+  assertEquals(poolMaxSize - poolMinSize + 1,stateMonitor.created.get());
+  assertEquals(0,stateMonitor.disposed.get());
+}
