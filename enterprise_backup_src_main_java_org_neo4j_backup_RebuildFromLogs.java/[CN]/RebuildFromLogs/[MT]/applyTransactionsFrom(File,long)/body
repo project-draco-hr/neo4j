@@ -6,10 +6,14 @@
   ReadableVersionableLogChannel channel=new ReadAheadLogChannel(startingChannel,versionBridge,DEFAULT_READ_AHEAD_SIZE);
   try (IOCursor<CommittedTransactionRepresentation> cursor=new PhysicalTransactionCursor<>(channel,new VersionAwareLogEntryReader<>())){
     while (cursor.next()) {
-      try (LockGroup locks=new LockGroup();ValidatedIndexUpdates indexUpdates=indexUpdatesValidator.validate(cursor.get().getTransactionRepresentation(),TransactionApplicationMode.EXTERNAL)){
-        storeApplier.apply(cursor.get().getTransactionRepresentation(),indexUpdates,locks,cursor.get().getCommitEntry().getTxId(),TransactionApplicationMode.EXTERNAL);
+      long txId=cursor.get().getCommitEntry().getTxId();
+      TransactionRepresentation transaction=cursor.get().getTransactionRepresentation();
+      try (LockGroup locks=new LockGroup();ValidatedIndexUpdates indexUpdates=indexUpdatesValidator.validate(transaction,EXTERNAL)){
+        storeApplier.apply(transaction,indexUpdates,locks,txId,EXTERNAL);
       }
-     }
+       if (upToTxId != BASE_TX_ID && upToTxId == txId) {
+        return;
+      }
+    }
   }
-   return this;
-}
+ }
