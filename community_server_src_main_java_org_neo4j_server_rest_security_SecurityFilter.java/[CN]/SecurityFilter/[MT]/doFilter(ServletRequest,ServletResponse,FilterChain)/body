@@ -3,16 +3,22 @@
   validateResponseType(response);
   HttpServletRequest httpReq=(HttpServletRequest)request;
   String path=httpReq.getContextPath() + (httpReq.getPathInfo() == null ? "" : httpReq.getPathInfo());
+  boolean requestIsForbidden=false;
   for (  UriPathWildcardMatcher uriPathWildcardMatcher : rules.keySet()) {
     if (uriPathWildcardMatcher.matches(path)) {
-      HashSet<SecurityRule> securityRules=rules.get(uriPathWildcardMatcher);
-      for (      SecurityRule securityRule : securityRules) {
+      HashSet<ForbiddingSecurityRule> securityRules=rules.get(uriPathWildcardMatcher);
+      for (      ForbiddingSecurityRule securityRule : securityRules) {
         if (!securityRule.isAuthorized(httpReq)) {
           createUnauthorizedChallenge(response,securityRule);
           return;
         }
+        requestIsForbidden|=securityRule.isForbidden(httpReq);
       }
     }
+  }
+  if (requestIsForbidden) {
+    createForbiddenResponse(response);
+    return;
   }
   chain.doFilter(request,response);
 }
