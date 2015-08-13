@@ -1,0 +1,20 @@
+{
+  try (Statement statement=actions.statement()){
+    try (Cursor<RelationshipItem> relationship=statement.readOperations().relationshipCursor(getId())){
+      if (!relationship.next()) {
+        throw new NotFoundException("Relationship not found",new EntityNotFoundException(EntityType.RELATIONSHIP,getId()));
+      }
+      try (Cursor<PropertyItem> propertyCursor=relationship.get().properties()){
+        Map<String,Object> properties=new HashMap<>();
+        while (propertyCursor.next()) {
+          String name=statement.readOperations().propertyKeyGetName(propertyCursor.get().propertyKeyId());
+          properties.put(name,propertyCursor.get().value());
+        }
+        return properties;
+      }
+     }
+   }
+ catch (  PropertyKeyIdNotFoundKernelException e) {
+    throw new ThisShouldNotHappenError("Rickard","Property key retrieved through kernel API should exist.",e);
+  }
+}
