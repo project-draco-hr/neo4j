@@ -1,0 +1,35 @@
+{
+  CacheAccess.Client cacheAccess=records.cacheAccess().client();
+  if (!endOfChain(relationship)) {
+    RecordReference<RelationshipRecord> referred=null;
+    long reference=valueFrom(relationship);
+    long nodeId=-1;
+    if (records.shouldCheck(reference,MultiPassStore.RELATIONSHIPS)) {
+      nodeId=NODE == NodeField.SOURCE ? relationship.getFirstNode() : relationship.getSecondNode();
+      if (Record.NO_NEXT_RELATIONSHIP.is(cacheAccess.getFromCache(nodeId,SLOT_RELATIONSHIP_ID))) {
+        referred=RecordReference.SkippingReference.skipReference();
+        cacheAccess.incAndGetCount(Counts.Type.noCacheSkip);
+      }
+ else {
+        referred=buildFromCache(relationship,reference,nodeId,records);
+        if (referred == RecordReference.SkippingReference.<RelationshipRecord>skipReference()) {
+          cacheAccess.incAndGetCount(Counts.Type.skipCheck);
+        }
+      }
+    }
+ else {
+      if (referenceShouldBeSkipped(relationship,reference,records)) {
+        referred=RecordReference.SkippingReference.skipReference();
+      }
+    }
+    engine.comparativeCheck(referred,this);
+    if (referred != RecordReference.SkippingReference.<RelationshipRecord>skipReference()) {
+      cacheAccess.incAndGetCount(Counts.Type.checked);
+      linkChecked(cacheAccess);
+    }
+  }
+ else {
+    cacheAccess.incAndGetCount(Counts.Type.checked);
+    linkChecked(cacheAccess);
+  }
+}

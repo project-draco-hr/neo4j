@@ -4,8 +4,23 @@
     otherNode(engine.report(),referred);
   }
  else {
+    CacheAccess.Client cacheAccess=records.cacheAccess().client();
     if (other(field,referred) != record.getId()) {
-      noBackReference(engine.report(),referred);
+      if (referred.isCreated()) {
+        RecordReference<RelationshipRecord> refRel=records.relationship(referred.getId());
+        referred=(RelationshipRecord)((DirectRecordReference)refRel).record();
+        checkReference(record,referred,engine,records);
+        cacheAccess.incAndGetCount(Counts.Type.skipBackup);
+      }
+ else {
+        cacheAccess.incAndGetCount(Counts.Type.checkErrors);
+        noBackReference(engine == null ? null : engine.report(),referred);
+      }
+    }
+ else {
+      if (referred.isCreated()) {
+        cacheAccess.clearCache(node(record));
+      }
     }
   }
 }

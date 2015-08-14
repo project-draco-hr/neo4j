@@ -1,24 +1,44 @@
 {
   if (countUpdateCondition.test(record)) {
     if (record.inUse()) {
-      final Set<Long> firstNodeLabels=labelsFor(nodeStore,engine,records,record.getFirstNode());
-      final Set<Long> secondNodeLabels=labelsFor(nodeStore,engine,records,record.getSecondNode());
+      CacheAccess.Client cacheAccess=records.cacheAccess().client();
+      Set<Long> firstNodeLabels=null, secondNodeLabels=null;
+      long firstLabelsField=cacheAccess.getFromCache(record.getFirstNode(),1);
+      if (NodeLabelsField.fieldPointsToDynamicRecordOfLabels(firstLabelsField)) {
+        firstNodeLabels=labelsFor(nodeStore,engine,records,record.getFirstNode());
+      }
+ else {
+        firstNodeLabels=NodeLabelReader.getListOfLabels(firstLabelsField);
+      }
+      long secondLabelsField=cacheAccess.getFromCache(record.getSecondNode(),1);
+      if (NodeLabelsField.fieldPointsToDynamicRecordOfLabels(secondLabelsField)) {
+        secondNodeLabels=labelsFor(nodeStore,engine,records,record.getSecondNode());
+      }
+ else {
+        secondNodeLabels=NodeLabelReader.getListOfLabels(secondLabelsField);
+      }
       final int type=record.getType();
-      counts.add(relationshipKey(WILDCARD,WILDCARD,WILDCARD));
-      counts.add(relationshipKey(WILDCARD,type,WILDCARD));
-      for (      long firstLabel : firstNodeLabels) {
-        counts.add(relationshipKey((int)firstLabel,WILDCARD,WILDCARD));
-        counts.add(relationshipKey((int)firstLabel,type,WILDCARD));
-      }
-      for (      long secondLabel : secondNodeLabels) {
-        counts.add(relationshipKey(WILDCARD,WILDCARD,(int)secondLabel));
-        counts.add(relationshipKey(WILDCARD,type,(int)secondLabel));
-      }
-      if (COMPUTE_DOUBLE_SIDED_RELATIONSHIP_COUNTS) {
-        for (        long firstLabel : firstNodeLabels) {
+synchronized (counts) {
+        counts.add(relationshipKey(WILDCARD,WILDCARD,WILDCARD));
+        counts.add(relationshipKey(WILDCARD,type,WILDCARD));
+        if (firstNodeLabels != null) {
+          for (          long firstLabel : firstNodeLabels) {
+            counts.add(relationshipKey((int)firstLabel,WILDCARD,WILDCARD));
+            counts.add(relationshipKey((int)firstLabel,type,WILDCARD));
+          }
+        }
+        if (secondNodeLabels != null) {
           for (          long secondLabel : secondNodeLabels) {
-            counts.add(relationshipKey((int)firstLabel,WILDCARD,(int)secondLabel));
-            counts.add(relationshipKey((int)firstLabel,type,(int)secondLabel));
+            counts.add(relationshipKey(WILDCARD,WILDCARD,(int)secondLabel));
+            counts.add(relationshipKey(WILDCARD,type,(int)secondLabel));
+          }
+        }
+        if (COMPUTE_DOUBLE_SIDED_RELATIONSHIP_COUNTS) {
+          for (          long firstLabel : firstNodeLabels) {
+            for (            long secondLabel : secondNodeLabels) {
+              counts.add(relationshipKey((int)firstLabel,WILDCARD,(int)secondLabel));
+              counts.add(relationshipKey((int)firstLabel,type,(int)secondLabel));
+            }
           }
         }
       }

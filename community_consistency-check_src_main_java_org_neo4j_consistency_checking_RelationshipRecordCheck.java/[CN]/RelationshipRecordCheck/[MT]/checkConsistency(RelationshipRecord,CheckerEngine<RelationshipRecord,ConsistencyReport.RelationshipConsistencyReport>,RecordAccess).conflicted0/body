@@ -1,8 +1,28 @@
 {
-  if (record.getType() < 0) {
-    engine.report().illegalRelationshipType();
+  if (!relationship.inUse()) {
+    return;
+  }
+  CacheAccess.Client cacheAccess=records.cacheAccess().client();
+  boolean cache1Free=cacheAccess.getFromCache(relationship.getFirstNode(),SLOT_RELATIONSHIP_ID) == -1;
+  boolean cache2Free=cacheAccess.getFromCache(relationship.getSecondNode(),SLOT_RELATIONSHIP_ID) == -1;
+  if (records.cacheAccess().isForward()) {
+    if (cacheAccess.withinBounds(relationship.getFirstNode())) {
+      cacheAccess.putToCache(relationship.getFirstNode(),SOURCE,PREV,relationship.getId(),relationship.getFirstPrevRel());
+      updateCacheCounts(cache1Free,cacheAccess);
+    }
+    if (cacheAccess.withinBounds(relationship.getSecondNode())) {
+      cacheAccess.putToCache(relationship.getSecondNode(),TARGET,PREV,relationship.getId(),relationship.getSecondPrevRel());
+      updateCacheCounts(cache2Free,cacheAccess);
+    }
   }
  else {
-    engine.comparativeCheck(records.relationshipType(record.getType()),this);
+    if (cacheAccess.withinBounds(relationship.getFirstNode())) {
+      cacheAccess.putToCache(relationship.getFirstNode(),SOURCE,NEXT,relationship.getId(),relationship.getFirstNextRel());
+      updateCacheCounts(cache1Free,cacheAccess);
+    }
+    if (cacheAccess.withinBounds(relationship.getSecondNode())) {
+      cacheAccess.putToCache(relationship.getSecondNode(),TARGET,NEXT,relationship.getId(),relationship.getSecondNextRel());
+      updateCacheCounts(cache2Free,cacheAccess);
+    }
   }
 }

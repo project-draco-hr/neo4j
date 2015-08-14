@@ -2,7 +2,18 @@
   if (directStoreAccess == null) {
     DefaultFileSystemAbstraction fileSystem=new DefaultFileSystemAbstraction();
     PageCache pageCache=getPageCache(fileSystem);
-    StoreAccess nativeStores=new StoreAccess(fileSystem,pageCache,directory);
+    neoStore=new StoreFactory(fileSystem,directory,pageCache,NullLogProvider.getInstance()).openNeoStores(false);
+    StoreAccess nativeStores;
+    if (keepStatistics) {
+      AccessStatistics accessStatistics=new AccessStatistics();
+      statistics=new VerboseStatistics(accessStatistics,new DefaultCounts(defaultConsistencyCheckThreadsNumber()),NullLog.getInstance());
+      nativeStores=new AccessStatsKeepingStoreAccess(neoStore,accessStatistics);
+    }
+ else {
+      statistics=Statistics.NONE;
+      nativeStores=new StoreAccess(neoStore);
+    }
+    nativeStores.initialize();
     directStoreAccess=new DirectStoreAccess(nativeStores,new LuceneLabelScanStoreBuilder(directory,nativeStores.getRawNeoStores(),fileSystem,FormattedLogProvider.toOutputStream(System.out)).build(),createIndexes(fileSystem));
   }
   return directStoreAccess;
