@@ -1,19 +1,34 @@
 {
-  while (remainingBlocksToRead-- > 0) {
-    cursor.getLong();
+  if (remainingBlocksToRead > 0) {
+    cursor.setOffset(cursor.getOffset() + remainingBlocksToRead * 8);
+    remainingBlocksToRead=0;
   }
-  if (cursor.getOffset() - offsetAtBeginning < PropertyStore.RECORD_SIZE) {
-    header=cursor.getLong();
-    type=getPropertyType(header);
+  int offset=cursor.getOffset();
+  if (offset - offsetAtBeginning < PropertyStore.RECORD_SIZE) {
+    try {
+      do {
+        cursor.setOffset(offset);
+        header=cursor.getLong();
+      }
+ while (cursor.shouldRetry());
+    }
+ catch (    IOException e) {
+      throw new UnderlyingStorageException(e);
+    }
+    type=PropertyType.getPropertyType(header,true);
     if (type != null) {
+      seekingForFirstBlock=false;
       keyId=(int)(header & KEY_BITMASK);
-      remainingBlocksToRead=type.calculateNumberOfBlocksUsed(header) - 1;
-      originalHeader=header;
-      header=header >>> 28;
+      blocks=remainingBlocksToRead=type.calculateNumberOfBlocksUsed(header) - 1;
       return true;
     }
   }
-  cursor.close();
-  cursor=null;
-  return false;
+  if (seekingForFirstBlock) {
+    throw new NotFoundException("Property record with id " + currentRecordId + " not in use");
+  }
+ else {
+    cursor.close();
+    cursor=null;
+    return false;
+  }
 }

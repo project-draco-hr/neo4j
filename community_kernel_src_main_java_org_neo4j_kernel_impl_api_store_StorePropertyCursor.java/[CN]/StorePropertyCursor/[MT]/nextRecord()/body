@@ -3,11 +3,18 @@
     cursor=propertyStore.newReadCursor(nextPropertyRecordId);
     currentRecordId=nextPropertyRecordId;
     offsetAtBeginning=cursor.getOffset();
-    byte modifiers=cursor.getByte();
+    byte modifiers;
+    long nextProp;
+    do {
+      cursor.setOffset(offsetAtBeginning);
+      modifiers=cursor.getByte();
+      cursor.getUnsignedInt();
+      nextProp=cursor.getUnsignedInt();
+    }
+ while (cursor.shouldRetry());
     long nextMod=(modifiers & 0x0FL) << 32;
-    cursor.getUnsignedInt();
-    long nextProp=cursor.getUnsignedInt();
     nextPropertyRecordId=longFromIntAndMod(nextProp,nextMod);
+    seekingForFirstBlock=true;
   }
  catch (  IOException e) {
     throw new UnderlyingStorageException(e);
