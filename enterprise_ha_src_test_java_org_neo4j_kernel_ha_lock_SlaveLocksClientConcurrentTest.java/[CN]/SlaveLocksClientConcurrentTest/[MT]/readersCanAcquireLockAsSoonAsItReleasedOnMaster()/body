@@ -1,0 +1,13 @@
+{
+  reader=createClient();
+  writer=createClient();
+  CountDownLatch readerCompletedLatch=new CountDownLatch(1);
+  CountDownLatch resourceLatch=new CountDownLatch(1);
+  when(master.endLockSession(any(RequestContext.class),anyBoolean())).then(new WaitLatchAnswer(resourceLatch,readerCompletedLatch));
+  long nodeId=10l;
+  ResourceReader resourceReader=new ResourceReader(reader,ResourceTypes.NODE,nodeId,resourceLatch,readerCompletedLatch);
+  ResourceWriter resourceWriter=new ResourceWriter(writer,ResourceTypes.NODE,nodeId,resourceLatch);
+  executor.submit(resourceReader);
+  executor.submit(resourceWriter);
+  assertTrue("Reader should wait for writer to release local and master lock before acquire",readerCompletedLatch.await(1000,TimeUnit.MILLISECONDS));
+}
