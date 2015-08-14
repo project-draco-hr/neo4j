@@ -1,0 +1,25 @@
+{
+  GraphDatabaseService db=dbRule.getGraphDatabaseAPI();
+  RelationshipType dead=DynamicRelationshipType.withName("DEAD");
+  RelationshipType alive=DynamicRelationshipType.withName("ALIVE");
+  long deadId;
+  try (Transaction tx=db.beginTx()){
+    db.createNode().createRelationshipTo(db.createNode(),alive);
+    deadId=db.createNode().createRelationshipTo(db.createNode(),dead).getId();
+    tx.success();
+  }
+   try (Transaction tx=db.beginTx()){
+    db.getRelationshipById(deadId).delete();
+    tx.success();
+  }
+   GlobalGraphOperations gg=GlobalGraphOperations.at(db);
+  try (Transaction ignored=db.beginTx()){
+    Iterable<String> result=map(new Function<RelationshipType,String>(){
+      @Override public String apply(      RelationshipType relationshipType){
+        return relationshipType.name();
+      }
+    }
+,gg.getAllRelationshipTypes());
+    assertThat(toSet(result),equalTo(toSet(asList(alive.name(),dead.name()))));
+  }
+ }
