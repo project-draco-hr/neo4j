@@ -1,0 +1,33 @@
+{
+  try {
+    final GraphDatabaseAPI api=dependencyResolver.resolveDependency(GraphDatabaseAPI.class);
+    final LogService logging=dependencyResolver.resolveDependency(LogService.class);
+    final UsageData usageData=dependencyResolver.resolveDependency(UsageData.class);
+    final JobScheduler scheduler=dependencyResolver.resolveDependency(JobScheduler.class);
+    final Log internalLog=logging.getInternalLog(Sessions.class);
+    final Log userLog=logging.getUserLog(Sessions.class);
+    final File certificateFile=config.get(ServerSettings.tls_certificate_file);
+    final File keyFile=config.get(ServerSettings.tls_key_file);
+    final HostnamePort socketAddress=config.get(ServerSettings.bolt_socket_address);
+    final HostnamePort webSocketAddress=config.get(ServerSettings.bolt_ws_address);
+    if (config.get(ServerSettings.bolt_enabled)) {
+      final Sessions sessions=life.add(new ThreadedSessions(life.add(new StandardSessions(api,usageData,logging)),scheduler,logging));
+      PrimitiveLongObjectMap<Function<Channel,SocketProtocol>> availableVersions=longObjectMap();
+      availableVersions.put(SocketProtocolV1.VERSION,new Function<Channel,SocketProtocol>(){
+        @Override public SocketProtocol apply(        Channel channel){
+          return new SocketProtocolV1(logging,sessions.newSession(),channel,usageData);
+        }
+      }
+);
+      SslContext sslCtx=createSSLContext(certificateFile,keyFile);
+      InternalLoggerFactory.setDefaultFactory(new Netty4LoggerFactory(logging.getInternalLogProvider()));
+      life.add(new NettyServer(scheduler.threadFactory(JobScheduler.Groups.boltNetworkIO),asList(new SocketTransport(socketAddress,sslCtx,logging.getInternalLogProvider(),availableVersions),new WebSocketTransport(webSocketAddress,sslCtx,logging.getInternalLogProvider(),availableVersions))));
+      internalLog.info("NDP Server extension loaded.");
+      userLog.info("Experimental NDP support enabled! Listening for socket connections on " + socketAddress + " and for websocket connections on "+ webSocketAddress+ ".");
+    }
+    life.start();
+  }
+ catch (  SSLException|UnrecoverableKeyException|NoSuchAlgorithmException|KeyStoreException e) {
+    throw new RuntimeException("Failed to configure TLS during NDP startup: " + e.getMessage(),e);
+  }
+}
