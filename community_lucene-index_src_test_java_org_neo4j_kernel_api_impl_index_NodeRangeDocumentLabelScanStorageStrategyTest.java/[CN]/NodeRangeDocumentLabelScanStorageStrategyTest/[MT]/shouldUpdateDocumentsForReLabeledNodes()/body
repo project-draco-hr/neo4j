@@ -1,7 +1,14 @@
 {
-  LabelScanStorageStrategy.StorageService storage=storage(document(format.rangeField(0),format.labelField(7,0x70)));
+  Document givenDoc=new Document();
+  format.addRangeValuesField(givenDoc,0);
+  format.addLabelFields(givenDoc,"7",0x70L);
+  LabelScanStorageStrategy.StorageService storage=storage(givenDoc);
   LuceneLabelScanWriter writer=new LuceneLabelScanWriter(storage,format,mock(Lock.class));
   writer.write(labelChanges(0,labels(),labels(7,8)));
   writer.close();
-  verify(storage).updateDocument(eq(format.rangeTerm(0)),match(document(format.rangeField(0),format.labelField(7,0x71),format.labelField(8,0x01),format.labelSearchField(8))));
+  Document thenDoc=new Document();
+  format.addRangeValuesField(thenDoc,0);
+  format.addLabelFields(thenDoc,"7",0x71L);
+  format.addLabelAndSearchFields(thenDoc,8,new Bitmap(0x01L));
+  verify(storage).updateDocument(eq(format.rangeTerm(0)),match(thenDoc));
 }

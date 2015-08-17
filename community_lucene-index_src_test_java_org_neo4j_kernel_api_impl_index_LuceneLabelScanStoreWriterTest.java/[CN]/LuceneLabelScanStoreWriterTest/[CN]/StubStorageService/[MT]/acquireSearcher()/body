@@ -1,6 +1,22 @@
 {
   return new IndexSearcher(new IndexReaderStub(false)){
     private final Map<Integer,Document> docIds=new HashMap<>();
+    @Override public void search(    Query query,    Collector results) throws IOException {
+      Document document=storage.get(((TermQuery)query).getTerm());
+      if (document == null) {
+        return;
+      }
+      final int docId=new Random().nextInt();
+      docIds.put(docId,document);
+      try {
+        LeafCollector leafCollector=results.getLeafCollector(leafContexts.get(0));
+        Scorer scorer=new ConstantScoreScorer(null,10f,new OneDocIdIterator(docId));
+        leafCollector.setScorer(scorer);
+        leafCollector.collect(docId);
+      }
+ catch (      CollectionTerminatedException swallow) {
+      }
+    }
     @Override public TopDocs search(    Query query,    int n){
       Document document=storage.get(((TermQuery)query).getTerm());
       if (document == null) {

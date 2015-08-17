@@ -3,6 +3,20 @@
   IndexSearcher searcher=mock(IndexSearcher.class);
   when(storage.acquireSearcher()).thenReturn(searcher);
   for (int i=0; i < documents.length; i++) {
+    final int docId=i;
+    doAnswer(new Answer<Void>(){
+      @Override public Void answer(      InvocationOnMock invocation) throws Throwable {
+        Collector collector=(Collector)invocation.getArguments()[1];
+        LeafCollector leafCollector=collector.getLeafCollector(null);
+        try {
+          leafCollector.collect(docId);
+        }
+ catch (        CollectionTerminatedException swallow) {
+        }
+        return null;
+      }
+    }
+).when(searcher).search(eq(new TermQuery(format.rangeTerm(documents[i]))),any(Collector.class));
     when(searcher.search(new TermQuery(format.rangeTerm(documents[i])),1)).thenReturn(docs(new ScoreDoc(i,0.0f)));
     when(searcher.doc(i)).thenReturn(documents[i]);
   }

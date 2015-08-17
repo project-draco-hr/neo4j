@@ -2,27 +2,16 @@
   if (searcher == null) {
     return null;
   }
-  try {
-    TopDocs docs=searcher.searchAfter(lastDoc,query,rangesPerPage);
-    lastDoc=null;
-    int docCount=docs != null ? docs.scoreDocs.length : 0;
-    if (docCount == 0) {
-      searcher=null;
-      return null;
-    }
-    lastDoc=docs.scoreDocs[docCount - 1];
-    long[] rangeMap=new long[docCount * 2];
-    for (int i=0; i < docCount; i++) {
-      Document doc=searcher.doc(docs.scoreDocs[i].doc);
-      rangeMap[i * 2]=format.rangeOf(doc);
-      rangeMap[i * 2 + 1]=labeledBitmap(doc);
-    }
-    if (docCount < rangesPerPage) {
-      searcher=null;
-    }
-    return new LongPageIterator(new BitmapExtractor(format.bitmapFormat(),rangeMap));
+  LongValuesIterator ranges=getRanges();
+  int pageSize=Math.min(ranges.remaining(),rangesPerPage);
+  long[] rangeMap=new long[pageSize * 2];
+  for (int i=0; i < pageSize; i++) {
+    long range=ranges.next();
+    rangeMap[i * 2]=range;
+    rangeMap[i * 2 + 1]=labeledBitmap(ranges);
   }
- catch (  IOException e) {
-    throw new RuntimeException(e);
+  if (pageSize < rangesPerPage) {
+    searcher=null;
   }
+  return new LongPageIterator(new BitmapExtractor(format.bitmapFormat(),rangeMap));
 }
