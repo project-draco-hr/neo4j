@@ -1,0 +1,23 @@
+{
+  if (lowProbabilityEvent(worker)) {
+    return UNINITIALIZED;
+  }
+ else   if (lowProbabilityEvent(worker)) {
+    return commit(worker,new RequestContext(worker.epoch,worker.machineId,-1,worker.lastTx,0));
+  }
+ else {
+    try {
+      worker.master.newLockSession(worker.newRequestContext());
+      return IN_SESSION;
+    }
+ catch (    TransactionFailureException e) {
+      if (e.getCause() instanceof ConcurrentAccessException) {
+        executionStatistic.reportAlreadyInUseError();
+        return IDLE;
+      }
+ else {
+        throw e;
+      }
+    }
+  }
+}

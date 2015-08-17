@@ -1,0 +1,17 @@
+{
+  DefaultConversationSPI conversationSPI=new DefaultConversationSPI(locks,scheduler);
+  final ExposedConversationManager conversationManager=new ExposedConversationManager(conversationSPI,config,100,0);
+  ConversationTestMasterSPI conversationTestMasterSPI=new ConversationTestMasterSPI(conversationManager);
+  MasterImpl master=new MasterImpl(conversationTestMasterSPI,conversationManager,new Monitors().newMonitor(MasterImpl.Monitor.class),config);
+  life.add(conversationManager);
+  life.start();
+  ConversationKiller conversationKiller=new ConversationKiller(conversationManager);
+  executor.submit(conversationKiller);
+  List<Callable<Void>> slaveWorkers=workers(master,numberOfWorkers);
+  List<Future<Void>> workers=executor.invokeAll(slaveWorkers);
+  for (  Future<Void> future : workers) {
+    future.get();
+  }
+  conversationKiller.stop();
+  assertTrue(executionStatistic.isSuccessfulExecution());
+}
