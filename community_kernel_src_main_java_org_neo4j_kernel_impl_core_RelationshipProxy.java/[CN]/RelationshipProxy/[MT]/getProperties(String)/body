@@ -1,25 +1,17 @@
 {
+  if (keys == null) {
+    throw new NullPointerException("keys");
+  }
+  if (keys.length == 0) {
+    return Collections.emptyMap();
+  }
   try (Statement statement=actions.statement()){
     try (Cursor<RelationshipItem> relationship=statement.readOperations().relationshipCursor(getId())){
       if (!relationship.next()) {
         throw new NotFoundException("Relationship not found",new EntityNotFoundException(EntityType.RELATIONSHIP,getId()));
       }
       try (Cursor<PropertyItem> propertyCursor=relationship.get().properties()){
-        Map<String,Object> properties=new HashMap<>(((int)(keys.length * 1.3f)));
-        int[] propertyKeys=new int[keys.length];
-        for (int i=0; i < keys.length; i++) {
-          String key=keys[i];
-          propertyKeys[i]=statement.readOperations().propertyKeyGetForName(key);
-        }
-        while (propertyCursor.next()) {
-          for (int i=0; i < propertyKeys.length; i++) {
-            int propertyKey=propertyKeys[i];
-            if (propertyKey == propertyCursor.get().propertyKeyId()) {
-              properties.put(keys[i],propertyCursor.get().value());
-            }
-          }
-        }
-        return properties;
+        return super.getProperties(statement,propertyCursor,keys);
       }
      }
    }
