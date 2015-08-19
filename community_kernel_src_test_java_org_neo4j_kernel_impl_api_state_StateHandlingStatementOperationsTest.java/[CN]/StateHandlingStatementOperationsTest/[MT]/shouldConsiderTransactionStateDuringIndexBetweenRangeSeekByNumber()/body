@@ -7,8 +7,14 @@
   when(txState.indexUpdatesForRangeSeekByNumber(index,10,true,20,false)).thenReturn(new DiffSets<>(Collections.singleton(42L),Collections.singleton(44L)));
   when(txState.addedAndRemovedNodes()).thenReturn(new DiffSets<>(Collections.singleton(45L),Collections.singleton(46L)));
   StoreReadLayer storeReadLayer=mock(StoreReadLayer.class);
-  when(storeReadLayer.nodesGetFromIndexRangeSeekByNumber(statement,index,10,true,20,false)).thenReturn(IteratorUtil.resourceIterator(PrimitiveLongCollections.iterator(43L,44L,46L),null));
+  PrimitiveLongResourceIterator resourceIterator=IteratorUtil.resourceIterator(PrimitiveLongCollections.iterator(43L,44L,46L),null);
+  when(storeReadLayer.nodesGetFromInclusiveNumericIndexRangeSeek(statement,index,10,20)).thenReturn(resourceIterator);
+  StoreStatement storeStatement=mock(StoreStatement.class);
+  when(statement.getStoreStatement()).thenReturn(storeStatement);
+  when(storeStatement.acquireSingleNodeCursor(anyLong())).thenReturn(asNodeCursor(43L,44L,46L));
   StateHandlingStatementOperations context=newTxStateOps(storeReadLayer);
+  PowerMockito.mockStatic(LookupFilter.class);
+  when(LookupFilter.exactRangeMatches(context,statement,resourceIterator,2,10,true,20,false)).thenReturn(resourceIterator);
   PrimitiveLongIterator results=context.nodesGetFromIndexRangeSeekByNumber(statement,index,10,true,20,false);
   assertEquals(asSet(42L,43L),asSet(results));
 }
