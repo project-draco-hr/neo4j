@@ -1,0 +1,31 @@
+{
+  StringBuilder classpath=buildClassPath();
+  try (RmiServer server=new RmiServer()){
+    int port=server.getPort();
+    server.export(RMI_RUN_NOTIFIER_NAME,new DelegatingRemoteRunNotifier(notifier));
+    RuntimeMXBean runtimeMxBean=ManagementFactory.getRuntimeMXBean();
+    List<String> arguments=runtimeMxBean.getInputArguments();
+    List<String> command=new ArrayList<>();
+    command.add("java");
+    for (    String argument : arguments) {
+      if (!argument.startsWith("-agentlib")) {
+        command.add(argument);
+      }
+    }
+    command.add("-ea");
+    command.add("-Xbootclasspath/a:" + classpathEntryToBootWith);
+    command.add("-cp");
+    command.add(classpath.toString());
+    command.add(getClass().getName());
+    command.add(String.valueOf(port));
+    command.add(testClass.getName());
+    ProcessBuilder pb=new ProcessBuilder();
+    pb.command(command);
+    pb.inheritIO();
+    Process process=pb.start();
+    process.waitFor();
+  }
+ catch (  Exception e) {
+    throw new RuntimeException(e);
+  }
+}

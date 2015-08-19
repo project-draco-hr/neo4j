@@ -1,0 +1,19 @@
+{
+  if (useAdversarialFileDispatcherHack && channel.getClass() == StoreFileChannel.class) {
+    FileChannel innerChannel=StoreFileChannelUnwrapper.unwrap(channel);
+    if (innerChannel.getClass() == FileChannelImpl.class) {
+      FileChannelImpl channelImpl=(FileChannelImpl)innerChannel;
+      try {
+        Field nd=FileChannelImpl.class.getDeclaredField("nd");
+        nd.setAccessible(true);
+        Object fileDispatcher=nd.get(channelImpl);
+        nd.set(channelImpl,makeFileDispatcherAdversarial(fileDispatcher,adversary));
+        return new StoreFileChannel(innerChannel);
+      }
+ catch (      Exception e) {
+        e.printStackTrace();
+      }
+    }
+  }
+  return new AdversarialFileChannel(channel,adversary);
+}
