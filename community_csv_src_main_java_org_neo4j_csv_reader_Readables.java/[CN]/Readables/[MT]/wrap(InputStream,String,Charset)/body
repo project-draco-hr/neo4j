@@ -1,0 +1,22 @@
+{
+  byte[] bytes=new byte[Magic.longest()];
+  PushbackInputStream pushbackStream=new PushbackInputStream(stream,bytes.length);
+  Charset usedCharset=charset;
+  int read=stream.read(bytes);
+  if (read >= 0) {
+    bytes=read < bytes.length ? Arrays.copyOf(bytes,read) : bytes;
+    Magic magic=Magic.of(bytes);
+    int excessiveBytes=read;
+    if (magic.impliesEncoding()) {
+      excessiveBytes-=magic.length();
+      usedCharset=magic.encoding();
+    }
+    pushbackStream.unread(bytes,read - excessiveBytes,excessiveBytes);
+  }
+  return wrap(new InputStreamReader(pushbackStream,usedCharset){
+    @Override public String toString(){
+      return sourceName;
+    }
+  }
+);
+}
