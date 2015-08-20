@@ -1,30 +1,6 @@
 {
-  final Store store=the.managed(new Store(TX_ID){
-    @SuppressWarnings("unchecked") @Override <Value>Value initialHeader(    HeaderField<Value> field){
-      if (field == TX_ID) {
-        return (Value)(Object)1l;
-      }
- else {
-        return super.initialHeader(field);
-      }
-    }
-    @Override protected void updateHeaders(    Headers.Builder headers,    long version){
-      headers.put(TX_ID,version);
-    }
-    @Override protected int compareHeaders(    Headers lhs,    Headers rhs){
-      return Long.compare(lhs.get(TX_ID),rhs.get(TX_ID));
-    }
-  }
-);
-  ThrowingConsumer<Long,IOException> update=new ThrowingConsumer<Long,IOException>(){
-    @Override public void accept(    Long update) throws IOException {
-      try (EntryUpdater<String> updater=store.updater(update).get()){
-        updater.apply("key " + update,store.value("value " + update));
-      }
-     }
-  }
-;
-  update.accept(1l);
+  final Store store=resourceManager.managed(createTestStore());
+  updateStore(store,1);
   Future<Long> rotation=threading.executeAndAwait(store.rotation,3l,new Predicate<Thread>(){
     @Override public boolean test(    Thread thread){
 switch (thread.getState()) {
@@ -42,15 +18,15 @@ default :
 assertFalse(rotation.isDone());
 SECONDS.sleep(1);
 assertFalse(rotation.isDone());
-update.accept(3l);
+updateStore(store,3);
 assertFalse(rotation.isDone());
 SECONDS.sleep(1);
 assertFalse(rotation.isDone());
-update.accept(4l);
+updateStore(store,4);
 assertFalse(rotation.isDone());
 SECONDS.sleep(1);
 assertFalse(rotation.isDone());
-update.accept(2l);
+updateStore(store,2);
 assertEquals(3,rotation.get().longValue());
 assertEquals(3,store.headers().get(TX_ID).longValue());
 store.rotation.apply(4l);
