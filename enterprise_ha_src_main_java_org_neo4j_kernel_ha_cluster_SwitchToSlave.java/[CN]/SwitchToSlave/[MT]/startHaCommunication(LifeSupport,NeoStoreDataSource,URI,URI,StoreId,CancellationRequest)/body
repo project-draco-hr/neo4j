@@ -2,11 +2,16 @@
   MasterClient master=newMasterClient(masterUri,neoDataSource.getStoreId(),haCommunicationLife);
   Slave slaveImpl=new SlaveImpl(resolver.resolveDependency(TransactionObligationFulfiller.class));
   SlaveServer server=new SlaveServer(slaveImpl,serverConfig(),logging,byteCounterMonitor,requestMonitor);
+  if (cancellationRequest.cancellationRequested()) {
+    return null;
+  }
   masterDelegateHandler.setDelegate(master);
   haCommunicationLife.add(slaveImpl);
   haCommunicationLife.add(server);
   haCommunicationLife.start();
-  catchUpWithMaster();
+  if (!catchUpWithMaster()) {
+    return null;
+  }
   URI slaveHaURI=createHaURI(me,server);
   clusterMemberAvailability.memberIsAvailable(HighAvailabilityModeSwitcher.SLAVE,slaveHaURI,storeId);
   return slaveHaURI;
