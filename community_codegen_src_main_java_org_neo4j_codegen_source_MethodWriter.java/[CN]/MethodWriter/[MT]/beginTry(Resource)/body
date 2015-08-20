@@ -1,15 +1,36 @@
 {
-  indent().append("try");
-  if (resources.length > 0) {
-    String sep=" ( ";
+  if (resources.length > 0 && classWriter.configuration.isSet(SourceCode.SIMPLIFY_TRY_WITH_RESOURCE)) {
     for (    Resource resource : resources) {
-      append(sep).append(resource.type().name()).append(" ").append(resource.name()).append(" = ");
+      indent().append(resource.type().name()).append(" ").append(resource.name()).append(" = ");
       resource.producer().accept(this);
-      sep="; ";
+      append(";\n");
     }
-    append(" )");
+    indent().append("try\n");
+    indent().append("{");
+    level.push(new Runnable(){
+      @Override public void run(){
+        beginFinally();
+        for (        Resource resource : resources) {
+          indent().append(resource.name()).append(".close();\n");
+        }
+        endBlock();
+      }
+    }
+);
   }
-  append("\n");
-  indent().append("{\n");
-  level++;
+ else {
+    indent().append("try");
+    if (resources.length > 0) {
+      String sep=" ( ";
+      for (      Resource resource : resources) {
+        append(sep).append(resource.type().name()).append(" ").append(resource.name()).append(" = ");
+        resource.producer().accept(this);
+        sep="; ";
+      }
+      append(" )");
+    }
+    append("\n");
+    indent().append("{\n");
+    level.push(LEVEL);
+  }
 }
