@@ -1,0 +1,45 @@
+{
+  final AtomicReference<Throwable> ex=new AtomicReference<>();
+  final AtomicBoolean stoppedCompleted=new AtomicBoolean();
+  final DoubleLatch checkPointerLatch=new DoubleLatch(1);
+  CheckPointer checkPointer=new CheckPointer(){
+    @Override public void checkPointIfNeeded() throws IOException {
+      checkPointerLatch.start();
+      checkPointerLatch.awaitFinish();
+    }
+    @Override public void forceCheckPoint() throws IOException {
+    }
+  }
+;
+  final CheckPointScheduler scheduler=new CheckPointScheduler(checkPointer,jobScheduler,20l);
+  scheduler.start();
+  Thread runCheckPointer=new Thread(){
+    @Override public void run(){
+      jobScheduler.runJob();
+    }
+  }
+;
+  runCheckPointer.start();
+  checkPointerLatch.awaitStart();
+  Thread stopper=new Thread(){
+    @Override public void run(){
+      try {
+        scheduler.stop();
+        stoppedCompleted.set(true);
+      }
+ catch (      Throwable throwable) {
+        ex.set(throwable);
+      }
+    }
+  }
+;
+  stopper.start();
+  Thread.sleep(10);
+  assertFalse(stoppedCompleted.get());
+  checkPointerLatch.finish();
+  runCheckPointer.join();
+  Thread.sleep(10);
+  assertTrue(stoppedCompleted.get());
+  stopper.join();
+  assertNull(ex.get());
+}
