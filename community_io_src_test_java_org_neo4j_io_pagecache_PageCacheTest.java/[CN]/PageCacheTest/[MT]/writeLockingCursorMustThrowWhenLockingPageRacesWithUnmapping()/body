@@ -1,7 +1,8 @@
 {
-  generateFileWithRecords(file("a"),recordsPerFilePage * 2,recordSize);
+  File file=file("a");
+  generateFileWithRecords(file,recordsPerFilePage * 2,recordSize);
   getPageCache(fs,maxPages,pageCachePageSize,PageCacheTracer.NULL);
-  final PagedFile pf=pageCache.map(file("a"),filePageSize);
+  final PagedFile pf=pageCache.map(file,filePageSize);
   final CountDownLatch hasLockLatch=new CountDownLatch(1);
   final CountDownLatch unlockLatch=new CountDownLatch(1);
   final CountDownLatch secondThreadGotLockLatch=new CountDownLatch(1);
@@ -35,14 +36,14 @@
   }
 );
   try {
-    closeFuture.get(10,TimeUnit.MILLISECONDS);
+    closeFuture.get(100,TimeUnit.MILLISECONDS);
     fail("Expected a TimeoutException here");
   }
  catch (  TimeoutException e) {
   }
   unlockLatch.countDown();
   try {
-    closeFuture.get(200,TimeUnit.MILLISECONDS);
+    closeFuture.get(1000,TimeUnit.MILLISECONDS);
     try {
       secondThreadGotLockLatch.countDown();
       takeLockFuture.get();
@@ -56,6 +57,6 @@
   }
  catch (  TimeoutException e) {
     secondThreadGotLockLatch.countDown();
-    closeFuture.get(200,TimeUnit.MILLISECONDS);
+    closeFuture.get(2000,TimeUnit.MILLISECONDS);
   }
 }
