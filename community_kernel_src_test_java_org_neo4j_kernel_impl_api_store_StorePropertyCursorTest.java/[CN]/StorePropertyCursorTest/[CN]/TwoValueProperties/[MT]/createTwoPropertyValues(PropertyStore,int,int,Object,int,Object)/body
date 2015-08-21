@@ -1,0 +1,23 @@
+{
+  DynamicRecordAllocator stringAllocator=store.getStringStore();
+  DynamicRecordAllocator arrayAllocator=store.getArrayStore();
+  PropertyBlock block1=new PropertyBlock();
+  PropertyStore.encodeValue(block1,keyId1,value1,stringAllocator,arrayAllocator);
+  PropertyBlock block2=new PropertyBlock();
+  PropertyStore.encodeValue(block2,keyId2,value2,stringAllocator,arrayAllocator);
+  PropertyRecord record=new PropertyRecord(recordId);
+  record.addPropertyBlock(block1);
+  if (block1.getSize() + block2.getSize() <= PropertyStore.DEFAULT_PAYLOAD_SIZE) {
+    record.addPropertyBlock(block2);
+  }
+ else {
+    PropertyRecord nextRecord=new PropertyRecord(recordId + 1);
+    record.setNextProp(nextRecord.getId());
+    nextRecord.addPropertyBlock(block2);
+    nextRecord.setPrevProp(record.getId());
+    nextRecord.setInUse(true);
+    store.updateRecord(nextRecord);
+  }
+  record.setInUse(true);
+  store.updateRecord(record);
+}
