@@ -1,0 +1,20 @@
+{
+  try (Statement statement=actions.statement()){
+    try (Cursor<NodeItem> node=statement.readOperations().nodeCursor(nodeId)){
+      if (!node.next()) {
+        throw new NotFoundException("Node not found",new EntityNotFoundException(EntityType.NODE,getId()));
+      }
+      try (Cursor<PropertyItem> propertyCursor=node.get().properties()){
+        Map<String,Object> properties=new HashMap<>();
+        while (propertyCursor.next()) {
+          String name=statement.readOperations().propertyKeyGetName(propertyCursor.get().propertyKeyId());
+          properties.put(name,propertyCursor.get().value());
+        }
+        return properties;
+      }
+     }
+   }
+ catch (  PropertyKeyIdNotFoundKernelException e) {
+    throw new ThisShouldNotHappenError("Rickard","Property key retrieved through kernel API should exist.",e);
+  }
+}
