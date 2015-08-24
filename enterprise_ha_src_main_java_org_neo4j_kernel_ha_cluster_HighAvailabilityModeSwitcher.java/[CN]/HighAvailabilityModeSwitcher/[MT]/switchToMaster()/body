@@ -2,11 +2,21 @@
   final CancellationHandle cancellationHandle=new CancellationHandle();
   startModeSwitching(new Runnable(){
     @Override public void run(){
-      if (cancellationHandle.cancellationRequested()) {
-        msgLog.info("Switch to master cancelled in the beginning of switching to master.");
+      if (currentTargetState != HighAvailabilityMemberState.TO_MASTER) {
         return;
       }
-      if (currentTargetState != HighAvailabilityMemberState.TO_MASTER) {
+      if (cancellationHandle.cancellationRequested()) {
+        msgLog.info("Switch to master cancelled on start.");
+        return;
+      }
+      Listeners.notifyListeners(modeSwitchListeners,new Listeners.Notification<ModeSwitcher>(){
+        @Override public void notify(        ModeSwitcher listener){
+          listener.switchToMaster();
+        }
+      }
+);
+      if (cancellationHandle.cancellationRequested()) {
+        msgLog.info("Switch to master cancelled before ha communication started.");
         return;
       }
       haCommunicationLife.shutdown();
