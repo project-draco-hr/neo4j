@@ -1,0 +1,13 @@
+{
+  GraphDatabaseService gds=new GraphDatabaseFactory().newEmbeddedDatabase(testDirectory.absolutePath());
+  try (Transaction tx=gds.beginTx()){
+    gds.createNode();
+    tx.success();
+  }
+   gds.shutdown();
+  ConsistencyCheckService service=new ConsistencyCheckService();
+  Config configuration=new Config(settings(),GraphDatabaseSettings.class,ConsistencyCheckSettings.class);
+  configuration.applyChanges(MapUtil.stringMap(ConsistencyCheckSettings.consistency_check_graph.name(),Settings.FALSE));
+  Result result=service.runFullConsistencyCheck(testDirectory.graphDbDir(),configuration,ProgressMonitorFactory.NONE,NullLogProvider.getInstance());
+  assertEquals(ConsistencyCheckService.Result.SUCCESS,result);
+}
