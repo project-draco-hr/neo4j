@@ -1,0 +1,30 @@
+{
+  final CountDownLatch answerLatch=new CountDownLatch(1);
+  final CountDownLatch stopLatch=new CountDownLatch(1);
+  final CountDownLatch stopReadyLatch=new CountDownLatch(1);
+  final int sleepTime=500;
+  doAnswer(new Answer<Void>(){
+    @Override public Void answer(    InvocationOnMock invocation) throws Throwable {
+      stopReadyLatch.countDown();
+      stopLatch.await();
+      TimeUnit.MILLISECONDS.sleep(sleepTime);
+      return null;
+    }
+  }
+).when(client).stop();
+  doAnswer(new Answer<Void>(){
+    @Override public Void answer(    InvocationOnMock invocation) throws Throwable {
+      answerLatch.countDown();
+      return null;
+    }
+  }
+).when(client).close();
+  threadingRule.execute(stopConversation(),conversation);
+  stopReadyLatch.await();
+  threadingRule.execute(closeConversation(),conversation);
+  long raceStartTime=System.currentTimeMillis();
+  stopLatch.countDown();
+  answerLatch.await();
+  long executionTime=System.currentTimeMillis() - raceStartTime;
+  assertTrue(executionTime > sleepTime);
+}
