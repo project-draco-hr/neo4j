@@ -1,0 +1,53 @@
+{
+  defaultBackupPortHostParams();
+  GraphDatabaseAPI graphDatabase=dbRule.getGraphDatabaseAPI();
+  Label markerLabel=DynamicLabel.label("marker");
+  try (Transaction transaction=graphDatabase.beginTx()){
+    Node node=graphDatabase.createNode();
+    node.addLabel(markerLabel);
+    transaction.success();
+  }
+   try (Transaction transaction=graphDatabase.beginTx()){
+    Node node=findNodeByLabel(graphDatabase,markerLabel);
+    for (int i=0; i < 10; i++) {
+      node.setProperty("property" + i,"testValue" + i);
+    }
+    transaction.success();
+  }
+   doIncrementalBackupOrFallbackToFull();
+  try (Transaction transaction=graphDatabase.beginTx()){
+    Node node=findNodeByLabel(graphDatabase,markerLabel);
+    for (int i=0; i < 6; i++) {
+      node.removeProperty("property" + i);
+    }
+    transaction.success();
+  }
+   doIncrementalBackupOrFallbackToFull();
+  try (Transaction transaction=graphDatabase.beginTx()){
+    Node node=findNodeByLabel(graphDatabase,markerLabel);
+    for (int i=10; i < 16; i++) {
+      node.setProperty("property" + i,"updatedValue" + i);
+    }
+    transaction.success();
+  }
+   doIncrementalBackupOrFallbackToFull();
+  GraphDatabaseService backupBasedDatabase=new GraphDatabaseFactory().newEmbeddedDatabase(backupDir.getAbsolutePath());
+  try {
+    try (Transaction transaction=backupBasedDatabase.beginTx()){
+      Node node=findNodeByLabel((GraphDatabaseAPI)backupBasedDatabase,markerLabel);
+      Iterable<String> propertyKeys=node.getPropertyKeys();
+      for (      String propertyKey : propertyKeys) {
+        node.setProperty(propertyKey,"updatedClientValue" + propertyKey);
+      }
+      node.setProperty("newProperty","updatedClientValue");
+      transaction.success();
+    }
+     try (Transaction transaction=backupBasedDatabase.beginTx()){
+      Node node=findNodeByLabel((GraphDatabaseAPI)backupBasedDatabase,markerLabel);
+      assertEquals("We should be able to see all previously defined properties.",11,Iterables.toList(node.getPropertyKeys()).size());
+    }
+   }
+  finally {
+    backupBasedDatabase.shutdown();
+  }
+}
