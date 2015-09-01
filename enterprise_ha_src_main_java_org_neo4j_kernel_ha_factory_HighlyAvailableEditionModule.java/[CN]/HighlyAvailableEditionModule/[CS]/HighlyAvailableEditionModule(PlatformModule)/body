@@ -1,0 +1,169 @@
+{
+  final LifeSupport life=platformModule.life;
+  final FileSystemAbstraction fs=platformModule.fileSystem;
+  final File storeDir=platformModule.storeDir;
+  final Config config=platformModule.config;
+  final Dependencies dependencies=platformModule.dependencies;
+  final LogService logging=platformModule.logging;
+  final Monitors monitors=platformModule.monitors;
+  InternalLoggerFactory.setDefaultFactory(new NettyLoggerFactory(logging.getInternalLogProvider()));
+  life.add(new BranchedDataMigrator(platformModule.storeDir));
+  DelegateInvocationHandler<Master> masterDelegateInvocationHandler=new DelegateInvocationHandler<>(Master.class);
+  Master master=(Master)newProxyInstance(Master.class.getClassLoader(),new Class[]{Master.class},masterDelegateInvocationHandler);
+  InstanceId serverId=config.get(ClusterSettings.server_id);
+  RequestContextFactory requestContextFactory=dependencies.satisfyDependency(new RequestContextFactory(serverId.toIntegerIndex(),dependencies.provideDependency(TransactionIdStore.class)));
+  TransactionCommittingResponseUnpacker responseUnpacker=dependencies.satisfyDependency(new TransactionCommittingResponseUnpacker(DependenciesProxy.dependencies(dependencies,TransactionCommittingResponseUnpacker.Dependencies.class)));
+  Supplier<KernelAPI> kernelProvider=dependencies.provideDependency(KernelAPI.class);
+  transactionStartTimeout=config.get(HaSettings.state_switch_timeout);
+  DelegateInvocationHandler<ClusterMemberEvents> clusterEventsDelegateInvocationHandler=new DelegateInvocationHandler<>(ClusterMemberEvents.class);
+  DelegateInvocationHandler<HighAvailabilityMemberContext> memberContextDelegateInvocationHandler=new DelegateInvocationHandler<>(HighAvailabilityMemberContext.class);
+  DelegateInvocationHandler<ClusterMemberAvailability> clusterMemberAvailabilityDelegateInvocationHandler=new DelegateInvocationHandler<>(ClusterMemberAvailability.class);
+  ClusterMemberEvents clusterEvents=dependencies.satisfyDependency((ClusterMemberEvents)newProxyInstance(ClusterMemberEvents.class.getClassLoader(),new Class[]{ClusterMemberEvents.class,Lifecycle.class},clusterEventsDelegateInvocationHandler));
+  HighAvailabilityMemberContext memberContext=(HighAvailabilityMemberContext)newProxyInstance(HighAvailabilityMemberContext.class.getClassLoader(),new Class[]{HighAvailabilityMemberContext.class},memberContextDelegateInvocationHandler);
+  ClusterMemberAvailability clusterMemberAvailability=dependencies.satisfyDependency((ClusterMemberAvailability)newProxyInstance(ClusterMemberAvailability.class.getClassLoader(),new Class[]{ClusterMemberAvailability.class},clusterMemberAvailabilityDelegateInvocationHandler));
+  final AtomicReference<HighAvailabilityMemberStateMachine> electionProviderRef=new AtomicReference<>();
+  ElectionCredentialsProvider electionCredentialsProvider=config.get(HaSettings.slave_only) ? new NotElectableElectionCredentialsProvider() : new DefaultElectionCredentialsProvider(config.get(ClusterSettings.server_id),new OnDiskLastTxIdGetter(platformModule.dependencies.provideDependency(NeoStore.class)),new HighAvailabilityMemberInfoProvider(){
+    @Override public HighAvailabilityMemberState getHighAvailabilityMemberState(){
+      return electionProviderRef.get().getCurrentState();
+    }
+  }
+);
+  ObjectStreamFactory objectStreamFactory=new ObjectStreamFactory();
+  ClusterClientModule clusterClientModule=new ClusterClientModule(life,dependencies,monitors,config,logging,electionCredentialsProvider);
+  final ClusterClient clusterClient=clusterClientModule.clusterClient;
+  PaxosClusterMemberEvents localClusterEvents=new PaxosClusterMemberEvents(clusterClient,clusterClient,clusterClient,clusterClient,logging.getInternalLogProvider(),new org.neo4j.function.Predicate<PaxosClusterMemberEvents.ClusterMembersSnapshot>(){
+    @Override public boolean test(    PaxosClusterMemberEvents.ClusterMembersSnapshot item){
+      for (      MemberIsAvailable member : item.getCurrentAvailableMembers()) {
+        if (member.getRoleUri().getScheme().equals("ha")) {
+          if (HighAvailabilityModeSwitcher.getServerId(member.getRoleUri()).equals(platformModule.config.get(ClusterSettings.server_id))) {
+            logging.getInternalLog(PaxosClusterMemberEvents.class).error(String.format("Instance " + "%s has" + " the same serverId as ours (%s) - will not "+ "join this cluster",member.getRoleUri(),config.get(ClusterSettings.server_id).toIntegerIndex()));
+            return true;
+          }
+        }
+      }
+      return true;
+    }
+  }
+,new HANewSnapshotFunction(),objectStreamFactory,objectStreamFactory,platformModule.monitors.newMonitor(NamedThreadFactory.Monitor.class));
+  clusterClient.addClusterListener(new ClusterListener.Adapter(){
+    boolean hasRequestedElection=true;
+    @Override public void enteredCluster(    ClusterConfiguration clusterConfiguration){
+      clusterClient.performRoleElections();
+    }
+    @Override public void elected(    String role,    InstanceId instanceId,    URI electedMember){
+      if (hasRequestedElection && role.equals(ClusterConfiguration.COORDINATOR)) {
+        clusterClient.removeClusterListener(this);
+      }
+    }
+  }
+);
+  HighAvailabilityMemberContext localMemberContext=new SimpleHighAvailabilityMemberContext(clusterClient.getServerId(),config.get(HaSettings.slave_only));
+  PaxosClusterMemberAvailability localClusterMemberAvailability=new PaxosClusterMemberAvailability(clusterClient.getServerId(),clusterClient,clusterClient,logging.getInternalLogProvider(),objectStreamFactory,objectStreamFactory);
+  memberContextDelegateInvocationHandler.setDelegate(localMemberContext);
+  clusterEventsDelegateInvocationHandler.setDelegate(localClusterEvents);
+  clusterMemberAvailabilityDelegateInvocationHandler.setDelegate(localClusterMemberAvailability);
+  members=dependencies.satisfyDependency(new ClusterMembers(clusterClient,clusterClient,clusterEvents,config.get(ClusterSettings.server_id)));
+  memberStateMachine=new HighAvailabilityMemberStateMachine(memberContext,platformModule.availabilityGuard,members,clusterEvents,clusterClient,logging.getInternalLogProvider());
+  electionProviderRef.set(memberStateMachine);
+  HighAvailabilityLogger highAvailabilityLogger=new HighAvailabilityLogger(logging.getUserLogProvider(),config.get(ClusterSettings.server_id));
+  platformModule.availabilityGuard.addListener(highAvailabilityLogger);
+  clusterEvents.addClusterMemberListener(highAvailabilityLogger);
+  clusterClient.addClusterListener(highAvailabilityLogger);
+  LifeSupport paxosLife=new LifeSupport();
+  paxosLife.add(clusterClient);
+  paxosLife.add(memberStateMachine);
+  paxosLife.add(clusterEvents);
+  paxosLife.add(localClusterMemberAvailability);
+  idGeneratorFactory=dependencies.satisfyDependency(createIdGeneratorFactory(masterDelegateInvocationHandler,logging.getInternalLogProvider(),requestContextFactory,fs));
+  final AtomicReference<HighAvailabilityModeSwitcher> exceptionHandlerRef=new AtomicReference<>();
+  InvalidEpochExceptionHandler invalidEpochHandler=new InvalidEpochExceptionHandler(){
+    @Override public void handle(){
+      exceptionHandlerRef.get().forceElections();
+    }
+  }
+;
+  MasterClientResolver masterClientResolver=new MasterClientResolver(logging.getInternalLogProvider(),responseUnpacker,invalidEpochHandler,config.get(HaSettings.read_timeout).intValue(),config.get(HaSettings.lock_read_timeout).intValue(),config.get(HaSettings.max_concurrent_channels_per_slave),config.get(HaSettings.com_chunk_size).intValue());
+  LastUpdateTime lastUpdateTime=new LastUpdateTime();
+  UpdatePuller updatePuller=dependencies.satisfyDependency(life.add(new UpdatePuller(memberStateMachine,requestContextFactory,master,lastUpdateTime,logging.getInternalLogProvider(),serverId,invalidEpochHandler)));
+  dependencies.satisfyDependency(life.add(new UpdatePullerClient(config.get(HaSettings.pull_interval),platformModule.jobScheduler,logging.getInternalLogProvider(),updatePuller,platformModule.availabilityGuard)));
+  dependencies.satisfyDependency(life.add(new UpdatePullingTransactionObligationFulfiller(updatePuller,memberStateMachine,serverId,dependencies.provideDependency(TransactionIdStore.class))));
+  Factory<Slave> slaveFactory=new Factory<Slave>(){
+    @Override public Slave newInstance(){
+      return new SlaveImpl(dependencies.resolveDependency(TransactionObligationFulfiller.class));
+    }
+  }
+;
+  Function<Slave,SlaveServer> slaveServerFactory=new Function<Slave,SlaveServer>(){
+    @Override public SlaveServer apply(    Slave slave) throws RuntimeException {
+      return new SlaveServer(slave,slaveServerConfig(config),logging.getInternalLogProvider(),monitors.newMonitor(ByteCounterMonitor.class,SlaveServer.class),monitors.newMonitor(RequestMonitor.class,SlaveServer.class));
+    }
+  }
+;
+  SwitchToSlave switchToSlaveInstance=new SwitchToSlave(platformModule.storeDir,logging,platformModule.fileSystem,members,config,dependencies,(HaIdGeneratorFactory)idGeneratorFactory,masterDelegateInvocationHandler,clusterMemberAvailability,requestContextFactory,platformModule.kernelExtensions.listFactories(),masterClientResolver,monitors.newMonitor(SwitchToSlave.Monitor.class),monitors.newMonitor(StoreCopyClient.Monitor.class),dependencies.provideDependency(NeoStoreDataSource.class),dependencies.provideDependency(TransactionIdStore.class),slaveFactory,slaveServerFactory,updatePuller,platformModule.pageCache,monitors,platformModule.transactionMonitor);
+  final Factory<MasterImpl.SPI> masterSPIFactory=new Factory<MasterImpl.SPI>(){
+    @Override public MasterImpl.SPI newInstance(){
+      return new DefaultMasterImplSPI(platformModule.graphDatabaseFacade,platformModule.fileSystem,platformModule.monitors,labelTokenHolder,propertyKeyTokenHolder,relationshipTypeTokenHolder,idGeneratorFactory,platformModule.dependencies.resolveDependency(TransactionCommitProcess.class),platformModule.dependencies.resolveDependency(StoreFlusher.class),platformModule.dependencies.resolveDependency(TransactionIdStore.class),platformModule.dependencies.resolveDependency(LogicalTransactionStore.class),platformModule.dependencies.resolveDependency(NeoStoreDataSource.class));
+    }
+  }
+;
+  final Factory<ConversationSPI> conversationSPIFactory=new Factory<ConversationSPI>(){
+    @Override public ConversationSPI newInstance(){
+      return new DefaultConversationSPI(lockManager,platformModule.jobScheduler);
+    }
+  }
+;
+  Factory<ConversationManager> conversationManagerFactory=new Factory<ConversationManager>(){
+    @Override public ConversationManager newInstance(){
+      return new ConversationManager(conversationSPIFactory.newInstance(),config);
+    }
+  }
+;
+  Function<ConversationManager,Master> masterFactory=new Function<ConversationManager,Master>(){
+    @Override public Master apply(    ConversationManager conversationManager){
+      return new MasterImpl(masterSPIFactory.newInstance(),conversationManager,monitors.newMonitor(MasterImpl.Monitor.class,MasterImpl.class),config);
+    }
+  }
+;
+  BiFunction<Master,ConversationManager,MasterServer> masterServerFactory=new BiFunction<Master,ConversationManager,MasterServer>(){
+    @Override public MasterServer apply(    final Master master,    ConversationManager conversationManager) throws RuntimeException {
+      TransactionChecksumLookup txChecksumLookup=new TransactionChecksumLookup(platformModule.dependencies.resolveDependency(TransactionIdStore.class),platformModule.dependencies.resolveDependency(LogicalTransactionStore.class));
+      MasterServer masterServer=new MasterServer(master,logging.getInternalLogProvider(),masterServerConfig(config),new BranchDetectingTxVerifier(logging.getInternalLogProvider(),txChecksumLookup),monitors.newMonitor(ByteCounterMonitor.class,MasterServer.class),monitors.newMonitor(RequestMonitor.class,MasterServer.class),conversationManager);
+      return masterServer;
+    }
+  }
+;
+  SwitchToMaster switchToMasterInstance=new SwitchToMaster(logging,(HaIdGeneratorFactory)idGeneratorFactory,config,dependencies.provideDependency(SlaveFactory.class),conversationManagerFactory,masterFactory,masterServerFactory,masterDelegateInvocationHandler,clusterMemberAvailability,platformModule.dependencies.provideDependency(NeoStoreDataSource.class),platformModule.transactionMonitor);
+  final HighAvailabilityModeSwitcher highAvailabilityModeSwitcher=new HighAvailabilityModeSwitcher(switchToSlaveInstance,switchToMasterInstance,clusterClient,clusterMemberAvailability,clusterClient,new Supplier<StoreId>(){
+    @Override public StoreId get(){
+      return dependencies.resolveDependency(NeoStoreDataSource.class).getStoreId();
+    }
+  }
+,config.get(ClusterSettings.server_id),logging);
+  exceptionHandlerRef.set(highAvailabilityModeSwitcher);
+  clusterClient.addBindingListener(highAvailabilityModeSwitcher);
+  memberStateMachine.addHighAvailabilityMemberListener(highAvailabilityModeSwitcher);
+  paxosLife.add(highAvailabilityModeSwitcher);
+  life.add(requestContextFactory);
+  life.add(responseUnpacker);
+  life.add(paxosLife);
+  platformModule.diagnosticsManager.appendProvider(new HighAvailabilityDiagnostics(memberStateMachine,clusterClient));
+  lockManager=dependencies.satisfyDependency(createLockManager(memberStateMachine,config,masterDelegateInvocationHandler,requestContextFactory,platformModule.availabilityGuard,logging));
+  propertyKeyTokenHolder=life.add(dependencies.satisfyDependency(new PropertyKeyTokenHolder(createPropertyKeyCreator(config,memberStateMachine,masterDelegateInvocationHandler,requestContextFactory,kernelProvider))));
+  labelTokenHolder=life.add(dependencies.satisfyDependency(new LabelTokenHolder(createLabelIdCreator(config,memberStateMachine,masterDelegateInvocationHandler,requestContextFactory,kernelProvider))));
+  relationshipTypeTokenHolder=life.add(dependencies.satisfyDependency(new RelationshipTypeTokenHolder(createRelationshipTypeCreator(config,memberStateMachine,masterDelegateInvocationHandler,requestContextFactory,kernelProvider))));
+  life.add(dependencies.satisfyDependency(createKernelData(config,platformModule.graphDatabaseFacade,members,fs,platformModule.pageCache,storeDir,lastUpdateTime,dependencies.provideDependency(NeoStore.class))));
+  commitProcessFactory=createCommitProcessFactory(dependencies,logging,monitors,config,life,clusterClient,members,platformModule.jobScheduler,master,requestContextFactory,memberStateMachine);
+  headerInformationFactory=createHeaderInformationFactory(memberContext);
+  schemaWriteGuard=new SchemaWriteGuard(){
+    @Override public void assertSchemaWritesAllowed() throws InvalidTransactionTypeKernelException {
+      if (!memberStateMachine.isMaster()) {
+        throw new InvalidTransactionTypeKernelException("Modifying the database schema can only be done on the master server, " + "this server is a slave. Please issue schema modification commands directly to " + "the master.");
+      }
+    }
+  }
+;
+  upgradeConfiguration=new HAUpgradeConfiguration();
+  constraintSemantics=new EnterpriseConstraintSemantics();
+  registerRecovery(config.get(GraphDatabaseFacadeFactory.Configuration.editionName),dependencies,logging);
+  publishEditionInfo(config,dependencies.resolveDependency(UsageData.class));
+}

@@ -1,0 +1,21 @@
+{
+  try (Transaction tx=db.beginTx()){
+    createOffendingDataInRunningTx(db);
+    tx.success();
+  }
+   try (Transaction tx=db.beginTx()){
+    createConstraintInRunningTx(db,KEY,PROP);
+    tx.success();
+    fail("expected failure");
+  }
+ catch (  QueryExecutionException e) {
+    assertThat(e.getMessage(),startsWith("Unable to create CONSTRAINT"));
+  }
+  try (Transaction tx=db.beginTx()){
+    removeOffendingDataInRunningTx(db);
+    tx.success();
+  }
+   SchemaWriteOperations statement=schemaWriteOperationsInNewTransaction();
+  createConstraint(statement,typeId,propertyKeyId);
+  commit();
+}

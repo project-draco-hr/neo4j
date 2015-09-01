@@ -1,0 +1,19 @@
+{
+  try (Transaction tx=db.beginTx()){
+    createOffendingDataInRunningTx(db);
+    tx.success();
+  }
+   try (Transaction tx=db.beginTx()){
+    createConstraintInRunningTx(db,KEY,PROP);
+    tx.success();
+    fail("expected failure");
+  }
+ catch (  QueryExecutionException e) {
+    assertThat(e.getMessage(),startsWith("Unable to create CONSTRAINT"));
+  }
+  try (Transaction tx=db.beginTx()){
+    assertEquals(Collections.<ConstraintDefinition>emptyList(),asList(db.schema().getConstraints()));
+    assertEquals(Collections.<IndexDefinition,Schema.IndexState>emptyMap(),indexesWithState(db.schema()));
+    tx.success();
+  }
+ }
