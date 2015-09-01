@@ -1,0 +1,39 @@
+{
+  this.config=config;
+  this.monitors=monitors;
+  this.registry=registry;
+  masterNetworkTransactionWrites=new ByteCountsMetric();
+  masterNetworkStoreWrites=new ByteCountsMetric();
+  slaveNetworkTransactionWrites=new ByteCountsMetric();
+  networkTransactionReads=new ByteCountsMetric();
+  if (config.get(MetricsSettings.neoNetworkEnabled)) {
+    monitors.addMonitorListener(masterNetworkTransactionWrites,MasterServer.class.getName());
+    monitors.addMonitorListener(masterNetworkStoreWrites,ToNetworkStoreWriter.class.getName(),"storeCopier");
+    monitors.addMonitorListener(slaveNetworkTransactionWrites,MasterClient210.class.getName());
+    monitors.addMonitorListener(networkTransactionReads,"logdeserializer");
+    registry.register(name("neo4j.network","master_network_tx_writes"),new Gauge<Long>(){
+      public Long getValue(){
+        return masterNetworkTransactionWrites.getBytesWritten();
+      }
+    }
+);
+    registry.register(name("neo4j.network","master_network_store_writes"),new Gauge<Long>(){
+      public Long getValue(){
+        return masterNetworkStoreWrites.getBytesWritten();
+      }
+    }
+);
+    registry.register(name("neo4j.network","slave_network_tx_writes"),new Gauge<Long>(){
+      public Long getValue(){
+        return slaveNetworkTransactionWrites.getBytesWritten();
+      }
+    }
+);
+    registry.register(name("neo4j.network","transaction_reads"),new Gauge<Long>(){
+      public Long getValue(){
+        return networkTransactionReads.getBytesRead();
+      }
+    }
+);
+  }
+}

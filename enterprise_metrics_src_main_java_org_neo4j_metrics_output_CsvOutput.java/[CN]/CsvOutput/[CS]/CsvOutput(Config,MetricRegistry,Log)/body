@@ -1,0 +1,23 @@
+{
+  if (config.get(csvEnabled)) {
+switch (config.get(MetricsSettings.csvFile)) {
+case single:
+{
+        csvReporter=CsvReporterSingle.forRegistry(registry).convertRatesTo(TimeUnit.SECONDS).convertDurationsTo(TimeUnit.MILLISECONDS).filter(MetricFilter.ALL).build(config.get(csvPath));
+        break;
+      }
+case split:
+{
+      if (!config.get(csvPath).exists()) {
+        if (!config.get(csvPath).mkdirs()) {
+          throw new IllegalStateException("Could not create path for CSV files:" + config.get(csvPath).getAbsolutePath());
+        }
+      }
+      csvReporter=CsvReporter.forRegistry(registry).convertRatesTo(TimeUnit.SECONDS).convertDurationsTo(TimeUnit.MILLISECONDS).filter(MetricFilter.ALL).build(config.get(csvPath));
+      break;
+    }
+}
+csvReporter.start(config.get(csvInterval),TimeUnit.MILLISECONDS);
+logger.info("Sending metrics to CSV file at " + config.get(csvPath));
+}
+}
