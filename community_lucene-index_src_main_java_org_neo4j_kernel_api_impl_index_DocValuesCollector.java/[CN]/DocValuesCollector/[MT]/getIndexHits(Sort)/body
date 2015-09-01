@@ -1,0 +1,24 @@
+{
+  List<MatchingDocs> matchingDocs=getMatchingDocs();
+  int size=getTotalHits();
+  if (size == 0) {
+    return new AbstractIndexHits<Document>(){
+      @Override public int size(){
+        return 0;
+      }
+      @Override public float currentScore(){
+        return Float.NaN;
+      }
+      @Override protected Document fetchNextOrNull(){
+        return null;
+      }
+    }
+;
+  }
+  if (sort == null || sort == Sort.INDEXORDER) {
+    return new DocsInIndexOrderIterator(matchingDocs,size,isKeepScores());
+  }
+  TopDocs topDocs=getTopDocs(sort,size);
+  LeafReaderContext[] contexts=getLeafReaderContexts(matchingDocs);
+  return new TopDocsIterator(topDocs,contexts);
+}
