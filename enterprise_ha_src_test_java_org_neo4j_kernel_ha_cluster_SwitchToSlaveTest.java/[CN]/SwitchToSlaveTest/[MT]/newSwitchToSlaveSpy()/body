@@ -7,11 +7,24 @@
   when(clusterMembers.getMembers()).thenReturn(asList(master));
   DependencyResolver resolver=mock(DependencyResolver.class);
   when(resolver.resolveDependency(any(Class.class))).thenReturn(mock(Lifecycle.class));
+  when(resolver.resolveDependency(ClusterMembers.class)).thenReturn(clusterMembers);
   NeoStoreDataSource dataSource=mock(NeoStoreDataSource.class);
   when(dataSource.getStoreId()).thenReturn(new StoreId(42,42,42,42));
   TransactionCounters transactionCounters=mock(TransactionCounters.class);
   when(transactionCounters.getNumberOfActiveTransactions()).thenReturn(0l);
-  return spy(new SwitchToSlave(mock(File.class),NullLogService.getInstance(),mock(FileSystemAbstraction.class),clusterMembers,configMock(),resolver,mock(HaIdGeneratorFactory.class),mock(DelegateInvocationHandler.class),mock(ClusterMemberAvailability.class),mock(RequestContextFactory.class),Iterables.<KernelExtensionFactory<?>>empty(),mock(MasterClientResolver.class),mock(SwitchToSlave.Monitor.class),new StoreCopyClient.Monitor.Adapter(),Suppliers.singleton(dataSource),Suppliers.singleton(mock(TransactionIdStore.class)),new Factory<Slave>(){
+  Response<HandshakeResult> response=mock(Response.class);
+  when(response.response()).thenReturn(new HandshakeResult(42,2));
+  when(masterClient.handshake(anyLong(),any(StoreId.class))).thenReturn(response);
+  when(masterClient.getProtocolVersion()).thenReturn(MasterClient214.PROTOCOL_VERSION);
+  PageCache pageCacheMock=mock(PageCache.class);
+  PagedFile pagedFileMock=mock(PagedFile.class);
+  when(pagedFileMock.getLastPageId()).thenReturn(1l);
+  when(pageCacheMock.map(any(File.class),anyInt())).thenReturn(pagedFileMock);
+  TransactionIdStore transactionIdStoreMock=mock(TransactionIdStore.class);
+  when(transactionIdStoreMock.getLastCommittedTransaction()).thenReturn(new long[]{42,42});
+  MasterClientResolver masterClientResolver=mock(MasterClientResolver.class);
+  when(masterClientResolver.instantiate(anyString(),anyInt(),any(Monitors.class),any(StoreId.class),any(LifeSupport.class))).thenReturn(masterClient);
+  return spy(new SwitchToSlave(new File(""),NullLogService.getInstance(),mock(FileSystemAbstraction.class),clusterMembers,configMock(),resolver,mock(HaIdGeneratorFactory.class),mock(DelegateInvocationHandler.class),mock(ClusterMemberAvailability.class),mock(RequestContextFactory.class),Iterables.<KernelExtensionFactory<?>>empty(),masterClientResolver,mock(SwitchToSlave.Monitor.class),new StoreCopyClient.Monitor.Adapter(),Suppliers.singleton(dataSource),Suppliers.singleton(transactionIdStoreMock),new Factory<Slave>(){
     @Override public Slave newInstance(){
       return mock(Slave.class);
     }
@@ -21,5 +34,5 @@
       return mock(SlaveServer.class);
     }
   }
-,mock(UpdatePuller.class),mock(PageCache.class),mock(Monitors.class),transactionCounters));
+,mock(UpdatePuller.class),pageCacheMock,mock(Monitors.class),transactionCounters));
 }

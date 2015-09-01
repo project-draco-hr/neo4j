@@ -2,6 +2,20 @@
   msgLog.info("I am %s, moving to pending",instanceId);
   startModeSwitching(new Runnable(){
     @Override public void run(){
+      if (cancellationHandle.cancellationRequested()) {
+        msgLog.info("Switch to pending cancelled on start.");
+        return;
+      }
+      Listeners.notifyListeners(modeSwitchListeners,new Listeners.Notification<ModeSwitcher>(){
+        @Override public void notify(        ModeSwitcher listener){
+          listener.switchToPending();
+        }
+      }
+);
+      if (cancellationHandle.cancellationRequested()) {
+        msgLog.info("Switch to pending cancelled before ha communication shutdown.");
+        return;
+      }
       haCommunicationLife.shutdown();
       haCommunicationLife=new LifeSupport();
     }

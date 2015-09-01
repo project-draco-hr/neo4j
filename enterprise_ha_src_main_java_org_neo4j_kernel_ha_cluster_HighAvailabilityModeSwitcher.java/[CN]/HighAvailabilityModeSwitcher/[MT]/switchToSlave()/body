@@ -10,7 +10,21 @@
       if (currentTargetState != HighAvailabilityMemberState.TO_SLAVE) {
         return;
       }
+      if (cancellationHandle.cancellationRequested()) {
+        msgLog.info("Switch to slave cancelled on start.");
+        return;
+      }
+      Listeners.notifyListeners(modeSwitchListeners,new Listeners.Notification<ModeSwitcher>(){
+        @Override public void notify(        ModeSwitcher listener){
+          listener.switchToSlave();
+        }
+      }
+);
       try {
+        if (cancellationHandle.cancellationRequested()) {
+          msgLog.info("Switch to slave cancelled before ha communication started.");
+          return;
+        }
         haCommunicationLife.shutdown();
         haCommunicationLife=new LifeSupport();
         URI resultingSlaveHaURI=switchToSlave.switchToSlave(haCommunicationLife,me,availableMasterId,cancellationHandle);
