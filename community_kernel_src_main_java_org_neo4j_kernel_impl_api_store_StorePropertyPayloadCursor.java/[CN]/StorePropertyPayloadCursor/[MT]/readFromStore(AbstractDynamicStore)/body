@@ -1,0 +1,20 @@
+{
+  if (recordCursor == null) {
+    recordCursor=store.newDynamicRecordCursor();
+  }
+  buffer.clear();
+  long startBlockId=PropertyBlock.fetchLong(currentHeader());
+  try (GenericCursor<DynamicRecord> records=store.getRecordsCursor(startBlockId,true,recordCursor)){
+    while (records.next()) {
+      DynamicRecord dynamicRecord=records.get();
+      byte[] data=dynamicRecord.getData();
+      if (buffer.remaining() < data.length) {
+        buffer.flip();
+        ByteBuffer newBuffer=newBiggerBuffer(data.length);
+        newBuffer.put(buffer);
+        buffer=newBuffer;
+      }
+      buffer.put(data,0,data.length);
+    }
+  }
+ }

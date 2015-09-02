@@ -1,12 +1,24 @@
 {
-  do {
-    if (cursor == null) {
-      if (nextPropertyRecordId == Record.NO_NEXT_PROPERTY.intValue()) {
-        return false;
-      }
-      nextRecord();
-    }
+  if (payload.next()) {
+    return true;
   }
- while (!nextBlock());
+  if (nextPropertyRecordId == Record.NO_NEXT_PROPERTY.intValue()) {
+    return false;
+  }
+  long currentPropertyRecordId=nextPropertyRecordId;
+  try (PageCursor cursor=propertyStore.newReadCursor(currentPropertyRecordId)){
+    do {
+      nextPropertyRecordId=readNextPropertyRecordId(cursor);
+      payload.clear();
+      payload.init(cursor);
+    }
+ while (cursor.shouldRetry());
+  }
+ catch (  IOException e) {
+    throw new UnderlyingStorageException(e);
+  }
+  if (!payload.next()) {
+    throw new NotFoundException("Property record with id " + currentPropertyRecordId + " not in use");
+  }
   return true;
 }
