@@ -1,0 +1,16 @@
+{
+  GraphDatabaseService database=startDatabase(directory.graphDbDir());
+  int numberOfNodes=10;
+  try (Transaction transaction=database.beginTx()){
+    for (int nodeIndex=0; nodeIndex < numberOfNodes; nodeIndex++) {
+      database.createNode();
+    }
+    transaction.success();
+  }
+   File restoreDbStoreDir=copyTransactionLogs();
+  GraphDatabaseService recoveredDatabase=startDatabase(restoreDbStoreDir);
+  NeoStore neoStore=((GraphDatabaseAPI)recoveredDatabase).getDependencyResolver().resolveDependency(NeoStore.class);
+  assertEquals(numberOfNodes,neoStore.getNodeStore().getHighId());
+  database.shutdown();
+  recoveredDatabase.shutdown();
+}
