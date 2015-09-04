@@ -1,12 +1,16 @@
 {
-  Args arguments=Args.withFlags(RECOVERY,PROP_OWNER,VERBOSE).parse(args);
+  Args arguments=Args.withFlags(RECOVERY,PROP_OWNER,VERBOSE,EXPERIMENTAL).parse(args);
+  if (!isExperimental(arguments)) {
+    runLegacyConsistencyChecker(args);
+    return;
+  }
   File storeDir=determineStoreDirectory(arguments);
   Config tuningConfiguration=readTuningConfiguration(arguments);
-  boolean verbose=determineVerbose(arguments);
+  boolean verbose=isVerbose(arguments);
   attemptRecoveryOrCheckStateOfLogicalLogs(arguments,storeDir,tuningConfiguration);
   LogProvider logProvider=FormattedLogProvider.toOutputStream(System.out);
   try {
-    consistencyCheckService.runFullConsistencyCheck(storeDir,tuningConfiguration,ProgressMonitorFactory.textual(System.err),logProvider,verbose);
+    consistencyCheckService.runFullConsistencyCheck(storeDir,tuningConfiguration,ProgressMonitorFactory.textual(System.err),logProvider,fs,verbose);
   }
  catch (  ConsistencyCheckIncompleteException e) {
     throw new ToolFailureException("Check aborted due to exception",e);

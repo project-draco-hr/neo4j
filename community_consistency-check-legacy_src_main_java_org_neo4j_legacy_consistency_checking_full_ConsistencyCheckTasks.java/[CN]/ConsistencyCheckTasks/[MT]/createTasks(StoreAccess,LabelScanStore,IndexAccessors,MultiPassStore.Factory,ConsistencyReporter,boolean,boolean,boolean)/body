@@ -1,0 +1,43 @@
+{
+  List<StoppableRunnable> tasks=new ArrayList<>();
+  if (checkGraph) {
+    tasks.add(create(nativeStores.getNodeStore(),multiPass.processors(LABELS,PROPERTIES,RELATIONSHIPS,RELATIONSHIP_GROUPS)));
+    tasks.add(create(nativeStores.getRelationshipStore(),multiPass.processors(NODES,PROPERTIES,RELATIONSHIPS)));
+    tasks.add(create(nativeStores.getPropertyStore(),multiPass.processors(PROPERTIES,STRINGS,ARRAYS,PROPERTY_KEYS)));
+    tasks.add(create(nativeStores.getStringStore(),multiPass.processors(STRINGS)));
+    tasks.add(create(nativeStores.getArrayStore(),multiPass.processors(ARRAYS)));
+    tasks.add(create(nativeStores.getRelationshipGroupStore(),multiPass.processors(RELATIONSHIP_GROUPS)));
+  }
+  tasks.add(create(nativeStores.getSchemaStore()));
+  final SchemaRecordCheck schemaCheck=new SchemaRecordCheck(new SchemaStorage(nativeStores.getSchemaStore()));
+  tasks.add(new SchemaStoreProcessorTask<>(nativeStores.getSchemaStore(),"check_rules",schemaCheck,progress,order,processor,processor));
+  tasks.add(new SchemaStoreProcessorTask<>(nativeStores.getSchemaStore(),"check_obligations",schemaCheck.forObligationChecking(),progress,order,processor,processor));
+  if (checkGraph) {
+    tasks.add(create(nativeStores.getRelationshipTypeTokenStore()));
+    tasks.add(create(nativeStores.getPropertyKeyTokenStore()));
+    tasks.add(create(nativeStores.getLabelTokenStore()));
+    tasks.add(create(nativeStores.getRelationshipTypeNameStore()));
+    tasks.add(create(nativeStores.getPropertyKeyNameStore()));
+    tasks.add(create(nativeStores.getLabelNameStore()));
+    tasks.add(create(nativeStores.getNodeDynamicLabelStore()));
+  }
+  if (checkLabelScanStore) {
+    tasks.add(new RecordScanner<>(new IterableStore<>(nativeStores.getNodeStore()),"NodeStoreToLabelScanStore",progress,new NodeToLabelScanRecordProcessor(reporter,labelScanStore)));
+  }
+  if (checkIndexes) {
+    tasks.add(new RecordScanner<>(new IterableStore<>(nativeStores.getNodeStore()),"NodeStoreToIndexes",progress,new NodeToLabelIndexesProcessor(reporter,indexes,new PropertyReader((PropertyStore)nativeStores.getPropertyStore(),(NodeStore)nativeStores.getNodeStore()))));
+  }
+  int iPass=0;
+  for (  ConsistencyReporter filteredReporter : multiPass.reporters(order,NODES)) {
+    if (checkLabelScanStore) {
+      tasks.add(new RecordScanner<>(labelScanStore.newAllEntriesReader(),format("LabelScanStore_%d",iPass),progress,new LabelScanDocumentProcessor(filteredReporter,new LabelScanCheck())));
+    }
+    if (checkIndexes) {
+      for (      IndexRule indexRule : indexes.rules()) {
+        tasks.add(new RecordScanner<>(new IndexIterator(indexes.accessorFor(indexRule)),format("Index_%d_%d",indexRule.getId(),iPass),progress,new IndexEntryProcessor(filteredReporter,new IndexCheck(indexRule))));
+      }
+    }
+    iPass++;
+  }
+  return tasks;
+}

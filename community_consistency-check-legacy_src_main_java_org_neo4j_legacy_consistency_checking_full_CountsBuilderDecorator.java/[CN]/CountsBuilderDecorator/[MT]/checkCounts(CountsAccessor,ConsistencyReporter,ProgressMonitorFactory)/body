@@ -1,0 +1,25 @@
+{
+  final int nodes=nodeCounts.uniqueSize();
+  final int relationships=relationshipCounts.uniqueSize();
+  final int total=nodes + relationships;
+  final AtomicInteger nodeEntries=new AtomicInteger(0);
+  final AtomicInteger relationshipEntries=new AtomicInteger(0);
+  final ProgressListener listener=progressFactory.singlePart("Checking node and relationship counts",total);
+  listener.started();
+  counts.accept(new CountsVisitor.Adapter(){
+    @Override public void visitNodeCount(    int labelId,    long count){
+      nodeEntries.incrementAndGet();
+      reporter.forCounts(new CountsEntry(nodeKey(labelId),count),CHECK_NODE_COUNT);
+      listener.add(1);
+    }
+    @Override public void visitRelationshipCount(    int startLabelId,    int relTypeId,    int endLabelId,    long count){
+      relationshipEntries.incrementAndGet();
+      reporter.forCounts(new CountsEntry(relationshipKey(startLabelId,relTypeId,endLabelId),count),CHECK_RELATIONSHIP_COUNT);
+      listener.add(1);
+    }
+  }
+);
+  reporter.forCounts(new CountsEntry(nodeKey(WILDCARD),nodeEntries.get()),CHECK_NODE_KEY_COUNT);
+  reporter.forCounts(new CountsEntry(relationshipKey(WILDCARD,WILDCARD,WILDCARD),relationshipEntries.get()),CHECK_RELATIONSHIP_KEY_COUNT);
+  listener.done();
+}

@@ -1,0 +1,29 @@
+{
+  final ConcurrentMap<Long,DynamicOwner> dynamicOwners=dynamicOwners(type);
+  if (dynamicOwners == null) {
+    return checker;
+  }
+  return new RecordCheck<DynamicRecord,ConsistencyReport.DynamicConsistencyReport>(){
+    @Override public void check(    DynamicRecord record,    CheckerEngine<DynamicRecord,ConsistencyReport.DynamicConsistencyReport> engine,    RecordAccess records){
+      if (record.inUse()) {
+        DynamicOwner.Unknown owner=new DynamicOwner.Unknown();
+        engine.comparativeCheck(owner,DynamicOwner.ORPHAN_CHECK);
+        if (null == dynamicOwners.putIfAbsent(record.getId(),owner)) {
+          owner.markInCustody();
+        }
+        if (!Record.NO_NEXT_BLOCK.is(record.getNextBlock())) {
+          DynamicOwner.Dynamic nextOwner=new DynamicOwner.Dynamic(type,record);
+          DynamicOwner prevOwner=dynamicOwners.put(record.getNextBlock(),nextOwner);
+          if (prevOwner != null) {
+            engine.comparativeCheck(prevOwner.record(records),nextOwner);
+          }
+        }
+      }
+      checker.check(record,engine,records);
+    }
+    @Override public void checkChange(    DynamicRecord oldRecord,    DynamicRecord newRecord,    CheckerEngine<DynamicRecord,ConsistencyReport.DynamicConsistencyReport> engine,    DiffRecordAccess records){
+      checker.checkChange(oldRecord,newRecord,engine,records);
+    }
+  }
+;
+}

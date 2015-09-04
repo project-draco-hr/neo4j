@@ -1,0 +1,13 @@
+{
+  StoreProcessor multiPassProcessor1=mock(StoreProcessor.class);
+  StoreProcessor multiPassProcessor2=mock(StoreProcessor.class);
+  NodeStore store=mock(NodeStore.class);
+  when(store.getStorageFileName()).thenReturn(new File("node-store"));
+  StoreProcessorTask<NodeRecord> task=new StoreProcessorTask<NodeRecord>(store,ProgressMonitorFactory.NONE.multipleParts("check"),MULTI_PASS,mock(StoreProcessor.class),multiPassProcessor1,multiPassProcessor2);
+  task.run();
+  ArgumentCaptor<ProgressListener> listener1=ArgumentCaptor.forClass(ProgressListener.class);
+  ArgumentCaptor<ProgressListener> listener2=ArgumentCaptor.forClass(ProgressListener.class);
+  verify(multiPassProcessor1).applyFiltered(same(store),listener1.capture());
+  verify(multiPassProcessor2).applyFiltered(same(store),listener2.capture());
+  assertNotSame(listener1.getValue(),listener2.getValue());
+}
