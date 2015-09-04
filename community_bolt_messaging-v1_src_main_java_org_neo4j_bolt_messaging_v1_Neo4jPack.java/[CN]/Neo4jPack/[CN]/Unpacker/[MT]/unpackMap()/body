@@ -1,7 +1,7 @@
 {
   int size=(int)unpackMapHeader();
   if (size == 0) {
-    return EMPTY_PROPERTY_MAP;
+    return EMPTY_MAP;
   }
   Map<String,Object> map;
   if (size == UNKNOWN_SIZE) {
@@ -9,24 +9,28 @@
     boolean more=true;
     while (more) {
       PackType keyType=peekNextType();
-      if (keyType == PackType.TEXT) {
-        String key=unpackText();
-        Object val=unpack();
-        map.put(key,val);
-      }
- else {
+switch (keyType) {
+case END_OF_STREAM:
         unpack();
-        more=false;
-      }
-    }
-  }
+      more=false;
+    break;
+case TEXT:
+  String key=unpackText();
+Object val=unpack();
+map.put(key,val);
+break;
+default :
+throw new PackStream.PackStreamException("Bad key type");
+}
+}
+}
  else {
-    map=new HashMap<>(size,1);
-    for (int j=0; j < size; j++) {
-      String key=unpackText();
-      Object val=unpack();
-      map.put(key,val);
-    }
-  }
-  return map;
+map=new HashMap<>(size,1);
+for (int i=0; i < size; i++) {
+String key=unpackText();
+Object val=unpack();
+map.put(key,val);
+}
+}
+return map;
 }
