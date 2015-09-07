@@ -1,0 +1,31 @@
+{
+  GraphDatabaseService database=startDatabase(directory.graphDbDir());
+  Label testLabel=DynamicLabel.label("testLabel");
+  final String propertyToDelete="propertyToDelete";
+  final String validPropertyName="validProperty";
+  try (Transaction transaction=database.beginTx()){
+    Node node=database.createNode();
+    node.addLabel(testLabel);
+    transaction.success();
+  }
+   try (Transaction transaction=database.beginTx()){
+    Node node=findNodeByLabel(database,testLabel);
+    node.setProperty(propertyToDelete,createLongString());
+    node.setProperty(validPropertyName,createLongString());
+    transaction.success();
+  }
+   try (Transaction transaction=database.beginTx()){
+    Node node=findNodeByLabel(database,testLabel);
+    node.removeProperty(propertyToDelete);
+    transaction.success();
+  }
+   File restoreDbStoreDir=copyTransactionLogs();
+  GraphDatabaseService recoveredDatabase=startDatabase(restoreDbStoreDir);
+  try (Transaction ignored=recoveredDatabase.beginTx()){
+    Node node=findNodeByLabel(recoveredDatabase,testLabel);
+    assertFalse(node.hasProperty(propertyToDelete));
+    assertTrue(node.hasProperty(validPropertyName));
+  }
+   database.shutdown();
+  recoveredDatabase.shutdown();
+}
