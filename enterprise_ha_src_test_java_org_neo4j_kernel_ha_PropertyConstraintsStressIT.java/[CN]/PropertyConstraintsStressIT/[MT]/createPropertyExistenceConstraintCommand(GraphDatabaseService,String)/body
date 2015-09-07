@@ -1,0 +1,25 @@
+{
+  return new WorkerCommand<Object,Boolean>(){
+    @Override public Boolean doWork(    Object state) throws Exception {
+      boolean constraintCreationFailed=false;
+      try (Transaction tx=db.beginTx()){
+        db.execute(query);
+        tx.success();
+      }
+ catch (      QueryExecutionException e) {
+        System.out.println("Constraint failed: " + e.getMessage());
+        if (Exceptions.rootCause(e) instanceof ConstraintVerificationFailedKernelException) {
+          constraintCreationFailed=true;
+        }
+ else {
+          throw e;
+        }
+      }
+      if (!constraintCreationFailed) {
+        System.out.println("Constraint created: " + query);
+      }
+      return constraintCreationFailed;
+    }
+  }
+;
+}
