@@ -1,0 +1,35 @@
+{
+  File dbDir=temporaryFolder.newFolder();
+  GraphDatabaseService db=new GraphDatabaseFactory().newEmbeddedDatabaseBuilder(dbDir).setConfig(GraphDatabaseSettings.pagecache_memory,"2000M").setConfig(GraphDatabaseSettings.logical_log_rotation_threshold,"500M").newGraphDatabase();
+  try (Transaction tx=db.beginTx()){
+    db.schema().constraintFor(LABEL).assertPropertyIsUnique(PROPERTY_KEY).create();
+    tx.success();
+  }
+   int threadTxCount=TX_COUNT / THREAD_COUNT;
+  int startOfRange;
+  int endOfRange=-1;
+  CountDownLatch startSignal=new CountDownLatch(1);
+  CountDownLatch finishSignal=new CountDownLatch(THREAD_COUNT);
+  AtomicBoolean failed=new AtomicBoolean(false);
+  AtomicLong txs=new AtomicLong(0);
+  for (int i=0; i < THREAD_COUNT; i++) {
+    startOfRange=1 + endOfRange;
+    endOfRange=startOfRange + threadTxCount - 1;
+    System.out.println(format("Thread=%s, Txs=%s, %s -> %s",COUNT_FORMAT.format(i),COUNT_FORMAT.format(threadTxCount),COUNT_FORMAT.format(startOfRange),COUNT_FORMAT.format(endOfRange)));
+    new LostWritesThread(startOfRange,endOfRange,failed,LABEL,PROPERTY_KEY,db,startSignal,finishSignal,txs).start();
+  }
+  startSignal.countDown();
+  long startTime=System.currentTimeMillis();
+  long finishTime;
+  long prevTxs=0;
+  while (!finishSignal.await(2,TimeUnit.SECONDS)) {
+    long currTxs=txs.get();
+    finishTime=System.currentTimeMillis();
+    printProgress(currTxs,prevTxs,startTime,finishTime);
+    assertThat(failed.get(),is(false));
+    prevTxs=currTxs;
+    startTime=System.currentTimeMillis();
+  }
+  printProgress(txs.get(),prevTxs,startTime,System.currentTimeMillis());
+  assertThat(failed.get(),is(false));
+}
