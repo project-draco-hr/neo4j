@@ -18,14 +18,26 @@
       }
       DirectionData startSideData=directionData == startSide ? directionData : otherSide;
       DirectionData endSideData=directionData == startSide ? otherSide : directionData;
-      if (hits.add(new Hit(startSideData,endSideData,nextNode),depth) >= maxResultCount) {
-        directionData.stop=true;
-        otherSide.stop=true;
-        lastMetadata.paths++;
+      Hit hit=new Hit(startSideData,endSideData,nextNode);
+      Node start=startSide.startNode;
+      Node end=(startSide == directionData) ? otherSide.startNode : directionData.startNode;
+      if (filterPaths(hitToPaths(hit,start,end,stopAsap)).size() > 0) {
+        if (hits.add(hit,depth) >= maxResultCount) {
+          directionData.stop=true;
+          otherSide.stop=true;
+          lastMetadata.paths++;
+        }
+ else         if (stopAsap) {
+          if (otherSide.stop) {
+            return;
+          }
+          directionData.stop=true;
+        }
       }
- else       if (stopAsap) {
-        if (otherSide.stop == true)         return;
-        directionData.stop=true;
+ else {
+        directionData.haveFoundSomething=false;
+        directionData.sharedFrozenDepth.value=NULL;
+        otherSide.stop=false;
       }
     }
   }
