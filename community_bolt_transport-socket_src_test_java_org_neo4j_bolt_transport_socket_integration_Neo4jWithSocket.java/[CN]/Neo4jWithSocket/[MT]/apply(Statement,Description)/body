@@ -1,0 +1,33 @@
+{
+  return new Statement(){
+    @Override public void evaluate() throws Throwable {
+      final GraphDatabaseService gdb=new TestGraphDatabaseFactory().newImpermanentDatabase();
+      final GraphDatabaseAPI api=((GraphDatabaseAPI)gdb);
+      final LogService logging=api.getDependencyResolver().resolveDependency(LogService.class);
+      final UsageData usageData=api.getDependencyResolver().resolveDependency(UsageData.class);
+      final JobScheduler scheduler=api.getDependencyResolver().resolveDependency(JobScheduler.class);
+      final Sessions sessions=life.add(new StandardSessions(api,usageData,logging));
+      PrimitiveLongObjectMap<Function<Channel,SocketProtocol>> availableVersions=longObjectMap();
+      availableVersions.put(SocketProtocolV1.VERSION,new Function<Channel,SocketProtocol>(){
+        @Override public SocketProtocol apply(        Channel channel){
+          return new SocketProtocolV1(logging,sessions.newSession(),channel,usageData);
+        }
+      }
+);
+      SelfSignedCertificate ssc=new SelfSignedCertificate();
+      SslContext sslCtx=SslContextBuilder.forServer(ssc.certificate(),ssc.privateKey()).build();
+      socketTransport=new SocketTransport(new HostnamePort("localhost:7687"),sslCtx,logging.getUserLogProvider(),availableVersions);
+      wsTransport=new WebSocketTransport(new HostnamePort("localhost:7688"),sslCtx,logging.getUserLogProvider(),availableVersions);
+      life.add(new NettyServer(scheduler.threadFactory(JobScheduler.Groups.boltNetworkIO),asList(socketTransport,wsTransport)));
+      life.start();
+      try {
+        statement.evaluate();
+      }
+  finally {
+        life.shutdown();
+        gdb.shutdown();
+      }
+    }
+  }
+;
+}
