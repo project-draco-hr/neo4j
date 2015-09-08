@@ -1,0 +1,37 @@
+{
+  ForsetiLockManager locks=new ForsetiLockManager(ResourceTypes.NODE);
+  final Locks.Client tx0=locks.newClient().description("`MATCH (n) RETURN n`");
+  final Locks.Client tx1=locks.newClient().description("`MATCH (p) SET p.name = {name}` {name:'Bob'}");
+  final Locks.Client tx2=locks.newClient().description("`MERGE (n) RETURN id(n)`");
+  tx0.acquireShared(ResourceTypes.NODE,1337);
+  tx2.acquireShared(ResourceTypes.NODE,1337);
+  tx1.acquireExclusive(ResourceTypes.NODE,1338);
+  Future future=otherThread.execute(new OtherThreadExecutor.WorkerCommand<Void,Object>(){
+    @Override public Object doWork(    Void state) throws Exception {
+      tx0.acquireExclusive(ResourceTypes.NODE,1338);
+      return null;
+    }
+  }
+);
+  assertThat(otherThread,isThreadState(Thread.State.TERMINATED,Thread.State.TIMED_WAITING,Thread.State.WAITING));
+  String tx1Error=null, tx0Error=null;
+  try {
+    tx1.acquireExclusive(ResourceTypes.NODE,1337);
+  }
+ catch (  DeadlockDetectedException e) {
+    tx1Error=e.getMessage();
+    tx1.releaseAll();
+  }
+  try {
+    future.get();
+  }
+ catch (  ExecutionException e) {
+    tx0Error=e.getCause().getMessage();
+  }
+  if (tx0Error != null) {
+    assertEquals("Tx[0] can't lock NODE(1338), because that resource is locked by others in a way that would cause a deadlock if we waited for them" + ".\n" + "The lock currently is ExclusiveLock{owner=Tx[1]}, and holders of that lock are waiting in the following way: \n"+ "<Tx[1], waiting for Tx[0],Tx[2]>\n"+ "\n"+ "Transactions:\n"+ "  Tx[0]: `MATCH (n) RETURN n`\n"+ "  Tx[1]: `MATCH (p) SET p.name = {name}` {name:'Bob'}\n"+ "  Tx[2]: `MERGE (n) RETURN id(n)`",tx0Error);
+  }
+ else {
+    assertThat(tx1Error,matchesPattern("^" + "Tx\\[1\\] can't lock NODE\\(1337\\), because that resource is locked by others in a way that would cause a deadlock if we waited for them" + ".\n"+ "The lock currently is SharedLock\\{objectId=\\d+, refCount=2\\}, and holders of that lock are waiting in the following way: \n"+ "<Tx\\[0\\], waiting for .+>, \n"+ "<Tx\\[2\\], running>\n"+ "\n"+ "Transactions:\n"+ "  Tx\\[0\\]: `MATCH \\(n\\) RETURN n`\n"+ "  Tx\\[1\\]: `MATCH \\(p\\) SET p.name = \\{name\\}` \\{name:'Bob'\\}\n"+ "  Tx\\[2\\]: `MERGE \\(n\\) RETURN id\\(n\\)`"));
+  }
+}
