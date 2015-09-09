@@ -1,0 +1,38 @@
+{
+  try {
+    startSignal.await();
+    java.util.Stack<Object> lockStack=new java.util.Stack<Object>();
+    java.util.Stack<Long> resourceStack=new java.util.Stack<>();
+    for (int i=0; i < numberOfIterations; i++) {
+      try {
+        int depth=depthCount;
+        do {
+          float f=rand.nextFloat();
+          int n=rand.nextInt(resources.length);
+          if (f < readWriteRatio) {
+            startedWaiting=currentTimeMillis();
+            lm.acquireShared(ResourceTypes.NODE,resources[n]);
+            startedWaiting=null;
+            lockStack.push(READ);
+          }
+ else {
+            startedWaiting=currentTimeMillis();
+            lm.acquireExclusive(ResourceTypes.NODE,resources[n]);
+            startedWaiting=null;
+            lockStack.push(WRITE);
+          }
+          resourceStack.push(resources[n]);
+        }
+ while (--depth > 0);
+      }
+ catch (      DeadlockDetectedException e) {
+      }
+ finally {
+        releaseAllLocks(lockStack,resourceStack);
+      }
+    }
+  }
+ catch (  Exception e) {
+    error=e;
+  }
+}
