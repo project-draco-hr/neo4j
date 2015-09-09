@@ -1,0 +1,20 @@
+{
+  SwitchToSlave switchToSlave=newSwitchToSlaveSpy();
+  when(fs.fileExists(any(File.class))).thenReturn(true);
+  JobScheduler jobScheduler=mock(JobScheduler.class);
+  LifeSupport communicationLife=mock(LifeSupport.class);
+  URI localhost=getLocalhostUri();
+  final UpdatePullerScheduler pullerScheduler=new UpdatePullerScheduler(updatePuller,jobScheduler,mock(Logging.class),10l);
+  when(pullerFactory.createUpdatePullerScheduler(updatePuller)).thenReturn(pullerScheduler);
+  doAnswer(new Answer(){
+    @Override public Object answer(    InvocationOnMock invocationOnMock) throws Throwable {
+      pullerScheduler.init();
+      return null;
+    }
+  }
+).when(communicationLife).start();
+  switchToSlave.switchToSlave(communicationLife,localhost,localhost,mock(CancellationRequest.class));
+  verify(updatePuller).tryPullUpdates();
+  verify(communicationLife).add(pullerScheduler);
+  verify(jobScheduler).scheduleRecurring(eq(JobScheduler.Group.pullUpdates),any(Runnable.class),eq(10l),eq(10l),eq(TimeUnit.MILLISECONDS));
+}

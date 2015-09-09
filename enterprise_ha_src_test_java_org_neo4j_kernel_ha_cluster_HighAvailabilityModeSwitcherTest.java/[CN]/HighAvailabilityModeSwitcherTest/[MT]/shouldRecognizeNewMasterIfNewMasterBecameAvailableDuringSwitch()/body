@@ -1,5 +1,4 @@
 {
-  System.gc();
   final CountDownLatch firstMasterAvailableHandled=new CountDownLatch(1);
   final CountDownLatch secondMasterAvailableComes=new CountDownLatch(1);
   final CountDownLatch secondMasterAvailableHandled=new CountDownLatch(1);
@@ -7,7 +6,7 @@
   Logging mock=mock(Logging.class);
   when(mock.getMessagesLog(any(Class.class))).thenReturn(mock(StringLogger.class));
   when(mock.getConsoleLog(any(Class.class))).thenReturn(mock(ConsoleLogger.class));
-  HighAvailabilityModeSwitcher toTest=new HighAvailabilityModeSwitcher(switchToSlave,mock(SwitchToMaster.class),mock(Election.class),mock(ClusterMemberAvailability.class),mock(DependencyResolver.class),new InstanceId(4),mock){
+  HighAvailabilityModeSwitcher modeSwitcher=new HighAvailabilityModeSwitcher(switchToSlave,mock(SwitchToMaster.class),mock(Election.class),mock(ClusterMemberAvailability.class),mock(DependencyResolver.class),new InstanceId(4),mock){
     @Override ScheduledExecutorService createExecutor(){
       final ScheduledExecutorService executor=mock(ScheduledExecutorService.class);
       final ExecutorService realExecutor=Executors.newSingleThreadExecutor();
@@ -42,16 +41,16 @@
     }
   }
 ;
-  toTest.init();
-  toTest.start();
-  toTest.listeningAt(URI.create("ha://server3?serverId=3"));
+  modeSwitcher.init();
+  modeSwitcher.start();
+  modeSwitcher.listeningAt(URI.create("ha://server3?serverId=3"));
   URI uri1=URI.create("ha://server1");
   doThrow(new ComException("Fail to switch to slave and reschedule to retry")).when(switchToSlave).switchToSlave(any(LifeSupport.class),any(URI.class),eq(uri1),any(CancellationRequest.class));
-  toTest.masterIsAvailable(new HighAvailabilityMemberChangeEvent(PENDING,TO_SLAVE,new InstanceId(1),uri1));
+  modeSwitcher.masterIsAvailable(new HighAvailabilityMemberChangeEvent(PENDING,TO_SLAVE,new InstanceId(1),uri1));
   firstMasterAvailableHandled.await();
   verify(switchToSlave).switchToSlave(any(LifeSupport.class),any(URI.class),eq(uri1),any(CancellationRequest.class));
   URI uri2=URI.create("ha://server2");
-  toTest.masterIsAvailable(new HighAvailabilityMemberChangeEvent(TO_SLAVE,TO_SLAVE,new InstanceId(2),uri2));
+  modeSwitcher.masterIsAvailable(new HighAvailabilityMemberChangeEvent(TO_SLAVE,TO_SLAVE,new InstanceId(2),uri2));
   secondMasterAvailableComes.countDown();
   secondMasterAvailableHandled.await();
   verify(switchToSlave).switchToSlave(any(LifeSupport.class),any(URI.class),eq(uri2),any(CancellationRequest.class));
