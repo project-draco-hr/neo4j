@@ -1,8 +1,10 @@
 {
   fileSystem.deleteFile(new File(dbDirectory,StoreLogService.INTERNAL_LOG_NAME));
   PageCache pageCache=pageCacheRule.getPageCache(fileSystem);
-  newUpgrader(ALLOW_UPGRADE,pageCache).migrateIfNeeded(dbDirectory,schemaIndexProvider);
-  NeoStores neoStores=new StoreFactory(fileSystem,dbDirectory,pageCache,NullLogProvider.getInstance()).openNeoStores(false);
+  UpgradableDatabase upgradableDatabase=new UpgradableDatabase(new StoreVersionCheck(pageCache),new LegacyStoreVersionCheck(fileSystem));
+  newUpgrader(ALLOW_UPGRADE,pageCache).migrateIfNeeded(dbDirectory,upgradableDatabase,schemaIndexProvider);
+  StoreFactory storeFactory=new StoreFactory(fileSystem,dbDirectory,pageCache,NullLogProvider.getInstance());
+  NeoStores neoStores=storeFactory.openNeoStores(false);
   assertThat(neoStores.getMetaDataStore().getUpgradeTransaction()[0],equalTo(neoStores.getMetaDataStore().getLastCommittedTransaction()[0]));
   assertThat(neoStores.getMetaDataStore().getUpgradeTransaction()[1],equalTo(neoStores.getMetaDataStore().getLastCommittedTransaction()[1]));
   assertThat(neoStores.getMetaDataStore().getUpgradeTime(),not(equalTo(MetaDataStore.FIELD_NOT_INITIALIZED)));

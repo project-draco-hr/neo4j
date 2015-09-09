@@ -30,17 +30,16 @@
   valueSize-=keySize;
   int pageSize=pageSize(pages,keySize,valueSize);
 {
+    BigEndianByteArrayBuffer formatSpecifier=new BigEndianByteArrayBuffer(new byte[valueSize]);
+    writeFormatSpecifier(formatSpecifier);
     PagedFile file=pages.map(path,pageSize);
     try {
-      if (StoreVersionTrailerUtil.getTrailerPosition(file,fileTrailer()) == -1) {
-        throw new IOException("Invalid file trailer. Expected trailer not found.");
-      }
       BigEndianByteArrayBuffer key=new BigEndianByteArrayBuffer(new byte[keySize]);
       BigEndianByteArrayBuffer value=new BigEndianByteArrayBuffer(new byte[valueSize]);
       buffer.position(keySize);
       buffer.limit(keySize + valueSize);
       value.dataFrom(buffer);
-      MetadataCollector metadata=metadata(value,pageSize,keySize,valueSize);
+      MetadataCollector metadata=metadata(formatSpecifier,pageSize,keySize,valueSize);
       KeyValueStoreFile.scanAll(file,0,metadata,key,value);
       KeyValueStoreFile storeFile=new KeyValueStoreFile(file,keySize,valueSize,metadata);
       file=null;
