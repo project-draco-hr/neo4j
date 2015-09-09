@@ -1,13 +1,9 @@
 {
   clearWaitList();
   lock.copyHolderWaitListsInto(waitList);
-  int blockerId=lock.detectDeadlock(clientId);
-  if (blockerId != -1 && deadlockResolutionStrategy.shouldAbort(this,getClient.apply(blockerId))) {
-    Set<Integer> involvedParties=new TreeSet<>();
-    String waitList=lock.describeWaitList(involvedParties);
-    String legend=ForsetiLockManager.legendForClients(involvedParties,getClient);
-    String desc=format("%s can't lock %s(%d), because that resource is locked by others in " + "a way that would cause a deadlock if we waited for them.\nThe lock currently is %s, " + "and holders of that lock are waiting in the following way: %s%n%nTransactions:%s",this,type,resourceId,lock,waitList,legend);
-    this.waitList.clear();
-    throw new DeadlockDetectedException(desc);
+  if (lock.anyHolderIsWaitingFor(clientId) && lock.holderWaitListSize() >= waitListSize()) {
+    String message=this + " can't acquire " + lock+ " on "+ type+ "("+ resourceId+ "), because holders of that lock "+ "are waiting for "+ this+ ".\n Wait list:"+ lock.describeWaitList();
+    waitList.clear();
+    throw new DeadlockDetectedException(message);
   }
 }

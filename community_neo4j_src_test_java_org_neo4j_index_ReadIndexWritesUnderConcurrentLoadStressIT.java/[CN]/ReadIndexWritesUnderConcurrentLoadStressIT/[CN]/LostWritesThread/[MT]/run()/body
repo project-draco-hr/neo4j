@@ -1,0 +1,31 @@
+{
+  try {
+    startSignal.await();
+  }
+ catch (  InterruptedException ex) {
+    System.out.println("Thread was interrupted");
+    return;
+  }
+  try (Transaction tx=db.beginTx()){
+    Node node=db.createNode(label);
+    node.setProperty(propertyKey,startOfRange);
+    tx.success();
+    txs.incrementAndGet();
+  }
+   for (int i=startOfRange + 1; i <= endOfRange; i++) {
+    try (Transaction tx=db.beginTx()){
+      Node node=db.createNode(label);
+      node.setProperty(propertyKey,i);
+      Node previousNode=db.findNode(label,propertyKey,i - 1);
+      assertThat(format("Error at tx %s",i),previousNode,not(nullValue()));
+      tx.success();
+      txs.incrementAndGet();
+    }
+ catch (    Throwable e) {
+      failed.set(true);
+      e.printStackTrace();
+      break;
+    }
+  }
+  finishSignal.countDown();
+}
