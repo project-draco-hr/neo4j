@@ -23,7 +23,7 @@
   when(dependencyResolver.resolveDependency(TransactionIdStore.class)).thenReturn(new DeadSimpleTransactionIdStore());
   when(dependencyResolver.resolveDependency(ClusterMembers.class)).thenReturn(members);
   UpdatePuller updatePuller=mock(UpdatePuller.class);
-  when(updatePuller.await(any(UpdatePuller.Condition.class),anyBoolean())).thenReturn(true);
+  when(updatePuller.tryPullUpdates()).thenReturn(true);
   when(dependencyResolver.resolveDependency(UpdatePuller.class)).thenReturn(updatePuller);
   ClusterMemberAvailability clusterMemberAvailability=mock(ClusterMemberAvailability.class);
   final TriggerableClusterMemberEvents events=new TriggerableClusterMemberEvents();
@@ -73,12 +73,7 @@
   when(pageCacheMock.map(any(File.class),anyInt())).thenReturn(pagedFileMock);
   TransactionIdStore transactionIdStoreMock=mock(TransactionIdStore.class);
   when(transactionIdStoreMock.getLastCommittedTransaction()).thenReturn(new long[]{0,0});
-  SwitchToSlave switchToSlave=new SwitchToSlave(new File(""),NullLogService.getInstance(),mock(FileSystemAbstraction.class),members,config,dependencyResolver,mock(HaIdGeneratorFactory.class),handler,mock(ClusterMemberAvailability.class),mock(RequestContextFactory.class),Iterables.<KernelExtensionFactory<?>>empty(),masterClientResolver,monitor,new StoreCopyClient.Monitor.Adapter(),Suppliers.singleton(dataSource),Suppliers.singleton(transactionIdStoreMock),new Factory<Slave>(){
-    @Override public Slave newInstance(){
-      return mock(Slave.class);
-    }
-  }
-,new Function<Slave,SlaveServer>(){
+  SwitchToSlave switchToSlave=new SwitchToSlave(new File(""),NullLogService.getInstance(),mock(FileSystemAbstraction.class),members,config,dependencyResolver,mock(HaIdGeneratorFactory.class),handler,mock(ClusterMemberAvailability.class),mock(RequestContextFactory.class),mock(PullerFactory.class),Iterables.<KernelExtensionFactory<?>>empty(),masterClientResolver,monitor,new StoreCopyClient.Monitor.Adapter(),Suppliers.singleton(dataSource),Suppliers.singleton(transactionIdStoreMock),new Function<Slave,SlaveServer>(){
     @Override public SlaveServer apply(    Slave slave) throws RuntimeException {
       SlaveServer mock=mock(SlaveServer.class);
       when(mock.getSocketAddress()).thenReturn(new InetSocketAddress("localhost",123));

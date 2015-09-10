@@ -1,15 +1,18 @@
 {
   MasterClient master=newMasterClient(masterUri,neoDataSource.getStoreId(),haCommunicationLife);
-  Slave slaveImpl=slaveFactory.newInstance();
+  TransactionObligationFulfiller obligationFulfiller=resolver.resolveDependency(TransactionObligationFulfiller.class);
+  UpdatePullerScheduler updatePullerScheduler=updatePullerFactory.createUpdatePullerScheduler(updatePuller);
+  Slave slaveImpl=new SlaveImpl(obligationFulfiller);
   SlaveServer server=slaveServerFactory.apply(slaveImpl);
   if (cancellationRequest.cancellationRequested()) {
     return null;
   }
   masterDelegateHandler.setDelegate(master);
+  haCommunicationLife.add(updatePullerScheduler);
   haCommunicationLife.add(slaveImpl);
   haCommunicationLife.add(server);
   haCommunicationLife.start();
-  if (!catchUpWithMaster()) {
+  if (!catchUpWithMaster(updatePuller)) {
     return null;
   }
   URI slaveHaURI=createHaURI(me,server);
