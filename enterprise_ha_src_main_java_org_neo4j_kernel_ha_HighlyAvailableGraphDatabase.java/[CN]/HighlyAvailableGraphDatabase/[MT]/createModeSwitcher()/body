@@ -1,0 +1,25 @@
+{
+  ConsoleLogger consoleLog=logging.getConsoleLog(HighAvailabilityModeSwitcher.class);
+  invalidEpochHandler=new InvalidEpochExceptionHandler(){
+    @Override public void handle(){
+      highAvailabilityModeSwitcher.forceElections();
+    }
+  }
+;
+  DelegateInvocationHandler<UpdatePuller> updatePullerDelegate=new DelegateInvocationHandler<>(UpdatePuller.class);
+  UpdatePuller updatePullerProxy=(UpdatePuller)Proxy.newProxyInstance(UpdatePuller.class.getClassLoader(),new Class[]{UpdatePuller.class},updatePullerDelegate);
+  dependencies.satisfyDependency(updatePullerProxy);
+  this.lastUpdateTime=new LastUpdateTime();
+  PullerFactory pullerFactory=new PullerFactory(requestContextFactory,master,lastUpdateTime,logging,serverId,invalidEpochHandler,config.get(HaSettings.pull_interval),jobScheduler,dependencies,availabilityGuard,memberStateMachine);
+  TransactionObligationFulfiller obligationFulfiller=pullerFactory.createObligationFulfiller(updatePullerProxy);
+  paxosLife.add(obligationFulfiller);
+  dependencies.satisfyDependency(obligationFulfiller);
+  MasterClientResolver masterClientResolver=new MasterClientResolver(logging,responseUnpacker,invalidEpochHandler,config.get(HaSettings.read_timeout).intValue(),config.get(HaSettings.lock_read_timeout).intValue(),config.get(HaSettings.max_concurrent_channels_per_slave),config.get(HaSettings.com_chunk_size).intValue());
+  SwitchToSlave switchToSlaveInstance=new SwitchToSlave(consoleLog,config,getDependencyResolver(),(HaIdGeneratorFactory)idGeneratorFactory,logging,masterDelegateInvocationHandler,clusterMemberAvailability,requestContextFactory,kernelExtensions.listFactories(),masterClientResolver,updatePullerProxy,pullerFactory,monitors.newMonitor(ByteCounterMonitor.class,SlaveServer.class),monitors.newMonitor(RequestMonitor.class,SlaveServer.class),monitors.newMonitor(SwitchToSlave.Monitor.class),monitors.newMonitor(StoreCopyClient.Monitor.class));
+  SwitchToMaster switchToMasterInstance=new SwitchToMaster(logging,consoleLog,this,(HaIdGeneratorFactory)idGeneratorFactory,config,dependencies.provideDependency(SlaveFactory.class),masterDelegateInvocationHandler,clusterMemberAvailability,dataSourceManager,monitors.newMonitor(ByteCounterMonitor.class,MasterServer.class),monitors.newMonitor(RequestMonitor.class,MasterServer.class),monitors.newMonitor(MasterImpl.Monitor.class,MasterImpl.class));
+  highAvailabilityModeSwitcher=new HighAvailabilityModeSwitcher(switchToSlaveInstance,switchToMasterInstance,clusterClient,clusterMemberAvailability,getDependencyResolver(),config.get(ClusterSettings.server_id),logging);
+  paxosLife.add(new UpdatePullerModeSwitcher(highAvailabilityModeSwitcher,updatePullerDelegate,pullerFactory));
+  clusterClient.addBindingListener(highAvailabilityModeSwitcher);
+  memberStateMachine.addHighAvailabilityMemberListener(highAvailabilityModeSwitcher);
+  paxosLife.add(highAvailabilityModeSwitcher);
+}
