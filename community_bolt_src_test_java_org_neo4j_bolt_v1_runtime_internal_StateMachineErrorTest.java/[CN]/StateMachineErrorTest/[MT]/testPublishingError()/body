@@ -1,0 +1,14 @@
+{
+  RecordingCallback<RecordStream,Object> failingCallback=new RecordingCallback<RecordStream,Object>(){
+    @Override public void result(    RecordStream result,    Object attachment){
+      throw new RuntimeException("Well, that didn't work out very well.");
+    }
+  }
+;
+  Mockito.when(runner.run(any(SessionState.class),any(String.class),any(Map.class))).thenReturn(mock(RecordStream.class));
+  SessionStateMachine machine=newIdleMachine();
+  machine.run("something",null,null,Session.Callbacks.<StatementMetadata,Object>noop());
+  machine.pullAll(null,failingCallback);
+  assertThat(failingCallback.next(),failedWith(Status.General.UnknownFailure));
+  assertThat(machine.state(),equalTo(SessionStateMachine.State.ERROR));
+}

@@ -1,0 +1,13 @@
+{
+  final TopLevelTransaction tx=mock(TopLevelTransaction.class);
+  when(db.beginTx()).thenReturn(tx);
+  when(runner.run(Matchers.any(SessionState.class),Matchers.anyString(),Matchers.anyMap())).thenThrow(new RollbackInducingKernelException());
+  machine.initialize("FunClient/1.2",null,Session.Callback.NO_OP);
+  machine.beginTransaction();
+  machine.run("Hello, world!",Collections.EMPTY_MAP,null,Session.Callback.NO_OP);
+  assertThat(machine.state(),CoreMatchers.equalTo(SessionStateMachine.State.ERROR));
+  verify(tx).failure();
+  verify(tx).close();
+  machine.acknowledgeFailure(null,Session.Callback.NO_OP);
+  assertThat(machine.state(),CoreMatchers.equalTo(SessionStateMachine.State.IDLE));
+}
