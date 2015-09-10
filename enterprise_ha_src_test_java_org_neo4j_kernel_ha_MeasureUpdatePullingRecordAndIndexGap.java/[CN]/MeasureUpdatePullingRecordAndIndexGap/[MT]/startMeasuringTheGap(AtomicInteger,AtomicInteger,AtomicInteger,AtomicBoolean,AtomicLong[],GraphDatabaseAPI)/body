@@ -1,0 +1,44 @@
+{
+  new Thread(){
+    @Override public void run(){
+      while (!halter.get()) {
+        for (int i=0; i < numberOfIndexes; i++) {
+          long targetNodeId=highIdNodes[i].get();
+          if (targetNodeId == 0) {
+            continue;
+          }
+          try (Transaction tx=db.beginTx()){
+            Node nodeFromStorePOV=null;
+            long nodeId=targetNodeId;
+            while (nodeFromStorePOV == null && !halter.get()) {
+              try {
+                nodeFromStorePOV=db.getNodeById(nodeId);
+              }
+ catch (              NotFoundException e) {
+                nodeId=max(nodeId - 1,0);
+                try {
+                  Thread.sleep(10);
+                }
+ catch (                InterruptedException e1) {
+                  throw new RuntimeException(e1);
+                }
+              }
+            }
+            Node nodeFromIndexPOV=db.findNode(label(i),key(i),nodeId);
+            tx.success();
+            if (nodeFromIndexPOV != null) {
+              good.incrementAndGet();
+            }
+ else {
+              bad.incrementAndGet();
+            }
+            if (nodeId != targetNodeId) {
+              ugly.incrementAndGet();
+            }
+          }
+         }
+      }
+    }
+  }
+.start();
+}

@@ -1,0 +1,40 @@
+{
+  final RecoveryLabelScanWriterProvider labelScanWriters=new RecoveryLabelScanWriterProvider(labelScanStore,1000);
+  final RecoveryLegacyIndexApplierLookup recoveryLegacyIndexApplierLookup=new RecoveryLegacyIndexApplierLookup(legacyIndexApplierLookup,1000);
+  final RecoveryIndexingUpdatesValidator indexUpdatesValidator=new RecoveryIndexingUpdatesValidator(indexingService);
+  final TransactionRepresentationStoreApplier storeRecoverer=new TransactionRepresentationStoreApplier(indexingService,labelScanWriters,neoStore,cacheAccess,lockService,legacyIndexApplierLookup,indexConfigStore,IdOrderingQueue.BYPASS);
+  RecoveryVisitor recoveryVisitor=new RecoveryVisitor(neoStore,storeRecoverer,indexUpdatesValidator,recoveryVisitorMonitor);
+  LogEntryReader<ReadableVersionableLogChannel> logEntryReader=new VersionAwareLogEntryReader<>();
+  final Visitor<LogVersionedStoreChannel,IOException> logFileRecoverer=new LogFileRecoverer(logEntryReader,recoveryVisitor);
+  Recovery recovery=new Recovery(new Recovery.SPI(){
+    @Override public void forceEverything(){
+      try {
+        labelScanWriters.close();
+        recoveryLegacyIndexApplierLookup.close();
+        indexUpdatesValidator.close();
+      }
+ catch (      IOException e) {
+        throw new UnderlyingStorageException(e);
+      }
+      logRotationControl.forceEverything();
+    }
+    @Override public long getCurrentLogVersion(){
+      return neoStore.getCurrentLogVersion();
+    }
+    @Override public Visitor<LogVersionedStoreChannel,IOException> getRecoverer(){
+      return logFileRecoverer;
+    }
+    @Override public PhysicalLogVersionedStoreChannel getLogFile(    long recoveryVersion) throws IOException {
+      return PhysicalLogFile.openForVersion(logFiles,fileSystemAbstraction,recoveryVersion);
+    }
+  }
+,recoveryMonitor);
+  life.add(recovery);
+  life.add(new LifecycleAdapter(){
+    @Override public void init() throws Throwable {
+      startupStatistics.setNumberOfRecoveredTransactions(recoveredCount.get());
+      recoveredCount.set(0);
+    }
+  }
+);
+}
