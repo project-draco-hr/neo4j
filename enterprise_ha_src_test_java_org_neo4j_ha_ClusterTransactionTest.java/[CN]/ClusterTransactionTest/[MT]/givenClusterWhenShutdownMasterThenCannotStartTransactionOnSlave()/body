@@ -1,34 +1,34 @@
 {
-  ClusterManager clusterManager=new ClusterManager(fromXml(getClass().getResource("/threeinstances.xml").toURI()),forTest(getClass()).cleanDirectory("testCluster"),stringMap(HaSettings.ha_server.name(),":6001-6005",HaSettings.tx_push_factor.name(),"2"));
-  try {
-    clusterManager.start();
-    clusterManager.getDefaultCluster().await(ClusterManager.allSeesAllAsAvailable());
-    GraphDatabaseAPI master=clusterManager.getDefaultCluster().getMaster();
-    final GraphDatabaseAPI slave=clusterManager.getDefaultCluster().getAnySlave();
-    final FutureTask<Boolean> result=new FutureTask<>(new Callable<Boolean>(){
-      @Override public Boolean call() throws Exception {
-        try (Transaction tx=slave.beginTx()){
-          tx.acquireWriteLock(slave.getNodeById(0));
-          return false;
-        }
- catch (        Exception e) {
-          return true;
-        }
+  final ClusterManager.ManagedCluster cluster=clusterRule.provider(fromXml(getClass().getResource("/threeinstances.xml").toURI())).config(HaSettings.ha_server,":6001-6005").config(HaSettings.tx_push_factor,"2").startCluster();
+  cluster.await(ClusterManager.allSeesAllAsAvailable());
+  final HighlyAvailableGraphDatabase master=cluster.getMaster();
+  final HighlyAvailableGraphDatabase slave=cluster.getAnySlave();
+  final long nodeId;
+  try (Transaction tx=master.beginTx()){
+    nodeId=master.createNode().getId();
+    tx.success();
+  }
+   cluster.sync();
+  final FutureTask<Boolean> result=new FutureTask<>(new Callable<Boolean>(){
+    @Override public Boolean call() throws Exception {
+      try (Transaction tx=slave.beginTx()){
+        tx.acquireWriteLock(slave.getNodeById(nodeId));
+      }
+ catch (      ComException e) {
+        return e.getCause() instanceof TransactionFailureException;
+      }
+      return false;
+    }
+  }
+);
+  master.getDependencyResolver().resolveDependency(LifeSupport.class).addLifecycleListener(new LifecycleListener(){
+    @Override public void notifyStatusChanged(    Object instance,    LifecycleStatus from,    LifecycleStatus to){
+      if (instance.getClass().getName().contains("DatabaseAvailability") && to == LifecycleStatus.STOPPED) {
+        result.run();
       }
     }
-);
-    master.getDependencyResolver().resolveDependency(LifeSupport.class).addLifecycleListener(new LifecycleListener(){
-      @Override public void notifyStatusChanged(      Object instance,      LifecycleStatus from,      LifecycleStatus to){
-        if (instance.getClass().getName().contains("DatabaseAvailability") && to == LifecycleStatus.STOPPED) {
-          result.run();
-        }
-      }
-    }
-);
-    master.shutdown();
-    assertThat(result.get(),equalTo(true));
   }
-  finally {
-    clusterManager.stop();
-  }
+);
+  master.shutdown();
+  assertThat(result.get(),equalTo(true));
 }
