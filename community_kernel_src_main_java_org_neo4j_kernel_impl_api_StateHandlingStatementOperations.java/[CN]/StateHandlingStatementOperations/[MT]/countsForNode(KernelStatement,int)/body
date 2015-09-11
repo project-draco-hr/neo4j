@@ -1,3 +1,19 @@
 {
-  return storeLayer.countsForNode(labelId);
+  long count=storeLayer.countsForNode(labelId);
+  if (statement.hasTxStateWithChanges()) {
+    CountsRecordState counts=new CountsRecordState();
+    try {
+      statement.txState().accept(new TransactionCountingStateVisitor(null,storeLayer,this,statement,counts));
+      if (counts.hasChanges()) {
+        count+=counts.nodeCount(labelId,newDoubleLongRegister()).readSecond();
+      }
+    }
+ catch (    ConstraintValidationKernelException e) {
+      throw new IllegalArgumentException("Unexpected error: " + e.getMessage());
+    }
+catch (    CreateConstraintFailureException e) {
+      throw new IllegalArgumentException("Unexpected error: " + e.getMessage());
+    }
+  }
+  return count;
 }
