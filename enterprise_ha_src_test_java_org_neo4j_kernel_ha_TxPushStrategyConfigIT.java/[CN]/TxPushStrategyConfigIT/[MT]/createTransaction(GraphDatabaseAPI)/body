@@ -1,10 +1,15 @@
 {
-  try (Transaction tx=db.beginTx()){
-    db.createNode();
-    tx.success();
+  TransactionTemplate template=new TransactionTemplate().with(db).retries(10).backoff(1,TimeUnit.SECONDS).monitor(new TransactionTemplate.Monitor.Adapter(){
+    @Override public void failure(    Throwable ex){
+      cluster.await(allSeesAllAsAvailable());
+      mapMachineIds();
+    }
   }
- catch (  RuntimeException e) {
-    e.printStackTrace();
-    throw e;
+);
+  template.execute(new Consumer<Transaction>(){
+    @Override public void accept(    Transaction transaction){
+      db.createNode();
+    }
   }
+);
 }
