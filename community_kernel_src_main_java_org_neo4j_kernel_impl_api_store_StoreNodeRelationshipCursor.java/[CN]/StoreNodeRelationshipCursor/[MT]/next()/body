@@ -1,38 +1,32 @@
 {
   while (relationshipId != Record.NO_NEXT_RELATIONSHIP.intValue()) {
     relationshipRecord.setId(relationshipId);
+    relationshipStore.fillRecord(relationshipId,relationshipRecord,RecordLoad.FORCE);
     try {
-      if (!relationshipStore.fillRecord(relationshipId,relationshipRecord,RecordLoad.CHECK)) {
-        return false;
-      }
-    }
- catch (    InvalidRecordException e) {
-      relationshipId=Record.NO_NEXT_RELATIONSHIP.intValue();
-      return false;
-    }
-    try {
-      if (direction != Direction.BOTH) {
+      if (relationshipRecord.inUse()) {
+        if (direction != Direction.BOTH) {
 switch (direction) {
 case INCOMING:
 {
-            if (relationshipRecord.getSecondNode() != fromNodeId) {
+              if (relationshipRecord.getSecondNode() != fromNodeId) {
+                continue;
+              }
+              break;
+            }
+case OUTGOING:
+{
+            if (relationshipRecord.getFirstNode() != fromNodeId) {
               continue;
             }
             break;
           }
-case OUTGOING:
-{
-          if (relationshipRecord.getFirstNode() != fromNodeId) {
-            continue;
-          }
-          break;
-        }
+      }
     }
+    if (!checkType(relationshipRecord.getType())) {
+      continue;
+    }
+    return true;
   }
-  if (!checkType(relationshipRecord.getType())) {
-    continue;
-  }
-  return true;
 }
   finally {
   if (relationshipRecord.getFirstNode() == fromNodeId) {
