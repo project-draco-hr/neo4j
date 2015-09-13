@@ -1,0 +1,26 @@
+{
+  RecordingCallback<StatementMetadata,Object> messages=new RecordingCallback<>();
+  RecordingCallback<RecordStream,Object> pulling=new RecordingCallback<>();
+  RecordingCallback<Void,Object> initializing=new RecordingCallback<>();
+  SessionStateMachine machine=newIdleMachine();
+  machine.commitTransaction();
+  assertThat(machine.state(),equalTo(SessionStateMachine.State.ERROR));
+  machine.beginTransaction();
+  assertThat(machine.state(),equalTo(SessionStateMachine.State.ERROR));
+  machine.beginImplicitTransaction();
+  assertThat(machine.state(),equalTo(SessionStateMachine.State.ERROR));
+  machine.commitTransaction();
+  assertThat(machine.state(),equalTo(SessionStateMachine.State.ERROR));
+  machine.rollbackTransaction();
+  assertThat(machine.state(),equalTo(SessionStateMachine.State.ERROR));
+  machine.run("src/test",EMPTY_PARAMS,null,messages);
+  assertThat(machine.state(),equalTo(SessionStateMachine.State.ERROR));
+  assertThat(messages.next(),SessionMatchers.ignored());
+  machine.pullAll(null,pulling);
+  assertThat(machine.state(),equalTo(SessionStateMachine.State.ERROR));
+  assertThat(pulling.next(),SessionMatchers.ignored());
+  machine.initialize("",null,initializing);
+  assertThat(machine.state(),equalTo(SessionStateMachine.State.ERROR));
+  assertThat(initializing.next(),SessionMatchers.ignored());
+  Mockito.verifyNoMoreInteractions(db,runner);
+}

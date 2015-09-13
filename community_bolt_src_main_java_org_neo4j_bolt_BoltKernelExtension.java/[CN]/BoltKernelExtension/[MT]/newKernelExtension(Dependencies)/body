@@ -1,0 +1,29 @@
+{
+  final Config config=dependencies.config();
+  final GraphDatabaseService gdb=dependencies.db();
+  final GraphDatabaseAPI api=(GraphDatabaseAPI)gdb;
+  final LogService logging=dependencies.logService();
+  final Log log=logging.getInternalLog(Sessions.class);
+  final HostnamePort socketAddress=config.get(Settings.socket_address);
+  final HostnamePort webSocketAddress=config.get(Settings.websocket_address);
+  final LifeSupport life=new LifeSupport();
+  if (config.get(Settings.enabled)) {
+    final JobScheduler scheduler=dependencies.scheduler();
+    final Sessions sessions=life.add(new ThreadedSessions(life.add(new StandardSessions(api,dependencies.usageData(),logging)),scheduler,logging));
+    SslContext sslCtx=null;
+    if (config.get(Settings.tls_enabled)) {
+      SelfSignedCertificate ssc=new SelfSignedCertificate();
+      sslCtx=SslContextBuilder.forServer(ssc.certificate(),ssc.privateKey()).build();
+    }
+    PrimitiveLongObjectMap<Function<Channel,BoltProtocol>> availableVersions=longObjectMap();
+    availableVersions.put(BoltProtocolV1.VERSION,new Function<Channel,BoltProtocol>(){
+      @Override public BoltProtocol apply(      Channel channel){
+        return new BoltProtocolV1(logging,sessions.newSession(),channel,dependencies.usageData());
+      }
+    }
+);
+    life.add(new NettyServer(scheduler.threadFactory(boltNetworkIO),asList(new SocketTransport(socketAddress,sslCtx,logging.getInternalLogProvider(),availableVersions),new WebSocketTransport(webSocketAddress,sslCtx,logging.getInternalLogProvider(),availableVersions))));
+    log.info("Bolt Server extension loaded.");
+  }
+  return life;
+}
