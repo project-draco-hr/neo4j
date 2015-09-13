@@ -1,18 +1,18 @@
 {
-  BatchingRecordAccess<Integer,T,Void> recordAccess=new BatchingRecordAccess<Integer,T,Void>(){
-    @Override protected T createRecord(    Integer key,    Void additionalData){
+  BatchingRecordAccess<Integer,RECORD,Void> recordAccess=new BatchingRecordAccess<Integer,RECORD,Void>(){
+    @Override protected RECORD createRecord(    Integer key,    Void additionalData){
       return BatchingTokenRepository.this.createRecord(key);
     }
   }
 ;
-  TokenCreator<T> creator=new TokenCreator<>(store);
+  TokenCreator<RECORD,TOKEN> creator=new TokenCreator<>(store);
   int highest=1;
   for (  Map.Entry<Integer,String> tokenToCreate : sortCreatedTokensById()) {
     creator.createToken(tokenToCreate.getValue(),tokenToCreate.getKey(),recordAccess);
     highest=Math.max(highest,tokenToCreate.getKey());
   }
   int highestId=(int)store.getHighestPossibleIdInUse();
-  for (  T record : recordAccess.records()) {
+  for (  RECORD record : recordAccess.records()) {
     store.updateRecord(record);
     highestId=max(highestId,record.getId());
   }
