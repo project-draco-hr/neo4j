@@ -1,7 +1,11 @@
 {
   if (!masterIsOld) {
     ClusterMembers clusterMembers=resolver.resolveDependency(ClusterMembers.class);
-    ClusterMember master=single(filter(inRole(MASTER),clusterMembers.getMembers()));
+    InstanceId serverId=HighAvailabilityModeSwitcher.getServerId(masterUri);
+    Predicate<ClusterMember> specification=hasInstanceId(serverId);
+    Iterable<ClusterMember> members=clusterMembers.getMembers();
+    Iterable<ClusterMember> filter=filter(specification,members);
+    ClusterMember master=single(filter);
     StoreId masterStoreId=master.getStoreId();
     if (!myStoreId.equals(masterStoreId)) {
       throw new MismatchingStoreIdException(myStoreId,master.getStoreId());
