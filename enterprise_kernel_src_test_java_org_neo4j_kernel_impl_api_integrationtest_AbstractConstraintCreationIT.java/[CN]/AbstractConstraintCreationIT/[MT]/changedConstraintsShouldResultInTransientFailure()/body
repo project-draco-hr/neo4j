@@ -1,0 +1,25 @@
+{
+  Runnable constraintCreation=new Runnable(){
+    @Override public void run(){
+      try (Transaction tx=db.beginTx()){
+        createConstraintInRunningTx(db,KEY,PROP);
+        tx.success();
+      }
+     }
+  }
+;
+  try {
+    try (Transaction tx=db.beginTx()){
+      Executors.newSingleThreadExecutor().submit(constraintCreation).get();
+      db.createNode();
+      tx.success();
+    }
+     fail("Exception expected");
+  }
+ catch (  Exception e) {
+    assertThat(e,instanceOf(TransientTransactionFailureException.class));
+    assertThat(e.getCause(),instanceOf(TransactionFailureException.class));
+    TransactionFailureException cause=(TransactionFailureException)e.getCause();
+    assertEquals(Status.Transaction.ConstraintsChanged,cause.status());
+  }
+}

@@ -1,0 +1,31 @@
+{
+  long node1, node2;
+  int foo, name;
+{
+    DataWriteOperations statement=dataWriteOperationsInNewTransaction();
+    foo=statement.labelGetOrCreateForName("Foo");
+    name=statement.propertyKeyGetOrCreateForName("name");
+    long node=statement.nodeCreate();
+    node1=node;
+    statement.nodeAddLabel(node,foo);
+    statement.nodeSetProperty(node,Property.stringProperty(name,"foo"));
+    node=statement.nodeCreate();
+    statement.nodeAddLabel(node,foo);
+    node2=node;
+    statement.nodeSetProperty(node,Property.stringProperty(name,"foo"));
+    commit();
+  }
+  try {
+    SchemaWriteOperations statement=schemaWriteOperationsInNewTransaction();
+    statement.uniquePropertyConstraintCreate(foo,name);
+    fail("expected exception");
+  }
+ catch (  CreateConstraintFailureException ex) {
+    assertEquals(new UniquenessConstraint(foo,name),ex.constraint());
+    Throwable cause=ex.getCause();
+    assertThat(cause,instanceOf(ConstraintVerificationFailedKernelException.class));
+    String expectedMessage=String.format("Multiple nodes with label `%s` have property `%s` = '%s':%n  node(%d)%n  node(%d)","Foo","name","foo",node1,node2);
+    String actualMessage=userMessage((ConstraintVerificationFailedKernelException)cause);
+    assertEquals(expectedMessage,actualMessage);
+  }
+}

@@ -1,0 +1,17 @@
+{
+  if (!masterIsOld) {
+    ClusterMembers clusterMembers=resolver.resolveDependency(ClusterMembers.class);
+    InstanceId serverId=HighAvailabilityModeSwitcher.getServerId(masterUri);
+    Predicate<ClusterMember> specification=hasInstanceId(serverId);
+    Iterable<ClusterMember> members=clusterMembers.getMembers();
+    Iterable<ClusterMember> filter=filter(specification,members);
+    ClusterMember master=single(filter);
+    StoreId masterStoreId=master.getStoreId();
+    if (!myStoreId.equals(masterStoreId)) {
+      throw new MismatchingStoreIdException(myStoreId,master.getStoreId());
+    }
+ else     if (!myStoreId.equalsByUpgradeId(master.getStoreId())) {
+      throw new BranchedDataException("My store with " + myStoreId + " was updated independently from "+ "master's store "+ masterStoreId);
+    }
+  }
+}

@@ -1,0 +1,25 @@
+{
+  int serverId=1;
+  final InstanceId instanceId=new InstanceId(serverId);
+  TransactionPropagator.Configuration config=new TransactionPropagator.Configuration(){
+    @Override public int getTxPushFactor(){
+      return 1;
+    }
+    @Override public InstanceId getServerId(){
+      return instanceId;
+    }
+    @Override public SlavePriority getReplicationStrategy(){
+      return SlavePriorities.fixed();
+    }
+  }
+;
+  Log logger=mock(Log.class);
+  Slaves slaves=mock(Slaves.class);
+  when(slaves.getSlaves()).thenReturn(Collections.<Slave>emptyList());
+  CommitPusher pusher=mock(CommitPusher.class);
+  TransactionPropagator propagator=life.add(new TransactionPropagator(config,logger,slaves,pusher));
+  for (int i=0; i < 10; i++) {
+    propagator.committed(TransactionIdStore.BASE_TX_ID,serverId);
+  }
+  verify(logger,times(1)).warn(anyString());
+}
