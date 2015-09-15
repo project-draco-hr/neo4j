@@ -9,5 +9,15 @@
   if (!config.get(GraphDatabaseSettings.allow_file_urls)) {
     throw new URLAccessValidationError("configuration property '" + GraphDatabaseSettings.allow_file_urls.name() + "' is false");
   }
-  return url;
+  final File root=config.get(GraphDatabaseSettings.load_csv_file_url_root);
+  if (root == null) {
+    return url;
+  }
+  try {
+    final Path urlPath=Paths.get(url.toURI());
+    return root.getAbsoluteFile().toPath().resolve(urlPath.getRoot().relativize(urlPath)).toUri().toURL();
+  }
+ catch (  MalformedURLException|URISyntaxException e) {
+    throw new RuntimeException(e);
+  }
 }
