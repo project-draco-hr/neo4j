@@ -1,0 +1,41 @@
+{
+  FileSystemAbstraction fileSystem=fs.get();
+  File neoStoreDir=new File("/tmp/graph.db/neostore").getAbsoluteFile();
+  StoreFactory factory=new StoreFactory(fileSystem,neoStoreDir,pageCache,NullLogProvider.getInstance());
+  String typeDescriptor;
+  try (NeoStores neoStores=factory.openNeoStores(true)){
+    MetaDataStore metaDataStore=neoStores.getMetaDataStore();
+    metaDataStore.setCreationTime((long)3);
+    metaDataStore.setRandomNumber((long)4);
+    metaDataStore.setCurrentLogVersion((long)5);
+    metaDataStore.setLastCommittedAndClosedTransactionId((long)6,(long)0,(long)0,(long)0);
+    metaDataStore.setStoreVersion((long)7);
+    metaDataStore.setGraphNextProp((long)8);
+    metaDataStore.setLatestConstraintIntroducingTx((long)9);
+    typeDescriptor=metaDataStore.getTypeDescriptor();
+  }
+   File file=new File(neoStoreDir,MetaDataStore.DEFAULT_NAME);
+  try (StoreChannel channel=fileSystem.open(file,"rw")){
+    byte[] trailer=UTF8.encode(CommonAbstractStore.buildTypeDescriptorAndVersion(typeDescriptor));
+    channel.truncate(channel.size() - 2 * MetaDataStore.RECORD_SIZE);
+    channel.position(channel.size() - trailer.length);
+    channel.write(ByteBuffer.wrap(trailer));
+  }
+   assertNotEquals(10,MetaDataStore.getRecord(pageCache,file,Position.UPGRADE_TRANSACTION_ID));
+  assertNotEquals(11,MetaDataStore.getRecord(pageCache,file,Position.UPGRADE_TRANSACTION_CHECKSUM));
+  MetaDataStore.setRecord(pageCache,file,Position.UPGRADE_TRANSACTION_ID,(long)10);
+  MetaDataStore.setRecord(pageCache,file,Position.UPGRADE_TRANSACTION_CHECKSUM,(long)11);
+  MetaDataStore.setRecord(pageCache,file,Position.UPGRADE_TIME,(long)12);
+  try (NeoStores neoStores=factory.openNeoStores(false)){
+    MetaDataStore metaDataStore=neoStores.getMetaDataStore();
+    assertEquals(3,metaDataStore.getCreationTime());
+    assertEquals(4,metaDataStore.getRandomNumber());
+    assertEquals(5,metaDataStore.getCurrentLogVersion());
+    assertEquals(6,metaDataStore.getLastCommittedTransactionId());
+    assertEquals(7,metaDataStore.getStoreVersion());
+    assertEquals(8,metaDataStore.getGraphNextProp());
+    assertEquals(9,metaDataStore.getLatestConstraintIntroducingTx());
+    assertArrayEquals(new long[]{10,11},metaDataStore.getUpgradeTransaction());
+    assertEquals(12,metaDataStore.getUpgradeTime());
+  }
+ }

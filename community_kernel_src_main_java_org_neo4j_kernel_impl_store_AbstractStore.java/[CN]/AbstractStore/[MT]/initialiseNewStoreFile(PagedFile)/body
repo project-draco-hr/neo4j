@@ -1,0 +1,24 @@
+{
+  long trailerPosition=0;
+  ByteBuffer headerRecord=createHeaderRecord();
+  if (headerRecord != null) {
+    trailerPosition=headerRecord.limit();
+    try (PageCursor pageCursor=file.io(0,PagedFile.PF_EXCLUSIVE_LOCK)){
+      if (pageCursor.next()) {
+        do {
+          pageCursor.setOffset(0);
+          pageCursor.putBytes(headerRecord.array());
+        }
+ while (pageCursor.shouldRetry());
+      }
+    }
+   }
+  StoreVersionTrailerUtil.writeTrailer(file,UTF8.encode(getTypeAndVersionDescriptor()),trailerPosition);
+  File idFileName=new File(storageFileName.getPath() + ".id");
+  idGeneratorFactory.create(idFileName,0,true);
+  if (headerRecord != null) {
+    IdGenerator idGenerator=idGeneratorFactory.open(idFileName,1,idType,0);
+    initialiseNewIdGenerator(idGenerator);
+    idGenerator.close();
+  }
+}
