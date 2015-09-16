@@ -1,0 +1,34 @@
+{
+  final TransactionCommitProcess transactionCommitProcess=commitProcessFactory.create(appender,kernelHealth,neoStores,storeApplier,new NeoStoreInjectedTransactionValidator(integrityValidator),indexUpdatesValidator,config);
+  Supplier<KernelAPI> kernelProvider=new Supplier<KernelAPI>(){
+    @Override public KernelAPI get(){
+      return kernelModule.kernelAPI();
+    }
+  }
+;
+  ConstraintIndexCreator constraintIndexCreator=new ConstraintIndexCreator(kernelProvider,indexingService);
+  LegacyIndexStore legacyIndexStore=new LegacyIndexStore(config,indexConfigStore,kernelProvider,legacyIndexProviderLookup);
+  LegacyPropertyTrackers legacyPropertyTrackers=new LegacyPropertyTrackers(propertyKeyTokenHolder,nodeManager.getNodePropertyTrackers(),nodeManager.getRelationshipPropertyTrackers(),nodeManager);
+  NeoStoreTransactionContextFactory neoStoreTxContextFactory=new NeoStoreTransactionContextFactory(neoStores);
+  StatementOperationParts statementOperations=dependencies.satisfyDependency(buildStatementOperations(storeLayer,legacyPropertyTrackers,constraintIndexCreator,updateableSchemaState,guard,legacyIndexStore));
+  final TransactionHooks hooks=new TransactionHooks();
+  final KernelTransactions kernelTransactions=life.add(new KernelTransactions(neoStoreTxContextFactory,neoStores,locks,integrityValidator,constraintIndexCreator,indexingService,labelScanStore,statementOperations,updateableSchemaState,schemaWriteGuard,schemaIndexProviderMap,transactionHeaderInformationFactory,storeLayer,transactionCommitProcess,indexConfigStore,legacyIndexProviderLookup,hooks,constraintSemantics,transactionMonitor,life,procedureCache,tracers));
+  final Kernel kernel=new Kernel(kernelTransactions,hooks,kernelHealth,transactionMonitor);
+  kernel.registerTransactionHook(transactionEventHandlers);
+  final NeoStoreFileListing fileListing=new NeoStoreFileListing(storeDir,labelScanStore,indexingService,legacyIndexProviderLookup);
+  return new KernelModule(){
+    @Override public TransactionCommitProcess transactionCommitProcess(){
+      return transactionCommitProcess;
+    }
+    @Override public KernelAPI kernelAPI(){
+      return kernel;
+    }
+    @Override public KernelTransactions kernelTransactions(){
+      return kernelTransactions;
+    }
+    @Override public NeoStoreFileListing fileListing(){
+      return fileListing;
+    }
+  }
+;
+}

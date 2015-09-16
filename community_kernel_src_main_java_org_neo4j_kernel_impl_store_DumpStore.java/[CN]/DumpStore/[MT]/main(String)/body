@@ -3,12 +3,17 @@
     System.err.println("SYNTAX: [file[:id[,id]*]]+");
     return;
   }
-  DefaultFileSystemAbstraction fs=new DefaultFileSystemAbstraction();
+  final DefaultFileSystemAbstraction fs=new DefaultFileSystemAbstraction();
+  final DefaultIdGeneratorFactory idGeneratorFactory=new DefaultIdGeneratorFactory(fs);
   try (PageCache pageCache=createPageCache(fs)){
-    DefaultIdGeneratorFactory idGeneratorFactory=new DefaultIdGeneratorFactory(fs);
-    StoreFactory storeFactory=new StoreFactory(null,new Config(),idGeneratorFactory,pageCache,fs,logProvider(),null);
+    Function<File,StoreFactory> createStoreFactory=new Function<File,StoreFactory>(){
+      @Override public StoreFactory apply(      File file){
+        return new StoreFactory(file.getParentFile(),new Config(),idGeneratorFactory,pageCache,fs,logProvider());
+      }
+    }
+;
     for (    String arg : args) {
-      dumpFile(storeFactory,arg);
+      dumpFile(createStoreFactory,arg);
     }
   }
  }

@@ -8,7 +8,7 @@
   createAndIndexNode(db,1);
   final DependencyResolver resolver=db.getDependencyResolver();
   NeoStoreDataSource ds=resolver.resolveDependency(DataSourceManager.class).getDataSource();
-  long expectedLastTxId=ds.getNeoStore().getLastCommittedTransactionId();
+  long expectedLastTxId=ds.getNeoStores().getMetaDataStore().getLastCommittedTransactionId();
   monitors.addMonitorListener(new StoreSnoopingMonitor(barrier));
   Dependencies dependencies=new Dependencies(resolver);
   dependencies.satisfyDependencies(defaultConfig,monitors,NullLogProvider.getInstance());
@@ -20,7 +20,7 @@
     @Override public void run(){
       barrier.awaitUninterruptibly();
       createAndIndexNode(db,1);
-      resolver.resolveDependency(NeoStoreSupplier.class).get().flush();
+      resolver.resolveDependency(NeoStoresSupplier.class).get().flush();
       barrier.release();
     }
   }
@@ -30,8 +30,8 @@
   executor.shutdown();
   executor.awaitTermination(30,TimeUnit.SECONDS);
   checkPreviousCommittedTxIdFromLog(0,expectedLastTxId);
-  File neoStore=new File(storeDir,NeoStore.DEFAULT_NAME);
-  long txIdFromOrigin=NeoStore.getRecord(resolver.resolveDependency(PageCache.class),neoStore,Position.LAST_TRANSACTION_ID);
+  File neoStore=new File(storeDir,MetaDataStore.DEFAULT_NAME);
+  long txIdFromOrigin=MetaDataStore.getRecord(resolver.resolveDependency(PageCache.class),neoStore,Position.LAST_TRANSACTION_ID);
   checkLastCommittedTxIdInLogAndNeoStore(expectedLastTxId + 1,txIdFromOrigin);
   assertEquals(DbRepresentation.of(db),DbRepresentation.of(backupDir));
   assertTrue(backupOutcome.isConsistent());

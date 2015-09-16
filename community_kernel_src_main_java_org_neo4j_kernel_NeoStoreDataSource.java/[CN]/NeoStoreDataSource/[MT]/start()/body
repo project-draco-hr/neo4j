@@ -1,9 +1,6 @@
 {
   dependencies=new Dependencies();
   life=new LifeSupport();
-  if (!storeFactory.storeExists()) {
-    storeFactory.createNeoStore().close();
-  }
   indexProvider=dependencyResolver.resolveDependency(SchemaIndexProvider.class,SchemaIndexProvider.HIGHEST_PRIORITIZED_OR_NONE);
   dependencies.satisfyDependency(lockService);
   LoggingLogFileMonitor loggingLogMonitor=new LoggingLogFileMonitor(msgLog);
@@ -20,11 +17,11 @@
     final NeoStoreModule neoStoreModule=buildNeoStore(storeFactory,labelTokens,relationshipTypeTokens,propertyKeyTokenHolder);
     this.neoStoreModule=neoStoreModule;
     CacheModule cacheModule=buildCaches(labelTokens,relationshipTypeTokens,propertyKeyTokenHolder);
-    IndexingModule indexingModule=buildIndexing(config,scheduler,indexProvider,lockService,tokenNameLookup,logProvider,indexingServiceMonitor,neoStoreModule.neoStore(),cacheModule.updateableSchemaState());
-    StoreLayerModule storeLayerModule=buildStoreLayer(neoStoreModule.neoStore(),propertyKeyTokenHolder,labelTokens,relationshipTypeTokens,indexingModule.indexingService(),cacheModule.schemaCache(),cacheModule.procedureCache());
-    TransactionLogModule transactionLogModule=buildTransactionLogs(storeDir,config,logProvider,scheduler,indexingModule.labelScanStore(),fs,neoStoreModule.neoStore(),cacheModule.cacheAccess(),indexingModule.indexingService(),indexProviders.values());
-    buildRecovery(fs,cacheModule.cacheAccess(),indexingModule.indexingService(),indexingModule.indexUpdatesValidator(),indexingModule.labelScanStore(),neoStoreModule.neoStore(),monitors.newMonitor(RecoveryVisitor.Monitor.class),monitors.newMonitor(Recovery.Monitor.class),transactionLogModule.logFiles(),transactionLogModule.storeFlusher(),startupStatistics);
-    KernelModule kernelModule=buildKernel(indexingModule.integrityValidator(),transactionLogModule.transactionAppender(),neoStoreModule.neoStore(),transactionLogModule.storeApplier(),indexingModule.indexingService(),indexingModule.indexUpdatesValidator(),storeLayerModule.storeLayer(),cacheModule.updateableSchemaState(),indexingModule.labelScanStore(),indexingModule.schemaIndexProviderMap(),cacheModule.procedureCache());
+    IndexingModule indexingModule=buildIndexing(config,scheduler,indexProvider,lockService,tokenNameLookup,logProvider,indexingServiceMonitor,neoStoreModule.neoStores(),cacheModule.updateableSchemaState());
+    StoreLayerModule storeLayerModule=buildStoreLayer(neoStoreModule.neoStores(),propertyKeyTokenHolder,labelTokens,relationshipTypeTokens,indexingModule.indexingService(),cacheModule.schemaCache(),cacheModule.procedureCache());
+    TransactionLogModule transactionLogModule=buildTransactionLogs(storeDir,config,logProvider,scheduler,indexingModule.labelScanStore(),fs,neoStoreModule.neoStores(),cacheModule.cacheAccess(),indexingModule.indexingService(),indexProviders.values());
+    buildRecovery(fs,cacheModule.cacheAccess(),indexingModule.indexingService(),indexingModule.indexUpdatesValidator(),indexingModule.labelScanStore(),neoStoreModule.neoStores(),monitors.newMonitor(RecoveryVisitor.Monitor.class),monitors.newMonitor(Recovery.Monitor.class),transactionLogModule.logFiles(),transactionLogModule.storeFlusher(),startupStatistics);
+    KernelModule kernelModule=buildKernel(indexingModule.integrityValidator(),transactionLogModule.transactionAppender(),neoStoreModule.neoStores(),transactionLogModule.storeApplier(),indexingModule.indexingService(),indexingModule.indexUpdatesValidator(),storeLayerModule.storeLayer(),cacheModule.updateableSchemaState(),indexingModule.labelScanStore(),indexingModule.schemaIndexProviderMap(),cacheModule.procedureCache());
     this.cacheModule=cacheModule;
     this.indexingModule=indexingModule;
     this.storeLayerModule=storeLayerModule;
@@ -36,7 +33,7 @@
  catch (  Throwable e) {
     msgLog.warn("Exception occurred while setting up store modules. Attempting to close things down.",e,true);
     try {
-      neoStoreModule.neoStore().close();
+      neoStoreModule.neoStores().close();
     }
  catch (    Exception closeException) {
       msgLog.error("Couldn't close neostore after startup failure");
@@ -49,7 +46,7 @@
  catch (  Throwable e) {
     msgLog.warn("Exception occurred while starting the datasource. Attempting to close things down.",e,true);
     try {
-      neoStoreModule.neoStore().close();
+      neoStoreModule.neoStores().close();
     }
  catch (    Exception closeException) {
       msgLog.error("Couldn't close neostore after startup failure");
