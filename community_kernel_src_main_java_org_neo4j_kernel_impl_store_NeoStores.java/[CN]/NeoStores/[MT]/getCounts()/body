@@ -1,25 +1,3 @@
 {
-  if (counts == null) {
-    File fileName=getStoreFileName(StoreFactory.COUNTS_STORE);
-    boolean readOnly=config.get(GraphDatabaseSettings.read_only);
-    counts=readOnly ? createReadOnlyCountsTracker(fileName) : createWritableCountsTracker(fileName);
-    counts.setInitializer(new DataInitializer<CountsAccessor.Updater>(){
-      private Log log=logProvider.getLog(MetaDataStore.class);
-      @Override public void initialize(      CountsAccessor.Updater updater){
-        log.warn("Missing counts store, rebuilding it.");
-        new CountsComputer(NeoStores.this).initialize(updater);
-      }
-      @Override public long initialVersion(){
-        return getMetaDataStore().getLastCommittedTransactionId();
-      }
-    }
-);
-    try {
-      counts.init();
-    }
- catch (    IOException e) {
-      throw new UnderlyingStorageException("Failed to initialize counts store",e);
-    }
-  }
-  return counts;
+  return (CountsTracker)storeGetter.apply(StoreType.COUNTS);
 }
