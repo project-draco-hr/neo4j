@@ -1,0 +1,12 @@
+{
+  IndexSamplingConfig samplingConfig=new IndexSamplingConfig(new Config());
+  for (  IndexRule indexRule : loadAllIndexRules(fixture.directStoreAccess().nativeStores().getSchemaStore())) {
+    IndexAccessor accessor=fixture.directStoreAccess().indexes().getOnlineAccessor(indexRule.getId(),new IndexConfiguration(indexRule.isConstraintIndex()),samplingConfig);
+    IndexUpdater updater=accessor.newUpdater(IndexUpdateMode.ONLINE);
+    updater.remove(asPrimitiveLongSet(indexedNodes));
+    updater.close();
+    accessor.close();
+  }
+  ConsistencySummaryStatistics stats=check();
+  on(stats).verify(RecordType.NODE,1).andThatsAllFolks();
+}

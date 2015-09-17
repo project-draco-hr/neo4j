@@ -1,0 +1,32 @@
+{
+  ArrayBlockingQueue<RECORD>[] recordQ=new ArrayBlockingQueue[numberOfThreads];
+  Workers<WORKER> workers=new Workers<>(workerNames);
+  for (int threadId=0; threadId < numberOfThreads; threadId++) {
+    recordQ[threadId]=new ArrayBlockingQueue<>(queueSize);
+    workers.start(workerFactory.apply(recordQ[threadId]));
+  }
+  int[] recsProcessed=new int[numberOfThreads];
+  int qIndex=0;
+  for (  RECORD record : records) {
+    try {
+      qIndex=(qIndex + 1) % numberOfThreads;
+      recordQ[qIndex].put(record);
+      recsProcessed[qIndex]++;
+    }
+ catch (    InterruptedException e) {
+      Thread.currentThread().interrupt();
+      break;
+    }
+    progress.add(1);
+  }
+  for (  WORKER worker : workers) {
+    worker.done();
+  }
+  try {
+    workers.awaitAndThrowOnError(RuntimeException.class);
+  }
+ catch (  InterruptedException e) {
+    Thread.currentThread().interrupt();
+    throw new RuntimeException("Was interrupted while awaiting completion");
+  }
+}

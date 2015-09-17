@@ -1,15 +1,36 @@
 {
-  for (int i=0; i < processors.length; i++) {
-    StoreProcessor processor=processors[i];
-    beforeProcessing(processor);
-    try {
-      processor.applyFiltered(store,progressListeners[i]);
+  statistics.reset();
+  beforeProcessing(processor);
+  try {
+    if (processor.getStage().getCacheSlotSizes().length > 0) {
+      cacheAccess.setCacheSlotSizes(processor.getStage().getCacheSlotSizes());
     }
- catch (    Throwable e) {
-      progressListeners[i].failed(e);
+    cacheAccess.setForward(processor.getStage().isForward());
+    if (processor.getStage().isParallel()) {
+      long highId;
+      if (processor.getStage() == CheckStage.Stage1_NS_PropsLabels) {
+        highId=storeAccess.getNodeStore().getHighId();
+      }
+ else       if (processor.getStage() == CheckStage.Stage8_PS_Props) {
+        highId=storeAccess.getPropertyStore().getHighId();
+      }
+ else {
+        highId=storeAccess.getRelationshipStore().getHighId();
+      }
+      long recordsPerCPU=(highId / numberOfThreads) + 1;
+      processor.applyFilteredParallel(store,progressListener,numberOfThreads,recordsPerCPU);
     }
- finally {
-      afterProcessing(processor);
+ else {
+      processor.applyFiltered(store,progressListener);
     }
+    cacheAccess.setForward(true);
   }
+ catch (  Throwable e) {
+    progressListener.failed(e);
+    throw Exceptions.launderedException(e);
+  }
+ finally {
+    afterProcessing(processor);
+  }
+  statistics.print(name);
 }

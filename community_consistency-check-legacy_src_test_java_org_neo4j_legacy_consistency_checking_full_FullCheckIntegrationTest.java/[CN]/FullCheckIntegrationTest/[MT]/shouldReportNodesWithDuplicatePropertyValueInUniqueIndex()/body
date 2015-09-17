@@ -1,0 +1,13 @@
+{
+  IndexConfiguration indexConfig=new IndexConfiguration(false);
+  IndexSamplingConfig samplingConfig=new IndexSamplingConfig(new Config());
+  for (  IndexRule indexRule : loadAllIndexRules(fixture.directStoreAccess().nativeStores().getSchemaStore())) {
+    IndexAccessor accessor=fixture.directStoreAccess().indexes().getOnlineAccessor(indexRule.getId(),indexConfig,samplingConfig);
+    IndexUpdater updater=accessor.newUpdater(IndexUpdateMode.ONLINE);
+    updater.process(NodePropertyUpdate.add(42,0,"value",new long[]{3}));
+    updater.close();
+    accessor.close();
+  }
+  ConsistencySummaryStatistics stats=check();
+  on(stats).verify(RecordType.NODE,1).verify(RecordType.INDEX,2).andThatsAllFolks();
+}

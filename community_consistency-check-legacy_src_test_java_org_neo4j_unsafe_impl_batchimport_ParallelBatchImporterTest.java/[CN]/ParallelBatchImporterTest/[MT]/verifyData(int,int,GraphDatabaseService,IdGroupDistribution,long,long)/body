@@ -1,0 +1,34 @@
+{
+  GlobalGraphOperations globalOps=GlobalGraphOperations.at(db);
+  try (InputIterator<InputNode> nodes=nodes(nodeRandomSeed,nodeCount,inputIdGenerator,groups).iterator();InputIterator<InputRelationship> relationships=relationships(relationshipRandomSeed,relationshipCount,inputIdGenerator,groups).iterator()){
+    Map<String,Node> nodeByInputId=new HashMap<>(nodeCount);
+    Iterator<Node> dbNodes=globalOps.getAllNodes().iterator();
+    int verifiedNodes=0;
+    while (nodes.hasNext()) {
+      InputNode input=nodes.next();
+      Node node=dbNodes.next();
+      assertNodeEquals(input,node);
+      String inputId=uniqueId(input.group(),node);
+      assertNull(nodeByInputId.put(inputId,node));
+      verifiedNodes++;
+    }
+    assertEquals(nodeCount,verifiedNodes);
+    Map<String,Relationship> relationshipByName=new HashMap<>();
+    for (    Relationship relationship : globalOps.getAllRelationships()) {
+      relationshipByName.put((String)relationship.getProperty("id"),relationship);
+    }
+    int verifiedRelationships=0;
+    while (relationships.hasNext()) {
+      InputRelationship input=relationships.next();
+      if (!inputIdGenerator.isMiss(input.startNode()) && !inputIdGenerator.isMiss(input.endNode())) {
+        String name=(String)propertyOf(input,"id");
+        Relationship relationship=relationshipByName.get(name);
+        assertEquals(nodeByInputId.get(uniqueId(input.startNodeGroup(),input.startNode())),relationship.getStartNode());
+        assertEquals(nodeByInputId.get(uniqueId(input.endNodeGroup(),input.endNode())),relationship.getEndNode());
+        assertRelationshipEquals(input,relationship);
+      }
+      verifiedRelationships++;
+    }
+    assertEquals(relationshipCount,verifiedRelationships);
+  }
+ }
