@@ -15,7 +15,10 @@
             if (shouldExplain(statement)) {
               try (Transaction transaction=database.beginTx()){
                 Result result=database.execute(prependExplain(statement));
-                assertThat(format("Query [%s] should produce no notifications",statement),result.getNotifications(),is(emptyIterable()));
+                String notifications=prettyPrintDescriptions(result.getNotifications());
+                if (notifications != "") {
+                  fail(format("Query [%s] should produce no notifications but returned: [%s]",statement,notifications));
+                }
                 explainCount.incrementAndGet();
                 transaction.success();
               }
