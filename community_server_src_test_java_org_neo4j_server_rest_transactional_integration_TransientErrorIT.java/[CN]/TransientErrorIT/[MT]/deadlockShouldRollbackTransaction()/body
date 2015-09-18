@@ -1,0 +1,21 @@
+{
+  HTTP.Response initial=POST(txCommitUri(),quotedJson("{'statements': [{'statement': 'CREATE (n1 {prop : 1}), (n2 {prop : 2})'}]}"));
+  assertThat(initial.status(),is(200));
+  assertThat(initial,containsNoErrors());
+  HTTP.Response firstInTx1=POST(txUri(),quotedJson("{'statements': [{'statement': 'MATCH (n {prop : 1}) SET n.prop = 3'}]}"));
+  final long tx1=extractTxId(firstInTx1);
+  HTTP.Response firstInTx2=POST(txUri(),quotedJson("{'statements': [{'statement': 'MATCH (n {prop : 2}) SET n.prop = 4'}]}"));
+  long tx2=extractTxId(firstInTx2);
+  Future<HTTP.Response> future=otherThread.execute(new OtherThreadExecutor.WorkerCommand<Void,HTTP.Response>(){
+    @Override public HTTP.Response doWork(    Void state) throws Exception {
+      return POST(txUri(tx1),quotedJson("{'statements': [{'statement': 'MATCH (n {prop : 2}) SET n.prop = 5'}]}"));
+    }
+  }
+);
+  HTTP.Response secondInTx2=POST(txUri(tx2),quotedJson("{'statements': [{'statement': 'MATCH (n {prop : 1}) SET n.prop = 6'}]}"));
+  future.cancel(true);
+  assertThat(secondInTx2.status(),is(200));
+  assertThat(secondInTx2,hasErrors(Status.Transaction.DeadlockDetected));
+  HTTP.Response commit=POST(firstInTx2.stringFromContent("commit"));
+  assertThat(commit.status(),is(404));
+}
