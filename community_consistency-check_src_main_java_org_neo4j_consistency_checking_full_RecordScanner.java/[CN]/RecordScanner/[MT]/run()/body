@@ -1,13 +1,12 @@
 {
-  try {
-    int entryCount=0;
-    for (    RECORD record : store) {
-      if (!continueScanning) {
-        return;
-      }
-      processor.process(record);
-      progress.set(entryCount++);
+  statistics.reset();
+  if (warmUpStores != null) {
+    for (    IterableStore store : warmUpStores) {
+      store.warmUpCache();
     }
+  }
+  try {
+    scan();
   }
   finally {
     try {
@@ -15,8 +14,12 @@
     }
  catch (    Exception e) {
       progress.failed(e);
+      throw Exceptions.launderedException(e);
     }
-    processor.close();
-    progress.done();
+ finally {
+      processor.close();
+      progress.done();
+    }
   }
+  statistics.print(name);
 }

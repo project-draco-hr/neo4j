@@ -1,0 +1,26 @@
+{
+  Set<Long> labels=NodeLabelReader.getListOfLabels(record,records,engine);
+  List<PropertyBlock> properties=null;
+  for (  IndexRule indexRule : indexes.rules()) {
+    if (!labels.contains((long)indexRule.getLabel())) {
+      continue;
+    }
+    if (properties == null) {
+      properties=propertyReader.propertyBlocks(propertyRecs);
+    }
+    PropertyBlock property=propertyWithKey(properties,indexRule.getPropertyKey());
+    if (property == null) {
+      continue;
+    }
+    try (IndexReader reader=indexes.accessorFor(indexRule).newReader()){
+      Object propertyValue=propertyReader.propertyValue(property).value();
+      long nodeId=record.getId();
+      if (indexRule.isConstraintIndex()) {
+        verifyNodeCorrectlyIndexedUniquely(nodeId,property.getKeyIndexId(),propertyValue,engine,indexRule,reader);
+      }
+ else {
+        verifyNodeCorrectlyIndexed(nodeId,propertyValue,engine,indexRule,reader);
+      }
+    }
+   }
+}

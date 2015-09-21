@@ -1,0 +1,25 @@
+{
+  CacheAccess.Client cacheAccess=records.cacheAccess().client();
+  if (!cacheAccess.withinBounds(nodeId)) {
+    cacheAccess.incAndGetCount(Counts.Type.correctSkipCheck);
+    return RecordReference.SkippingReference.skipReference();
+  }
+  if (reference != cacheAccess.getFromCache(nodeId,SLOT_RELATIONSHIP_ID)) {
+    if (referenceShouldBeSkipped(relationship,reference,records)) {
+      cacheAccess.incAndGetCount(Counts.Type.correctSkipCheck);
+      return RecordReference.SkippingReference.skipReference();
+    }
+    cacheAccess.incAndGetCount(Counts.Type.missCheck);
+    return records.relationship(reference);
+  }
+  RelationshipRecord rel=new RelationshipRecord(reference);
+  rel.setCreated();
+  if (cacheAccess.getFromCache(nodeId,SLOT_SOURCE_OR_TARGET) == SOURCE) {
+    rel.setFirstNode(nodeId);
+  }
+ else {
+    rel.setSecondNode(nodeId);
+  }
+  rel=populateRelationshipFromCache(nodeId,rel,cacheAccess);
+  return new DirectRecordReference<>(rel,records);
+}

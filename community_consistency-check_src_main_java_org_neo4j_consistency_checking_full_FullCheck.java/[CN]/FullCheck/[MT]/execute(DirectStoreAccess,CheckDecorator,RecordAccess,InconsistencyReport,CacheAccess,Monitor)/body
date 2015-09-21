@@ -1,0 +1,15 @@
+{
+  final ConsistencyReporter reporter=new ConsistencyReporter(recordAccess,report,reportMonitor);
+  StoreProcessor processEverything=new StoreProcessor(decorator,reporter,Stage.SEQUENTIAL_FORWARD,cacheAccess);
+  ProgressMonitorFactory.MultiPartBuilder progress=progressFactory.multipleParts("Full Consistency Check");
+  final StoreAccess nativeStores=directStoreAccess.nativeStores();
+  try (IndexAccessors indexes=new IndexAccessors(directStoreAccess.indexes(),nativeStores.getSchemaStore(),samplingConfig)){
+    MultiPassStore.Factory multiPass=new MultiPassStore.Factory(decorator,recordAccess,cacheAccess,report,reportMonitor);
+    ConsistencyCheckTasks taskCreator=new ConsistencyCheckTasks(progress,processEverything,nativeStores,statistics,cacheAccess,directStoreAccess.labelScanStore(),indexes,multiPass,reporter,threads);
+    List<ConsistencyCheckerTask> tasks=taskCreator.createTasksForFullCheck(checkLabelScanStore,checkIndexes,checkGraph);
+    TaskExecutor.execute(tasks,progress.build());
+  }
+ catch (  Exception e) {
+    throw new ConsistencyCheckIncompleteException(e);
+  }
+}

@@ -1,0 +1,11 @@
+{
+  final URL url=SystemUtils.IS_OS_WINDOWS ? new URL("file:///C:/bar/baz.csv") : new URL("file:///bar/baz.csv");
+  final GraphDatabaseAPI gdb=mock(GraphDatabaseAPI.class);
+  final DependencyResolver mockResolver=mock(DependencyResolver.class);
+  when(gdb.getDependencyResolver()).thenReturn(mockResolver);
+  final Config config=new Config(MapUtil.stringMap(GraphDatabaseSettings.load_csv_file_url_root.name(),"/var/lib/neo4j/import"));
+  when(mockResolver.resolveDependency(eq(Config.class))).thenReturn(config);
+  URL accessURL=URLAccessRules.fileAccess().validate(gdb,url);
+  URL expected=SystemUtils.IS_OS_WINDOWS ? new URL("file:///C:/var/lib/neo4j/import/bar/baz.csv") : new URL("file:///var/lib/neo4j/import/bar/baz.csv");
+  assertThat(accessURL,equalTo(expected));
+}

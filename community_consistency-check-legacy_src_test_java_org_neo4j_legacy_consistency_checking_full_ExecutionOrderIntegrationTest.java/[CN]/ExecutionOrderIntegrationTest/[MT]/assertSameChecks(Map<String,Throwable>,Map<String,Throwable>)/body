@@ -1,0 +1,28 @@
+{
+  if (!singlePassChecks.keySet().equals(multiPassChecks.keySet())) {
+    Map<String,Throwable> missing=new HashMap<>(singlePassChecks);
+    Map<String,Throwable> extras=new HashMap<>(multiPassChecks);
+    missing.keySet().removeAll(multiPassChecks.keySet());
+    extras.keySet().removeAll(singlePassChecks.keySet());
+    StringBuilder headers=new StringBuilder("\n");
+    StringWriter diff=new StringWriter();
+    PrintWriter writer=new PrintWriter(diff);
+    if (!missing.isEmpty()) {
+      writer.append("These expected checks were missing:\n");
+      for (      Map.Entry<String,Throwable> check : missing.entrySet()) {
+        writer.append("  ");
+        headers.append("Missing: ").append(check.getKey()).append("\n");
+        check.getValue().printStackTrace(writer);
+      }
+    }
+    if (!extras.isEmpty()) {
+      writer.append("These extra checks were not expected:\n");
+      for (      Map.Entry<String,Throwable> check : extras.entrySet()) {
+        writer.append("  ");
+        headers.append("Unexpected: ").append(check.getKey()).append("\n");
+        check.getValue().printStackTrace(writer);
+      }
+    }
+    fail(headers.toString() + diff.toString());
+  }
+}

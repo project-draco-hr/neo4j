@@ -1,0 +1,38 @@
+{
+  return new InputIterable<InputRelationship>(){
+    private int calls;
+    @Override public InputIterator<InputRelationship> iterator(){
+      calls++;
+      assertTrue("Unexpected use of input iterator " + multiPassIterators + ", "+ calls,multiPassIterators || (!multiPassIterators && calls == 1));
+      return new SimpleInputIterator<InputRelationship>("test relationships"){
+        private final Random random=new Random(randomSeed);
+        private final Randoms randoms=new Randoms(random,Randoms.DEFAULT);
+        private int cursor;
+        private final Register.LongRegister nodeIndex=Registers.newLongRegister();
+        @Override protected InputRelationship fetchNextOrNull(){
+          if (cursor < count) {
+            Object[] properties=randomProperties(randoms,"Name " + cursor);
+            try {
+              Object startNode=idGenerator.randomExisting(random,nodeIndex);
+              Group startNodeGroup=groups.groupOf(nodeIndex.read());
+              Object endNode=idGenerator.randomExisting(random,nodeIndex);
+              Group endNodeGroup=groups.groupOf(nodeIndex.read());
+              startNode=idGenerator.miss(random,startNode,0.001f);
+              endNode=idGenerator.miss(random,endNode,0.001f);
+              return new InputRelationship(sourceDescription,itemNumber,itemNumber,properties,null,startNodeGroup,startNode,endNodeGroup,endNode,idGenerator.randomType(random),null);
+            }
+  finally {
+              cursor++;
+            }
+          }
+          return null;
+        }
+      }
+;
+    }
+    @Override public boolean supportsMultiplePasses(){
+      return multiPassIterators;
+    }
+  }
+;
+}
