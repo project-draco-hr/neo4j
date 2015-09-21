@@ -23,13 +23,21 @@
   neoStores=sf.openNeoStores(true);
   neoStores.verifyStoreOk();
   neoStores.makeStoreOk();
-  List<Token> indexes=getPropertyKeyTokenStore().getTokens(10000);
+  nodeStore=neoStores.getNodeStore();
+  relationshipStore=neoStores.getRelationshipStore();
+  relationshipTypeTokenStore=neoStores.getRelationshipTypeTokenStore();
+  propertyKeyTokenStore=neoStores.getPropertyKeyTokenStore();
+  propertyStore=neoStores.getPropertyStore();
+  relationshipGroupStore=neoStores.getRelationshipGroupStore();
+  schemaStore=neoStores.getSchemaStore();
+  labelTokenStore=neoStores.getLabelTokenStore();
+  List<Token> indexes=propertyKeyTokenStore.getTokens(10000);
   propertyKeyTokens=new BatchTokenHolder(indexes);
-  labelTokens=new BatchTokenHolder(neoStores.getLabelTokenStore().getTokens(Integer.MAX_VALUE));
-  List<RelationshipTypeToken> types=getRelationshipTypeStore().getTokens(Integer.MAX_VALUE);
+  labelTokens=new BatchTokenHolder(labelTokenStore.getTokens(Integer.MAX_VALUE));
+  List<RelationshipTypeToken> types=relationshipTypeTokenStore.getTokens(Integer.MAX_VALUE);
   relationshipTypeTokens=new BatchTokenHolder(types);
   indexStore=life.add(new IndexConfigStore(this.storeDir,fileSystem));
-  schemaCache=new SchemaCache(new StandardConstraintSemantics(),neoStores.getSchemaStore());
+  schemaCache=new SchemaCache(new StandardConstraintSemantics(),schemaStore);
   Dependencies deps=new Dependencies();
   deps.satisfyDependencies(fileSystem,config,logService,new NeoStoresSupplier(){
     @Override public NeoStores get(){
@@ -52,10 +60,9 @@
   labelScanStore=life.add(extensions.resolveDependency(LabelScanStoreProvider.class,LabelScanStoreProvider.HIGHEST_PRIORITIZED).getLabelScanStore());
   actions=new BatchSchemaActions();
   recordAccess=new DirectRecordAccessSet(neoStores);
-  RelationshipGroupStore relationshipGroupStore=neoStores.getRelationshipGroupStore();
   relationshipCreator=new RelationshipCreator(new NoOpClient(),new RelationshipGroupGetter(relationshipGroupStore),relationshipGroupStore.getDenseNodeThreshold());
   propertyTraverser=new PropertyTraverser();
-  propertyCreator=new PropertyCreator(getPropertyStore(),propertyTraverser);
-  propertyDeletor=new PropertyDeleter(getPropertyStore(),propertyTraverser);
+  propertyCreator=new PropertyCreator(propertyStore,propertyTraverser);
+  propertyDeletor=new PropertyDeleter(propertyStore,propertyTraverser);
   flushStrategy=new BatchedFlushStrategy(recordAccess,config.get(GraphDatabaseSettings.batch_inserter_batch_size));
 }
