@@ -1,0 +1,17 @@
+{
+  CheckPointerImpl checkPointing=checkPointer();
+  when(threshold.isCheckPointingNeeded(anyLong())).thenReturn(false);
+  mockTxIdStore();
+  checkPointing.start();
+  long txId=checkPointing.forceCheckPoint();
+  assertEquals(transactionId,txId);
+  verify(flusher,times(1)).forceEverything();
+  verify(health,times(2)).assertHealthy(IOException.class);
+  verify(appender,times(1)).checkPoint(eq(logPosition),any(LogCheckPointEvent.class));
+  verify(threshold,times(1)).initialize(initialTransactionId);
+  verify(threshold,times(1)).checkPointHappened(transactionId);
+  verify(threshold,never()).isCheckPointingNeeded(transactionId);
+  verify(logPruning,times(1)).pruneLogs(logPosition.getLogVersion());
+  verifyZeroInteractions(tracer);
+  verifyNoMoreInteractions(flusher,health,appender,threshold,tracer);
+}
