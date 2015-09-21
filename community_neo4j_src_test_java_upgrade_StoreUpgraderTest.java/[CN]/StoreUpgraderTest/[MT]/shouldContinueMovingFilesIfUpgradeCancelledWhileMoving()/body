@@ -1,23 +1,29 @@
 {
   PageCache pageCache=pageCacheRule.getPageCache(fileSystem);
-  StoreUpgrader upgrader=newUpgrader(ALLOW_UPGRADE,pageCache);
-  String failureMessage="Just failing";
-  upgrader.addParticipant(participantThatWillFailWhenMoving(failureMessage));
-  try {
-    upgrader.migrateIfNeeded(dbDirectory,schemaIndexProvider);
+  UpgradableDatabase upgradableDatabase=new UpgradableDatabase(new StoreVersionCheck(pageCache),new LegacyStoreVersionCheck(fileSystem));
+  String versionToMigrateFrom=upgradableDatabase.checkUpgradeable(dbDirectory);
+{
+    StoreUpgrader upgrader=newUpgrader(ALLOW_UPGRADE,pageCache);
+    String failureMessage="Just failing";
+    upgrader.addParticipant(participantThatWillFailWhenMoving(failureMessage));
+    try {
+      upgrader.migrateIfNeeded(dbDirectory,upgradableDatabase,schemaIndexProvider);
+      fail("should have thrown");
+    }
+ catch (    UnableToUpgradeException e) {
+      assertTrue(e.getCause() instanceof IOException);
+      assertEquals(failureMessage,e.getCause().getMessage());
+    }
   }
- catch (  UnableToUpgradeException e) {
-    assertTrue(e.getCause() instanceof IOException);
-    assertEquals(failureMessage,e.getCause().getMessage());
+{
+    Monitor monitor=Mockito.mock(Monitor.class);
+    StoreUpgrader upgrader=newUpgrader(monitor,pageCache);
+    StoreMigrationParticipant observingParticipant=Mockito.mock(StoreMigrationParticipant.class);
+    upgrader.addParticipant(observingParticipant);
+    upgrader.migrateIfNeeded(dbDirectory,upgradableDatabase,schemaIndexProvider);
+    verify(observingParticipant,Mockito.times(0)).migrate(any(File.class),any(File.class),any(SchemaIndexProvider.class),eq(versionToMigrateFrom));
+    verify(observingParticipant,Mockito.times(1)).moveMigratedFiles(any(File.class),any(File.class),eq(versionToMigrateFrom));
+    verify(observingParticipant,Mockito.times(1)).cleanup(any(File.class));
+    verify(monitor).migrationCompleted();
   }
-  Monitor monitor=Mockito.mock(Monitor.class);
-  upgrader=newUpgrader(monitor,pageCache);
-  StoreMigrationParticipant observingParticipant=Mockito.mock(StoreMigrationParticipant.class);
-  when(observingParticipant.needsMigration(any(File.class))).thenReturn(true);
-  upgrader.addParticipant(observingParticipant);
-  upgrader.migrateIfNeeded(dbDirectory,schemaIndexProvider);
-  verify(observingParticipant,Mockito.times(0)).migrate(any(File.class),any(File.class),any(SchemaIndexProvider.class));
-  verify(observingParticipant,Mockito.times(1)).moveMigratedFiles(any(File.class),any(File.class));
-  verify(observingParticipant,Mockito.times(1)).cleanup(any(File.class));
-  verify(monitor).migrationCompleted();
 }

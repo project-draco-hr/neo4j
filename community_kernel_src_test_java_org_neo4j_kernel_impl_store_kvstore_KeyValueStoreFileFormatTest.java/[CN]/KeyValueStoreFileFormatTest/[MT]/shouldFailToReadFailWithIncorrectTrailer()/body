@@ -1,20 +1,31 @@
 {
   String[] headerNames={"abc","xyz"};
-  Format expectedFormat=new Format(headerNames);
-  IncorrectTrailerFormat incorrectTrailerFormat=new IncorrectTrailerFormat(headerNames);
+  Format format=new Format(headerNames);
   Map<String,byte[]> headers=new HashMap<>();
   headers.put("abc",new byte[]{'h','e','l','l','o',0,0,0,0,0,0,0,0,0,0,0});
   headers.put("xyz",new byte[]{0,0,0,0,0,0,0,0,0,0,0,'w','o','r','l','d'});
   Data data=data(entry(new byte[]{'o','n','e'},new byte[]{'a','l','p','h','a'}),entry(new byte[]{'t','w','o'},new byte[]{'b','e','t','a'}),entry(new byte[]{'z','e','d'},new byte[]{'o','m','e','g','a'}));
-  try (KeyValueStoreFile originalValidFile=incorrectTrailerFormat.create(headers,data)){
+  try (KeyValueStoreFile originalValidFile=format.create(headers,data)){
     assertEquals("number of entries",3,data.index);
     assertEntries(3,originalValidFile);
   }
+   FileSystemAbstraction fileSystem=fs.get();
+  try (StoreChannel channel=fileSystem.open(storeFile.get(),"rw")){
+    long size=channel.size();
+    ByteBuffer buffer=ByteBuffer.allocate(16);
+    for (int i=0; i < buffer.capacity(); i++) {
+      buffer.put((byte)0xF0);
+    }
+    buffer.flip();
+    channel.position(size - buffer.capacity());
+    channel.write(buffer);
+    channel.force(false);
+  }
    try {
-    expectedFormat.open();
+    format.open();
     fail("It should not be possible to open count store file with incorrect trailer.");
   }
- catch (  IOException e) {
-    assertEquals("Invalid file trailer. Expected trailer not found.",e.getMessage());
+ catch (  IllegalStateException e) {
+    assertEquals("Format header/trailer has changed.",e.getMessage());
   }
 }
