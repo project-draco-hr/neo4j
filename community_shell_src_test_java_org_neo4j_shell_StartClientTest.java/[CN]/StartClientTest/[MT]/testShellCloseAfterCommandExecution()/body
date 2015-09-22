@@ -1,0 +1,16 @@
+{
+  PrintStream out=mock(PrintStream.class);
+  PrintStream err=mock(PrintStream.class);
+  CtrlCHandler ctrlCHandler=mock(CtrlCHandler.class);
+  final GraphDatabaseShellServer databaseShellServer=mock(GraphDatabaseShellServer.class);
+  when(databaseShellServer.welcome(anyMap())).thenReturn(new Welcome("",1,""));
+  when(databaseShellServer.interpretLine(any(Serializable.class),any(String.class),any(Output.class))).thenReturn(new Response("",Continuation.INPUT_COMPLETE));
+  StartClient startClient=new StartClient(out,err){
+    @Override protected GraphDatabaseShellServer getGraphDatabaseShellServer(    String dbPath,    boolean readOnly,    String configFile) throws RemoteException {
+      return databaseShellServer;
+    }
+  }
+;
+  startClient.start(new String[]{"-path",db.getGraphDatabaseAPI().getStoreDir(),"-c","CREATE (n {foo:'bar'});"},ctrlCHandler);
+  verify(databaseShellServer).shutdown();
+}
