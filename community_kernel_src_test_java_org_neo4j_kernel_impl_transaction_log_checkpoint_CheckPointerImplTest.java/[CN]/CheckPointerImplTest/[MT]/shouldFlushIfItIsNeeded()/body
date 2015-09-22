@@ -1,14 +1,10 @@
 {
-  CheckPointerImpl checkPointing=new CheckPointerImpl(txIdStore,threshold,flusher,logPruning,appender,health,NULL_LOG_PROVIDER,tracer);
+  CheckPointerImpl checkPointing=checkPointer();
   when(threshold.isCheckPointingNeeded(anyLong())).thenReturn(true,false);
-  LogPosition logPosition=new LogPosition(16l,233l);
-  long initialTransactionId=2l;
-  long transactionId=42l;
-  long[] triggerCommittedTransaction={transactionId,logPosition.getLogVersion(),logPosition.getByteOffset()};
-  when(txIdStore.getLastClosedTransaction()).thenReturn(triggerCommittedTransaction);
-  when(txIdStore.getLastClosedTransactionId()).thenReturn(initialTransactionId,transactionId,transactionId);
+  mockTxIdStore();
   checkPointing.start();
-  checkPointing.checkPointIfNeeded();
+  long txId=checkPointing.checkPointIfNeeded();
+  assertEquals(transactionId,txId);
   verify(flusher,times(1)).forceEverything();
   verify(health,times(2)).assertHealthy(IOException.class);
   verify(appender,times(1)).checkPoint(eq(logPosition),any(LogCheckPointEvent.class));
