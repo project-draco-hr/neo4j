@@ -9,6 +9,9 @@
   try (PageCursor cursor=pagedFile.io(0,PF_EXCLUSIVE_LOCK)){
     for (int i=0; i < filePages; i++) {
       assertTrue("failed to initialise file page " + i,cursor.next());
+      for (int j=0; j < pageSize; j++) {
+        cursor.putByte((byte)0);
+      }
     }
   }
    pageCache.flushAndForce();
@@ -30,6 +33,7 @@ class Worker implements Callable<Result> {
       ThreadLocalRandom rng=ThreadLocalRandom.current();
       while (!shouldStop.get()) {
         int pageId=rng.nextInt(0,filePages);
+        int offset=threadId * 4;
         boolean updateCounter=rng.nextBoolean();
         int pf_flags=updateCounter ? PF_EXCLUSIVE_LOCK : PF_SHARED_LOCK;
         try (PageCursor cursor=pagedFile.io(pageId,pf_flags)){
@@ -37,12 +41,12 @@ class Worker implements Callable<Result> {
           try {
             assertTrue(cursor.next());
             do {
-              cursor.setOffset(threadId * 4);
+              cursor.setOffset(offset);
               counter=cursor.getInt();
             }
  while (cursor.shouldRetry());
             String lockName=updateCounter ? "PF_EXCLUSIVE_LOCK" : "PF_SHARED_LOCK";
-            assertThat("inconsistent page read from filePageId = " + pageId + ", with "+ lockName+ " [t:"+ Thread.currentThread().getId()+ "]",counter,is(pageCounts[pageId]));
+            assertThat("inconsistent page read from filePageId = " + pageId + ", with "+ lockName+ ", workerId = "+ threadId+ " [t:"+ Thread.currentThread().getId()+ "]",counter,is(pageCounts[pageId]));
           }
  catch (          Throwable throwable) {
             shouldStop.set(true);
@@ -51,7 +55,7 @@ class Worker implements Callable<Result> {
           if (updateCounter) {
             counter++;
             pageCounts[pageId]++;
-            cursor.setOffset(threadId * 4);
+            cursor.setOffset(offset);
             cursor.putInt(counter);
           }
         }
@@ -63,7 +67,7 @@ class Worker implements Callable<Result> {
   for (int i=0; i < threadCount; i++) {
     futures.add(executor.submit(new Worker(i)));
   }
-  Thread.sleep(1);
+  Thread.sleep(10);
   shouldStop.set(true);
   for (  Future<Result> future : futures) {
     Result result=future.get();

@@ -1,7 +1,14 @@
 {
-  if (threshold.isCheckPointingNeeded(transactionIdStore.getLastClosedTransactionId())) {
-    try (LogCheckPointEvent event=tracer.beginCheckPoint()){
-      doCheckPoint(event);
-    }
-   }
+  lock.lock();
+  try {
+    if (threshold.isCheckPointingNeeded(transactionIdStore.getLastClosedTransactionId())) {
+      try (LogCheckPointEvent event=tracer.beginCheckPoint()){
+        return doCheckPoint(event);
+      }
+     }
+    return -1;
+  }
+  finally {
+    lock.unlock();
+  }
 }
