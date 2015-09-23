@@ -1,0 +1,23 @@
+{
+  for (int i=0; i < 1000; i++) {
+    try (Transaction tx=db.beginTx()){
+      Map<String,Object> params=MapUtil.map("name",UUID.randomUUID().toString());
+      db.execute("create (n:Label {name: {name}})",params);
+      tx.success();
+    }
+   }
+  try (BufferedReader reader=new BufferedReader(new FileReader(outputFile))){
+    String[] headers=reader.readLine().split(",");
+    assertThat(headers[0],is("timestamp"));
+    int committedColumn=Arrays.binarySearch(headers,"neo4j.transaction.committed");
+    assertThat(committedColumn,is(not(-1)));
+    int committedTransactions=0;
+    String line;
+    while ((line=reader.readLine()) != null) {
+      String[] fields=line.split(",");
+      int newCommittedTransactions=Integer.parseInt(fields[committedColumn]);
+      assertThat(newCommittedTransactions,greaterThanOrEqualTo(committedTransactions));
+      committedTransactions=newCommittedTransactions;
+    }
+  }
+ }
