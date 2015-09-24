@@ -1,23 +1,28 @@
 {
-  final CheckPointerImpl checkPointing=checkPointer();
-  when(threshold.isCheckPointingNeeded(anyLong())).thenReturn(true,false);
+  ReentrantLock reentrantLock=new ReentrantLock();
+  final Lock spyLock=spy(reentrantLock);
+  doAnswer(new Answer(){
+    @Override public Object answer(    InvocationOnMock invocation) throws Throwable {
+      verify(appender).checkPoint(any(LogPosition.class),any(LogCheckPointEvent.class));
+      reset(appender);
+      invocation.callRealMethod();
+      return null;
+    }
+  }
+).when(spyLock).unlock();
+  final CheckPointerImpl checkPointing=checkPointer(spyLock);
   mockTxIdStore();
-  final DoubleLatch checkPointIfNeededLatch=new DoubleLatch();
-  final DoubleLatch forceCheckPointLatch=new DoubleLatch();
-  final CountDownLatch verify=new CountDownLatch(1);
-  final long forcedTransactionId=65l;
-  final LogPosition forceLogPosition=new LogPosition(24l,466l);
-  LogPruningAnswer answer=new LogPruningAnswer(checkPointIfNeededLatch,forcedTransactionId,forceLogPosition,forceCheckPointLatch,verify);
-  doAnswer(answer).when(logPruning).pruneLogs(logPosition.getLogVersion());
+  final CountDownLatch startSignal=new CountDownLatch(2);
+  final CountDownLatch completed=new CountDownLatch(2);
   checkPointing.start();
-  Thread checkPointerThread=new CheckPointerThread(checkPointing);
-  final AtomicLong forcedTxId=new AtomicLong();
+  Thread checkPointerThread=new CheckPointerThread(checkPointing,startSignal,completed);
   Thread forceCheckPointThread=new Thread(){
     @Override public void run(){
       try {
-        forceCheckPointLatch.awaitStart();
-        forcedTxId.set(checkPointing.forceCheckPoint());
-        forceCheckPointLatch.finish();
+        startSignal.countDown();
+        startSignal.await();
+        checkPointing.forceCheckPoint();
+        completed.countDown();
       }
  catch (      Throwable e) {
         throw new RuntimeException(e);
@@ -27,17 +32,7 @@
 ;
   checkPointerThread.start();
   forceCheckPointThread.start();
-  checkPointIfNeededLatch.start();
-  verify.await();
-  verifyZeroInteractions(txIdStore,flusher,logPruning,appender,health);
-  checkPointIfNeededLatch.finish();
-  forceCheckPointLatch.awaitFinish();
-  assertEquals(forcedTransactionId,forcedTxId.get());
-  verify(flusher,times(1)).forceEverything();
-  verify(health,times(2)).assertHealthy(IOException.class);
-  verify(appender,times(1)).checkPoint(eq(forceLogPosition),any(LogCheckPointEvent.class));
-  verify(threshold,times(1)).checkPointHappened(forcedTransactionId);
-  verify(threshold,never()).isCheckPointingNeeded(forcedTransactionId);
-  verify(logPruning,times(1)).pruneLogs(forceLogPosition.getLogVersion());
-  verifyNoMoreInteractions(flusher,health,appender,threshold);
+  completed.await();
+  verify(spyLock,times(2)).lock();
+  verify(spyLock,times(2)).unlock();
 }
