@@ -13,9 +13,21 @@
   }
 );
   HTTP.Response secondInTx2=POST(txUri(tx2),quotedJson("{'statements': [{'statement': 'MATCH (n {prop : 1}) SET n.prop = 6'}]}"));
-  future.cancel(true);
+  HTTP.Response secondInTx1=future.get();
+  assertThat(secondInTx1.status(),is(200));
   assertThat(secondInTx2.status(),is(200));
-  assertThat(secondInTx2,hasErrors(Status.Transaction.DeadlockDetected));
-  HTTP.Response commit=POST(firstInTx2.stringFromContent("commit"));
+  HTTP.Response failed;
+  if (containsError(secondInTx1)) {
+    failed=secondInTx1;
+  }
+ else   if (containsError(secondInTx2)) {
+    failed=secondInTx2;
+  }
+ else {
+    failed=null;
+    fail("Either tx1 or tx2 is expected to fail");
+  }
+  assertThat(failed,hasErrors(Status.Transaction.DeadlockDetected));
+  HTTP.Response commit=POST(failed.stringFromContent("commit"));
   assertThat(commit.status(),is(404));
 }
