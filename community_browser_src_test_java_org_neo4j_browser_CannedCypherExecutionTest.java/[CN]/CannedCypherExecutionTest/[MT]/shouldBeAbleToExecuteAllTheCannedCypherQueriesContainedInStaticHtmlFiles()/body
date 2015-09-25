@@ -1,23 +1,40 @@
 {
   URL resourceLoc=getClass().getClassLoader().getResource("browser");
   assertNotNull(resourceLoc);
-  final GraphDatabaseService database=new TestGraphDatabaseFactory().newImpermanentDatabase();
   final AtomicInteger explainCount=new AtomicInteger(0);
   final AtomicInteger executionCount=new AtomicInteger(0);
   Files.walkFileTree(Paths.get(resourceLoc.toURI()),new SimpleFileVisitor<Path>(){
     @Override public FileVisitResult visitFile(    Path file,    BasicFileAttributes attributes) throws IOException {
-      if (file.getFileName().toString().endsWith(".html")) {
+      final GraphDatabaseService database=new TestGraphDatabaseFactory().newImpermanentDatabase();
+      String fileName=file.getFileName().toString();
+      if (fileName.endsWith(".html")) {
         String content=FileUtils.readTextFile(file.toFile(),Charsets.UTF_8);
-        Elements cypherElements=Jsoup.parse(content).select("pre.runnable");
+        Elements cypherElements=Jsoup.parse(content).select("pre.runnable").not(".standalone-example");
         for (        Element cypherElement : cypherElements) {
           String statement=replaceAngularExpressions(cypherElement.text());
           if (!statement.startsWith(":")) {
             if (shouldExplain(statement)) {
               try (Transaction transaction=database.beginTx()){
-                Result result=database.execute(prependExplain(statement));
-                assertThat(format("Query [%s] should produce no notifications",statement),result.getNotifications(),is(emptyIterable()));
-                explainCount.incrementAndGet();
-                transaction.success();
+                Iterable<Notification> actual=database.execute(prependExplain(statement)).getNotifications();
+                boolean skipKnownInefficientCypher=!cypherElement.parent().select(".warn").isEmpty();
+                if (skipKnownInefficientCypher) {
+                  List<Notification> targetCollection=new ArrayList<Notification>();
+                  CollectionUtils.addAll(targetCollection,actual);
+                  CollectionUtils.filter(targetCollection,new org.apache.commons.collections4.Predicate<Notification>(){
+                    @Override public boolean evaluate(                    Notification notification){
+                      return notification.getDescription().contains(NotificationCode.CARTESIAN_PRODUCT.values().toString());
+                    }
+                  }
+);
+                  assertThat(format("Query [%s] should only produce cartesian product " + "notifications. [%s]",statement,fileName),targetCollection,empty());
+                  explainCount.incrementAndGet();
+                  transaction.success();
+                }
+ else {
+                  assertThat(format("Query [%s] should produce no notifications. [%s]",statement,fileName),actual,is(emptyIterable()));
+                  explainCount.incrementAndGet();
+                  transaction.success();
+                }
               }
  catch (              QueryExecutionException e) {
                 throw new AssertionError(format("Failed to explain query [%s] in file [%s]",statement,file),e);
