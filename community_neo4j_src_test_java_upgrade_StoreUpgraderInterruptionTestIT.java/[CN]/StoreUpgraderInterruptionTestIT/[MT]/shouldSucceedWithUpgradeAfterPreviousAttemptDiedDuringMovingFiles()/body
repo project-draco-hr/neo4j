@@ -1,0 +1,36 @@
+{
+  File workingDirectory=directory.directory("working");
+  File prepareDirectory=directory.directory("prepare");
+  MigrationTestUtils.prepareSampleLegacyDatabase(version,fs,workingDirectory,prepareDirectory);
+  PageCache pageCache=pageCacheRule.getPageCache(fs);
+  StoreVersionCheck check=new StoreVersionCheck(pageCache);
+  UpgradableDatabase upgradableDatabase=new UpgradableDatabase(check,new LegacyStoreVersionCheck(fs));
+  SilentMigrationProgressMonitor progressMonitor=new SilentMigrationProgressMonitor();
+  LogService logService=NullLogService.getInstance();
+  final Config config=new Config();
+  StoreMigrator failingStoreMigrator=new StoreMigrator(progressMonitor,fs,pageCache,config,logService){
+    @Override public void moveMigratedFiles(    File migrationDir,    File storeDir,    String versionToUpgradeFrom) throws IOException {
+      super.moveMigratedFiles(migrationDir,storeDir,versionToUpgradeFrom);
+      throw new RuntimeException("This upgrade is failing");
+    }
+  }
+;
+  assertTrue(allLegacyStoreFilesHaveVersion(fs,workingDirectory,version));
+  try {
+    newUpgrader(failingStoreMigrator).migrateIfNeeded(workingDirectory,upgradableDatabase,schemaIndexProvider);
+    fail("Should throw exception");
+  }
+ catch (  RuntimeException e) {
+    assertEquals("This upgrade is failing",e.getMessage());
+  }
+  assertTrue(checkNeoStoreHasLatestVersion(check,workingDirectory));
+  assertTrue(allStoreFilesHaveNoTrailer(fs,workingDirectory));
+  assertConsistentStore(workingDirectory);
+  progressMonitor=new SilentMigrationProgressMonitor();
+  StoreMigrator migrator=new StoreMigrator(progressMonitor,fs,pageCache,config,logService);
+  newUpgrader(migrator).migrateIfNeeded(workingDirectory,upgradableDatabase,schemaIndexProvider);
+  assertTrue(checkNeoStoreHasLatestVersion(check,workingDirectory));
+  assertTrue(allStoreFilesHaveNoTrailer(fs,workingDirectory));
+  pageCache.close();
+  assertConsistentStore(workingDirectory);
+}

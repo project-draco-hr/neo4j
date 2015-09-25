@@ -1,0 +1,11 @@
+{
+  HTTP.Response first=POST(txUri(),quotedJson("{'statements': [{'statement': 'CREATE ()'}]}"));
+  assertThat(first.status(),is(201));
+  assertThat(first,containsNoErrors());
+  long txId=extractTxId(first);
+  HTTP.Response second=POST(txUri(txId),quotedJson("{'statements': [{'statement': 'LOAD CSV FROM \\\"http://127.0.0.1/null/\\\" AS line " + "CREATE (a {name:line[0]})'}]}"));
+  assertThat(second.status(),is(200));
+  assertThat(second,hasErrors(Status.Statement.ExternalResourceFailure));
+  HTTP.Response commit=POST(second.stringFromContent("commit"));
+  assertThat(commit.status(),is(404));
+}

@@ -1,0 +1,29 @@
+{
+  ManagedCluster cluster=clusterRule.startCluster();
+  createIndexes(cluster.getMaster());
+  cluster.sync();
+  awaitIndexes(cluster);
+  final AtomicBoolean halter=new AtomicBoolean();
+  AtomicLong[] highIdNodes=new AtomicLong[numberOfIndexes];
+  CountDownLatch endLatch=new CountDownLatch(numberOfIndexes + 1);
+  for (int i=0; i < highIdNodes.length; i++) {
+    highIdNodes[i]=new AtomicLong();
+  }
+  startLoadOn(cluster.getMaster(),halter,highIdNodes,endLatch);
+  GraphDatabaseAPI slave=cluster.getAnySlave();
+  startCatchingUp(slave,halter,endLatch);
+  final AtomicInteger good=new AtomicInteger(), bad=new AtomicInteger(), ugly=new AtomicInteger();
+  startMeasuringTheGap(good,bad,ugly,halter,highIdNodes,slave);
+  for (long endTime=currentTimeMillis() + SECONDS.toMillis(30); currentTimeMillis() < endTime; ) {
+    printStats(good.get(),bad.get(),ugly.get());
+    try {
+      Thread.sleep(1000);
+    }
+ catch (    InterruptedException e) {
+      throw new RuntimeException(e);
+    }
+  }
+  halter.set(true);
+  endLatch.await();
+  printStats(good.get(),bad.get(),ugly.get());
+}

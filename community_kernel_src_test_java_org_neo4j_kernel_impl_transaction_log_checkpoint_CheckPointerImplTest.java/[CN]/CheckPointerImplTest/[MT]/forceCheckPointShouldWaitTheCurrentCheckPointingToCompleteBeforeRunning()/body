@@ -1,0 +1,38 @@
+{
+  ReentrantLock reentrantLock=new ReentrantLock();
+  final Lock spyLock=spy(reentrantLock);
+  doAnswer(new Answer(){
+    @Override public Object answer(    InvocationOnMock invocation) throws Throwable {
+      verify(appender).checkPoint(any(LogPosition.class),any(LogCheckPointEvent.class));
+      reset(appender);
+      invocation.callRealMethod();
+      return null;
+    }
+  }
+).when(spyLock).unlock();
+  final CheckPointerImpl checkPointing=checkPointer(spyLock);
+  mockTxIdStore();
+  final CountDownLatch startSignal=new CountDownLatch(2);
+  final CountDownLatch completed=new CountDownLatch(2);
+  checkPointing.start();
+  Thread checkPointerThread=new CheckPointerThread(checkPointing,startSignal,completed);
+  Thread forceCheckPointThread=new Thread(){
+    @Override public void run(){
+      try {
+        startSignal.countDown();
+        startSignal.await();
+        checkPointing.forceCheckPoint();
+        completed.countDown();
+      }
+ catch (      Throwable e) {
+        throw new RuntimeException(e);
+      }
+    }
+  }
+;
+  checkPointerThread.start();
+  forceCheckPointThread.start();
+  completed.await();
+  verify(spyLock,times(2)).lock();
+  verify(spyLock,times(2)).unlock();
+}

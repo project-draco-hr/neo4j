@@ -1,0 +1,14 @@
+{
+  final File storeFileBase=new File(storeDir,MetaDataStore.DEFAULT_NAME + StoreFactory.COUNTS_STORE);
+  final StoreFactory storeFactory=new StoreFactory(fileSystem,storeDir,pageCache,NullLogProvider.getInstance());
+  try (NeoStores neoStores=storeFactory.openNeoStores(false)){
+    NodeStore nodeStore=neoStores.getNodeStore();
+    RelationshipStore relationshipStore=neoStores.getRelationshipStore();
+    try (Lifespan life=new Lifespan()){
+      int highLabelId=(int)neoStores.getLabelTokenStore().getHighId();
+      int highRelationshipTypeId=(int)neoStores.getRelationshipTypeTokenStore().getHighId();
+      CountsComputer initializer=new CountsComputer(lastTxId,nodeStore,relationshipStore,highLabelId,highRelationshipTypeId);
+      life.add(new CountsTracker(logService.getInternalLogProvider(),fileSystem,pageCache,config,storeFileBase).setInitializer(initializer));
+    }
+   }
+ }

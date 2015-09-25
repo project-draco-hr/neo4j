@@ -1,0 +1,34 @@
+{
+  StoreChannel fileChannel=null;
+  String storeFilename=storeFile.getName();
+  byte[] expectedVersionBytes=UTF8.encode(expectedVersion);
+  try {
+    if (!fs.fileExists(storeFile)) {
+      if (optional) {
+        return new Result(Outcome.ok,null,storeFilename);
+      }
+      return new Result(Outcome.missingStoreFile,null,storeFilename);
+    }
+    fileChannel=fs.open(storeFile,"r");
+    if (fileChannel.size() < expectedVersionBytes.length) {
+      return new Result(Outcome.storeVersionNotFound,null,storeFilename);
+    }
+    String actualVersion=readVersion(fileChannel,expectedVersionBytes.length);
+    if (!expectedVersion.equals(actualVersion)) {
+      return new Result(Outcome.unexpectedUpgradingStoreVersion,actualVersion,storeFilename);
+    }
+  }
+ catch (  IOException e) {
+    throw new RuntimeException(e);
+  }
+ finally {
+    if (fileChannel != null) {
+      try {
+        fileChannel.close();
+      }
+ catch (      IOException e) {
+      }
+    }
+  }
+  return new Result(Outcome.ok,null,storeFilename);
+}

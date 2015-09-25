@@ -10,12 +10,21 @@
     }
   }
 );
-  TransactionRepresentationStoreApplier txApplier=mock(TransactionRepresentationStoreApplier.class);
-  IndexUpdatesValidator indexUpdatesValidator=mock(IndexUpdatesValidator.class);
-  when(indexUpdatesValidator.validate(any(TransactionRepresentation.class),any(TransactionApplicationMode.class))).thenReturn(ValidatedIndexUpdates.NONE);
+  final BatchingTransactionRepresentationStoreApplier txApplier=mock(BatchingTransactionRepresentationStoreApplier.class);
+  final IndexUpdatesValidator indexUpdatesValidator=mock(IndexUpdatesValidator.class);
+  when(indexUpdatesValidator.validate(any(TransactionRepresentation.class))).thenReturn(ValidatedIndexUpdates.NONE);
   final Dependencies deps=new Dependencies();
   deps.satisfyDependencies(mock(LogicalTransactionStore.class),mock(LogFile.class),mock(LogRotation.class),mock(KernelHealth.class),txAppender,txApplier,txIdStore,indexUpdatesValidator);
-  ResponseUnpacker unpacker=initAndStart(new TransactionCommittingResponseUnpacker(DependenciesProxy.dependencies(deps,TransactionCommittingResponseUnpacker.Dependencies.class)));
+  TransactionCommittingResponseUnpacker.Dependencies dependencies=new DefaultUnpackerDependencies(deps){
+    @Override public BatchingTransactionRepresentationStoreApplier transactionRepresentationStoreApplier(){
+      return txApplier;
+    }
+    @Override public IndexUpdatesValidator indexUpdatesValidator(){
+      return indexUpdatesValidator;
+    }
+  }
+;
+  ResponseUnpacker unpacker=initAndStart(new TransactionCommittingResponseUnpacker(dependencies,DEFAULT_BATCH_SIZE));
   MasterClient masterClient=cleanupRule.add(newMasterClient214(StoreId.DEFAULT,unpacker));
   masterClient.newLockSession(new RequestContext(1,2,3,4,5));
   verify(txAppender,times(TX_LOG_COUNT)).append(any(TransactionRepresentation.class),anyLong());
