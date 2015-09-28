@@ -1,22 +1,17 @@
 {
-  String storeFilename=storeFile.getName();
-  try (PagedFile file=pageCache.map(storeFile,pageCache.pageSize())){
-    if (file.getLastPageId() == -1) {
-      return new Result(Outcome.storeVersionNotFound,null,storeFilename);
-    }
-    String actualVersion=StoreVersionTrailerUtil.readTrailer(file,expectedVersion);
-    if (actualVersion == null) {
-      return new Result(Outcome.storeVersionNotFound,null,storeFilename);
-    }
-    if (!actualVersion.startsWith(typeDescriptor(expectedVersion))) {
-      return new Result(Outcome.storeVersionNotFound,actualVersion,storeFilename);
-    }
-    if (!expectedVersion.equals(actualVersion)) {
-      return new Result(Outcome.unexpectedUpgradingStoreVersion,actualVersion,storeFilename);
-    }
+  long record;
+  try {
+    record=MetaDataStore.getRecord(pageCache,neostoreFile,STORE_VERSION);
   }
- catch (  IOException e) {
-    return new Result(Outcome.missingStoreFile,null,storeFilename);
+ catch (  IOException ex) {
+    return new Result(Outcome.missingStoreFile,null,neostoreFile.getName());
   }
-  return new Result(Outcome.ok,null,storeFilename);
+  if (record == MetaDataStore.FIELD_NOT_PRESENT) {
+    return new Result(Outcome.storeVersionNotFound,null,neostoreFile.getName());
+  }
+  String storeVersion=MetaDataStore.versionLongToString(record);
+  if (!expectedVersion.equals(storeVersion)) {
+    return new Result(Outcome.unexpectedUpgradingStoreVersion,storeVersion,expectedVersion);
+  }
+  return new Result(Outcome.ok,null,neostoreFile.getName());
 }

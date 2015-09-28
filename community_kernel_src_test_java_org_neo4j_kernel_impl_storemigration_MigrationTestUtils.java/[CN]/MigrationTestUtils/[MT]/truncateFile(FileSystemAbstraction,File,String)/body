@@ -1,6 +1,10 @@
 {
   byte[] versionBytes=UTF8.encode(suffixToDetermineTruncationLength);
-  StoreChannel fileChannel=fileSystem.open(storeFile,"rw");
-  fileChannel.truncate(fileSystem.getFileSize(storeFile) - versionBytes.length);
-  fileChannel.close();
-}
+  if (!fileSystem.fileExists(storeFile)) {
+    return;
+  }
+  try (StoreChannel fileChannel=fileSystem.open(storeFile,"rw")){
+    long fileSize=fileSystem.getFileSize(storeFile);
+    fileChannel.truncate(Math.max(0,fileSize - versionBytes.length));
+  }
+ }

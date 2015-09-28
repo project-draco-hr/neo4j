@@ -4,10 +4,20 @@ synchronized (logFile) {
     try {
       if (transactionQueue.accept(batchCommitter) > 0) {
         appender.force();
-        transactionQueue.accept(batchApplier);
+        try {
+          transactionQueue.accept(batchApplier);
+          storeApplier.closeBatch();
+        }
+  finally {
+          transactionQueue.accept(batchCloser);
+        }
       }
     }
-  finally {
+ catch (    Throwable panic) {
+      kernelHealth.panic(panic);
+      throw panic;
+    }
+ finally {
       transactionQueue.clear();
     }
   }

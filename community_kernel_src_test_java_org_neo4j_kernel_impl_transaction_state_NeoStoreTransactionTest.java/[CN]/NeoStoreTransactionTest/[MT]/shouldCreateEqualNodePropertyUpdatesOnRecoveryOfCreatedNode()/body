@@ -10,7 +10,7 @@
     commitProcess().commit(transactionRepresentationOf(tx),locks,commitEvent,INTERNAL);
   }
    IteratorCollector<NodePropertyUpdate> indexUpdates=new IteratorCollector<>(0);
-  doAnswer(indexUpdates).when(mockIndexing).validate(any(Iterable.class));
+  doAnswer(indexUpdates).when(mockIndexing).validate(any(Iterable.class),any(IndexUpdateMode.class));
   tx=newWriteTransaction().first();
   tx.nodeCreate(nodeId);
   tx.addLabelToNode(labelId,nodeId);
@@ -21,12 +21,12 @@
   try (LockGroup locks=new LockGroup()){
     commitProcess().commit(representation,locks,commitEvent,INTERNAL);
   }
-   verify(mockIndexing,times(1)).validate(any(Iterable.class));
+   verify(mockIndexing,times(1)).validate(any(Iterable.class),any(IndexUpdateMode.class));
   indexUpdates.assertContent(expectedUpdate);
   reset(mockIndexing);
   indexUpdates=new IteratorCollector<>(0);
-  doAnswer(indexUpdates).when(mockIndexing).validate(any(Iterable.class));
-  commit(recoverer.getAsRecovered(),TransactionApplicationMode.RECOVERY);
-  verify(mockIndexing,times(1)).addRecoveredNodeIds(PrimitiveLongCollections.setOf(nodeId));
-  verify(mockIndexing,never()).validate(any(Iterable.class));
+  doAnswer(indexUpdates).when(mockIndexing).validate(any(Iterable.class),any(IndexUpdateMode.class));
+  commit(new RecoveryIndexingUpdatesValidator(mockIndexing),recoverer.getAsRecovered(),TransactionApplicationMode.RECOVERY);
+  verify(mockIndexing,times(1)).visited(nodeId);
+  verify(mockIndexing,never()).validate(any(Iterable.class),any(IndexUpdateMode.class));
 }
