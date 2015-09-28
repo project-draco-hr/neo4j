@@ -1,0 +1,24 @@
+{
+  if (!directoryContainsDb(targetDirectory)) {
+    throw new RuntimeException(targetDirectory + " doesn't contain a database");
+  }
+  Map<String,String> temporaryDbConfig=getTemporaryDbConfig();
+  config=config.with(temporaryDbConfig);
+  try (PageCache pageCache=createPageCache(new DefaultFileSystemAbstraction(),config)){
+    GraphDatabaseAPI targetDb=startTemporaryDb(targetDirectory,pageCache,config.getParams());
+    long backupStartTime=System.currentTimeMillis();
+    BackupOutcome outcome=null;
+    try {
+      outcome=doIncrementalBackup(sourceHostNameOrIp,sourcePort,targetDb,timeout);
+    }
+  finally {
+      targetDb.shutdown();
+    }
+    bumpMessagesDotLogFile(targetDirectory,backupStartTime);
+    clearIdFiles(targetDirectory);
+    return outcome;
+  }
+ catch (  IOException e) {
+    throw new RuntimeException(e);
+  }
+}
