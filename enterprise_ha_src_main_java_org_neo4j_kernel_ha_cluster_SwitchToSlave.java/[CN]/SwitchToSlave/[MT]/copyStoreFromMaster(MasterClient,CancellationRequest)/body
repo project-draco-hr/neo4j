@@ -1,13 +1,19 @@
 {
-  userLog.info("Copying store from master");
-  new StoreCopyClient(storeDir,config,kernelExtensions,logService.getUserLogProvider(),fileSystemAbstraction,pageCache,storeCopyMonitor,false).copyStore(new StoreCopyClient.StoreCopyRequester(){
-    @Override public Response<?> copyStore(    StoreWriter writer){
-      return masterClient.copyStore(new RequestContext(0,config.get(ClusterSettings.server_id).toIntegerIndex(),0,BASE_TX_ID,0),writer);
+  try {
+    userLog.info("Copying store from master");
+    storeCopyClient.copyStore(new StoreCopyClient.StoreCopyRequester(){
+      @Override public Response<?> copyStore(      StoreWriter writer){
+        return masterClient.copyStore(new RequestContext(0,config.get(ClusterSettings.server_id).toIntegerIndex(),0,BASE_TX_ID,0),writer);
+      }
+      @Override public void done(){
+      }
     }
-    @Override public void done(){
-    }
-  }
 ,cancellationRequest);
-  startServicesAgain();
-  userLog.info("Finished copying store from master");
+    startServicesAgain();
+    userLog.info("Finished copying store from master");
+  }
+ catch (  Throwable t) {
+    cleanStoreDir();
+    throw t;
+  }
 }
