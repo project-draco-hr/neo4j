@@ -1,27 +1,18 @@
 {
-  File root=testDirectory.directory("shouldPropagateRelationshipCountsInHA");
-  ClusterManager clusterManager=new ClusterManager(clusterOfSize(3),root,MapUtil.stringMap(HaSettings.pull_interval.name(),PULL_INTERVAL + "ms"));
-  clusterManager.start();
-  try {
-    ClusterManager.ManagedCluster cluster=clusterManager.getDefaultCluster();
-    cluster.await(allSeesAllAsAvailable());
-    HighlyAvailableGraphDatabase master=cluster.getMaster();
-    try (Transaction tx=master.beginTx()){
-      Node left=master.createNode();
-      Node right=master.createNode(DynamicLabel.label("A"));
-      left.createRelationshipTo(right,DynamicRelationshipType.withName("Type"));
-      tx.success();
-    }
-     waitForPullUpdates();
-    for (    HighlyAvailableGraphDatabase db : cluster.getAllMembers()) {
-      CountsTracker counts=db.getDependencyResolver().resolveDependency(NeoStores.class).getCounts();
-      assertEquals(1,counts.relationshipCount(-1,-1,-1,newDoubleLongRegister()).readSecond());
-      assertEquals(1,counts.relationshipCount(-1,-1,0,newDoubleLongRegister()).readSecond());
-      assertEquals(1,counts.relationshipCount(-1,0,-1,newDoubleLongRegister()).readSecond());
-      assertEquals(1,counts.relationshipCount(-1,0,0,newDoubleLongRegister()).readSecond());
-    }
+  ManagedCluster cluster=clusterRule.startCluster();
+  HighlyAvailableGraphDatabase master=cluster.getMaster();
+  try (Transaction tx=master.beginTx()){
+    Node left=master.createNode();
+    Node right=master.createNode(DynamicLabel.label("A"));
+    left.createRelationshipTo(right,DynamicRelationshipType.withName("Type"));
+    tx.success();
   }
-  finally {
-    clusterManager.shutdown();
+   waitForPullUpdates();
+  for (  HighlyAvailableGraphDatabase db : cluster.getAllMembers()) {
+    CountsTracker counts=db.getDependencyResolver().resolveDependency(NeoStores.class).getCounts();
+    assertEquals(1,counts.relationshipCount(-1,-1,-1,newDoubleLongRegister()).readSecond());
+    assertEquals(1,counts.relationshipCount(-1,-1,0,newDoubleLongRegister()).readSecond());
+    assertEquals(1,counts.relationshipCount(-1,0,-1,newDoubleLongRegister()).readSecond());
+    assertEquals(1,counts.relationshipCount(-1,0,0,newDoubleLongRegister()).readSecond());
   }
 }

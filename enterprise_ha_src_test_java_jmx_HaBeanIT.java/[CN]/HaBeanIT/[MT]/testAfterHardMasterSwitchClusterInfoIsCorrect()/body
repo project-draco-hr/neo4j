@@ -1,15 +1,17 @@
 {
-  startCluster(3);
+  ManagedCluster cluster=clusterRule.startCluster();
   RepairKit masterShutdown=cluster.fail(cluster.getMaster());
-  cluster.await(ClusterManager.masterAvailable());
-  cluster.await(ClusterManager.masterSeesSlavesAsAvailable(1));
-  for (  HighlyAvailableGraphDatabase db : cluster.getAllMembers()) {
-    if (db.getInstanceState() == HighAvailabilityMemberState.PENDING) {
-      continue;
+  try {
+    for (    HighlyAvailableGraphDatabase db : cluster.getAllMembers()) {
+      if (db.getInstanceState() == HighAvailabilityMemberState.PENDING) {
+        continue;
+      }
+      assertEquals(3,ha(db).getInstancesInCluster().length);
     }
-    assertEquals(3,ha(db).getInstancesInCluster().length);
   }
-  masterShutdown.repair();
+  finally {
+    masterShutdown.repair();
+  }
   cluster.await(ClusterManager.masterAvailable());
   cluster.await(ClusterManager.masterSeesSlavesAsAvailable(2));
   for (  HighlyAvailableGraphDatabase db : cluster.getAllMembers()) {

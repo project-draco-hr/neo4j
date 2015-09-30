@@ -1,53 +1,43 @@
 {
-  File root=testDirectory.directory("testMasterStopsWritesWhenMajorityIsUnavailable");
-  ClusterManager clusterManager=new ClusterManager(clusterOfSize(3),root,MapUtil.stringMap(HaSettings.tx_push_factor.name(),"2",HaSettings.state_switch_timeout.name(),"5s"));
+  ManagedCluster cluster=clusterRule.startCluster();
+  HighlyAvailableGraphDatabase master=cluster.getMaster();
+  doTx(master);
+  final CountDownLatch latch1=new CountDownLatch(1);
+  waitOnHeartbeatFail(master,latch1);
+  HighlyAvailableGraphDatabase slave1=cluster.getAnySlave();
+  cluster.fail(slave1);
+  latch1.await();
+  slave1.shutdown();
+  doTx(master);
+  final CountDownLatch latch2=new CountDownLatch(1);
+  waitOnHeartbeatFail(master,latch2);
+  HighlyAvailableGraphDatabase slave2=cluster.getAnySlave(slave1);
+  ClusterManager.RepairKit rk2=cluster.fail(slave2);
+  latch2.await();
+  assertFalse(master.isMaster());
   try {
-    clusterManager.start();
-    ClusterManager.ManagedCluster cluster=clusterManager.getDefaultCluster();
-    cluster.await(ClusterManager.masterAvailable());
-    cluster.await(ClusterManager.masterSeesAllSlavesAsAvailable());
-    HighlyAvailableGraphDatabase master=cluster.getMaster();
     doTx(master);
-    final CountDownLatch latch1=new CountDownLatch(1);
-    waitOnHeartbeatFail(master,latch1);
-    HighlyAvailableGraphDatabase slave1=cluster.getAnySlave();
-    cluster.fail(slave1);
-    latch1.await();
-    slave1.shutdown();
-    doTx(master);
-    final CountDownLatch latch2=new CountDownLatch(1);
-    waitOnHeartbeatFail(master,latch2);
-    HighlyAvailableGraphDatabase slave2=cluster.getAnySlave(slave1);
-    ClusterManager.RepairKit rk2=cluster.fail(slave2);
-    latch2.await();
-    assertFalse(master.isMaster());
-    try {
-      doTx(master);
-      fail("After both slaves fail txs should not go through");
-    }
- catch (    TransactionFailureException e) {
-      assertEquals("Timeout waiting for cluster to elect master",e.getMessage());
-    }
-    Thread.sleep(120000);
-    final CountDownLatch latch3=new CountDownLatch(1);
-    final CountDownLatch latch4=new CountDownLatch(1);
-    final CountDownLatch latch5=new CountDownLatch(1);
-    waitOnHeartbeatAlive(master,latch3);
-    waitOnRoleIsAvailable(master,latch5,HighAvailabilityModeSwitcher.SLAVE);
-    rk2.repair();
-    latch3.await();
-    cluster.await(ClusterManager.masterAvailable(slave1,slave2));
-    latch5.await();
-    cluster.await(ClusterManager.masterAvailable());
-    assertTrue(master.isMaster());
-    assertFalse(slave2.isMaster());
-    Node finalNode=doTx(master);
-    try (Transaction transaction=slave2.beginTx()){
-      slave2.getNodeById(finalNode.getId());
-      transaction.success();
-    }
-   }
-  finally {
-    clusterManager.stop();
+    fail("After both slaves fail txs should not go through");
   }
-}
+ catch (  TransactionFailureException e) {
+    assertEquals("Timeout waiting for cluster to elect master",e.getMessage());
+  }
+  Thread.sleep(120000);
+  final CountDownLatch latch3=new CountDownLatch(1);
+  final CountDownLatch latch4=new CountDownLatch(1);
+  final CountDownLatch latch5=new CountDownLatch(1);
+  waitOnHeartbeatAlive(master,latch3);
+  waitOnRoleIsAvailable(master,latch5,HighAvailabilityModeSwitcher.SLAVE);
+  rk2.repair();
+  latch3.await();
+  cluster.await(ClusterManager.masterAvailable(slave1,slave2));
+  latch5.await();
+  cluster.await(ClusterManager.masterAvailable());
+  assertTrue(master.isMaster());
+  assertFalse(slave2.isMaster());
+  Node finalNode=doTx(master);
+  try (Transaction transaction=slave2.beginTx()){
+    slave2.getNodeById(finalNode.getId());
+    transaction.success();
+  }
+ }
