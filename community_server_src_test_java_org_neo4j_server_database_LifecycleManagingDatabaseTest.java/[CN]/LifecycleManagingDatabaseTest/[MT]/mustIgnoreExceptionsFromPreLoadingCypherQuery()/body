@@ -1,0 +1,23 @@
+{
+  final GraphDatabaseAPI mockDb=mock(GraphDatabaseAPI.class);
+  Config config=new Config();
+  GraphDatabaseFacadeFactory.Dependencies deps=GraphDatabaseDependencies.newDependencies().userLogProvider(NullLogProvider.getInstance());
+  LifecycleManagingDatabase.GraphFactory factory=new LifecycleManagingDatabase.GraphFactory(){
+    @Override public GraphDatabaseAPI newGraphDatabase(    Config config,    GraphDatabaseFacadeFactory.Dependencies dependencies){
+      return mockDb;
+    }
+  }
+;
+  LifecycleManagingDatabase db=new LifecycleManagingDatabase(config,factory,deps){
+    @Override protected boolean isInTestMode(){
+      return false;
+    }
+  }
+;
+  when(mockDb.execute(LifecycleManagingDatabase.CYPHER_WARMUP_QUERY)).thenThrow(new TransactionFailureException("Boo"));
+  db.init();
+  db.start();
+  assertTrue("the database should be running",db.isRunning());
+  db.stop();
+  db.shutdown();
+}
