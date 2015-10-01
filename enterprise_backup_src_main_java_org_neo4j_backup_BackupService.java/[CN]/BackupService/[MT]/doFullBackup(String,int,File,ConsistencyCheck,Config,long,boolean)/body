@@ -4,7 +4,6 @@
   }
   long timestamp=System.currentTimeMillis();
   long lastCommittedTx=-1;
-  boolean consistent=!checkConsistency;
   try (PageCache pageCache=createPageCache(fileSystem)){
     StoreCopyClient storeCopier=new StoreCopyClient(targetDirectory,tuningConfiguration,loadKernelExtensions(),logProvider,new DefaultFileSystemAbstraction(),pageCache,monitors.newMonitor(StoreCopyClient.Monitor.class,getClass()),forensics);
     storeCopier.copyStore(new StoreCopyClient.StoreCopyRequester(){
@@ -20,13 +19,12 @@
     }
 ,CancellationRequest.NEVER_CANCELLED);
     bumpMessagesDotLogFile(targetDirectory,timestamp);
-    if (checkConsistency) {
-      try {
-        consistent=new ConsistencyCheckService().runFullConsistencyCheck(targetDirectory,tuningConfiguration,ProgressMonitorFactory.textual(System.err),logProvider,fileSystem,pageCache,false).isSuccessful();
-      }
- catch (      ConsistencyCheckIncompleteException e) {
-        log.error("Consistency check incomplete",e);
-      }
+    boolean consistent=false;
+    try {
+      consistent=consistencyCheck.runFull(targetDirectory,tuningConfiguration,ProgressMonitorFactory.textual(System.err),logProvider,fileSystem,pageCache,false);
+    }
+ catch (    ConsistencyCheck.ConsistencyCheckFailedException e) {
+      log.error("Consistency check incomplete",e);
     }
     clearIdFiles(targetDirectory);
     return new BackupOutcome(lastCommittedTx,consistent);
