@@ -17,6 +17,7 @@
   }
   life=new LifeSupport();
   final AtomicInteger recoveredTransactions=new AtomicInteger();
+  final AtomicBoolean recoveryRequiredCalled=new AtomicBoolean();
   final LogFileRecoverer recoverer=new LogFileRecoverer(new VersionAwareLogEntryReader<ReadableVersionableLogChannel>(),new CloseableVisitor<CommittedTransactionRepresentation,IOException>(){
     @Override public boolean visit(    CommittedTransactionRepresentation committedTx) throws IOException {
       TransactionRepresentation transaction=committedTx.getTransactionRepresentation();
@@ -48,6 +49,9 @@
     @Override public LogVersionedStoreChannel getLogFile(    long recoveryVersion) throws IOException {
       return PhysicalLogFile.openForVersion(logFiles,fs,recoveryVersion);
     }
+    @Override public void recoveryRequired(){
+      recoveryRequiredCalled.set(true);
+    }
   }
 ,mock(Recovery.Monitor.class)));
   try {
@@ -57,4 +61,5 @@
     life.shutdown();
   }
   assertEquals(1,recoveredTransactions.get());
+  assertTrue(recoveryRequiredCalled.get());
 }
