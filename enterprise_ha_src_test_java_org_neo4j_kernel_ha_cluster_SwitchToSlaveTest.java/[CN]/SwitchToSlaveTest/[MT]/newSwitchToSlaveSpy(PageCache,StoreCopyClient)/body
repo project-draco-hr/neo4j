@@ -1,0 +1,35 @@
+{
+  ClusterMembers clusterMembers=mock(ClusterMembers.class);
+  ClusterMember master=mock(ClusterMember.class);
+  when(master.getStoreId()).thenReturn(new StoreId(42,42,42,42));
+  when(master.getHARole()).thenReturn(HighAvailabilityModeSwitcher.MASTER);
+  when(master.hasRole(eq(HighAvailabilityModeSwitcher.MASTER))).thenReturn(true);
+  when(master.getInstanceId()).thenReturn(new InstanceId(1));
+  when(clusterMembers.getMembers()).thenReturn(asList(master));
+  DependencyResolver resolver=mock(DependencyResolver.class);
+  when(resolver.resolveDependency(any(Class.class))).thenReturn(mock(Lifecycle.class));
+  when(resolver.resolveDependency(RequestContextFactory.class)).thenReturn(requestContextFactory);
+  when(resolver.resolveDependency(ClusterMembers.class)).thenReturn(clusterMembers);
+  when(resolver.resolveDependency(TransactionObligationFulfiller.class)).thenReturn(mock(TransactionObligationFulfiller.class));
+  NeoStoreDataSource dataSource=mock(NeoStoreDataSource.class);
+  when(dataSource.getStoreId()).thenReturn(new StoreId(42,42,42,42));
+  TransactionCounters transactionCounters=mock(TransactionCounters.class);
+  when(transactionCounters.getNumberOfActiveTransactions()).thenReturn(0l);
+  Response<HandshakeResult> response=mock(Response.class);
+  when(response.response()).thenReturn(new HandshakeResult(42,2));
+  when(masterClient.handshake(anyLong(),any(StoreId.class))).thenReturn(response);
+  when(masterClient.getProtocolVersion()).thenReturn(MasterClient214.PROTOCOL_VERSION);
+  TransactionIdStore transactionIdStoreMock=mock(TransactionIdStore.class);
+  when(transactionIdStoreMock.getLastCommittedTransaction()).thenReturn(new long[]{42,42});
+  MasterClientResolver masterClientResolver=mock(MasterClientResolver.class);
+  when(masterClientResolver.instantiate(anyString(),anyInt(),any(Monitors.class),any(StoreId.class),any(LifeSupport.class))).thenReturn(masterClient);
+  return spy(new SwitchToSlave(new File(""),NullLogService.getInstance(),clusterMembers,configMock(),resolver,mock(HaIdGeneratorFactory.class),mock(DelegateInvocationHandler.class),mock(ClusterMemberAvailability.class),requestContextFactory,pullerFactory,masterClientResolver,mock(SwitchToSlave.Monitor.class),storeCopyClient,Suppliers.singleton(dataSource),Suppliers.singleton(transactionIdStoreMock),new Function<Slave,SlaveServer>(){
+    @Override public SlaveServer apply(    Slave slave) throws RuntimeException {
+      SlaveServer server=mock(SlaveServer.class);
+      InetSocketAddress inetSocketAddress=InetSocketAddress.createUnresolved("localhost",42);
+      when(server.getSocketAddress()).thenReturn(inetSocketAddress);
+      return server;
+    }
+  }
+,updatePuller,pageCacheMock,mock(Monitors.class),transactionCounters));
+}
