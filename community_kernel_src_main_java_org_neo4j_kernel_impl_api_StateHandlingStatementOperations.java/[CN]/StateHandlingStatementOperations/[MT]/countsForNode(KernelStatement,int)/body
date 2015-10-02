@@ -1,3 +1,16 @@
 {
-  return storeLayer.countsForNode(labelId);
+  long count=countsForNodeWithoutTxState(statement,labelId);
+  if (statement.hasTxStateWithChanges()) {
+    CountsRecordState counts=new CountsRecordState();
+    try {
+      statement.txState().accept(new TransactionCountingStateVisitor(null,storeLayer,this,statement,counts));
+      if (counts.hasChanges()) {
+        count+=counts.nodeCount(labelId,newDoubleLongRegister()).readSecond();
+      }
+    }
+ catch (    ConstraintValidationKernelException|CreateConstraintFailureException e) {
+      throw new IllegalArgumentException("Unexpected error: " + e.getMessage());
+    }
+  }
+  return count;
 }

@@ -12,24 +12,23 @@
   long before=numberOfRelationships();
   Future<Long> tx=threading.execute(new NamedFunction<GraphDatabaseService,Long>("create-relationships"){
     @Override public Long apply(    GraphDatabaseService graphDb){
-      long during;
       try (Transaction tx=graphDb.beginTx()){
         rel.delete();
-        during=countsForRelationship(null,null,null);
+        long whatThisThreadSees=countsForRelationship(null,null,null);
         barrier.reached();
         tx.success();
+        return whatThisThreadSees;
       }
-       return during;
-    }
+     }
   }
 ,graphDb);
   barrier.await();
-  long concurrently=numberOfRelationships();
+  long during=numberOfRelationships();
   barrier.release();
-  long during=tx.get();
+  long whatOtherThreadSees=tx.get();
   long after=numberOfRelationships();
   assertEquals(3,before);
-  assertEquals(3,concurrently);
+  assertEquals(3,during);
   assertEquals(2,after);
-  assertEquals(before,during);
+  assertEquals(after,whatOtherThreadSees);
 }
