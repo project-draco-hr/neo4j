@@ -1,0 +1,23 @@
+{
+  File dir=store.prepareDirectory(testDir.graphDbDir());
+  File[] idFiles=dir.listFiles(new FilenameFilter(){
+    @Override public boolean accept(    File dir,    String name){
+      return name.endsWith(".id");
+    }
+  }
+);
+  for (  File idFile : idFiles) {
+    assertTrue(idFile.delete());
+  }
+  GraphDatabaseFactory factory=new TestGraphDatabaseFactory();
+  GraphDatabaseBuilder builder=factory.newEmbeddedDatabaseBuilder(dir);
+  builder.setConfig(GraphDatabaseSettings.allow_store_upgrade,"true");
+  GraphDatabaseService db=builder.newGraphDatabase();
+  try {
+    checkInstance(store,(GraphDatabaseAPI)db);
+  }
+  finally {
+    db.shutdown();
+  }
+  assertConsistentStore(dir);
+}
