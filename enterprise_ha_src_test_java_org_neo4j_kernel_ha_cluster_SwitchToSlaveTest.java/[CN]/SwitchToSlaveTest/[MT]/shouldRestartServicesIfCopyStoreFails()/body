@@ -1,0 +1,21 @@
+{
+  when(updatePuller.tryPullUpdates()).thenReturn(true);
+  PageCache pageCacheMock=mock(PageCache.class);
+  PagedFile pagedFileMock=mock(PagedFile.class);
+  when(pagedFileMock.getLastPageId()).thenReturn(1l);
+  when(pageCacheMock.map(any(File.class),anyInt())).thenThrow(new IOException()).thenThrow(new IOException()).thenReturn(pagedFileMock);
+  StoreCopyClient storeCopyClient=mock(StoreCopyClient.class);
+  doThrow(new RuntimeException()).doNothing().when(storeCopyClient).copyStore(any(StoreCopyClient.StoreCopyRequester.class),any(CancellationRequest.class));
+  SwitchToSlave switchToSlave=newSwitchToSlaveSpy(pageCacheMock,storeCopyClient);
+  URI localhost=getLocalhostUri();
+  try {
+    switchToSlave.switchToSlave(mock(LifeSupport.class),localhost,localhost,mock(CancellationRequest.class));
+    fail("Should have thrown an Exception");
+  }
+ catch (  RuntimeException e) {
+    verify(requestContextFactory,never()).start();
+    verify(switchToSlave).cleanStoreDir();
+    switchToSlave.switchToSlave(mock(LifeSupport.class),localhost,localhost,mock(CancellationRequest.class));
+    verify(requestContextFactory).start();
+  }
+}
