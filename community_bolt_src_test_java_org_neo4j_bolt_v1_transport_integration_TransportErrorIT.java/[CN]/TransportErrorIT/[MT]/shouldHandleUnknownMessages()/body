@@ -1,0 +1,11 @@
+{
+  final RecordingByteChannel rawData=new RecordingByteChannel();
+  final PackStream.Packer packer=new PackStream.Packer(new BufferedChannelOutput(rawData));
+  packer.packStructHeader(1,(byte)0x66);
+  packer.pack(1234);
+  packer.flush();
+  byte[] invalidMessage=rawData.getBytes();
+  client.connect(address).send(TransportTestUtil.acceptedVersions(1,0,0,0)).send(TransportTestUtil.chunk(32,invalidMessage));
+  MatcherAssert.assertThat(client,TransportTestUtil.eventuallyRecieves(new byte[]{0,0,0,1}));
+  MatcherAssert.assertThat(client,TransportTestUtil.eventuallyRecieves(msgFailure(Status.Request.Invalid,"0x66 is not a valid message type.")));
+}
