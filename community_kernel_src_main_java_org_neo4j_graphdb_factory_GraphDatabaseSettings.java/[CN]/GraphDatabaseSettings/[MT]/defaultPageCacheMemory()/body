@@ -3,6 +3,11 @@
   if (defaultMemoryOverride != null) {
     return defaultMemoryOverride;
   }
+  double ratioOfFreeMem=0.50;
+  String defaultMemoryRatioOverride=System.getProperty("dbms.pagecache.memory.ratio.default.override");
+  if (defaultMemoryRatioOverride != null) {
+    ratioOfFreeMem=Double.parseDouble(defaultMemoryRatioOverride);
+  }
   long maxHeapMemory=Runtime.getRuntime().maxMemory();
   if (0 < maxHeapMemory && maxHeapMemory < Long.MAX_VALUE) {
     try {
@@ -11,11 +16,9 @@
       getTotalPhysicalMemorySize.setAccessible(true);
       long physicalMemory=(long)getTotalPhysicalMemorySize.invoke(os);
       if (0 < physicalMemory && physicalMemory < Long.MAX_VALUE && maxHeapMemory < physicalMemory) {
-        double ratioOfFreeMem=0.50;
         long heuristic=(long)((physicalMemory - maxHeapMemory) * ratioOfFreeMem);
-        long MiB=1024 * 1024;
-        long min=32 * MiB;
-        long max=1024 * 1024 * MiB;
+        long min=32 * Format.MB;
+        long max=1024 * Format.GB;
         long memory=Math.min(max,Math.max(min,heuristic));
         return String.valueOf(memory);
       }
