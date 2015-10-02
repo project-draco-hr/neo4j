@@ -1,0 +1,43 @@
+{
+  final PhysicalLogFiles logFiles=new PhysicalLogFiles(directory.directory(),"log",fs);
+  File file=logFiles.getLogFileForVersion(logVersion);
+  writeSomeData(file,new Visitor<Pair<LogEntryWriter,Consumer<LogPositionMarker>>,IOException>(){
+    @Override public boolean visit(    Pair<LogEntryWriter,Consumer<LogPositionMarker>> pair) throws IOException {
+      LogEntryWriter writer=pair.first();
+      Consumer<LogPositionMarker> consumer=pair.other();
+      LogPositionMarker marker=new LogPositionMarker();
+      consumer.accept(marker);
+      writer.writeStartEntry(0,1,2l,3l,new byte[0]);
+      writer.writeCommitEntry(4l,5l);
+      consumer.accept(marker);
+      writer.writeCheckPointEntry(marker.newPosition());
+      return true;
+    }
+  }
+);
+  LifeSupport life=new LifeSupport();
+  Recovery.Monitor monitor=mock(Recovery.Monitor.class);
+  try {
+    RecoveryLabelScanWriterProvider provider=mock(RecoveryLabelScanWriterProvider.class);
+    RecoveryLegacyIndexApplierLookup lookup=mock(RecoveryLegacyIndexApplierLookup.class);
+    RecoveryIndexingUpdatesValidator validator=mock(RecoveryIndexingUpdatesValidator.class);
+    StoreFlusher flusher=mock(StoreFlusher.class);
+    final LogEntryReader<ReadableLogChannel> reader=new VersionAwareLogEntryReader<>(LogEntryVersion.CURRENT.byteCode());
+    LatestCheckPointFinder finder=new LatestCheckPointFinder(logFiles,fs,reader);
+    life.add(new Recovery(new DefaultRecoverySPI(provider,lookup,flusher,mock(NeoStores.class),null,logFiles,fs,logVersionRepository,finder,validator){
+      @Override public Visitor<LogVersionedStoreChannel,IOException> getRecoverer(){
+        throw new AssertionError("Recovery should not be required");
+      }
+      @Override public void recoveryRequired(){
+        fail("Recovery should not be required");
+      }
+    }
+,monitor));
+    life.add(new PhysicalLogFile(fs,logFiles,50,transactionIdStore,logVersionRepository,mock(PhysicalLogFile.Monitor.class),new TransactionMetadataCache(10,100)));
+    life.start();
+    verifyZeroInteractions(monitor);
+  }
+  finally {
+    life.shutdown();
+  }
+}

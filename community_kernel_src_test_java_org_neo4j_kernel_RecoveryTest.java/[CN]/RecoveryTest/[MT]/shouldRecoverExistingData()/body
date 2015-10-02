@@ -25,6 +25,7 @@
 );
   LifeSupport life=new LifeSupport();
   Recovery.Monitor monitor=mock(Recovery.Monitor.class);
+  final AtomicBoolean recoveryRequiredCalled=new AtomicBoolean();
   try {
     RecoveryLabelScanWriterProvider provider=mock(RecoveryLabelScanWriterProvider.class);
     RecoveryLegacyIndexApplierLookup lookup=mock(RecoveryLegacyIndexApplierLookup.class);
@@ -32,7 +33,7 @@
     StoreFlusher flusher=mock(StoreFlusher.class);
     final LogEntryReader<ReadableLogChannel> reader=new VersionAwareLogEntryReader<>(LogEntryVersion.CURRENT.byteCode());
     LatestCheckPointFinder finder=new LatestCheckPointFinder(logFiles,fs,reader);
-    life.add(new Recovery(new DefaultRecoverySPI(provider,lookup,flusher,null,logFiles,fs,logVersionRepository,finder,validator){
+    life.add(new Recovery(new DefaultRecoverySPI(provider,lookup,flusher,mock(NeoStores.class),null,logFiles,fs,logVersionRepository,finder,validator){
       @Override public Visitor<LogVersionedStoreChannel,IOException> getRecoverer(){
         return new Visitor<LogVersionedStoreChannel,IOException>(){
           @Override public boolean visit(          LogVersionedStoreChannel element) throws IOException {
@@ -49,6 +50,9 @@
         }
 ;
       }
+      @Override public void recoveryRequired(){
+        recoveryRequiredCalled.set(true);
+      }
     }
 ,monitor));
     life.add(new PhysicalLogFile(fs,logFiles,50,transactionIdStore,logVersionRepository,mock(PhysicalLogFile.Monitor.class),new TransactionMetadataCache(10,100)));
@@ -57,6 +61,7 @@
     order.verify(monitor,times(1)).recoveryRequired(any(LogPosition.class));
     order.verify(monitor,times(1)).logRecovered(any(LogPosition.class));
     order.verify(monitor,times(1)).recoveryCompleted();
+    assertTrue(recoveryRequiredCalled.get());
   }
   finally {
     life.shutdown();
