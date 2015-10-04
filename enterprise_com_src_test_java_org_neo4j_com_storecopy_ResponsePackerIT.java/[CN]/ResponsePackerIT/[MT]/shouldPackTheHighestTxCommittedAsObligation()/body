@@ -1,0 +1,28 @@
+{
+  LogicalTransactionStore transactionStore=mock(LogicalTransactionStore.class);
+  FileSystemAbstraction fs=fsRule.get();
+  PageCache pageCache=pageCacheRule.getPageCache(fs);
+  Monitors monitors=new Monitors();
+  try (NeoStores neoStore=createNeoStore(fs,pageCache,monitors)){
+    MetaDataStore store=neoStore.getMetaDataStore();
+    store.transactionCommitted(2,111);
+    store.transactionCommitted(3,222);
+    store.transactionCommitted(4,333);
+    store.transactionCommitted(5,444);
+    store.transactionCommitted(6,555);
+    final long expectedTxId=8L;
+    store.transactionCommitted(expectedTxId,777);
+    ResponsePacker packer=new ResponsePacker(transactionStore,store,Suppliers.singleton(new StoreId()));
+    Response<Object> response=packer.packTransactionObligationResponse(new RequestContext(0,0,0,0,0),new Object());
+    assertTrue(response instanceof TransactionObligationResponse);
+    ((TransactionObligationResponse)response).accept(new Response.Handler(){
+      @Override public void obligation(      long txId) throws IOException {
+        assertEquals(expectedTxId,txId);
+      }
+      @Override public Visitor<CommittedTransactionRepresentation,IOException> transactions(){
+        throw new UnsupportedOperationException("not expected");
+      }
+    }
+);
+  }
+ }
