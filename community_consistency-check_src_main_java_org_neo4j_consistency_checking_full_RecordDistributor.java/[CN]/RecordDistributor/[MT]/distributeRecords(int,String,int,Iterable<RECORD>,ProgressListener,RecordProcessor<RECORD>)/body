@@ -1,14 +1,28 @@
 {
+  Iterator<RECORD> iterator=records.iterator();
+  if (iterator.hasNext()) {
+    processor.process(iterator.next());
+    progress.add(1);
+  }
+ else {
+    return;
+  }
   ArrayBlockingQueue<RECORD>[] recordQ=new ArrayBlockingQueue[numberOfThreads];
-  Workers<WORKER> workers=new Workers<>(workerNames);
+  Workers<Worker<RECORD>> workers=new Workers<>(workerNames);
   for (int threadId=0; threadId < numberOfThreads; threadId++) {
     recordQ[threadId]=new ArrayBlockingQueue<>(queueSize);
-    workers.start(workerFactory.apply(recordQ[threadId]));
+    workers.start(new Worker<>(recordQ[threadId],processor));
   }
   int[] recsProcessed=new int[numberOfThreads];
   int qIndex=0;
-  for (  RECORD record : records) {
+  RECORD last=null;
+  while (iterator.hasNext()) {
     try {
+      RECORD record=iterator.next();
+      if (!iterator.hasNext()) {
+        last=record;
+        break;
+      }
       qIndex=(qIndex + 1) % numberOfThreads;
       recordQ[qIndex].put(record);
       recsProcessed[qIndex]++;
@@ -19,7 +33,7 @@
     }
     progress.add(1);
   }
-  for (  WORKER worker : workers) {
+  for (  Worker<RECORD> worker : workers) {
     worker.done();
   }
   try {
@@ -28,5 +42,9 @@
  catch (  InterruptedException e) {
     Thread.currentThread().interrupt();
     throw new RuntimeException("Was interrupted while awaiting completion");
+  }
+  if (last != null) {
+    processor.process(last);
+    progress.add(1);
   }
 }
