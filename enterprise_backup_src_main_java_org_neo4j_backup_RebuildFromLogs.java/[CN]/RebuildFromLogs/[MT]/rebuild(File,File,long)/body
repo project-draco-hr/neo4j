@@ -1,0 +1,27 @@
+{
+  try (PageCache pageCache=StandalonePageCacheFactory.createPageCache(fs)){
+    PhysicalLogFiles logFiles=new PhysicalLogFiles(source,fs);
+    long highestVersion=logFiles.getHighestLogVersion();
+    if (highestVersion < 0) {
+      printUsage("Inconsistent number of log files found in " + source);
+      return;
+    }
+    long txCount=findLastTransactionId(logFiles,highestVersion);
+    ProgressMonitorFactory progress;
+    if (txCount < 0) {
+      progress=ProgressMonitorFactory.NONE;
+      System.err.println("Unable to report progress, cannot find highest txId, attempting rebuild anyhow.");
+    }
+ else {
+      progress=ProgressMonitorFactory.textual(System.err);
+    }
+    progress.singlePart(format("Rebuilding store from %s transactions ",txCount),txCount);
+    try (TransactionApplier applier=new TransactionApplier(fs,target,pageCache)){
+      long lastTxId=applier.applyTransactionsFrom(source,txId);
+      NeoStore.setRecord(fs,new File(target,NeoStore.DEFAULT_NAME),NeoStore.Position.LAST_TRANSACTION_ID,lastTxId);
+    }
+     try (ConsistencyChecker checker=new ConsistencyChecker(target,pageCache)){
+      checker.checkConsistency();
+    }
+   }
+ }
