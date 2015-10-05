@@ -1,0 +1,84 @@
+{
+  this.registry=registry;
+  if (config.get(MetricsSettings.jvmGcEnabled)) {
+    for (    GarbageCollectorMXBean gcBean : ManagementFactory.getGarbageCollectorMXBeans()) {
+      final AtomicLong periodGcDuration=new AtomicLong();
+      registry.register(name(GC,gcBean.getName().toLowerCase()),new Gauge<Long>(){
+        public Long getValue(){
+          return periodGcDuration.get();
+        }
+      }
+);
+      if (gcBean instanceof NotificationEmitter) {
+        final NotificationEmitter emitter=(NotificationEmitter)gcBean;
+        final NotificationListener listener=new NotificationListener(){
+          public void handleNotification(          Notification notification,          Object handback){
+            if (notification.getType().equals(GARBAGE_COLLECTION_NOTIFICATION)) {
+              GarbageCollectionNotificationInfo info=GarbageCollectionNotificationInfo.from((CompositeData)notification.getUserData());
+              long duration=info.getGcInfo().getDuration();
+              periodGcDuration.addAndGet(duration);
+            }
+          }
+        }
+;
+        emitter.addNotificationListener(listener,null,null);
+        removeListenerHandlers.add(new Runnable(){
+          @Override public void run(){
+            try {
+              emitter.removeNotificationListener(listener);
+            }
+ catch (            ListenerNotFoundException e) {
+              throw new RuntimeException(e);
+            }
+          }
+        }
+);
+      }
+ else {
+        logService.getInternalLog(getClass()).warn("Failed to add listener for gc notifications on %s",gcBean);
+      }
+    }
+  }
+  if (config.get(MetricsSettings.jvmMemoryEnabled)) {
+    List<MemoryPoolMXBean> memPools=ManagementFactory.getMemoryPoolMXBeans();
+    for (    final MemoryPoolMXBean memPool : memPools) {
+      registry.register(name(MEMORY_POOL,memPool.getName().toLowerCase()),new Gauge<Long>(){
+        public Long getValue(){
+          return memPool.getUsage().getUsed();
+        }
+      }
+);
+    }
+  }
+  if (config.get(MetricsSettings.jvmBuffersEnabled)) {
+    List<BufferPoolMXBean> pools=ManagementFactory.getPlatformMXBeans(BufferPoolMXBean.class);
+    for (    final BufferPoolMXBean pool : pools) {
+      registry.register(name(MEMORY_BUFFER,pool.getName().toLowerCase(),"count"),new Gauge<Long>(){
+        public Long getValue(){
+          return pool.getCount();
+        }
+      }
+);
+      registry.register(name(MEMORY_BUFFER,pool.getName().toLowerCase(),"used"),new Gauge<Long>(){
+        public Long getValue(){
+          return pool.getMemoryUsed();
+        }
+      }
+);
+      registry.register(name(MEMORY_BUFFER,pool.getName().toLowerCase(),"capacity"),new Gauge<Long>(){
+        public Long getValue(){
+          return pool.getTotalCapacity();
+        }
+      }
+);
+    }
+  }
+  if (config.get(MetricsSettings.jvmThreadsEnabled)) {
+    registry.register(name(THREAD,"count"),new Gauge<Integer>(){
+      public Integer getValue(){
+        return Thread.activeCount();
+      }
+    }
+);
+  }
+}
