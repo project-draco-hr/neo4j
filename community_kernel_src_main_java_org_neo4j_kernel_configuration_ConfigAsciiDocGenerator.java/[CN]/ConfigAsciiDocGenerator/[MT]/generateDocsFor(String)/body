@@ -22,52 +22,23 @@
   for (  String property : keys) {
     if (property.endsWith(SettingsResourceBundle.DESCRIPTION)) {
       String name=property.substring(0,property.lastIndexOf("."));
-      String monospacedName="+" + name + "+";
       String internalKey=name + SettingsResourceBundle.INTERNAL;
-      if (bundle.containsKey(internalKey)) {
-        continue;
-      }
-      String id="config_" + name;
-      details.append("[[").append(id).append("]]\n").append('.').append(name).append('\n').append("[cols=\"<1h,<4\"]\n").append("|===\n");
-      String defaultKey=name + SettingsResourceBundle.DEFAULT;
-      String description=linkifyConfigSettings(bundle.getString(property));
-      details.append("|Description a|");
-      addWithDotAtEndAsNeeeded(details,description);
-      String validationKey=name + SettingsResourceBundle.VALIDATIONMESSAGE;
-      if (bundle.containsKey(validationKey)) {
-        String validation=bundle.getString(validationKey);
-        validation=validation.replace(name,monospacedName);
-        details.append("|Valid values a|");
-        addWithDotAtEndAsNeeeded(details,linkifyConfigSettings(validation,name));
-      }
-      if (bundle.containsKey(defaultKey)) {
-        String defaultValue=bundle.getString(defaultKey);
-        if (!defaultValue.equals("__DEFAULT__")) {
-          details.append("|Default value m|").append(defaultValue).append('\n');
-        }
-      }
-      String mandatorykey=name + SettingsResourceBundle.MANDATORY;
-      if (bundle.containsKey(mandatorykey)) {
-        details.append("|Mandatory a|");
-        addWithDotAtEndAsNeeeded(details,bundle.getString(mandatorykey).replace(name,monospacedName));
-      }
-      Triplet<String,String,String> beanSummary=Triplet.of(id,name,description);
-      String deprecatedKey=name + SettingsResourceBundle.DEPRECATED;
-      String obsoletedKey=name + SettingsResourceBundle.OBSOLETED;
-      if (bundle.containsKey(deprecatedKey) || bundle.containsKey(obsoletedKey)) {
-        details.append("|Deprecated a|");
-        if (bundle.containsKey(obsoletedKey)) {
-          addWithDotAtEndAsNeeeded(details,linkifyConfigSettings(bundle.getString(obsoletedKey)));
+      if (!bundle.containsKey(internalKey)) {
+        String id="config_" + name;
+        String descriptionKey=name + SettingsResourceBundle.DESCRIPTION;
+        String description=linkifyConfigSettings(bundle.getString(descriptionKey),name,false);
+        Triplet<String,String,String> beanSummary=Triplet.of(id,name,description);
+        String deprecatedKey=name + SettingsResourceBundle.DEPRECATED;
+        String obsoletedKey=name + SettingsResourceBundle.OBSOLETED;
+        if (bundle.containsKey(deprecatedKey) || bundle.containsKey(obsoletedKey)) {
+          deprecatedBeansList.add(beanSummary);
         }
  else {
-          addWithDotAtEndAsNeeeded(details,linkifyConfigSettings(bundle.getString(deprecatedKey)));
+          beanList.add(beanSummary);
         }
-        deprecatedBeansList.add(beanSummary);
+        details.append(addDocsForOneSetting(bundle,id,name,description,false));
+        details.append(addDocsForOneSetting(bundle,id,name,description,true));
       }
- else {
-        beanList.add(beanSummary);
-      }
-      details.append("|===\n\n");
     }
   }
   return listGenerator.generateListAndTableCombo(beanList) + (deprecatedBeansList.isEmpty() ? "" : deprecatedBeanslistGenerator.generateListAndTableCombo(deprecatedBeansList)) + details.toString();
