@@ -1,5 +1,23 @@
 {
-  File fileName=me.getStoreFileName(StoreFactory.PROPERTY_ARRAYS_STORE_NAME);
-  int blockSizeFromConfiguration=me.config.get(GraphDatabaseSettings.array_block_size);
-  return me.initialize(new DynamicArrayStore(fileName,me.config,IdType.ARRAY_BLOCK,me.idGeneratorFactory,me.pageCache,me.logProvider,blockSizeFromConfiguration));
+  File fileName=me.getStoreFileName(StoreFactory.COUNTS_STORE);
+  boolean readOnly=me.config.get(GraphDatabaseSettings.read_only);
+  CountsTracker counts=readOnly ? me.createReadOnlyCountsTracker(fileName) : me.createWritableCountsTracker(fileName);
+  counts.setInitializer(new DataInitializer<CountsAccessor.Updater>(){
+    private final Log log=me.logProvider.getLog(MetaDataStore.class);
+    @Override public void initialize(    CountsAccessor.Updater updater){
+      log.warn("Missing counts store, rebuilding it.");
+      new CountsComputer(me).initialize(updater);
+    }
+    @Override public long initialVersion(){
+      return me.getMetaDataStore().getLastCommittedTransactionId();
+    }
+  }
+);
+  try {
+    counts.init();
+  }
+ catch (  IOException e) {
+    throw new UnderlyingStorageException("Failed to initialize counts store",e);
+  }
+  return counts;
 }

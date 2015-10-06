@@ -1,10 +1,12 @@
 {
   cacheAccess.prepareForProcessingOfSingleStore(recordsPerCpu);
-  Function<BlockingQueue<R>,Worker<R>> workerFactory=new Function<BlockingQueue<R>,Worker<R>>(){
-    @Override public Worker<R> apply(    BlockingQueue<R> source){
-      return new Worker<>(source,store);
+  RecordProcessor<R> processor=new RecordProcessor<R>(){
+    @Override public void process(    R record){
+      store.accept(StoreProcessor.this,record);
+    }
+    @Override public void close(){
     }
   }
 ;
-  distributeRecords(numberOfThreads,getClass().getSimpleName(),qSize,workerFactory,scan(store,stage.isForward(),filters),progressListener);
+  distributeRecords(numberOfThreads,getClass().getSimpleName(),qSize,scan(store,stage.isForward(),filters),progressListener,processor);
 }

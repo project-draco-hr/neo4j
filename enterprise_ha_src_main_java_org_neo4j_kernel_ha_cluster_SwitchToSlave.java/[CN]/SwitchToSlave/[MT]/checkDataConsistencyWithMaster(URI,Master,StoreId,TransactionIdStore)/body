@@ -1,6 +1,6 @@
 {
-  long[] myLastCommittedTxData=transactionIdStore.getLastCommittedTransaction();
-  long myLastCommittedTx=myLastCommittedTxData[0];
+  TransactionId myLastCommittedTxData=transactionIdStore.getLastCommittedTransaction();
+  long myLastCommittedTx=myLastCommittedTxData.transactionId();
   HandshakeResult handshake;
   try (Response<HandshakeResult> response=master.handshake(myLastCommittedTx,storeId)){
     handshake=response.response();
@@ -15,7 +15,7 @@ catch (  RuntimeException e) {
     }
     throw e;
   }
-  long myChecksum=myLastCommittedTxData[1];
+  long myChecksum=myLastCommittedTxData.checksum();
   if (myChecksum != handshake.txChecksum()) {
     String msg="The cluster contains two logically different versions of the database.. This will be " + "automatically resolved. Details: I (server_id:" + config.get(ClusterSettings.server_id) + ") think checksum for txId ("+ myLastCommittedTx+ ") is "+ myChecksum+ ", but master (server_id:"+ getServerId(availableMasterId)+ ") says that it's "+ handshake.txChecksum()+ ", where handshake is "+ handshake;
     throw new BranchedDataException(msg);

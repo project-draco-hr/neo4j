@@ -16,6 +16,7 @@
     life.shutdown();
   }
   life=new LifeSupport();
+  final AtomicBoolean recoveryRequiredCalled=new AtomicBoolean();
   FakeRecoveryVisitor visitor=new FakeRecoveryVisitor(additionalHeader,masterId,authorId,timeStarted,timeCommitted,latestCommittedTxWhenStarted);
   final LogFileRecoverer recoverer=new LogFileRecoverer(new VersionAwareLogEntryReader<>(),visitor);
   logFile=life.add(new PhysicalLogFile(fs,logFiles,1000,transactionIdStore,mock(LogVersionRepository.class),monitor,positionCache));
@@ -54,6 +55,9 @@
     @Override public LogPosition getPositionToRecoverFrom() throws IOException {
       return LogPosition.start(0);
     }
+    @Override public void recoveryRequired(){
+      recoveryRequiredCalled.set(true);
+    }
   }
 ,mock(Recovery.Monitor.class)));
   try {
@@ -63,4 +67,5 @@
     life.shutdown();
   }
   assertEquals(1,visitor.getVisitedTransactions());
+  assertTrue(recoveryRequiredCalled.get());
 }
