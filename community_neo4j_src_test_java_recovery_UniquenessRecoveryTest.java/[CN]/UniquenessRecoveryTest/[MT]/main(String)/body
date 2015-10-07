@@ -1,0 +1,45 @@
+{
+  System.out.println("hello world");
+  String path=args[0];
+  boolean createConstraint=getBoolean("force_create_constraint") || !new File(path,"neostore").isFile();
+  GraphDatabaseService db=graphdb(path);
+  System.out.println("database started");
+  System.out.println("createConstraint = " + createConstraint);
+  if (createConstraint) {
+    try {
+      System.out.println("> creating constraint");
+      createConstraint(db);
+      System.out.println("< created constraint");
+    }
+ catch (    Exception e) {
+      System.out.println("!! failed to create constraint");
+      e.printStackTrace(System.out);
+      if (e instanceof ConstraintViolationException) {
+        System.out.println("... that is ok, since it means that constraint already exists ...");
+      }
+ else {
+        System.exit(1);
+      }
+    }
+  }
+  try {
+    System.out.println("> adding node");
+    addNode(db);
+    System.out.println("< added node");
+  }
+ catch (  ConstraintViolationException e) {
+    System.out.println("!! failed to add node");
+    e.printStackTrace(System.out);
+    System.out.println("... this is probably what we want :) -- [but let's let the parent process verify]");
+    db.shutdown();
+    System.exit(0);
+  }
+catch (  Exception e) {
+    System.out.println("!! failed to add node");
+    e.printStackTrace(System.out);
+    System.exit(2);
+  }
+  flushPageCache(db);
+  System.out.println("kill me");
+  await();
+}
