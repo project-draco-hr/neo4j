@@ -67,7 +67,7 @@
   }
 ;
   Config config=new Config(Collections.singletonMap(ClusterSettings.server_id.name(),me.toString()));
-  SwitchToSlave switchToSlave=new SwitchToSlave(mock(ConsoleLogger.class),config,dependencyResolver,mock(HaIdGeneratorFactory.class),logging,handler,clusterMemberAvailability,mock(RequestContextFactory.class),Iterables.<KernelExtensionFactory<?>>empty(),masterClientResolver,updatePuller,mock(PullerFactory.class),mock(ByteCounterMonitor.class),mock(RequestMonitor.class),monitor,mock(StoreCopyClient.Monitor.class));
+  SwitchToSlave switchToSlave=new SwitchToSlave(mock(ConsoleLogger.class),config,dependencyResolver,mock(HaIdGeneratorFactory.class),logging,handler,clusterMemberAvailability,mock(RequestContextFactory.class),Iterables.<KernelExtensionFactory<?>>empty(),masterClientResolver,updatePuller,mock(PullerFactory.class,RETURNS_MOCKS),mock(ByteCounterMonitor.class),mock(RequestMonitor.class),monitor,mock(StoreCopyClient.Monitor.class));
   HighAvailabilityModeSwitcher haModeSwitcher=new HighAvailabilityModeSwitcher(switchToSlave,mock(SwitchToMaster.class),election,clusterMemberAvailability,dependencyResolver,me,logging);
   haModeSwitcher.init();
   haModeSwitcher.start();
@@ -75,13 +75,13 @@
   toTest.addHighAvailabilityMemberListener(haModeSwitcher);
   final AtomicReference<Master> ref=new AtomicReference<>(null);
   AbstractModeSwitcher<Object> otherModeSwitcher=new AbstractModeSwitcher<Object>(haModeSwitcher,mock(DelegateInvocationHandler.class)){
-    @Override protected Object getSlaveImpl(){
+    @Override protected Object getSlaveImpl(    LifeSupport life){
       Master master=handler.cement();
       ref.set(master);
       latch.countDown();
       return null;
     }
-    @Override protected Object getMasterImpl(){
+    @Override protected Object getMasterImpl(    LifeSupport life){
       return null;
     }
   }
