@@ -1,0 +1,19 @@
+{
+  final DoubleLatch latch=new DoubleLatch();
+  ControlledIndexPopulator populator=new ControlledIndexPopulator(latch);
+  final AtomicLong indexId=new AtomicLong(-1);
+  IndexingService.Monitor monitor=new IndexingService.MonitorAdapter(){
+    @Override public void awaitingPopulationOfRecoveredIndex(    long index,    IndexDescriptor descriptor){
+      indexId.set(index);
+      latch.start();
+    }
+  }
+;
+  IndexingService indexing=newIndexingServiceWithMockedDependencies(populator,accessor,withData(NodePropertyUpdate.add(0,0,"value",new long[]{1})),monitor);
+  life.init();
+  long fakeOwningConstraintRuleId=1;
+  indexing.createIndex(new IndexRule(2,labelId,propertyKeyId,PROVIDER_DESCRIPTOR,fakeOwningConstraintRuleId));
+  life.start();
+  assertEquals(2,indexId.get());
+  assertEquals(ONLINE,indexing.getIndexProxy(indexId.get()).getState());
+}
