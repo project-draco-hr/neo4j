@@ -1,0 +1,44 @@
+{
+  StringBuilder table=new StringBuilder(1024);
+  if (pdfOutput) {
+    table.append(IFDEF_NONHTMLOUTPUT);
+  }
+ else {
+    table.append(IFDEF_HTMLOUTPUT);
+  }
+  String monospacedName="`" + name + "`";
+  table.append("[[").append(id).append("]]\n").append('.').append(name).append('\n').append("[cols=\"<1h,<4\"]\n").append("|===\n");
+  table.append("|Description a|");
+  addWithDotAtEndAsNeeded(table,description);
+  String validationKey=name + SettingsResourceBundle.VALIDATIONMESSAGE;
+  if (bundle.containsKey(validationKey)) {
+    String validation=bundle.getString(validationKey);
+    table.append("|Valid values a|");
+    addWithDotAtEndAsNeeded(table,linkifyConfigSettings(validation,name,pdfOutput));
+  }
+  String defaultKey=name + SettingsResourceBundle.DEFAULT;
+  if (bundle.containsKey(defaultKey)) {
+    String defaultValue=bundle.getString(defaultKey);
+    if (!defaultValue.equals(DEFAULT_MARKER)) {
+      table.append("|Default value m|").append(defaultValue).append('\n');
+    }
+  }
+  String mandatorykey=name + SettingsResourceBundle.MANDATORY;
+  if (bundle.containsKey(mandatorykey)) {
+    table.append("|Mandatory a|");
+    addWithDotAtEndAsNeeded(table,bundle.getString(mandatorykey).replace(name,monospacedName));
+  }
+  String deprecatedKey=name + SettingsResourceBundle.DEPRECATED;
+  String obsoletedKey=name + SettingsResourceBundle.OBSOLETED;
+  if (bundle.containsKey(deprecatedKey) || bundle.containsKey(obsoletedKey)) {
+    table.append("|Deprecated a|");
+    if (bundle.containsKey(obsoletedKey)) {
+      addWithDotAtEndAsNeeded(table,linkifyConfigSettings(bundle.getString(obsoletedKey),name,pdfOutput));
+    }
+ else {
+      addWithDotAtEndAsNeeded(table,linkifyConfigSettings(bundle.getString(deprecatedKey),name,pdfOutput));
+    }
+  }
+  table.append("|===\n").append(ENDIF);
+  return table.toString();
+}

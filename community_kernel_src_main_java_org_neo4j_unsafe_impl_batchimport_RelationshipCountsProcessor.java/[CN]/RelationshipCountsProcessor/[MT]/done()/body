@@ -1,19 +1,16 @@
 {
-  long index=0;
-  for (int startNodeLabelId=0; startNodeLabelId <= anyLabel; startNodeLabelId++) {
+  for (int wildcardType=0; wildcardType <= anyRelationshipType; wildcardType++) {
+    int type=wildcardType == anyRelationshipType ? ReadOperations.ANY_RELATIONSHIP_TYPE : wildcardType;
+    long count=wildcardCounts.get(wildcardType);
+    countsUpdater.incrementRelationshipCount(ReadOperations.ANY_LABEL,type,ReadOperations.ANY_LABEL,count);
+  }
+  for (int labelId=0; labelId < anyLabel; labelId++) {
     for (int typeId=0; typeId <= anyRelationshipType; typeId++) {
-      for (int endNodeLabelId=0; endNodeLabelId <= anyLabel; endNodeLabelId++, index++) {
-        if (!COMPUTE_DOUBLE_SIDED_RELATIONSHIP_COUNTS) {
-          if (startNodeLabelId != anyLabel && endNodeLabelId != anyLabel) {
-            continue;
-          }
-        }
-        int startLabel=startNodeLabelId == anyLabel ? ReadOperations.ANY_LABEL : startNodeLabelId;
-        int type=typeId == anyRelationshipType ? ReadOperations.ANY_RELATIONSHIP_TYPE : typeId;
-        int endLabel=endNodeLabelId == anyLabel ? ReadOperations.ANY_LABEL : endNodeLabelId;
-        long count=counts.get(index);
-        countsUpdater.incrementRelationshipCount(startLabel,type,endLabel,count);
-      }
+      long startCount=labelsCounts.get(arrayIndex(labelId,typeId,START));
+      long endCount=labelsCounts.get(arrayIndex(labelId,typeId,END));
+      int type=typeId == anyRelationshipType ? ReadOperations.ANY_RELATIONSHIP_TYPE : typeId;
+      countsUpdater.incrementRelationshipCount(labelId,type,ReadOperations.ANY_LABEL,startCount);
+      countsUpdater.incrementRelationshipCount(ReadOperations.ANY_LABEL,type,labelId,endCount);
     }
   }
 }
