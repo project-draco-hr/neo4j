@@ -70,9 +70,8 @@
   clusterEvents.addClusterMemberListener(highAvailabilityLogger);
   clusterClient.addClusterListener(highAvailabilityLogger);
   LifeSupport paxosLife=new LifeSupport();
-  paxosLife.add(clusterClient);
   paxosLife.add(memberStateMachine);
-  paxosLife.add(clusterEvents);
+  paxosLife.add((Lifecycle)clusterEvents);
   paxosLife.add(localClusterMemberAvailability);
   idGeneratorFactory=dependencies.satisfyDependency(createIdGeneratorFactory(masterDelegateInvocationHandler,logging.getInternalLogProvider(),requestContextFactory,fs));
   final AtomicReference<HighAvailabilityModeSwitcher> exceptionHandlerRef=new AtomicReference<>();
@@ -88,9 +87,7 @@
   UpdatePuller updatePullerProxy=(UpdatePuller)Proxy.newProxyInstance(UpdatePuller.class.getClassLoader(),new Class[]{UpdatePuller.class},updatePullerDelegate);
   dependencies.satisfyDependency(updatePullerProxy);
   PullerFactory pullerFactory=new PullerFactory(requestContextFactory,master,lastUpdateTime,logging.getInternalLogProvider(),serverId,invalidEpochHandler,config.get(HaSettings.pull_interval),platformModule.jobScheduler,dependencies,platformModule.availabilityGuard,memberStateMachine);
-  TransactionObligationFulfiller fulfiller=pullerFactory.createObligationFulfiller(updatePullerProxy);
-  paxosLife.add(fulfiller);
-  dependencies.satisfyDependency(fulfiller);
+  dependencies.satisfyDependency(pullerFactory.createObligationFulfiller(paxosLife,updatePullerProxy));
   Function<Slave,SlaveServer> slaveServerFactory=new Function<Slave,SlaveServer>(){
     @Override public SlaveServer apply(    Slave slave) throws RuntimeException {
       return new SlaveServer(slave,slaveServerConfig(config),logging.getInternalLogProvider(),monitors.newMonitor(ByteCounterMonitor.class,SlaveServer.class),monitors.newMonitor(RequestMonitor.class,SlaveServer.class));
@@ -116,9 +113,9 @@
     }
   }
 ;
-  Function<ConversationManager,Master> masterFactory=new Function<ConversationManager,Master>(){
-    @Override public Master apply(    ConversationManager conversationManager){
-      return new MasterImpl(masterSPIFactory.newInstance(),conversationManager,monitors.newMonitor(MasterImpl.Monitor.class,MasterImpl.class),config);
+  BiFunction<ConversationManager,LifeSupport,Master> masterFactory=new BiFunction<ConversationManager,LifeSupport,Master>(){
+    @Override public Master apply(    ConversationManager conversationManager,    LifeSupport life){
+      return life.add(new MasterImpl(masterSPIFactory.newInstance(),conversationManager,monitors.newMonitor(MasterImpl.Monitor.class,MasterImpl.class),config));
     }
   }
 ;
@@ -150,7 +147,7 @@
   propertyKeyTokenHolder=dependencies.satisfyDependency(new DelegatingPropertyKeyTokenHolder(createPropertyKeyCreator(config,paxosLife,highAvailabilityModeSwitcher,masterDelegateInvocationHandler,requestContextFactory,kernelProvider,logging)));
   labelTokenHolder=dependencies.satisfyDependency(new DelegatingLabelTokenHolder(createLabelIdCreator(config,paxosLife,highAvailabilityModeSwitcher,masterDelegateInvocationHandler,requestContextFactory,kernelProvider,logging)));
   relationshipTypeTokenHolder=dependencies.satisfyDependency(new DelegatingRelationshipTypeTokenHolder(createRelationshipTypeCreator(config,paxosLife,highAvailabilityModeSwitcher,masterDelegateInvocationHandler,requestContextFactory,kernelProvider,logging)));
-  life.add(dependencies.satisfyDependency(createKernelData(config,platformModule.graphDatabaseFacade,members,fs,platformModule.pageCache,storeDir,lastUpdateTime,dependencies.provideDependency(NeoStores.class))));
+  dependencies.satisfyDependency(createKernelData(config,platformModule.graphDatabaseFacade,members,fs,platformModule.pageCache,storeDir,lastUpdateTime,dependencies.provideDependency(NeoStores.class),life));
   commitProcessFactory=createCommitProcessFactory(dependencies,logging,monitors,config,paxosLife,clusterClient,members,platformModule.jobScheduler,master,requestContextFactory,highAvailabilityModeSwitcher);
   headerInformationFactory=createHeaderInformationFactory(memberContext);
   schemaWriteGuard=new SchemaWriteGuard(){
