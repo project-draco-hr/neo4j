@@ -1,0 +1,15 @@
+{
+  File log=logFile(1);
+  writeTxContent(log,new Command.PropertyCommand().init(propertyRecord(42,false,-1,-1),propertyRecord(42,true,-1,-1,10)),new Command.PropertyCommand().init(propertyRecord(42,true,-1,-1,10),propertyRecord(42,true,24,-1,10)));
+  writeTxContent(log,new Command.NodeCommand().init(new NodeRecord(2,false,false,-1,-1,1),new NodeRecord(2,true,false,-1,-1,1)),new Command.PropertyCommand().init(propertyRecord(42,true,-1,-1,10),propertyRecord(42,true,-1,-1,10,20)));
+  CapturingInconsistenciesHandler handler=new CapturingInconsistenciesHandler();
+  CheckTxLogs checker=new CheckTxLogs(fsRule.get());
+  checker.scan(new File[]{log},CheckType.PROPERTY,handler);
+  assertEquals(1,handler.inconsistencies.size());
+  PropertyRecord seenRecord=(PropertyRecord)handler.inconsistencies.get(0).committed.record();
+  PropertyRecord currentRecord=(PropertyRecord)handler.inconsistencies.get(0).current.record();
+  assertEquals(42,seenRecord.getId());
+  assertEquals(24,seenRecord.getPrevProp());
+  assertEquals(42,currentRecord.getId());
+  assertEquals(-1,currentRecord.getPrevProp());
+}

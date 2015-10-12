@@ -1,0 +1,23 @@
+{
+  System.out.println("Checking logs for " + check.name() + " inconsistencies");
+  CommittedRecords<R> state=new CommittedRecords<>(check);
+  for (  File log : logs) {
+    long commandsRead=0;
+    try (LogEntryCursor logEntryCursor=LogTestUtils.openLog(fs,log)){
+      while (logEntryCursor.next()) {
+        LogEntry entry=logEntryCursor.get();
+        if (entry instanceof LogEntryCommand) {
+          Command command=((LogEntryCommand)entry).getXaCommand();
+          if (check.commandClass().isInstance(command)) {
+            long logVersion=PhysicalLogFiles.getLogVersion(log);
+            C cmd=check.commandClass().cast(command);
+            process(cmd,check,state,logVersion,handler);
+          }
+        }
+        commandsRead++;
+      }
+    }
+     System.out.println("Processed " + log.getCanonicalPath() + " with "+ commandsRead+ " commands");
+    System.out.println(state);
+  }
+}
