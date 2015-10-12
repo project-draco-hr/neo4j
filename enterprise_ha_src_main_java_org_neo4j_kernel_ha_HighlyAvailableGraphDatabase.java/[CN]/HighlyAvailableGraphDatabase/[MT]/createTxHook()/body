@@ -2,7 +2,9 @@
   DelegateInvocationHandler<ClusterMemberEvents> clusterEventsDelegateInvocationHandler=new DelegateInvocationHandler<>(ClusterMemberEvents.class);
   DelegateInvocationHandler<HighAvailabilityMemberContext> memberContextDelegateInvocationHandler=new DelegateInvocationHandler<>(HighAvailabilityMemberContext.class);
   DelegateInvocationHandler<ClusterMemberAvailability> clusterMemberAvailabilityDelegateInvocationHandler=new DelegateInvocationHandler<>(ClusterMemberAvailability.class);
-  ClusterMemberEvents clusterEvents=dependencies.satisfyDependency((ClusterMemberEvents)Proxy.newProxyInstance(ClusterMemberEvents.class.getClassLoader(),new Class[]{ClusterMemberEvents.class,Lifecycle.class},clusterEventsDelegateInvocationHandler));
+  Object clusterEventsProxy=Proxy.newProxyInstance(ClusterMemberEvents.class.getClassLoader(),new Class[]{ClusterMemberEvents.class,Lifecycle.class},clusterEventsDelegateInvocationHandler);
+  ClusterMemberEvents clusterEvents=dependencies.satisfyDependency((ClusterMemberEvents)clusterEventsProxy);
+  paxosLife.add((Lifecycle)clusterEventsProxy);
   memberContext=(HighAvailabilityMemberContext)Proxy.newProxyInstance(HighAvailabilityMemberContext.class.getClassLoader(),new Class[]{HighAvailabilityMemberContext.class},memberContextDelegateInvocationHandler);
   clusterMemberAvailability=dependencies.satisfyDependency((ClusterMemberAvailability)Proxy.newProxyInstance(ClusterMemberAvailability.class.getClassLoader(),new Class[]{ClusterMemberAvailability.class},clusterMemberAvailabilityDelegateInvocationHandler));
   ElectionCredentialsProvider electionCredentialsProvider=config.get(HaSettings.slave_only) ? new NotElectableElectionCredentialsProvider() : new DefaultElectionCredentialsProvider(config.get(ClusterSettings.server_id),new OnDiskLastTxIdGetter(this),new HighAvailabilityMemberInfoProvider(){
@@ -12,7 +14,7 @@
   }
 );
   ObjectStreamFactory objectStreamFactory=new ObjectStreamFactory();
-  clusterClient=dependencies.satisfyDependency(new ClusterClient(monitors,ClusterClient.adapt(config),logging,electionCredentialsProvider,objectStreamFactory,objectStreamFactory));
+  clusterClient=paxosLife.add(dependencies.satisfyDependency(new ClusterClient(monitors,ClusterClient.adapt(config),logging,electionCredentialsProvider,objectStreamFactory,objectStreamFactory)));
   PaxosClusterMemberEvents localClusterEvents=new PaxosClusterMemberEvents(clusterClient,clusterClient,clusterClient,clusterClient,logging,new Predicate<PaxosClusterMemberEvents.ClusterMembersSnapshot>(){
     @Override public boolean accept(    PaxosClusterMemberEvents.ClusterMembersSnapshot item){
       for (      MemberIsAvailable member : item.getCurrentAvailableMembers()) {
@@ -40,18 +42,14 @@
   }
 );
   HighAvailabilityMemberContext localMemberContext=new SimpleHighAvailabilityMemberContext(clusterClient.getServerId(),config.get(HaSettings.slave_only));
-  PaxosClusterMemberAvailability localClusterMemberAvailability=new PaxosClusterMemberAvailability(clusterClient.getServerId(),clusterClient,clusterClient,logging,objectStreamFactory,objectStreamFactory);
+  PaxosClusterMemberAvailability localClusterMemberAvailability=paxosLife.add(new PaxosClusterMemberAvailability(clusterClient.getServerId(),clusterClient,clusterClient,logging,objectStreamFactory,objectStreamFactory));
   memberContextDelegateInvocationHandler.setDelegate(localMemberContext);
   clusterEventsDelegateInvocationHandler.setDelegate(localClusterEvents);
   clusterMemberAvailabilityDelegateInvocationHandler.setDelegate(localClusterMemberAvailability);
   members=dependencies.satisfyDependency(new ClusterMembers(clusterClient,clusterClient,clusterEvents,config.get(ClusterSettings.server_id)));
-  memberStateMachine=new HighAvailabilityMemberStateMachine(memberContext,availabilityGuard,members,clusterEvents,clusterClient,logging.getMessagesLog(HighAvailabilityMemberStateMachine.class));
+  memberStateMachine=paxosLife.add(new HighAvailabilityMemberStateMachine(memberContext,availabilityGuard,members,clusterEvents,clusterClient,logging.getMessagesLog(HighAvailabilityMemberStateMachine.class)));
   HighAvailabilityConsoleLogger highAvailabilityConsoleLogger=new HighAvailabilityConsoleLogger(logging.getConsoleLog(HighAvailabilityConsoleLogger.class),config.get(ClusterSettings.server_id));
   availabilityGuard.addListener(highAvailabilityConsoleLogger);
   clusterEvents.addClusterMemberListener(highAvailabilityConsoleLogger);
   clusterClient.addClusterListener(highAvailabilityConsoleLogger);
-  paxosLife.add(clusterClient);
-  paxosLife.add(memberStateMachine);
-  paxosLife.add(clusterEvents);
-  paxosLife.add(localClusterMemberAvailability);
 }
