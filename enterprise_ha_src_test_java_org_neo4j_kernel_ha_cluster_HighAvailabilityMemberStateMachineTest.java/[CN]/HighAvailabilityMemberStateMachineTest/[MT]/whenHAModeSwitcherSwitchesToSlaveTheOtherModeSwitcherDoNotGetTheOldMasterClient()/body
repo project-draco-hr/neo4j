@@ -73,7 +73,7 @@
   when(pageCacheMock.map(any(File.class),anyInt())).thenReturn(pagedFileMock);
   TransactionIdStore transactionIdStoreMock=mock(TransactionIdStore.class);
   when(transactionIdStoreMock.getLastCommittedTransaction()).thenReturn(new TransactionId(0,0));
-  SwitchToSlave switchToSlave=new SwitchToSlave(new File(""),NullLogService.getInstance(),mock(FileSystemAbstraction.class),members,config,dependencyResolver,mock(HaIdGeneratorFactory.class),handler,mock(ClusterMemberAvailability.class),mock(RequestContextFactory.class),mock(PullerFactory.class),Iterables.<KernelExtensionFactory<?>>empty(),masterClientResolver,monitor,new StoreCopyClient.Monitor.Adapter(),Suppliers.singleton(dataSource),Suppliers.singleton(transactionIdStoreMock),new Function<Slave,SlaveServer>(){
+  SwitchToSlave switchToSlave=new SwitchToSlave(new File(""),NullLogService.getInstance(),mock(FileSystemAbstraction.class),members,config,dependencyResolver,mock(HaIdGeneratorFactory.class),handler,mock(ClusterMemberAvailability.class),mock(RequestContextFactory.class),mock(PullerFactory.class,RETURNS_MOCKS),Iterables.<KernelExtensionFactory<?>>empty(),masterClientResolver,monitor,new StoreCopyClient.Monitor.Adapter(),Suppliers.singleton(dataSource),Suppliers.singleton(transactionIdStoreMock),new Function<Slave,SlaveServer>(){
     @Override public SlaveServer apply(    Slave slave) throws RuntimeException {
       SlaveServer mock=mock(SlaveServer.class);
       when(mock.getSocketAddress()).thenReturn(new InetSocketAddress("localhost",123));
@@ -88,13 +88,13 @@
   toTest.addHighAvailabilityMemberListener(haModeSwitcher);
   final AtomicReference<Master> ref=new AtomicReference<>(null);
   AbstractModeSwitcher<Object> otherModeSwitcher=new AbstractModeSwitcher<Object>(haModeSwitcher,mock(DelegateInvocationHandler.class)){
-    @Override protected Object getSlaveImpl(){
+    @Override protected Object getSlaveImpl(    LifeSupport life){
       Master master=handler.cement();
       ref.set(master);
       latch.countDown();
       return null;
     }
-    @Override protected Object getMasterImpl(){
+    @Override protected Object getMasterImpl(    LifeSupport life){
       return null;
     }
   }
