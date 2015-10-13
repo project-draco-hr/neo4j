@@ -1,0 +1,20 @@
+{
+  long[] lastClosedTransaction=transactionIdStore.getLastClosedTransaction();
+  long lastClosedTransactionId=lastClosedTransaction[0];
+  LogPosition logPosition=new LogPosition(lastClosedTransaction[1],lastClosedTransaction[2]);
+  String prefix=triggerInfo.describe(lastClosedTransactionId);
+  msgLog.info(prefix + " Starting check pointing...");
+  kernelHealth.assertHealthy(IOException.class);
+  msgLog.info(prefix + " Starting store flush...");
+  storeFlusher.forceEverything();
+  msgLog.info(prefix + " Store flush completed");
+  kernelHealth.assertHealthy(IOException.class);
+  msgLog.info(prefix + " Starting appending check point entry into the tx log...");
+  appender.checkPoint(logPosition,logCheckPointEvent);
+  threshold.checkPointHappened(lastClosedTransactionId);
+  msgLog.info(prefix + " Appending check point entry into the tx log completed");
+  msgLog.info(prefix + " Check pointing completed");
+  logPruning.pruneLogs(logPosition.getLogVersion());
+  lastCheckPointedTx=lastClosedTransactionId;
+  return lastClosedTransactionId;
+}
