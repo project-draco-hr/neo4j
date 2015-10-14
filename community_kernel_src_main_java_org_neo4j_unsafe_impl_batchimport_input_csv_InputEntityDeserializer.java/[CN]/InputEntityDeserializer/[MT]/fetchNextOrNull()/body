@@ -4,11 +4,19 @@
       return null;
     }
     ENTITY entity=deserialization.materialize();
+    int ignoredValues=0;
+    StringBuilder restOfLine=new StringBuilder();
     while (!mark.isEndOfLine()) {
       data.seek(mark,delimiter);
+      data.extract(mark,stringExtractor);
+      restOfLine.append(String.valueOf(Character.toChars(delimiter))).append(stringExtractor.value());
+      ignoredValues++;
     }
     entity=decorator.apply(entity);
     validator.validate(entity);
+    if (ignoredValues > 0 && ignoredRowsSample.size() < 9) {
+      ignoredRowsSample.add(Pair.of(data.lineNumber(),restOfLine.toString()));
+    }
     return entity;
   }
  catch (  IOException e) {
