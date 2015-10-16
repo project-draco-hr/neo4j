@@ -2,19 +2,17 @@
   InstanceId instanceId=new InstanceId(1), otherInstance=new InstanceId(2);
   ClusterConfiguration configuration=new ClusterConfiguration("whatever",NullLogProvider.getInstance(),"cluster://1","cluster://2");
   configuration.getMembers().put(otherInstance,URI.create("cluster://2"));
-  AssertableLogProvider userLog=new AssertableLogProvider(true);
   AssertableLogProvider internalLog=new AssertableLogProvider(true);
-  LogService logging=new SimpleLogService(userLog,internalLog);
   TimeoutStrategy timeoutStrategy=mock(TimeoutStrategy.class);
   Timeouts timeouts=new Timeouts(timeoutStrategy);
-  MultiPaxosContext context=new MultiPaxosContext(instanceId,Iterables.<ElectionRole,ElectionRole>iterable(new ElectionRole("coordinator")),configuration,mock(Executor.class),logging,mock(ObjectInputStreamFactory.class),mock(ObjectOutputStreamFactory.class),mock(AcceptorInstanceStore.class),timeouts,mock(ElectionCredentialsProvider.class));
-  StateMachines stateMachines=new StateMachines(logging.getInternalLogProvider(),mock(StateMachines.Monitor.class),mock(MessageSource.class),mock(MessageSender.class),timeouts,mock(DelayedDirectExecutor.class),new Executor(){
+  MultiPaxosContext context=new MultiPaxosContext(instanceId,Iterables.<ElectionRole,ElectionRole>iterable(new ElectionRole("coordinator")),configuration,mock(Executor.class),internalLog,mock(ObjectInputStreamFactory.class),mock(ObjectOutputStreamFactory.class),mock(AcceptorInstanceStore.class),timeouts,mock(ElectionCredentialsProvider.class));
+  StateMachines stateMachines=new StateMachines(internalLog,mock(StateMachines.Monitor.class),mock(MessageSource.class),mock(MessageSender.class),timeouts,mock(DelayedDirectExecutor.class),new Executor(){
     @Override public void execute(    Runnable command){
       command.run();
     }
   }
 ,instanceId);
-  stateMachines.addStateMachine(new StateMachine(context.getHeartbeatContext(),HeartbeatMessage.class,HeartbeatState.start,logging.getInternalLogProvider()));
+  stateMachines.addStateMachine(new StateMachine(context.getHeartbeatContext(),HeartbeatMessage.class,HeartbeatState.start,internalLog));
   timeouts.tick(0);
   when(timeoutStrategy.timeoutFor(any(Message.class))).thenReturn(5l);
   stateMachines.process(Message.internal(HeartbeatMessage.join));
