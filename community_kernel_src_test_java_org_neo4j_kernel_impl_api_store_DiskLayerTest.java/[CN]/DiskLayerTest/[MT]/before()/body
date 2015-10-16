@@ -2,7 +2,12 @@
   db=(GraphDatabaseAPI)createGraphDatabase();
   DependencyResolver resolver=db.getDependencyResolver();
   IndexingService indexingService=resolver.resolveDependency(IndexingService.class);
-  NeoStores neoStores=resolver.resolveDependency(NeoStoresSupplier.class).get();
-  this.disk=new DiskLayer(resolver.resolveDependency(PropertyKeyTokenHolder.class),resolver.resolveDependency(LabelTokenHolder.class),resolver.resolveDependency(RelationshipTypeTokenHolder.class),new SchemaStorage(neoStores.getSchemaStore()),neoStores,indexingService);
+  final NeoStores neoStores=resolver.resolveDependency(NeoStoresSupplier.class).get();
+  this.disk=new DiskLayer(resolver.resolveDependency(PropertyKeyTokenHolder.class),resolver.resolveDependency(LabelTokenHolder.class),resolver.resolveDependency(RelationshipTypeTokenHolder.class),new SchemaStorage(neoStores.getSchemaStore()),neoStores,indexingService,new Factory<StoreStatement>(){
+    @Override public StoreStatement newInstance(){
+      return new StoreStatement(neoStores,LockService.NO_LOCK_SERVICE);
+    }
+  }
+);
   this.state=new KernelStatement(null,new IndexReaderFactory.Caching(indexingService),resolver.resolveDependency(LabelScanStore.class),null,null,null,disk.acquireStatement());
 }
