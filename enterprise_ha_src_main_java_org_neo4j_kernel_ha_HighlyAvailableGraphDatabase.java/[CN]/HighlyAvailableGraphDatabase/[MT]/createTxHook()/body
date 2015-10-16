@@ -46,8 +46,10 @@
   memberContextDelegateInvocationHandler.setDelegate(localMemberContext);
   clusterEventsDelegateInvocationHandler.setDelegate(localClusterEvents);
   clusterMemberAvailabilityDelegateInvocationHandler.setDelegate(localClusterMemberAvailability);
-  members=dependencies.satisfyDependency(new ClusterMembers(clusterClient,clusterClient,clusterEvents,config.get(ClusterSettings.server_id)));
-  memberStateMachine=paxosLife.add(new HighAvailabilityMemberStateMachine(memberContext,availabilityGuard,members,clusterEvents,clusterClient,logging.getMessagesLog(HighAvailabilityMemberStateMachine.class)));
+  ObservedClusterMembers observedMembers=new ObservedClusterMembers(logging,clusterClient,clusterClient,clusterEvents,config.get(ClusterSettings.server_id));
+  HighAvailabilityMemberStateMachine stateMachine=new HighAvailabilityMemberStateMachine(memberContext,availabilityGuard,observedMembers,clusterEvents,clusterClient,logging.getMessagesLog(HighAvailabilityMemberStateMachine.class));
+  members=dependencies.satisfyDependency(new ClusterMembers(observedMembers,stateMachine));
+  memberStateMachine=paxosLife.add(stateMachine);
   HighAvailabilityConsoleLogger highAvailabilityConsoleLogger=new HighAvailabilityConsoleLogger(logging.getConsoleLog(HighAvailabilityConsoleLogger.class),config.get(ClusterSettings.server_id));
   availabilityGuard.addListener(highAvailabilityConsoleLogger);
   clusterEvents.addClusterMemberListener(highAvailabilityConsoleLogger);
