@@ -1,0 +1,15 @@
+{
+  FileSystemAbstraction fs=fsRule.get();
+  if (!fs.fileExists(log)) {
+    LogHeaderWriter.writeLogHeader(fs,log,PhysicalLogFiles.getLogVersion(log),0);
+  }
+  try (StoreChannel channel=fs.open(log,"rw");LogVersionedStoreChannel versionedChannel=new PhysicalLogVersionedStoreChannel(channel,0,(byte)0);PhysicalWritableLogChannel writableLogChannel=new PhysicalWritableLogChannel(versionedChannel);CommandWriter serializer=new CommandWriter(writableLogChannel)){
+    long offset=channel.size();
+    channel.position(offset);
+    LogEntryWriter writer=new LogEntryWriter(writableLogChannel,serializer);
+    TransactionLogWriter txWriter=new TransactionLogWriter(writer);
+    PhysicalTransactionRepresentation tx=new PhysicalTransactionRepresentation(Arrays.asList(commands));
+    tx.setHeader(new byte[0],0,0,0,0,0,0);
+    txWriter.append(tx,0);
+  }
+ }

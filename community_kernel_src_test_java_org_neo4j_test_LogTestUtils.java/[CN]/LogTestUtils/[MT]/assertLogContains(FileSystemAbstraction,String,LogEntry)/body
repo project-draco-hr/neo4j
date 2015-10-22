@@ -1,20 +1,14 @@
 {
-  ByteBuffer buffer=ByteBuffer.allocateDirect(9 + MAXGTRIDSIZE + MAXBQUALSIZE * 10);
-  try (StoreChannel file=fileSystem.open(new File(logPath),"r")){
-    LogHeader logHeader=readLogHeader(buffer,file,true);
-    PhysicalLogVersionedStoreChannel channel=new PhysicalLogVersionedStoreChannel(file,logHeader.logVersion,logHeader.logFormatVersion);
-    ReadableVersionableLogChannel logChannel=new ReadAheadLogChannel(channel,NO_MORE_CHANNELS,4096);
-    try (IOCursor<LogEntry> cursor=new LogEntryCursor(logChannel)){
-      int entryNo=0;
-      while (cursor.next()) {
-        assertThat("The log contained more entries than we expected!",entryNo < expectedEntries.length,is(true));
-        LogEntry expectedEntry=expectedEntries[entryNo];
-        assertThat("Unexpected entry at entry number " + entryNo,cursor.get(),is(expectedEntry));
-        entryNo++;
-      }
-      if (entryNo < expectedEntries.length) {
-        fail("Log ended prematurely. Expected to find '" + expectedEntries[entryNo].toString() + "' as log entry number "+ entryNo+ ", instead there were no more log entries.");
-      }
+  try (LogEntryCursor cursor=openLog(fileSystem,new File(logPath))){
+    int entryNo=0;
+    while (cursor.next()) {
+      assertTrue("The log contained more entries than we expected!",entryNo < expectedEntries.length);
+      LogEntry expectedEntry=expectedEntries[entryNo];
+      assertEquals("Unexpected entry at entry number " + entryNo,cursor.get(),expectedEntry);
+      entryNo++;
     }
-   }
+    if (entryNo < expectedEntries.length) {
+      fail("Log ended prematurely. Expected to find '" + expectedEntries[entryNo].toString() + "' as log entry number "+ entryNo+ ", instead there were no more log entries.");
+    }
+  }
  }
