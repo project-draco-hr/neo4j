@@ -1,0 +1,8 @@
+{
+  QueryExecutionEngine executionEngine=mock(QueryExecutionEngine.class);
+  when(executionEngine.executeQuery(anyString(),anyMap(),any(QuerySession.class))).thenThrow(new DeadlockDetectedException("deadlock"));
+  TransactionHandle handle=new TransactionHandle(mockKernel(),executionEngine,mock(TransactionRegistry.class),uriScheme,NullLogProvider.getInstance(),mock(QuerySessionProvider.class));
+  ExecutionResultSerializer output=mock(ExecutionResultSerializer.class);
+  handle.execute(statements(new Statement("query",map(),false,(ResultDataContent[])null)),output,mock(HttpServletRequest.class));
+  verify(output).errors(argThat(hasErrors(Status.Transaction.DeadlockDetected)));
+}
