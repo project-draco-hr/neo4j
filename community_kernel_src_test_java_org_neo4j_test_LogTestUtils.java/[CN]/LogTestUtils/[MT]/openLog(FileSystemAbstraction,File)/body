@@ -1,0 +1,22 @@
+{
+  StoreChannel channel=null;
+  try {
+    channel=fs.open(log,"r");
+    ByteBuffer buffer=ByteBuffer.allocate(LogHeader.LOG_HEADER_SIZE);
+    LogHeader header=LogHeaderReader.readLogHeader(buffer,channel,true);
+    PhysicalLogVersionedStoreChannel logVersionedChannel=new PhysicalLogVersionedStoreChannel(channel,header.logVersion,header.logFormatVersion);
+    ReadableVersionableLogChannel logChannel=new ReadAheadLogChannel(logVersionedChannel,LogVersionBridge.NO_MORE_CHANNELS,ReadAheadLogChannel.DEFAULT_READ_AHEAD_SIZE);
+    return new LogEntryCursor(logChannel);
+  }
+ catch (  Throwable t) {
+    if (channel != null) {
+      try {
+        channel.close();
+      }
+ catch (      IOException e) {
+        t.addSuppressed(e);
+      }
+    }
+    throw new RuntimeException(t);
+  }
+}
