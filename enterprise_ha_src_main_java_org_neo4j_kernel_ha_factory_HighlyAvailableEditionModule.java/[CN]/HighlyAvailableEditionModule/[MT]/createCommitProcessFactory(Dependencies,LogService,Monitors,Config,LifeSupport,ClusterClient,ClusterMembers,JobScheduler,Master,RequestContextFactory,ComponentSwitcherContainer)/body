@@ -1,19 +1,7 @@
 {
-  final DelegateInvocationHandler<TransactionCommitProcess> commitProcessDelegate=new DelegateInvocationHandler<>(TransactionCommitProcess.class);
   DefaultSlaveFactory slaveFactory=dependencies.satisfyDependency(new DefaultSlaveFactory(logging.getInternalLogProvider(),monitors,config.get(HaSettings.com_chunk_size).intValue()));
   Slaves slaves=dependencies.satisfyDependency(paxosLife.add(new HighAvailabilitySlaves(members,clusterClient,slaveFactory)));
   TransactionPropagator transactionPropagator=new TransactionPropagator(TransactionPropagator.from(config),logging.getInternalLog(TransactionPropagator.class),slaves,new CommitPusher(jobScheduler));
   paxosLife.add(transactionPropagator);
-  return new CommitProcessFactory(){
-    @Override public TransactionCommitProcess create(    TransactionAppender appender,    KernelHealth kernelHealth,    NeoStores neoStores,    TransactionRepresentationStoreApplier storeApplier,    NeoStoreInjectedTransactionValidator txValidator,    IndexUpdatesValidator indexUpdatesValidator,    Config config){
-      if (config.get(GraphDatabaseSettings.read_only)) {
-        return new ReadOnlyTransactionCommitProcess();
-      }
-      TransactionCommitProcess inner=new TransactionRepresentationCommitProcess(appender,storeApplier,indexUpdatesValidator);
-      CommitProcessSwitcher commitProcessSwitcher=new CommitProcessSwitcher(transactionPropagator,master,commitProcessDelegate,requestContextFactory,txValidator,inner);
-      componentSwitcherContainer.add(commitProcessSwitcher);
-      return (TransactionCommitProcess)newProxyInstance(TransactionCommitProcess.class.getClassLoader(),new Class[]{TransactionCommitProcess.class},commitProcessDelegate);
-    }
-  }
-;
+  return new HighlyAvailableCommitProcessFactory(componentSwitcherContainer,master,transactionPropagator,requestContextFactory);
 }
