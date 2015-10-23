@@ -85,26 +85,26 @@
     }
   }
 ,updatePuller,pageCacheMock,mock(Monitors.class),transactionCounters);
-  HighAvailabilityModeSwitcher haModeSwitcher=new HighAvailabilityModeSwitcher(switchToSlave,mock(SwitchToMaster.class),election,clusterMemberAvailability,mock(ClusterClient.class),storeSupplierMock(),me,NullLogService.getInstance());
+  ComponentSwitcherContainer switcherContainer=new ComponentSwitcherContainer();
+  HighAvailabilityModeSwitcher haModeSwitcher=new HighAvailabilityModeSwitcher(switchToSlave,mock(SwitchToMaster.class),election,clusterMemberAvailability,mock(ClusterClient.class),storeSupplierMock(),me,switcherContainer,NullLogService.getInstance());
   haModeSwitcher.init();
   haModeSwitcher.start();
   haModeSwitcher.listeningAt(URI.create("http://localhost:12345"));
   stateMachine.addHighAvailabilityMemberListener(haModeSwitcher);
   final AtomicReference<Master> ref=new AtomicReference<>(null);
-  AbstractModeSwitcher<Object> otherModeSwitcher=new AbstractModeSwitcher<Object>(haModeSwitcher,mock(DelegateInvocationHandler.class)){
-    @Override protected Object getSlaveImpl(    LifeSupport life){
+  AbstractComponentSwitcher<Object> otherModeSwitcher=new AbstractComponentSwitcher<Object>(mock(DelegateInvocationHandler.class)){
+    @Override protected Object getSlaveImpl(){
       Master master=handler.cement();
       ref.set(master);
       latch.countDown();
       return null;
     }
-    @Override protected Object getMasterImpl(    LifeSupport life){
+    @Override protected Object getMasterImpl(){
       return null;
     }
   }
 ;
-  otherModeSwitcher.init();
-  otherModeSwitcher.start();
+  switcherContainer.add(otherModeSwitcher);
   events.switchToSlave(me);
   latch.await();
   assertTrue("mode switch failed",switchedSuccessfully.get());
@@ -114,6 +114,4 @@
   stateMachine.shutdown();
   haModeSwitcher.stop();
   haModeSwitcher.shutdown();
-  otherModeSwitcher.stop();
-  otherModeSwitcher.shutdown();
 }

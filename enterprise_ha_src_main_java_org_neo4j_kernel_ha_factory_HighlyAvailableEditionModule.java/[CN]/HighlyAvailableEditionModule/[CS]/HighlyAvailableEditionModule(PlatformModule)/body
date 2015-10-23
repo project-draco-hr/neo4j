@@ -88,7 +88,7 @@
   UpdatePuller updatePullerProxy=(UpdatePuller)Proxy.newProxyInstance(UpdatePuller.class.getClassLoader(),new Class[]{UpdatePuller.class},updatePullerDelegate);
   dependencies.satisfyDependency(updatePullerProxy);
   PullerFactory pullerFactory=new PullerFactory(requestContextFactory,master,lastUpdateTime,logging.getInternalLogProvider(),serverId,invalidEpochHandler,config.get(HaSettings.pull_interval),platformModule.jobScheduler,dependencies,platformModule.availabilityGuard,memberStateMachine);
-  dependencies.satisfyDependency(pullerFactory.createObligationFulfiller(paxosLife,updatePullerProxy));
+  dependencies.satisfyDependency(paxosLife.add(pullerFactory.createObligationFulfiller(updatePullerProxy)));
   Function<Slave,SlaveServer> slaveServerFactory=new Function<Slave,SlaveServer>(){
     @Override public SlaveServer apply(    Slave slave) throws RuntimeException {
       return new SlaveServer(slave,slaveServerConfig(config),logging.getInternalLogProvider(),monitors.newMonitor(ByteCounterMonitor.class,SlaveServer.class),monitors.newMonitor(RequestMonitor.class,SlaveServer.class));
@@ -123,33 +123,33 @@
   BiFunction<Master,ConversationManager,MasterServer> masterServerFactory=new BiFunction<Master,ConversationManager,MasterServer>(){
     @Override public MasterServer apply(    final Master master,    ConversationManager conversationManager) throws RuntimeException {
       TransactionChecksumLookup txChecksumLookup=new TransactionChecksumLookup(platformModule.dependencies.resolveDependency(TransactionIdStore.class),platformModule.dependencies.resolveDependency(LogicalTransactionStore.class));
-      MasterServer masterServer=new MasterServer(master,logging.getInternalLogProvider(),masterServerConfig(config),new BranchDetectingTxVerifier(logging.getInternalLogProvider(),txChecksumLookup),monitors.newMonitor(ByteCounterMonitor.class,MasterServer.class),monitors.newMonitor(RequestMonitor.class,MasterServer.class),conversationManager);
-      return masterServer;
+      return new MasterServer(master,logging.getInternalLogProvider(),masterServerConfig(config),new BranchDetectingTxVerifier(logging.getInternalLogProvider(),txChecksumLookup),monitors.newMonitor(ByteCounterMonitor.class,MasterServer.class),monitors.newMonitor(RequestMonitor.class,MasterServer.class),conversationManager);
     }
   }
 ;
   SwitchToMaster switchToMasterInstance=new SwitchToMaster(logging,(HaIdGeneratorFactory)idGeneratorFactory,config,dependencies.provideDependency(SlaveFactory.class),conversationManagerFactory,masterFactory,masterServerFactory,masterDelegateInvocationHandler,clusterMemberAvailability,platformModule.dependencies.provideDependency(NeoStoreDataSource.class));
-  final HighAvailabilityModeSwitcher highAvailabilityModeSwitcher=new HighAvailabilityModeSwitcher(switchToSlaveInstance,switchToMasterInstance,clusterClient,clusterMemberAvailability,clusterClient,new Supplier<StoreId>(){
+  ComponentSwitcherContainer componentSwitcherContainer=new ComponentSwitcherContainer();
+  HighAvailabilityModeSwitcher highAvailabilityModeSwitcher=new HighAvailabilityModeSwitcher(switchToSlaveInstance,switchToMasterInstance,clusterClient,clusterMemberAvailability,clusterClient,new Supplier<StoreId>(){
     @Override public StoreId get(){
       return dependencies.resolveDependency(NeoStoreDataSource.class).getStoreId();
     }
   }
-,config.get(ClusterSettings.server_id),logging);
+,config.get(ClusterSettings.server_id),componentSwitcherContainer,logging);
   exceptionHandlerRef.set(highAvailabilityModeSwitcher);
   clusterClient.addBindingListener(highAvailabilityModeSwitcher);
   memberStateMachine.addHighAvailabilityMemberListener(highAvailabilityModeSwitcher);
   paxosLife.add(highAvailabilityModeSwitcher);
-  paxosLife.add(new UpdatePullerModeSwitcher(highAvailabilityModeSwitcher,updatePullerDelegate,pullerFactory));
+  componentSwitcherContainer.add(new UpdatePullerSwitcher(updatePullerDelegate,pullerFactory));
   life.add(requestContextFactory);
   life.add(responseUnpacker);
   life.add(paxosLife);
   platformModule.diagnosticsManager.appendProvider(new HighAvailabilityDiagnostics(memberStateMachine,clusterClient));
-  lockManager=dependencies.satisfyDependency(createLockManager(highAvailabilityModeSwitcher,paxosLife,config,masterDelegateInvocationHandler,requestContextFactory,platformModule.availabilityGuard,logging));
-  propertyKeyTokenHolder=dependencies.satisfyDependency(new DelegatingPropertyKeyTokenHolder(createPropertyKeyCreator(config,paxosLife,highAvailabilityModeSwitcher,masterDelegateInvocationHandler,requestContextFactory,kernelProvider)));
-  labelTokenHolder=dependencies.satisfyDependency(new DelegatingLabelTokenHolder(createLabelIdCreator(config,paxosLife,highAvailabilityModeSwitcher,masterDelegateInvocationHandler,requestContextFactory,kernelProvider)));
-  relationshipTypeTokenHolder=dependencies.satisfyDependency(new DelegatingRelationshipTypeTokenHolder(createRelationshipTypeCreator(config,paxosLife,highAvailabilityModeSwitcher,masterDelegateInvocationHandler,requestContextFactory,kernelProvider)));
+  lockManager=dependencies.satisfyDependency(createLockManager(componentSwitcherContainer,config,masterDelegateInvocationHandler,requestContextFactory,platformModule.availabilityGuard,logging));
+  propertyKeyTokenHolder=dependencies.satisfyDependency(new DelegatingPropertyKeyTokenHolder(createPropertyKeyCreator(config,componentSwitcherContainer,masterDelegateInvocationHandler,requestContextFactory,kernelProvider)));
+  labelTokenHolder=dependencies.satisfyDependency(new DelegatingLabelTokenHolder(createLabelIdCreator(config,componentSwitcherContainer,masterDelegateInvocationHandler,requestContextFactory,kernelProvider)));
+  relationshipTypeTokenHolder=dependencies.satisfyDependency(new DelegatingRelationshipTypeTokenHolder(createRelationshipTypeCreator(config,componentSwitcherContainer,masterDelegateInvocationHandler,requestContextFactory,kernelProvider)));
   dependencies.satisfyDependency(createKernelData(config,platformModule.graphDatabaseFacade,members,fs,platformModule.pageCache,storeDir,lastUpdateTime,dependencies.provideDependency(NeoStores.class),life));
-  commitProcessFactory=createCommitProcessFactory(dependencies,logging,monitors,config,paxosLife,clusterClient,members,platformModule.jobScheduler,master,requestContextFactory,highAvailabilityModeSwitcher);
+  commitProcessFactory=createCommitProcessFactory(dependencies,logging,monitors,config,paxosLife,clusterClient,members,platformModule.jobScheduler,master,requestContextFactory,componentSwitcherContainer);
   headerInformationFactory=createHeaderInformationFactory(memberContext);
   schemaWriteGuard=new SchemaWriteGuard(){
     @Override public void assertSchemaWritesAllowed() throws InvalidTransactionTypeKernelException {
