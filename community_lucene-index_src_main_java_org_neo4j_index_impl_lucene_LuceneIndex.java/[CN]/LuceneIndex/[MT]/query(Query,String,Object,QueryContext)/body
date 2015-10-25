@@ -21,21 +21,13 @@
     dataSource.releaseReadLock();
   }
   if (searcher != null) {
-    boolean foundInCache=false;
-    LruCache<String,Collection<EntityId>> cachedIdsMap=null;
-    if (keyForDirectLookup != null) {
-      cachedIdsMap=dataSource.getFromCache(identifier,keyForDirectLookup);
-      foundInCache=fillFromCache(cachedIdsMap,simpleTransactionStateIds,valueForDirectLookup.toString(),removedIdsFromTransactionState);
+    try {
+      PrimitiveLongSet idsModifiedInTransactionState=gatherIdsModifiedInTransactionState(simpleTransactionStateIds,fulltextTransactionStateSearcher,query);
+      DocToIdIterator hits=new DocToIdIterator(search(searcher,fulltextTransactionStateSearcher,query,additionalParametersOrNull,removedIdsFromTransactionState),removedIdsFromTransactionState,searcher,idsModifiedInTransactionState);
+      idIterator=simpleTransactionStateIds.isEmpty() ? hits : new CombinedIndexHits(Arrays.<LegacyIndexHits>asList(hits,new ConstantScoreIterator(simpleTransactionStateIds,Float.NaN)));
     }
-    if (!foundInCache) {
-      try {
-        PrimitiveLongSet idsModifiedInTransactionState=gatherIdsModifiedInTransactionState(simpleTransactionStateIds,fulltextTransactionStateSearcher,query);
-        DocToIdIterator hits=new DocToIdIterator(search(searcher,fulltextTransactionStateSearcher,query,additionalParametersOrNull,removedIdsFromTransactionState),removedIdsFromTransactionState,searcher,idsModifiedInTransactionState);
-        idIterator=simpleTransactionStateIds.isEmpty() ? hits : new CombinedIndexHits(Arrays.<LegacyIndexHits>asList(hits,new ConstantScoreIterator(simpleTransactionStateIds,Float.NaN)));
-      }
- catch (      IOException e) {
-        throw new RuntimeException("Unable to query " + this + " with "+ query,e);
-      }
+ catch (    IOException e) {
+      throw new RuntimeException("Unable to query " + this + " with "+ query,e);
     }
   }
   idIterator=idIterator == null ? new ConstantScoreIterator(simpleTransactionStateIds,0) : idIterator;
