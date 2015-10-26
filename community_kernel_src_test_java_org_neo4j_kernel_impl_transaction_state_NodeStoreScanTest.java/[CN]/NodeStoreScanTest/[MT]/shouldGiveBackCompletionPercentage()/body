@@ -1,0 +1,23 @@
+{
+  final int total=10;
+  when(nodeStore.getHighId()).thenReturn((long)total);
+  NodeRecord inUseRecord=new NodeRecord(42);
+  inUseRecord.setInUse(true);
+  when(nodeStore.forceGetRecord(anyLong())).thenReturn(inUseRecord,inUseRecord,inUseRecord,inUseRecord,inUseRecord,inUseRecord,inUseRecord,inUseRecord,inUseRecord,inUseRecord);
+  final PercentageSupplier percentageSupplier=new PercentageSupplier();
+  final NeoStoreIndexStoreView.NodeStoreScan scan=new NeoStoreIndexStoreView.NodeStoreScan(nodeStore,locks,total){
+    private int read=0;
+    @Override protected Object read(    NodeRecord node){
+      read++;
+      float expected=((float)read * 100) / total;
+      float actual=percentageSupplier.get();
+      assertEquals(String.format("%f==%f",expected,actual),expected,actual,0.0);
+      return null;
+    }
+    @Override protected void process(    Object o) throws Exception {
+    }
+  }
+;
+  percentageSupplier.setStoreScan(scan);
+  scan.run();
+}
