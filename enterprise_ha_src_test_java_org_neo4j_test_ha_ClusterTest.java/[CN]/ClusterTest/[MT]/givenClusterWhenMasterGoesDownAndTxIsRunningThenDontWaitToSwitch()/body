@@ -1,0 +1,21 @@
+{
+  ClusterManager clusterManager=new ClusterManager(fromXml(getClass().getResource("/threeinstances.xml").toURI()),testDirectory.directory("waitfortx"),MapUtil.stringMap());
+  try {
+    clusterManager.start();
+    ClusterManager.ManagedCluster cluster=clusterManager.getDefaultCluster();
+    cluster.await(allSeesAllAsAvailable());
+    HighlyAvailableGraphDatabase slave=cluster.getAnySlave();
+    try (Transaction tx=slave.beginTx()){
+      slave.createNode();
+      cluster.shutdown(cluster.getMaster());
+      cluster.await(masterAvailable());
+      cluster.await(masterSeesSlavesAsAvailable(1));
+      tx.success();
+    }
+ catch (    TransactionFailureException e) {
+    }
+  }
+  finally {
+    clusterManager.stop();
+  }
+}

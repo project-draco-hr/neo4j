@@ -1,23 +1,17 @@
 {
   userLog.info("I am %s, moving to master",myId());
-  long deadline=SYSTEM_CLOCK.currentTimeMillis() + config.get(HaSettings.state_switch_timeout);
-  while (transactionCounters.getNumberOfActiveTransactions() > 0 && SYSTEM_CLOCK.currentTimeMillis() < deadline) {
-    parkNanos(MILLISECONDS.toNanos(10));
-  }
-{
-    idGeneratorFactory.switchToMaster();
-    NeoStoreDataSource neoStoreXaDataSource=dataSourceSupplier.get();
-    neoStoreXaDataSource.afterModeSwitch();
-    ConversationManager conversationManager=conversationManagerFactory.newInstance();
-    Master master=masterFactory.apply(conversationManager,haCommunicationLife);
-    MasterServer masterServer=masterServerFactory.apply(master,conversationManager);
-    haCommunicationLife.add(masterServer);
-    masterDelegateHandler.setDelegate(master);
-    haCommunicationLife.start();
-    URI masterHaURI=getMasterUri(me,masterServer);
-    clusterMemberAvailability.memberIsAvailable(MASTER,masterHaURI,neoStoreXaDataSource.getStoreId());
-    userLog.info("I am %s, successfully moved to master",myId());
-    slaveFactorySupplier.get().setStoreId(neoStoreXaDataSource.getStoreId());
-    return masterHaURI;
-  }
+  idGeneratorFactory.switchToMaster();
+  NeoStoreDataSource neoStoreXaDataSource=dataSourceSupplier.get();
+  neoStoreXaDataSource.afterModeSwitch();
+  ConversationManager conversationManager=conversationManagerFactory.newInstance();
+  Master master=masterFactory.apply(conversationManager,haCommunicationLife);
+  MasterServer masterServer=masterServerFactory.apply(master,conversationManager);
+  haCommunicationLife.add(masterServer);
+  masterDelegateHandler.setDelegate(master);
+  haCommunicationLife.start();
+  URI masterHaURI=getMasterUri(me,masterServer);
+  clusterMemberAvailability.memberIsAvailable(MASTER,masterHaURI,neoStoreXaDataSource.getStoreId());
+  userLog.info("I am %s, successfully moved to master",myId());
+  slaveFactorySupplier.get().setStoreId(neoStoreXaDataSource.getStoreId());
+  return masterHaURI;
 }
