@@ -1,5 +1,8 @@
 {
   final LifeSupport life=platformModule.life;
+  final LifeSupport modeSwitchersLife=new LifeSupport();
+  final LifeSupport paxosLife=new LifeSupport();
+  final LifeSupport clusteringLife=new LifeSupport();
   final FileSystemAbstraction fs=platformModule.fileSystem;
   final File storeDir=platformModule.storeDir;
   final Config config=platformModule.config;
@@ -29,7 +32,7 @@
   }
 );
   ObjectStreamFactory objectStreamFactory=new ObjectStreamFactory();
-  ClusterClientModule clusterClientModule=new ClusterClientModule(life,dependencies,monitors,config,logging,electionCredentialsProvider);
+  ClusterClientModule clusterClientModule=new ClusterClientModule(clusteringLife,dependencies,monitors,config,logging,electionCredentialsProvider);
   final ClusterClient clusterClient=clusterClientModule.clusterClient;
   PaxosClusterMemberEvents localClusterEvents=new PaxosClusterMemberEvents(clusterClient,clusterClient,clusterClient,clusterClient,logging.getInternalLogProvider(),new org.neo4j.function.Predicate<PaxosClusterMemberEvents.ClusterMembersSnapshot>(){
     @Override public boolean test(    PaxosClusterMemberEvents.ClusterMembersSnapshot item){
@@ -69,7 +72,6 @@
   platformModule.availabilityGuard.addListener(highAvailabilityLogger);
   clusterEvents.addClusterMemberListener(highAvailabilityLogger);
   clusterClient.addClusterListener(highAvailabilityLogger);
-  LifeSupport paxosLife=new LifeSupport();
   paxosLife.add(memberStateMachine);
   paxosLife.add((Lifecycle)clusterEvents);
   paxosLife.add(localClusterMemberAvailability);
@@ -138,17 +140,17 @@
   clusterClient.addBindingListener(highAvailabilityModeSwitcher);
   memberStateMachine.addHighAvailabilityMemberListener(highAvailabilityModeSwitcher);
   paxosLife.add(highAvailabilityModeSwitcher);
-  paxosLife.add(new UpdatePullerModeSwitcher(highAvailabilityModeSwitcher,updatePullerDelegate,pullerFactory));
+  modeSwitchersLife.add(new UpdatePullerModeSwitcher(highAvailabilityModeSwitcher,updatePullerDelegate,pullerFactory));
   life.add(requestContextFactory);
   life.add(responseUnpacker);
-  life.add(paxosLife);
   platformModule.diagnosticsManager.appendProvider(new HighAvailabilityDiagnostics(memberStateMachine,clusterClient));
-  lockManager=dependencies.satisfyDependency(createLockManager(highAvailabilityModeSwitcher,paxosLife,config,masterDelegateInvocationHandler,requestContextFactory,platformModule.availabilityGuard,logging));
-  propertyKeyTokenHolder=dependencies.satisfyDependency(new DelegatingPropertyKeyTokenHolder(createPropertyKeyCreator(config,paxosLife,highAvailabilityModeSwitcher,masterDelegateInvocationHandler,requestContextFactory,kernelProvider)));
-  labelTokenHolder=dependencies.satisfyDependency(new DelegatingLabelTokenHolder(createLabelIdCreator(config,paxosLife,highAvailabilityModeSwitcher,masterDelegateInvocationHandler,requestContextFactory,kernelProvider)));
-  relationshipTypeTokenHolder=dependencies.satisfyDependency(new DelegatingRelationshipTypeTokenHolder(createRelationshipTypeCreator(config,paxosLife,highAvailabilityModeSwitcher,masterDelegateInvocationHandler,requestContextFactory,kernelProvider)));
+  lockManager=dependencies.satisfyDependency(createLockManager(highAvailabilityModeSwitcher,modeSwitchersLife,config,masterDelegateInvocationHandler,requestContextFactory,platformModule.availabilityGuard,logging));
+  propertyKeyTokenHolder=dependencies.satisfyDependency(new DelegatingPropertyKeyTokenHolder(createPropertyKeyCreator(config,modeSwitchersLife,highAvailabilityModeSwitcher,masterDelegateInvocationHandler,requestContextFactory,kernelProvider)));
+  labelTokenHolder=dependencies.satisfyDependency(new DelegatingLabelTokenHolder(createLabelIdCreator(config,modeSwitchersLife,highAvailabilityModeSwitcher,masterDelegateInvocationHandler,requestContextFactory,kernelProvider)));
+  relationshipTypeTokenHolder=dependencies.satisfyDependency(new DelegatingRelationshipTypeTokenHolder(createRelationshipTypeCreator(config,modeSwitchersLife,highAvailabilityModeSwitcher,masterDelegateInvocationHandler,requestContextFactory,kernelProvider)));
   dependencies.satisfyDependency(createKernelData(config,platformModule.graphDatabaseFacade,members,fs,platformModule.pageCache,storeDir,lastUpdateTime,dependencies.provideDependency(NeoStores.class),life));
-  commitProcessFactory=createCommitProcessFactory(dependencies,logging,monitors,config,paxosLife,clusterClient,members,platformModule.jobScheduler,master,requestContextFactory,highAvailabilityModeSwitcher);
+  TransactionPropagator transactionPropagator=createTransactionPropagator(paxosLife,dependencies,clusterClient,platformModule.jobScheduler,config,logging,monitors);
+  commitProcessFactory=new HighlyAvailableCommitProcessFactory(modeSwitchersLife,master,transactionPropagator,requestContextFactory,highAvailabilityModeSwitcher);
   headerInformationFactory=createHeaderInformationFactory(memberContext);
   schemaWriteGuard=new SchemaWriteGuard(){
     @Override public void assertSchemaWritesAllowed() throws InvalidTransactionTypeKernelException {
@@ -162,4 +164,7 @@
   constraintSemantics=new EnterpriseConstraintSemantics();
   registerRecovery(config.get(GraphDatabaseFacadeFactory.Configuration.editionName),dependencies,logging);
   publishEditionInfo(config,dependencies.resolveDependency(UsageData.class));
+  life.add(modeSwitchersLife);
+  life.add(clusteringLife);
+  life.add(paxosLife);
 }

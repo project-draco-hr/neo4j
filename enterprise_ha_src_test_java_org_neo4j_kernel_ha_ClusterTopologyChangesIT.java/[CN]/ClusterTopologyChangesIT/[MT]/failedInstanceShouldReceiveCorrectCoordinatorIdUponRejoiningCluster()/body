@@ -5,8 +5,9 @@
   cluster.await(masterSeesSlavesAsAvailable(1));
   createNodeOn(cluster.getMaster());
   cluster.sync();
-  ClusterClientModule clusterClient=newClusterClient(new InstanceId(1));
-  cleanup.add(clusterClient.life);
+  LifeSupport life=new LifeSupport();
+  ClusterClientModule clusterClient=newClusterClient(life,new InstanceId(1));
+  cleanup.add(life);
   final AtomicReference<InstanceId> coordinatorIdWhenReJoined=new AtomicReference<>();
   final CountDownLatch latch=new CountDownLatch(1);
   clusterClient.clusterClient.addClusterListener(new ClusterListener.Adapter(){
@@ -16,7 +17,7 @@
     }
   }
 );
-  clusterClient.life.start();
+  life.start();
   assertTrue(latch.await(20,SECONDS));
   assertEquals(new InstanceId(2),coordinatorIdWhenReJoined.get());
 }
