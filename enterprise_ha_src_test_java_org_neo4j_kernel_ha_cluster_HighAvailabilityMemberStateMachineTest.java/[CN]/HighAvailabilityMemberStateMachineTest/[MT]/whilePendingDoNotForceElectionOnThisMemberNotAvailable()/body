@@ -1,0 +1,13 @@
+{
+  InstanceId me=new InstanceId(1);
+  HighAvailabilityMemberContext context=new SimpleHighAvailabilityMemberContext(me,false);
+  Election election=mock(Election.class);
+  ClusterMemberEvents events=mock(ClusterMemberEvents.class);
+  ClusterMemberListenerContainer memberListenerContainer=mockAddClusterMemberListener(events);
+  HighAvailabilityMemberStateMachine stateMachine=new StateMachineBuilder().withElection(election).withEvents(events).withContext(context).build();
+  stateMachine.init();
+  assertThat(stateMachine.getCurrentState(),equalTo(HighAvailabilityMemberState.PENDING));
+  memberListenerContainer.get().memberIsUnavailable(HighAvailabilityModeSwitcher.SLAVE,me);
+  assertThat(stateMachine.getCurrentState(),equalTo(HighAvailabilityMemberState.PENDING));
+  verifyZeroInteractions(election);
+}
