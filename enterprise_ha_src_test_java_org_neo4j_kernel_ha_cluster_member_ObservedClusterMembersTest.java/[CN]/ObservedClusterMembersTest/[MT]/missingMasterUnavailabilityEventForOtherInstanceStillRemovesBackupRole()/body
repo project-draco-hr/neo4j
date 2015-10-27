@@ -1,0 +1,21 @@
+{
+  Cluster cluster=mock(Cluster.class);
+  Heartbeat heartbeat=mock(Heartbeat.class);
+  ClusterMemberEvents memberEvents=mock(ClusterMemberEvents.class);
+  ObservedClusterMembers members=new ObservedClusterMembers(logProvider,cluster,heartbeat,memberEvents,clusterId1);
+  ArgumentCaptor<ClusterListener> listener=ArgumentCaptor.forClass(ClusterListener.class);
+  verify(cluster).addClusterListener(listener.capture());
+  listener.getValue().enteredCluster(clusterConfiguration(clusterUri1,clusterUri2,clusterUri3));
+  ArgumentCaptor<ClusterMemberListener> memberListener=ArgumentCaptor.forClass(ClusterMemberListener.class);
+  verify(memberEvents).addClusterMemberListener(memberListener.capture());
+  memberListener.getValue().memberIsAvailable(OnlineBackupKernelExtension.BACKUP,clusterId2,clusterUri2,StoreId.DEFAULT);
+  memberListener.getValue().memberIsAvailable(MASTER,clusterId2,clusterUri2,StoreId.DEFAULT);
+  memberListener.getValue().memberIsAvailable(SLAVE,clusterId2,clusterUri2,StoreId.DEFAULT);
+  for (  ClusterMember clusterMember : members.getMembers()) {
+    if (clusterMember.getInstanceId().equals(clusterId2)) {
+      assertThat(count(clusterMember.getRoles()),equalTo(1l));
+      assertThat(Iterables.single(clusterMember.getRoles()),equalTo(SLAVE));
+      break;
+    }
+  }
+}

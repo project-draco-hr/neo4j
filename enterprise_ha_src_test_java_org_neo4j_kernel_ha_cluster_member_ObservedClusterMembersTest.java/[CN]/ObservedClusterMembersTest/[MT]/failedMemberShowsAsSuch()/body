@@ -1,0 +1,13 @@
+{
+  Cluster cluster=mock(Cluster.class);
+  Heartbeat heartbeat=mock(Heartbeat.class);
+  ClusterMemberEvents memberEvents=mock(ClusterMemberEvents.class);
+  ObservedClusterMembers members=new ObservedClusterMembers(logProvider,cluster,heartbeat,memberEvents,null);
+  ArgumentCaptor<ClusterListener> listener=ArgumentCaptor.forClass(ClusterListener.class);
+  verify(cluster).addClusterListener(listener.capture());
+  listener.getValue().enteredCluster(clusterConfiguration(clusterUri1,clusterUri2,clusterUri3));
+  ArgumentCaptor<HeartbeatListener> heartBeatListener=ArgumentCaptor.forClass(HeartbeatListener.class);
+  verify(heartbeat).addHeartbeatListener(heartBeatListener.capture());
+  heartBeatListener.getValue().failed(clusterId1);
+  assertThat(members.getMembers(),hasItem(sameMemberAs(new ClusterMember(clusterId1).failed())));
+}
