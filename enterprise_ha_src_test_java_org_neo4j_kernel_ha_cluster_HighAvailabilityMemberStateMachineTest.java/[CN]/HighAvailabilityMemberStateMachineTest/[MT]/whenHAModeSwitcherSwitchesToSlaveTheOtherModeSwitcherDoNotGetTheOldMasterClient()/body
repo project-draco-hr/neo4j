@@ -4,13 +4,15 @@
   HighAvailabilityMemberContext context=mock(HighAvailabilityMemberContext.class);
   when(context.getMyId()).thenReturn(me);
   AvailabilityGuard guard=mock(AvailabilityGuard.class);
-  ClusterMembers members=mock(ClusterMembers.class);
+  ObservedClusterMembers members=mock(ObservedClusterMembers.class);
   ClusterMember masterMember=mock(ClusterMember.class);
   when(masterMember.getHARole()).thenReturn("master");
   when(masterMember.hasRole("master")).thenReturn(true);
   when(masterMember.getInstanceId()).thenReturn(new InstanceId(2));
   when(masterMember.getStoreId()).thenReturn(storeId);
-  when(members.getMembers()).thenReturn(Arrays.asList(new ClusterMember(me),masterMember));
+  ClusterMember self=new ClusterMember(me);
+  when(members.getMembers()).thenReturn(Arrays.asList(self,masterMember));
+  when(members.getCurrentMember()).thenReturn(self);
   DependencyResolver dependencyResolver=mock(DependencyResolver.class);
   FileSystemAbstraction fs=mock(FileSystemAbstraction.class);
   when(fs.fileExists(any(File.class))).thenReturn(true);
@@ -21,7 +23,7 @@
   when(dataSource.getStoreId()).thenReturn(storeId);
   when(dependencyResolver.resolveDependency(NeoStoreDataSource.class)).thenReturn(dataSource);
   when(dependencyResolver.resolveDependency(TransactionIdStore.class)).thenReturn(new DeadSimpleTransactionIdStore());
-  when(dependencyResolver.resolveDependency(ClusterMembers.class)).thenReturn(members);
+  when(dependencyResolver.resolveDependency(ObservedClusterMembers.class)).thenReturn(members);
   UpdatePuller updatePuller=mock(UpdatePuller.class);
   when(updatePuller.tryPullUpdates()).thenReturn(true);
   when(dependencyResolver.resolveDependency(UpdatePuller.class)).thenReturn(updatePuller);
@@ -31,6 +33,8 @@
   Election election=mock(Election.class);
   StringLogger logger=mock(StringLogger.class);
   HighAvailabilityMemberStateMachine stateMachine=new HighAvailabilityMemberStateMachine(context,guard,members,events,election,logger);
+  ClusterMembers clusterMembers=new ClusterMembers(members,stateMachine);
+  when(dependencyResolver.resolveDependency(ClusterMembers.class)).thenReturn(clusterMembers);
   stateMachine.init();
   stateMachine.start();
   final DelegateInvocationHandler<Master> handler=new DelegateInvocationHandler<>(Master.class);
@@ -91,9 +95,8 @@
   events.switchToSlave(me);
   latch.await();
   assertTrue("mode switch failed",switchedSuccessfully.get());
-  Master expected=masterClient;
   Master actual=ref.get();
-  assertEquals(expected.toString(),actual.toString());
+  assertEquals(masterClient.toString(),actual.toString());
   stateMachine.stop();
   stateMachine.shutdown();
   haModeSwitcher.stop();

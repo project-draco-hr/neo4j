@@ -1,0 +1,12 @@
+{
+  StoreId myStoreId=neoDataSource.getStoreId();
+  ClusterMembers clusterMembers=resolver.resolveDependency(ClusterMembers.class);
+  ClusterMember master=single(filter(hasInstanceId(HighAvailabilityModeSwitcher.getServerId(masterUri)),clusterMembers.getMembers()));
+  StoreId masterStoreId=master.getStoreId();
+  if (!myStoreId.equals(masterStoreId)) {
+    throw new MismatchingStoreIdException(myStoreId,master.getStoreId());
+  }
+ else   if (!myStoreId.equalsByUpgradeId(master.getStoreId())) {
+    throw new BranchedDataException("My store with " + myStoreId + " was updated independently from "+ "master's store "+ masterStoreId);
+  }
+}
