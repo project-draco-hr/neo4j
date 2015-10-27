@@ -1,8 +1,11 @@
 {
   final File logFilename=new File(testDirectory.graphDbDir(),"queries.log");
   GraphDatabaseService database=databaseBuilder.setConfig(GraphDatabaseSettings.log_queries,Settings.TRUE).setConfig(GraphDatabaseSettings.log_queries_filename,logFilename.getPath()).newGraphDatabase();
-  executeQueryAndShutdown(database);
+  Map<String,Object> params=new HashMap<>();
+  params.put("ids",Arrays.asList(0,1,2));
+  String query="MATCH (n) WHERE id(n) in {ids} RETURN n.name";
+  executeQueryAndShutdown(database,query,params);
   List<String> logLines=readAllLines(logFilename);
   assertEquals(1,logLines.size());
-  assertThat(logLines.get(0),Matchers.endsWith(String.format(" ms: %s - %s - {}",QueryEngineProvider.embeddedSession(),QUERY)));
+  assertThat(logLines.get(0),Matchers.endsWith(String.format(" ms: %s - %s - {ids: [0, 1, 2]}",QueryEngineProvider.embeddedSession(),query)));
 }
