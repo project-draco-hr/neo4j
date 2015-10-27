@@ -3,35 +3,18 @@
   InstanceId other=new InstanceId(2);
   HighAvailabilityMemberContext context=new SimpleHighAvailabilityMemberContext(me,false);
   AvailabilityGuard guard=mock(AvailabilityGuard.class);
-  ClusterMembers members=mock(ClusterMembers.class);
+  ClusterMembers members=mockClusterMembers(me,other);
   ClusterMemberEvents events=mock(ClusterMemberEvents.class);
-  List<ClusterMember> membersList=new LinkedList<>();
-  ClusterMember otherMemberMock=mock(ClusterMember.class);
-  when(otherMemberMock.getInstanceId()).thenReturn(other);
-  when(otherMemberMock.isAlive()).thenReturn(false);
-  membersList.add(otherMemberMock);
-  membersList.add(new ClusterMember(me));
-  when(members.getMembers()).thenReturn(membersList);
-  final Set<ClusterMemberListener> listener=new HashSet<>();
-  doAnswer(new Answer(){
-    @Override public Object answer(    InvocationOnMock invocation) throws Throwable {
-      listener.add((ClusterMemberListener)invocation.getArguments()[0]);
-      return null;
-    }
-  }
-).when(events).addClusterMemberListener(Matchers.<ClusterMemberListener>any());
-  Election election=mock(Election.class);
-  StringLogger logger=mock(StringLogger.class);
-  HighAvailabilityMemberStateMachine toTest=new HighAvailabilityMemberStateMachine(context,guard,members,events,election,logger);
-  toTest.init();
-  ClusterMemberListener theListener=listener.iterator().next();
+  ClusterMemberListenerContainer memberListenerContainer=mockAddClusterMemberListener(events);
+  HighAvailabilityMemberStateMachine stateMachine=buildMockedStateMachine(context,events,members,guard);
+  stateMachine.init();
+  ClusterMemberListener memberListener=memberListenerContainer.get();
   HAStateChangeListener probe=new HAStateChangeListener();
-  toTest.addHighAvailabilityMemberListener(probe);
-  theListener.memberIsAvailable(MASTER,other,URI.create("ha://whatever"),StoreId.DEFAULT);
-  assertThat(toTest.getCurrentState(),equalTo(HighAvailabilityMemberState.TO_SLAVE));
-  theListener.memberIsFailed(new InstanceId(2));
-  assertThat(listener.size(),equalTo(1));
-  assertThat(toTest.getCurrentState(),equalTo(HighAvailabilityMemberState.PENDING));
+  stateMachine.addHighAvailabilityMemberListener(probe);
+  memberListener.memberIsAvailable(MASTER,other,URI.create("ha://whatever"),StoreId.DEFAULT);
+  assertThat(stateMachine.getCurrentState(),equalTo(HighAvailabilityMemberState.TO_SLAVE));
+  memberListener.memberIsFailed(new InstanceId(2));
+  assertThat(stateMachine.getCurrentState(),equalTo(HighAvailabilityMemberState.PENDING));
   assertThat(probe.instanceStops,is(true));
   verify(guard,times(1)).deny(any(AvailabilityGuard.AvailabilityRequirement.class));
 }
