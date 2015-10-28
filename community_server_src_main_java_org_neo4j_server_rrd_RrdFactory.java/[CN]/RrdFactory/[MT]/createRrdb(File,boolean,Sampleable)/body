@@ -2,21 +2,21 @@
   if (rrdFile.exists()) {
     try {
       if (!validateStepSize(rrdFile)) {
-        return recreateArchive(rrdFile,sampleables);
+        return recreateArchive(rrdFile,ephemeral,sampleables);
       }
       Sampleable[] missing=checkDataSources(rrdFile.getAbsolutePath(),sampleables);
       if (missing.length > 0) {
         updateDataSources(rrdFile.getAbsolutePath(),missing);
       }
-      return new RrdDbWrapper.Plain(new RrdDb(rrdFile.getAbsolutePath()));
+      return wrap(new RrdDb(rrdFile.getAbsolutePath()),ephemeral);
     }
  catch (    IOException e) {
       log.error("Unable to open rrd store, attempting to recreate it",e);
-      return recreateArchive(rrdFile,sampleables);
+      return recreateArchive(rrdFile,ephemeral,sampleables);
     }
 catch (    IllegalArgumentException e) {
       log.error("Unable to open rrd store, attempting to recreate it",e);
-      return recreateArchive(rrdFile,sampleables);
+      return recreateArchive(rrdFile,ephemeral,sampleables);
     }
   }
  else {
@@ -24,7 +24,7 @@ catch (    IllegalArgumentException e) {
     defineDataSources(rrdDef,sampleables);
     addArchives(rrdDef);
     try {
-      return new RrdDbWrapper.Plain(new RrdDb(rrdDef));
+      return wrap(new RrdDb(rrdDef),ephemeral);
     }
  catch (    IOException e) {
       log.error("Unable to create new rrd store",e);
