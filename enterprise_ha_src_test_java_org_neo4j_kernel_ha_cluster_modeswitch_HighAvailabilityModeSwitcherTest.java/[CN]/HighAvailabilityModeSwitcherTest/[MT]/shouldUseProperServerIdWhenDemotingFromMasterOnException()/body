@@ -1,0 +1,21 @@
+{
+  SwitchToSlave sts=mock(SwitchToSlave.class);
+  SwitchToMaster stm=mock(SwitchToMaster.class);
+  when(stm.switchToMaster(any(LifeSupport.class),any(URI.class))).thenThrow(new RuntimeException());
+  Election election=mock(Election.class);
+  ClusterMemberAvailability cma=mock(ClusterMemberAvailability.class);
+  InstanceId instanceId=new InstanceId(14);
+  HighAvailabilityModeSwitcher theSwitcher=new HighAvailabilityModeSwitcher(sts,stm,election,cma,mock(ClusterClient.class),storeSupplierMock(),instanceId,new ComponentSwitcherContainer(),NullLogService.getInstance());
+  theSwitcher.init();
+  theSwitcher.start();
+  URI listeningAt=URI.create("ha://0.0.0.0:5001?name=someName");
+  theSwitcher.listeningAt(listeningAt);
+  try {
+    theSwitcher.masterIsElected(new HighAvailabilityMemberChangeEvent(HighAvailabilityMemberState.PENDING,HighAvailabilityMemberState.TO_MASTER,instanceId,listeningAt));
+  }
+  finally {
+    theSwitcher.stop();
+    theSwitcher.shutdown();
+  }
+  verify(election).demote(instanceId);
+}
