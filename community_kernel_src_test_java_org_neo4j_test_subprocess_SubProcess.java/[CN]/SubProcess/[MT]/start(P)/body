@@ -1,0 +1,34 @@
+{
+  DispatcherTrapImpl callback;
+  try {
+    callback=new DispatcherTrapImpl(this,parameter);
+  }
+ catch (  RemoteException e) {
+    throw new RuntimeException("Failed to create local RMI endpoint.",e);
+  }
+  Process process;
+  String pid;
+  Dispatcher dispatcher;
+  try {
+    process=start(inheritOutput,"java","-ea","-Xmx1G","-Djava.awt.headless=true","-cp",classPath(System.getProperty("java.class.path")),SubProcess.class.getName(),serialize(callback));
+    pid=getPid(process);
+    if (!inheritOutput) {
+      pipe("[" + toString() + ":"+ pid+ "] ",process.getErrorStream(),errorStreamTarget());
+      pipe("[" + toString() + ":"+ pid+ "] ",process.getInputStream(),inputStreamTarget());
+    }
+    dispatcher=callback.get(process);
+  }
+  finally {
+    try {
+      UnicastRemoteObject.unexportObject(callback,true);
+    }
+ catch (    RemoteException e) {
+      e.printStackTrace();
+    }
+  }
+  if (dispatcher == null) {
+    throw new IllegalStateException("failed to start sub process");
+  }
+  Handler handler=new Handler(t,dispatcher,process,"<" + toString() + ":"+ pid+ ">");
+  return t.cast(Proxy.newProxyInstance(t.getClassLoader(),new Class[]{t},live(handler)));
+}
