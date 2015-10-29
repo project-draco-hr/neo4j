@@ -9,10 +9,14 @@
   BatchingTransactionRepresentationStoreApplier storeApplier=mock(BatchingTransactionRepresentationStoreApplier.class);
   LogFile logFile=mock(LogFile.class);
   when(dependencyResolver.resolveDependency(LogFile.class)).thenReturn(logFile);
+  KernelHealth kernelHealth=mock(KernelHealth.class);
+  when(kernelHealth.isHealthy()).thenReturn(true);
+  when(dependencyResolver.resolveDependency(KernelHealth.class)).thenReturn(kernelHealth);
   LogRotation logRotation=mock(LogRotation.class);
   when(dependencyResolver.resolveDependency(LogRotation.class)).thenReturn(logRotation);
   addMockedNeoStore(dependencyResolver);
   when(dependencyResolver.resolveDependency(IndexingService.class)).thenReturn(mock(IndexingService.class));
+  when(dependencyResolver.resolveDependency(Logging.class)).thenReturn(logging);
   IndexUpdatesValidator validator=setUpIndexUpdatesValidatorMocking(dependencyResolver);
   StoppingTxHandler stoppingTxHandler=new StoppingTxHandler();
   int maxBatchSize=10;
@@ -20,8 +24,7 @@
   stoppingTxHandler.setUnpacker(unpacker);
   unpacker.start();
   long committingTransactionId=BASE_TX_ID + 1;
-  DummyTransactionResponse response=new DummyTransactionResponse(committingTransactionId,1,appender,maxBatchSize);
-  unpacker.unpackResponse(response,stoppingTxHandler);
+  unpacker.unpackResponse(new DummyTransactionResponse(committingTransactionId,1,appender,maxBatchSize),stoppingTxHandler);
   verify(txIdStore,times(1)).transactionClosed(committingTransactionId);
   verify(appender,times(1)).append(any(TransactionRepresentation.class),anyLong());
   verify(appender,times(1)).force();

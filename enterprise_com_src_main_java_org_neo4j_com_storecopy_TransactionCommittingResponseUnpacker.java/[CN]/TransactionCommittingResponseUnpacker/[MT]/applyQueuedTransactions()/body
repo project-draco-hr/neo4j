@@ -1,6 +1,11 @@
 {
 synchronized (logFile) {
     logRotation.rotateLogIfNeeded(LogAppendEvent.NULL);
+    if (!kernelHealth.isHealthy()) {
+      Throwable causeOfPanic=kernelHealth.getCauseOfPanic();
+      log.error(msg + " Original kernel panic cause was:\n" + causeOfPanic.getMessage());
+      throw new IOException(msg,causeOfPanic);
+    }
     try {
       if (transactionQueue.accept(batchCommitter) > 0) {
         appender.force();
@@ -13,11 +18,7 @@ synchronized (logFile) {
         }
       }
     }
- catch (    IOException e) {
-      kernelHealth.panic(e);
-      throw e;
-    }
- finally {
+  finally {
       transactionQueue.clear();
     }
   }
