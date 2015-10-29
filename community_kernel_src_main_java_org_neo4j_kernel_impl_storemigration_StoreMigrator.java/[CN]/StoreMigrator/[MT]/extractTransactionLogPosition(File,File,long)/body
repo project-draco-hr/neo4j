@@ -1,0 +1,17 @@
+{
+  long lastClosedTxLogVersion=MetaDataStore.getRecord(pageCache,neoStore,Position.LAST_CLOSED_TRANSACTION_LOG_VERSION);
+  long lastClosedTxLogByteOffset=MetaDataStore.getRecord(pageCache,neoStore,Position.LAST_CLOSED_TRANSACTION_LOG_BYTE_OFFSET);
+  if (lastClosedTxLogVersion != MetaDataStore.FIELD_NOT_PRESENT && lastClosedTxLogByteOffset != MetaDataStore.FIELD_NOT_PRESENT) {
+    return new LogPosition(lastClosedTxLogVersion,lastClosedTxLogByteOffset);
+  }
+  if (lastTxId == TransactionIdStore.BASE_TX_ID) {
+    return new LogPosition(BASE_TX_LOG_VERSION,BASE_TX_LOG_BYTE_OFFSET);
+  }
+  PhysicalLogFiles logFiles=new PhysicalLogFiles(storeDir,fileSystem);
+  long logVersion=logFiles.getHighestLogVersion();
+  if (logVersion == -1) {
+    return new LogPosition(BASE_TX_LOG_VERSION,BASE_TX_LOG_BYTE_OFFSET);
+  }
+  long offset=fileSystem.getFileSize(logFiles.getLogFileForVersion(logVersion));
+  return new LogPosition(logVersion,offset);
+}
