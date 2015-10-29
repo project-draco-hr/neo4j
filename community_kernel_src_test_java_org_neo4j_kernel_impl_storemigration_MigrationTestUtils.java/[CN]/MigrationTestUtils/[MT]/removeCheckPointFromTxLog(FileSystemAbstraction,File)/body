@@ -1,0 +1,12 @@
+{
+  PhysicalLogFiles logFiles=new PhysicalLogFiles(workingDirectory,fileSystem);
+  LatestCheckPointFinder finder=new LatestCheckPointFinder(logFiles,fileSystem,new VersionAwareLogEntryReader<>());
+  LatestCheckPointFinder.LatestCheckPoint latestCheckPoint=finder.find(logFiles.getHighestLogVersion());
+  if (latestCheckPoint.commitsAfterCheckPoint) {
+    return;
+  }
+  assertNotNull(latestCheckPoint.checkPoint);
+  LogPosition logPosition=latestCheckPoint.checkPoint.getLogPosition();
+  File logFile=logFiles.getLogFileForVersion(logPosition.getLogVersion());
+  fileSystem.truncate(logFile,logPosition.getByteOffset());
+}

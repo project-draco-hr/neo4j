@@ -4,7 +4,7 @@
   MigrationTestUtils.prepareSampleLegacyDatabase(version,fs,workingDirectory,prepareDirectory);
   PageCache pageCache=pageCacheRule.getPageCache(fs);
   StoreVersionCheck check=new StoreVersionCheck(pageCache);
-  UpgradableDatabase upgradableDatabase=new UpgradableDatabase(check,new LegacyStoreVersionCheck(fs));
+  UpgradableDatabase upgradableDatabase=new UpgradableDatabase(fs,check,new LegacyStoreVersionCheck(fs));
   SilentMigrationProgressMonitor progressMonitor=new SilentMigrationProgressMonitor();
   LogService logService=NullLogService.getInstance();
   final Config config=new Config();
@@ -15,7 +15,7 @@
     }
   }
 ;
-  assertTrue(allLegacyStoreFilesHaveVersion(fs,workingDirectory,version));
+  assertEquals(!Legacy23Store.LEGACY_VERSION.equals(version),allLegacyStoreFilesHaveVersion(fs,workingDirectory,version));
   try {
     newUpgrader(failingStoreMigrator).migrateIfNeeded(workingDirectory,upgradableDatabase,schemaIndexProvider);
     fail("Should throw exception");
@@ -23,7 +23,7 @@
  catch (  RuntimeException e) {
     assertEquals("This upgrade is failing",e.getMessage());
   }
-  assertTrue(allLegacyStoreFilesHaveVersion(fs,workingDirectory,version));
+  assertEquals(!Legacy23Store.LEGACY_VERSION.equals(version),allLegacyStoreFilesHaveVersion(fs,workingDirectory,version));
   progressMonitor=new SilentMigrationProgressMonitor();
   StoreMigrator migrator=new StoreMigrator(progressMonitor,fs,pageCache,config,logService);
   newUpgrader(migrator).migrateIfNeeded(workingDirectory,upgradableDatabase,schemaIndexProvider);
