@@ -1,7 +1,17 @@
 {
-  BytesRef chosenLower=lower != null ? new BytesRef(lower) : null;
-  boolean includeChosenLower=lower == null || includeLower;
-  BytesRef chosenUpper=upper != null ? new BytesRef(upper) : null;
-  boolean includeChosenUpper=upper == null || upperInclusive;
-  return new TermRangeQuery(ValueEncoding.String.key(),chosenLower,chosenUpper,includeChosenLower,includeChosenUpper);
+  boolean includeLowerBoundary=StringUtils.EMPTY.equals(lower) || includeLower;
+  boolean includeUpperBoundary=StringUtils.EMPTY.equals(upper) || includeUpper;
+  TermRangeQuery termRangeQuery=TermRangeQuery.newStringRange(ValueEncoding.String.key(),lower,upper,includeLowerBoundary,includeUpperBoundary);
+  if ((includeLowerBoundary != includeLower) || (includeUpperBoundary != includeUpper)) {
+    BooleanQuery.Builder builder=new BooleanQuery.Builder();
+    if (includeLowerBoundary != includeLower) {
+      builder.add(new TermQuery(new Term(ValueEncoding.String.key(),lower)),BooleanClause.Occur.MUST_NOT);
+    }
+    if (includeUpperBoundary != includeUpper) {
+      builder.add(new TermQuery(new Term(ValueEncoding.String.key(),upper)),BooleanClause.Occur.MUST_NOT);
+    }
+    builder.add(termRangeQuery,BooleanClause.Occur.SHOULD);
+    return builder.build();
+  }
+  return termRangeQuery;
 }
