@@ -1,3 +1,13 @@
 {
-  return UnsafeUtil.getAndAddInt(this,referenceCounterOffset,-1) <= 1;
+  long current, update, count;
+  do {
+    current=getHeaderState();
+    count=refCountOf(current) - 1;
+    if (count < 0) {
+      throw new IllegalStateException("File has already been closed and unmapped. " + "It cannot be closed any further.");
+    }
+    update=(current & headerStateLastPageIdMask) + (count << headerStateRefCountShift);
+  }
+ while (!UnsafeUtil.compareAndSwapLong(this,headerStateOffset,current,update));
+  return count == 0;
 }
