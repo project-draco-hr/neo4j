@@ -1,8 +1,13 @@
 {
-  startCluster(3);
+  ManagedCluster cluster=clusterRule.startCluster();
   assertEquals(3,ha(cluster.getAnySlave()).getInstancesInCluster().length);
-  cluster.shutdown(cluster.getAnySlave());
-  cluster.await(masterSeesMembers(2));
-  assertEquals(2,ha(cluster.getMaster()).getInstancesInCluster().length);
-  assertMasterInformation(ha(cluster.getMaster()));
+  RepairKit repair=cluster.shutdown(cluster.getAnySlave());
+  try {
+    cluster.await(masterSeesMembers(2));
+    assertEquals(2,ha(cluster.getMaster()).getInstancesInCluster().length);
+    assertMasterInformation(ha(cluster.getMaster()));
+  }
+  finally {
+    repair.repair();
+  }
 }

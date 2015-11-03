@@ -1,24 +1,15 @@
 {
-  File root=testDirectory.directory("shouldPropagateNodeCountsInHA");
-  ClusterManager clusterManager=new ClusterManager(clusterOfSize(3),root,MapUtil.stringMap(HaSettings.pull_interval.name(),PULL_INTERVAL + "ms"));
-  clusterManager.start();
-  try {
-    ClusterManager.ManagedCluster cluster=clusterManager.getDefaultCluster();
-    cluster.await(allSeesAllAsAvailable());
-    HighlyAvailableGraphDatabase master=cluster.getMaster();
-    try (Transaction tx=master.beginTx()){
-      master.createNode();
-      master.createNode(DynamicLabel.label("A"));
-      tx.success();
-    }
-     waitForPullUpdates();
-    for (    HighlyAvailableGraphDatabase db : cluster.getAllMembers()) {
-      CountsTracker counts=db.getDependencyResolver().resolveDependency(NeoStores.class).getCounts();
-      assertEquals(2,counts.nodeCount(-1,newDoubleLongRegister()).readSecond());
-      assertEquals(1,counts.nodeCount(0,newDoubleLongRegister()).readSecond());
-    }
+  ManagedCluster cluster=clusterRule.startCluster();
+  HighlyAvailableGraphDatabase master=cluster.getMaster();
+  try (Transaction tx=master.beginTx()){
+    master.createNode();
+    master.createNode(DynamicLabel.label("A"));
+    tx.success();
   }
-  finally {
-    clusterManager.shutdown();
+   waitForPullUpdates();
+  for (  HighlyAvailableGraphDatabase db : cluster.getAllMembers()) {
+    CountsTracker counts=db.getDependencyResolver().resolveDependency(NeoStores.class).getCounts();
+    assertEquals(2,counts.nodeCount(-1,newDoubleLongRegister()).readSecond());
+    assertEquals(1,counts.nodeCount(0,newDoubleLongRegister()).readSecond());
   }
 }
