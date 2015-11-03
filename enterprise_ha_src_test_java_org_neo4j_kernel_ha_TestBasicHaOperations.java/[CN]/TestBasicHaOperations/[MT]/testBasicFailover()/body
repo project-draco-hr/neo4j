@@ -1,23 +1,25 @@
 {
-  clusterManager=new ClusterManager(clusterOfSize(3),testDirectory.directory("failover"),stringMap());
-  clusterManager.start();
-  ClusterManager.ManagedCluster cluster=clusterManager.getDefaultCluster();
-  cluster.await(ClusterManager.allSeesAllAsAvailable());
+  ManagedCluster cluster=clusterRule.startCluster();
   HighlyAvailableGraphDatabase master=cluster.getMaster();
   HighlyAvailableGraphDatabase slave1=cluster.getAnySlave();
   HighlyAvailableGraphDatabase slave2=cluster.getAnySlave(slave1);
   long start=System.nanoTime();
-  cluster.shutdown(master);
-  logger.getLogger().warning("Shut down master");
-  cluster.await(ClusterManager.masterAvailable());
-  long end=System.nanoTime();
-  logger.getLogger().warning("Failover took:" + (end - start) / 1000000 + "ms");
-  boolean slave1Master=slave1.isMaster();
-  boolean slave2Master=slave2.isMaster();
-  if (slave1Master) {
-    assertFalse(slave2Master);
-  }
+  RepairKit repair=cluster.shutdown(master);
+  try {
+    logger.getLogger().warning("Shut down master");
+    cluster.await(ClusterManager.masterAvailable());
+    long end=System.nanoTime();
+    logger.getLogger().warning("Failover took:" + (end - start) / 1000000 + "ms");
+    boolean slave1Master=slave1.isMaster();
+    boolean slave2Master=slave2.isMaster();
+    if (slave1Master) {
+      assertFalse(slave2Master);
+    }
  else {
-    assertTrue(slave2Master);
+      assertTrue(slave2Master);
+    }
+  }
+  finally {
+    repair.repair();
   }
 }

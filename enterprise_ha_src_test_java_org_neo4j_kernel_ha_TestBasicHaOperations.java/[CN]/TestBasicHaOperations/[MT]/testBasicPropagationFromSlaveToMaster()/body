@@ -1,8 +1,5 @@
 {
-  clusterManager=new ClusterManager(clusterOfSize(2),testDirectory.directory("propagation"),stringMap(HaSettings.tx_push_factor.name(),"1"));
-  clusterManager.start();
-  ClusterManager.ManagedCluster cluster=clusterManager.getDefaultCluster();
-  cluster.await(ClusterManager.allSeesAllAsAvailable());
+  ManagedCluster cluster=clusterRule.startCluster();
   HighlyAvailableGraphDatabase master=cluster.getMaster();
   HighlyAvailableGraphDatabase slave=cluster.getAnySlave();
   long nodeId;
@@ -12,11 +9,7 @@
     node.setProperty("foo","bar");
     tx.success();
   }
-   try (Transaction tx=master.beginTx()){
-    master.getNodeById(nodeId).getProperty("foo");
-    tx.success();
-  }
-   slave.getDependencyResolver().resolveDependency(UpdatePuller.class).pullUpdates();
+   cluster.sync();
   try (Transaction tx=slave.beginTx()){
     slave.getNodeById(nodeId).setProperty("foo","bar2");
     tx.success();

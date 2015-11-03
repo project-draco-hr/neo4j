@@ -1,21 +1,18 @@
 {
-  final ClusterManager clusterManager=createCluster("masterrecovery",1,2);
+  ManagedCluster cluster=clusterRule.startCluster();
+  assertThat(cluster.getServerId(cluster.getMaster()),equalTo(new InstanceId(3)));
+  HighlyAvailableGraphDatabase master=cluster.getMaster();
+  CountDownLatch masterFailedLatch=createMasterFailLatch(cluster);
+  RepairKit repairKit=cluster.fail(master);
   try {
-    clusterManager.start();
-    final ClusterManager.ManagedCluster cluster=clusterManager.getDefaultCluster();
-    cluster.await(allSeesAllAsAvailable());
-    final HighlyAvailableGraphDatabase master=cluster.getMaster();
-    final CountDownLatch masterFailedLatch=createMasterFailLatch(cluster);
-    final ClusterManager.RepairKit repairKit=cluster.fail(master);
     assertTrue(masterFailedLatch.await(60,TimeUnit.SECONDS));
-    repairKit.repair();
-    cluster.await(allSeesAllAsAvailable());
-    long nodeId=createNodeWithPropertyOn(cluster.getAnySlave(),PROPERTY,VALUE);
-    try (Transaction ignore=master.beginTx()){
-      assertThat((String)master.getNodeById(nodeId).getProperty(PROPERTY),equalTo(VALUE));
-    }
-   }
-  finally {
-    clusterManager.stop();
   }
-}
+  finally {
+    repairKit.repair();
+  }
+  cluster.await(allSeesAllAsAvailable());
+  long nodeId=createNodeWithPropertyOn(cluster.getAnySlave(),PROPERTY,VALUE);
+  try (Transaction ignore=master.beginTx()){
+    assertThat((String)master.getNodeById(nodeId).getProperty(PROPERTY),equalTo(VALUE));
+  }
+ }
