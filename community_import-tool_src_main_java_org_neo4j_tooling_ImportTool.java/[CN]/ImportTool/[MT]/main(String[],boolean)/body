@@ -12,9 +12,11 @@
   Input input=null;
   int badTolerance;
   Charset inputEncoding;
-  boolean skipBadRelationships, skipDuplicateNodes;
+  boolean skipBadRelationships, skipDuplicateNodes, ignoreExtraColumns;
   try {
     storeDir=args.interpretOption(Options.STORE_DIR.key(),Converters.<File>mandatory(),Converters.toFile(),Validators.DIRECTORY_IS_WRITABLE,Validators.CONTAINS_NO_EXISTING_DATABASE);
+    File badFile=new File(storeDir,BAD_FILE_NAME);
+    OutputStream badOutput=new BufferedOutputStream(fs.openAsOutputStream(badFile,false));
     nodesFiles=INPUT_FILES_EXTRACTOR.apply(args,Options.NODE_DATA.key());
     relationshipsFiles=INPUT_FILES_EXTRACTOR.apply(args,Options.RELATIONSHIP_DATA.key());
     validateInputFiles(nodesFiles,relationshipsFiles);
@@ -25,10 +27,15 @@
     inputEncoding=Charset.forName(args.get(Options.INPUT_ENCODING.key(),defaultCharset().name()));
     skipBadRelationships=args.getBoolean(Options.SKIP_BAD_RELATIONSHIPS.key(),(Boolean)Options.SKIP_BAD_RELATIONSHIPS.defaultValue(),true);
     skipDuplicateNodes=args.getBoolean(Options.SKIP_DUPLICATE_NODES.key(),(Boolean)Options.SKIP_DUPLICATE_NODES.defaultValue(),true);
-    input=new CsvInput(nodeData(inputEncoding,nodesFiles),defaultFormatNodeFileHeader(),relationshipData(inputEncoding,relationshipsFiles),defaultFormatRelationshipFileHeader(),idType,csvConfiguration(args,defaultSettingsSuitableForTests),badCollector(badTolerance,collect(skipBadRelationships,skipDuplicateNodes)));
+    ignoreExtraColumns=args.getBoolean(Options.IGNORE_EXTRA_COLUMNS.key(),(Boolean)Options.IGNORE_EXTRA_COLUMNS.defaultValue(),true);
+    Collector badCollector=badCollector(badOutput,badTolerance,collect(skipBadRelationships,skipDuplicateNodes,ignoreExtraColumns));
+    input=new CsvInput(nodeData(inputEncoding,nodesFiles),defaultFormatNodeFileHeader(),relationshipData(inputEncoding,relationshipsFiles),defaultFormatRelationshipFileHeader(),idType,csvConfiguration(args,defaultSettingsSuitableForTests),badCollector);
   }
  catch (  IllegalArgumentException e) {
     throw andPrintError("Input error",e,false);
+  }
+catch (  IOException e) {
+    throw andPrintError("File error",e,false);
   }
   LifeSupport life=new LifeSupport();
   LogService logService=life.add(StoreLogService.inStoreDirectory(fs,storeDir));
@@ -45,9 +52,12 @@
     throw andPrintError("Import error",e,enableStacktrace);
   }
  finally {
-    File badFile=new File(storeDir,BAD_FILE_NAME);
-    if (badFile.exists()) {
-      System.out.println("There were bad entries which were skipped and logged into " + badFile.getAbsolutePath());
+    input.badCollector().close();
+    if (input.badCollector().badEntries() > 0) {
+      File badFile=new File(storeDir,BAD_FILE_NAME);
+      if (badFile.exists()) {
+        System.out.println("There were bad entries which were skipped and logged into " + badFile.getAbsolutePath());
+      }
     }
     life.shutdown();
     if (!success) {
