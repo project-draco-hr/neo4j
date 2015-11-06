@@ -1,0 +1,13 @@
+{
+  HighlyAvailableGraphDatabase master=cluster.getMaster();
+  HighlyAvailableGraphDatabase slave=cluster.getAnySlave();
+  RepairKit slaveRepair=cluster.fail(slave);
+  cluster.await(memberSeesOtherMemberAsFailed(master,slave));
+  RepairKit masterRepair=cluster.fail(master,NetworkFlag.IN);
+  cluster.await(memberThinksItIsRole(master,UNKNOWN));
+  masterRepair.repair();
+  slaveRepair.repair();
+  cluster.await(memberThinksItIsRole(master,MASTER));
+  cluster.await(ClusterManager.masterAvailable());
+  assertEquals(master,cluster.getMaster());
+}
