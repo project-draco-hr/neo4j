@@ -1,0 +1,29 @@
+{
+  BatchInserter inserter=BatchInserters.inserter(directory.directory(),stringMap(GraphDatabaseSettings.log_queries.name(),"true",GraphDatabaseSettings.log_queries_filename.name(),directory.file("query.log").getAbsolutePath()));
+  long node1Id, node2Id, relationshipId;
+  try {
+    node1Id=inserter.createNode(someProperties(1),Labels.values());
+    node2Id=node1Id + 10;
+    inserter.createNode(node2Id,someProperties(2),Labels.values());
+    relationshipId=inserter.createRelationship(node1Id,node2Id,MyRelTypes.TEST,someProperties(3));
+    inserter.createDeferredSchemaIndex(Labels.One).on("key").create();
+    inserter.createDeferredConstraint(Labels.Two).assertPropertyIsUnique("key").create();
+  }
+  finally {
+    inserter.shutdown();
+  }
+  GraphDatabaseService db=new EnterpriseGraphDatabaseFactory().newEmbeddedDatabase(directory.directory());
+  try (Transaction tx=db.beginTx()){
+    Node node1=db.getNodeById(node1Id);
+    Node node2=db.getNodeById(node2Id);
+    assertEquals(someProperties(1),node1.getAllProperties());
+    assertEquals(someProperties(2),node2.getAllProperties());
+    assertEquals(relationshipId,single(node1.getRelationships()).getId());
+    assertEquals(relationshipId,single(node2.getRelationships()).getId());
+    assertEquals(someProperties(3),single(node1.getRelationships()).getAllProperties());
+    tx.success();
+  }
+  finally {
+    db.shutdown();
+  }
+}
