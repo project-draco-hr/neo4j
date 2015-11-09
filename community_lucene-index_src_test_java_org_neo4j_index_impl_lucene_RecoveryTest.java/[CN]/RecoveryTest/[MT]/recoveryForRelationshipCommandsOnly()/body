@@ -1,12 +1,17 @@
 {
-  String storeDir=db.getStoreDir();
-  File path=new File(storeDir);
+  File storeDir=db.getStoreDirFile();
   shutdownDB();
-  Process process=Runtime.getRuntime().exec(new String[]{ProcessUtil.getJavaExecutable().toString(),"-cp",ProcessUtil.getClassPath(),AddRelToIndex.class.getName(),storeDir});
-  assertEquals(0,new ProcessStreamHandler(process,false).waitForResult());
+  try (Transaction tx=db.beginTx()){
+    Index<Relationship> index=db.index().forRelationships("myIndex");
+    Node node=db.createNode();
+    Relationship relationship=db.createNode().createRelationshipTo(node,RelationshipType.withName("KNOWS"));
+    index.add(relationship,"key","value");
+    tx.success();
+  }
+   db.shutdown();
   FileSystemAbstraction fileSystem=new DefaultFileSystemAbstraction();
   Config config=new Config(MapUtil.stringMap(),GraphDatabaseSettings.class);
-  LuceneDataSource ds=new LuceneDataSource(path,config,new IndexConfigStore(path,fileSystem),fileSystem);
+  LuceneDataSource ds=new LuceneDataSource(storeDir,config,new IndexConfigStore(storeDir,fileSystem),fileSystem);
   ds.start();
   ds.stop();
 }
