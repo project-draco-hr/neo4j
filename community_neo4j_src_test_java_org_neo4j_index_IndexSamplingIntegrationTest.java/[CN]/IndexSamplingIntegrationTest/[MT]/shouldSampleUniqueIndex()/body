@@ -1,0 +1,25 @@
+{
+  GraphDatabaseService db=null;
+  try {
+    db=new TestGraphDatabaseFactory().newEmbeddedDatabase(testDirectory.graphDbDir().getAbsolutePath());
+    try (Transaction tx=db.beginTx()){
+      db.schema().constraintFor(label).assertPropertyIsUnique(property).create();
+      tx.success();
+    }
+     try (Transaction tx=db.beginTx()){
+      for (int i=0; i < nodes; i++) {
+        db.createNode(label).setProperty(property,"" + i);
+        tx.success();
+      }
+    }
+   }
+  finally {
+    if (db != null) {
+      db.shutdown();
+    }
+  }
+  triggerIndexResamplingOnNextStartup();
+  DoubleLongRegister register=fetchIndexSamplingValues(db);
+  assertEquals(nodes,register.readFirst());
+  assertEquals(nodes,register.readSecond());
+}
