@@ -1,3 +1,12 @@
 {
-  UnsafeUtil.getAndAddInt(this,referenceCounterOffset,1);
+  long current, update;
+  do {
+    current=getHeaderState();
+    long count=refCountOf(current) + 1;
+    if (count > headerStateRefCountMax) {
+      throw new IllegalStateException("Cannot map file because reference counter would overflow. " + "Maximum reference count is " + headerStateRefCountMax + ". "+ "File is "+ swapper.file().getAbsolutePath());
+    }
+    update=(current & headerStateLastPageIdMask) + (count << headerStateRefCountShift);
+  }
+ while (!UnsafeUtil.compareAndSwapLong(this,headerStateOffset,current,update));
 }

@@ -1,23 +1,16 @@
 {
-  PageSwapper swapper=pagedFile.swapper;
-  pinEvent=pagedFile.tracer.beginPin(exclusive,filePageId,swapper);
-  int chunkId=pagedFile.computeChunkId(filePageId);
-  long chunkOffset=pagedFile.computeChunkOffset(filePageId);
+  pinEvent=tracer.beginPin(exclusive,filePageId,swapper);
+  int chunkId=MuninnPagedFile.computeChunkId(filePageId);
+  long chunkOffset=MuninnPagedFile.computeChunkOffset(filePageId);
   Object[][] tt=pagedFile.translationTable;
   if (tt.length <= chunkId) {
-    tt=pagedFile.expandCapacity(chunkId);
+    tt=expandTranslationTableCapacity(chunkId);
   }
   Object[] chunk=tt[chunkId];
   Object item;
   do {
     item=UnsafeUtil.getObjectVolatile(chunk,chunkOffset);
-    if (item == null) {
-      BinaryLatch latch=new BinaryLatch();
-      if (UnsafeUtil.compareAndSwapObject(chunk,chunkOffset,null,latch)) {
-        item=pageFault(filePageId,swapper,chunkOffset,chunk,latch);
-      }
-    }
- else     if (item.getClass() == MuninnPage.class) {
+    if (item != null && item.getClass() == MuninnPage.class) {
       MuninnPage page=(MuninnPage)item;
       lockPage(page);
       if (!page.isBoundTo(swapper,filePageId)) {
@@ -25,10 +18,11 @@
         item=null;
       }
     }
+ else     if (item == null) {
+      item=initiatePageFault(filePageId,chunkOffset,chunk);
+    }
  else {
-      BinaryLatch latch=(BinaryLatch)item;
-      latch.await();
-      item=null;
+      item=awaitPageFault(item);
     }
   }
  while (item == null);
