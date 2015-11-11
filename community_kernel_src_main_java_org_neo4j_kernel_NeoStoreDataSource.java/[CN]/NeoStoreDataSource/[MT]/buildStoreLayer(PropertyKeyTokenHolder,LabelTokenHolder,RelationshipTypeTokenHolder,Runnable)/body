@@ -6,6 +6,7 @@
       relationshipTypeTokens.setInitialTokens(storeLayerModule.neoStores().getRelationshipTypeTokenStore().getTokens(Integer.MAX_VALUE));
       labelTokens.setInitialTokens(storeLayerModule.neoStores().getLabelTokenStore().getTokens(Integer.MAX_VALUE));
       storeLayerModule.neoStores().rebuildCountStoreIfNeeded();
+      storeLayerModule.loadSchemaCache();
     }
   }
 );
@@ -19,6 +20,7 @@
   final SchemaCache schemaCache;
   final CacheAccessBackDoor cacheAccess;
   final StoreReadLayer storeLayer;
+  final ProcedureCache procedureCache;
   try {
     providerMap=new DefaultSchemaIndexProviderMap(indexProvider);
     indexingService=IndexingService.create(new IndexSamplingConfig(config),scheduler,providerMap,new NeoStoreIndexStoreView(lockService,neoStores),tokenNameLookup,toList(new SchemaStorage(neoStores.getSchemaStore()).allIndexRules()),logProvider,indexingServiceMonitor,schemaStateChangeCallback);
@@ -29,7 +31,7 @@
     life.add(labelScanStore);
     schemaCache=new SchemaCache(constraintSemantics,Collections.<SchemaRule>emptyList());
     cacheAccess=new BridgingCacheAccess(schemaCache,schemaStateChangeCallback,propertyKeyTokenHolder,relationshipTypeTokens,labelTokens);
-    ProcedureCache procedureCache=cacheModule.procedureCache();
+    procedureCache=new ProcedureCache();
     SchemaStorage schemaStorage=new SchemaStorage(neoStores.getSchemaStore());
     DiskLayer diskLayer=new DiskLayer(propertyKeyTokenHolder,labelTokens,relationshipTypeTokens,schemaStorage,neoStores,indexingService,storeStatementFactory(neoStores));
     storeLayer=new CacheLayer(diskLayer,schemaCache,procedureCache);
@@ -65,6 +67,9 @@
     }
     @Override public CacheAccessBackDoor cacheAccess(){
       return cacheAccess;
+    }
+    @Override public ProcedureCache procedureCache(){
+      return procedureCache;
     }
     @Override public void loadSchemaCache(){
       List<SchemaRule> schemaRules=toList(neoStores.getSchemaStore().loadAllSchemaRules());
