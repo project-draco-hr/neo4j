@@ -16,6 +16,8 @@
   final IntegrityValidator integrityValidator;
   final IndexUpdatesValidator indexUpdatesValidator;
   final LabelScanStore labelScanStore;
+  final SchemaCache schemaCache;
+  final CacheAccessBackDoor cacheAccess;
   final StoreReadLayer storeLayer;
   try {
     providerMap=new DefaultSchemaIndexProviderMap(indexProvider);
@@ -25,7 +27,8 @@
     labelScanStore=dependencyResolver.resolveDependency(LabelScanStoreProvider.class,LabelScanStoreProvider.HIGHEST_PRIORITIZED).getLabelScanStore();
     life.add(indexingService);
     life.add(labelScanStore);
-    SchemaCache schemaCache=cacheModule.schemaCache();
+    schemaCache=new SchemaCache(constraintSemantics,Collections.<SchemaRule>emptyList());
+    cacheAccess=new BridgingCacheAccess(schemaCache,schemaStateChangeCallback,propertyKeyTokenHolder,relationshipTypeTokens,labelTokens);
     ProcedureCache procedureCache=cacheModule.procedureCache();
     SchemaStorage schemaStorage=new SchemaStorage(neoStores.getSchemaStore());
     DiskLayer diskLayer=new DiskLayer(propertyKeyTokenHolder,labelTokens,relationshipTypeTokens,schemaStorage,neoStores,indexingService,storeStatementFactory(neoStores));
@@ -59,6 +62,13 @@
     }
     @Override public SchemaIndexProviderMap schemaIndexProviderMap(){
       return providerMap;
+    }
+    @Override public CacheAccessBackDoor cacheAccess(){
+      return cacheAccess;
+    }
+    @Override public void loadSchemaCache(){
+      List<SchemaRule> schemaRules=toList(neoStores.getSchemaStore().loadAllSchemaRules());
+      schemaCache.load(schemaRules);
     }
   }
 ;
