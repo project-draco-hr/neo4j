@@ -1,0 +1,13 @@
+{
+  createCluster("10m","1s");
+  addNodes(100);
+  CheckPointer checkPointer=db.getDependencyResolver().resolveDependency(CheckPointer.class);
+  checkPointer.checkPointIfNeeded(new SimpleTriggerInfo("test"));
+  cluster.stop();
+  File metricFile=new File(outputPath,CheckPointingMetrics.CHECK_POINT_DURATION + ".csv");
+  while (!metricFile.exists()) {
+    Thread.sleep(1);
+  }
+  long events=readMonotonicIncreasingLongValue(metricFile);
+  assertThat(events,greaterThanOrEqualTo(1L));
+}
