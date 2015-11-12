@@ -1,48 +1,7 @@
 {
-  life.add(new LifecycleAdapter(){
-    @Override public void start() throws IOException {
-      storeLayerModule.neoStores().makeStoreOk();
-      propertyKeyTokenHolder.setInitialTokens(storeLayerModule.neoStores().getPropertyKeyTokenStore().getTokens(Integer.MAX_VALUE));
-      relationshipTypeTokens.setInitialTokens(storeLayerModule.neoStores().getRelationshipTypeTokenStore().getTokens(Integer.MAX_VALUE));
-      labelTokens.setInitialTokens(storeLayerModule.neoStores().getLabelTokenStore().getTokens(Integer.MAX_VALUE));
-      storeLayerModule.neoStores().rebuildCountStoreIfNeeded();
-      storeLayerModule.loadSchemaCache();
-    }
-  }
-);
-  final StoreFactory storeFactory=new StoreFactory(storeDir,config,idGeneratorFactory,pageCache,fs,logProvider);
-  final NeoStores neoStores=storeFactory.openAllNeoStores(true);
-  final DefaultSchemaIndexProviderMap providerMap;
-  final IndexingService indexingService;
-  final IntegrityValidator integrityValidator;
-  final IndexUpdatesValidator indexUpdatesValidator;
-  final LabelScanStore labelScanStore;
-  final SchemaCache schemaCache;
-  final CacheAccessBackDoor cacheAccess;
-  final StoreReadLayer storeLayer;
-  final ProcedureCache procedureCache;
-  try {
-    providerMap=new DefaultSchemaIndexProviderMap(indexProvider);
-    indexingService=IndexingService.create(new IndexSamplingConfig(config),scheduler,providerMap,new NeoStoreIndexStoreView(lockService,neoStores),tokenNameLookup,toList(new SchemaStorage(neoStores.getSchemaStore()).allIndexRules()),logProvider,indexingServiceMonitor,schemaStateChangeCallback);
-    integrityValidator=new IntegrityValidator(neoStores,indexingService);
-    indexUpdatesValidator=dependencies.satisfyDependency(new OnlineIndexUpdatesValidator(neoStores,kernelHealth,new PropertyLoader(neoStores),indexingService,IndexUpdateMode.ONLINE));
-    labelScanStore=dependencyResolver.resolveDependency(LabelScanStoreProvider.class,LabelScanStoreProvider.HIGHEST_PRIORITIZED).getLabelScanStore();
-    life.add(indexingService);
-    life.add(labelScanStore);
-    schemaCache=new SchemaCache(constraintSemantics,Collections.<SchemaRule>emptyList());
-    cacheAccess=new BridgingCacheAccess(schemaCache,schemaStateChangeCallback,propertyKeyTokenHolder,relationshipTypeTokens,labelTokens);
-    procedureCache=new ProcedureCache();
-    SchemaStorage schemaStorage=new SchemaStorage(neoStores.getSchemaStore());
-    DiskLayer diskLayer=new DiskLayer(propertyKeyTokenHolder,labelTokens,relationshipTypeTokens,schemaStorage,neoStores,indexingService,storeStatementFactory(neoStores));
-    storeLayer=new CacheLayer(diskLayer,schemaCache,procedureCache);
-  }
- catch (  Throwable failure) {
-    neoStores.close();
-    throw failure;
-  }
-  return new StoreLayerModule(){
-    @Override public StoreReadLayer storeLayer(){
-      return storeLayer;
+class Module extends RecordStorageEngine implements StoreLayerModule {
+    public Module(    File storeDir,    Config config,    IdGeneratorFactory idGeneratorFactory,    PageCache pageCache,    FileSystemAbstraction fs,    LogProvider logProvider,    PropertyKeyTokenHolder propertyKeyTokenHolder,    LabelTokenHolder labelTokens,    RelationshipTypeTokenHolder relationshipTypeTokens,    Runnable schemaStateChangeCallback,    ConstraintSemantics constraintSemantics,    JobScheduler scheduler,    TokenNameLookup tokenNameLookup,    LockService lockService,    SchemaIndexProvider indexProvider,    IndexingService.Monitor indexingServiceMonitor,    KernelHealth kernelHealth,    LabelScanStoreProvider labelScanStoreProvider){
+      super(storeDir,config,idGeneratorFactory,pageCache,fs,logProvider,propertyKeyTokenHolder,labelTokens,relationshipTypeTokens,schemaStateChangeCallback,constraintSemantics,scheduler,tokenNameLookup,lockService,indexProvider,indexingServiceMonitor,kernelHealth,labelScanStoreProvider);
     }
     @Override public NeoStores neoStores(){
       return neoStores;
@@ -71,10 +30,7 @@
     @Override public ProcedureCache procedureCache(){
       return procedureCache;
     }
-    @Override public void loadSchemaCache(){
-      List<SchemaRule> schemaRules=toList(neoStores.getSchemaStore().loadAllSchemaRules());
-      schemaCache.load(schemaRules);
-    }
   }
-;
+  LabelScanStoreProvider labelScanStore=dependencyResolver.resolveDependency(LabelScanStoreProvider.class,LabelScanStoreProvider.HIGHEST_PRIORITIZED);
+  return life.add(new Module(storeDir,config,idGeneratorFactory,pageCache,fs,logProvider,propertyKeyTokenHolder,labelTokens,relationshipTypeTokens,schemaStateChangeCallback,constraintSemantics,scheduler,tokenNameLookup,lockService,indexProvider,indexingServiceMonitor,kernelHealth,labelScanStore));
 }
