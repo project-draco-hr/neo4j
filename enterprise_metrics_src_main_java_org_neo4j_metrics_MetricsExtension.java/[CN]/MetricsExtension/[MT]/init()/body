@@ -3,16 +3,14 @@
   logger.info("Initiating metrics...");
   final MetricRegistry registry=new MetricRegistry();
   boolean outputBuilt=new OutputBuilder(configuration,registry,logger,kernelContext,life).build();
-  if (outputBuilt) {
-    boolean metricsBuilt=new Neo4jMetricsBuilder(registry,configuration,monitors,dataSourceManager,transactionCounters,pageCacheCounters,checkPointerMonitor,logRotationMonitor,idGeneratorFactory,dependencyResolver,logService,life).build();
+  boolean metricsBuilt=new Neo4jMetricsBuilder(registry,configuration,monitors,dataSourceManager,transactionCounters,pageCacheCounters,checkPointerMonitor,logRotationMonitor,idGeneratorFactory,dependencyResolver,logService,life).build();
+  if (metricsBuilt && !outputBuilt) {
+    logger.warn("Several metrics were enabled but no exporting option was configured to report values to. " + "Disabling kernel metrics extension.");
+    life.clear();
   }
- else {
-    if (metrics.available()) {
-      logger.warn("Several metrics were enabled but no exporting option was configured to report values to. " + "Disabling kernel metrics extension.");
-    }
-    if (output.available()) {
-      logger.warn("Exporting tool have been configured to report values to but no metrics were enabled. " + "Disabling kernel metrics extension.");
-    }
+  if (outputBuilt && !metricsBuilt) {
+    logger.warn("Exporting tool have been configured to report values to but no metrics were enabled. " + "Disabling kernel metrics extension.");
+    life.clear();
   }
   life.init();
 }
