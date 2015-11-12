@@ -1,15 +1,11 @@
 {
-  DefaultCheckPointerTracer tracer=new DefaultCheckPointerTracer(clock);
-  clock.forward(10,TimeUnit.MILLISECONDS);
-  try (LogCheckPointEvent event=tracer.beginCheckPoint()){
-    clock.forward(20,TimeUnit.MILLISECONDS);
-  }
-   assertEquals(1,tracer.numberOfCheckPointEvents());
+  DefaultCheckPointerTracer tracer=new DefaultCheckPointerTracer(clock,monitor,jobScheduler);
+  triggerEvent(tracer,20);
+  assertEquals(1,tracer.numberOfCheckPointEvents());
   assertEquals(20,tracer.checkPointAccumulatedTotalTimeMillis());
-  clock.forward(200,TimeUnit.MILLISECONDS);
-  try (LogCheckPointEvent event=tracer.beginCheckPoint()){
-    clock.forward(30,TimeUnit.MILLISECONDS);
-  }
-   assertEquals(2,tracer.numberOfCheckPointEvents());
+  verify(monitor,times(1)).lastCheckPointEventDuration(20L);
+  triggerEvent(tracer,30);
+  assertEquals(2,tracer.numberOfCheckPointEvents());
   assertEquals(50,tracer.checkPointAccumulatedTotalTimeMillis());
+  verify(monitor,times(1)).lastCheckPointEventDuration(30L);
 }
