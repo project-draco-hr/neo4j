@@ -3,8 +3,11 @@
   when(appenderMock.append(Matchers.<TransactionRepresentation>any(),any(LogAppendEvent.class))).thenReturn(new FakeCommitment(nextTxId++,neoStores.getMetaDataStore()));
   @SuppressWarnings("unchecked") Supplier<LabelScanWriter> labelScanStore=mock(Supplier.class);
   when(labelScanStore.get()).thenReturn(mock(LabelScanWriter.class));
-  TransactionRepresentationStoreApplier applier=new TransactionRepresentationStoreApplier(indexing,labelScanStore,neoStores,cacheAccessBackDoor,locks,null,null,null,null);
+  StorageEngine storageEngine=mock(StorageEngine.class);
+  when(storageEngine.neoStores()).thenReturn(neoStores);
+  when(storageEngine.cacheAccess()).thenReturn(cacheAccessBackDoor);
+  when(storageEngine.indexingService()).thenReturn(indexing);
+  TransactionRepresentationStoreApplier applier=new TransactionRepresentationStoreApplier(labelScanStore,locks,null,null,storageEngine);
   neoStores.getMetaDataStore().nextCommittingTransactionId();
-  PropertyLoader propertyLoader=new PropertyLoader(neoStores);
   return new TransactionRepresentationCommitProcess(appenderMock,applier,indexUpdatesValidator);
 }
