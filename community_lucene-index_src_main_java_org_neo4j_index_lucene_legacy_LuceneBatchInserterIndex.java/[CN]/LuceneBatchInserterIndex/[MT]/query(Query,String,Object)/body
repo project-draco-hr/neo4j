@@ -1,0 +1,43 @@
+{
+  IndexSearcher searcher;
+  try {
+    searcher=searcherManager.acquire();
+  }
+ catch (  IOException e) {
+    throw new RuntimeException(e);
+  }
+  try {
+    DocValuesCollector collector=new DocValuesCollector(true);
+    searcher.search(query,collector);
+    IndexHits<Document> result=collector.getIndexHits(Sort.RELEVANCE);
+    LegacyIndexHits primitiveHits=null;
+    if (key == null || this.cache == null || !this.cache.containsKey(key)) {
+      primitiveHits=new DocToIdIterator(result,Collections.<EntityId>emptyList(),null,PrimitiveLongCollections.emptySet());
+    }
+ else {
+      primitiveHits=new DocToIdIterator(result,Collections.<EntityId>emptyList(),null,PrimitiveLongCollections.emptySet()){
+        private final Collection<EntityId> ids=new ArrayList<>();
+        @Override protected boolean fetchNext(){
+          if (super.fetchNext()) {
+            ids.add(new EntityId.IdData(next));
+            return true;
+          }
+          addToCache(ids,key,value);
+          return false;
+        }
+      }
+;
+    }
+    return wrapIndexHits(primitiveHits);
+  }
+ catch (  IOException e) {
+    throw new RuntimeException(e);
+  }
+ finally {
+    try {
+      searcherManager.release(searcher);
+    }
+ catch (    IOException ignore) {
+    }
+  }
+}
