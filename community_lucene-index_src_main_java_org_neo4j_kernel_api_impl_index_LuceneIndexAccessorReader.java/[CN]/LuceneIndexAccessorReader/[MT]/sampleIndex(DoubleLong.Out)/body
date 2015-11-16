@@ -2,14 +2,16 @@
   NonUniqueIndexSampler sampler=new NonUniqueIndexSampler(bufferSizeLimit);
   for (  LeafReaderContext readerContext : luceneIndexReader().leaves()) {
     try {
-      Terms terms=readerContext.reader().terms(NODE_ID_KEY);
-      if (terms != null) {
-        TermsEnum termsEnum=terms.iterator();
-        int frequency=termsEnum.docFreq();
-        BytesRef termsRef;
-        while ((termsRef=termsEnum.next()) != null) {
-          sampler.include(termsRef.utf8ToString(),frequency);
-          checkCancellation();
+      Set<String> fieldNames=getFieldNamesToSample(readerContext);
+      for (      String fieldName : fieldNames) {
+        Terms terms=readerContext.reader().terms(fieldName);
+        if (terms != null) {
+          TermsEnum termsEnum=terms.iterator();
+          BytesRef termsRef;
+          while ((termsRef=termsEnum.next()) != null) {
+            sampler.include(termsRef.utf8ToString(),termsEnum.docFreq());
+            checkCancellation();
+          }
         }
       }
     }
