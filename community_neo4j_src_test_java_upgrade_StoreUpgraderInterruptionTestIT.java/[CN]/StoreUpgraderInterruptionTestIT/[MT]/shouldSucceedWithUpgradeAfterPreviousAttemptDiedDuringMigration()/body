@@ -9,15 +9,15 @@
   LogService logService=NullLogService.getInstance();
   final Config config=new Config();
   StoreMigrator failingStoreMigrator=new StoreMigrator(progressMonitor,fs,pageCache,config,logService){
-    @Override public void migrate(    File sourceStoreDir,    File targetStoreDir,    SchemaIndexProvider schemaIndexProvider,    String versionToMigrateFrom) throws IOException {
-      super.migrate(sourceStoreDir,targetStoreDir,schemaIndexProvider,versionToMigrateFrom);
+    @Override public void migrate(    File sourceStoreDir,    File targetStoreDir,    SchemaIndexProvider schemaIndexProvider,    LabelScanStoreProvider labelScanStoreProvider,    String versionToMigrateFrom) throws IOException {
+      super.migrate(sourceStoreDir,targetStoreDir,schemaIndexProvider,labelScanStoreProvider,versionToMigrateFrom);
       throw new RuntimeException("This upgrade is failing");
     }
   }
 ;
   assertEquals(!Legacy23Store.LEGACY_VERSION.equals(version),allLegacyStoreFilesHaveVersion(fs,workingDirectory,version));
   try {
-    newUpgrader(failingStoreMigrator).migrateIfNeeded(workingDirectory,upgradableDatabase,schemaIndexProvider);
+    newUpgrader(createIndexMigrator(),failingStoreMigrator).migrateIfNeeded(workingDirectory,upgradableDatabase,schemaIndexProvider,labelScanStoreProvider);
     fail("Should throw exception");
   }
  catch (  RuntimeException e) {
@@ -26,7 +26,8 @@
   assertEquals(!Legacy23Store.LEGACY_VERSION.equals(version),allLegacyStoreFilesHaveVersion(fs,workingDirectory,version));
   progressMonitor=new SilentMigrationProgressMonitor();
   StoreMigrator migrator=new StoreMigrator(progressMonitor,fs,pageCache,config,logService);
-  newUpgrader(migrator).migrateIfNeeded(workingDirectory,upgradableDatabase,schemaIndexProvider);
+  SchemaIndexMigrator indexMigrator=createIndexMigrator();
+  newUpgrader(indexMigrator,migrator).migrateIfNeeded(workingDirectory,upgradableDatabase,schemaIndexProvider,labelScanStoreProvider);
   assertTrue(checkNeoStoreHasLatestVersion(check,workingDirectory));
   assertTrue(allStoreFilesHaveNoTrailer(fs,workingDirectory));
   assertConsistentStore(workingDirectory);

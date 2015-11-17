@@ -16,14 +16,15 @@
   KernelExtensions kernelExtensions=life.add(new KernelExtensions(kernelContext,GraphDatabaseDependencies.newDependencies().kernelExtensions(),deps,ignore()));
   LogService logService=StoreLogService.withUserLogProvider(userLogProvider).inStoreDirectory(fs,legacyStoreDirectory);
   life.start();
-  SchemaIndexProvider schemaIndexProvider=kernelExtensions.resolveDependency(SchemaIndexProvider.class,SchemaIndexProvider.HIGHEST_PRIORITIZED_OR_NONE);
+  SchemaIndexProvider schemaIndexProvider=kernelExtensions.resolveDependency(SchemaIndexProvider.class,HighestSelectionStrategy.getInstance());
+  LabelScanStoreProvider labelScanStoreProvider=kernelExtensions.resolveDependency(LabelScanStoreProvider.class,HighestSelectionStrategy.getInstance());
   Log log=userLogProvider.getLog(StoreMigrationTool.class);
   try (PageCache pageCache=createPageCache(fs,config)){
     UpgradableDatabase upgradableDatabase=new UpgradableDatabase(fs,new StoreVersionCheck(pageCache),new LegacyStoreVersionCheck(fs));
+    migrationProcess.addParticipant(new SchemaIndexMigrator(fs));
     migrationProcess.addParticipant(new StoreMigrator(new VisibleMigrationProgressMonitor(logService.getInternalLog(StoreMigrationTool.class)),fs,pageCache,config,logService));
-    migrationProcess.addParticipant(schemaIndexProvider.storeMigrationParticipant(fs,pageCache));
     long startTime=System.currentTimeMillis();
-    migrationProcess.migrateIfNeeded(legacyStoreDirectory,upgradableDatabase,schemaIndexProvider);
+    migrationProcess.migrateIfNeeded(legacyStoreDirectory,upgradableDatabase,schemaIndexProvider,labelScanStoreProvider);
     long duration=System.currentTimeMillis() - startTime;
     log.info(format("Migration completed in %d s%n",duration / 1000));
   }
