@@ -1,0 +1,25 @@
+{
+  try {
+    if (!Files.exists(indexRootPath)) {
+      return;
+    }
+    try (Stream<Path> pathStream=Files.walk(indexRootPath);IndexUpgraderWrapper lucene4Upgrader=createIndexUpgrader(getLucene4JarPaths());IndexUpgraderWrapper lucene5Upgrader=createIndexUpgrader(getLucene5JarPaths())){
+      List<Path> indexPaths=pathStream.filter(getIndexPathFilter()).collect(Collectors.toList());
+      for (      Path indexPath : indexPaths) {
+        try {
+          lucene4Upgrader.upgradeIndex(indexPath);
+          lucene5Upgrader.upgradeIndex(indexPath);
+        }
+ catch (        Throwable e) {
+          throw new LegacyIndexMigrationException(indexPath.getFileName().toString(),"Migration of legacy index at path:" + indexPath + " failed.",e);
+        }
+      }
+    }
+   }
+ catch (  LegacyIndexMigrationException ime) {
+    throw ime;
+  }
+catch (  Exception e) {
+    throw new RuntimeException("Lucene legacy indexes migration failed.",e);
+  }
+}
