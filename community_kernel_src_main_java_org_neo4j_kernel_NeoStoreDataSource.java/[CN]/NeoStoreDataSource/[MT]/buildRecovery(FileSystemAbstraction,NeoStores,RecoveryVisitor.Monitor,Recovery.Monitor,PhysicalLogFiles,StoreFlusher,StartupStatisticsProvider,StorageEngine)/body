@@ -1,0 +1,18 @@
+{
+  MetaDataStore metaDataStore=neoStores.getMetaDataStore();
+  final TransactionRepresentationStoreApplier storeRecoverer=storageEngine.transactionApplierForRecovery();
+  RecoveryVisitor recoveryVisitor=new RecoveryVisitor(metaDataStore,storeRecoverer,storageEngine.indexUpdatesValidatorForRecovery(),recoveryVisitorMonitor);
+  LogEntryReader<ReadableLogChannel> logEntryReader=new VersionAwareLogEntryReader<>();
+  final Visitor<LogVersionedStoreChannel,IOException> logFileRecoverer=new LogFileRecoverer(logEntryReader,recoveryVisitor);
+  final LatestCheckPointFinder checkPointFinder=new LatestCheckPointFinder(logFiles,fileSystemAbstraction,logEntryReader);
+  Recovery.SPI spi=new DefaultRecoverySPI(storageEngine.toCloseAfterRecovery(),storeFlusher,neoStores,logFileRecoverer,logFiles,fileSystemAbstraction,metaDataStore,checkPointFinder);
+  Recovery recovery=new Recovery(spi,recoveryMonitor);
+  life.add(recovery);
+  life.add(new LifecycleAdapter(){
+    @Override public void init() throws Throwable {
+      startupStatistics.setNumberOfRecoveredTransactions(recoveredCount.get());
+      recoveredCount.set(0);
+    }
+  }
+);
+}

@@ -6,7 +6,9 @@
   IOException rootCause=new IOException("Mock exception");
   TransactionRepresentationStoreApplier storeApplier=mock(TransactionRepresentationStoreApplier.class);
   doThrow(new IOException(rootCause)).when(storeApplier).apply(any(TransactionRepresentation.class),any(ValidatedIndexUpdates.class),any(LockGroup.class),eq(txId),eq(INTERNAL));
-  TransactionCommitProcess commitProcess=new TransactionRepresentationCommitProcess(appender,storeApplier,mockedIndexUpdatesValidator());
+  StorageEngine storageEngine=mock(StorageEngine.class);
+  when(storageEngine.transactionApplier()).thenReturn(storeApplier);
+  TransactionCommitProcess commitProcess=new TransactionRepresentationCommitProcess(appender,storageEngine,mockedIndexUpdatesValidator());
   TransactionRepresentation transaction=mockedTransaction();
   try (LockGroup locks=new LockGroup()){
     commitProcess.commit(transaction,locks,commitEvent,INTERNAL);
