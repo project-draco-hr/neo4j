@@ -1,0 +1,24 @@
+{
+  LogProvider logProvider=mock(LogProvider.class);
+  when(logProvider.getLog(NetworkReceiver.class)).thenReturn(mock(Log.class));
+  NetworkReceiver networkReceiver=new NetworkReceiver(mock(NetworkReceiver.Monitor.class),mock(NetworkReceiver.Configuration.class),logProvider);
+  final InetSocketAddress inetSocketAddress=new InetSocketAddress("localhost",PORT);
+  final Channel channel=mock(Channel.class);
+  when(channel.getLocalAddress()).thenReturn(inetSocketAddress);
+  when(channel.getRemoteAddress()).thenReturn(inetSocketAddress);
+  ChannelHandlerContext ctx=mock(ChannelHandlerContext.class);
+  when(ctx.getChannel()).thenReturn(channel);
+  final Message message=Message.to(new MessageType(){
+    @Override public String name(){
+      return "test";
+    }
+  }
+,new URI("cluster://anywhere"));
+  MessageEvent messageEvent=mock(MessageEvent.class);
+  when(messageEvent.getRemoteAddress()).thenReturn(inetSocketAddress);
+  when(messageEvent.getMessage()).thenReturn(message);
+  when(messageEvent.getChannel()).thenReturn(channel);
+  message.setHeader(Message.FROM,"cluster://someplace:1234");
+  networkReceiver.new MessageReceiver().messageReceived(ctx,messageEvent);
+  assertEquals("FROM header should have been changed to visible ip address: " + message.getHeader(Message.FROM),"cluster://127.0.0.1:1234",message.getHeader(Message.FROM));
+}
