@@ -27,13 +27,12 @@
   Recovery.Monitor monitor=mock(Recovery.Monitor.class);
   final AtomicBoolean recoveryRequiredCalled=new AtomicBoolean();
   try {
-    Closeable toClose=mock(Closeable.class);
     StoreFlusher flusher=mock(StoreFlusher.class);
     final LogEntryReader<ReadableLogChannel> reader=new VersionAwareLogEntryReader<>(LogEntryVersion.CURRENT.byteCode());
     LatestCheckPointFinder finder=new LatestCheckPointFinder(logFiles,fs,reader);
-    life.add(new Recovery(new DefaultRecoverySPI(toClose,flusher,mock(NeoStores.class),null,logFiles,fs,logVersionRepository,finder){
-      @Override public Visitor<LogVersionedStoreChannel,IOException> getRecoverer(){
-        return new Visitor<LogVersionedStoreChannel,IOException>(){
+    life.add(new Recovery(new DefaultRecoverySPI(flusher,mock(NeoStores.class),null,logFiles,fs,logVersionRepository,finder){
+      @Override public Visitor<LogVersionedStoreChannel,Exception> getRecoverer(){
+        return new Visitor<LogVersionedStoreChannel,Exception>(){
           @Override public boolean visit(          LogVersionedStoreChannel element) throws IOException {
             try (ReadableVersionableLogChannel channel=new ReadAheadLogChannel(element,NO_MORE_CHANNELS)){
               assertEquals(lastCommittedTxStartEntry,reader.readLogEntry(channel));

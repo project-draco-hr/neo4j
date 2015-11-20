@@ -1,35 +1,12 @@
 {
   MasterImpl master=spy(newMasterImpl(mockMasterImplSpiWith(StoreId.DEFAULT)));
   doReturn(voidResponseWithTransactionLogs()).when(master).newLockSession(any(RequestContext.class));
-  cleanupRule.add(newMasterServer(master));
-  final TransactionIdStore txIdStore=mock(TransactionIdStore.class);
-  TransactionAppender txAppender=mock(TransactionAppender.class);
-  when(txAppender.append(any(TransactionRepresentation.class),anyLong())).thenAnswer(new Answer<Commitment>(){
-    @Override public Commitment answer(    InvocationOnMock invocation) throws Throwable {
-      return new FakeCommitment((Long)invocation.getArguments()[1],txIdStore);
-    }
-  }
-);
-  final BatchingTransactionRepresentationStoreApplier txApplier=mock(BatchingTransactionRepresentationStoreApplier.class);
-  final IndexUpdatesValidator indexUpdatesValidator=mock(IndexUpdatesValidator.class);
-  when(indexUpdatesValidator.validate(any(TransactionRepresentation.class))).thenReturn(ValidatedIndexUpdates.NONE);
-  final Dependencies deps=new Dependencies();
-  KernelHealth health=mock(KernelHealth.class);
-  when(health.isHealthy()).thenReturn(true);
-  deps.satisfyDependencies(mock(LogicalTransactionStore.class),mock(LogFile.class),mock(LogRotation.class),health,txAppender,txApplier,txIdStore,indexUpdatesValidator,NullLogService.getInstance());
-  TransactionCommittingResponseUnpacker.Dependencies dependencies=new DefaultUnpackerDependencies(deps){
-    @Override public BatchingTransactionRepresentationStoreApplier transactionRepresentationStoreApplier(){
-      return txApplier;
-    }
-    @Override public IndexUpdatesValidator indexUpdatesValidator(){
-      return indexUpdatesValidator;
-    }
-  }
-;
-  ResponseUnpacker unpacker=initAndStart(new TransactionCommittingResponseUnpacker(dependencies,DEFAULT_BATCH_SIZE));
-  MasterClient masterClient=cleanupRule.add(newMasterClient214(StoreId.DEFAULT,unpacker));
+  newMasterServer(master);
+  Dependencies deps=mock(Dependencies.class);
+  TransactionCommitProcess commitProcess=mock(TransactionCommitProcess.class);
+  when(deps.commitProcess()).thenReturn(commitProcess);
+  ResponseUnpacker unpacker=life.add(new TransactionCommittingResponseUnpacker(deps,DEFAULT_BATCH_SIZE));
+  MasterClient masterClient=newMasterClient214(StoreId.DEFAULT,unpacker);
   masterClient.newLockSession(new RequestContext(1,2,3,4,5));
-  verify(txAppender,times(TX_LOG_COUNT)).append(any(TransactionRepresentation.class),anyLong());
-  verify(txApplier,times(TX_LOG_COUNT)).apply(any(TransactionRepresentation.class),any(ValidatedIndexUpdates.class),any(LockGroup.class),anyLong(),any(TransactionApplicationMode.class));
-  verify(txIdStore,times(TX_LOG_COUNT)).transactionClosed(anyLong(),anyLong(),anyLong());
+  verify(commitProcess).commit(any(TransactionToApply.class),any(CommitEvent.class),any(TransactionApplicationMode.class));
 }

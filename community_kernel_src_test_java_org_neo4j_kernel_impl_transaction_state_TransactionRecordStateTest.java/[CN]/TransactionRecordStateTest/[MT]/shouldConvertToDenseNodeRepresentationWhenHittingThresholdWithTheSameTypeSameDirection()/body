@@ -1,0 +1,14 @@
+{
+  NeoStores neoStores=neoStoresRule.open(GraphDatabaseSettings.dense_node_threshold.name(),"8");
+  NeoStoreTransactionContext txCtx=newContext(neoStores);
+  TransactionRecordState tx=recordState(neoStores,txCtx);
+  long nodeId=neoStores.getNodeStore().nextId();
+  int typeA=0;
+  tx.nodeCreate(nodeId);
+  tx.createRelationshipTypeToken("A",typeA);
+  createRelationships(neoStores,tx,nodeId,typeA,OUTGOING,8);
+  assertFalse(txCtx.getNodeRecords().getOrLoad(nodeId,null).forReadingData().isDense());
+  createRelationships(neoStores,tx,nodeId,typeA,OUTGOING,1);
+  assertTrue(txCtx.getNodeRecords().getOrLoad(nodeId,null).forReadingData().isDense());
+  assertDenseRelationshipCounts(tx,txCtx,nodeId,typeA,9,0);
+}

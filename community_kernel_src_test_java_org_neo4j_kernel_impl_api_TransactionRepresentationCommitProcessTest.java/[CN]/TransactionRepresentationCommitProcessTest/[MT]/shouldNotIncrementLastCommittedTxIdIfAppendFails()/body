@@ -2,14 +2,12 @@
   TransactionAppender appender=mock(TransactionAppender.class);
   long txId=11;
   IOException rootCause=new IOException("Mock exception");
-  doThrow(new IOException(rootCause)).when(appender).append(any(TransactionRepresentation.class),any(LogAppendEvent.class));
+  doThrow(new IOException(rootCause)).when(appender).append(any(TransactionToApply.class),any(LogAppendEvent.class));
   TransactionIdStore transactionIdStore=mock(TransactionIdStore.class);
-  TransactionRepresentationStoreApplier storeApplier=mock(TransactionRepresentationStoreApplier.class);
   StorageEngine storageEngine=mock(StorageEngine.class);
-  when(storageEngine.transactionApplier()).thenReturn(storeApplier);
   TransactionCommitProcess commitProcess=new TransactionRepresentationCommitProcess(appender,storageEngine,mockedIndexUpdatesValidator());
-  try (LockGroup locks=new LockGroup()){
-    commitProcess.commit(mockedTransaction(),locks,commitEvent,INTERNAL);
+  try {
+    commitProcess.commit(mockedTransaction(),commitEvent,INTERNAL);
     fail("Should have failed, something is wrong with the mocking in this test");
   }
  catch (  TransactionFailureException e) {

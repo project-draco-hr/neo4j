@@ -1,0 +1,18 @@
+{
+  NeoStores neoStores=neoStoresRule.open();
+  TransactionRecordState tx=recordState(neoStores,newContext(neoStores));
+  long ruleId=0;
+  int labelId=5, propertyKeyId=7;
+  SchemaRule rule=new IndexRule(ruleId,labelId,propertyKeyId,new SchemaIndexProvider.Descriptor("quantum-dex","25.0"),null);
+  tx.createSchemaRule(rule);
+  PhysicalTransactionRepresentation transactionCommands=transactionRepresentationOf(tx);
+  transactionCommands.accept(new CommandHandler.HandlerVisitor(new CommandHandler.Adapter(){
+    @Override public boolean visitSchemaRuleCommand(    Command.SchemaRuleCommand command) throws IOException {
+      for (      DynamicRecord record : command.getRecordsAfter()) {
+        assertFalse(record + " should have been heavy",record.isLight());
+      }
+      return false;
+    }
+  }
+));
+}

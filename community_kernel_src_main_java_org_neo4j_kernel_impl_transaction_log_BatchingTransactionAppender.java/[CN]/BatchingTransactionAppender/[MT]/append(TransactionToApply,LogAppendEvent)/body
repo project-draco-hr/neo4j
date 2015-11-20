@@ -1,0 +1,22 @@
+{
+  boolean logRotated=logRotation.rotateLogIfNeeded(logAppendEvent);
+  logAppendEvent.setLogRotated(logRotated);
+  long lastTransactionId=TransactionIdStore.BASE_TX_ID;
+synchronized (logFile) {
+    kernelHealth.assertHealthy(IOException.class);
+    try (SerializeTransactionEvent serialiseEvent=logAppendEvent.beginSerializeTransaction()){
+      TransactionToApply tx=batch;
+      while (tx != null) {
+        long transactionId=transactionIdStore.nextCommittingTransactionId();
+        matchAgainstExpectedTransactionIdIfAny(transactionId,tx);
+        TransactionCommitment commitment=appendToLog(tx.transactionRepresentation(),transactionId);
+        tx.commitment(commitment,transactionId);
+        tx=tx.next();
+        lastTransactionId=transactionId;
+      }
+    }
+   }
+  forceAfterAppend(logAppendEvent);
+  publishAsCommitted(batch);
+  return lastTransactionId;
+}
