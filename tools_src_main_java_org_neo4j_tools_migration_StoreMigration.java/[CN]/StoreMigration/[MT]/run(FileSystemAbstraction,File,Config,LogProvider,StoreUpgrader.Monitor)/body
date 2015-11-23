@@ -2,36 +2,29 @@
   ConfigMapUpgradeConfiguration upgradeConfiguration=new ConfigMapUpgradeConfiguration(config);
   StoreUpgrader migrationProcess=new StoreUpgrader(upgradeConfiguration,fs,monitor,userLogProvider);
   LifeSupport life=new LifeSupport();
+  LegacyIndexProvider indexProvider=new LegacyIndexProvider();
   Dependencies deps=new Dependencies();
   deps.satisfyDependencies(fs,config);
-  KernelContext kernelContext=new KernelContext(){
-    @Override public FileSystemAbstraction fileSystem(){
-      return fs;
-    }
-    @Override public File storeDir(){
-      return legacyStoreDirectory;
-    }
-  }
-;
+  deps.satisfyDependencies(indexProvider);
+  KernelContext kernelContext=new MigrationKernelContext(fs,storeDirectory);
   KernelExtensions kernelExtensions=life.add(new KernelExtensions(kernelContext,GraphDatabaseDependencies.newDependencies().kernelExtensions(),deps,ignore()));
-  LogService logService=StoreLogService.withUserLogProvider(userLogProvider).inStoreDirectory(fs,legacyStoreDirectory);
+  LogService logService=StoreLogService.withUserLogProvider(userLogProvider).inStoreDirectory(fs,storeDirectory);
   life.start();
   SchemaIndexProvider schemaIndexProvider=kernelExtensions.resolveDependency(SchemaIndexProvider.class,HighestSelectionStrategy.getInstance());
   LabelScanStoreProvider labelScanStoreProvider=kernelExtensions.resolveDependency(LabelScanStoreProvider.class,HighestSelectionStrategy.getInstance());
-  Log log=userLogProvider.getLog(StoreMigrationTool.class);
+  Log log=userLogProvider.getLog(StoreMigration.class);
   try (PageCache pageCache=createPageCache(fs,config)){
     UpgradableDatabase upgradableDatabase=new UpgradableDatabase(fs,new StoreVersionCheck(pageCache),new LegacyStoreVersionCheck(fs));
     migrationProcess.addParticipant(new SchemaIndexMigrator(fs));
-    migrationProcess.addParticipant(new StoreMigrator(new VisibleMigrationProgressMonitor(logService.getInternalLog(StoreMigrationTool.class)),fs,pageCache,config,logService));
+    migrationProcess.addParticipant(new LegacyIndexMigrator(fs,indexProvider.getIndexProviders(),userLogProvider));
+    migrationProcess.addParticipant(new StoreMigrator(new VisibleMigrationProgressMonitor(logService.getInternalLog(StoreMigration.class)),fs,pageCache,config,logService));
     long startTime=System.currentTimeMillis();
-    migrationProcess.migrateIfNeeded(legacyStoreDirectory,upgradableDatabase,schemaIndexProvider,labelScanStoreProvider);
+    migrationProcess.migrateIfNeeded(storeDirectory,upgradableDatabase,schemaIndexProvider,labelScanStoreProvider);
     long duration=System.currentTimeMillis() - startTime;
     log.info(format("Migration completed in %d s%n",duration / 1000));
   }
  catch (  IOException e) {
     throw new StoreUpgrader.UnableToUpgradeException("Failure during upgrade",e);
-  }
-catch (  IllegalArgumentException e) {
   }
  finally {
     life.shutdown();
