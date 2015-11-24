@@ -1,14 +1,9 @@
 {
   PageCache pageCache=pageCacheRule.getPageCache(fileSystem);
-  UpgradeConfiguration vetoingUpgradeConfiguration=new UpgradeConfiguration(){
-    @Override public void checkConfigurationAllowsAutomaticUpgrade(){
-      throw new UpgradeNotAllowedByConfigurationException("vetoed");
-    }
-  }
-;
+  Config deniedMigrationConfig=new Config(MapUtil.stringMap(GraphDatabaseSettings.allow_store_upgrade.name(),"false"));
   UpgradableDatabase upgradableDatabase=new UpgradableDatabase(fileSystem,new StoreVersionCheck(pageCache),new LegacyStoreVersionCheck(fileSystem));
   try {
-    newUpgrader(vetoingUpgradeConfiguration,pageCache).migrateIfNeeded(dbDirectory,upgradableDatabase,schemaIndexProvider,labelScanStoreProvider);
+    newUpgrader(upgradableDatabase,deniedMigrationConfig,pageCache).migrateIfNeeded(dbDirectory);
     fail("Should throw exception");
   }
  catch (  UpgradeNotAllowedByConfigurationException e) {

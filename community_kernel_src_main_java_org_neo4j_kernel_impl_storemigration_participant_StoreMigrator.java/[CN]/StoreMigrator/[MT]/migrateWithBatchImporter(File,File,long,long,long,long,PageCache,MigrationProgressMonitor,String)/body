@@ -1,0 +1,27 @@
+{
+  prepareBatchImportMigration(storeDir,migrationDir);
+  LegacyStore legacyStore;
+switch (versionToUpgradeFrom) {
+case Legacy19Store.LEGACY_VERSION:
+    legacyStore=new Legacy19Store(fileSystem,new File(storeDir,MetaDataStore.DEFAULT_NAME));
+  break;
+case Legacy20Store.LEGACY_VERSION:
+legacyStore=new Legacy20Store(fileSystem,new File(storeDir,MetaDataStore.DEFAULT_NAME));
+break;
+default :
+throw new IllegalStateException("Unknown version to upgrade from: " + versionToUpgradeFrom);
+}
+Configuration importConfig=new Configuration.Overridden(config);
+AdditionalInitialIds additionalInitialIds=readAdditionalIds(storeDir,lastTxId,lastTxChecksum,lastTxLogVersion,lastTxLogByteOffset);
+BatchImporter importer=new ParallelBatchImporter(migrationDir.getAbsoluteFile(),fileSystem,importConfig,logService,withDynamicProcessorAssignment(migrationBatchImporterMonitor(legacyStore,progressMonitor),importConfig),additionalInitialIds);
+InputIterable<InputNode> nodes=legacyNodesAsInput(legacyStore);
+InputIterable<InputRelationship> relationships=legacyRelationshipsAsInput(legacyStore);
+File badFile=new File(storeDir,Configuration.BAD_FILE_NAME);
+OutputStream badOutput=new BufferedOutputStream(new FileOutputStream(badFile,false));
+importer.doImport(Inputs.input(nodes,relationships,IdMappers.actual(),IdGenerators.fromInput(),true,Collectors.badCollector(badOutput,0)));
+StoreFile.fileOperation(DELETE,fileSystem,migrationDir,null,Iterables.<StoreFile,StoreFile>iterable(StoreFile.PROPERTY_STORE,StoreFile.PROPERTY_STRING_STORE,StoreFile.PROPERTY_ARRAY_STORE,StoreFile.PROPERTY_KEY_TOKEN_STORE,StoreFile.PROPERTY_KEY_TOKEN_NAMES_STORE),true,false,StoreFileType.values());
+if (legacyStore instanceof Legacy19Store) {
+migratePropertyKeys((Legacy19Store)legacyStore,pageCache,migrationDir);
+}
+legacyStore.close();
+}

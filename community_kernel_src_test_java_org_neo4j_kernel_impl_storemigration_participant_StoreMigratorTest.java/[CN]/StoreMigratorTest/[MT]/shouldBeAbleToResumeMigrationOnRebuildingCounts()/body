@@ -1,0 +1,20 @@
+{
+  File storeDirectory=directory.graphDbDir();
+  File prepare=directory.directory("prepare");
+  MigrationTestUtils.prepareSampleLegacyDatabase(version,fs,storeDirectory,prepare);
+  LogService logService=NullLogService.getInstance();
+  PageCache pageCache=pageCacheRule.getPageCache(fs);
+  UpgradableDatabase upgradableDatabase=new UpgradableDatabase(fs,new StoreVersionCheck(pageCache),new LegacyStoreVersionCheck(fs));
+  String versionToMigrateFrom=upgradableDatabase.checkUpgradeable(storeDirectory);
+  SilentMigrationProgressMonitor progressMonitor=new SilentMigrationProgressMonitor();
+  StoreMigrator migrator=new StoreMigrator(fs,pageCache,new Config(),logService,schemaIndexProvider);
+  File migrationDir=new File(storeDirectory,StoreUpgrader.MIGRATION_DIRECTORY);
+  fs.mkdirs(migrationDir);
+  migrator.migrate(storeDirectory,migrationDir,progressMonitor,versionToMigrateFrom);
+  migrator.moveMigratedFiles(migrationDir,storeDirectory,versionToMigrateFrom);
+  progressMonitor=new SilentMigrationProgressMonitor();
+  migrator=new StoreMigrator(fs,pageCache,new Config(),logService,schemaIndexProvider);
+  migrator.rebuildCounts(storeDirectory,versionToMigrateFrom);
+  StoreFactory storeFactory=new StoreFactory(fs,storeDirectory,pageCache,logService.getInternalLogProvider());
+  storeFactory.openAllNeoStores().close();
+}
