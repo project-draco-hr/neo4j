@@ -1,0 +1,10 @@
+{
+  ControlledRenewableTimeoutService timeouts=new ControlledRenewableTimeoutService();
+  OutboundMessageCollector messages=new OutboundMessageCollector();
+  InMemoryRaftLog raftLog=new InMemoryRaftLog();
+  RaftInstance<RaftTestMember> raft=new RaftInstanceBuilder<>(myself,3,RaftTestMemberSetBuilder.INSTANCE).timeoutService(timeouts).outbound(messages).raftLog(raftLog).build();
+  raft.bootstrapWithInitialMembers(new RaftTestGroup(asSet(myself,member1,member2)));
+  timeouts.invokeTimeout(ELECTION);
+  raft.handle(voteResponse().from(member1).term(1).grant().build());
+  assertEquals(new NewLeaderBarrier(),raftLog.readEntryContent(raftLog.appendIndex()));
+}
