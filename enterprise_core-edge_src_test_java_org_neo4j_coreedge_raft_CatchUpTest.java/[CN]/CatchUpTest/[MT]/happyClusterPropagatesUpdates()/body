@@ -1,0 +1,15 @@
+{
+  DirectNetworking net=new DirectNetworking();
+  final long leader=0;
+  final long[] allMembers={leader,1,2};
+  final RaftTestFixture fixture=new RaftTestFixture(net,3,allMembers);
+  fixture.members().withId(leader).raftInstance().bootstrapWithInitialMembers(new RaftTestGroup(allMembers));
+  final RaftTestMember leaderMember=fixture.members().withId(leader).member();
+  fixture.members().withId(leader).timeoutService().invokeTimeout(RaftInstance.Timeouts.ELECTION);
+  net.processMessages();
+  fixture.members().withId(leader).raftInstance().handle(new Request<>(leaderMember,valueOf(42)));
+  net.processMessages();
+  for (  long aMember : allMembers) {
+    assertLogEntries(1,fixture.members().withId(aMember).raftLog(),42);
+  }
+}

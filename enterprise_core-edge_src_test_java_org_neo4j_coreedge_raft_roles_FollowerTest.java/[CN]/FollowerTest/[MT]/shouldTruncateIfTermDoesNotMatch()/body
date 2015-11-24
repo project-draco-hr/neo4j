@@ -1,0 +1,11 @@
+{
+  int term=1;
+  RaftState<RaftTestMember> state=raftState().myself(myself).term(term).build();
+  Follower follower=new Follower();
+  state.update(follower.handle(new AppendEntries.Request<>(member1,1,-1,-1,new RaftLogEntry[]{new RaftLogEntry(2,ContentGenerator.content())},-1),state,log()));
+  RaftLogEntry[] entries={new RaftLogEntry(1,new ReplicatedString("commit this!"))};
+  Outcome<RaftTestMember> outcome=follower.handle(new AppendEntries.Request<>(member1,1,-1,-1,entries,-1),state,log());
+  state.update(outcome);
+  assertEquals(0,state.entryLog().appendIndex());
+  assertEquals(1,state.entryLog().readEntryTerm(0));
+}

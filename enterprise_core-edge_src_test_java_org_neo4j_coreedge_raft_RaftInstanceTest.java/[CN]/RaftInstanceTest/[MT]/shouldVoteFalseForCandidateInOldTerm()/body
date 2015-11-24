@@ -1,0 +1,9 @@
+{
+  ControlledTimeoutService timeouts=new ControlledTimeoutService();
+  OutboundMessageCollector messages=new OutboundMessageCollector();
+  RaftInstance<RaftTestMember> raft=new RaftInstanceBuilder<>(myself,3,RaftTestMemberSetBuilder.INSTANCE).timeoutService(timeouts).outbound(messages).build();
+  raft.bootstrapWithInitialMembers(new RaftTestGroup(asSet(myself,member1,member2)));
+  raft.handle(voteRequest().from(member1).term(-1).candidate(member1).lastLogIndex(0).lastLogTerm(-1).build());
+  assertThat(messages.sentTo(member1).size(),equalTo(1));
+  assertThat(messages.sentTo(member1),hasItem(voteResponse().from(myself).term(0).deny().build()));
+}

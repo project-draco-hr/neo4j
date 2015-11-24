@@ -1,0 +1,23 @@
+{
+  Leader leader=new Leader();
+  RaftTestMember instance2=new RaftTestMember(2);
+  FollowerState instance2State=createArtificialFollowerState(100);
+  ReadableRaftState<RaftTestMember> state=mock(ReadableRaftState.class);
+  FollowerStates<RaftTestMember> followerState=new FollowerStates<>();
+  followerState=new FollowerStates<>(followerState,instance2,instance2State);
+  ReadableRaftLog logMock=mock(ReadableRaftLog.class);
+  when(logMock.appendIndex()).thenReturn(100l);
+  when(logMock.commitIndex()).thenReturn(100l);
+  when(state.entryLog()).thenReturn(logMock);
+  when(state.followerStates()).thenReturn(followerState);
+  when(state.term()).thenReturn(4l);
+  RaftMessages.AppendEntries.Response<RaftTestMember> response=appendEntriesResponse().failure().matchIndex(-1).term(4).from(instance2).build();
+  Outcome<RaftTestMember> outcome=leader.handle(response,state,mock(Log.class));
+  int mismatchCount=0;
+  for (  ShipCommand shipCommand : outcome.shipCommands) {
+    if (shipCommand instanceof ShipCommand.Mismatch) {
+      mismatchCount++;
+    }
+  }
+  assertThat(mismatchCount,greaterThan(0));
+}

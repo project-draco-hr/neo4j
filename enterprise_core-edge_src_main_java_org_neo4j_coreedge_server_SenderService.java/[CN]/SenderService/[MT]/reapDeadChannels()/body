@@ -1,0 +1,16 @@
+{
+  Iterator<Timestamped<NonBlockingChannel>> itr=lazyChannelMap.values().iterator();
+  while (itr.hasNext()) {
+    Timestamped<NonBlockingChannel> timestampedChannel=itr.next();
+    serviceLock.writeLock().lock();
+    try {
+      if (timestampedChannel.getEndOfLife().expired()) {
+        timestampedChannel.get().dispose();
+        itr.remove();
+      }
+    }
+  finally {
+      serviceLock.writeLock().unlock();
+    }
+  }
+}

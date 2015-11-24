@@ -1,0 +1,13 @@
+{
+  ControlledTimeoutService timeouts=new ControlledTimeoutService();
+  Outbound<RaftTestMember> outbound=mock(Outbound.class);
+  RaftInstance<RaftTestMember> raft=new RaftInstanceBuilder<>(myself,3,RaftTestMemberSetBuilder.INSTANCE).outbound(outbound).timeoutService(timeouts).build();
+  raft.bootstrapWithInitialMembers(new RaftTestGroup(asSet(myself,member1,member2)));
+  timeouts.invokeTimeout(RaftInstance.Timeouts.ELECTION);
+  raft.handle(voteResponse().from(member1).term(1).grant().build());
+  raft.handle(voteResponse().from(member2).term(1).grant().build());
+  assertEquals(1,raft.term());
+  assertEquals(LEADER,raft.currentRole());
+  verify(outbound).send(eq(member1),isA(RaftMessages.AppendEntries.Request.class));
+  verify(outbound).send(eq(member2),isA(RaftMessages.AppendEntries.Request.class));
+}

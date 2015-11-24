@@ -1,0 +1,25 @@
+{
+  serviceLock.writeLock().lock();
+  try {
+    senderServiceRunning=false;
+    if (jobHandle != null) {
+      jobHandle.cancel(true);
+      jobHandle=null;
+    }
+    Iterator<Timestamped<NonBlockingChannel>> itr=lazyChannelMap.values().iterator();
+    while (itr.hasNext()) {
+      Timestamped<NonBlockingChannel> timestampedChannel=itr.next();
+      timestampedChannel.get().dispose();
+      itr.remove();
+    }
+    try {
+      eventLoopGroup.shutdownGracefully(0,0,MICROSECONDS).sync();
+    }
+ catch (    InterruptedException e) {
+      log.warn("Interrupted while stopping sender service.");
+    }
+  }
+  finally {
+    serviceLock.writeLock().unlock();
+  }
+}

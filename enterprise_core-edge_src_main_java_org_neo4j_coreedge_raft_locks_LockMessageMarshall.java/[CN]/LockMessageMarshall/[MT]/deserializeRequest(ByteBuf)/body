@@ -1,0 +1,25 @@
+{
+  int actionOrdinal=buffer.readInt();
+  CoreMember owner=CoreMemberMarshal.deserialize(buffer);
+  int localSessionId=buffer.readInt();
+  int typeId=buffer.readInt();
+  int resourceIdCount=buffer.readInt();
+  long[] resourceIds=new long[resourceIdCount];
+  for (int i=0; i < resourceIdCount; i++) {
+    resourceIds[i]=buffer.readLong();
+  }
+  LockMessage.Action action=LockMessage.Action.values()[actionOrdinal];
+  LockSession lockSession=new LockSession(owner,localSessionId);
+switch (action) {
+case NEW_SESSION:
+    return LockMessage.Request.newLockSession(lockSession);
+case END_SESSION:
+  return LockMessage.Request.endLockSession(lockSession);
+case ACQUIRE_EXCLUSIVE:
+return LockMessage.Request.acquireExclusiveLock(lockSession,fromId(typeId),resourceIds);
+case ACQUIRE_SHARED:
+return LockMessage.Request.acquireSharedLock(lockSession,fromId(typeId),resourceIds);
+default :
+throw new IllegalArgumentException("Unknown action: " + action);
+}
+}

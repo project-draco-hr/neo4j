@@ -1,0 +1,28 @@
+{
+  workerGroup=new NioEventLoopGroup(0,threadFactory);
+  ServerBootstrap bootstrap=new ServerBootstrap().group(workerGroup).channel(NioServerSocketChannel.class).localAddress(listenAddress.socketAddress()).childHandler(new ChannelInitializer<SocketChannel>(){
+    @Override protected void initChannel(    SocketChannel ch) throws Exception {
+      CatchupServerProtocol protocol=new CatchupServerProtocol();
+      ChannelPipeline pipeline=ch.pipeline();
+      pipeline.addLast(new LengthFieldBasedFrameDecoder(Integer.MAX_VALUE,0,4,0,4));
+      pipeline.addLast(new LengthFieldPrepender(4));
+      pipeline.addLast(new ResponseMessageTypeEncoder());
+      pipeline.addLast(new RequestMessageTypeEncoder());
+      pipeline.addLast(new TxPullResponseEncoder());
+      pipeline.addLast(new StoreCopyFinishedResponseEncoder());
+      pipeline.addLast(new TxStreamFinishedResponseEncoder());
+      pipeline.addLast(new FileHeaderEncoder());
+      pipeline.addLast(new LockResponseEncoder());
+      pipeline.addLast(new ServerMessageTypeHandler(protocol,logProvider));
+      pipeline.addLast(new TxPullRequestDecoder(protocol));
+      pipeline.addLast(new TxPullRequestHandler(protocol,storeIdSupplier,transactionIdStoreSupplier,logicalTransactionStoreSupplier));
+      pipeline.addLast(new ChunkedWriteHandler());
+      pipeline.addLast(new GetStoreRequestDecoder(protocol));
+      pipeline.addLast(new GetStoreRequestHandler(protocol,dataSourceSupplier,checkPointerSupplier));
+      pipeline.addLast(new LockRequestDecoder(protocol));
+      pipeline.addLast(new ExceptionLoggingHandler(log));
+    }
+  }
+);
+  channel=bootstrap.bind().syncUninterruptibly().channel();
+}

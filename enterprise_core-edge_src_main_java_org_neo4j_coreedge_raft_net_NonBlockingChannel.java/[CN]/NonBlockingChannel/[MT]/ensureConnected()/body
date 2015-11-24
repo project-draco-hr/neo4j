@@ -1,0 +1,19 @@
+{
+  if (nettyChannel != null && !nettyChannel.isOpen()) {
+    nettyChannel=null;
+  }
+  while (nettyChannel == null && stillRunning) {
+    ChannelFuture channelFuture=bootstrap.connect(destination);
+    Channel channel=channelFuture.awaitUninterruptibly().channel();
+    if (channelFuture.isSuccess()) {
+      Map.Entry<String,ChannelHandler> lastHandler=IteratorUtil.last(channel.pipeline().iterator());
+      channel.pipeline().addBefore(lastHandler.getKey(),"keepAlive",this.keepAliveHandler);
+      channel.flush();
+      nettyChannel=channel;
+    }
+ else {
+      channel.close();
+      parkNanos(MILLISECONDS.toNanos(CONNECT_BACKOFF_IN_MS));
+    }
+  }
+}

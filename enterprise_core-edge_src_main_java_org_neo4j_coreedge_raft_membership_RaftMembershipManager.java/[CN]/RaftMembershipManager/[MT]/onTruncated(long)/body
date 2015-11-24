@@ -1,0 +1,22 @@
+{
+  try {
+    Long logIndex=findLastMembershipEntry();
+    if (logIndex != null) {
+      RaftGroup<MEMBER> lastMembershipEntry=(RaftGroup<MEMBER>)entryLog.readEntryContent(logIndex);
+      setVotingMembers(lastMembershipEntry.getMembers());
+    }
+ else {
+      setVotingMembers(Collections.<MEMBER>emptySet());
+    }
+    uncommittedMemberChanges=0;
+    for (long i=entryLog.commitIndex() + 1; i <= entryLog.appendIndex(); i++) {
+      ReplicatedContent content=entryLog.readEntryContent(i);
+      if (content instanceof RaftGroup) {
+        uncommittedMemberChanges++;
+      }
+    }
+  }
+ catch (  RaftStorageException e) {
+    log.error("Unable to find last membership entry after RAFT log truncation",e);
+  }
+}

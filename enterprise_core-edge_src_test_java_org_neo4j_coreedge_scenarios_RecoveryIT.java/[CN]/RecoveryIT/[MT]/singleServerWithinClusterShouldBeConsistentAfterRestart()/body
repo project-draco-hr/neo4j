@@ -1,0 +1,24 @@
+{
+  int clusterSize=3;
+  File dbDir=dir.directory();
+  cluster=Cluster.start(dbDir,clusterSize,0);
+  ArrayList<String> storeDirs=new ArrayList<>();
+  for (int i=0; i < clusterSize; i++) {
+    CoreGraphDatabase theDb=cluster.getCoreServerById(i);
+    try (Transaction tx=theDb.beginTx()){
+      Node node=theDb.createNode(label("first-round"));
+      node.setProperty("server",i);
+      tx.success();
+    }
+     storeDirs.add(theDb.getStoreDir());
+  }
+  for (int i=0; i < clusterSize; i++) {
+    cluster.removeCoreServerWithServerId(i);
+    fireSomeLoadAtTheCluster(cluster);
+    cluster.addCoreServerWithServerId(i,clusterSize);
+  }
+  cluster.shutdown();
+  for (int i=0; i < clusterSize; i++) {
+    assertTrue(isConsistent(storeDirs.get(i)));
+  }
+}

@@ -1,0 +1,16 @@
+{
+  scheduleTimeout(retryTimeMillis);
+  lastSentIndex=logIndex;
+  long prevLogIndex=logIndex - 1;
+  long prevLogTerm=raftLog.readEntryTerm(prevLogIndex);
+  if (prevLogTerm > leaderContext.term) {
+    log.warn(format("Aborting send. Not leader anymore? %s, prevLogTerm=%d",leaderContext,prevLogTerm));
+    return;
+  }
+  RaftLogEntry logEntry=null;
+  if (raftLog.entryExists(logIndex)) {
+    logEntry=raftLog.readLogEntry(logIndex);
+  }
+  RaftMessages.AppendEntries.Request<MEMBER> appendRequest=new RaftMessages.AppendEntries.Request<>(leader,leaderContext.term,prevLogIndex,prevLogTerm,new RaftLogEntry[]{logEntry},leaderContext.commitIndex);
+  outbound.send(follower,appendRequest);
+}

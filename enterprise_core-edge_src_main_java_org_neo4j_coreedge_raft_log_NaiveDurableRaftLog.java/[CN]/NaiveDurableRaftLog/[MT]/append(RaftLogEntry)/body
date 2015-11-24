@@ -1,0 +1,20 @@
+{
+  if (logEntry.term() >= term) {
+    term=logEntry.term();
+  }
+ else {
+    throw new RaftStorageException(String.format("Non-monotonic term %d for in entry %s in term %d",logEntry.term(),logEntry.toString(),term));
+  }
+  try {
+    int length=writeContent(logEntry);
+    writeEntry(new Entry(logEntry.term(),contentOffset));
+    contentOffset+=length;
+    for (    Listener listener : listeners) {
+      listener.onAppended(logEntry.content());
+    }
+    return ++appendIndex;
+  }
+ catch (  MarshallingException|IOException e) {
+    throw new RaftStorageException("Failed to append log entry",e);
+  }
+}

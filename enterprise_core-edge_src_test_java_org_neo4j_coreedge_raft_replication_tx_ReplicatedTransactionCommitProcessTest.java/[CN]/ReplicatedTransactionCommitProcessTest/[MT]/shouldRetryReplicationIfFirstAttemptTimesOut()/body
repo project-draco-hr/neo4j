@@ -1,0 +1,9 @@
+{
+  Replicator replicator=mock(Replicator.class);
+  ReplicatedTransactionStateMachine transactionStateMachine=mock(ReplicatedTransactionStateMachine.class);
+  Future future=mock(Future.class);
+  when(transactionStateMachine.getFutureTxId(any(LocalOperationId.class))).thenReturn(future);
+  when(future.get(anyInt(),any(TimeUnit.class))).thenThrow(TimeoutException.class).thenReturn(23l);
+  new ReplicatedTransactionCommitProcess(replicator,new LocalSessionPool(coreMember),transactionStateMachine).commit(tx(),new LockGroup(),NULL,INTERNAL);
+  verify(replicator,times(2)).replicate(any(ReplicatedTransaction.class));
+}

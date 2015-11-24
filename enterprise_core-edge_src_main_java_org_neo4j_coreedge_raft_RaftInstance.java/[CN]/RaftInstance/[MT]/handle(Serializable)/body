@@ -1,0 +1,28 @@
+{
+  if (handlingMessage) {
+    throw new IllegalStateException("recursive use");
+  }
+  try {
+    handlingMessage=true;
+    Outcome<MEMBER> outcome=currentRole.role.handle((RaftMessages.Message<MEMBER>)incomingMessage,state,log);
+    handleOutcome(outcome);
+    currentRole=outcome.newRole;
+    for (    RaftMessages.Directed<MEMBER> outgoingMessage : outcome.outgoingMessages) {
+      outbound.send(outgoingMessage.to(),outgoingMessage.message());
+    }
+    if (outcome.renewElectionTimeout) {
+      electionTimer.renew();
+    }
+    membershipManager.onRole(currentRole);
+    if (currentRole == LEADER) {
+      membershipManager.onFollowerStateChange(state.followerStates());
+    }
+  }
+ catch (  Exception e) {
+    log.error("Failed to process RAFT message " + incomingMessage,e);
+    throw new RuntimeException(e);
+  }
+ finally {
+    handlingMessage=false;
+  }
+}

@@ -1,0 +1,23 @@
+{
+  ClassGuardedAdversary adversary=new ClassGuardedAdversary(new CountingAdversary(1,false),NaiveDurableRaftLog.class.getName());
+  adversary.disable();
+  EphemeralFileSystemAbstraction fs=new EphemeralFileSystemAbstraction();
+  FileSystemAbstraction fileSystem=new SelectiveFileSystemAbstraction(new File("raft-log/content.log"),new AdversarialFileSystemAbstraction(adversary,fs),fs);
+  RaftLog log=createRaftLog(fileSystem);
+  RaftLogEntry logEntry=new RaftLogEntry(1,ReplicatedInteger.valueOf(1));
+  adversary.enable();
+  try {
+    log.append(logEntry);
+    fail("Should have thrown exception");
+  }
+ catch (  Exception e) {
+  }
+  verifyCurrentLogAndNewLogLoadedFromFileSystem(log,fileSystem,new LogVerifier(){
+    public void verifyLog(    ReadableRaftLog log){
+      assertThat(log.appendIndex(),is(-1L));
+      assertThat(log.commitIndex(),is(-1L));
+      assertThat(log.entryExists(0),is(false));
+    }
+  }
+);
+}

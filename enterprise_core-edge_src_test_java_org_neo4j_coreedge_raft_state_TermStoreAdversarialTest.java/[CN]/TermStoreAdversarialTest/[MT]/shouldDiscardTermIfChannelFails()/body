@@ -1,0 +1,21 @@
+{
+  ClassGuardedAdversary adversary=new ClassGuardedAdversary(new CountingAdversary(1,false),DurableTermStore.class.getName());
+  adversary.disable();
+  EphemeralFileSystemAbstraction fs=new EphemeralFileSystemAbstraction();
+  FileSystemAbstraction fileSystem=new SelectiveFileSystemAbstraction(new File("raft-log/term.state"),new AdversarialFileSystemAbstraction(adversary,fs),fs);
+  TermStore log=createTermStore(fileSystem);
+  log.update(21);
+  adversary.enable();
+  try {
+    log.update(23);
+    fail("Should have thrown exception");
+  }
+ catch (  RaftStorageException e) {
+  }
+  verifyCurrentLogAndNewLogLoadedFromFileSystem(log,fileSystem,new TermVerifier(){
+    public void verifyTerm(    TermStore termStore) throws RaftStorageException {
+      assertEquals(21,termStore.currentTerm());
+    }
+  }
+);
+}

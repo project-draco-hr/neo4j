@@ -1,0 +1,26 @@
+{
+  int index=0;
+  boolean moreLog=true;
+  while (moreLog) {
+    moreLog=false;
+    RaftLogEntry clusterLogEntry=null;
+    for (    ComparableRaftState memberState : state.states.values()) {
+      if (index <= memberState.entryLog().commitIndex()) {
+        RaftLogEntry memberLogEntry=memberState.entryLog().readLogEntry(index);
+        if (clusterLogEntry == null) {
+          clusterLogEntry=memberLogEntry;
+        }
+ else {
+          if (!clusterLogEntry.equals(memberLogEntry)) {
+            return true;
+          }
+        }
+      }
+      if (index < memberState.entryLog().commitIndex()) {
+        moreLog=true;
+      }
+    }
+    index++;
+  }
+  return false;
+}

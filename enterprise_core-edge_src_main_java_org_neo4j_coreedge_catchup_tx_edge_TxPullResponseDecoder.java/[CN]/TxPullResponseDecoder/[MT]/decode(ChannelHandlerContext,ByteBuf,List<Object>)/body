@@ -1,0 +1,16 @@
+{
+  if (protocol.isExpecting(NextMessage.TX_PULL_RESPONSE)) {
+    StoreId storeId=new StoreIdDecoder().decode(msg);
+    NetworkReadableLogByteBuf logChannel=new NetworkReadableLogByteBuf(msg);
+    LogEntryReader<NetworkReadableLogByteBuf> reader=new VersionAwareLogEntryReader<>();
+    PhysicalTransactionCursor<NetworkReadableLogByteBuf> transactionCursor=new PhysicalTransactionCursor<>(logChannel,reader);
+    transactionCursor.next();
+    CommittedTransactionRepresentation tx=transactionCursor.get();
+    if (tx != null) {
+      out.add(new TxPullResponse(storeId,tx));
+    }
+  }
+ else {
+    out.add(Unpooled.copiedBuffer(msg));
+  }
+}

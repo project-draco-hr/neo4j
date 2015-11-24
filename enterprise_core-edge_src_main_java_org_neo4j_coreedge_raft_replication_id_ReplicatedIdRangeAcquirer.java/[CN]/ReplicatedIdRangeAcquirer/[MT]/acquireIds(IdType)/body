@@ -1,0 +1,24 @@
+{
+  while (true) {
+    long firstNotAllocated=idAllocationStateMachine.getFirstNotAllocated(idType);
+    ReplicatedIdAllocationRequest idAllocationRequest=new ReplicatedIdAllocationRequest(me,idType,firstNotAllocated,allocationChunk);
+    try {
+      replicator.replicate(idAllocationRequest);
+    }
+ catch (    Replicator.ReplicationFailedException e) {
+      log.error(format("Failed to acquire id range for idType %s",idType),e);
+      throw new IdGenerationException(e);
+    }
+    try {
+      idAllocationStateMachine.waitForAnyChange(retryTimeoutMillis);
+    }
+ catch (    InterruptedException e) {
+      log.error(format("Failed to acquire id range for idType %s",idType),e);
+      throw new IdGenerationException(e);
+    }
+    IdRange myHighestIdRange=idAllocationStateMachine.getHighestIdRange(me,idType);
+    if (myHighestIdRange != null && myHighestIdRange.getRangeStart() == idAllocationRequest.idRangeStart()) {
+      return new IdAllocation(myHighestIdRange,myHighestIdRange.getRangeStart() - 1,0);
+    }
+  }
+}

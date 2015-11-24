@@ -1,0 +1,42 @@
+{
+  int clusterSize=3;
+  Set<RaftTestMember> members=new HashSet<>();
+  for (int i=0; i < clusterSize; i++) {
+    members.add(member(i));
+  }
+  ClusterState initialState=new ClusterState(members);
+  List<Action> actions=new ArrayList<>();
+  for (  RaftTestMember member : members) {
+    actions.add(new ProcessMessage(member));
+    actions.add(new NewEntry(member));
+    actions.add(new HeartbeatTimeout(member));
+    actions.add(new ElectionTimeout(member));
+    actions.add(new DropMessage(member));
+    actions.add(new OutOfOrderDelivery(member));
+  }
+  Set<ClusterState> exploredStates=new HashSet<>();
+  Set<ClusterState> statesToBeExplored=new HashSet<>();
+  statesToBeExplored.add(initialState);
+  int explorationDepth=7;
+  for (int i=0; i < explorationDepth; i++) {
+    Set<ClusterState> newStates=new HashSet<>();
+    int counter=0;
+    for (    ClusterState clusterState : statesToBeExplored) {
+      if (counter++ % 1000 == 0)       System.out.print(".");
+      exploredStates.add(clusterState);
+      for (      Action action : actions) {
+        ClusterState nextClusterState=action.advance(clusterState);
+        if (!exploredStates.contains(nextClusterState)) {
+          newStates.add(nextClusterState);
+        }
+      }
+    }
+    statesToBeExplored=newStates;
+    System.out.printf("\nexplored %d states, planning to explore %d states%n",exploredStates.size(),statesToBeExplored.size());
+  }
+  for (  ClusterState exploredState : exploredStates) {
+    List<ClusterSafetyViolations.Violation> invariantsViolated=ClusterSafetyViolations.violations(exploredState);
+    assertThat(invariantsViolated,empty());
+  }
+  System.out.println("exploredStates = " + exploredStates.size());
+}

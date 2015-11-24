@@ -1,0 +1,24 @@
+{
+  GlobalSessionTracker sessionTracker=new GlobalSessionTracker();
+  LocalOperationId localOperationIdBefore=new LocalOperationId(0,0);
+  LocalOperationId localOperationIdAfter=new LocalOperationId(0,1);
+  CoreMember newLockManager=new CoreMember(address("new:1"),address("new:2"));
+  ReplicatedTransaction txBefore=ReplicatedTransactionFactory.createImmutableReplicatedTransaction(mock(PhysicalTransactionRepresentation.class),globalSession,localOperationIdBefore);
+  PhysicalTransactionRepresentation after=mock(PhysicalTransactionRepresentation.class);
+  when(after.getLatestCommittedTxWhenStarted()).thenReturn(3L);
+  ReplicatedTransaction txAfter=ReplicatedTransactionFactory.createImmutableReplicatedTransaction(after,globalSession,localOperationIdAfter);
+  TransactionCommitProcess localCommitProcess=mock(TransactionCommitProcess.class);
+  when(localCommitProcess.commit(any(TransactionRepresentation.class),any(LockGroup.class),any(CommitEvent.class),any(TransactionApplicationMode.class))).thenReturn(4L);
+  ReplicatedTransactionStateMachine listener=new ReplicatedTransactionStateMachine(localCommitProcess,sessionTracker,globalSession);
+  Future<Long> future=listener.getFutureTxId(localOperationIdAfter);
+  listener.onReplicated(txBefore);
+  listener.onReplicated(new CoreServiceAssignment(LOCK_MANAGER,newLockManager,UUID.randomUUID()));
+  listener.onReplicated(txAfter);
+  try {
+    future.get(1,TimeUnit.SECONDS);
+    fail("Should have thrown exception");
+  }
+ catch (  ExecutionException e) {
+    assertThat(e.getCause().getMessage(),containsString("different leader"));
+  }
+}

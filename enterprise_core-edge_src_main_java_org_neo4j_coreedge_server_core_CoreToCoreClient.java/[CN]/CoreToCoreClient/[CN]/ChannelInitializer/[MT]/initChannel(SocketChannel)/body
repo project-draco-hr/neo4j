@@ -1,0 +1,24 @@
+{
+  CatchupClientProtocol protocol=new CatchupClientProtocol();
+  ChannelPipeline pipeline=ch.pipeline();
+  pipeline.addLast(new LengthFieldBasedFrameDecoder(Integer.MAX_VALUE,0,4,0,4));
+  pipeline.addLast(new LengthFieldPrepender(4));
+  pipeline.addLast(new TxPullRequestEncoder());
+  pipeline.addLast(new GetStoreRequestEncoder());
+  pipeline.addLast(new LockRequestEncoder());
+  pipeline.addLast(new ResponseMessageTypeEncoder());
+  pipeline.addLast(new RequestMessageTypeEncoder());
+  pipeline.addLast(new ClientMessageTypeHandler(protocol,logProvider));
+  pipeline.addLast(new TxPullResponseDecoder(protocol));
+  pipeline.addLast(new TxPullResponseHandler(protocol,owner));
+  pipeline.addLast(new StoreCopyFinishedResponseDecoder(protocol));
+  pipeline.addLast(new StoreCopyFinishedResponseHandler(protocol,owner));
+  pipeline.addLast(new LockResponseDecoder(protocol));
+  pipeline.addLast(new LockResponseHandler(protocol,owner));
+  pipeline.addLast(new TxStreamFinishedResponseDecoder(protocol));
+  pipeline.addLast(new TxStreamFinishedResponseHandler(protocol,owner));
+  pipeline.addLast(new FileHeaderDecoder(protocol));
+  pipeline.addLast(new FileHeaderHandler(protocol));
+  pipeline.addLast(new FileContentHandler(protocol,owner));
+  pipeline.addLast(new ExceptionLoggingHandler(logProvider.getLog(getClass())));
+}
