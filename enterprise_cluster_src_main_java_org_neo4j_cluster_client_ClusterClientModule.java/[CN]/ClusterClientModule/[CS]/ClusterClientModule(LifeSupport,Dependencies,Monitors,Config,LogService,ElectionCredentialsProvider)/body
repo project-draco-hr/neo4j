@@ -1,8 +1,8 @@
 {
-  LogProvider internalLogProvider=logService.getInternalLogProvider();
-  InternalLoggerFactory.setDefaultFactory(new NettyLoggerFactory(internalLogProvider));
+  final LogProvider logging=AsyncLogging.provider(life,logService.getInternalLogProvider());
+  InternalLoggerFactory.setDefaultFactory(new NettyLoggerFactory(logging));
   TimeoutStrategy timeoutStrategy=new MessageTimeoutStrategy(new FixedTimeoutStrategy(config.get(ClusterSettings.default_timeout))).timeout(HeartbeatMessage.sendHeartbeat,config.get(ClusterSettings.heartbeat_interval)).timeout(HeartbeatMessage.timed_out,config.get(ClusterSettings.heartbeat_timeout)).timeout(AtomicBroadcastMessage.broadcastTimeout,config.get(ClusterSettings.broadcast_timeout)).timeout(LearnerMessage.learnTimedout,config.get(ClusterSettings.learn_timeout)).timeout(ProposerMessage.phase1Timeout,config.get(ClusterSettings.phase1_timeout)).timeout(ProposerMessage.phase2Timeout,config.get(ClusterSettings.phase2_timeout)).timeout(ClusterMessage.joiningTimeout,config.get(ClusterSettings.join_timeout)).timeout(ClusterMessage.configurationTimeout,config.get(ClusterSettings.configuration_timeout)).timeout(ClusterMessage.leaveTimedout,config.get(ClusterSettings.leave_timeout)).timeout(ElectionMessage.electionTimeout,config.get(ClusterSettings.election_timeout));
-  MultiPaxosServerFactory protocolServerFactory=new MultiPaxosServerFactory(new ClusterConfiguration(config.get(ClusterSettings.cluster_name),internalLogProvider),logService,monitors.newMonitor(StateMachines.Monitor.class));
+  MultiPaxosServerFactory protocolServerFactory=new MultiPaxosServerFactory(new ClusterConfiguration(config.get(ClusterSettings.cluster_name),logging),logging,monitors.newMonitor(StateMachines.Monitor.class));
   NetworkReceiver receiver=dependencies.satisfyDependency(new NetworkReceiver(monitors.newMonitor(NetworkReceiver.Monitor.class),new NetworkReceiver.Configuration(){
     @Override public HostnamePort clusterServer(){
       return config.get(ClusterSettings.cluster_server);
@@ -14,7 +14,7 @@
       return config.get(ClusterSettings.instance_name);
     }
   }
-,internalLogProvider));
+,logging));
   final ObjectInputStreamFactory objectInputStreamFactory=new ObjectStreamFactory();
   final ObjectOutputStreamFactory objectOutputStreamFactory=new ObjectStreamFactory();
   receiver.addNetworkChannelsListener(new NetworkReceiver.NetworkChannelsListener(){
@@ -22,15 +22,15 @@
     @Override public void listeningAt(    URI me){
       server.listeningAt(me);
       if (logger == null) {
-        logger=new StateTransitionLogger(internalLogProvider,new AtomicBroadcastSerializer(objectInputStreamFactory,objectOutputStreamFactory));
+        logger=new StateTransitionLogger(logging,new AtomicBroadcastSerializer(objectInputStreamFactory,objectOutputStreamFactory));
         server.addStateTransitionListener(logger);
       }
     }
     @Override public void channelOpened(    URI to){
-      internalLogProvider.getLog(NetworkReceiver.class).info(to + " connected to me at " + server.boundAt());
+      logging.getLog(NetworkReceiver.class).info(to + " connected to me at " + server.boundAt());
     }
     @Override public void channelClosed(    URI to){
-      internalLogProvider.getLog(NetworkReceiver.class).info(to + " disconnected from me at " + server.boundAt());
+      logging.getLog(NetworkReceiver.class).info(to + " disconnected from me at " + server.boundAt());
     }
   }
 );
@@ -42,7 +42,7 @@
       return config.get(ClusterSettings.cluster_server).getPort();
     }
   }
-,receiver,internalLogProvider));
+,receiver,logging));
   ExecutorLifecycleAdapter stateMachineExecutor=new ExecutorLifecycleAdapter(new Factory<ExecutorService>(){
     @Override public ExecutorService newInstance(){
       return Executors.newSingleThreadExecutor(new NamedThreadFactory("State machine",monitors.newMonitor(NamedThreadFactory.Monitor.class)));
