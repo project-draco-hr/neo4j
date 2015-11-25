@@ -1,0 +1,23 @@
+{
+  LogEntryReader<ReadableLogChannel> reader=new VersionAwareLogEntryReader<>();
+  int authorId=channel.getInt();
+  int masterId=channel.getInt();
+  long latestCommittedTxWhenStarted=channel.getLong();
+  long timeStarted=channel.getLong();
+  long timeCommitted=channel.getLong();
+  int lockSessionId=channel.getInt();
+  int headerLength=channel.getInt();
+  byte[] header=new byte[headerLength];
+  channel.get(header,headerLength);
+  if (headerLength == 0) {
+    header=null;
+  }
+  LogEntryCommand entryRead;
+  List<Command> commands=new LinkedList<>();
+  while ((entryRead=(LogEntryCommand)reader.readLogEntry(channel)) != null) {
+    commands.add(entryRead.getXaCommand());
+  }
+  PhysicalTransactionRepresentation tx=new PhysicalTransactionRepresentation(commands);
+  tx.setHeader(header,masterId,authorId,timeStarted,latestCommittedTxWhenStarted,timeCommitted,lockSessionId);
+  return tx;
+}

@@ -1,0 +1,12 @@
+{
+  IdGeneratorFactory idGeneratorFactory=mock(IdGeneratorFactory.class);
+  IdGenerator idGenerator=mock(IdGenerator.class);
+  when(idGenerator.nextId()).thenReturn(1L);
+  when(idGeneratorFactory.get(any(IdType.class))).thenReturn(idGenerator);
+  RaceConditionSimulatingReplicator replicator=new RaceConditionSimulatingReplicator();
+  ReplicatedTokenHolder<Token,LabelTokenRecord> tokenHolder=new ReplicatedLabelTokenHolder(replicator,idGeneratorFactory,dependencies);
+  tokenHolder.start();
+  replicator.injectLabelTokenBeforeOtherOneReplicates(new ReplicatedTokenRequest(TokenType.LABEL,"Dog",ReplicatedTokenRequestSerializer.createCommandBytes(injectedCommands)));
+  int tokenId=tokenHolder.getOrCreateId("Person");
+  assertEquals(EXPECTED_TOKEN_ID,tokenId);
+}

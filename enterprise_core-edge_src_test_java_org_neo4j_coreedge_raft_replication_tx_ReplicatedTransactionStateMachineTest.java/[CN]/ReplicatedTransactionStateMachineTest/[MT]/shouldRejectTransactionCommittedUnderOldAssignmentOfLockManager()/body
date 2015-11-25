@@ -1,0 +1,20 @@
+{
+  GlobalSessionTracker sessionTracker=new GlobalSessionTracker();
+  LocalOperationId localOperationIdBefore=new LocalOperationId(0,0);
+  LocalOperationId localOperationIdAfter=new LocalOperationId(0,1);
+  CoreMember newLockManager=new CoreMember(address("new:1"),address("new:2"));
+  PhysicalTransactionRepresentation tx=new PhysicalTransactionRepresentation(Collections.emptyList());
+  tx.setHeader(null,0,0,0,3,0,0);
+  ReplicatedTransaction txBefore=ReplicatedTransactionFactory.createImmutableReplicatedTransaction(tx,globalSession,localOperationIdBefore);
+  PhysicalTransactionRepresentation after=mock(PhysicalTransactionRepresentation.class);
+  when(after.getLatestCommittedTxWhenStarted()).thenReturn(3L);
+  ReplicatedTransaction txAfter=ReplicatedTransactionFactory.createImmutableReplicatedTransaction(after,globalSession,localOperationIdAfter);
+  TransactionCommitProcess localCommitProcess=mock(TransactionCommitProcess.class);
+  when(localCommitProcess.commit(any(TransactionRepresentation.class),any(LockGroup.class),any(CommitEvent.class),any(TransactionApplicationMode.class))).thenReturn(4L);
+  ReplicatedTransactionStateMachine listener=new ReplicatedTransactionStateMachine(localCommitProcess,sessionTracker,globalSession);
+  listener.onReplicated(txBefore);
+  listener.onReplicated(new CoreServiceAssignment(LOCK_MANAGER,newLockManager,UUID.randomUUID()));
+  listener.onReplicated(txAfter);
+  verify(localCommitProcess).commit(eq(tx),any(LockGroup.class),any(CommitEvent.class),eq(TransactionApplicationMode.EXTERNAL));
+  verifyNoMoreInteractions(localCommitProcess);
+}

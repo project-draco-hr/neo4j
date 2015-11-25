@@ -1,0 +1,14 @@
+{
+  OnDemandJobScheduler jobScheduler=new OnDemandJobScheduler();
+  MembershipWaiter<RaftTestMember> waiter=new MembershipWaiter<>(member(0),jobScheduler,1);
+  RaftState<RaftTestMember> raftState=RaftStateBuilder.raftState().votingMembers(member(0),member(1)).leaderCommit(0).build();
+  CompletableFuture<Boolean> future=waiter.waitUntilCaughtUpMember(raftState);
+  jobScheduler.runJob();
+  jobScheduler.runJob();
+  try {
+    future.get(10,MILLISECONDS);
+    fail("Should have timed out.");
+  }
+ catch (  TimeoutException e) {
+  }
+}

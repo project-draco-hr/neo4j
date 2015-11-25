@@ -1,0 +1,20 @@
+{
+  waitListLock.writeLock().lock();
+  try {
+    ArrayList<CompletableFuture<Integer>> waitList=waitLists.get(key);
+    ListIterator<CompletableFuture<Integer>> waitListIterator=waitList.listIterator();
+    while (waitListIterator.hasNext()) {
+      if (waitListIterator.next() == future) {
+        waitListIterator.remove();
+        if (waitList.size() == 0) {
+          waitLists.remove(key);
+        }
+        return;
+      }
+    }
+    throw new IllegalStateException("Future to dispose was not found.");
+  }
+  finally {
+    waitListLock.writeLock().unlock();
+  }
+}

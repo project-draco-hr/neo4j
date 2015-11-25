@@ -1,0 +1,22 @@
+{
+  if (commitIndex == appendIndex) {
+    return;
+  }
+  long actualNewCommitIndex=newCommitIndex;
+  if (newCommitIndex > appendIndex) {
+    actualNewCommitIndex=appendIndex;
+  }
+  for (long index=this.commitIndex + 1; index <= actualNewCommitIndex; index++) {
+    for (    Listener listener : listeners) {
+      ReplicatedContent content=readEntryContent(index);
+      listener.onCommitted(content);
+    }
+    this.commitIndex=actualNewCommitIndex;
+  }
+  try {
+    storeCommitIndex(actualNewCommitIndex);
+  }
+ catch (  IOException e) {
+    throw new RaftStorageException("Failed to commit",e);
+  }
+}

@@ -1,0 +1,22 @@
+{
+  try {
+    if (fromIndex <= commitIndex) {
+      throw new IllegalArgumentException("cannot truncate before the commit index");
+    }
+    if (appendIndex >= fromIndex) {
+      Entry entry=readEntry(fromIndex);
+      contentChannel.truncate(entry.contentPointer);
+      contentOffset=entry.contentPointer;
+      entriesChannel.truncate(ENTRY_RECORD_LENGTH * fromIndex);
+      entriesChannel.force(false);
+      appendIndex=fromIndex - 1;
+      for (      Listener listener : listeners) {
+        listener.onTruncated(fromIndex);
+      }
+    }
+    term=readEntryTerm(appendIndex);
+  }
+ catch (  IOException e) {
+    throw new RaftStorageException("Failed to truncate",e);
+  }
+}

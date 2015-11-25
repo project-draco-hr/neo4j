@@ -1,0 +1,14 @@
+{
+  Timestamped<NonBlockingChannel> timestampedLazyChannel=lazyChannelMap.get(to);
+  if (timestampedLazyChannel == null) {
+    Expiration.ExpirationTime expirationTime=expiration.new ExpirationTime();
+    timestampedLazyChannel=new Timestamped<>(expirationTime,new NonBlockingChannel(bootstrap,to.socketAddress(),new InboundKeepAliveHandler(expirationTime),log));
+    Timestamped<NonBlockingChannel> existingTimestampedLazyChannel=lazyChannelMap.putIfAbsent(to,timestampedLazyChannel);
+    if (existingTimestampedLazyChannel != null) {
+      timestampedLazyChannel.get().dispose();
+      timestampedLazyChannel=existingTimestampedLazyChannel;
+    }
+  }
+  timestampedLazyChannel.getEndOfLife().renew();
+  return timestampedLazyChannel;
+}

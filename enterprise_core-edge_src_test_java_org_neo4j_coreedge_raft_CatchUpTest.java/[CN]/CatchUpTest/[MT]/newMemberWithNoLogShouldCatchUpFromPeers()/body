@@ -1,0 +1,27 @@
+{
+  DirectNetworking net=new DirectNetworking();
+  final long leaderId=0;
+  final long sleepyId=2;
+  final long[] awakeMembers={leaderId,1};
+  final long[] allMembers={leaderId,1,sleepyId};
+  RaftTestFixture fixture=new RaftTestFixture(net,3,allMembers);
+  fixture.members().withId(leaderId).raftInstance().bootstrapWithInitialMembers(new RaftTestGroup(allMembers));
+  fixture.members().withId(leaderId).timeoutService().invokeTimeout(RaftInstance.Timeouts.ELECTION);
+  net.processMessages();
+  final RaftTestMember leader=fixture.members().withId(leaderId).member();
+  net.disconnect(sleepyId);
+  fixture.members().withId(leaderId).raftInstance().handle(new Request<>(leader,valueOf(10)));
+  fixture.members().withId(leaderId).raftInstance().handle(new Request<>(leader,valueOf(20)));
+  fixture.members().withId(leaderId).raftInstance().handle(new Request<>(leader,valueOf(30)));
+  fixture.members().withId(leaderId).raftInstance().handle(new Request<>(leader,valueOf(40)));
+  net.processMessages();
+  for (  long awakeMember : awakeMembers) {
+    assertLogEntries(1,fixture.members().withId(awakeMember).raftLog(),10,20,30,40);
+  }
+  assertEquals(0,fixture.members().withId(sleepyId).raftLog().appendIndex());
+  net.reconnect(sleepyId);
+  Thread.sleep(500);
+  net.processMessages();
+  assertLogEntries(1,fixture.members().withId(sleepyId).raftLog(),10,20,30,40);
+  assertEquals(4,fixture.members().withId(sleepyId).raftLog().appendIndex());
+}

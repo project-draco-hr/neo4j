@@ -1,0 +1,17 @@
+{
+  if (content instanceof ReplicatedTokenRequest && ((ReplicatedTokenRequest)content).type().equals(type)) {
+    ReplicatedTokenRequest tokenRequest=(ReplicatedTokenRequest)content;
+    Integer tokenId=tokenCache.getId(tokenRequest.tokenName());
+    if (tokenId == null) {
+      try {
+        Collection<Command> commands=ReplicatedTokenRequestSerializer.extractCommands(tokenRequest.commandBytes());
+        tokenId=applyToStore(commands);
+      }
+ catch (      NoSuchEntryException e) {
+        throw new IllegalStateException("Commands did not contain token command");
+      }
+      tokenCache.put(tokenFactory.newToken(tokenRequest.tokenName(),tokenId));
+    }
+    tokenFutures.complete(tokenRequest.tokenName(),tokenId);
+  }
+}

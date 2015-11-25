@@ -1,0 +1,14 @@
+{
+  int term=1;
+  int followerAppendIndex=9;
+  RaftState<RaftTestMember> state=raftState().myself(myself).term(term).build();
+  Follower follower=new Follower();
+  appendSomeEntriesToLog(state,follower,followerAppendIndex,term);
+  AppendEntries.Request<RaftTestMember> heartbeat=appendEntriesRequest().from(member1).leader(member1).leaderTerm(term).prevLogIndex(followerAppendIndex + 2).prevLogTerm(term).build();
+  Outcome<RaftTestMember> outcome=follower.handle(heartbeat,state,log());
+  assertEquals(1,outcome.outgoingMessages.size());
+  Message<RaftTestMember> outgoing=outcome.outgoingMessages.iterator().next().message();
+  assertEquals(RaftMessages.Type.APPEND_ENTRIES_RESPONSE,outgoing.type());
+  RaftMessages.AppendEntries.Response response=(AppendEntries.Response)outgoing;
+  assertFalse(response.success());
+}

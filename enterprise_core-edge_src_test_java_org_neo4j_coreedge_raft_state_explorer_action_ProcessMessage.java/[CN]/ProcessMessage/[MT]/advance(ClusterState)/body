@@ -1,0 +1,21 @@
+{
+  ClusterState newClusterState=new ClusterState(previous);
+  Queue<RaftMessages.Message<RaftTestMember>> inboundQueue=new LinkedList<>(previous.queues.get(member));
+  RaftMessages.Message<RaftTestMember> message=inboundQueue.poll();
+  if (message == null) {
+    return previous;
+  }
+  ComparableRaftState memberState=previous.states.get(member);
+  ComparableRaftState newMemberState=new ComparableRaftState(memberState);
+  Outcome<RaftTestMember> outcome=previous.roles.get(member).role.handle(message,memberState,log);
+  newMemberState.update(outcome);
+  for (  RaftMessages.Directed<RaftTestMember> outgoingMessage : outcome.outgoingMessages) {
+    LinkedList<RaftMessages.Message<RaftTestMember>> outboundQueue=new LinkedList<>(newClusterState.queues.get(outgoingMessage.to()));
+    outboundQueue.add(outgoingMessage.message());
+    newClusterState.queues.put(outgoingMessage.to(),outboundQueue);
+  }
+  newClusterState.roles.put(member,outcome.newRole);
+  newClusterState.states.put(member,newMemberState);
+  newClusterState.queues.put(member,inboundQueue);
+  return newClusterState;
+}

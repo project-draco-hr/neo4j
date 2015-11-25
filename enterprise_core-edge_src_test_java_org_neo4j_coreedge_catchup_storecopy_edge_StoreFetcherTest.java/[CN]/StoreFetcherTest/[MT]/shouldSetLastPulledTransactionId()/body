@@ -1,0 +1,14 @@
+{
+  long lastFlushedTxId=12;
+  long lastPulledTxId=34;
+  AdvertisedSocketAddress localhost=address("localhost:2001");
+  StoreCopyClient storeCopyClient=mock(StoreCopyClient.class);
+  when(storeCopyClient.copyStoreFiles(eq(localhost),any(StoreFileStreams.class))).thenReturn(lastFlushedTxId);
+  TxPullClient txPullClient=mock(TxPullClient.class);
+  when(txPullClient.pullTransactions(eq(localhost),anyLong(),any(TxPullResponseListener.class))).thenReturn(lastPulledTxId);
+  TransactionLogCatchUpWriter writer=mock(TransactionLogCatchUpWriter.class);
+  StoreFetcher fetcher=new StoreFetcher(NullLogProvider.getInstance(),mock(FileSystemAbstraction.class),null,storeCopyClient,txPullClient,factory(writer));
+  fetcher.copyStore(localhost,new File("destination"));
+  verify(txPullClient).pullTransactions(eq(localhost),eq(lastFlushedTxId),any(TxPullResponseListener.class));
+  verify(writer).setCorrectTransactionId(lastPulledTxId);
+}

@@ -1,0 +1,15 @@
+{
+  try {
+    log.info("Copying store from %s",from);
+    long lastFlushedTxId=storeCopyClient.copyStoreFiles(from,new StreamToDisk(storeDir,fs));
+    log.info("Store files streamed up to %d",lastFlushedTxId);
+    try (TransactionLogCatchUpWriter writer=transactionLogFactory.create(storeDir,fs,pageCache)){
+      long lastPulledTxId=txPullClient.pullTransactions(from,lastFlushedTxId,writer);
+      log.info("Txs streamed up to %d",lastPulledTxId);
+      writer.setCorrectTransactionId(lastPulledTxId);
+    }
+   }
+ catch (  IOException e) {
+    throw new StoreCopyFailedException(e);
+  }
+}

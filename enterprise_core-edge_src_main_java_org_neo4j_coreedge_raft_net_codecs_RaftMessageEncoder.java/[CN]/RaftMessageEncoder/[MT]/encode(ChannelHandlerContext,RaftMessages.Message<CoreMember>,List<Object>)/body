@@ -1,0 +1,49 @@
+{
+  ByteBuf buf=ctx.alloc().buffer();
+  buf.writeInt(message.type().ordinal());
+  writeMember(message.from(),buf);
+  if (message instanceof RaftMessages.Vote.Request) {
+    RaftMessages.Vote.Request<CoreMember> voteRequest=(RaftMessages.Vote.Request<CoreMember>)message;
+    writeMember(voteRequest.candidate(),buf);
+    buf.writeLong(voteRequest.term());
+    buf.writeLong(voteRequest.lastLogIndex());
+    buf.writeLong(voteRequest.lastLogTerm());
+  }
+ else   if (message instanceof RaftMessages.Vote.Response) {
+    RaftMessages.Vote.Response<CoreMember> voteResponse=(RaftMessages.Vote.Response<CoreMember>)message;
+    buf.writeLong(voteResponse.term());
+    buf.writeBoolean(voteResponse.voteGranted());
+  }
+ else   if (message instanceof RaftMessages.AppendEntries.Request) {
+    RaftMessages.AppendEntries.Request<CoreMember> appendRequest=(RaftMessages.AppendEntries.Request<CoreMember>)message;
+    buf.writeLong(appendRequest.leaderTerm());
+    buf.writeLong(appendRequest.prevLogIndex());
+    buf.writeLong(appendRequest.prevLogTerm());
+    buf.writeLong(appendRequest.leaderCommit());
+    buf.writeLong(appendRequest.entries().length);
+    for (    RaftLogEntry raftLogEntry : appendRequest.entries()) {
+      buf.writeLong(raftLogEntry.term());
+      marshal.serialize(raftLogEntry.content(),buf);
+    }
+  }
+ else   if (message instanceof RaftMessages.AppendEntries.Response) {
+    RaftMessages.AppendEntries.Response<CoreMember> appendResponse=(RaftMessages.AppendEntries.Response<CoreMember>)message;
+    buf.writeLong(appendResponse.term());
+    buf.writeBoolean(appendResponse.success());
+    buf.writeLong(appendResponse.matchIndex());
+  }
+ else   if (message instanceof RaftMessages.NewEntry.Request) {
+    RaftMessages.NewEntry.Request<CoreMember> newEntryRequest=(RaftMessages.NewEntry.Request<CoreMember>)message;
+    marshal.serialize(newEntryRequest.content(),buf);
+  }
+ else   if (message instanceof RaftMessages.Heartbeat) {
+    RaftMessages.Heartbeat<CoreMember> heartbeat=(RaftMessages.Heartbeat<CoreMember>)message;
+    buf.writeLong(heartbeat.leaderTerm());
+    buf.writeLong(heartbeat.commitIndexTerm());
+    buf.writeLong(heartbeat.commitIndex());
+  }
+ else {
+    throw new IllegalArgumentException("Unknown message type");
+  }
+  list.add(buf);
+}

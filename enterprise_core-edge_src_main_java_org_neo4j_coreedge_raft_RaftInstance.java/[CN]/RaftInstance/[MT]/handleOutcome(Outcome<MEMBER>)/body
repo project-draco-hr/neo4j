@@ -1,0 +1,17 @@
+{
+  MEMBER oldLeader=state.leader();
+  if (outcome.leader != null && outcome.leader.equals(myself)) {
+    LeaderContext leaderContext=new LeaderContext(outcome.newTerm,outcome.leaderCommit);
+    if (oldLeader == null || !oldLeader.equals(myself)) {
+      logShipping.start(leaderContext);
+    }
+    logShipping.handleCommands(outcome.shipCommands,leaderContext);
+  }
+ else   if (oldLeader != null && oldLeader.equals(myself) && !outcome.leader.equals(myself)) {
+    logShipping.stop();
+  }
+  state.update(outcome);
+  if (oldLeader != state.leader()) {
+    notifyListenersOnLeadershipChange(state.leader());
+  }
+}

@@ -1,0 +1,16 @@
+{
+  EphemeralFileSystemAbstraction fileSystem=new EphemeralFileSystemAbstraction();
+  RaftLog log=createRaftLog(fileSystem);
+  RaftLogEntry logEntryA=new RaftLogEntry(1,ReplicatedInteger.valueOf(1));
+  log.append(logEntryA);
+  fileSystem.crash();
+  log=createRaftLog(fileSystem);
+  RaftLogEntry logEntryB=new RaftLogEntry(1,ReplicatedInteger.valueOf(2));
+  log.append(logEntryB);
+  assertThat(log.appendIndex(),is(1L));
+  assertThat(log.entryExists(0),is(true));
+  assertThat(log.readLogEntry(0),is(logEntryA));
+  assertThat(log.entryExists(1),is(true));
+  assertThat(log.readLogEntry(1),is(logEntryB));
+  assertThat(log.entryExists(2),is(false));
+}

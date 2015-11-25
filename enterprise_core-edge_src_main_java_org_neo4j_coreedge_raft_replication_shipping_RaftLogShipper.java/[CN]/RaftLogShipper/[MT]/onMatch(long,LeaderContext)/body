@@ -1,0 +1,33 @@
+{
+  boolean progress=newMatchIndex > matchIndex;
+  matchIndex=max(newMatchIndex,matchIndex);
+switch (mode) {
+case MISMATCH:
+    if (sendNextBatchAfterMatch(leaderContext)) {
+      log.info(format("Caught up after mismatch: %s",follower));
+      mode=Mode.PIPELINE;
+    }
+ else {
+      log.info(format("Starting catch up after mismatch: %s",follower));
+      mode=Mode.CATCHUP;
+    }
+  break;
+case CATCHUP:
+if (matchIndex >= lastSentIndex) {
+  if (sendNextBatchAfterMatch(leaderContext)) {
+    log.info(format("Caught up: %s",follower));
+    mode=Mode.PIPELINE;
+  }
+}
+break;
+case PIPELINE:
+if (matchIndex == lastSentIndex) {
+abortTimeout();
+}
+ else if (progress) {
+scheduleTimeout(retryTimeMillis);
+}
+break;
+}
+lastLeaderContext=leaderContext;
+}

@@ -1,0 +1,18 @@
+{
+  DirectNetworking net=new DirectNetworking();
+  final long leader1=0;
+  final long leader2=1;
+  final long stable=2;
+  final long[] initialMembers={leader1,leader2,stable};
+  RaftTestFixture fixture=new RaftTestFixture(net,2,initialMembers);
+  fixture.members().withId(leader1).raftInstance().bootstrapWithInitialMembers(new RaftTestGroup(initialMembers));
+  fixture.members().withId(leader1).timeoutService().invokeTimeout(ELECTION);
+  net.processMessages();
+  net.disconnect(leader1);
+  fixture.members().withId(leader2).timeoutService().invokeTimeout(ELECTION);
+  net.processMessages();
+  assertTrue(fixture.members().withId(leader2).raftInstance().isLeader());
+  assertFalse(fixture.members().withId(stable).raftInstance().isLeader());
+  assertEquals(1,fixture.members().withIds(leader2,stable).withRole(LEADER).size());
+  assertEquals(1,fixture.members().withIds(leader2,stable).withRole(FOLLOWER).size());
+}

@@ -1,0 +1,29 @@
+{
+  System.setProperty(GroupProperties.PROP_WAIT_SECONDS_BEFORE_JOIN,"1");
+  JoinConfig joinConfig=new JoinConfig();
+  joinConfig.getMulticastConfig().setEnabled(false);
+  TcpIpConfig tcpIpConfig=joinConfig.getTcpIpConfig();
+  tcpIpConfig.setEnabled(true);
+  for (  AdvertisedSocketAddress address : config.get(CoreEdgeClusterSettings.initial_core_cluster_members)) {
+    tcpIpConfig.addMember(address.toString());
+  }
+  NetworkConfig networkConfig=new NetworkConfig();
+  ListenSocketAddress address=config.get(CoreEdgeClusterSettings.cluster_listen_address);
+  networkConfig.setPort(address.socketAddress().getPort());
+  networkConfig.setJoin(joinConfig);
+  String instanceName=String.valueOf(config.get(ClusterSettings.server_id).toIntegerIndex());
+  com.hazelcast.config.Config c=new com.hazelcast.config.Config(instanceName);
+  c.setProperty(GroupProperties.PROP_INITIAL_MIN_CLUSTER_SIZE,String.valueOf(minimumClusterSizeThatCanTolerateOneFaultForExpectedClusterSize()));
+  c.setProperty(GroupProperties.PROP_LOGGING_TYPE,"none");
+  c.setNetworkConfig(networkConfig);
+  c.getGroupConfig().setName(config.get(ClusterSettings.cluster_name));
+  MemberAttributeConfig memberAttributeConfig=new MemberAttributeConfig();
+  memberAttributeConfig.setIntAttribute(SERVER_ID,config.get(ClusterSettings.server_id).toIntegerIndex());
+  memberAttributeConfig.setStringAttribute(CLUSTER_SERVER,address.toString());
+  AdvertisedSocketAddress transactionSource=config.get(CoreEdgeClusterSettings.transaction_advertised_address);
+  memberAttributeConfig.setStringAttribute(TRANSACTION_SERVER,transactionSource.toString());
+  AdvertisedSocketAddress advertisedAddress=config.get(CoreEdgeClusterSettings.raft_advertised_address);
+  memberAttributeConfig.setStringAttribute(RAFT_SERVER,advertisedAddress.toString());
+  c.setMemberAttributeConfig(memberAttributeConfig);
+  return Hazelcast.newHazelcastInstance(c);
+}

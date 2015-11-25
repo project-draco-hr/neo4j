@@ -1,0 +1,18 @@
+{
+  long startTxId=msg.txId();
+  long endTxId=startTxId;
+  if (transactionIdStore.getLastCommittedTransactionId() > startTxId) {
+    IOCursor<CommittedTransactionRepresentation> cursor=logicalTransactionStore.getTransactions(startTxId + 1);
+    while (cursor.next()) {
+      ctx.write(ResponseMessageType.TX);
+      CommittedTransactionRepresentation tx=cursor.get();
+      endTxId=tx.getCommitEntry().getTxId();
+      ctx.write(new TxPullResponse(storeId,tx));
+    }
+    ctx.flush();
+  }
+  ctx.write(ResponseMessageType.TX_STREAM_FINISHED);
+  ctx.write(new TxStreamFinishedResponse(endTxId));
+  ctx.flush();
+  protocol.expect(NextMessage.MESSAGE_TYPE);
+}

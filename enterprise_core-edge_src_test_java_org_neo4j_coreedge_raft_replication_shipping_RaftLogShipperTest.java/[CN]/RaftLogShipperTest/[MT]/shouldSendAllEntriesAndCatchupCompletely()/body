@@ -1,0 +1,24 @@
+{
+  final int ENTRY_COUNT=RaftLogShipper.MAX_BATCH_SIZE * 10;
+  Collection<RaftLogEntry> entries=new ArrayList<>();
+  for (int i=0; i < ENTRY_COUNT; i++) {
+    entries.add(new RaftLogEntry(0,ReplicatedInteger.valueOf(i)));
+  }
+  for (  RaftLogEntry entry : entries) {
+    raftLog.append(entry);
+  }
+  startLogShipper();
+  RaftLogEntry firstEntry=new RaftLogEntry(0,ReplicatedInteger.valueOf(0));
+  while (!outbound.hasEntriesTo(follower,firstEntry)) {
+    logShipper.onMismatch(-1,new LeaderContext(0,0));
+  }
+  long matchIndex;
+  do {
+    AppendEntries.Request last=(AppendEntries.Request)IteratorUtil.last(outbound.sentTo(follower));
+    matchIndex=last.prevLogIndex() + last.entries().length;
+    outbound.clear();
+    logShipper.onMatch(matchIndex,new LeaderContext(0,0));
+  }
+ while (outbound.sentTo(follower).size() > 0);
+  assertEquals(ENTRY_COUNT - 1,matchIndex);
+}

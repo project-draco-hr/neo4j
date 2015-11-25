@@ -1,0 +1,17 @@
+{
+  InetSocketAddress serverAddress=findFreeAddress();
+  Channel serverChannel=bootstrapHelloServer(serverAddress);
+  final FakeClock fakeClock=new FakeClock();
+  OnDemandJobScheduler onDemandJobScheduler=new OnDemandJobScheduler();
+  SenderService senderService=new SenderService(new ExpiryScheduler(onDemandJobScheduler),new Expiration(fakeClock,2,MINUTES),discardClientInitializer(),NullLogProvider.getInstance());
+  senderService.start();
+  senderService.send(new AdvertisedSocketAddress(serverAddress),"GO!");
+  fakeClock.forward(1,TimeUnit.MINUTES);
+  onDemandJobScheduler.runJob();
+  assertEquals(1,senderService.activeChannelCount());
+  fakeClock.forward(2,TimeUnit.MINUTES);
+  onDemandJobScheduler.runJob();
+  assertEquals(0,senderService.activeChannelCount());
+  senderService.stop();
+  serverChannel.close();
+}

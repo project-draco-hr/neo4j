@@ -1,0 +1,11 @@
+{
+  OnDemandJobScheduler jobScheduler=new OnDemandJobScheduler();
+  MembershipWaiter<RaftTestMember> waiter=new MembershipWaiter<>(member(0),jobScheduler,500);
+  InMemoryRaftLog raftLog=new InMemoryRaftLog();
+  raftLog.append(new RaftLogEntry(0,valueOf(0)));
+  raftLog.commit(0);
+  RaftState<RaftTestMember> raftState=RaftStateBuilder.raftState().votingMembers(member(0)).leaderCommit(0).entryLog(raftLog).build();
+  CompletableFuture<Boolean> future=waiter.waitUntilCaughtUpMember(raftState);
+  jobScheduler.runJob();
+  future.get(0,NANOSECONDS);
+}
