@@ -10,13 +10,9 @@ synchronized (timeouts) {
           if (stateMachine == null) {
             return;
           }
-          stateMachine.handle(message,temporaryOutgoing);
-          Message<? extends MessageType> tempMessage;
-          while ((tempMessage=temporaryOutgoing.nextOutgoingMessage()) != null) {
-            outgoing.offer(tempMessage);
-          }
+          handleMessage(stateMachine,message);
           Message<? extends MessageType> outgoingMessage;
-          List<Message<? extends MessageType>> toSend=new LinkedList<Message<? extends MessageType>>();
+          List<Message<? extends MessageType>> toSend=new LinkedList<>();
           try {
             while ((outgoingMessage=outgoing.nextOutgoingMessage()) != null) {
               message.copyHeadersTo(outgoingMessage,CONVERSATION_ID,CREATED_BY);
@@ -37,10 +33,7 @@ synchronized (timeouts) {
  else {
                 StateMachine internalStatemachine=stateMachines.get(outgoingMessage.getMessageType().getClass());
                 if (internalStatemachine != null) {
-                  internalStatemachine.handle((Message)outgoingMessage,temporaryOutgoing);
-                  while ((tempMessage=temporaryOutgoing.nextOutgoingMessage()) != null) {
-                    outgoing.offer(tempMessage);
-                  }
+                  handleMessage(internalStatemachine,outgoingMessage);
                 }
               }
             }
@@ -58,6 +51,12 @@ synchronized (timeouts) {
       }
       executor.drain();
       monitor.finishedProcessing(message);
+    }
+    private void handleMessage(    StateMachine stateMachine,    Message<? extends MessageType> message){
+      stateMachine.handle(message,temporaryOutgoing);
+      for (Message<? extends MessageType> next; (next=temporaryOutgoing.nextOutgoingMessage()) != null; ) {
+        outgoing.offer(next);
+      }
     }
   }
 );
