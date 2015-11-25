@@ -1,17 +1,13 @@
 {
   GraphDatabaseAPI db=(GraphDatabaseAPI)new TestGraphDatabaseFactory().newImpermanentDatabase();
   try {
-    TransactionCounters monitor=db.getDependencyResolver().resolveDependency(TransactionCounters.class);
-    long startedBefore=monitor.getNumberOfStartedTransactions();
-    long committedBefore=monitor.getNumberOfCommittedTransactions();
-    long rolledBackBefore=monitor.getNumberOfRolledbackTransactions();
+    TransactionCounters counts=db.getDependencyResolver().resolveDependency(TransactionCounters.class);
+    TransactionCountersChecker checker=new TransactionCountersChecker(counts);
     try (Transaction tx=db.beginTx()){
-      db.createNode();
+      dbConsumer.accept(db);
       tx.success();
     }
-     assertEquals(startedBefore + 1,monitor.getNumberOfStartedTransactions());
-    assertEquals(committedBefore + 1,monitor.getNumberOfCommittedTransactions());
-    assertEquals(rolledBackBefore,monitor.getNumberOfRolledbackTransactions());
+     checker.verifyCommitted(isWriteTx,counts);
   }
   finally {
     db.shutdown();
