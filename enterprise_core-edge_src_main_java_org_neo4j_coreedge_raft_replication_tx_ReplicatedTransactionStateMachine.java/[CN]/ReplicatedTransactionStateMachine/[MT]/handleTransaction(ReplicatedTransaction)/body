@@ -9,11 +9,9 @@ synchronized (this) {
         }
         long txId=-1;
         if (!shouldReject) {
-          try (LockGroup lockGroup=new LockGroup()){
-            txId=localCommitProcess.commit(tx,lockGroup,CommitEvent.NULL,TransactionApplicationMode.EXTERNAL);
-            lastCommittedTxId=txId;
-          }
-         }
+          txId=localCommitProcess.commit(new TransactionToApply(tx),CommitEvent.NULL,TransactionApplicationMode.EXTERNAL);
+          lastCommittedTxId=txId;
+        }
         if (replicatedTransaction.globalSession().equals(myGlobalSession)) {
           CompletableFuture<Long> future=outstanding.remove(replicatedTransaction.localOperationId());
           if (future != null) {
