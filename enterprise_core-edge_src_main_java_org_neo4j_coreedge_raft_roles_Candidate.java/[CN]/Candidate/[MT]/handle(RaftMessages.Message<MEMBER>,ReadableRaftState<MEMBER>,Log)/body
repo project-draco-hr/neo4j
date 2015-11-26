@@ -1,13 +1,5 @@
 {
-  Role nextRole=CANDIDATE;
-  MEMBER leader=ctx.leader();
-  long leaderCommit=ctx.leaderCommit();
-  Collection<RaftMessages.Directed<MEMBER>> outgoingMessages=new ArrayList<>();
-  ArrayList<LogCommand> logCommands=new ArrayList<>();
-  ArrayList<ShipCommand> shipCommands=new ArrayList<>();
-  Set<MEMBER> updatedVotesForMe=new HashSet<>(ctx.votesForMe());
-  long newTerm=ctx.term();
-  long lastLogIndexBeforeWeBecameLeader=-1;
+  Outcome<MEMBER> outcome=new Outcome<>(CANDIDATE,ctx);
 switch (message.type()) {
 case HEARTBEAT:
 {
@@ -15,8 +7,8 @@ case HEARTBEAT:
       if (req.leaderTerm() < ctx.term()) {
         break;
       }
-      nextRole=FOLLOWER;
-      outgoingMessages.add(new RaftMessages.Directed<>(ctx.myself(),message));
+      outcome.setNextRole(FOLLOWER);
+      outcome.addOutgoingMessage(new RaftMessages.Directed<>(ctx.myself(),message));
       break;
     }
 case APPEND_ENTRIES_REQUEST:
@@ -24,33 +16,33 @@ case APPEND_ENTRIES_REQUEST:
     RaftMessages.AppendEntries.Request<MEMBER> req=(RaftMessages.AppendEntries.Request<MEMBER>)message;
     if (req.leaderTerm() < ctx.term()) {
       RaftMessages.AppendEntries.Response<MEMBER> appendResponse=new RaftMessages.AppendEntries.Response<>(ctx.myself(),ctx.term(),false,req.prevLogIndex());
-      outgoingMessages.add(new RaftMessages.Directed<>(req.from(),appendResponse));
+      outcome.addOutgoingMessage(new RaftMessages.Directed<>(req.from(),appendResponse));
       break;
     }
-    nextRole=FOLLOWER;
-    outgoingMessages.add(new RaftMessages.Directed<>(ctx.myself(),req));
+    outcome.setNextRole(FOLLOWER);
+    outcome.addOutgoingMessage(new RaftMessages.Directed<>(ctx.myself(),req));
     break;
   }
 case VOTE_RESPONSE:
 {
   RaftMessages.Vote.Response<MEMBER> res=(RaftMessages.Vote.Response<MEMBER>)message;
   if (res.term() > ctx.term()) {
-    newTerm=res.term();
-    nextRole=FOLLOWER;
+    outcome.setNextTerm(res.term());
+    outcome.setNextRole(FOLLOWER);
     break;
   }
  else   if (res.term() < ctx.term() || !res.voteGranted()) {
     break;
   }
   if (!res.from().equals(ctx.myself())) {
-    updatedVotesForMe.add(res.from());
+    outcome.addVoteForMe(res.from());
   }
-  if (isQuorum(ctx.votingMembers().size(),updatedVotesForMe.size())) {
-    log.info("In term %d %s ELECTED AS LEADER voted for by %s%n",ctx.term(),ctx.myself(),updatedVotesForMe);
-    leader=ctx.myself();
-    Leader.sendHeartbeats(ctx,outgoingMessages);
-    lastLogIndexBeforeWeBecameLeader=ctx.entryLog().appendIndex();
-    nextRole=LEADER;
+  if (isQuorum(ctx.votingMembers().size(),outcome.votesForMe.size())) {
+    log.info("In term %d %s ELECTED AS LEADER voted for by %s%n",ctx.term(),ctx.myself(),outcome.votesForMe);
+    outcome.setLeader(ctx.myself());
+    Leader.sendHeartbeats(ctx,outcome);
+    outcome.setLastLogIndexBeforeWeBecameLeader(ctx.entryLog().appendIndex());
+    outcome.setNextRole(LEADER);
   }
   break;
 }
@@ -58,20 +50,20 @@ case VOTE_REQUEST:
 {
 RaftMessages.Vote.Request<MEMBER> req=(RaftMessages.Vote.Request<MEMBER>)message;
 if (req.term() > ctx.term()) {
-  newTerm=req.term();
-  updatedVotesForMe.clear();
-  nextRole=FOLLOWER;
-  outgoingMessages.add(new RaftMessages.Directed<>(ctx.myself(),req));
+  outcome.setNextTerm(req.term());
+  outcome.votesForMe.clear();
+  outcome.setNextRole(FOLLOWER);
+  outcome.addOutgoingMessage(new RaftMessages.Directed<>(ctx.myself(),req));
   break;
 }
-outgoingMessages.add(new RaftMessages.Directed<>(req.from(),new RaftMessages.Vote.Response<>(ctx.myself(),newTerm,false)));
+outcome.addOutgoingMessage(new RaftMessages.Directed<>(req.from(),new RaftMessages.Vote.Response<>(ctx.myself(),outcome.term,false)));
 break;
 }
 case ELECTION_TIMEOUT:
 {
-nextRole=FOLLOWER;
+outcome.setNextRole(FOLLOWER);
 break;
 }
 }
-return new Outcome<>(nextRole,newTerm,leader,leaderCommit,null,updatedVotesForMe,lastLogIndexBeforeWeBecameLeader,new FollowerStates<>(),false,logCommands,outgoingMessages,shipCommands);
+return outcome;
 }
