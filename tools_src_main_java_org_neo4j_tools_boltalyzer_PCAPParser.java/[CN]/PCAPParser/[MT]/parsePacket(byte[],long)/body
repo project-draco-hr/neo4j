@@ -1,0 +1,18 @@
+{
+  if (raw.length > 0) {
+    int tcpPacketOffset=(raw[IP_VERSION_AND_LENGTH_OFFSET] & 0xF) * 4;
+    int tcpPayloadOffset=tcpPacketOffset + ((raw[tcpPacketOffset + 12] >> 4) & 0xF) * 4;
+    InetAddress src=parseInetAddress(IP_SRC_OFFSET,raw);
+    int srcPort=readPort(TCP_SRC_PORT_OFFSET + tcpPacketOffset,raw);
+    InetAddress dst=parseInetAddress(IP_DST_OFFSET,raw);
+    int dstPort=readPort(TCP_DST_PORT_OFFSET + tcpPacketOffset,raw);
+    String srcStr=src.toString() + srcPort;
+    String dstStr=dst.toString() + dstPort;
+    String connectionKey=srcStr.compareTo(dstStr) > 0 ? srcStr + dstStr : dstStr + srcStr;
+    ByteBuffer payload=ByteBuffer.wrap(raw,tcpPayloadOffset,raw.length - tcpPayloadOffset);
+    return new Dict().put(Fields.timestamp,timestamp).put(Fields.src,src).put(Fields.srcPort,srcPort).put(Fields.dst,dst).put(Fields.dstPort,dstPort).put(Fields.payload,payload).put(Fields.connectionKey,connectionKey);
+  }
+ else {
+    return new Dict();
+  }
+}
