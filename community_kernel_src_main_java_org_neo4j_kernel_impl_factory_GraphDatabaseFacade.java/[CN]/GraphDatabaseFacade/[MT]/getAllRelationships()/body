@@ -1,0 +1,19 @@
+{
+  threadToTransactionBridge.assertInUnterminatedTransaction();
+  return new ResourceIterable<Relationship>(){
+    @Override public ResourceIterator<Relationship> iterator(){
+      final Statement statement=threadToTransactionBridge.get();
+      final PrimitiveLongIterator ids=statement.readOperations().relationshipsGetAll();
+      return new PrefetchingResourceIterator<Relationship>(){
+        @Override public void close(){
+          statement.close();
+        }
+        @Override protected Relationship fetchNextOrNull(){
+          return ids.hasNext() ? nodeManager.newRelationshipProxy(ids.next()) : null;
+        }
+      }
+;
+    }
+  }
+;
+}
