@@ -1,0 +1,18 @@
+{
+  try (PageCache pages=createPageCache(fs);Lifespan life=new Lifespan()){
+    if (fs.isDirectory(path)) {
+      StoreFactory factory=new StoreFactory(fs,path,pages,NullLogProvider.getInstance());
+      NeoStores neoStores=factory.openAllNeoStores();
+      neoStores.getCounts().accept(new DumpCountsStore(out,neoStores));
+    }
+ else {
+      VisitableCountsTracker tracker=new VisitableCountsTracker(NullLogProvider.getInstance(),fs,pages,new Config(),path);
+      if (fs.fileExists(path)) {
+        tracker.visitFile(path,new DumpCountsStore(out));
+      }
+ else {
+        life.add(tracker).accept(new DumpCountsStore(out));
+      }
+    }
+  }
+ }

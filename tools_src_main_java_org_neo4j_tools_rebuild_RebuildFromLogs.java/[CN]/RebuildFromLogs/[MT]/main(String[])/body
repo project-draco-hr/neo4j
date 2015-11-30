@@ -1,0 +1,37 @@
+{
+  if (args == null) {
+    printUsage();
+    return;
+  }
+  Args params=Args.parse(args);
+  @SuppressWarnings("boxing") long txId=params.getNumber(UP_TO_TX_ID,BASE_TX_ID).longValue();
+  List<String> orphans=params.orphans();
+  args=orphans.toArray(new String[orphans.size()]);
+  if (args.length != 2) {
+    printUsage("Exactly two positional arguments expected: " + "<source dir with logs> <target dir for graphdb>, got " + args.length);
+    System.exit(-1);
+    return;
+  }
+  File source=new File(args[0]), target=new File(args[1]);
+  if (!source.isDirectory()) {
+    printUsage(source + " is not a directory");
+    System.exit(-1);
+    return;
+  }
+  if (target.exists()) {
+    if (target.isDirectory()) {
+      if (directoryContainsDb(target.toPath())) {
+        printUsage("target graph database already exists");
+        System.exit(-1);
+        return;
+      }
+      System.err.println("WARNING: the directory " + target + " already exists");
+    }
+ else {
+      printUsage(target + " is a file");
+      System.exit(-1);
+      return;
+    }
+  }
+  new RebuildFromLogs(new DefaultFileSystemAbstraction()).rebuild(source,target,txId);
+}
