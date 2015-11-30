@@ -1,0 +1,20 @@
+{
+  StoreFileChannel channel=mock(StoreFileChannel.class);
+  FileSystemAbstraction fsa=mock(FileSystemAbstraction.class);
+  when(fsa.open(any(File.class),anyString())).thenReturn(channel);
+  doNothing().doThrow(new IOException()).when(channel).writeAll(any(ByteBuffer.class),anyInt());
+  DurableVoteStore store=new DurableVoteStore(fsa,new File(""));
+  AdvertisedSocketAddress firstLocalhost=new AdvertisedSocketAddress(InetSocketAddress.createUnresolved("localhost",1234));
+  CoreMember firstMember=new CoreMember(firstLocalhost,firstLocalhost);
+  store.update(firstMember);
+  assertEquals(firstMember,store.votedFor());
+  AdvertisedSocketAddress secondLocalhost=new AdvertisedSocketAddress(InetSocketAddress.createUnresolved("localhost",1235));
+  CoreMember secondMember=new CoreMember(secondLocalhost,secondLocalhost);
+  try {
+    store.update(secondMember);
+    fail("Test setup should have caused an exception here");
+  }
+ catch (  Exception e) {
+  }
+  assertEquals(firstMember,store.votedFor());
+}
