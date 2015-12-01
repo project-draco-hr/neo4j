@@ -1,0 +1,30 @@
+{
+  if (arguments.length == 0) {
+    System.err.println("Tool for rebuilding database from transaction logs onto a new store");
+    System.err.println("Example: dbrebuild --from path/to/some.db --to path/to/new.db apply next");
+    System.err.println("         dbrebuild --from path/to/some.db --to path/to/new.db -i");
+    System.err.println("          --from : which db to use as source for reading transactions");
+    System.err.println("            --to : where to build the new db");
+    System.err.println("  --overwrite-to : always starts from empty 'to' db");
+    System.err.println("              -i : interactive mode (enter a shell)");
+    return;
+  }
+  Args args=Args.withFlags("i","overwrite-to").parse(arguments);
+  File fromPath=getFrom(args);
+  File toPath=getTo(args);
+  GraphDatabaseBuilder dbBuilder=newDbBuilder(toPath,args);
+  boolean interactive=args.getBoolean("i");
+  if (interactive && !args.orphans().isEmpty()) {
+    throw new IllegalArgumentException("No additional commands allowed in interactive mode");
+  }
+  @SuppressWarnings("resource") InputStream input=interactive ? in : oneCommand(args.orphansAsArray());
+  LifeSupport life=new LifeSupport();
+  ConsoleInput consoleInput=console(fromPath,dbBuilder,input,interactive ? staticPrompt("# ") : NO_PROMPT,life);
+  life.start();
+  try {
+    consoleInput.waitFor();
+  }
+  finally {
+    life.shutdown();
+  }
+}

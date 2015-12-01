@@ -1,0 +1,35 @@
+{
+  DependencyResolver resolver=toDb.getDependencyResolver();
+  BatchingTransactionRepresentationStoreApplier applier=new BatchingTransactionRepresentationStoreApplier(resolver.resolveDependency(LockService.class),resolver.resolveDependency(IndexConfigStore.class),resolver.resolveDependency(IdOrderingQueue.class),resolver.resolveDependency(StorageEngine.class));
+  TransactionRepresentationCommitProcess commitProcess=new TransactionRepresentationCommitProcess(resolver.resolveDependency(TransactionAppender.class),applier,resolver.resolveDependency(IndexUpdatesValidator.class));
+  LifeSupport life=new LifeSupport();
+  DefaultFileSystemAbstraction fileSystem=new DefaultFileSystemAbstraction();
+  try (PageCache pageCache=StandalonePageCacheFactory.createPageCache(fileSystem)){
+    LogicalTransactionStore source=life.add(new ReadOnlyTransactionStore(pageCache,fileSystem,fromPath,new Monitors()));
+    life.start();
+    long lastAppliedTx=fromTxExclusive;
+    ProgressListener progress=toTxInclusive - fromTxExclusive >= 100 ? textual(out).singlePart("Application progress",toTxInclusive - fromTxExclusive) : ProgressListener.NONE;
+    try (IOCursor<CommittedTransactionRepresentation> cursor=source.getTransactions(fromTxExclusive + 1)){
+      while (cursor.next()) {
+        CommittedTransactionRepresentation transaction=cursor.get();
+        try (LockGroup locks=new LockGroup()){
+          commitProcess.commit(transaction.getTransactionRepresentation(),locks,CommitEvent.NULL,RECOVERY);
+          progress.add(1);
+        }
+ catch (        final Throwable e) {
+          System.err.println("ERROR applying transaction " + transaction.getCommitEntry().getTxId());
+          throw e;
+        }
+        lastAppliedTx=transaction.getCommitEntry().getTxId();
+        if (lastAppliedTx == toTxInclusive) {
+          break;
+        }
+      }
+    }
+     applier.closeBatch();
+    return lastAppliedTx;
+  }
+  finally {
+    life.shutdown();
+  }
+}
