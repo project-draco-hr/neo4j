@@ -1,0 +1,21 @@
+{
+  Collection<Command> commands=new ArrayList<>();
+  if (txState == null) {
+    legacyIndexTransactionState.extractCommands(commands);
+    return commands;
+  }
+  NeoStoreTransactionContext context=new NeoStoreTransactionContext(neoStores,locks);
+  TransactionRecordState recordState=new TransactionRecordState(neoStores,integrityValidator,context);
+  recordState.initialize(lastTransactionIdWhenStarted);
+  TxStateVisitor txStateVisitor=new TransactionToRecordStateVisitor(recordState,schemaStateChangeCallback,schemaStorage,constraintSemantics,providerMap,legacyIndexTransactionState,procedureCache);
+  CountsRecordState countsRecordState=new CountsRecordState();
+  txStateVisitor=constraintSemantics.decorateTxStateVisitor(operations,storeStatement,storeLayer,new DirectTxStateHolder(txState,legacyIndexTransactionState),txStateVisitor);
+  txStateVisitor=new TransactionCountingStateVisitor(txStateVisitor,storeLayer,txState,countsRecordState);
+  try (TxStateVisitor visitor=txStateVisitor){
+    txState.accept(txStateVisitor);
+  }
+   recordState.extractCommands(commands);
+  legacyIndexTransactionState.extractCommands(commands);
+  countsRecordState.extractCommands(commands);
+  return commands;
+}

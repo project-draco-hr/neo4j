@@ -2,18 +2,17 @@
   InMemoryLogChannel channel=new InMemoryLogChannel();
   when(logFile.getWriter()).thenReturn(channel);
   TransactionAppender appender=life.add(new BatchingTransactionAppender(logFile,NO_ROTATION,positionCache,transactionIdStore,BYPASS,kernelHealth));
-  life.start();
   final byte[] additionalHeader=new byte[]{1,2,5};
   final int masterId=2, authorId=1;
   final long timeStarted=12345, latestCommittedTxWhenStarted=4545, timeCommitted=timeStarted + 10;
-  PhysicalTransactionRepresentation transactionRepresentation=new PhysicalTransactionRepresentation(singleCreateNodeCommand());
+  PhysicalTransactionRepresentation transactionRepresentation=new PhysicalTransactionRepresentation(singleCreateNodeCommand(0));
   transactionRepresentation.setHeader(additionalHeader,masterId,authorId,timeStarted,latestCommittedTxWhenStarted,timeCommitted,-1);
   when(transactionIdStore.getLastCommittedTransactionId()).thenReturn(latestCommittedTxWhenStarted);
   LogEntryStart start=new LogEntryStart(0,0,0l,latestCommittedTxWhenStarted,null,LogPosition.UNSPECIFIED);
   LogEntryCommit commit=new OnePhaseCommit(latestCommittedTxWhenStarted + 2,0l);
   CommittedTransactionRepresentation transaction=new CommittedTransactionRepresentation(start,transactionRepresentation,commit);
   try {
-    appender.append(transaction.getTransactionRepresentation(),transaction.getCommitEntry().getTxId());
+    appender.append(new TransactionToApply(transaction.getTransactionRepresentation(),transaction.getCommitEntry().getTxId()),logAppendEvent);
     fail("should have thrown");
   }
  catch (  Throwable e) {

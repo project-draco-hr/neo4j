@@ -1,7 +1,6 @@
 {
-  NeoStores neoStores=newNeoStores(GraphDatabaseSettings.dense_node_threshold.name(),"1");
-  NeoStoreTransactionContext context=new NeoStoreTransactionContext(neoStores,mock(Locks.Client.class));
-  TransactionRecordState recordState=new TransactionRecordState(neoStores,mock(IntegrityValidator.class),context);
+  NeoStores neoStores=neoStoresRule.open(GraphDatabaseSettings.dense_node_threshold.name(),"1");
+  TransactionRecordState recordState=new TransactionRecordState(neoStores,integrityValidator,newContext(neoStores));
   long nodeId1=0, nodeId2=1, relId1=1, relId2=2, relId4=10;
   recordState.nodeCreate(nodeId1);
   recordState.nodeCreate(nodeId2);
@@ -9,10 +8,9 @@
   recordState.relCreate(relId2,0,nodeId1,nodeId1);
   recordState.relCreate(relId4,1,nodeId1,nodeId1);
   recordState.nodeAddProperty(nodeId1,0,101);
-  CommandHandler applier=new NeoStoreTransactionApplier(neoStores,mock(CacheAccessBackDoor.class),LockService.NO_LOCK_SERVICE,new LockGroup(),1);
+  CommandHandler applier=new NeoStoreTransactionApplier(neoStores,mock(CacheAccessBackDoor.class),LockService.NO_LOCK_SERVICE,new LockGroup());
   apply(applier,transaction(recordState));
-  context=new NeoStoreTransactionContext(neoStores,mock(Locks.Client.class));
-  recordState=new TransactionRecordState(neoStores,mock(IntegrityValidator.class),context);
+  recordState=new TransactionRecordState(neoStores,mock(IntegrityValidator.class),newContext(neoStores));
   recordState.relDelete(relId4);
   recordState.nodeDelete(nodeId2);
   recordState.nodeRemoveProperty(nodeId1,0);

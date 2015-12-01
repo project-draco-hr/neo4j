@@ -11,21 +11,15 @@
         beforeHookInvoked=true;
       }
     }
-    prepareRecordChangesFromTransactionState();
     if (hasChanges()) {
-      try (LockGroup lockGroup=new LockGroup()){
-        extractedCommands.clear();
-        recordState.extractCommands(extractedCommands);
-        legacyIndexTransactionState.extractCommands(extractedCommands);
-        counts.extractCommands(extractedCommands);
-        if (!extractedCommands.isEmpty()) {
-          PhysicalTransactionRepresentation transactionRepresentation=new PhysicalTransactionRepresentation(extractedCommands);
-          TransactionHeaderInformation headerInformation=headerInformationFactory.create();
-          transactionRepresentation.setHeader(headerInformation.getAdditionalHeader(),headerInformation.getMasterId(),headerInformation.getAuthorId(),startTimeMillis,lastTransactionIdWhenStarted,clock.currentTimeMillis(),locks.getLockSessionId());
-          commitProcess.commit(transactionRepresentation,lockGroup,commitEvent,INTERNAL);
-        }
+      Collection<Command> extractedCommands=storageEngine.createCommands(txState,legacyIndexTransactionState,locks,operations,storeStatement,lastTransactionIdWhenStarted);
+      if (!extractedCommands.isEmpty()) {
+        PhysicalTransactionRepresentation transactionRepresentation=new PhysicalTransactionRepresentation(extractedCommands);
+        TransactionHeaderInformation headerInformation=headerInformationFactory.create();
+        transactionRepresentation.setHeader(headerInformation.getAdditionalHeader(),headerInformation.getMasterId(),headerInformation.getAuthorId(),startTimeMillis,lastTransactionIdWhenStarted,clock.currentTimeMillis(),locks.getLockSessionId());
+        commitProcess.commit(new TransactionToApply(transactionRepresentation),commitEvent,INTERNAL);
       }
-     }
+    }
     success=true;
   }
  catch (  ConstraintValidationKernelException|CreateConstraintFailureException e) {

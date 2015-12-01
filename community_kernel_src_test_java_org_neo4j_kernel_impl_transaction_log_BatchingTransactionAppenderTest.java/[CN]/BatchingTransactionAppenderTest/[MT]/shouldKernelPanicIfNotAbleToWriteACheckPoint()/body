@@ -1,10 +1,11 @@
 {
-  BatchingTransactionAppender appender=new BatchingTransactionAppender(logFile,NO_ROTATION,positionCache,transactionIdStore,BYPASS,kernelHealth);
   IOException ioex=new IOException("boom!");
   WritableLogChannel channel=mock(WritableLogChannel.class,RETURNS_MOCKS);
+  when(channel.put(anyByte())).thenReturn(channel);
   when(channel.putLong(anyLong())).thenThrow(ioex);
+  when(channel.put(anyByte())).thenThrow(ioex);
   when(logFile.getWriter()).thenReturn(channel);
-  appender.start();
+  BatchingTransactionAppender appender=life.add(new BatchingTransactionAppender(logFile,NO_ROTATION,positionCache,transactionIdStore,BYPASS,kernelHealth));
   try {
     appender.checkPoint(new LogPosition(0l,0l),LogCheckPointEvent.NULL);
     fail("should have thrown ");

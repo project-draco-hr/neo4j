@@ -1,10 +1,11 @@
 {
   TransactionRepresentation[] transactionRepresentation=new TransactionRepresentation[1];
   KernelTransactions registry=newKernelTransactions(newRememberingCommitProcess(transactionRepresentation),newMockContextFactoryWithChanges());
-  KernelTransaction transaction=registry.newInstance();
-  transaction.success();
-  transaction.close();
-  byte[] additionalHeader=transactionRepresentation[0].additionalHeader();
+  try (KernelTransaction transaction=registry.newInstance()){
+    ((KernelTransactionImplementation)transaction).txState().nodeDoCreate(0);
+    transaction.success();
+  }
+   byte[] additionalHeader=transactionRepresentation[0].additionalHeader();
   assertNotNull(additionalHeader);
   assertTrue(additionalHeader.length > 0);
 }
