@@ -3,16 +3,15 @@
   long nextTxId=15;
   when(transactionIdStore.nextCommittingTransactionId()).thenReturn(nextTxId);
   TransactionAppender appender=life.add(new BatchingTransactionAppender(logFile,NO_ROTATION,positionCache,transactionIdStore,BYPASS,kernelHealth));
-  life.start();
   final byte[] additionalHeader=new byte[]{1,2,5};
   final int masterId=2, authorId=1;
   final long timeStarted=12345, latestCommittedTxWhenStarted=nextTxId - 5, timeCommitted=timeStarted + 10;
-  PhysicalTransactionRepresentation transactionRepresentation=new PhysicalTransactionRepresentation(singleCreateNodeCommand());
+  PhysicalTransactionRepresentation transactionRepresentation=new PhysicalTransactionRepresentation(singleCreateNodeCommand(0));
   transactionRepresentation.setHeader(additionalHeader,masterId,authorId,timeStarted,latestCommittedTxWhenStarted,timeCommitted,-1);
   LogEntryStart start=new LogEntryStart(0,0,0l,latestCommittedTxWhenStarted,null,LogPosition.UNSPECIFIED);
   LogEntryCommit commit=new OnePhaseCommit(nextTxId,0l);
   CommittedTransactionRepresentation transaction=new CommittedTransactionRepresentation(start,transactionRepresentation,commit);
-  appender.append(transaction.getTransactionRepresentation(),transaction.getCommitEntry().getTxId());
+  appender.append(new TransactionToApply(transactionRepresentation,transaction.getCommitEntry().getTxId()),logAppendEvent);
   LogEntryReader<ReadableVersionableLogChannel> logEntryReader=new VersionAwareLogEntryReader<>();
   try (PhysicalTransactionCursor<ReadableVersionableLogChannel> reader=new PhysicalTransactionCursor<>(channel,logEntryReader)){
     reader.next();

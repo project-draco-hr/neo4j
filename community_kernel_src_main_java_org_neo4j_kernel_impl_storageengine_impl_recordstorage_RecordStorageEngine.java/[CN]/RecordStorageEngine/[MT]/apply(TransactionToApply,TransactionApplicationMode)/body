@@ -1,0 +1,18 @@
+{
+  try (LockGroup locks=new LockGroup()){
+    try (CommandApplierFacade applier=applier(mode,locks)){
+      TransactionToApply tx=batch;
+      while (tx != null) {
+        ensureValidatedIndexUpdates(tx);
+        applier.begin(tx);
+        tx.transactionRepresentation().accept(applier);
+        applier.end();
+        tx=tx.next();
+      }
+    }
+   }
+ catch (  Throwable cause) {
+    kernelHealth.panic(cause);
+    throw cause;
+  }
+}

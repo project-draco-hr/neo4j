@@ -4,17 +4,25 @@
   LocalOperationId localOperationIdAfter=new LocalOperationId(0,1);
   CoreMember newLockManager=new CoreMember(address("new:1"),address("new:2"));
   PhysicalTransactionRepresentation tx=new PhysicalTransactionRepresentation(Collections.emptyList());
-  tx.setHeader(null,0,0,0,3,0,0);
+  tx.setHeader(null,0,0,1,3,0,0);
   ReplicatedTransaction txBefore=ReplicatedTransactionFactory.createImmutableReplicatedTransaction(tx,globalSession,localOperationIdBefore);
   PhysicalTransactionRepresentation after=mock(PhysicalTransactionRepresentation.class);
   when(after.getLatestCommittedTxWhenStarted()).thenReturn(3L);
   ReplicatedTransaction txAfter=ReplicatedTransactionFactory.createImmutableReplicatedTransaction(after,globalSession,localOperationIdAfter);
   TransactionCommitProcess localCommitProcess=mock(TransactionCommitProcess.class);
-  when(localCommitProcess.commit(any(TransactionRepresentation.class),any(LockGroup.class),any(CommitEvent.class),any(TransactionApplicationMode.class))).thenReturn(4L);
+  final AtomicReference<TransactionRepresentation> committedTxRepresentation=new AtomicReference<>();
+  when(localCommitProcess.commit(any(TransactionToApply.class),any(CommitEvent.class),any(TransactionApplicationMode.class))).thenAnswer(new Answer<Long>(){
+    @Override public Long answer(    InvocationOnMock invocation) throws Throwable {
+      committedTxRepresentation.set(invocation.getArgumentAt(0,TransactionToApply.class).transactionRepresentation());
+      return 4L;
+    }
+  }
+);
   ReplicatedTransactionStateMachine listener=new ReplicatedTransactionStateMachine(localCommitProcess,sessionTracker,globalSession);
   listener.onReplicated(txBefore);
   listener.onReplicated(new CoreServiceAssignment(LOCK_MANAGER,newLockManager,UUID.randomUUID()));
   listener.onReplicated(txAfter);
-  verify(localCommitProcess).commit(eq(tx),any(LockGroup.class),any(CommitEvent.class),eq(TransactionApplicationMode.EXTERNAL));
+  verify(localCommitProcess).commit(any(TransactionToApply.class),any(CommitEvent.class),eq(TransactionApplicationMode.EXTERNAL));
+  assertEquals(tx,committedTxRepresentation.get());
   verifyNoMoreInteractions(localCommitProcess);
 }

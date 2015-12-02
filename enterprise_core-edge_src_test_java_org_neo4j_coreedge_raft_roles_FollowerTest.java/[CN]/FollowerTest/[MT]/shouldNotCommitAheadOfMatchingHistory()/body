@@ -1,0 +1,16 @@
+{
+  int LEADER_COMMIT=10;
+  int LEADER1_TERM=1;
+  int LEADER2_TERM=2;
+  InMemoryRaftLog raftLog=new InMemoryRaftLog();
+  raftLog.append(new RaftLogEntry(LEADER1_TERM,ReplicatedString.valueOf("gryffindor")));
+  raftLog.commit(0);
+  raftLog.append(new RaftLogEntry(LEADER1_TERM,ReplicatedString.valueOf("hufflepuff")));
+  raftLog.append(new RaftLogEntry(LEADER1_TERM,ReplicatedString.valueOf("ravenclaw")));
+  RaftState<RaftTestMember> state=raftState().myself(myself).entryLog(raftLog).term(1).build();
+  Follower follower=new Follower();
+  Outcome<RaftTestMember> outcome;
+  RaftLogEntry[] newEntries={new RaftLogEntry(LEADER2_TERM,new ReplicatedString("slytherin"))};
+  outcome=follower.handle(new RaftMessages.AppendEntries.Request<>(myself,LEADER2_TERM,0,LEADER1_TERM,newEntries,LEADER_COMMIT),state,log());
+  assertThat(outcome.logCommands,hasItem(new CommitCommand(1)));
+}

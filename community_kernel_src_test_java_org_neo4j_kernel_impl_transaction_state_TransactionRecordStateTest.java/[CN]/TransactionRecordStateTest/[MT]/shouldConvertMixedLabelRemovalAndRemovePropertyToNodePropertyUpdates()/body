@@ -1,0 +1,18 @@
+{
+  long nodeId=0;
+  NeoStores neoStores=neoStoresRule.open();
+  TransactionRecordState recordState=new TransactionRecordState(neoStores,integrityValidator,newContext(neoStores));
+  int propertyKey1=1, propertyKey2=2, labelId1=3, labelId2=4;
+  Object value1="first", value2=4;
+  recordState.nodeCreate(nodeId);
+  DefinedProperty property1=recordState.nodeAddProperty(nodeId,propertyKey1,value1);
+  recordState.nodeAddProperty(nodeId,propertyKey2,value2);
+  recordState.addLabelToNode(labelId1,nodeId);
+  recordState.addLabelToNode(labelId2,nodeId);
+  apply(neoStores,recordState);
+  recordState=new TransactionRecordState(neoStores,integrityValidator,newContext(neoStores));
+  recordState.nodeRemoveProperty(nodeId,property1.propertyKeyId());
+  recordState.removeLabelFromNode(labelId2,nodeId);
+  Iterable<NodePropertyUpdate> indexUpdates=indexUpdatesOf(neoStores,recordState);
+  assertEquals(asSet(remove(nodeId,propertyKey1,value1,new long[]{labelId1,labelId2}),remove(nodeId,propertyKey2,value2,new long[]{labelId2})),asSet(indexUpdates));
+}

@@ -1,25 +1,3 @@
 {
-synchronized (logFile) {
-    logRotation.rotateLogIfNeeded(LogAppendEvent.NULL);
-    try {
-      LogEntryCommit commitEntry=tx.getCommitEntry();
-      Commitment commitment=appender.append(tx.getTransactionRepresentation(),commitEntry.getTxId());
-      appender.force();
-      long transactionId=commitEntry.getTxId();
-      TransactionRepresentation representation=tx.getTransactionRepresentation();
-      try {
-        commitment.publishAsCommitted();
-        try (LockGroup locks=new LockGroup();ValidatedIndexUpdates indexUpdates=indexUpdatesValidator.validate(representation)){
-          storeApplier.apply(representation,indexUpdates,locks,transactionId,EXTERNAL);
-        }
-       }
-  finally {
-        commitment.publishAsApplied();
-      }
-    }
- catch (    IOException e) {
-      kernelHealth.panic(e);
-      throw e;
-    }
-  }
+  commitProcess.commit(new TransactionToApply(tx.getTransactionRepresentation(),tx.getCommitEntry().getTxId()),NULL,EXTERNAL);
 }

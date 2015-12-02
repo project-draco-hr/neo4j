@@ -1,5 +1,5 @@
 {
-  final RecoveryVisitor visitor=new RecoveryVisitor(store,storeApplier,indexUpdatesValidator,monitor);
+  final RecoveryVisitor visitor=new RecoveryVisitor(store,storageEngine,monitor);
   final TransactionRepresentation representation=new PhysicalTransactionRepresentation(Collections.<Command>emptySet());
   final CommittedTransactionRepresentation transaction=new CommittedTransactionRepresentation(startEntry,representation,commitEntry);
   final LogPosition logPosition=new LogPosition(0,42);
@@ -12,9 +12,9 @@
     }
   }
 );
-  assertFalse(result);
-  verify(storeApplier,times(1)).apply(eq(representation),any(ValidatedIndexUpdates.class),any(LockGroup.class),eq(commitEntry.getTxId()),eq(RECOVERY));
-  verify(monitor).transactionRecovered(commitEntry.getTxId());
   visitor.close();
+  assertFalse(result);
+  verify(storageEngine,times(1)).apply(any(TransactionToApply.class),eq(RECOVERY));
+  verify(monitor).transactionRecovered(commitEntry.getTxId());
   verify(store,times(1)).setLastCommittedAndClosedTransactionId(commitEntry.getTxId(),LogEntryStart.checksum(startEntry),logPosition.getLogVersion(),logPosition.getByteOffset());
 }

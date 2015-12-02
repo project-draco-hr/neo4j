@@ -1,0 +1,23 @@
+{
+  long nodeId=0;
+  int labelId=5, propertyKeyId=7;
+  NodePropertyUpdate expectedUpdate=NodePropertyUpdate.add(nodeId,propertyKeyId,"Neo",new long[]{labelId});
+  long ruleId=0;
+  NeoStores neoStores=neoStoresRule.open();
+  TransactionRecordState recordState=new TransactionRecordState(neoStores,integrityValidator,newContext(neoStores));
+  SchemaRule rule=indexRule(ruleId,labelId,propertyKeyId,PROVIDER_DESCRIPTOR);
+  recordState.createSchemaRule(rule);
+  apply(neoStores,recordState);
+  recordState=new TransactionRecordState(neoStores,integrityValidator,newContext(neoStores));
+  recordState.nodeCreate(nodeId);
+  recordState.addLabelToNode(labelId,nodeId);
+  recordState.nodeAddProperty(nodeId,propertyKeyId,"Neo");
+  PhysicalTransactionRepresentation transaction=transactionRepresentationOf(recordState);
+  Iterable<NodePropertyUpdate> updates=indexUpdatesOf(neoStores,transaction);
+  PrimitiveLongVisitor<RuntimeException> visitor=mock(PrimitiveLongVisitor.class);
+  RecoveryIndexingUpdatesValidator validator=new RecoveryIndexingUpdatesValidator(visitor);
+  ValidatedIndexUpdates recoveredUpdates=validator.validate(transaction);
+  recoveredUpdates.flush(new HashSet<>());
+  assertEquals(asSet(expectedUpdate),asSet(updates));
+  verify(visitor,times(1)).visited(nodeId);
+}

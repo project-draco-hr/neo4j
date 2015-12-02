@@ -1,0 +1,28 @@
+{
+  NeoStores neoStores=neoStoresRule.open();
+  TransactionRecordState recordState=new TransactionRecordState(neoStores,integrityValidator,newContext(neoStores));
+  int nodeId=0;
+  recordState.nodeCreate(nodeId);
+  int index=0;
+  recordState.nodeAddProperty(nodeId,index,string(70));
+  apply(neoStores,recordState);
+  recordState=new TransactionRecordState(neoStores,integrityValidator,newContext(neoStores));
+  int index2=1;
+  recordState.nodeAddProperty(nodeId,index2,string(40));
+  PhysicalTransactionRepresentation representation=transactionRepresentationOf(recordState);
+  representation.accept(new CommandHandler.HandlerVisitor(new CommandHandler.Adapter(){
+    @Override public boolean visitPropertyCommand(    PropertyCommand command) throws IOException {
+      verifyPropertyRecord(command.getBefore());
+      verifyPropertyRecord(command.getAfter());
+      return false;
+    }
+    private void verifyPropertyRecord(    PropertyRecord record){
+      if (record.getPrevProp() != Record.NO_NEXT_PROPERTY.intValue()) {
+        for (        PropertyBlock block : record) {
+          assertTrue(block.isLight());
+        }
+      }
+    }
+  }
+));
+}
