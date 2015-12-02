@@ -1,7 +1,6 @@
 {
   DependencyResolver resolver=toDb.getDependencyResolver();
-  BatchingTransactionRepresentationStoreApplier applier=new BatchingTransactionRepresentationStoreApplier(resolver.resolveDependency(LockService.class),resolver.resolveDependency(IndexConfigStore.class),resolver.resolveDependency(IdOrderingQueue.class),resolver.resolveDependency(StorageEngine.class));
-  TransactionRepresentationCommitProcess commitProcess=new TransactionRepresentationCommitProcess(resolver.resolveDependency(TransactionAppender.class),applier,resolver.resolveDependency(IndexUpdatesValidator.class));
+  TransactionRepresentationCommitProcess commitProcess=new TransactionRepresentationCommitProcess(resolver.resolveDependency(TransactionAppender.class),resolver.resolveDependency(StorageEngine.class),resolver.resolveDependency(IndexUpdatesValidator.class));
   LifeSupport life=new LifeSupport();
   DefaultFileSystemAbstraction fileSystem=new DefaultFileSystemAbstraction();
   try (PageCache pageCache=StandalonePageCacheFactory.createPageCache(fileSystem)){
@@ -12,8 +11,9 @@
     try (IOCursor<CommittedTransactionRepresentation> cursor=source.getTransactions(fromTxExclusive + 1)){
       while (cursor.next()) {
         CommittedTransactionRepresentation transaction=cursor.get();
-        try (LockGroup locks=new LockGroup()){
-          commitProcess.commit(transaction.getTransactionRepresentation(),locks,CommitEvent.NULL,RECOVERY);
+        TransactionRepresentation transactionRepresentation=transaction.getTransactionRepresentation();
+        try {
+          commitProcess.commit(new TransactionToApply(transactionRepresentation),NULL,RECOVERY);
           progress.add(1);
         }
  catch (        final Throwable e) {
@@ -26,8 +26,7 @@
         }
       }
     }
-     applier.closeBatch();
-    return lastAppliedTx;
+     return lastAppliedTx;
   }
   finally {
     life.shutdown();
