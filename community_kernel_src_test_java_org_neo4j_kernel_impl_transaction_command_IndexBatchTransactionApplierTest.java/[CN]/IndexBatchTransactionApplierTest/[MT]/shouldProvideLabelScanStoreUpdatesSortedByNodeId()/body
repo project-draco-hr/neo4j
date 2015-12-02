@@ -2,8 +2,9 @@
   IndexingService indexing=mock(IndexingService.class);
   LabelScanWriter writer=new OrderVerifyingLabelScanWriter(10,15,20);
   WorkSync<Supplier<LabelScanWriter>,LabelUpdateWork> labelScanSync=spy(new WorkSync<>(singletonProvider(writer)));
+  WorkSync<IndexingService,IndexUpdatesWork> indexUpdatesSync=new WorkSync<>(indexing);
   TransactionToApply tx=mock(TransactionToApply.class);
-  try (IndexBatchTransactionApplier applier=new IndexBatchTransactionApplier(indexing,labelScanSync,mock(NodeStore.class),mock(PropertyStore.class),mock(PropertyLoader.class))){
+  try (IndexBatchTransactionApplier applier=new IndexBatchTransactionApplier(indexing,labelScanSync,indexUpdatesSync,mock(NodeStore.class),mock(PropertyStore.class),mock(PropertyLoader.class),TransactionApplicationMode.INTERNAL)){
     try (TransactionApplier txApplier=applier.startTx(tx)){
       txApplier.visitNodeCommand(node(15));
       txApplier.visitNodeCommand(node(20));
