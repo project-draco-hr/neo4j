@@ -7,19 +7,28 @@
  catch (  IOException e) {
     throw new TransactionFailureException("Could not create immutable object for replication",e);
   }
+  boolean lastRound=false;
+  long startTime=clock.currentTimeMillis();
   while (true) {
     final Future<Long> futureTxId=replicatedTxListener.getFutureTxId(operationContext.localOperationId());
     try {
       replicator.replicate(transaction);
-      Long txId=futureTxId.get(60,TimeUnit.SECONDS);
+      long responseWaitTime=lastRound ? retryIntervalMillis : maxRetryTimeMillis / 2;
+      Long txId=futureTxId.get(responseWaitTime,TimeUnit.MILLISECONDS);
       sessionPool.releaseSession(operationContext);
       return txId;
     }
  catch (    InterruptedException|TimeoutException e) {
       futureTxId.cancel(false);
+      if (lastRound) {
+        throw new TransactionFailureException("Failed to commit transaction within time bound",e);
+      }
+ else       if ((clock.currentTimeMillis() - startTime) >= maxRetryTimeMillis / 2) {
+        lastRound=true;
+      }
     }
 catch (    ReplicationFailedException|ExecutionException e) {
-      throw new TransactionFailureException("Failed to commit transaction",e);
+      throw new TransactionFailureException("Failed to replicate transaction",e);
     }
     System.out.println("Retrying replication");
   }
