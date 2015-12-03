@@ -1,19 +1,21 @@
 {
   ClusterManager.ManagedCluster cluster=clusterRule.startCluster();
+  String type=type(4);
+  String key=key(4);
   HighlyAvailableGraphDatabase master=cluster.getMaster();
   HighlyAvailableGraphDatabase slave=cluster.getAnySlave();
   File slaveStoreDirectory=cluster.getStoreDir(slave);
   ClusterManager.RepairKit shutdownSlave=cluster.shutdown(slave);
   deleteRecursively(slaveStoreDirectory);
   try (Transaction tx=master.beginTx()){
-    createConstraint(master,TYPE,PROPERTY_KEY);
+    createConstraint(master,type,key);
     tx.success();
   }
    slave=shutdownSlave.repair();
   try (Transaction ignored=slave.beginTx()){
-    ConstraintDefinition definition=single(slave.schema().getConstraints());
+    ConstraintDefinition definition=getConstraint(slave,type,key);
     assertThat(definition,instanceOf(constraintDefinitionClass()));
-    assertThat(single(definition.getPropertyKeys()),equalTo(PROPERTY_KEY));
-    validateLabelOrRelationshipType(definition);
+    assertThat(single(definition.getPropertyKeys()),equalTo(key));
+    validateLabelOrRelationshipType(definition,type);
   }
  }
