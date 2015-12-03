@@ -1,9 +1,12 @@
 {
   try {
     channel.close().sync();
-    workerGroup.shutdownGracefully().sync();
   }
  catch (  InterruptedException e) {
-    log.warn("Interrupted while stopping raft server.");
+    Thread.currentThread().interrupt();
+    log.warn("Interrupted while closing channel.");
+  }
+  if (workerGroup.shutdownGracefully(2,5,TimeUnit.SECONDS).awaitUninterruptibly(10,TimeUnit.SECONDS)) {
+    log.warn("Worker group not shutdown within 10 seconds.");
   }
 }
