@@ -1,0 +1,10 @@
+{
+  RaftLogEntry entryA=new RaftLogEntry(1,ReplicatedString.valueOf("A"));
+  InMemoryRaftLog raftLog=new InMemoryRaftLog();
+  raftLog.append(entryA);
+  RaftState<RaftTestMember> state=raftState().myself(myself).entryLog(raftLog).term(1).build();
+  Follower follower=new Follower();
+  RaftLogEntry entryB=new RaftLogEntry(1,ReplicatedString.valueOf("B"));
+  Outcome<RaftTestMember> outcome=follower.handle(new RaftMessages.AppendEntries.Request<>(leader,2,10,2,new RaftLogEntry[]{entryB},10),state,log());
+  assertThat(single(outcome.getOutgoingMessages()).message(),equalTo(appendEntriesResponse().from(myself).term(2).appendIndex(0).matchIndex(-1).failure().build()));
+}
