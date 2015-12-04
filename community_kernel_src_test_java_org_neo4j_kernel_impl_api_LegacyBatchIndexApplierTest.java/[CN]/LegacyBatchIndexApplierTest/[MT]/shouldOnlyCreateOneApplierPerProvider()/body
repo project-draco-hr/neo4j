@@ -1,0 +1,17 @@
+{
+  Map<String,Integer> names=MapUtil.genericMap("first",0,"second",1);
+  Map<String,Integer> keys=MapUtil.genericMap("key",0);
+  String applierName="test-applier";
+  IndexConfigStore config=newIndexConfigStore(names,applierName);
+  LegacyIndexApplierLookup applierLookup=mock(LegacyIndexApplierLookup.class);
+  when(applierLookup.newApplier(anyString(),anyBoolean())).thenReturn(mock(CommandHandler.class));
+  try (LegacyBatchIndexApplier applier=new LegacyBatchIndexApplier(config,applierLookup,BYPASS,INTERNAL)){
+    IndexDefineCommand definitions=definitions(names,keys);
+    applier.visitIndexDefineCommand(definitions);
+    applier.visitIndexAddNodeCommand(addNodeToIndex(definitions,"first"));
+    applier.visitIndexAddNodeCommand(addNodeToIndex(definitions,"second"));
+    applier.visitIndexAddRelationshipCommand(addRelationshipToIndex(definitions,"second"));
+    applier.apply();
+  }
+   verify(applierLookup,times(1)).newApplier(eq(applierName),anyBoolean());
+}
