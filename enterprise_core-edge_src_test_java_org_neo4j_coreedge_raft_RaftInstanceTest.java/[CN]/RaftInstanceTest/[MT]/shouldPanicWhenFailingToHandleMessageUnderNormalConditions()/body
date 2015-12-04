@@ -1,0 +1,14 @@
+{
+  KernelEventHandlers kernelEventHandlers=new KernelEventHandlers(log());
+  kernelEventHandlers.init();
+  MyKernelEventHandler myKernelEventHandler=new MyKernelEventHandler();
+  kernelEventHandlers.registerKernelEventHandler(myKernelEventHandler);
+  Dependencies dependencies=new Dependencies();
+  dependencies.satisfyDependencies(new DatabaseHealth(new DatabasePanicEventGenerator(kernelEventHandlers),log()));
+  ExplodingRaftLog explodingLog=new ExplodingRaftLog();
+  RaftInstance<RaftTestMember> raft=new RaftInstanceBuilder<>(myself,3,RaftTestMemberSetBuilder.INSTANCE).dependencies(dependencies).raftLog(explodingLog).build();
+  raft.bootstrapWithInitialMembers(new RaftTestGroup(asSet(myself,member1,member2)));
+  explodingLog.startExploding();
+  raft.handle(new RaftMessages.AppendEntries.Request<>(member1,0,-1,-1,new RaftLogEntry[]{new RaftLogEntry(0,new ReplicatedString("hello"))},0));
+  assertTrue(myKernelEventHandler.hasErrorHappened());
+}
