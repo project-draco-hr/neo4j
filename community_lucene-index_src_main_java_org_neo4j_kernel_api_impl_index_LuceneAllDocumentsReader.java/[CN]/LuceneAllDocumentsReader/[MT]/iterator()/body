@@ -1,15 +1,17 @@
 {
   return new PrefetchingIterator<Document>(){
-    private int docId;
+    private DocIdSetIterator idIterator=iterateAllDocs();
     @Override protected Document fetchNextOrNull(){
-      Document document=null;
-      while (document == null && isPossibleDocId(docId)) {
-        if (!deleted(docId)) {
-          document=getDocument(docId);
+      try {
+        int doc=idIterator.nextDoc();
+        if (doc == DocIdSetIterator.NO_MORE_DOCS) {
+          return null;
         }
-        docId++;
+        return getDocument(doc);
       }
-      return document;
+ catch (      IOException e) {
+        throw new LuceneDocumentRetrievalException("Can't fetch document id from lucene index.",e);
+      }
     }
   }
 ;

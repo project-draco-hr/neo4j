@@ -1,0 +1,33 @@
+{
+  File migrationDirectory=new File(storeDirectory,MIGRATION_DIRECTORY);
+  cleanupLegacyLeftOverDirsIn(storeDirectory);
+  File migrationStateFile=new File(migrationDirectory,MIGRATION_STATUS_FILE);
+  if (upgradableDatabase.hasCurrentVersion(storeDirectory) && !fileSystem.fileExists(migrationStateFile)) {
+    return;
+  }
+  if (!isUpgradeAllowed()) {
+    throw new UpgradeNotAllowedByConfigurationException();
+  }
+  progressMonitor.started();
+  MigrationStatus migrationStatus=MigrationStatus.readMigrationStatus(fileSystem,migrationStateFile);
+  String versionToMigrateFrom=null;
+  if (MigrationStatus.migrating.isNeededFor(migrationStatus)) {
+    versionToMigrateFrom=upgradableDatabase.checkUpgradeable(storeDirectory);
+    cleanMigrationDirectory(migrationDirectory);
+    MigrationStatus.migrating.setMigrationStatus(fileSystem,migrationStateFile,versionToMigrateFrom);
+    migrateToIsolatedDirectory(storeDirectory,migrationDirectory,versionToMigrateFrom);
+    MigrationStatus.moving.setMigrationStatus(fileSystem,migrationStateFile,versionToMigrateFrom);
+  }
+  if (MigrationStatus.moving.isNeededFor(migrationStatus)) {
+    versionToMigrateFrom=MigrationStatus.moving.maybeReadInfo(fileSystem,migrationStateFile,versionToMigrateFrom);
+    moveMigratedFilesToStoreDirectory(participants,migrationDirectory,storeDirectory,versionToMigrateFrom);
+    MigrationStatus.countsRebuilding.setMigrationStatus(fileSystem,migrationStateFile,versionToMigrateFrom);
+  }
+  if (MigrationStatus.countsRebuilding.isNeededFor(migrationStatus)) {
+    versionToMigrateFrom=MigrationStatus.countsRebuilding.maybeReadInfo(fileSystem,migrationStateFile,versionToMigrateFrom);
+    rebuildCountsInStoreDirectory(participants,storeDirectory,versionToMigrateFrom);
+    MigrationStatus.completed.setMigrationStatus(fileSystem,migrationStateFile,versionToMigrateFrom);
+  }
+  cleanup(participants,migrationDirectory);
+  progressMonitor.finished();
+}

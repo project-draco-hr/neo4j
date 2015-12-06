@@ -1,0 +1,27 @@
+{
+  LogService logService=StoreLogService.withUserLogProvider(userLogProvider).inStoreDirectory(fs,storeDirectory);
+  VisibleMigrationProgressMonitor progressMonitor=new VisibleMigrationProgressMonitor(logService.getInternalLog(StoreMigration.class));
+  LifeSupport life=new LifeSupport();
+  LegacyIndexProvider legacyIndexProvider=new LegacyIndexProvider();
+  Dependencies deps=new Dependencies();
+  deps.satisfyDependencies(fs,config);
+  deps.satisfyDependencies(legacyIndexProvider);
+  KernelContext kernelContext=new MigrationKernelContext(fs,storeDirectory);
+  KernelExtensions kernelExtensions=life.add(new KernelExtensions(kernelContext,GraphDatabaseDependencies.newDependencies().kernelExtensions(),deps,ignore()));
+  life.start();
+  SchemaIndexProvider schemaIndexProvider=kernelExtensions.resolveDependency(SchemaIndexProvider.class,HighestSelectionStrategy.getInstance());
+  LabelScanStoreProvider labelScanStoreProvider=kernelExtensions.resolveDependency(LabelScanStoreProvider.class,HighestSelectionStrategy.getInstance());
+  Log log=userLogProvider.getLog(StoreMigration.class);
+  try (PageCache pageCache=createPageCache(fs,config)){
+    long startTime=System.currentTimeMillis();
+    new DatabaseMigrator(progressMonitor,fs,config,logService,schemaIndexProvider,labelScanStoreProvider,legacyIndexProvider.getIndexProviders(),pageCache).migrate(storeDirectory);
+    long duration=System.currentTimeMillis() - startTime;
+    log.info(format("Migration completed in %d s%n",duration / 1000));
+  }
+ catch (  IOException e) {
+    throw new StoreUpgrader.UnableToUpgradeException("Failure during upgrade",e);
+  }
+ finally {
+    life.shutdown();
+  }
+}

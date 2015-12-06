@@ -1,12 +1,12 @@
 {
   File comparisonDirectory=new File("target/" + StoreUpgraderTest.class.getSimpleName() + "shouldRefuseToUpgradeIfAllOfTheStoresWeNotShutDownCleanly-comparison");
-  truncateAllFiles(fileSystem,dbDirectory,version);
+  makeDbNotCleanlyShutdown(true);
   fileSystem.deleteRecursively(comparisonDirectory);
   fileSystem.copyRecursively(dbDirectory,comparisonDirectory);
   PageCache pageCache=pageCacheRule.getPageCache(fileSystem);
-  UpgradableDatabase upgradableDatabase=new UpgradableDatabase(new StoreVersionCheck(pageCache),new LegacyStoreVersionCheck(fileSystem));
+  UpgradableDatabase upgradableDatabase=new UpgradableDatabase(fileSystem,new StoreVersionCheck(pageCache),new LegacyStoreVersionCheck(fileSystem));
   try {
-    newUpgrader(ALLOW_UPGRADE,pageCache).migrateIfNeeded(dbDirectory,upgradableDatabase,schemaIndexProvider);
+    newUpgrader(upgradableDatabase,pageCache).migrateIfNeeded(dbDirectory);
     fail("Should throw exception");
   }
  catch (  StoreUpgrader.UnableToUpgradeException e) {

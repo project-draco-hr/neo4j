@@ -1,21 +1,17 @@
 {
-  String chosenLower, chosenUpper;
-  boolean includeChosenLower, includeChosenUpper;
-  if (lower == null) {
-    chosenLower=null;
-    includeChosenLower=true;
+  boolean includeLowerBoundary=StringUtils.EMPTY.equals(lower) || includeLower;
+  boolean includeUpperBoundary=StringUtils.EMPTY.equals(upper) || includeUpper;
+  TermRangeQuery termRangeQuery=TermRangeQuery.newStringRange(ValueEncoding.String.key(),lower,upper,includeLowerBoundary,includeUpperBoundary);
+  if ((includeLowerBoundary != includeLower) || (includeUpperBoundary != includeUpper)) {
+    BooleanQuery.Builder builder=new BooleanQuery.Builder();
+    if (includeLowerBoundary != includeLower) {
+      builder.add(new TermQuery(new Term(ValueEncoding.String.key(),lower)),BooleanClause.Occur.MUST_NOT);
+    }
+    if (includeUpperBoundary != includeUpper) {
+      builder.add(new TermQuery(new Term(ValueEncoding.String.key(),upper)),BooleanClause.Occur.MUST_NOT);
+    }
+    builder.add(termRangeQuery,BooleanClause.Occur.SHOULD);
+    return builder.build();
   }
- else {
-    chosenLower=lower;
-    includeChosenLower=includeLower;
-  }
-  if (upper == null) {
-    chosenUpper=null;
-    includeChosenUpper=true;
-  }
- else {
-    chosenUpper=upper;
-    includeChosenUpper=upperInclusive;
-  }
-  return new TermRangeQuery(ValueEncoding.String.key(),chosenLower,chosenUpper,includeChosenLower,includeChosenUpper);
+  return termRangeQuery;
 }

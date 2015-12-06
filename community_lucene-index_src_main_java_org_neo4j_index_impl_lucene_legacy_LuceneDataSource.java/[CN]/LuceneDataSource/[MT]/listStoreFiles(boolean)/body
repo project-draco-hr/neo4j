@@ -1,0 +1,38 @@
+{
+  final Collection<File> files=new ArrayList<>();
+  final Collection<Pair<SnapshotDeletionPolicy,IndexCommit>> snapshots=new ArrayList<>();
+  makeSureAllIndexesAreInstantiated();
+  for (  IndexReference writer : getAllIndexes()) {
+    SnapshotDeletionPolicy deletionPolicy=(SnapshotDeletionPolicy)writer.getWriter().getConfig().getIndexDeletionPolicy();
+    File indexDirectory=getFileDirectory(baseStorePath,writer.getIdentifier());
+    IndexCommit commit;
+    try {
+      commit=deletionPolicy.snapshot();
+    }
+ catch (    IllegalStateException e) {
+      writer.getWriter().commit();
+      commit=deletionPolicy.snapshot();
+    }
+    for (    String fileName : commit.getFileNames()) {
+      files.add(new File(indexDirectory,fileName));
+    }
+    snapshots.add(Pair.of(deletionPolicy,commit));
+  }
+  return new PrefetchingResourceIterator<File>(){
+    private final Iterator<File> filesIterator=files.iterator();
+    @Override protected File fetchNextOrNull(){
+      return filesIterator.hasNext() ? filesIterator.next() : null;
+    }
+    @Override public void close(){
+      for (      Pair<SnapshotDeletionPolicy,IndexCommit> policyAndCommit : snapshots) {
+        try {
+          policyAndCommit.first().release(policyAndCommit.other());
+        }
+ catch (        IOException e) {
+          e.printStackTrace();
+        }
+      }
+    }
+  }
+;
+}

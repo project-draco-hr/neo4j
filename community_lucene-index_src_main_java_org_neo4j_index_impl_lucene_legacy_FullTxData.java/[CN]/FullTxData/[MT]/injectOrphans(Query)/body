@@ -1,0 +1,15 @@
+{
+  if (query instanceof BooleanQuery) {
+    BooleanQuery source=(BooleanQuery)query;
+    BooleanQuery.Builder builder=new BooleanQuery.Builder();
+    for (    BooleanClause clause : source.clauses()) {
+      builder.add(injectOrphans(clause.getQuery()),clause.getOccur());
+    }
+    return builder.build();
+  }
+  String orphanField=extractTermField(query);
+  if (orphanField == null) {
+    return query;
+  }
+  return new BooleanQuery.Builder().add(query,Occur.SHOULD).add(new TermQuery(new Term(ORPHANS_KEY,orphanField)),Occur.SHOULD).build();
+}

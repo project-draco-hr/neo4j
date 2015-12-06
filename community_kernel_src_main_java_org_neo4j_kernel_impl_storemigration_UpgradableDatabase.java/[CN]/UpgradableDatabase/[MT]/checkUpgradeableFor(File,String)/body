@@ -1,12 +1,32 @@
 {
-  Result result=null;
-  for (  StoreFile store : StoreFile.legacyStoreFilesForVersion(version)) {
-    String expectedVersion=store.forVersion(version);
-    File storeFile=new File(storeDirectory,store.storeFileName());
-    result=legacyStoreVersionCheck.hasVersion(storeFile,expectedVersion,store.isOptional());
+  if (Legacy23Store.LEGACY_VERSION.equals(version)) {
+    File neoStore=new File(storeDirectory,MetaDataStore.DEFAULT_NAME);
+    Result result=storeVersionCheck.hasVersion(neoStore,version);
     if (!result.outcome.isSuccessful()) {
-      break;
+      return result;
     }
+    PhysicalLogFiles logFiles=new PhysicalLogFiles(storeDirectory,fs);
+    LatestCheckPointFinder latestCheckPointFinder=new LatestCheckPointFinder(logFiles,fs,new VersionAwareLogEntryReader<>());
+    try {
+      LatestCheckPoint latestCheckPoint=latestCheckPointFinder.find(logFiles.getHighestLogVersion());
+      if (!latestCheckPoint.commitsAfterCheckPoint) {
+        return new Result(Result.Outcome.ok,null,null);
+      }
+    }
+ catch (    IOException e) {
+    }
+    return new Result(Result.Outcome.storeNotCleanlyShutDown,null,null);
   }
-  return result;
+ else {
+    Result result=null;
+    for (    StoreFile store : StoreFile.legacyStoreFilesForVersion(version)) {
+      String expectedVersion=store.forVersion(version);
+      File storeFile=new File(storeDirectory,store.storeFileName());
+      result=legacyStoreVersionCheck.hasVersion(storeFile,expectedVersion,store.isOptional());
+      if (!result.outcome.isSuccessful()) {
+        break;
+      }
+    }
+    return result;
+  }
 }

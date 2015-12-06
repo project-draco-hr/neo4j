@@ -1,0 +1,22 @@
+{
+  if (this.directory == null) {
+    return Collections.emptySet();
+  }
+  try {
+    Sort sorting=contextOrNull != null ? contextOrNull.getSorting() : null;
+    boolean prioritizeCorrectness=contextOrNull == null || !contextOrNull.getTradeCorrectnessForSpeed();
+    IndexSearcher theSearcher=searcher(prioritizeCorrectness);
+    query=includeOrphans(query);
+    DocValuesCollector docValuesCollector=new DocValuesCollector(prioritizeCorrectness);
+    theSearcher.search(query,docValuesCollector);
+    Collection<EntityId> result=new ArrayList<>();
+    PrimitiveLongIterator valuesIterator=docValuesCollector.getSortedValuesIterator(KEY_DOC_ID,sorting);
+    while (valuesIterator.hasNext()) {
+      result.add(new EntityId.IdData(valuesIterator.next()));
+    }
+    return result;
+  }
+ catch (  IOException e) {
+    throw new RuntimeException(e);
+  }
+}

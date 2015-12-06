@@ -1,0 +1,24 @@
+{
+  if (this.searcher != null && (!modified || !allowRefreshSearcher)) {
+    return this.searcher;
+  }
+  try {
+    IndexReader newReader=this.reader == null ? DirectoryReader.open(this.writer,true) : DirectoryReader.openIfChanged((DirectoryReader)this.reader);
+    if (newReader == this.reader) {
+      return this.searcher;
+    }
+    LuceneUtil.close(reader);
+    this.reader=newReader;
+    LuceneUtil.close(searcher);
+    searcher=new IndexSearcher(reader);
+  }
+ catch (  IOException e) {
+    throw new RuntimeException(e);
+  }
+ finally {
+    if (allowRefreshSearcher) {
+      this.modified=false;
+    }
+  }
+  return this.searcher;
+}

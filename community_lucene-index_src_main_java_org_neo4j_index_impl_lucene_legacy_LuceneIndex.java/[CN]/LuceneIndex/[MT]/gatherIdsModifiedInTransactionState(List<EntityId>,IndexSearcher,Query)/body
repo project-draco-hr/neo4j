@@ -1,0 +1,26 @@
+{
+  if (simpleTransactionStateIds.isEmpty() && fulltextTransactionStateSearcher == null) {
+    return PrimitiveLongCollections.emptySet();
+  }
+  DocValuesCollector docValuesCollector=null;
+  int fulltextSize=0;
+  if (fulltextTransactionStateSearcher != null) {
+    docValuesCollector=new DocValuesCollector();
+    fulltextTransactionStateSearcher.search(query,docValuesCollector);
+    fulltextSize=docValuesCollector.getTotalHits();
+    if (simpleTransactionStateIds.isEmpty() && fulltextSize == 0) {
+      return PrimitiveLongCollections.emptySet();
+    }
+  }
+  PrimitiveLongSet set=longSet(simpleTransactionStateIds.size() + fulltextSize);
+  for (  EntityId id : simpleTransactionStateIds) {
+    set.add(id.id());
+  }
+  if (docValuesCollector != null) {
+    PrimitiveLongIterator valuesIterator=docValuesCollector.getValuesIterator(LuceneIndex.KEY_DOC_ID);
+    while (valuesIterator.hasNext()) {
+      set.add(valuesIterator.next());
+    }
+  }
+  return set;
+}

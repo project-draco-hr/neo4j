@@ -3,12 +3,20 @@
   IndexSearcher searcher=searcherManager.acquire();
   try {
     DuplicateCheckingCollector collector=duplicateCheckingCollector(accessor);
-    TermEnum terms=searcher.getIndexReader().terms();
-    while (terms.next()) {
-      Term term=terms.term();
-      if (!NODE_ID_KEY.equals(term.field()) && terms.docFreq() > 1) {
-        collector.reset();
-        searcher.search(new TermQuery(term),collector);
+    for (    LeafReaderContext leafReaderContext : searcher.getIndexReader().leaves()) {
+      Fields fields=leafReaderContext.reader().fields();
+      for (      String field : fields) {
+        if (NODE_ID_KEY.equals(field)) {
+          continue;
+        }
+        TermsEnum terms=fields.terms(field).iterator();
+        BytesRef termsRef;
+        while ((termsRef=terms.next()) != null) {
+          if (terms.docFreq() > 1) {
+            collector.reset();
+            searcher.search(new TermQuery(new Term(field,termsRef)),collector);
+          }
+        }
       }
     }
   }

@@ -1,0 +1,17 @@
+{
+  File storeDir=db.getStoreDirFile();
+  shutdownDB();
+  try (Transaction tx=db.beginTx()){
+    Index<Relationship> index=db.index().forRelationships("myIndex");
+    Node node=db.createNode();
+    Relationship relationship=db.createNode().createRelationshipTo(node,RelationshipType.withName("KNOWS"));
+    index.add(relationship,"key","value");
+    tx.success();
+  }
+   db.shutdown();
+  FileSystemAbstraction fileSystem=new DefaultFileSystemAbstraction();
+  Config config=new Config(MapUtil.stringMap(),GraphDatabaseSettings.class);
+  LuceneDataSource ds=new LuceneDataSource(storeDir,config,new IndexConfigStore(storeDir,fileSystem),fileSystem);
+  ds.start();
+  ds.stop();
+}
