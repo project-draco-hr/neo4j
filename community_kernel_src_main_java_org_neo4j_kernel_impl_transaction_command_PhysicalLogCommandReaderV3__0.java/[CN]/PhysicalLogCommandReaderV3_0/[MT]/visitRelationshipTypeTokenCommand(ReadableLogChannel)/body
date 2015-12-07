@@ -1,25 +1,14 @@
 {
   int id=channel.getInt();
-  byte inUseFlag=channel.get();
-  boolean inUse=false;
-  if ((inUseFlag & Record.IN_USE.byteValue()) == Record.IN_USE.byteValue()) {
-    inUse=true;
+  RelationshipTypeTokenRecord before=readRelationshipTypeTokenRecord(id,channel);
+  if (before == null) {
+    return null;
   }
- else   if (inUseFlag != Record.NOT_IN_USE.byteValue()) {
-    throw new IOException("Illegal in use flag: " + inUseFlag);
-  }
-  RelationshipTypeTokenRecord record=new RelationshipTypeTokenRecord(id);
-  record.setInUse(inUse);
-  record.setNameId(channel.getInt());
-  int nrTypeRecords=channel.getInt();
-  for (int i=0; i < nrTypeRecords; i++) {
-    DynamicRecord dr=readDynamicRecord(channel);
-    if (dr == null) {
-      return null;
-    }
-    record.addNameRecord(dr);
+  RelationshipTypeTokenRecord after=readRelationshipTypeTokenRecord(id,channel);
+  if (after == null) {
+    return null;
   }
   Command.RelationshipTypeTokenCommand command=new Command.RelationshipTypeTokenCommand();
-  command.init(record);
+  command.init(before,after);
   return command;
 }
