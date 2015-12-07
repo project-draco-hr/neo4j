@@ -1,18 +1,13 @@
 {
-  KernelEventHandlers kernelEventHandlers=new KernelEventHandlers(log());
-  kernelEventHandlers.init();
-  MyKernelEventHandler myKernelEventHandler=new MyKernelEventHandler();
-  kernelEventHandlers.registerKernelEventHandler(myKernelEventHandler);
-  Dependencies dependencies=new Dependencies();
-  dependencies.satisfyDependencies(new DatabaseHealth(new DatabasePanicEventGenerator(kernelEventHandlers),log()));
+  TestRaftStorageExceptionHandler raftStorageExceptionHandler=new TestRaftStorageExceptionHandler();
   ExplodingRaftLog explodingLog=new ExplodingRaftLog();
   explodingLog.startExploding();
-  RaftInstance<RaftTestMember> raft=new RaftInstanceBuilder<>(myself,3,RaftTestMemberSetBuilder.INSTANCE).dependencies(dependencies).raftLog(explodingLog).build();
+  RaftInstance<RaftTestMember> raft=new RaftInstanceBuilder<>(myself,3,RaftTestMemberSetBuilder.INSTANCE).raftLog(explodingLog).raftStorageExceptionHandler(raftStorageExceptionHandler).build();
   try {
     raft.bootstrapWithInitialMembers(new RaftTestGroup(asSet(myself,member1,member2)));
     fail("Contract expects exception so that others can take remedial action");
   }
  catch (  RaftInstance.BootstrapException e) {
-    assertTrue(myKernelEventHandler.hasErrorHappened());
+    assertTrue(raftStorageExceptionHandler.hasPanicked());
   }
 }
