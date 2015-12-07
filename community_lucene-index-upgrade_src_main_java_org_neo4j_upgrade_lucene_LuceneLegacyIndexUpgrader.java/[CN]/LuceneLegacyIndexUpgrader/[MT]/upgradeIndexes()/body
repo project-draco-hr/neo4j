@@ -3,12 +3,14 @@
     if (!Files.exists(indexRootPath)) {
       return;
     }
+    monitor.starting((int)Files.walk(indexRootPath).count());
     try (Stream<Path> pathStream=Files.walk(indexRootPath);IndexUpgraderWrapper lucene4Upgrader=createIndexUpgrader(getLucene4JarPaths());IndexUpgraderWrapper lucene5Upgrader=createIndexUpgrader(getLucene5JarPaths())){
       List<Path> indexPaths=pathStream.filter(getIndexPathFilter()).collect(Collectors.toList());
       for (      Path indexPath : indexPaths) {
         try {
           lucene4Upgrader.upgradeIndex(indexPath);
           lucene5Upgrader.upgradeIndex(indexPath);
+          monitor.migrated(indexPath.toFile().getName());
         }
  catch (        Throwable e) {
           throw new LegacyIndexMigrationException(indexPath.getFileName().toString(),"Migration of legacy index at path:" + indexPath + " failed.",e);
