@@ -1,0 +1,22 @@
+{
+  LocalOperationId localOperationIdBefore=new LocalOperationId(0,0);
+  LocalOperationId localOperationIdAfter=new LocalOperationId(0,1);
+  ReplicatedTransaction txBefore=ReplicatedTransactionFactory.createImmutableReplicatedTransaction(mock(PhysicalTransactionRepresentation.class),globalSession,localOperationIdBefore);
+  PhysicalTransactionRepresentation after=mock(PhysicalTransactionRepresentation.class);
+  when(after.getLatestCommittedTxWhenStarted()).thenReturn(3L);
+  ReplicatedTransaction txAfter=ReplicatedTransactionFactory.createImmutableReplicatedTransaction(after,globalSession,localOperationIdAfter);
+  TransactionCommitProcess localCommitProcess=mock(TransactionCommitProcess.class);
+  when(localCommitProcess.commit(any(TransactionToApply.class),any(CommitEvent.class),any(TransactionApplicationMode.class))).thenReturn(4L);
+  ReplicatedTransactionStateMachine listener=new ReplicatedTransactionStateMachine(localCommitProcess,globalSession,null);
+  Future<Long> future=listener.getFutureTxId(localOperationIdAfter);
+  listener.onReplicated(txBefore,0);
+  listener.onReplicated(new NewLeaderBarrier(),0);
+  listener.onReplicated(txAfter,0);
+  try {
+    future.get(1,TimeUnit.SECONDS);
+    fail("Should have thrown exception");
+  }
+ catch (  ExecutionException e) {
+    assertThat(e.getCause().getMessage(),containsString("different leader"));
+  }
+}

@@ -1,0 +1,30 @@
+{
+  EphemeralFileSystemAbstraction fileSystem=new EphemeralFileSystemAbstraction();
+  RaftLog log=createRaftLog(fileSystem);
+  log.registerListener(new RaftLog.Listener(){
+    @Override public void onAppended(    ReplicatedContent content){
+    }
+    @Override public void onCommitted(    ReplicatedContent raftableContent,    long index){
+      throw new RuntimeException("Fail to accept the content");
+    }
+    @Override public void onTruncated(    long fromIndex){
+    }
+  }
+);
+  RaftLogEntry logEntry=new RaftLogEntry(1,ReplicatedInteger.valueOf(1));
+  log.append(logEntry);
+  try {
+    log.commit(0);
+    fail("Should have thrown exception");
+  }
+ catch (  Exception e) {
+  }
+  verifyCurrentLogAndNewLogLoadedFromFileSystem(log,fileSystem,new LogVerifier(){
+    public void verifyLog(    ReadableRaftLog log){
+      assertThat(log.appendIndex(),is(0L));
+      assertThat(log.commitIndex(),is(0L));
+      assertThat(log.entryExists(0),is(true));
+    }
+  }
+);
+}

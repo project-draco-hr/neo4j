@@ -1,0 +1,25 @@
+{
+  long lastCommittedIndex;
+  long lastTxId=metaDataStore.getLastCommittedTransactionId();
+  if (lastTxId == 1) {
+    lastCommittedIndex=-1;
+  }
+ else {
+    IOCursor<CommittedTransactionRepresentation> transactions;
+    byte[] lastHeaderFound;
+    try {
+      transactions=transactionStore.getTransactions(lastTxId);
+      lastHeaderFound=null;
+      while (transactions.next()) {
+        CommittedTransactionRepresentation committedTransactionRepresentation=transactions.get();
+        lastHeaderFound=committedTransactionRepresentation.getStartEntry().getAdditionalHeader();
+      }
+    }
+ catch (    Exception e) {
+      throw new RuntimeException(e);
+    }
+    lastCommittedIndex=decodeLogIndexFromTxHeader(lastHeaderFound);
+  }
+  log.info("Last committed index %d",lastCommittedIndex);
+  return lastCommittedIndex;
+}
