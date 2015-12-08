@@ -1,27 +1,26 @@
 {
   final long allNodes=counts.nodeCount(ANY_LABEL,Registers.newDoubleLongRegister()).readSecond();
-  return new NodeStoreScan<Update,FAILURE>(nodeStore,locks,allNodes){
-    @Override protected Update read(    NodeRecord node){
+  return new NodeStoreScan<FAILURE>(nodeStore,locks,allNodes){
+    @Override protected void process(    NodeRecord node) throws FAILURE {
       long[] labels=parseLabelsField(node).get(this.nodeStore);
-      Update update=new Update(node.getId(),labels);
+      if (labels.length == 0) {
+        return;
+      }
+      if (labelUpdateVisitor != null) {
+        labelUpdateVisitor.visit(labelChanges(node.getId(),EMPTY_LONG_ARRAY,labels));
+      }
       if (!containsAnyLabel(labelIds,labels)) {
-        return update;
+        return;
       }
       properties:       for (      PropertyBlock property : properties(node)) {
         int propertyKeyId=property.getKeyIndexId();
         for (        int sought : propertyKeyIds) {
           if (propertyKeyId == sought) {
-            update.add(add(node.getId(),propertyKeyId,valueOf(property),labels));
+            NodePropertyUpdate update=add(node.getId(),propertyKeyId,valueOf(property),labels);
+            propertyUpdateVisitor.visit(update);
             continue properties;
           }
         }
-      }
-      return update;
-    }
-    @Override protected void process(    Update update) throws FAILURE {
-      labelUpdateVisitor.visit(update.labels);
-      for (      NodePropertyUpdate propertyUpdate : update) {
-        propertyUpdateVisitor.visit(propertyUpdate);
       }
     }
   }
