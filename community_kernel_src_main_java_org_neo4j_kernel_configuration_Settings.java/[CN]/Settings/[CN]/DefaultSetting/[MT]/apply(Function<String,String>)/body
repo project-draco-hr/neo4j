@@ -1,0 +1,25 @@
+{
+  String value=lookup(settings);
+  if (value == null) {
+    try {
+      value=defaultLookup(settings);
+    }
+ catch (    Exception e) {
+      throw new IllegalArgumentException(String.format("Missing mandatory setting '%s'",name()));
+    }
+  }
+  if (value == null) {
+    return null;
+  }
+  T result;
+  try {
+    result=parser.apply(value);
+    for (    Function2<T,Function<String,String>,T> valueConverter : valueConverters) {
+      result=valueConverter.apply(result,settings);
+    }
+  }
+ catch (  IllegalArgumentException e) {
+    throw new InvalidSettingException(name(),value,e.getMessage());
+  }
+  return result;
+}
