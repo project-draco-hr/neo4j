@@ -1,4 +1,9 @@
 {
   assertDatabaseIsRunning();
-  return localTxPool.acquire().initialize(storageEngine.metaDataStore().getLastCommittedTransactionId());
+  Locks.Client locksClient=locks.newClient();
+  LegacyIndexTransactionState legacyIndexTransactionState=new LegacyIndexTransactionStateImpl(indexConfigStore,legacyIndexProviderLookup);
+  long lastTransactionIdWhenStarted=storageEngine.metaDataStore().getLastCommittedTransactionId();
+  KernelTransactionImplementation tx=new KernelTransactionImplementation(statementOperations,schemaWriteGuard,locksClient,hooks,constraintIndexCreator,transactionHeaderInformationFactory,transactionCommitProcess,transactionMonitor,legacyIndexTransactionState,this,Clock.SYSTEM_CLOCK,tracers.transactionTracer,storageEngine,lastTransactionIdWhenStarted);
+  allTransactions.add(tx);
+  return tx;
 }
