@@ -1,0 +1,24 @@
+{
+  File log1=logFile(1);
+  File log2=logFile(2);
+  File log3=logFile(3);
+  writeTxContent(log1,new Command.RelationshipCommand().init(new RelationshipRecord(42,false,-1,-1,-1,-1,-1,-1,-1,false,false),new RelationshipRecord(42,true,1,2,3,4,5,6,7,true,true)),new Command.PropertyCommand().init(propertyRecord(5,false,-1,-1),propertyRecord(5,true,-1,-1,777)),new Command.RelationshipCommand().init(new RelationshipRecord(21,true,1,2,3,4,5,6,7,true,true),new RelationshipRecord(21,false,-1,-1,-1,-1,-1,-1,-1,false,false)));
+  writeTxContent(log2,new Command.RelationshipCommand().init(new RelationshipRecord(42,true,1,2,3,9,5,6,7,true,true),new RelationshipRecord(42,true,1,2,3,4,5,6,7,true,true)));
+  writeTxContent(log3,new Command.RelationshipCommand().init(new RelationshipRecord(53,true,1,2,3,4,5,6,7,true,true),new RelationshipRecord(53,true,1,2,30,4,14,6,7,true,true)),new Command.RelationshipCommand().init(new RelationshipRecord(42,true,1,2,3,4,5,6,7,false,true),new RelationshipRecord(42,true,1,2,3,4,5,6,7,false,true)));
+  CapturingInconsistenciesHandler handler=new CapturingInconsistenciesHandler();
+  CheckTxLogs checker=new CheckTxLogs(fsRule.get());
+  checker.scan(new File[]{log1,log2,log3},handler,RELATIONSHIP);
+  assertEquals(2,handler.inconsistencies.size());
+  RelationshipRecord seenRecord1=(RelationshipRecord)handler.inconsistencies.get(0).committed.record();
+  RelationshipRecord currentRecord1=(RelationshipRecord)handler.inconsistencies.get(0).current.record();
+  assertEquals(42,seenRecord1.getId());
+  assertEquals(4,seenRecord1.getFirstPrevRel());
+  assertEquals(42,currentRecord1.getId());
+  assertEquals(9,currentRecord1.getFirstPrevRel());
+  RelationshipRecord seenRecord2=(RelationshipRecord)handler.inconsistencies.get(1).committed.record();
+  RelationshipRecord currentRecord2=(RelationshipRecord)handler.inconsistencies.get(1).current.record();
+  assertEquals(42,seenRecord2.getId());
+  assertTrue(seenRecord2.isFirstInFirstChain());
+  assertEquals(42,currentRecord2.getId());
+  assertFalse(currentRecord2.isFirstInFirstChain());
+}
