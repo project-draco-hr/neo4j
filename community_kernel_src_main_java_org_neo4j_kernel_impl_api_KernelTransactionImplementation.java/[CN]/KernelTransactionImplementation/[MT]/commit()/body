@@ -3,8 +3,10 @@
   try (CommitEvent commitEvent=transactionEvent.beginCommitEvent()){
     if (hasDataChanges()) {
       try {
-        if ((hooksState=hooks.beforeCommit(txState,this,storeLayer)) != null && hooksState.failed()) {
-          throw new TransactionFailureException(Status.Transaction.HookFailed,hooksState.failure(),"");
+        hooksState=hooks.beforeCommit(txState,this,storageEngine.storeReadLayer());
+        if (hooksState != null && hooksState.failed()) {
+          TransactionHookException cause=hooksState.failure();
+          throw new TransactionFailureException(Status.Transaction.HookFailed,cause,"");
         }
       }
   finally {
