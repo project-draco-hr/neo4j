@@ -3,8 +3,10 @@
   final IndexBatchTransactionApplier applier=new IndexBatchTransactionApplier(indexingService,labelScanStoreSynchronizer);
   final Command.SchemaRuleCommand command=new Command.SchemaRuleCommand();
   command.init(emptyDynamicRecords,singleton(createdDynamicRecord(1)),indexRule);
-  final boolean result=applier.visitSchemaRuleCommand(command);
-  applier.apply();
-  assertFalse(result);
+  boolean result;
+  try (TransactionApplier txApplier=applier.startTx(transactionToApply)){
+    result=txApplier.visitSchemaRuleCommand(command);
+  }
+   assertFalse(result);
   verify(indexingService).createIndex(indexRule);
 }
