@@ -1,0 +1,19 @@
+{
+  NetworkReadableLogChannel channel=new NetworkReadableLogChannel(buffer);
+  int authorId=channel.getInt();
+  int masterId=channel.getInt();
+  long latestCommittedTxWhenStarted=channel.getLong();
+  long timeStarted=channel.getLong();
+  long timeCommitted=channel.getLong();
+  int headerLength=channel.getInt();
+  byte[] header=new byte[headerLength];
+  channel.get(header,headerLength);
+  LogEntryCommand entryRead;
+  List<Command> commands=new LinkedList<>();
+  while ((entryRead=(LogEntryCommand)reader.readLogEntry(channel)) != null) {
+    commands.add(entryRead.getXaCommand());
+  }
+  PhysicalTransactionRepresentation toReturn=new PhysicalTransactionRepresentation(commands);
+  toReturn.setHeader(header,masterId,authorId,timeStarted,latestCommittedTxWhenStarted,timeCommitted,-1);
+  return toReturn;
+}
