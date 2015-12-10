@@ -1,18 +1,8 @@
 {
+  createCluster("10m","10m");
   addNodes(1000);
   cluster.stop();
-  try (BufferedReader reader=new BufferedReader(new FileReader(outputFile))){
-    String[] headers=reader.readLine().split(",");
-    assertThat(headers[0],is("timestamp"));
-    int committedColumn=Arrays.binarySearch(headers,"neo4j.transaction.committed");
-    assertThat(committedColumn,is(not(-1)));
-    int committedTransactions=0;
-    String line;
-    while ((line=reader.readLine()) != null) {
-      String[] fields=line.split(",");
-      int newCommittedTransactions=Integer.parseInt(fields[committedColumn]);
-      assertThat(newCommittedTransactions,greaterThanOrEqualTo(committedTransactions));
-      committedTransactions=newCommittedTransactions;
-    }
-  }
- }
+  File metricsFile=new File(outputPath,TransactionMetrics.TX_COMMITTED + ".csv");
+  long committedTransactions=readMonotonicIncreasingLongValue(metricsFile);
+  assertThat(committedTransactions,lessThanOrEqualTo(1000L + 2L));
+}

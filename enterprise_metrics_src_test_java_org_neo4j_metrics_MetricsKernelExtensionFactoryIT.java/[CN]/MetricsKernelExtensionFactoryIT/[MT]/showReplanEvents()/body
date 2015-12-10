@@ -1,4 +1,5 @@
 {
+  createCluster("0","10m");
   try (Transaction tx=db.beginTx()){
     db.execute("match (n:Label {name: 'Pontus'}) return n.name");
     tx.success();
@@ -10,18 +11,7 @@
   }
    addNodes(1000);
   cluster.stop();
-  try (BufferedReader reader=new BufferedReader(new FileReader(outputFile))){
-    String[] headers=reader.readLine().split(",");
-    int replanColumn=Arrays.binarySearch(headers,CypherMetrics.REPLAN_EVENTS);
-    assertThat(replanColumn,is(not(-1)));
-    int replanEvents=0;
-    String line;
-    while ((line=reader.readLine()) != null) {
-      String[] fields=line.split(",");
-      int newReplanEvents=Integer.parseInt(fields[replanColumn]);
-      assertThat(newReplanEvents,greaterThanOrEqualTo(replanEvents));
-      replanEvents=newReplanEvents;
-    }
-    assertThat(replanEvents,is(1));
-  }
- }
+  File metricFile=new File(outputPath,CypherMetrics.REPLAN_EVENTS + ".csv");
+  long events=readMonotonicIncreasingLongValue(metricFile);
+  assertThat(events,is(1L));
+}

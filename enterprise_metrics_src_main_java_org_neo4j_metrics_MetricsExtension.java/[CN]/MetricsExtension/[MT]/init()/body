@@ -1,12 +1,16 @@
 {
   Log logger=logService.getUserLog(getClass());
+  logger.info("Initiating metrics...");
   final MetricRegistry registry=new MetricRegistry();
-  logger.info("Initiating metrics..");
-  String prefix=computePrefix(configuration);
-  life.add(new CsvOutput(configuration,registry,logger,kernelContext));
-  life.add(new GraphiteOutput(configuration,registry,logger,prefix));
-  life.add(new GangliaOutput(configuration,registry,logger,prefix));
-  Neo4jMetricsFactory factory=new Neo4jMetricsFactory(registry,configuration,monitors,dataSourceManager,transactionCounters,pageCacheCounters,checkPointerMonitor,logRotationMonitor,idGeneratorFactory,dependencyResolver,logService);
-  life.add(factory.newInstance());
+  CompositeEventReporter reporter=new EventReporterBuilder(configuration,registry,logger,kernelContext,life).build();
+  boolean metricsBuilt=new Neo4jMetricsBuilder(registry,reporter,configuration,logService,dependencies,life).build();
+  if (metricsBuilt && reporter.isEmpty()) {
+    logger.warn("Several metrics were enabled but no exporting option was configured to report values to. " + "Disabling kernel metrics extension.");
+    life.clear();
+  }
+  if (!reporter.isEmpty() && !metricsBuilt) {
+    logger.warn("Exporting tool have been configured to report values to but no metrics were enabled. " + "Disabling kernel metrics extension.");
+    life.clear();
+  }
   life.init();
 }
