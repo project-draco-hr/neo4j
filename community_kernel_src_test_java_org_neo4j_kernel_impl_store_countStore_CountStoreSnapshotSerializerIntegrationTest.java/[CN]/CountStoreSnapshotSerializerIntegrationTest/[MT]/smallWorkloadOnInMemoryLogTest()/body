@@ -1,0 +1,18 @@
+{
+  InMemoryLogChannel tempChannel=new InMemoryLogChannel();
+  ConcurrentHashMap<CountsKey,long[]> map=CountStoreMapGenerator.simpleCountStoreMap(1);
+  Snapshot snapshot=new Snapshot(1,map);
+  serialize(tempChannel,snapshot);
+  Snapshot recovered=deserialize(tempChannel);
+  Assert.assertEquals(snapshot.getTxId(),recovered.getTxId());
+  for (  Map.Entry<CountsKey,long[]> pair : snapshot.getMap().entrySet()) {
+    long[] value=recovered.getMap().get(pair.getKey());
+    Assert.assertNotNull(value);
+    Assert.assertTrue(Arrays.equals(value,pair.getValue()));
+  }
+  for (  Map.Entry<CountsKey,long[]> pair : recovered.getMap().entrySet()) {
+    long[] value=snapshot.getMap().get(pair.getKey());
+    Assert.assertNotNull(value);
+    Assert.assertTrue(Arrays.equals(value,pair.getValue()));
+  }
+}
