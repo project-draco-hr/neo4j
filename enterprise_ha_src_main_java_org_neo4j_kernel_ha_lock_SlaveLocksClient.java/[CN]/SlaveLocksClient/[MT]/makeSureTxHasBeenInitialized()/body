@@ -1,10 +1,17 @@
 {
-  availabilityGuard.checkAvailability(availabilityTimeoutMillis,RuntimeException.class);
+  availabilityGuard.checkAvailability(availabilityTimeoutMillis,TransactionFailureException.class);
   if (!initialized) {
     try (Response<Void> ignored=master.newLockSession(newRequestContextFor(client))){
     }
- catch (    TransactionFailureException e) {
-      throw new org.neo4j.graphdb.TransactionFailureException("Failed to acquire lock in cluster: " + e.getMessage(),e);
+ catch (    Exception exception) {
+      ComException e;
+      if (exception instanceof ComException) {
+        e=(ComException)exception;
+      }
+ else {
+        e=new ComException(exception);
+      }
+      throw new DistributedLockFailureException("Failed to start a new lock session on master",master,e);
     }
     initialized=true;
   }
