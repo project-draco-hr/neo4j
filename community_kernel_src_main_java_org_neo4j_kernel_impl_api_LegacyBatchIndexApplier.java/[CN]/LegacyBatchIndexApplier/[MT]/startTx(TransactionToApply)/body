@@ -1,14 +1,19 @@
 {
-  if (!transaction.commitment().hasLegacyIndexChanges()) {
-    return TransactionApplier.EMPTY;
-  }
-  activeTransactionId=transaction.transactionId();
+  long activeTransactionId=transaction.transactionId();
   try {
-    transactionOrdering.waitFor(activeTransactionId);
-    if (transaction.next() == null) {
-      isLastTransactionInBatch=true;
+    if (txApplier == null) {
+      txApplier=new LegacyIndexTransactionApplier(applierLookup,indexConfigStore,mode,transactionOrdering);
     }
-    return new LegacyIndexTransactionApplier(isLastTransactionInBatch,applierLookup,indexConfigStore,mode,transactionOrdering,activeTransactionId);
+    if (transaction.commitment().hasLegacyIndexChanges()) {
+      transactionOrdering.waitFor(activeTransactionId);
+      if (transaction.next() != null) {
+        txApplier.setTransactionId(activeTransactionId);
+      }
+ else {
+        lastTransactionId=activeTransactionId;
+      }
+    }
+    return txApplier;
   }
  catch (  InterruptedException e) {
     Thread.currentThread().interrupt();
