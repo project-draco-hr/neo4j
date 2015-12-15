@@ -1,0 +1,19 @@
+{
+  final AtomicLong progress=new AtomicLong();
+  Configuration config=config();
+  CoarseBoundedProgressExecutionMonitor monitor=new CoarseBoundedProgressExecutionMonitor(100 * batchSize,100 * batchSize,config){
+    @Override protected void progress(    long add){
+      progress.addAndGet(add);
+    }
+  }
+;
+  monitor.start(singleExecution(0,config));
+  long total=monitor.total();
+  long part=total / 10;
+  for (int i=0; i < 9; i++) {
+    monitor.check(singleExecution(part * (i + 1),config));
+    assertTrue(progress.get() < total);
+  }
+  monitor.done(0,"Test");
+  assertEquals(total,progress.get());
+}
