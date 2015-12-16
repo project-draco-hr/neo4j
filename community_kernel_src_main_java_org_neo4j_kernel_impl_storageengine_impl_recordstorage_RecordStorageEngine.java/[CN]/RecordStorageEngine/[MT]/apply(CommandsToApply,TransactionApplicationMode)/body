@@ -1,0 +1,16 @@
+{
+  try (BatchTransactionApplier batchApplier=applier(mode)){
+    while (batch != null) {
+      try (LockGroup locks=new LockGroup()){
+        try (TransactionApplier txApplier=batchApplier.startTx(batch,locks)){
+          batch.accept(txApplier);
+        }
+         batch=batch.next();
+      }
+ catch (      Throwable cause) {
+        databaseHealth.panic(cause);
+        throw cause;
+      }
+    }
+  }
+ }

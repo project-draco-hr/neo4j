@@ -1,0 +1,22 @@
+{
+  long activeTransactionId=transaction.transactionId();
+  try {
+    if (txApplier == null) {
+      txApplier=new LegacyIndexTransactionApplier(applierLookup,indexConfigStore,mode,transactionOrdering);
+    }
+    if (transaction.requiresApplicationOrdering()) {
+      transactionOrdering.waitFor(activeTransactionId);
+      if (transaction.next() != null) {
+        txApplier.setTransactionId(activeTransactionId);
+      }
+ else {
+        lastTransactionId=activeTransactionId;
+      }
+    }
+    return txApplier;
+  }
+ catch (  InterruptedException e) {
+    Thread.currentThread().interrupt();
+    throw new IOException("Interrupted while waiting for applying tx:" + activeTransactionId + " legacy index updates",e);
+  }
+}
