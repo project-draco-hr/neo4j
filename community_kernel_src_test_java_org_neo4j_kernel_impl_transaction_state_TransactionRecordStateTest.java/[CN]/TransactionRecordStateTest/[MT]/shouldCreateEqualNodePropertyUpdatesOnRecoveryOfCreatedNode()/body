@@ -1,2 +1,21 @@
 {
+  long nodeId=0;
+  int labelId=5, propertyKeyId=7;
+  long ruleId=0;
+  NeoStores neoStores=neoStoresRule.open();
+  TransactionRecordState recordState=new TransactionRecordState(neoStores,integrityValidator,newContext(neoStores));
+  SchemaRule rule=indexRule(ruleId,labelId,propertyKeyId,PROVIDER_DESCRIPTOR);
+  recordState.createSchemaRule(rule);
+  apply(neoStores,recordState);
+  recordState=new TransactionRecordState(neoStores,integrityValidator,newContext(neoStores));
+  recordState.nodeCreate(nodeId);
+  recordState.addLabelToNode(labelId,nodeId);
+  recordState.nodeAddProperty(nodeId,propertyKeyId,"Neo");
+  PhysicalTransactionRepresentation transaction=transactionRepresentationOf(recordState);
+  NodePropertyCommandsExtractor extractor=new NodePropertyCommandsExtractor();
+  transaction.accept(extractor);
+  assertTrue(extractor.containsAnyNodeOrPropertyUpdate());
+  PrimitiveLongVisitor<RuntimeException> visitor=mock(PrimitiveLongVisitor.class);
+  extractor.visitUpdatedNodeIds(visitor);
+  verify(visitor,times(1)).visited(nodeId);
 }

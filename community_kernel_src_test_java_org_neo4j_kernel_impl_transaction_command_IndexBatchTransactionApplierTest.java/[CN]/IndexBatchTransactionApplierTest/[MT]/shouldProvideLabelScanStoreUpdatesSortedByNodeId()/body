@@ -1,15 +1,14 @@
 {
   IndexingService indexing=mock(IndexingService.class);
   LabelScanWriter writer=new OrderVerifyingLabelScanWriter(10,15,20);
-  WorkSync<Supplier<LabelScanWriter>,LabelUpdateWork> labelScanSync=new WorkSync<>(singletonProvider(writer));
+  WorkSync<Supplier<LabelScanWriter>,LabelUpdateWork> labelScanSync=spy(new WorkSync<>(singletonProvider(writer)));
   TransactionToApply tx=mock(TransactionToApply.class);
-  ValidatedIndexUpdates indexUpdates=mock(ValidatedIndexUpdates.class);
-  when(tx.validatedIndexUpdates()).thenReturn(indexUpdates);
-  try (IndexBatchTransactionApplier applier=new IndexBatchTransactionApplier(indexing,labelScanSync)){
+  try (IndexBatchTransactionApplier applier=new IndexBatchTransactionApplier(indexing,labelScanSync,mock(NodeStore.class),mock(PropertyStore.class),mock(PropertyLoader.class))){
     try (TransactionApplier txApplier=applier.startTx(tx)){
       txApplier.visitNodeCommand(node(15));
       txApplier.visitNodeCommand(node(20));
       txApplier.visitNodeCommand(node(10));
     }
    }
- }
+   verify(labelScanSync).apply(any());
+}
