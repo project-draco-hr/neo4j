@@ -1,22 +1,27 @@
 {
   ClusterManager.ManagedCluster cluster=clusterRule.startCluster();
   HighlyAvailableGraphDatabase master=cluster.getMaster();
+  String type=type(2);
+  String key=key(2);
+  long constraintCountBefore, indexCountBefore;
   try (Transaction tx=master.beginTx()){
-    createConstraint(master,TYPE,PROPERTY_KEY);
+    constraintCountBefore=count(master.schema().getConstraints());
+    indexCountBefore=count(master.schema().getIndexes());
+    createConstraint(master,type,key);
     tx.success();
   }
    cluster.sync();
-  createEntityInTx(cluster.getAnySlave(),TYPE,PROPERTY_KEY,"Foo");
+  createEntityInTx(cluster.getAnySlave(),type,key,"Foo");
   try (Transaction tx=master.beginTx()){
-    single(master.schema().getConstraints()).drop();
+    getConstraint(master,type,key).drop();
     tx.success();
   }
    cluster.sync();
   for (  HighlyAvailableGraphDatabase clusterMember : cluster.getAllMembers()) {
     try (Transaction tx=clusterMember.beginTx()){
-      assertEquals(count(clusterMember.schema().getConstraints()),0);
-      assertEquals(count(clusterMember.schema().getIndexes()),0);
-      createConstraintViolation(clusterMember,TYPE,PROPERTY_KEY,"Foo");
+      assertNull(getConstraint(clusterMember,type,key));
+      assertNull(getIndex(clusterMember,type,key));
+      createConstraintViolation(clusterMember,type,key,"Foo");
       tx.success();
     }
    }
