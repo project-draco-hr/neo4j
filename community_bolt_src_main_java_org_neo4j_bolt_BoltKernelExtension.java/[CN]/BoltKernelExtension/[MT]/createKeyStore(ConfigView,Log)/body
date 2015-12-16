@@ -1,0 +1,16 @@
+{
+  File privateKeyPath=connector.get(Settings.tls_key_file).getAbsoluteFile();
+  File certificatePath=connector.get(Settings.tls_certificate_file).getAbsoluteFile();
+  if ((!certificatePath.exists() && !privateKeyPath.exists())) {
+    log.info("No SSL certificate found, generating a self-signed certificate..");
+    Certificates certFactory=new Certificates();
+    certFactory.createSelfSignedCertificate(certificatePath,privateKeyPath,connector.get(Settings.webserver_address));
+  }
+  if (!certificatePath.exists()) {
+    throw new IllegalStateException(String.format("TLS private key found, but missing certificate at '%s'. Cannot start server without " + "certificate.",certificatePath));
+  }
+  if (!privateKeyPath.exists()) {
+    throw new IllegalStateException(String.format("TLS certificate found, but missing key at '%s'. Cannot start server without key.",privateKeyPath));
+  }
+  return new KeyStoreFactory().createKeyStore(privateKeyPath,certificatePath);
+}
