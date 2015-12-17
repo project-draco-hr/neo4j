@@ -1,0 +1,22 @@
+{
+  Map<String,Integer> names=MapUtil.genericMap("first",0,"second",1);
+  Map<String,Integer> keys=MapUtil.genericMap("key",0);
+  String applierName="test-applier";
+  Commitment commitment=mock(Commitment.class);
+  when(commitment.hasLegacyIndexChanges()).thenReturn(true);
+  IndexConfigStore config=newIndexConfigStore(names,applierName);
+  LegacyIndexApplierLookup applierLookup=mock(LegacyIndexApplierLookup.class);
+  when(applierLookup.newApplier(anyString(),anyBoolean())).thenReturn(mock(TransactionApplier.class));
+  try (LegacyBatchIndexApplier applier=new LegacyBatchIndexApplier(config,applierLookup,BYPASS,INTERNAL)){
+    TransactionToApply tx=new TransactionToApply(null,2);
+    tx.commitment(commitment,2);
+    try (TransactionApplier txApplier=applier.startTx(tx)){
+      IndexDefineCommand definitions=definitions(names,keys);
+      txApplier.visitIndexDefineCommand(definitions);
+      txApplier.visitIndexAddNodeCommand(addNodeToIndex(definitions,"first"));
+      txApplier.visitIndexAddNodeCommand(addNodeToIndex(definitions,"second"));
+      txApplier.visitIndexAddRelationshipCommand(addRelationshipToIndex(definitions,"second"));
+    }
+   }
+   verify(applierLookup,times(1)).newApplier(eq(applierName),anyBoolean());
+}

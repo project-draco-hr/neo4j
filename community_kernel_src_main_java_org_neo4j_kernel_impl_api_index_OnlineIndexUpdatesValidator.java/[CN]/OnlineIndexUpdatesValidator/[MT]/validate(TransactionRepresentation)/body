@@ -1,15 +1,20 @@
 {
-  NodePropertyCommandsExtractor extractor=new NodePropertyCommandsExtractor();
-  try {
-    transaction.accept(extractor);
+  try (NodePropertyCommandsExtractor extractor=new NodePropertyCommandsExtractor()){
+    try (TransactionApplier txApplier=extractor.startTx(new TransactionToApply(transaction))){
+      transaction.accept(txApplier);
+    }
+ catch (    IOException cause) {
+      databaseHealth.panic(cause);
+      throw cause;
+    }
+    if (!extractor.containsAnyNodeOrPropertyUpdate()) {
+      return ValidatedIndexUpdates.NONE;
+    }
+    Iterable<NodePropertyUpdate> updates=new LazyIndexUpdates(nodeStore,propertyStore,propertyLoader,extractor.propertyCommandsByNodeIds,extractor.nodeCommandsById);
+    return indexing.validate(updates,updateMode);
   }
- catch (  IOException cause) {
+ catch (  Exception cause) {
     databaseHealth.panic(cause);
-    throw cause;
+    throw new IOException(cause);
   }
-  if (!extractor.containsAnyNodeOrPropertyUpdate()) {
-    return ValidatedIndexUpdates.NONE;
-  }
-  Iterable<NodePropertyUpdate> updates=new LazyIndexUpdates(nodeStore,propertyStore,propertyLoader,extractor.propertyCommandsByNodeIds,extractor.nodeCommandsById);
-  return indexing.validate(updates,updateMode);
 }
