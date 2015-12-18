@@ -1,9 +1,12 @@
 {
-  when(local.tryExclusiveLock(any(Locks.ResourceType.class),any(long.class))).thenReturn(true);
-  when(local.trySharedLock(any(Locks.ResourceType.class),any(long.class))).thenReturn(true);
-  when(lockManager.newClient()).thenReturn(local);
-  when(master.acquireSharedLock(any(RequestContext.class),any(Locks.ResourceType.class),Matchers.<long[]>anyVararg())).thenReturn(new TransactionStreamResponse<>(new LockResult(LockStatus.OK_LOCKED),null,TransactionStream.EMPTY,ResourceReleaser.NO_OP));
-  when(master.acquireExclusiveLock(any(RequestContext.class),any(Locks.ResourceType.class),Matchers.<long[]>anyVararg())).thenReturn(new TransactionStreamResponse<>(new LockResult(LockStatus.OK_LOCKED),null,TransactionStream.EMPTY,ResourceReleaser.NO_OP));
-  availabilityGuard=new AvailabilityGuard(Clock.SYSTEM_CLOCK,NullLog.getInstance());
+  master=mock(Master.class);
+  RequestContextFactory requestContextFactory=mock(RequestContextFactory.class);
+  availabilityGuard=new AvailabilityGuard(new FakeClock(),NullLog.getInstance());
+  Locks lockManager=new CommunityLockManger();
+  local=spy(lockManager.newClient());
+  LockResult lockResultOk=new LockResult(LockStatus.OK_LOCKED);
+  TransactionStreamResponse<LockResult> responseOk=new TransactionStreamResponse<>(lockResultOk,null,TransactionStream.EMPTY,ResourceReleaser.NO_OP);
+  whenMasterAcquireShared().thenReturn(responseOk);
+  whenMasterAcquireExclusive().thenReturn(responseOk);
   client=new SlaveLocksClient(master,local,lockManager,requestContextFactory,availabilityGuard);
 }
