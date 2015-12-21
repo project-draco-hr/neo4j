@@ -1,0 +1,17 @@
+{
+  int numberOfUpdates=1000;
+  CountsSnapshot countsSnapshot;
+  Map<CountsKey,long[]> snapshotMap;
+  Map<CountsKey,long[]> map=new ConcurrentHashMap<>();
+  ConcurrentHashMap<CountsKey,long[]> updateMap=new ConcurrentHashMap<>();
+  IntermediateStateTestManager intermediateStateTestManager=new IntermediateStateTestManager(numberOfUpdates);
+  InMemoryCountsStore countStore=new InMemoryCountsStore();
+  for (int i=0; i < numberOfUpdates; i++) {
+    long txId=intermediateStateTestManager.getNextUpdateMap(updateMap);
+    updateMapByDiff(map,updateMap,txId);
+    countStore.updateAll(txId,updateMap);
+    countsSnapshot=countStore.snapshot(txId);
+    snapshotMap=countsSnapshot.getMap();
+    compareMaps(map,snapshotMap);
+  }
+}

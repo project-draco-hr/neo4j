@@ -1,0 +1,20 @@
+{
+  int numberOfUpdates=900;
+  InMemoryCountsStore countStore=new InMemoryCountsStore();
+  IntermediateStateTestManager intermediateStateTestManager=new IntermediateStateTestManager(numberOfUpdates);
+  ExecutorService workerExecutorService=Executors.newFixedThreadPool(10);
+  ExecutorService snapshotExecutorService=Executors.newSingleThreadExecutor();
+  for (int i=0; i < numberOfUpdates; i++) {
+    ConcurrentHashMap<CountsKey,long[]> map=new ConcurrentHashMap<>();
+    long txid=intermediateStateTestManager.getNextUpdateMap(map);
+    Runnable workerA=new UpdateWorker(txid,map,countStore);
+    workerExecutorService.execute(workerA);
+    if (i > 1 && ThreadLocalRandom.current().nextInt(50) == 3) {
+      snapshotExecutorService.execute(new SnapshotWorker(i,intermediateStateTestManager,countStore));
+    }
+  }
+  workerExecutorService.shutdown();
+  snapshotExecutorService.shutdown();
+  workerExecutorService.awaitTermination(100,TimeUnit.SECONDS);
+  snapshotExecutorService.awaitTermination(100,TimeUnit.SECONDS);
+}

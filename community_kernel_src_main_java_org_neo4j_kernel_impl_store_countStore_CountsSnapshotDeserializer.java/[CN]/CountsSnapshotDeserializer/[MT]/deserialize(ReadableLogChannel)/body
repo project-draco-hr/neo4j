@@ -1,0 +1,36 @@
+{
+  long txid=channel.getLong();
+  int size=channel.getInt();
+  Map<CountsKey,long[]> map=new ConcurrentHashMap<>(size);
+  CountsKey key;
+  long[] value;
+  for (int i=0; i < size; i++) {
+    CountsKeyType type=value(channel.get());
+switch (type) {
+case ENTITY_NODE:
+      key=nodeKey(channel.getInt());
+    value=new long[]{channel.getLong()};
+  map.put(key,value);
+break;
+case ENTITY_RELATIONSHIP:
+int startLabelId=channel.getInt();
+int typeId=channel.getInt();
+int endLabelId=channel.getInt();
+key=relationshipKey(startLabelId,typeId,endLabelId);
+value=new long[]{channel.getLong()};
+map.put(key,value);
+break;
+case INDEX_SAMPLE:
+key=indexSampleKey(channel.getInt(),channel.getInt());
+value=new long[]{channel.getLong(),channel.getLong()};
+map.put(key,value);
+break;
+case INDEX_STATISTICS:
+key=indexStatisticsKey(channel.getInt(),channel.getInt());
+value=new long[]{channel.getLong(),channel.getLong()};
+map.put(key,value);
+break;
+}
+}
+return new CountsSnapshot(txid,map);
+}
