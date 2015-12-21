@@ -22,25 +22,12 @@ throw new IllegalStateException("Unknown update mode " + update.getUpdateMode())
 }
 }
 @Override public void close() throws IOException, IndexEntryConflictException {
-searcherManager.maybeRefresh();
-IndexSearcher searcher=searcherManager.acquire();
-try {
-DuplicateCheckingCollector collector=duplicateCheckingCollector(accessor);
-for (Object propertyValue : updatedPropertyValues) {
-collector.reset();
-Query query=documentStructure.newSeekQuery(propertyValue);
-searcher.search(query,collector);
+luceneIndex.maybeRefresh();
+try (IndexReader indexReader=luceneIndex.getIndexReader()){
+indexReader.verifyDeferredConstraints(accessor,descriptor.getPropertyKeyId(),updatedPropertyValues);
 }
-}
- catch (IOException e) {
-Throwable cause=e.getCause();
-if (cause instanceof IndexEntryConflictException) {
-throw (IndexEntryConflictException)cause;
-}
-throw e;
-}
- finally {
-searcherManager.release(searcher);
+ catch (Exception e) {
+throw new IOException(e);
 }
 }
 @Override public void remove(PrimitiveLongSet nodeIds){

@@ -1,33 +1,12 @@
 {
-  searcherManager.maybeRefresh();
-  IndexSearcher searcher=searcherManager.acquire();
+  luceneIndex.maybeRefresh();
+  IndexReader indexReader;
   try {
-    DuplicateCheckingCollector collector=duplicateCheckingCollector(accessor);
-    for (    LeafReaderContext leafReaderContext : searcher.getIndexReader().leaves()) {
-      Fields fields=leafReaderContext.reader().fields();
-      for (      String field : fields) {
-        if (NODE_ID_KEY.equals(field)) {
-          continue;
-        }
-        TermsEnum terms=fields.terms(field).iterator();
-        BytesRef termsRef;
-        while ((termsRef=terms.next()) != null) {
-          if (terms.docFreq() > 1) {
-            collector.reset();
-            searcher.search(new TermQuery(new Term(field,termsRef)),collector);
-          }
-        }
-      }
-    }
+    indexReader=luceneIndex.getIndexReader();
+    indexReader.verifyDeferredConstraints(accessor,descriptor.getPropertyKeyId());
   }
- catch (  IOException e) {
-    Throwable cause=e.getCause();
-    if (cause instanceof IndexEntryConflictException) {
-      throw (IndexEntryConflictException)cause;
-    }
-    throw e;
+ catch (  Exception e) {
+    throw new IOException(e);
   }
- finally {
-    searcherManager.release(searcher);
-  }
+  indexReader.close();
 }
