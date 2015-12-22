@@ -1,0 +1,29 @@
+{
+  final HighlyAvailableGraphDatabase initialMaster=cluster.getMaster();
+  HighlyAvailableGraphDatabase firstSlave=cluster.getAnySlave();
+  HighlyAvailableGraphDatabase secondSlave=cluster.getAnySlave(firstSlave);
+  try (Transaction tx=firstSlave.beginTx()){
+    firstSlave.createNode();
+    tx.success();
+  }
+   try (Transaction tx=secondSlave.beginTx()){
+    secondSlave.createNode();
+    tx.success();
+  }
+   cluster.sync();
+  ClusterManager.RepairKit failedMaster=cluster.fail(initialMaster);
+  cluster.await(ClusterManager.masterAvailable(initialMaster));
+  failedMaster.repair();
+  cluster.await(ClusterManager.masterAvailable(initialMaster));
+  cluster.await(ClusterManager.allSeesAllAsAvailable());
+  HighlyAvailableGraphDatabase slave=cluster.getAnySlave(initialMaster);
+  try (Transaction tx=slave.beginTx()){
+    slave.createNode();
+    tx.success();
+  }
+   HighlyAvailableGraphDatabase master=cluster.getMaster();
+  try (Transaction tx=master.beginTx()){
+    GlobalGraphOperations gops=GlobalGraphOperations.at(master);
+    assertThat(IteratorUtil.count(gops.getAllNodes()),is(3));
+  }
+ }
