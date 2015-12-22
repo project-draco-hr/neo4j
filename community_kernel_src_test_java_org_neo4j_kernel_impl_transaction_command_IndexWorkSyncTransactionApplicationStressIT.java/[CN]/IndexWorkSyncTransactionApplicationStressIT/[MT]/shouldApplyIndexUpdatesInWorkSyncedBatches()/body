@@ -1,0 +1,14 @@
+{
+  StorageEngine storageEngine=storageEngineRule.getWith(fs,pageCacheRule.getPageCache(fs)).storeDirectory(directory.directory()).indexProvider(new InMemoryIndexProvider()).build();
+  storageEngine.apply(tx(asList(createIndexRule(InMemoryIndexProviderFactory.PROVIDER_DESCRIPTOR,1,labelId,propertyKeyId))),TransactionApplicationMode.EXTERNAL);
+  IndexProxy index=storageEngine.indexingService().getIndexProxy(new IndexDescriptor(labelId,propertyKeyId));
+  awaitOnline(index);
+  Workers<Worker> workers=new Workers<>(getClass().getSimpleName());
+  final AtomicBoolean end=new AtomicBoolean();
+  for (int i=0; i < 10; i++) {
+    workers.start(new Worker(i,end,storageEngine,10,index));
+  }
+  Thread.sleep(2000);
+  end.set(true);
+  workers.awaitAndThrowOnError(RuntimeException.class);
+}
