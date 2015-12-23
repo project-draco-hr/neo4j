@@ -3,15 +3,15 @@
     exit(1);
   }
   File storeDir=new File(args[0]);
-  GraphDatabaseAPI db=(GraphDatabaseAPI)new GraphDatabaseFactory().newEmbeddedDatabase(storeDir);
-  Transaction tx=db.beginTx();
-  db.createNode().createRelationshipTo(db.createNode(),MyRelTypes.TEST);
-  tx.success();
-  tx.close();
-  db.getDependencyResolver().resolveDependency(LogRotation.class).rotateLogFile();
-  tx=db.beginTx();
-  db.index().forNodes("index").add(db.createNode(),storeDir.getAbsolutePath(),db.createNode());
-  tx.success();
-  tx.close();
-  exit(0);
+  GraphDatabaseService db=new TestGraphDatabaseFactory().newEmbeddedDatabase(storeDir);
+  try (Transaction tx=db.beginTx()){
+    db.createNode().createRelationshipTo(db.createNode(),MyRelTypes.TEST);
+    tx.success();
+  }
+   ((GraphDatabaseAPI)db).getDependencyResolver().resolveDependency(CheckPointer.class).forceCheckPoint(new SimpleTriggerInfo("test"));
+  try (Transaction tx=db.beginTx()){
+    db.index().forNodes("index").add(db.createNode(),storeDir.getAbsolutePath(),db.createNode());
+    tx.success();
+  }
+   exit(0);
 }
