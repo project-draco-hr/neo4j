@@ -1,2 +1,56 @@
 {
+  channel.putLong(countsSnapshot.getTxId());
+  channel.putInt(countsSnapshot.getMap().size());
+  for (  Map.Entry<CountsKey,long[]> pair : countsSnapshot.getMap().entrySet()) {
+    CountsKey key=pair.getKey();
+    long[] value=pair.getValue();
+switch (key.recordType()) {
+case ENTITY_NODE:
+      if (value.length != 1) {
+        throw new IllegalArgumentException("CountsKey of type " + key.recordType() + " has an unexpected value.");
+      }
+    NodeKey nodeKey=(NodeKey)key;
+  channel.put(ENTITY_NODE.code);
+channel.putInt(nodeKey.getLabelId());
+channel.putLong(value[0]);
+break;
+case ENTITY_RELATIONSHIP:
+if (value.length != 1) {
+throw new IllegalArgumentException("CountsKey of type " + key.recordType() + " has an unexpected value.");
+}
+RelationshipKey relationshipKey=(RelationshipKey)key;
+channel.put(ENTITY_RELATIONSHIP.code);
+channel.putInt(relationshipKey.getStartLabelId());
+channel.putInt(relationshipKey.getTypeId());
+channel.putInt(relationshipKey.getEndLabelId());
+channel.putLong(value[0]);
+break;
+case INDEX_SAMPLE:
+if (value.length != 2) {
+throw new IllegalArgumentException("CountsKey of type " + key.recordType() + " has an unexpected value.");
+}
+IndexSampleKey indexSampleKey=(IndexSampleKey)key;
+channel.put(INDEX_SAMPLE.code);
+channel.putInt(indexSampleKey.labelId());
+channel.putInt(indexSampleKey.propertyKeyId());
+channel.putLong(value[0]);
+channel.putLong(value[1]);
+break;
+case INDEX_STATISTICS:
+if (value.length != 2) {
+throw new IllegalArgumentException("CountsKey of type " + key.recordType() + " has an unexpected value.");
+}
+IndexStatisticsKey indexStatisticsKey=(IndexStatisticsKey)key;
+channel.put(INDEX_STATISTICS.code);
+channel.putInt(indexStatisticsKey.labelId());
+channel.putInt(indexStatisticsKey.propertyKeyId());
+channel.putLong(value[0]);
+channel.putLong(value[1]);
+break;
+case EMPTY:
+throw new IllegalArgumentException("CountsKey of type EMPTY cannot be serialized.");
+default :
+throw new IllegalArgumentException("The read CountsKey has an unknown type.");
+}
+}
 }
