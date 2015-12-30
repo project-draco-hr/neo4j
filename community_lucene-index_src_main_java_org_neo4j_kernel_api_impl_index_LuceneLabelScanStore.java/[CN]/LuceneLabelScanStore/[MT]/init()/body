@@ -2,17 +2,20 @@
   monitor.init();
   try {
     if (!luceneIndex.exists()) {
+      log.info("No lucene scan store index found, this might just be first use. Preparing to rebuild.");
       monitor.noIndex();
       luceneIndex.create();
       needsRebuild=true;
     }
  else     if (!luceneIndex.isValid()) {
+      log.warn("Lucene scan store index could not be read. Preparing to rebuild.");
       throw new IOException("Label scan store could not be read, and needs to be rebuilt. " + "To trigger a rebuild, ensure the database is stopped, delete the files in '" + luceneIndex + "', and then start the database again.");
     }
     luceneIndex.open();
   }
  catch (  LockObtainFailedException e) {
     luceneIndex.close();
+    log.error("Index is locked by another process or database",e);
     monitor.lockedIndex(e);
     throw e;
   }
