@@ -3,17 +3,16 @@
   int nodeId2=3;
   int label1=201;
   int label2=202;
-  StubStorageService storage=new StubStorageService();
-  BitmapDocumentFormat format=BitmapDocumentFormat._32;
+  StubIndexPartition partition=newStubIndexPartition();
   long range=format.bitmapFormat().rangeOf(nodeId1);
   assertEquals(range,format.bitmapFormat().rangeOf(nodeId2));
-  SimpleLuceneLabelScanWriter writer=new SimpleLuceneLabelScanWriter(null,format,mock(Lock.class));
+  SimpleLuceneLabelScanWriter writer=new SimpleLuceneLabelScanWriter(partition,format,mock(Lock.class));
   writer.write(NodeLabelUpdate.labelChanges(nodeId1,new long[]{},new long[]{label1}));
   writer.close();
-  writer=new SimpleLuceneLabelScanWriter(null,format,mock(Lock.class));
+  writer=new SimpleLuceneLabelScanWriter(partition,format,mock(Lock.class));
   writer.write(NodeLabelUpdate.labelChanges(nodeId2,new long[]{},new long[]{label2}));
   writer.close();
-  Document document=storage.getDocument(new Term(RANGE,valueOf(range)));
+  Document document=partition.documentFor(new Term(RANGE,valueOf(range)));
   assertTrue(format.bitmapFormat().hasLabel(parseLong(document.get(valueOf(label1))),nodeId1));
   assertTrue(format.bitmapFormat().hasLabel(parseLong(document.get(valueOf(label2))),nodeId2));
 }

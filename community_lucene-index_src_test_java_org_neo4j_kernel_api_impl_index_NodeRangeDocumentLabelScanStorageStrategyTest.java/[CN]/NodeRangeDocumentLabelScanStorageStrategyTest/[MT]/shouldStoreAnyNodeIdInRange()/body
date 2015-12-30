@@ -1,0 +1,13 @@
+{
+  for (int i=0, max=1 << format.bitmapFormat().shift; i < max; i++) {
+    IndexWriter indexWriter=mock(IndexWriter.class);
+    IndexPartition partition=newIndexPartitionMock(indexWriter);
+    LabelScanWriter writer=new SimpleLuceneLabelScanWriter(partition,format,mock(Lock.class));
+    writer.write(labelChanges(i,labels(),labels(7)));
+    writer.close();
+    Document document=new Document();
+    format.addRangeValuesField(document,0);
+    format.addLabelAndSearchFields(document,7,new Bitmap(1L << i));
+    verify(indexWriter).updateDocument(eq(format.rangeTerm(0)),match(document));
+  }
+}

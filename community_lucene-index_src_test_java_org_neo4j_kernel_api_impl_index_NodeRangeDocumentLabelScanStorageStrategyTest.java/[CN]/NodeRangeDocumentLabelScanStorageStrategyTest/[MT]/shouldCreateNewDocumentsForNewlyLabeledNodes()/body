@@ -1,0 +1,24 @@
+{
+  IndexPartition partition=mock(IndexPartition.class);
+  PartitionSearcher partitionSearcher=mock(PartitionSearcher.class);
+  when(partition.acquireSearcher()).thenReturn(partitionSearcher);
+  IndexWriter indexWriter=mock(IndexWriter.class);
+  when(partition.getIndexWriter()).thenReturn(indexWriter);
+  IndexSearcher searcher=mock(IndexSearcher.class);
+  when(partitionSearcher.getIndexSearcher()).thenReturn(searcher);
+  when(searcher.search(new TermQuery(format.rangeTerm(0)),1)).thenReturn(emptyTopDocs());
+  when(searcher.search(new TermQuery(format.rangeTerm(1)),1)).thenReturn(null);
+  LabelScanWriter writer=new SimpleLuceneLabelScanWriter(partition,format,mock(Lock.class));
+  writer.write(labelChanges(0,labels(),labels(6,7)));
+  writer.write(labelChanges(1,labels(),labels(6,8)));
+  writer.write(labelChanges(1 << format.bitmapFormat().shift,labels(),labels(7)));
+  writer.close();
+  verify(partition).acquireSearcher();
+  verify(partitionSearcher,times(2)).getIndexSearcher();
+  verify(partition,times(2)).getIndexWriter();
+  verify(partitionSearcher).close();
+  verify(indexWriter).updateDocument(eq(format.rangeTerm(0)),match(document(format.rangeField(0),format.labelField(6,0x3),format.labelField(7,0x1),format.labelField(8,0x2),format.labelSearchField(8))));
+  verify(indexWriter).updateDocument(eq(format.rangeTerm(1)),match(document(format.rangeField(1),format.labelField(7,0x1),format.labelSearchField(7))));
+  verify(partition).maybeRefresh();
+  verifyNoMoreInteractions(partition);
+}
