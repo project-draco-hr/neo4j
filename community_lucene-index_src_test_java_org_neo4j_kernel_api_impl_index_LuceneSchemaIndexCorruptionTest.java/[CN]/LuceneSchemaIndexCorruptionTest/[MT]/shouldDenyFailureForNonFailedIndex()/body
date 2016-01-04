@@ -1,16 +1,15 @@
 {
-  DirectoryFactory dirFactory=mock(DirectoryFactory.class);
-  EOFException toThrow=new EOFException("/some/path/somewhere");
-  when(dirFactory.open(any(File.class))).thenThrow(toThrow);
-  LuceneSchemaIndexProvider p=new LuceneSchemaIndexProvider(fs.get(),dirFactory,testDirectory.graphDbDir());
-  InternalIndexState initialState=p.getInitialState(1l);
-  assertThat(initialState,equalTo(InternalIndexState.FAILED));
-  boolean exceptionOnOtherIndexThrown=false;
+  long faultyIndexId=1;
+  long validIndexId=2;
+  EOFException error=new EOFException("/some/path/somewhere");
+  LuceneSchemaIndexProvider provider=newFaultySchemaIndexProvider(faultyIndexId,error);
+  InternalIndexState initialState=provider.getInitialState(faultyIndexId);
+  assertEquals(InternalIndexState.FAILED,initialState);
   try {
-    p.getPopulationFailure(2l);
+    provider.getPopulationFailure(validIndexId);
+    fail("Exception expected");
   }
- catch (  IllegalStateException e) {
-    exceptionOnOtherIndexThrown=true;
+ catch (  Exception e) {
+    assertThat(e,instanceOf(IllegalStateException.class));
   }
-  assertTrue(exceptionOnOtherIndexThrown);
 }

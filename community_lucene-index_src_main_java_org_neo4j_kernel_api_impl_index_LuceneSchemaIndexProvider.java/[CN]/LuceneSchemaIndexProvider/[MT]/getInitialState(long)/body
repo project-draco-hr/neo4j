@@ -1,17 +1,13 @@
 {
   try {
-    AbstractIndexStorage indexStorage=getIndexStorage(indexId);
+    PartitionedIndexStorage indexStorage=getIndexStorage(indexId);
     String failure=indexStorage.getStoredIndexFailure();
     if (failure != null) {
       failures.put(indexId,failure);
       return InternalIndexState.FAILED;
     }
-    File partitionFolder=indexStorage.getPartitionFolder(1);
-    try (Directory directory=indexStorage.openDirectory(partitionFolder)){
-      boolean status=ObsoleteLuceneIndexWriter.isOnline(directory);
-      return status ? InternalIndexState.ONLINE : InternalIndexState.POPULATING;
-    }
-   }
+    return indexIsOnline(indexStorage) ? InternalIndexState.ONLINE : InternalIndexState.POPULATING;
+  }
  catch (  CorruptIndexException e) {
     return InternalIndexState.FAILED;
   }
