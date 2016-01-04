@@ -5,7 +5,6 @@
     while (true) {
       LogEntryVersion version=null;
       LogEntryParser<LogEntry> entryReader;
-      CommandReader commandReader;
       try {
         byte typeCode=channel.get();
         byte versionCode=0;
@@ -15,7 +14,6 @@
         }
         version=byVersion(versionCode,logHeaderFormatVersion);
         entryReader=version.entryParser(typeCode);
-        commandReader=commandReaderFactory.byVersion(version.byteCode(),logHeaderFormatVersion);
       }
  catch (      ReadPastEndException e) {
         throw e;
@@ -25,7 +23,7 @@ catch (      Exception e) {
         e=withMessage(e,e.getMessage() + ". At position " + position+ " and entry version "+ version);
         throw launderedException(IOException.class,e);
       }
-      LogEntry entry=entryReader.parse(version,channel,positionMarker,commandReader);
+      LogEntry entry=entryReader.parse(version,channel,positionMarker,commandReaderFactory);
       if (!entryReader.skip()) {
         return entry;
       }
