@@ -12,13 +12,12 @@
       throw new IllegalStateException("The PageCache has been shut down");
     }
     if (page.isLoaded() && page.decrementUsage()) {
-      long stamp=page.tryWriteLock();
-      if (stamp != 0) {
+      if (page.tryExclusiveLock()) {
         try (EvictionEvent evictionEvent=faultEvent.beginEviction()){
           evicted=page.isLoaded() && evictPage(page,evictionEvent);
         }
   finally {
-          page.unlockWrite(stamp);
+          page.unlockExclusive();
         }
       }
     }

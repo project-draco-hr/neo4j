@@ -8,15 +8,14 @@
       return 0;
     }
     if (page.isLoaded() && page.decrementUsage()) {
-      long stamp=page.tryWriteLock();
-      if (stamp != 0) {
+      if (page.tryExclusiveLock()) {
         pageCountToEvict--;
         boolean pageEvicted;
         try (EvictionEvent evictionEvent=evictionRunEvent.beginEviction()){
           pageEvicted=page.isLoaded() && evictPage(page,evictionEvent);
         }
   finally {
-          page.unlockWrite(stamp);
+          page.unlockExclusive();
         }
         if (pageEvicted) {
           Object current;
