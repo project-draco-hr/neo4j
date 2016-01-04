@@ -1,13 +1,14 @@
 {
-  if (content instanceof ReplicatedIdAllocationRequest) {
+  if (content instanceof ReplicatedIdAllocationRequest && logIndex > idAllocationState.logIndex()) {
     ReplicatedIdAllocationRequest request=(ReplicatedIdAllocationRequest)content;
     IdType idType=request.idType();
-    if (request.idRangeStart() == idAllocationState.firstNotAllocated(idType)) {
+    if (request.idRangeStart() == idAllocationState.firstUnallocated(idType)) {
       if (request.owner().equals(me)) {
-        idAllocationState.lastIdRangeStartForMe(idType,request.idRangeStart());
-        idAllocationState.lastIdRangeLengthForMe(idType,request.idRangeLength());
+        idAllocationState.lastIdRangeStart(idType,request.idRangeStart());
+        idAllocationState.lastIdRangeLength(idType,request.idRangeLength());
       }
       updateFirstNotAllocated(idType,request.idRangeStart() + request.idRangeLength());
     }
+    idAllocationState.logIndex(logIndex);
   }
 }

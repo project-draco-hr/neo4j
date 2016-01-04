@@ -1,0 +1,21 @@
+{
+  EphemeralFileSystemAbstraction fsa=new EphemeralFileSystemAbstraction();
+  fsa.mkdir(testDir.directory());
+  File fileA=new File(testDir.directory(),"fileA");
+  StoreChannel channel=fsa.create(fileA);
+  ByteBuffer buffer=partiallyFillWithWholeRecord(42);
+  channel.writeAll(buffer);
+  channel.force(false);
+  buffer.clear();
+  buffer.putLong(101);
+  buffer.flip();
+  channel.writeAll(buffer);
+  channel.force(false);
+  File fileB=new File(testDir.directory(),"fileB");
+  channel=fsa.create(fileB);
+  fillUpAndForce(channel);
+  channel.close();
+  IdAllocationStoreRecoveryManager manager=new IdAllocationStoreRecoveryManager(fsa);
+  File fileToUse=manager.recover(fileA,fileB);
+  assertEquals(fileB,fileToUse);
+}

@@ -1,0 +1,21 @@
+{
+  this.fileSystemAbstraction=fileSystemAbstraction;
+  this.numberOfEntriesBeforeRotation=numberOfEntriesBeforeRotation;
+  this.databaseHealthSupplier=databaseHealthSupplier;
+  this.serializer=new InMemoryIdAllocationState.Serializer();
+  this.buffer=ByteBuffer.allocate(NUMBER_OF_BYTES_PER_WRITE);
+  this.storeA=new File(storeDir,FILENAME + "A");
+  this.storeB=new File(storeDir,FILENAME + "B");
+  this.currentStoreFile=new IdAllocationStoreRecoveryManager(fileSystemAbstraction).recover(storeA,storeB);
+  currentStoreChannel=fileSystemAbstraction.open(currentStoreFile,"rw");
+  if (fileSystemAbstraction.getFileSize(currentStoreFile) > 0) {
+    currentStoreChannel.position(fileSystemAbstraction.getFileSize(currentStoreFile) - NUMBER_OF_BYTES_PER_WRITE);
+    buffer.clear();
+    currentStoreChannel.read(buffer);
+    buffer.flip();
+    inMemoryIdAllocationState=serializer.deserialize(buffer);
+  }
+ else {
+    inMemoryIdAllocationState=new InMemoryIdAllocationState();
+  }
+}
