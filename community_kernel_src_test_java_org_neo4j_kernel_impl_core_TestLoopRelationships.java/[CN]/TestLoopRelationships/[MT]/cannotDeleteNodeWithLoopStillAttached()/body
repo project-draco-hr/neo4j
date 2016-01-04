@@ -1,12 +1,15 @@
 {
-  Node node=getGraphDb().createNode();
-  node.createRelationshipTo(node,TEST);
-  newTransaction();
+  GraphDatabaseService db=getGraphDb();
+  Node node;
+  try (Transaction tx=db.beginTx()){
+    node=db.createNode();
+    node.createRelationshipTo(node,DynamicRelationshipType.withName("MAYOR_OF"));
+    tx.success();
+  }
+   Transaction tx=newTransaction();
   node.delete();
-  try {
-    commit();
-    fail("Shouldn't be able to delete a node which still has a loop relationship attached");
-  }
- catch (  TransactionFailureException e) {
-  }
+  tx.success();
+  exception.expect(ConstraintViolationException.class);
+  exception.expectMessage("Cannot delete node<" + node.getId() + ">, because it still has relationships. "+ "To delete this node, you must first delete its relationships.");
+  tx.close();
 }

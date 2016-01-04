@@ -1,7 +1,6 @@
 {
   long nodeId=0;
   int labelId=5, propertyKeyId=7;
-  NodePropertyUpdate expectedUpdate=NodePropertyUpdate.add(nodeId,propertyKeyId,"Neo",new long[]{labelId});
   long ruleId=0;
   NeoStores neoStores=neoStoresRule.open();
   TransactionRecordState recordState=new TransactionRecordState(neoStores,integrityValidator,newContext(neoStores));
@@ -13,11 +12,12 @@
   recordState.addLabelToNode(labelId,nodeId);
   recordState.nodeAddProperty(nodeId,propertyKeyId,"Neo");
   PhysicalTransactionRepresentation transaction=transactionRepresentationOf(recordState);
-  Iterable<NodePropertyUpdate> updates=indexUpdatesOf(neoStores,transaction);
-  PrimitiveLongVisitor<RuntimeException> visitor=mock(PrimitiveLongVisitor.class);
-  RecoveryIndexingUpdatesValidator validator=new RecoveryIndexingUpdatesValidator(visitor);
-  ValidatedIndexUpdates recoveredUpdates=validator.validate(transaction);
-  recoveredUpdates.flush(new HashSet<>());
-  assertEquals(asSet(expectedUpdate),asSet(updates));
-  verify(visitor,times(1)).visited(nodeId);
+  NodePropertyCommandsExtractor extractor=new NodePropertyCommandsExtractor();
+  transaction.accept(extractor);
+  assertTrue(extractor.containsAnyNodeOrPropertyUpdate());
+  PrimitiveLongSet recoveredNodeIds=Primitive.longSet();
+  recoveredNodeIds.addAll(extractor.nodeCommandsById().iterator());
+  recoveredNodeIds.addAll(extractor.propertyCommandsByNodeIds().iterator());
+  assertEquals(1,recoveredNodeIds.size());
+  assertEquals(nodeId,recoveredNodeIds.iterator().next());
 }

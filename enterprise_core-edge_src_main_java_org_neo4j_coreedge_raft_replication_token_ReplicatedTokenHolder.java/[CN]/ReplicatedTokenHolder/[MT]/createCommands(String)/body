@@ -2,14 +2,12 @@
   long tokenId=idGeneratorFactory.get(tokenIdType).nextId();
   TokenStore<RECORD,TOKEN> tokenStore=resolveStore();
   RecordAccess.Loader<Integer,RECORD,Void> recordLoader=resolveLoader(tokenStore);
-  RecordChanges<Integer,RECORD,Void> recordAccess=new RecordChanges<>(recordLoader,false,new IntCounter());
+  RecordChanges<Integer,RECORD,Void> recordAccess=new RecordChanges<>(recordLoader,new IntCounter());
   TokenCreator<RECORD,TOKEN> tokenCreator=new TokenCreator<>(tokenStore);
   tokenCreator.createToken(tokenName,(int)tokenId,recordAccess);
   Collection<Command> commands=new ArrayList<>();
   for (  RecordAccess.RecordProxy<Integer,RECORD,Void> record : recordAccess.changes()) {
-    Command.TokenCommand<RECORD> command=createCommand();
-    command.init(record.forReadingLinkage());
-    commands.add(command);
+    commands.add(createCommand(record.getBefore(),record.forReadingLinkage()));
   }
   return ReplicatedTokenRequestSerializer.createCommandBytes(commands);
 }

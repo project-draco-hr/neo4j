@@ -2,14 +2,16 @@
   ClusterManager.ManagedCluster cluster=clusterRule.withSharedSetting(HaSettings.read_timeout,"4000s").startCluster();
   HighlyAvailableGraphDatabase slave=cluster.getAnySlave();
   HighlyAvailableGraphDatabase master=cluster.getMaster();
+  String type=type(3);
+  String key=key(3);
   ThreadToStatementContextBridge txBridge=threadToStatementContextBridge(slave);
-  createEntityInTx(master,TYPE,PROPERTY_KEY,"Foo");
+  createEntityInTx(master,type,key,"Foo");
   slave.beginTx();
-  createConstraintViolation(slave,TYPE,PROPERTY_KEY,"Foo");
+  createConstraintViolation(slave,type,key,"Foo");
   TopLevelTransaction slaveTx=txBridge.getTopLevelTransactionBoundToThisThread(true);
   txBridge.unbindTransactionFromCurrentThread();
   try (Transaction tx=master.beginTx()){
-    createConstraint(master,TYPE,PROPERTY_KEY);
+    createConstraint(master,type,key);
     tx.success();
   }
    txBridge.bindTransactionToCurrentThread(slaveTx);
@@ -18,12 +20,12 @@
     slaveTx.close();
     fail("Expected this commit to fail :(");
   }
- catch (  org.neo4j.graphdb.TransactionFailureException e) {
+ catch (  org.neo4j.graphdb.TransactionFailureException|org.neo4j.graphdb.TransientTransactionFailureException e) {
     assertThat(e.getCause().getCause(),instanceOf(org.neo4j.kernel.api.exceptions.TransactionFailureException.class));
   }
-  assertConstraintHolds(master,TYPE,PROPERTY_KEY,"Foo");
+  assertConstraintHolds(master,type,key,"Foo");
   cluster.sync();
-  assertConstraintHolds(slave,TYPE,PROPERTY_KEY,"Foo");
-  createEntityInTx(slave,TYPE,PROPERTY_KEY,"Bar");
-  createEntityInTx(master,TYPE,PROPERTY_KEY,"Baz");
+  assertConstraintHolds(slave,type,key,"Foo");
+  createEntityInTx(slave,type,key,"Bar");
+  createEntityInTx(master,type,key,"Baz");
 }

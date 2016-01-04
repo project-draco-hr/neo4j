@@ -4,7 +4,7 @@
   try {
     requestMonitor.beginRequest(channelContext.channel().getRemoteAddress(),type,context);
     protocol.serializeRequest(channelContext.channel(),channelContext.output(),type,context,serializer);
-    Response<R> response=protocol.deserializeResponse(extractBlockingReadHandler(channelContext),channelContext.input(),getReadTimeout(type,readTimeout),deserializer,resourcePoolReleaser);
+    Response<R> response=protocol.deserializeResponse(extractBlockingReadHandler(channelContext),channelContext.input(),getReadTimeout(type,readTimeout),deserializer,resourcePoolReleaser,entryReader);
     if (type.responseShouldBeUnpacked()) {
       responseUnpacker.unpackResponse(response,txHandler);
     }
@@ -21,7 +21,7 @@
  catch (  ComException e) {
     failure=e;
     comExceptionHandler.handle(e);
-    throw e;
+    throw traceComException(e,"Client.sendRequest");
   }
 catch (  Throwable e) {
     failure=e;

@@ -1,0 +1,13 @@
+{
+  File log=logFile(1);
+  writeTxContent(log,new Command.NeoStoreCommand(new NeoStoreRecord(),createNeoStoreRecord(42)),new Command.PropertyCommand(propertyRecord(5,false,-1,-1),propertyRecord(5,true,-1,-1,777)),new Command.NeoStoreCommand(createNeoStoreRecord(42),createNeoStoreRecord(21)));
+  writeTxContent(log,new Command.NeoStoreCommand(createNeoStoreRecord(42),createNeoStoreRecord(33)));
+  CapturingInconsistenciesHandler handler=new CapturingInconsistenciesHandler();
+  CheckTxLogs checker=new CheckTxLogs(fsRule.get());
+  checker.scan(new File[]{log},handler,NEO_STORE);
+  assertEquals(1,handler.inconsistencies.size());
+  NeoStoreRecord seenRecord=(NeoStoreRecord)handler.inconsistencies.get(0).committed.record();
+  NeoStoreRecord currentRecord=(NeoStoreRecord)handler.inconsistencies.get(0).current.record();
+  assertEquals(21,seenRecord.getNextProp());
+  assertEquals(42,currentRecord.getNextProp());
+}

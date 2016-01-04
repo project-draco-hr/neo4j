@@ -1,0 +1,12 @@
+{
+  OngoingStubbing<Response<Void>> updatePullStubbing=when(master.pullUpdates(any(RequestContext.class)));
+  updatePullStubbing.thenThrow(new InvalidEpochException(2,1));
+  for (int i=0; i < SlaveUpdatePuller.LOG_CAP + 20; i++) {
+    updatePuller.pullUpdates();
+  }
+  logProvider.assertContainsThrowablesMatching(0,repeat(new InvalidEpochException(2,1),SlaveUpdatePuller.LOG_CAP));
+  updatePullStubbing.thenReturn(Response.EMPTY).thenThrow(new InvalidEpochException(2,1));
+  updatePuller.pullUpdates();
+  updatePuller.pullUpdates();
+  logProvider.assertContainsThrowablesMatching(0,repeat(new InvalidEpochException(2,1),SlaveUpdatePuller.LOG_CAP + 1));
+}

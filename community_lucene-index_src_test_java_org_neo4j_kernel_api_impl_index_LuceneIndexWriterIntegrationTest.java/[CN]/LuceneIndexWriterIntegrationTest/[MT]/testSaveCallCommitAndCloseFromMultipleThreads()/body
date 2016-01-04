@@ -1,0 +1,11 @@
+{
+  CountDownLatch closeRaceSignal=new CountDownLatch(1);
+  Directory writerDirectory=directoryFactory.open(testDir.directory(),closeRaceSignal);
+  LuceneIndexWriter indexWriter=IndexWriterFactories.standard().create(writerDirectory);
+  generateIndexData(indexWriter);
+  List<Future> closeFutures=submitCloseTasks(indexWriter,closeRaceSignal);
+  for (  Future closeFuture : closeFutures) {
+    closeFuture.get();
+  }
+  assertFalse(indexWriter.writer.isOpen());
+}

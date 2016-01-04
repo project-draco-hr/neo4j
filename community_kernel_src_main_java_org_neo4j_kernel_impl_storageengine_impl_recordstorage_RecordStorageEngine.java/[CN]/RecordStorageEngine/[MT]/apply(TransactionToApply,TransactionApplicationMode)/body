@@ -1,13 +1,12 @@
 {
-  try (CommandApplierFacade applier=applier(mode)){
+  try (BatchTransactionApplier batchApplier=applier(mode)){
     TransactionToApply tx=batch;
     while (tx != null) {
       try (LockGroup locks=new LockGroup()){
-        ensureValidatedIndexUpdates(tx);
-        applier.begin(tx,locks);
-        tx.transactionRepresentation().accept(applier);
-        applier.end();
-        tx=tx.next();
+        try (TransactionApplier txApplier=batchApplier.startTx(tx,locks)){
+          tx.transactionRepresentation().accept(txApplier);
+        }
+         tx=tx.next();
       }
  catch (      Throwable cause) {
         databaseHealth.panic(cause);

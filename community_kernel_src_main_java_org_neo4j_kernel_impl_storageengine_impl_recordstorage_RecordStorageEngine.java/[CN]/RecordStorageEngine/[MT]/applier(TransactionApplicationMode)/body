@@ -1,13 +1,14 @@
 {
-  CommandHandler storeApplier=new NeoStoreTransactionApplier(neoStores,cacheAccess,lockService);
+  ArrayList<BatchTransactionApplier> appliers=new ArrayList<>();
+  appliers.add(new NeoStoreBatchTransactionApplier(neoStores,cacheAccess,lockService));
   if (mode.needsHighIdTracking()) {
-    storeApplier=new HighIdTransactionApplier(storeApplier,neoStores);
+    appliers.add(new HighIdBatchTransactionApplier(neoStores));
   }
   if (mode.needsCacheInvalidationOnUpdates()) {
-    storeApplier=new CacheInvalidationTransactionApplier(storeApplier,neoStores,cacheAccess);
+    appliers.add(new CacheInvalidationBatchTransactionApplier(neoStores,cacheAccess));
   }
-  CommandHandler indexApplier=new IndexTransactionApplier(indexingService,labelScanStoreSync);
-  CommandHandler legacyIndexApplier=new LegacyIndexApplier(indexConfigStore,legacyIndexApplierLookup,legacyIndexTransactionOrdering,mode);
-  CommandHandler countsStoreApplier=new CountsStoreApplier(neoStores.getCounts(),mode);
-  return new CommandApplierFacade(storeApplier,indexApplier,legacyIndexApplier,countsStoreApplier);
+  appliers.add(new IndexBatchTransactionApplier(indexingService,labelScanStoreSync,indexUpdatesSync,neoStores.getNodeStore(),neoStores.getPropertyStore(),new PropertyLoader(neoStores),mode));
+  appliers.add(new LegacyBatchIndexApplier(indexConfigStore,legacyIndexApplierLookup,legacyIndexTransactionOrdering,mode));
+  appliers.add(new CountsStoreBatchTransactionApplier(neoStores.getCounts(),mode));
+  return new BatchTransactionApplierFacade(appliers.toArray(new BatchTransactionApplier[appliers.size()]));
 }
