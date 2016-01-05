@@ -6,7 +6,7 @@
   MetaDataStore metaDataStore=mock(MetaDataStore.class);
   IntegrityValidator integrityValidator=mock(IntegrityValidator.class);
   NeoStores neoStores=mock(NeoStores.class);
-  StoreStatement storeStatement=new StoreStatement(neoStores,new ReentrantLockService());
+  StoreStatement storeStatement=new StoreStatement(neoStores,new ReentrantLockService(),mock(IndexReaderFactory.class),null);
   StoreReadLayer readLayer=mock(StoreReadLayer.class);
   when(readLayer.acquireStatement()).thenReturn(storeStatement);
   StorageEngine storageEngine=mock(StorageEngine.class);
@@ -14,7 +14,13 @@
   when(storageEngine.neoStores()).thenReturn(neoStores);
   when(storageEngine.metaDataStore()).thenReturn(metaDataStore);
   when(storageEngine.integrityValidator()).thenReturn(integrityValidator);
-  when(storageEngine.createCommands(any(TransactionState.class),any(LegacyIndexTransactionState.class),any(Locks.Client.class),any(StatementOperationParts.class),any(StoreStatement.class),anyLong())).thenReturn(sillyCommandList());
+  doAnswer(new Answer<Void>(){
+    @Override public Void answer(    InvocationOnMock invocation) throws Throwable {
+      invocation.getArgumentAt(0,Collection.class).add(mock(StorageCommand.class));
+      return null;
+    }
+  }
+).when(storageEngine).createCommands(anyCollection(),any(ReadableTransactionState.class),any(ResourceLocker.class),anyLong());
   Tracers tracers=new Tracers("null",NullLog.getInstance(),mock(Monitors.class),mock(JobScheduler.class));
   return new KernelTransactions(locks,null,null,null,TransactionHeaderInformationFactory.DEFAULT,commitProcess,null,null,new TransactionHooks(),mock(TransactionMonitor.class),life,tracers,storageEngine);
 }
