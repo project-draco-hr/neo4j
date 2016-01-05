@@ -5,24 +5,29 @@
   }
   final File file=mappedFiles.get(rng.nextInt(mappedFilesCount));
   filesTouched.add(file);
-  int recordSize=16;
-  int recordsPerPage=cache.pageSize() / recordSize;
   final int recordId=rng.nextInt(filePageCount * recordsPerPage);
   recordsWrittenTo.get(file).add(recordId);
   final int pageId=recordId / recordsPerPage;
-  final int pageOffset=(recordId % recordsPerPage) * recordSize;
+  final int pageOffset=(recordId % recordsPerPage) * recordFormat.getRecordSize();
   final Record record=recordFormat.createRecord(file,recordId);
   return new Action(Command.WriteRecord,"[file=%s, recordId=%s, pageId=%s, pageOffset=%s, record=%s]",file,recordId,pageId,pageOffset,record){
     @Override public void perform() throws Exception {
       PagedFile pagedFile=fileMap.get(file);
       if (pagedFile != null) {
-        try (PageCursor cursor=pagedFile.io(pageId,PagedFile.PF_EXCLUSIVE_LOCK)){
-          if (cursor.next()) {
-            cursor.setOffset(pageOffset);
-            recordFormat.write(record,cursor);
+        ReentrantLock recordLock=recordLocks[recordId];
+        recordLock.lock();
+        try {
+          try (PageCursor cursor=pagedFile.io(pageId,PagedFile.PF_EXCLUSIVE_LOCK)){
+            if (cursor.next()) {
+              cursor.setOffset(pageOffset);
+              recordFormat.write(record,cursor);
+            }
           }
+         }
+  finally {
+          recordLock.unlock();
         }
-       }
+      }
     }
   }
 ;

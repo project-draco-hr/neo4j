@@ -2,16 +2,10 @@
   PageFaultEvent faultEvent=pinEvent.beginPageFault();
   MuninnPage page;
   try {
-    page=pagedFile.grabFreePage(faultEvent);
-    if (!page.tryExclusiveLock()) {
-      throw new AssertionError("Unable to take exclusive lock on free page");
-    }
+    page=pagedFile.grabFreeAndExclusivelyLockedPage(faultEvent);
   }
  catch (  Throwable throwable) {
-    UnsafeUtil.putObjectVolatile(chunk,chunkOffset,null);
-    latch.release();
-    faultEvent.done(throwable);
-    pinEvent.done();
+    abortPageFault(throwable,chunk,chunkOffset,latch,faultEvent);
     throw throwable;
   }
   try {
@@ -21,14 +15,11 @@
   }
  catch (  Throwable throwable) {
     page.unlockExclusive();
-    UnsafeUtil.putObjectVolatile(chunk,chunkOffset,null);
-    latch.release();
-    faultEvent.done(throwable);
-    pinEvent.done();
+    abortPageFault(throwable,chunk,chunkOffset,latch,faultEvent);
     throw throwable;
   }
-  convertPageFaultLock(page);
   UnsafeUtil.putObjectVolatile(chunk,chunkOffset,page);
+  convertPageFaultLock(page);
   latch.release();
   faultEvent.done();
   return page;

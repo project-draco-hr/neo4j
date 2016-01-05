@@ -3,17 +3,20 @@
   try {
     MuninnPage firstPage=pages[0];
     long startFilePageId=firstPage.getFilePageId();
+    for (int j=0; j < pagesGrabbed; j++) {
+      pages[j].markAsClean();
+    }
     flush=flushOpportunity.beginFlush(startFilePageId,firstPage.getCachePageId(),swapper);
     long bytesWritten=swapper.write(startFilePageId,pages,0,pagesGrabbed);
     flush.addBytesWritten(bytesWritten);
     flush.addPagesFlushed(pagesGrabbed);
     flush.done();
-    for (int j=0; j < pagesGrabbed; j++) {
-      pages[j].markAsClean();
-    }
     return 0;
   }
  catch (  IOException ioe) {
+    for (int j=0; j < pagesGrabbed; j++) {
+      pages[j].markAsDirty();
+    }
     if (flush != null) {
       flush.done(ioe);
     }

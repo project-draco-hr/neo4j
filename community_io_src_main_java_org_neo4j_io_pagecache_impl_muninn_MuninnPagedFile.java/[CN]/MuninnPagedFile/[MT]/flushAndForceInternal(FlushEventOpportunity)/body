@@ -5,19 +5,26 @@
   try {
     for (    Object[] chunk : translationTable) {
       int pagesGrabbed=0;
-      for (      Object element : chunk) {
+      chunkLoop:       for (int i=0; i < chunk.length; i++) {
         filePageId++;
-        if (element instanceof MuninnPage) {
-          MuninnPage page=(MuninnPage)element;
-          page.writeLock();
-          if (page.isBoundTo(swapper,filePageId) && page.isDirty()) {
-            pages[pagesGrabbed]=page;
-            pagesGrabbed++;
-            continue;
-          }
+        long offset=computeChunkOffset(filePageId);
+        for (; ; ) {
+          Object element=UnsafeUtil.getObjectVolatile(chunk,offset);
+          if (element instanceof MuninnPage) {
+            MuninnPage page=(MuninnPage)element;
+            if (!page.tryWriteLock()) {
+              continue;
+            }
+            if (page.isBoundTo(swapper,filePageId) && page.isDirty()) {
+              pages[pagesGrabbed]=page;
+              pagesGrabbed++;
+              continue chunkLoop;
+            }
  else {
-            page.unlockWrite();
+              page.unlockWrite();
+            }
           }
+          break;
         }
         if (pagesGrabbed > 0) {
           pagesGrabbed=vectoredFlush(pages,pagesGrabbed,flushOpportunity);

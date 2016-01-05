@@ -40,15 +40,16 @@ abstract class Worker implements Runnable {
       int smallSpin=rng.nextInt(5,50);
       int bigSpin=rng.nextInt(100,1000);
       while (!stop.get()) {
-        lock.writeLock();
-        int[] record=data[id];
-        for (int i=0; i < record.length; i++) {
-          record[i]=counter;
-          for (int j=0; j < smallSpin; j++) {
-            unused=rng.nextLong();
+        if (lock.tryWriteLock()) {
+          int[] record=data[id];
+          for (int i=0; i < record.length; i++) {
+            record[i]=counter;
+            for (int j=0; j < smallSpin; j++) {
+              unused=rng.nextLong();
+            }
           }
+          lock.unlockWrite();
         }
-        lock.unlockWrite();
         for (int j=0; j < bigSpin; j++) {
           unused=rng.nextLong();
         }
