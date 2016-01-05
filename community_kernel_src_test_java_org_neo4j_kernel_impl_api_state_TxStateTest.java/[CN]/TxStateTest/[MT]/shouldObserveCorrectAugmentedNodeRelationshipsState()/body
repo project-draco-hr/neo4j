@@ -1,0 +1,44 @@
+{
+  TxState state=new TxState();
+  for (int i=0; i < 100; i++) {
+    state.nodeDoCreate(i);
+  }
+  for (int i=0; i < 5; i++) {
+    state.relationshipTypeDoCreateForName("Type-" + i,i);
+  }
+  Map<Long,RelationshipItem> committedRelationships=new HashMap<>();
+  long relationshipId=0;
+  int nodeCount=100;
+  int relationshipTypeCount=5;
+  for (int i=0; i < 30; i++) {
+    RelationshipItem relationship=relationship(relationshipId++,random.nextInt(relationshipTypeCount),random.nextInt(nodeCount),random.nextInt(nodeCount));
+    committedRelationships.put(relationship.id(),relationship);
+  }
+  Map<Long,RelationshipItem> allRelationships=new HashMap<>(committedRelationships);
+  for (int i=0; i < 10; i++) {
+    if (random.nextBoolean()) {
+      RelationshipItem relationship=relationship(relationshipId++,random.nextInt(relationshipTypeCount),random.nextInt(nodeCount),random.nextInt(nodeCount));
+      allRelationships.put(relationship.id(),relationship);
+      state.relationshipDoCreate(relationship.id(),relationship.type(),relationship.startNode(),relationship.endNode());
+    }
+ else {
+      RelationshipItem relationship=IteratorUtil.fromEnd(committedRelationships.values(),random.nextInt(committedRelationships.size()));
+      state.relationshipDoDelete(relationship.id(),relationship.type(),relationship.startNode(),relationship.endNode());
+      allRelationships.remove(relationship.id());
+    }
+  }
+  for (int i=0; i < nodeCount; i++) {
+    Direction direction=Direction.values()[random.nextInt(Direction.values().length)];
+    int[] relationshipTypes=randomTypes(relationshipTypeCount,random.random());
+    Cursor<RelationshipItem> committed=Cursors.cursor(relationshipsForNode(i,committedRelationships,direction,relationshipTypes).values());
+    Cursor<RelationshipItem> augmented=state.augmentNodeRelationshipCursor(committed,state.getNodeState(i),direction,relationshipTypes);
+    Map<Long,RelationshipItem> expectedRelationships=relationshipsForNode(i,allRelationships,direction,relationshipTypes);
+    while (augmented.next()) {
+      RelationshipItem relationship=augmented.get();
+      RelationshipItem actual=expectedRelationships.remove(relationship.id());
+      assertNotNull("Augmented cursor returned relationship " + relationship + ", but shouldn't have",actual);
+      assertRelationshipEquals(actual,relationship);
+    }
+    assertTrue("Augmented cursor didn't return some expected relationships: " + expectedRelationships,expectedRelationships.isEmpty());
+  }
+}
