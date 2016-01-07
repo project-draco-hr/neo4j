@@ -1,0 +1,29 @@
+{
+  IndexMap indexMap=indexMapRef.indexMapSnapshot();
+  IndexPopulationJob populationJob=null;
+  for (  IndexRule rule : rules) {
+    long ruleId=rule.getId();
+    IndexProxy index=indexMap.getIndexProxy(ruleId);
+    if (index != null && state == State.NOT_STARTED) {
+      indexMap.putIndexProxy(ruleId,index);
+      indexMapRef.setIndexMap(indexMap);
+      continue;
+    }
+    final IndexDescriptor descriptor=new IndexDescriptor(rule.getLabel(),rule.getPropertyKey());
+    SchemaIndexProvider.Descriptor providerDescriptor=rule.getProviderDescriptor();
+    boolean constraint=rule.isConstraintIndex();
+    if (state == State.RUNNING) {
+      populationJob=populationJob == null ? newIndexPopulationJob() : populationJob;
+      index=indexProxyCreator.createPopulatingIndexProxy(ruleId,descriptor,providerDescriptor,constraint,monitor,populationJob);
+      index.start();
+    }
+ else {
+      index=indexProxyCreator.createRecoveringIndexProxy(descriptor,providerDescriptor,constraint);
+    }
+    indexMap.putIndexProxy(rule.getId(),index);
+  }
+  if (populationJob != null) {
+    startIndexPopulation(populationJob);
+  }
+  indexMapRef.setIndexMap(indexMap);
+}

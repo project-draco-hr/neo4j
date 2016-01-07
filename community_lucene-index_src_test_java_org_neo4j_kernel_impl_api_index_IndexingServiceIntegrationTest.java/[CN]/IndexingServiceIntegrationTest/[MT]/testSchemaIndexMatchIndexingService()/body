@@ -1,0 +1,20 @@
+{
+  try (Transaction transaction=database.beginTx()){
+    database.schema().constraintFor(Label.label(CLOTHES_LABEL)).assertPropertyIsUnique(PROPERTY_NAME).create();
+    database.schema().indexFor(Label.label(WEATHER_LABEL)).on(PROPERTY_NAME).create();
+    transaction.success();
+  }
+   try (Transaction transaction=database.beginTx()){
+    database.schema().awaitIndexesOnline(1,TimeUnit.MINUTES);
+  }
+   IndexingService indexingService=getIndexingService(database);
+  LabelTokenHolder labelTokenHolder=getLabelTokenHolder(database);
+  PropertyKeyTokenHolder propertyKeyTokenHolder=getPropertyKeyTokenHolder(database);
+  int clothedLabelId=labelTokenHolder.getIdByName(CLOTHES_LABEL);
+  int weatherLabelId=labelTokenHolder.getIdByName(WEATHER_LABEL);
+  int propertyId=propertyKeyTokenHolder.getIdByName(PROPERTY_NAME);
+  IndexProxy clothesIndex=indexingService.getIndexProxy(new IndexDescriptor(clothedLabelId,propertyId));
+  IndexProxy weatherIndex=indexingService.getIndexProxy(new IndexDescriptor(weatherLabelId,propertyId));
+  assertEquals(InternalIndexState.ONLINE,clothesIndex.getState());
+  assertEquals(InternalIndexState.ONLINE,weatherIndex.getState());
+}

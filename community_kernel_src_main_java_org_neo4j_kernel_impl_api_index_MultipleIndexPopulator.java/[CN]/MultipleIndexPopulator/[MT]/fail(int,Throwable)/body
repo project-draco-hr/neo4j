@@ -1,0 +1,20 @@
+{
+  IndexPopulation population=populations.remove(index);
+  if (t instanceof IndexPopulationFailedKernelException) {
+    Throwable cause=t.getCause();
+    if (cause instanceof IndexEntryConflictException) {
+      t=cause;
+    }
+  }
+  if (!(t instanceof IndexEntryConflictException)) {
+    log.error(format("Failed to populate index: [%s]",population.getIndexUserDescription()),t);
+  }
+  population.flipToFailed(t);
+  try {
+    population.populator.markAsFailed(failure(t).asString());
+    population.populator.close(false);
+  }
+ catch (  Throwable e) {
+    log.error(format("Unable to close failed populator for index: [%s]",population.getIndexUserDescription()),e);
+  }
+}
