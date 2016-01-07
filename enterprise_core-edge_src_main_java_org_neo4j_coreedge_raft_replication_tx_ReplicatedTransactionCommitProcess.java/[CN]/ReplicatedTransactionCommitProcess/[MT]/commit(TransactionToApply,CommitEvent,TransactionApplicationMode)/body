@@ -7,29 +7,26 @@
  catch (  IOException e) {
     throw new TransactionFailureException("Could not create immutable object for replication",e);
   }
-  boolean lastRound=false;
-  long startTime=clock.currentTimeMillis();
   while (true) {
     final Future<Long> futureTxId=replicatedTxListener.getFutureTxId(operationContext.localOperationId());
     try {
+      int currentLockSessionId=currentReplicatedLockState.currentLockSession().id();
+      int txLockSessionId=tx.transactionRepresentation().getLockSessionId();
+      if (currentLockSessionId != txLockSessionId) {
+        throw new TransactionFailureException(LockSessionInvalid,"The lock session in the cluster has changed: " + "[current lock session id:%d, tx lock session id:%d]",currentLockSessionId,txLockSessionId);
+      }
       replicator.replicate(transaction);
-      long responseWaitTime=lastRound ? retryIntervalMillis : maxRetryTimeMillis / 2;
-      Long txId=futureTxId.get(responseWaitTime,TimeUnit.MILLISECONDS);
+      Long txId=futureTxId.get(retryIntervalMillis,TimeUnit.MILLISECONDS);
       sessionPool.releaseSession(operationContext);
       return txId;
     }
  catch (    InterruptedException|TimeoutException e) {
       futureTxId.cancel(false);
-      if (lastRound) {
-        throw new TransactionFailureException("Failed to commit transaction within time bound",e);
-      }
- else       if ((clock.currentTimeMillis() - startTime) >= maxRetryTimeMillis / 2) {
-        lastRound=true;
-      }
     }
 catch (    ReplicationFailedException|ExecutionException e) {
+      futureTxId.cancel(false);
       throw new TransactionFailureException("Failed to replicate transaction",e);
     }
-    System.out.println("Retrying replication");
+    log.info("Retrying replication: " + operationContext);
   }
 }
