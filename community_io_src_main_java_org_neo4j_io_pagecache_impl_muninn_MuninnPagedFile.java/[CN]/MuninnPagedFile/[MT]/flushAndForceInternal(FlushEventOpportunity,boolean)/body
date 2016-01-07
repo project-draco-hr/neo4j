@@ -1,0 +1,45 @@
+{
+  pageCache.pauseBackgroundFlushTask();
+  MuninnPage[] pages=new MuninnPage[translationTableChunkSize];
+  long filePageId=-1;
+  try {
+    for (    Object[] chunk : translationTable) {
+      int pagesGrabbed=0;
+      chunkLoop:       for (int i=0; i < chunk.length; i++) {
+        filePageId++;
+        long offset=computeChunkOffset(filePageId);
+        for (; ; ) {
+          Object element=UnsafeUtil.getObjectVolatile(chunk,offset);
+          if (element instanceof MuninnPage) {
+            MuninnPage page=(MuninnPage)element;
+            if (!(forClosing ? page.tryExclusiveLock() : page.tryWriteLock())) {
+              continue;
+            }
+            if (page.isBoundTo(swapper,filePageId) && page.isDirty()) {
+              pages[pagesGrabbed]=page;
+              pagesGrabbed++;
+              continue chunkLoop;
+            }
+ else             if (forClosing) {
+              page.unlockExclusive();
+            }
+ else {
+              page.unlockWrite();
+            }
+          }
+          break;
+        }
+        if (pagesGrabbed > 0) {
+          pagesGrabbed=vectoredFlush(pages,pagesGrabbed,flushOpportunity,forClosing);
+        }
+      }
+      if (pagesGrabbed > 0) {
+        vectoredFlush(pages,pagesGrabbed,flushOpportunity,forClosing);
+      }
+    }
+    swapper.force();
+  }
+  finally {
+    pageCache.unpauseBackgroundFlushTask();
+  }
+}

@@ -1,13 +1,24 @@
 {
+  Random random=new Random();
+  int recordsPerPage=format.getRecordsPerPage();
+  int recordSize=format.getRecordSize();
   try (PageCursor cursor=pagedFile.io(0,PF_EXCLUSIVE_LOCK)){
     while (!condition.fulfilled()) {
-      int pageNumber=Random.nextInt(maxPages);
-      assertTrue("I must be able to access pages",cursor.next(pageNumber));
-      int recordNumber=Random.nextInt(recordsPerPage);
-      checksumVerifier.verifyChecksum(cursor,recordNumber);
-      countUpdater.updateCount(cursor,recordNumber,counterNumber);
-      countKeeper.onCounterUpdated(pageNumber,recordNumber,counterNumber);
-      assertFalse("Exclusive lock, so never a need to retry",cursor.shouldRetry());
+      int recordId=random.nextInt(maxRecords);
+      int pageId=recordId / recordsPerPage;
+      int recordOffset=(recordId % recordsPerPage) * recordSize;
+      locks.lock(recordId);
+      try {
+        assertTrue("I must be able to access pages",cursor.next(pageId));
+        cursor.setOffset(recordOffset);
+        long newValue=format.incrementCounter(cursor,threadId);
+        countSum++;
+        assertFalse("Write lock, so never a need to retry",cursor.shouldRetry());
+        assertThat("Record-local count must be less than or equal to thread-local count sum",newValue,lessThanOrEqualTo(countSum));
+      }
+  finally {
+        locks.unlock(recordId);
+      }
     }
   }
    return null;

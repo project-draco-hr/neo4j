@@ -2,19 +2,8 @@
   DefaultFileSystemAbstraction fs=new DefaultFileSystemAbstraction();
   PageSwapperFactory swapperFactory=new SingleFilePageSwapperFactory();
   swapperFactory.setFileSystemAbstraction(fs);
-  PageCache pageCacheUnderTest=new MuninnPageCache(swapperFactory,numberOfCachePages,cachePageSize,tracer);
-  PageCache pageCacheKeepingCount=new MuninnPageCache(swapperFactory,numberOfCachePages,cachePageSize,tracer);
-  try {
-    File file=Files.createTempFile(get(workingDirectory),"pagecachekeepingcounts",".bin").toFile();
-    file.deleteOnExit();
-    PagedFile pagedFile=pageCacheKeepingCount.map(file,recordsPerPage * numberOfThreads * SizeOfCounter);
-    CountKeeperFactory countKeeperFactory=new CountKeeperFactory(pagedFile,recordsPerPage,numberOfThreads);
-    PageCacheStresser pageCacheStresser=new PageCacheStresser(numberOfPages,recordsPerPage,numberOfThreads,workingDirectory);
-    pageCacheStresser.stress(pageCacheUnderTest,condition,countKeeperFactory);
-    pagedFile.close();
+  try (PageCache pageCacheUnderTest=new MuninnPageCache(swapperFactory,numberOfCachePages,cachePageSize,tracer)){
+    PageCacheStresser pageCacheStresser=new PageCacheStresser(numberOfPages,numberOfThreads,workingDirectory);
+    pageCacheStresser.stress(pageCacheUnderTest,condition);
   }
-  finally {
-    pageCacheUnderTest.close();
-    pageCacheKeepingCount.close();
-  }
-}
+ }
