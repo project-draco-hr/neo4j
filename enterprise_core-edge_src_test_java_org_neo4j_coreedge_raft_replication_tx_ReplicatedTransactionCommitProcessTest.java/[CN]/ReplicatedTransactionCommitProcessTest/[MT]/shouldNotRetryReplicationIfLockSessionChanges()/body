@@ -3,11 +3,16 @@
   ReplicatedTransactionStateMachine transactionStateMachine=mock(ReplicatedTransactionStateMachine.class);
   Future future=mock(Future.class);
   CurrentReplicatedLockState.LockSession lockSession=mock(CurrentReplicatedLockState.LockSession.class);
-  when(lockSession.id()).thenReturn(0);
+  when(lockSession.id()).thenReturn(0,1);
   CurrentReplicatedLockState currentReplicatedLockState=mock(CurrentReplicatedLockState.class);
   when(currentReplicatedLockState.currentLockSession()).thenReturn(lockSession);
-  when(future.get(anyInt(),any(TimeUnit.class))).thenReturn(23l);
   when(transactionStateMachine.getFutureTxId(any(LocalOperationId.class))).thenReturn(future);
-  new ReplicatedTransactionCommitProcess(replicator,new LocalSessionPool(coreMember),transactionStateMachine,1,currentReplicatedLockState,NullLogService.getInstance()).commit(tx(),NULL,INTERNAL);
+  when(future.get(anyInt(),any(TimeUnit.class))).thenThrow(TimeoutException.class);
+  try {
+    new ReplicatedTransactionCommitProcess(replicator,new LocalSessionPool(coreMember),transactionStateMachine,1,currentReplicatedLockState,NullLogService.getInstance()).commit(tx(),NULL,INTERNAL);
+    fail("Should have thrown ");
+  }
+ catch (  TransactionFailureException e) {
+  }
   verify(replicator,times(1)).replicate(any(ReplicatedTransaction.class));
 }
