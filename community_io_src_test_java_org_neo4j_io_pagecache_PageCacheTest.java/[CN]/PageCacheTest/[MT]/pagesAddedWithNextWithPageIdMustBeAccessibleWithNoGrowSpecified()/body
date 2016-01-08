@@ -1,7 +1,7 @@
 {
   getPageCache(fs,maxPages,pageCachePageSize,PageCacheTracer.NULL);
   PagedFile pagedFile=pageCache.map(file("a"),filePageSize);
-  try (PageCursor cursor=pagedFile.io(0,PF_EXCLUSIVE_LOCK)){
+  try (PageCursor cursor=pagedFile.io(0,PF_SHARED_WRITE_LOCK)){
     assertTrue(cursor.next(2));
     do {
       writeRecords(cursor);
@@ -18,12 +18,12 @@
     }
  while (cursor.shouldRetry());
   }
-   try (PageCursor cursor=pagedFile.io(0,PF_EXCLUSIVE_LOCK | PF_NO_GROW)){
+   try (PageCursor cursor=pagedFile.io(0,PF_SHARED_WRITE_LOCK | PF_NO_GROW)){
     while (cursor.next()) {
       verifyRecordsMatchExpected(cursor);
     }
   }
-   try (PageCursor cursor=pagedFile.io(0,PF_SHARED_LOCK)){
+   try (PageCursor cursor=pagedFile.io(0,PF_SHARED_READ_LOCK)){
     while (cursor.next()) {
       verifyRecordsMatchExpected(cursor);
     }
