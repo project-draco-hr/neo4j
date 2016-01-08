@@ -7,6 +7,7 @@
   LifeSupport life=platformModule.life;
   GraphDatabaseFacade graphDatabaseFacade=platformModule.graphDatabaseFacade;
   LogProvider logProvider=logging.getInternalLogProvider();
+  final Supplier<DatabaseHealth> databaseHealthSupplier=dependencies.provideDependency(DatabaseHealth.class);
   CoreDiscoveryService discoveryService=discoveryServiceFactory.coreDiscoveryService(config);
   life.add(dependencies.satisfyDependency(discoveryService));
   final CoreReplicatedContentMarshal marshal=new CoreReplicatedContentMarshal();
@@ -21,14 +22,19 @@
   File raftLogsDirectory=createRaftLogsDirectory(platformModule.storeDir,fileSystem);
   NaiveDurableRaftLog raftLog=new NaiveDurableRaftLog(fileSystem,raftLogsDirectory,new RaftContentSerializer(),platformModule.monitors);
   OnDiskTermState termStore=new OnDiskTermState(fileSystem,raftLogsDirectory);
-  OnDiskVoteState voteStore=new OnDiskVoteState(fileSystem,raftLogsDirectory);
+  OnDiskVoteState voteStore;
+  try {
+    voteStore=new OnDiskVoteState(fileSystem,raftLogsDirectory,config.get(CoreEdgeClusterSettings.vote_state_size),databaseHealthSupplier,new CoreMemberMarshal());
+  }
+ catch (  IOException e) {
+    throw new RuntimeException(e);
+  }
   life.add(raftLog);
   life.add(termStore);
   life.add(voteStore);
-  Supplier<DatabaseHealth> databaseHealthSupplier=dependencies.provideDependency(DatabaseHealth.class);
-  RaftMembershipState<CoreMember> raftMembershipState=null;
+  RaftMembershipState<CoreMember> raftMembershipState;
   try {
-    raftMembershipState=new OnDiskRaftMembershipState<>(fileSystem,storeDir,config.get(CoreEdgeClusterSettings.raft_membership_state_size),databaseHealthSupplier,new CoreMarshal());
+    raftMembershipState=new OnDiskRaftMembershipState<>(fileSystem,storeDir,config.get(CoreEdgeClusterSettings.raft_membership_state_size),databaseHealthSupplier,new CoreMemberMarshal());
   }
  catch (  IOException e) {
     throw new RuntimeException(e);
