@@ -1,0 +1,16 @@
+{
+  int fileSize=(int)fileSystem.getFileSize(file);
+  if (fileSize < InMemoryRaftMembershipState.InMemoryRaftMembershipStateMarshal.ENTRY_MIN_SIZE) {
+    return new InMemoryRaftMembershipState<>();
+  }
+  final StoreChannel temporaryStoreChannel=fileSystem.open(file,"rw");
+  ByteBuffer forInitialRead=ByteBuffer.allocate(fileSize);
+  temporaryStoreChannel.read(forInitialRead);
+  forInitialRead.flip();
+  InMemoryRaftMembershipState result=new InMemoryRaftMembershipState();
+  InMemoryRaftMembershipState lastRead;
+  while ((lastRead=marshal.unmarshal(forInitialRead)) != null) {
+    result=lastRead;
+  }
+  return result;
+}

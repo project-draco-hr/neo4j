@@ -1,0 +1,19 @@
+{
+  EphemeralFileSystemAbstraction fsa=new EphemeralFileSystemAbstraction();
+  fsa.mkdir(testDir.directory());
+  File fileA=fileA();
+  StoreChannel channel=fsa.create(fileA);
+  ByteBuffer buffer=writeLong(42);
+  channel.writeAll(buffer);
+  channel.force(false);
+  buffer.clear();
+  buffer.putLong(101);
+  buffer.flip();
+  channel.writeAll(buffer);
+  channel.force(false);
+  File fileB=fileB();
+  fsa.create(fileB);
+  StateRecoveryManager manager=new TestOnlyStateRecoveryManager(fsa);
+  final StateRecoveryManager.RecoveryStatus recoveryStatus=manager.recover(fileA,fileB);
+  assertEquals(fileB,recoveryStatus.previouslyInactive());
+}
