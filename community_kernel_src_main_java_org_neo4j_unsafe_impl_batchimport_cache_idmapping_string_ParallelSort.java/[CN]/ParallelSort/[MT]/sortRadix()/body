@@ -1,11 +1,11 @@
 {
-  int[][] rangeParams=new int[threads][2];
+  long[][] rangeParams=new long[threads][2];
   int[] bucketRange=new int[threads];
   Workers<TrackerInitializer> initializers=new Workers<>("TrackerInitializer");
   sortBuckets=new long[threads][2];
   long dataSize=highestSetIndex + 1;
-  int bucketSize=safeCastLongToInt(dataSize / threads);
-  int count=0, fullCount=0;
+  long bucketSize=dataSize / threads;
+  long count=0, fullCount=0;
   progress.started("SPLIT");
   for (int i=0, threadIndex=0; i < radixIndexCount.length && threadIndex < threads; i++) {
     if ((count + radixIndexCount[i]) > bucketSize) {
@@ -31,14 +31,14 @@
     if (threadIndex == threads - 1 || i == radixIndexCount.length - 1) {
       bucketRange[threadIndex]=radixIndexCount.length;
       rangeParams[threadIndex][0]=fullCount;
-      rangeParams[threadIndex][1]=safeCastLongToInt(dataSize - fullCount);
+      rangeParams[threadIndex][1]=dataSize - fullCount;
       initializers.start(new TrackerInitializer(threadIndex,rangeParams[threadIndex],threadIndex > 0 ? bucketRange[threadIndex - 1] : -1,bucketRange[threadIndex],sortBuckets[threadIndex]));
       break;
     }
   }
   progress.done();
   Throwable error=initializers.await();
-  int[] bucketIndex=new int[threads];
+  long[] bucketIndex=new long[threads];
   int i=0;
   for (  TrackerInitializer initializer : initializers) {
     bucketIndex[i++]=initializer.bucketIndex;
