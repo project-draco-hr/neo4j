@@ -3,18 +3,18 @@
   FileSystemAbstraction fsa=mock(FileSystemAbstraction.class);
   when(fsa.open(any(File.class),anyString())).thenReturn(channel);
   doNothing().doThrow(new IOException()).when(channel).writeAll(any(ByteBuffer.class));
-  OnDiskVoteState store=new OnDiskVoteState(fsa,new File(testDir.directory(),"on.disk.state"),100,mock(Supplier.class),new CoreMember.CoreMemberMarshal());
+  OnDiskVoteState<CoreMember> state=new OnDiskVoteState<>(fsa,new File(testDir.directory(),"on.disk.state"),100,mock(Supplier.class),new CoreMember.CoreMemberMarshal());
   AdvertisedSocketAddress firstLocalhost=new AdvertisedSocketAddress("localhost:" + 1234);
   CoreMember firstMember=new CoreMember(firstLocalhost,firstLocalhost);
-  store.votedFor(firstMember,0);
-  assertEquals(firstMember,store.votedFor());
+  state.votedFor(firstMember,0);
+  assertEquals(firstMember,state.votedFor());
   AdvertisedSocketAddress secondLocalhost=new AdvertisedSocketAddress("localhost:" + 1235);
   CoreMember secondMember=new CoreMember(secondLocalhost,secondLocalhost);
   try {
-    store.votedFor(secondMember,1);
+    state.votedFor(secondMember,1);
     fail("Test setup should have caused an exception here");
   }
  catch (  Exception e) {
+    assertEquals(firstMember,state.votedFor());
   }
-  assertEquals(firstMember,store.votedFor());
 }
