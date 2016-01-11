@@ -1,0 +1,14 @@
+{
+  final int numberOfTimesToTimeout=1;
+  AtomicInteger timeoutCounter=new AtomicInteger(numberOfTimesToTimeout);
+  CoreMember coreMember=new CoreMember(new AdvertisedSocketAddress("core:1"),new AdvertisedSocketAddress("raft:1"));
+  TriggeredReplicator replicator=new TriggeredReplicator();
+  StubCommittingTransactionsRegistry txFutures=new StubCommittingTransactionsRegistry(replicator,timeoutCounter);
+  TransactionCommitProcess localCommitProcess=mock(TransactionCommitProcess.class);
+  LocalSessionPool sessionPool=new LocalSessionPool(coreMember);
+  CurrentReplicatedLockState lockState=lockState(0);
+  final ReplicatedTransactionStateMachine stateMachine=new ReplicatedTransactionStateMachine(localCommitProcess,sessionPool.getGlobalSession(),lockState,txFutures);
+  ReplicatedTransactionCommitProcess commitProcess=new ReplicatedTransactionCommitProcess(replicator,sessionPool,stateMachine,100,NullLogService.getInstance(),txFutures);
+  commitProcess.commit(tx(),NULL,INTERNAL);
+  assertEquals(2,replicator.timesReplicated());
+}

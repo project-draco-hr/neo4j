@@ -5,28 +5,39 @@
     transaction=createImmutableReplicatedTransaction(tx.transactionRepresentation(),operationContext.globalSession(),operationContext.localOperationId());
   }
  catch (  IOException e) {
-    throw new TransactionFailureException("Could not create immutable object for replication",e);
+    throw new TransactionFailureException("Could not create immutable transaction for replication",e);
   }
-  while (true) {
-    final Future<Long> futureTxId=replicatedTxListener.getFutureTxId(operationContext.localOperationId());
-    try {
-      int currentLockSessionId=currentReplicatedLockState.currentLockSession().id();
-      int txLockSessionId=tx.transactionRepresentation().getLockSessionId();
-      if (currentLockSessionId != txLockSessionId) {
-        throw new TransactionFailureException(LockSessionInvalid,"The lock session in the cluster has changed: " + "[current lock session id:%d, tx lock session id:%d]",currentLockSessionId,txLockSessionId);
+  boolean hasNeverReplicated=true;
+  boolean interrupted=false;
+  try (CommittingTransaction futureTxId=txFutures.register(operationContext.localOperationId())){
+    while (true) {
+      try {
+        replicator.replicate(transaction);
+        hasNeverReplicated=false;
       }
-      replicator.replicate(transaction);
-      Long txId=futureTxId.get(retryIntervalMillis,TimeUnit.MILLISECONDS);
-      sessionPool.releaseSession(operationContext);
-      return txId;
+ catch (      ReplicationFailedException e) {
+        if (hasNeverReplicated) {
+          throw new TransactionFailureException(CouldNotCommit,"Failed to replicate transaction",e);
+        }
+        log.warn("Transaction replication failed, but a previous attempt may have succeeded," + "so commit process must keep waiting for possible success.");
+      }
+      try {
+        Long txId=futureTxId.waitUntilCommitted(retryIntervalMillis,TimeUnit.MILLISECONDS);
+        sessionPool.releaseSession(operationContext);
+        return txId;
+      }
+ catch (      InterruptedException e) {
+        interrupted=true;
+        log.info("Replication of %s was interrupted; retrying.",operationContext);
+      }
+catch (      TimeoutException e) {
+        log.info("Replication of %s timed out after %d %s; retrying.",operationContext,retryIntervalMillis,TimeUnit.MILLISECONDS);
+      }
     }
- catch (    InterruptedException|TimeoutException e) {
-      futureTxId.cancel(false);
+  }
+  finally {
+    if (interrupted) {
+      Thread.currentThread().interrupt();
     }
-catch (    ReplicationFailedException|ExecutionException e) {
-      futureTxId.cancel(false);
-      throw new TransactionFailureException("Failed to replicate transaction",e);
-    }
-    log.info("Retrying replication: " + operationContext);
   }
 }
