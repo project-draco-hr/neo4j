@@ -20,33 +20,36 @@
   RaftServer<CoreMember> raftServer=new RaftServer<>(marshal,raftListenAddress,logProvider);
   final DelayedRenewableTimeoutService raftTimeoutService=new DelayedRenewableTimeoutService(Clock.SYSTEM_CLOCK,logProvider);
   File raftLogsDirectory=createRaftLogsDirectory(platformModule.storeDir,fileSystem);
-  NaiveDurableRaftLog raftLog=new NaiveDurableRaftLog(fileSystem,raftLogsDirectory,new RaftContentSerializer(),platformModule.monitors);
-  OnDiskTermState termStore=new OnDiskTermState(fileSystem,raftLogsDirectory);
-  OnDiskVoteState voteStore;
+  NaiveDurableRaftLog raftLog=life.add(new NaiveDurableRaftLog(fileSystem,raftLogsDirectory,new RaftContentSerializer(),platformModule.monitors));
+  TermState termState;
   try {
-    voteStore=new OnDiskVoteState(fileSystem,raftLogsDirectory,config.get(CoreEdgeClusterSettings.vote_state_size),databaseHealthSupplier,new CoreMemberMarshal());
+    termState=life.add(new OnDiskTermState(fileSystem,raftLogsDirectory,config.get(CoreEdgeClusterSettings.term_state_size),databaseHealthSupplier));
   }
  catch (  IOException e) {
     throw new RuntimeException(e);
   }
-  life.add(raftLog);
-  life.add(termStore);
-  life.add(voteStore);
+  VoteState voteState;
+  try {
+    voteState=life.add(new OnDiskVoteState(fileSystem,raftLogsDirectory,config.get(CoreEdgeClusterSettings.vote_state_size),databaseHealthSupplier,new CoreMemberMarshal()));
+  }
+ catch (  IOException e) {
+    throw new RuntimeException(e);
+  }
   RaftMembershipState<CoreMember> raftMembershipState;
   try {
-    raftMembershipState=new OnDiskRaftMembershipState<>(fileSystem,storeDir,config.get(CoreEdgeClusterSettings.raft_membership_state_size),databaseHealthSupplier,new CoreMemberMarshal());
+    raftMembershipState=life.add(new OnDiskRaftMembershipState<>(fileSystem,storeDir,config.get(CoreEdgeClusterSettings.raft_membership_state_size),databaseHealthSupplier,new CoreMemberMarshal()));
   }
  catch (  IOException e) {
     throw new RuntimeException(e);
   }
-  raft=createRaft(life,loggingOutbound,discoveryService,config,messageLogger,raftLog,termStore,voteStore,myself,logProvider,raftServer,raftTimeoutService,databaseHealthSupplier,raftMembershipState);
+  raft=createRaft(life,loggingOutbound,discoveryService,config,messageLogger,raftLog,termState,voteState,myself,logProvider,raftServer,raftTimeoutService,databaseHealthSupplier,raftMembershipState);
   RaftReplicator<CoreMember> replicator=new RaftReplicator<>(raft,myself,new RaftOutbound(loggingOutbound));
   LocalSessionPool localSessionPool=new LocalSessionPool(myself);
   ReplicatedLockStateMachine<CoreMember> replicatedLockStateMachine=new ReplicatedLockStateMachine<>(myself,replicator);
   commitProcessFactory=createCommitProcessFactory(replicator,localSessionPool,replicatedLockStateMachine,dependencies,logging);
   final IdAllocationState idAllocationState;
   try {
-    idAllocationState=new OnDiskIdAllocationState(fileSystem,new File(storeDir,"id-alloc-store"),config.get(CoreEdgeClusterSettings.id_alloc_state_size),databaseHealthSupplier);
+    idAllocationState=life.add(new OnDiskIdAllocationState(fileSystem,new File(storeDir,"id-alloc-store"),config.get(CoreEdgeClusterSettings.id_alloc_state_size),databaseHealthSupplier));
   }
  catch (  IOException e) {
     throw new RuntimeException(e);

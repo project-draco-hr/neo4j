@@ -1,16 +1,14 @@
 {
-  if (newTerm < term) {
-    throw new IllegalArgumentException("Cannot move to a lower term");
-  }
+  inMemoryTermState.failIfInvalid(newTerm);
   try {
-    ByteBuffer buffer=ByteBuffer.allocate(TERM_BYTES);
-    buffer.putLong(newTerm);
-    buffer.flip();
-    channel.writeAll(buffer,0);
-    channel.force(false);
+    if (needsToWriteToDisk(newTerm)) {
+      InMemoryTermState tempState=new InMemoryTermState(inMemoryTermState);
+      tempState.update(newTerm);
+      statePersister.persistStoreData(tempState);
+      inMemoryTermState=tempState;
+    }
   }
  catch (  IOException e) {
-    throw new RaftStorageException("Failed to update term",e);
+    throw new RaftStorageException(e);
   }
-  term=newTerm;
 }
