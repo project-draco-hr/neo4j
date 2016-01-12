@@ -1,0 +1,33 @@
+{
+  ZipInputStream zip=new ZipInputStream(jar.openStream());
+  return new PrefetchingRawIterator<Class<?>,IOException>(){
+    @Override protected Class<?> fetchNextOrNull() throws IOException {
+      try {
+        while (true) {
+          ZipEntry nextEntry=zip.getNextEntry();
+          if (nextEntry == null) {
+            zip.close();
+            return null;
+          }
+          String name=nextEntry.getName();
+          if (name.endsWith(".class")) {
+            String className=name.substring(0,name.length() - ".class".length()).replace("/",".");
+            try {
+              Class<?> aClass=loader.loadClass(className);
+              aClass.getDeclaredMethods();
+              return aClass;
+            }
+ catch (            UnsatisfiedLinkError|NoClassDefFoundError|Exception e) {
+              log.warn("Failed to load `%s` from plugin jar `%s`: %s",className,jar.getFile(),e.getMessage());
+            }
+          }
+        }
+      }
+ catch (      IOException|RuntimeException e) {
+        zip.close();
+        throw e;
+      }
+    }
+  }
+;
+}

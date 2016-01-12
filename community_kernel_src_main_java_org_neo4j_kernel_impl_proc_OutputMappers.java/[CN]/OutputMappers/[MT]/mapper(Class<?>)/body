@@ -1,0 +1,25 @@
+{
+  List<Field> fields=instanceFields(userClass);
+  FieldSignature[] signature=new FieldSignature[fields.size()];
+  FieldMapper[] fieldMappers=new FieldMapper[fields.size()];
+  for (int i=0; i < fields.size(); i++) {
+    Field field=fields.get(i);
+    if (!isPublic(field.getModifiers())) {
+      throw new ProcedureException(Status.Procedure.TypeError,"Field `%s` in record `%s` cannot be accessed. Please ensure the field is marked as `public`.",field.getName(),userClass.getSimpleName());
+    }
+    try {
+      TypeMappers.NeoValueConverter mapper=typeMappers.converterFor(field.getGenericType());
+      MethodHandle getter=lookup.unreflectGetter(field);
+      FieldMapper fieldMapper=new FieldMapper(getter,mapper);
+      fieldMappers[i]=fieldMapper;
+      signature[i]=new FieldSignature(field.getName(),mapper.type());
+    }
+ catch (    ProcedureException e) {
+      throw new ProcedureException(e.status(),e,"Field `%s` in record `%s` cannot be converted to a Neo4j type: %s",field.getName(),userClass.getSimpleName(),e.getMessage());
+    }
+catch (    IllegalAccessException e) {
+      throw new ProcedureException(Status.Procedure.TypeError,e,"Field `%s` in record `%s` cannot be accessed: %s",field.getName(),userClass.getSimpleName(),e.getMessage());
+    }
+  }
+  return new OutputMapper(signature,fieldMappers);
+}
