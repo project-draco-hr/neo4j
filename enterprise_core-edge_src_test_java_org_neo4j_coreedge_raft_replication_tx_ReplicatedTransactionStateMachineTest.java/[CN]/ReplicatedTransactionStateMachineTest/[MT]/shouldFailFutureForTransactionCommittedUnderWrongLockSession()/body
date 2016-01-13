@@ -4,14 +4,15 @@
   int currentLockSessionId=24;
   ReplicatedTransaction tx=ReplicatedTransactionFactory.createImmutableReplicatedTransaction(physicalTx(txLockSessionId),globalSession,localOperationId);
   TransactionCommitProcess localCommitProcess=mock(TransactionCommitProcess.class);
-  final ReplicatedTransactionStateMachine listener=new ReplicatedTransactionStateMachine(localCommitProcess,globalSession,lockState(currentLockSessionId));
-  Future<Long> future=listener.getFutureTxId(localOperationId);
+  CommittingTransactions committingTransactions=new CommittingTransactionsRegistry();
+  final ReplicatedTransactionStateMachine listener=new ReplicatedTransactionStateMachine(localCommitProcess,globalSession,lockState(currentLockSessionId),committingTransactions);
+  CommittingTransaction future=committingTransactions.register(localOperationId);
   listener.onReplicated(tx,0);
   try {
-    future.get(1,TimeUnit.SECONDS);
+    future.waitUntilCommitted(1,TimeUnit.SECONDS);
     fail("Should have thrown exception");
   }
- catch (  ExecutionException e) {
-    assertThat(e.getCause().getMessage(),containsString("different leader"));
+ catch (  TransactionFailureException e) {
+    assertEquals(Status.Transaction.LockSessionInvalid,e.status());
   }
 }

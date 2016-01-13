@@ -1,20 +1,12 @@
 {
-  ReplicatedTokenRequest tokenRequest=new ReplicatedTokenRequest(type,tokenName,createCommands(tokenName));
   try (TokenFutures.CompletableFutureTokenId tokenFuture=tokenFutures.createFuture(tokenName)){
+    ReplicatedTokenRequest tokenRequest=new ReplicatedTokenRequest(type,tokenName,createCommands(tokenName));
     try {
       replicator.replicate(tokenRequest);
+      return tokenFuture.get(timeoutMillis,TimeUnit.MILLISECONDS);
     }
- catch (    Replicator.ReplicationFailedException e) {
-      throw new RuntimeException("Replication failures not currently handled.");
-    }
-    try {
-      return tokenFuture.get();
-    }
- catch (    InterruptedException|ExecutionException e) {
-      throw new RuntimeException("Future exceptions currently not handled.");
+ catch (    Replicator.ReplicationFailedException|InterruptedException|ExecutionException|TimeoutException e) {
+      throw new org.neo4j.graphdb.TransactionFailureException("Could not create token",e);
     }
   }
- catch (  Exception e) {
-    throw new RuntimeException("Error closing future.",e);
-  }
-}
+ }
