@@ -28,13 +28,13 @@
   final AtomicBoolean recoveryRequiredCalled=new AtomicBoolean();
   try {
     StoreFlusher flusher=mock(StoreFlusher.class);
-    final LogEntryReader<ReadableLogChannel> reader=new VersionAwareLogEntryReader<>(LogEntryVersion.CURRENT.byteCode(),new RecordStorageCommandReaderFactory());
+    final LogEntryReader<ReadableClosablePositionAwareChannel> reader=new VersionAwareLogEntryReader<>(LogEntryVersion.CURRENT.byteCode(),new RecordStorageCommandReaderFactory());
     LatestCheckPointFinder finder=new LatestCheckPointFinder(logFiles,fs,reader);
     life.add(new Recovery(new DefaultRecoverySPI(flusher,mock(NeoStores.class),null,logFiles,fs,logVersionRepository,finder){
       @Override public Visitor<LogVersionedStoreChannel,Exception> getRecoverer(){
         return new Visitor<LogVersionedStoreChannel,Exception>(){
           @Override public boolean visit(          LogVersionedStoreChannel element) throws IOException {
-            try (ReadableVersionableLogChannel channel=new ReadAheadLogChannel(element,NO_MORE_CHANNELS)){
+            try (VersionableReadableClosablePositionAwareChannel channel=new ReadAheadPositionableReadableChannel(element,NO_MORE_CHANNELS)){
               assertEquals(lastCommittedTxStartEntry,reader.readLogEntry(channel));
               assertEquals(lastCommittedTxCommitEntry,reader.readLogEntry(channel));
               assertEquals(expectedCheckPointEntry,reader.readLogEntry(channel));
