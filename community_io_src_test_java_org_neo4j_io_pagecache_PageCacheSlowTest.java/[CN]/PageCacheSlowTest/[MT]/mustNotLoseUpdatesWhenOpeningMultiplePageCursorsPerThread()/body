@@ -11,11 +11,21 @@
   for (int i=0; i < threadCount; i++) {
     UpdateWorker worker=new UpdateWorker(i,filePages,shouldStop,pagedFile){
       protected void performReadOrUpdate(      ThreadLocalRandom rng,      boolean updateCounter,      int pf_flags) throws IOException {
-        int pageId=rng.nextInt(0,filePages);
-        try (PageCursor cursor=pagedFile.io(pageId,pf_flags)){
-          int counter;
-          try {
-            assertTrue(cursor.next());
+        try {
+          int pageCount=rng.nextInt(1,filePages / 10);
+          int[] pageIds=new int[pageCount];
+          for (int j=0; j < pageCount; j++) {
+            pageIds[j]=rng.nextInt(0,filePages);
+          }
+          PageCursor[] cursors=new PageCursor[pageCount];
+          for (int j=0; j < pageCount; j++) {
+            cursors[j]=pagedFile.io(pageIds[j],pf_flags);
+            assertTrue(cursors[j].next());
+          }
+          for (int j=0; j < pageCount; j++) {
+            int pageId=pageIds[j];
+            PageCursor cursor=cursors[j];
+            int counter;
             do {
               cursor.setOffset(offset);
               counter=cursor.getInt();
@@ -23,19 +33,22 @@
  while (cursor.shouldRetry());
             String lockName=updateCounter ? "PF_SHARED_WRITE_LOCK" : "PF_SHARED_READ_LOCK";
             assertThat("inconsistent page read from filePageId = " + pageId + ", with "+ lockName+ ", workerId = "+ threadId+ " [t:"+ Thread.currentThread().getId()+ "]",counter,is(pageCounts[pageId]));
+            if (updateCounter) {
+              counter++;
+              pageCounts[pageId]++;
+              cursor.setOffset(offset);
+              cursor.putInt(counter);
+            }
           }
- catch (          Throwable throwable) {
-            shouldStop.set(true);
-            throw throwable;
-          }
-          if (updateCounter) {
-            counter++;
-            pageCounts[pageId]++;
-            cursor.setOffset(offset);
-            cursor.putInt(counter);
+          for (          PageCursor cursor : cursors) {
+            cursor.close();
           }
         }
-       }
+ catch (        Throwable throwable) {
+          shouldStop.set(true);
+          throw throwable;
+        }
+      }
     }
 ;
     futures.add(executor.submit(worker));
