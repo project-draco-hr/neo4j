@@ -1,15 +1,8 @@
 {
-  int fileSize=(int)fileSystem.getFileSize(file);
-  if (fileSize < InMemoryRaftMembershipState.InMemoryRaftMembershipStateMarshal.ENTRY_MIN_SIZE) {
-    return new InMemoryRaftMembershipState<>();
-  }
-  final StoreChannel temporaryStoreChannel=fileSystem.open(file,"rw");
-  ByteBuffer forInitialRead=ByteBuffer.allocate(fileSize);
-  temporaryStoreChannel.read(forInitialRead);
-  forInitialRead.flip();
+  final ReadableChannel temporaryStoreChannel=new ReadAheadChannel<>(fileSystem.open(file,"rw"));
   InMemoryRaftMembershipState<MEMBER> result=new InMemoryRaftMembershipState<>();
   InMemoryRaftMembershipState<MEMBER> lastRead;
-  while ((lastRead=marshal.unmarshal(forInitialRead)) != null) {
+  while ((lastRead=marshal.unmarshal(temporaryStoreChannel)) != null) {
     result=lastRead;
   }
   return result;

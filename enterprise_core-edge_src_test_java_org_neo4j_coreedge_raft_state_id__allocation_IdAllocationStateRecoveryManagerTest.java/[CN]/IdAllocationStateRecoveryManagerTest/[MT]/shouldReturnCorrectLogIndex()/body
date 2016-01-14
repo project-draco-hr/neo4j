@@ -2,11 +2,10 @@
   EphemeralFileSystemAbstraction fsa=new EphemeralFileSystemAbstraction();
   fsa.mkdir(testDir.directory());
   File file=new File(testDir.directory(),"file");
-  StoreChannel channel=fsa.create(file);
-  ByteBuffer buffer=partiallyFillWithWholeRecord(42);
-  channel.writeAll(buffer);
-  channel.force(false);
-  IdAllocationStateRecoveryManager manager=new IdAllocationStateRecoveryManager(fsa,new InMemoryIdAllocationStateMarshal());
+  FlushableChannel channel=new PhysicalFlushableChannel(fsa.open(file,"rw"));
+  putRecordWithIndex(42,channel);
+  channel.close();
+  IdAllocationStateRecoveryManager manager=new IdAllocationStateRecoveryManager(fsa,new InMemoryIdAllocationStateChannelMarshal());
   final long logIndex=manager.getOrdinalOfLastRecord(file);
   assertEquals(42,logIndex);
 }
