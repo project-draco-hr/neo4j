@@ -1,0 +1,26 @@
+{
+  LockToken currentToken=lockTokenManager.currentToken();
+  if (myself.equals(currentToken.owner())) {
+    return currentToken.id();
+  }
+  ensureLeader();
+  ReplicatedLockTokenRequest<MEMBER> lockTokenRequest=new ReplicatedLockTokenRequest<>(myself,lockTokenManager.nextCandidateId());
+  try {
+    replicator.replicate(lockTokenRequest);
+  }
+ catch (  Replicator.ReplicationFailedException e) {
+    throw new AcquireLockTimeoutException(e,"Could not acquire lock token.");
+  }
+  try {
+    lockTokenManager.waitForTokenId(lockTokenRequest.id(),leaderLockTokenTimeout);
+  }
+ catch (  InterruptedException e) {
+    Thread.currentThread().interrupt();
+    throw new AcquireLockTimeoutException(e,"Interrupted");
+  }
+  currentToken=lockTokenManager.currentToken();
+  if (currentToken.id() != lockTokenRequest.id() || !myself.equals(currentToken.owner())) {
+    throw new AcquireLockTimeoutException("Failed to acquire requested lock token.");
+  }
+  return currentToken.id();
+}
