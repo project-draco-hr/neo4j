@@ -1,0 +1,22 @@
+{
+  PagedFile pagedFile=fileMap.get(file);
+  if (pagedFile != null) {
+    if (recordLocks.tryLock(recordId)) {
+      try {
+        try (PageCursor cursor=pagedFile.io(pageId,PagedFile.PF_SHARED_WRITE_LOCK)){
+          if (cursor.next()) {
+            cursor.setOffset(pageOffset);
+            recordFormat.write(record,cursor);
+            performInnerAction();
+          }
+        }
+       }
+  finally {
+        recordLocks.unlock(recordId);
+      }
+    }
+  }
+ else {
+    performInnerAction();
+  }
+}
