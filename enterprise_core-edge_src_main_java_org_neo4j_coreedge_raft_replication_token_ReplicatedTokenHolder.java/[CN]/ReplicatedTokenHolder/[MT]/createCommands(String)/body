@@ -1,13 +1,14 @@
 {
-  long tokenId=idGeneratorFactory.get(tokenIdType).nextId();
-  TokenStore<RECORD,TOKEN> tokenStore=resolveStore();
-  RecordAccess.Loader<Integer,RECORD,Void> recordLoader=resolveLoader(tokenStore);
-  RecordChanges<Integer,RECORD,Void> recordAccess=new RecordChanges<>(recordLoader,new IntCounter());
-  TokenCreator<RECORD,TOKEN> tokenCreator=new TokenCreator<>(tokenStore);
-  tokenCreator.createToken(tokenName,(int)tokenId,recordAccess);
-  Collection<Command> commands=new ArrayList<>();
-  for (  RecordAccess.RecordProxy<Integer,RECORD,Void> record : recordAccess.changes()) {
-    commands.add(createCommand(record.getBefore(),record.forReadingLinkage()));
+  StorageEngine storageEngine=dependencies.resolveDependency(StorageEngine.class);
+  Collection<StorageCommand> commands=new ArrayList<>();
+  TransactionState txState=new TxState();
+  int tokenId=Math.toIntExact(idGeneratorFactory.get(tokenIdType).nextId());
+  createToken(txState,tokenName,tokenId);
+  try {
+    storageEngine.createCommands(commands,txState,ResourceLocker.NONE,Long.MAX_VALUE);
+  }
+ catch (  CreateConstraintFailureException|TransactionFailureException|ConstraintValidationKernelException e) {
+    throw new RuntimeException("Unable to create token '" + tokenName + "'",e);
   }
   return ReplicatedTokenRequestSerializer.createCommandBytes(commands);
 }

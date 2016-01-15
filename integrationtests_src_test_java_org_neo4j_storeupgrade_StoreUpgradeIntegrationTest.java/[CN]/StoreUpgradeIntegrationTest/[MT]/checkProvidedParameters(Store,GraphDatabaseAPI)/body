@@ -4,10 +4,12 @@
     assertThat(nodeCount,is(store.expectedNodeCount));
     long indexCount=count(db.schema().getIndexes());
     assertThat(indexCount,is(store.indexes()));
-    NeoStores neoStores=db.getDependencyResolver().resolveDependency(NeoStoreDataSource.class).getNeoStores();
-    long lastCommittedTxId=neoStores.getMetaDataStore().getLastCommittedTransactionId();
-    CountsTracker counts=neoStores.getCounts();
-    assertEquals(lastCommittedTxId,counts.txId());
-    assertThat(lastCommittedTxId,is(store.lastTxId));
-  }
+    TransactionIdStore txIdStore=db.getDependencyResolver().resolveDependency(TransactionIdStore.class);
+    long lastCommittedTxId=txIdStore.getLastCommittedTransactionId();
+    try (Statement statement=db.getDependencyResolver().resolveDependency(ThreadToStatementContextBridge.class).getKernelTransactionBoundToThisThread(true).acquireStatement()){
+      long countsTxId=db.getDependencyResolver().resolveDependency(RecordStorageEngine.class).testAccessNeoStores().getCounts().txId();
+      assertEquals(lastCommittedTxId,countsTxId);
+      assertThat(lastCommittedTxId,is(store.lastTxId));
+    }
+   }
  }

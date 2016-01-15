@@ -1,3 +1,8 @@
 {
-  return (int)database.getGraph().getDependencyResolver().resolveDependency(NeoStoresSupplier.class).get().getRelationshipStore().getNumberOfIdsInUse();
+  try (KernelTransaction tx=database.getGraph().getDependencyResolver().resolveDependency(KernelAPI.class).newTransaction();Statement statement=tx.acquireStatement()){
+    return Math.toIntExact(statement.readOperations().relationshipsGetCount());
+  }
+ catch (  TransactionFailureException e) {
+    throw new RuntimeException(e);
+  }
 }
