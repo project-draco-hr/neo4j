@@ -1,0 +1,15 @@
+{
+  StageControl control=mock(StageControl.class);
+  final CountDownLatch latch=new CountDownLatch(1);
+  final int processors=2;
+  final ProcessorStep<Void> step=new BlockingProcessorStep(control,processors,latch);
+  step.start(ORDER_PROCESS);
+  step.incrementNumberOfProcessors();
+  for (int i=0; i < processors + 1; i++) {
+    step.receive(i,null);
+  }
+  Future<Void> receiveFuture=t2.execute(receive(processors,step));
+  t2.get().waitUntilThreadState(Thread.State.TIMED_WAITING);
+  latch.countDown();
+  receiveFuture.get();
+}
