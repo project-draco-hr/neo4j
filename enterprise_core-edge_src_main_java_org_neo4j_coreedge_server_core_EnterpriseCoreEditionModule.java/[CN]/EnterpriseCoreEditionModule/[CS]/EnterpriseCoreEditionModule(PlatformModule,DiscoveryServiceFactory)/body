@@ -1,11 +1,12 @@
 {
-  org.neo4j.kernel.impl.util.Dependencies dependencies=platformModule.dependencies;
-  Config config=platformModule.config;
-  LogService logging=platformModule.logging;
-  FileSystemAbstraction fileSystem=platformModule.fileSystem;
-  File storeDir=platformModule.storeDir;
-  LifeSupport life=platformModule.life;
-  GraphDatabaseFacade graphDatabaseFacade=platformModule.graphDatabaseFacade;
+  final org.neo4j.kernel.impl.util.Dependencies dependencies=platformModule.dependencies;
+  final Config config=platformModule.config;
+  final LogService logging=platformModule.logging;
+  final FileSystemAbstraction fileSystem=platformModule.fileSystem;
+  final File storeDir=platformModule.storeDir;
+  final File clusterStateDirectory=createClusterStateDirectory(storeDir,fileSystem);
+  final LifeSupport life=platformModule.life;
+  final GraphDatabaseFacade graphDatabaseFacade=platformModule.graphDatabaseFacade;
   LogProvider logProvider=logging.getInternalLogProvider();
   final Supplier<DatabaseHealth> databaseHealthSupplier=dependencies.provideDependency(DatabaseHealth.class);
   CoreDiscoveryService discoveryService=discoveryServiceFactory.coreDiscoveryService(config);
@@ -19,25 +20,24 @@
   ListenSocketAddress raftListenAddress=config.get(CoreEdgeClusterSettings.raft_listen_address);
   RaftServer<CoreMember> raftServer=new RaftServer<>(marshal,raftListenAddress,logProvider);
   final DelayedRenewableTimeoutService raftTimeoutService=new DelayedRenewableTimeoutService(Clock.SYSTEM_CLOCK,logProvider);
-  File raftLogsDirectory=createRaftLogsDirectory(platformModule.storeDir,fileSystem);
-  NaiveDurableRaftLog raftLog=life.add(new NaiveDurableRaftLog(fileSystem,raftLogsDirectory,new RaftContentSerializer(),platformModule.monitors));
+  NaiveDurableRaftLog raftLog=life.add(new NaiveDurableRaftLog(fileSystem,new File(clusterStateDirectory,NaiveDurableRaftLog.DIRECTORY_NAME),new RaftContentSerializer(),platformModule.monitors));
   TermState termState;
   try {
-    termState=life.add(new OnDiskTermState(fileSystem,raftLogsDirectory,config.get(CoreEdgeClusterSettings.term_state_size),databaseHealthSupplier));
+    termState=life.add(new OnDiskTermState(fileSystem,new File(clusterStateDirectory,OnDiskTermState.DIRECTORY_NAME),config.get(CoreEdgeClusterSettings.term_state_size),databaseHealthSupplier));
   }
  catch (  IOException e) {
     throw new RuntimeException(e);
   }
   VoteState<CoreMember> voteState;
   try {
-    voteState=life.add(new OnDiskVoteState<>(fileSystem,raftLogsDirectory,config.get(CoreEdgeClusterSettings.vote_state_size),databaseHealthSupplier,new CoreMember.CoreMemberMarshal()));
+    voteState=life.add(new OnDiskVoteState<>(fileSystem,new File(clusterStateDirectory,OnDiskVoteState.DIRECTORY_NAME),config.get(CoreEdgeClusterSettings.vote_state_size),databaseHealthSupplier,new CoreMember.CoreMemberMarshal()));
   }
  catch (  IOException e) {
     throw new RuntimeException(e);
   }
   RaftMembershipState<CoreMember> raftMembershipState;
   try {
-    raftMembershipState=life.add(new OnDiskRaftMembershipState<>(fileSystem,storeDir,config.get(CoreEdgeClusterSettings.raft_membership_state_size),databaseHealthSupplier,new CoreMember.CoreMemberMarshal()));
+    raftMembershipState=life.add(new OnDiskRaftMembershipState<>(fileSystem,new File(clusterStateDirectory,OnDiskRaftMembershipState.DIRECTORY_NAME),config.get(CoreEdgeClusterSettings.raft_membership_state_size),databaseHealthSupplier,new CoreMember.CoreMemberMarshal()));
   }
  catch (  IOException e) {
     throw new RuntimeException(e);
@@ -49,7 +49,7 @@
   commitProcessFactory=createCommitProcessFactory(replicator,localSessionPool,replicatedLockStateMachine,dependencies,logging);
   final IdAllocationState idAllocationState;
   try {
-    idAllocationState=life.add(new OnDiskIdAllocationState(fileSystem,new File(storeDir,"id-alloc-store"),config.get(CoreEdgeClusterSettings.id_alloc_state_size),databaseHealthSupplier));
+    idAllocationState=life.add(new OnDiskIdAllocationState(fileSystem,new File(clusterStateDirectory,OnDiskIdAllocationState.DIRECTORY_NAME),config.get(CoreEdgeClusterSettings.id_alloc_state_size),databaseHealthSupplier));
   }
  catch (  IOException e) {
     throw new RuntimeException(e);
