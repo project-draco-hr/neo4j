@@ -1,20 +1,17 @@
 {
   FileSystemAbstraction fs=new DefaultFileSystemAbstraction();
-  File tempFile=File.createTempFile("temp","tmp");
+  File tempFile=new File(testDir.directory(),"temp");
   StoreChannel rawChannel=fs.create(tempFile);
-  final LogHeader header=new LogHeader(CURRENT_LOG_VERSION,1,42l);
-  PhysicalLogVersionedStoreChannel physicalLogVersionedStoreChannel=new PhysicalLogVersionedStoreChannel(rawChannel,header.logVersion,header.logFormatVersion);
   Map<CountsKey,long[]> map=CountsStoreMapGenerator.simpleCountStoreMap(100000);
   CountsSnapshot countsSnapshot=new CountsSnapshot(1,map);
   CountsSnapshot recovered;
-  try (PositionAwarePhysicalFlushableChannel tempChannel=new PositionAwarePhysicalFlushableChannel(physicalLogVersionedStoreChannel)){
+  try (FlushableChannel tempChannel=new PhysicalFlushableChannel(rawChannel)){
     serialize(tempChannel,countsSnapshot);
   }
-   physicalLogVersionedStoreChannel.position(0);
-  try (ReadAheadLogChannel readAheadChannel=new ReadAheadLogChannel(physicalLogVersionedStoreChannel,LogVersionBridge.NO_MORE_CHANNELS)){
-    recovered=deserialize(readAheadChannel);
-  }
-   Assert.assertEquals(countsSnapshot.getTxId(),recovered.getTxId());
+   rawChannel=fs.open(tempFile,"r");
+  ReadAheadChannel<StoreChannel> readAheadChannel=new ReadAheadChannel<>(rawChannel);
+  recovered=deserialize(readAheadChannel);
+  Assert.assertEquals(countsSnapshot.getTxId(),recovered.getTxId());
   for (  Map.Entry<CountsKey,long[]> pair : countsSnapshot.getMap().entrySet()) {
     long[] value=recovered.getMap().get(pair.getKey());
     Assert.assertNotNull(value);
