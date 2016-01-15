@@ -1,0 +1,18 @@
+{
+  try (LuceneLabelScanIndex labelScanIndex=LuceneLabelScanIndexBuilder.create().withIndexIdentifier("partitionedIndex" + affectedNodes).withIndexRootFolder(testDir.directory("partitionedIndexFolder" + affectedNodes)).build()){
+    labelScanIndex.open();
+    generateLabelChanges(labelScanIndex,affectedNodes);
+    try (LabelScanReader labelScanReader=labelScanIndex.getLabelScanReader()){
+      for (int i=0; i < affectedNodes; i++) {
+        long[] labels=PrimitiveLongCollections.asArray(labelScanReader.labelsForNode(i));
+        assertEquals("Should have only one label",1,labels.length);
+        assertEquals("Label id should be equal to node id",i,labels[0]);
+      }
+      for (int i=0; i < affectedNodes; i++) {
+        long[] nodes=PrimitiveLongCollections.asArray(labelScanReader.nodesWithLabel(i));
+        assertEquals("Should have only one node for each label",1,nodes.length);
+        assertEquals("Label id should be equal to node id",i,nodes[0]);
+      }
+    }
+   }
+ }
