@@ -3,7 +3,9 @@
   when(channel.read(any(ByteBuffer.class))).thenReturn(-1);
   FileSystemAbstraction fsa=mock(FileSystemAbstraction.class);
   when(fsa.open(any(File.class),anyString())).thenReturn(channel);
-  when(channel.write(any(ByteBuffer.class))).thenReturn(99).thenThrow(new IOException());
+  final Stubber stubber=doNothing();
+  stubber.when(channel).writeAll(any(ByteBuffer.class));
+  stubber.doThrow(new IOException()).when(channel).writeAll(any(ByteBuffer.class));
   final Supplier databaseHealthSupplier=mock(Supplier.class);
   when(databaseHealthSupplier.get()).thenReturn(mock(DatabaseHealth.class));
   OnDiskVoteState<CoreMember> state=new OnDiskVoteState<>(fsa,new File(testDir.directory(),"on.disk.state"),100,databaseHealthSupplier,new CoreMemberMarshal());
