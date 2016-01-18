@@ -44,11 +44,13 @@
  catch (  IOException e) {
     throw new RuntimeException(e);
   }
-  raft=createRaft(life,loggingOutbound,discoveryService,config,messageLogger,monitoredRaftLog,termState,voteState,myself,logProvider,raftServer,raftTimeoutService,databaseHealthSupplier,raftMembershipState);
+  raft=createRaft(life,loggingOutbound,discoveryService,config,messageLogger,monitoredRaftLog,termState,voteState,myself,logProvider,raftServer,raftTimeoutService,databaseHealthSupplier,raftMembershipState,platformModule.monitors);
+  dependencies.satisfyDependency(raft);
+  dependencies.satisfyDependency(raft);
   RaftReplicator<CoreMember> replicator=new RaftReplicator<>(raft,myself,new RaftOutbound(loggingOutbound));
   LocalSessionPool localSessionPool=new LocalSessionPool(myself);
   ReplicatedLockTokenStateMachine<CoreMember> replicatedLockTokenStateMachine=new ReplicatedLockTokenStateMachine<>(replicator);
-  commitProcessFactory=createCommitProcessFactory(replicator,localSessionPool,replicatedLockTokenStateMachine,dependencies,logging);
+  commitProcessFactory=createCommitProcessFactory(replicator,localSessionPool,replicatedLockTokenStateMachine,dependencies,logging,platformModule.monitors);
   final IdAllocationState idAllocationState;
   try {
     idAllocationState=life.add(new OnDiskIdAllocationState(fileSystem,new File(clusterStateDirectory,OnDiskIdAllocationState.DIRECTORY_NAME),config.get(CoreEdgeClusterSettings.id_alloc_state_size),databaseHealthSupplier));
@@ -87,6 +89,6 @@
   channelInitializer.setOwner(coreToCoreClient);
   long leaderLockTokenTimeout=config.get(CoreEdgeClusterSettings.leader_lock_token_timeout);
   lockManager=dependencies.satisfyDependency(createLockManager(config,logging,replicator,myself,replicatedLockTokenStateMachine,raft,leaderLockTokenTimeout));
-  CatchupServer catchupServer=new CatchupServer(logProvider,new StoreIdSupplier(platformModule),platformModule.dependencies.provideDependency(TransactionIdStore.class),platformModule.dependencies.provideDependency(LogicalTransactionStore.class),new DataSourceSupplier(platformModule),new CheckpointerSupplier(platformModule.dependencies),config.get(CoreEdgeClusterSettings.transaction_listen_address));
+  CatchupServer catchupServer=new CatchupServer(logProvider,new StoreIdSupplier(platformModule),platformModule.dependencies.provideDependency(TransactionIdStore.class),platformModule.dependencies.provideDependency(LogicalTransactionStore.class),new DataSourceSupplier(platformModule),new CheckpointerSupplier(platformModule.dependencies),config.get(CoreEdgeClusterSettings.transaction_listen_address),platformModule.monitors);
   life.add(CoreServerStartupProcess.createLifeSupport(platformModule.dataSourceManager,replicatedIdGeneratorFactory,raft,new RaftLogReplay(monitoredRaftLog,logProvider),raftServer,catchupServer,raftTimeoutService,membershipWaiter,config.get(CoreEdgeClusterSettings.join_catch_up_timeout),new RecoverTransactionLogState(dependencies,logProvider,relationshipTypeTokenHolder,propertyKeyTokenHolder,labelTokenHolder),tokenLife));
 }

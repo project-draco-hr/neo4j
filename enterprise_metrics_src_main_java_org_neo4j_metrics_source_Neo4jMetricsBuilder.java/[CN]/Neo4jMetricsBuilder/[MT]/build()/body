@@ -54,8 +54,14 @@
     result=true;
   }
   if (config.get(MetricsSettings.coreEdgeEnabled)) {
-    life.add(new CoreEdgeMetrics(dependencies.monitors(),registry));
-    result=true;
+    OperationalMode mode=kernelContext.databaseInfo().operationalMode;
+    if (mode == OperationalMode.core) {
+      life.add(new CoreMetrics(dependencies.monitors(),registry,dependencies.raft()));
+      result=true;
+    }
+ else {
+      logService.getUserLog(getClass()).warn("Core Edge metrics was enabled but the graph database is not in Core/Edge mode.");
+    }
   }
   return result;
 }
