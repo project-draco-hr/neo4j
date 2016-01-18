@@ -64,6 +64,7 @@
   MembershipWaiter<CoreMember> membershipWaiter=new MembershipWaiter<>(myself,platformModule.jobScheduler,electionTimeout * 4,logProvider);
   ReplicatedIdGeneratorFactory replicatedIdGeneratorFactory=createIdGeneratorFactory(fileSystem,idRangeAcquirer,logProvider);
   this.idGeneratorFactory=dependencies.satisfyDependency(replicatedIdGeneratorFactory);
+  dependencies.satisfyDependency(new IdBasedStoreEntityCounters(this.idGeneratorFactory));
   Long tokenCreationTimeout=config.get(CoreEdgeClusterSettings.token_creation_timeout);
   ReplicatedRelationshipTypeTokenHolder relationshipTypeTokenHolder=new ReplicatedRelationshipTypeTokenHolder(replicator,this.idGeneratorFactory,dependencies,tokenCreationTimeout);
   ReplicatedPropertyKeyTokenHolder propertyKeyTokenHolder=new ReplicatedPropertyKeyTokenHolder(replicator,this.idGeneratorFactory,dependencies,tokenCreationTimeout);
@@ -77,8 +78,8 @@
   schemaWriteGuard=createSchemaWriteGuard();
   transactionStartTimeout=config.get(GraphDatabaseSettings.transaction_start_timeout);
   constraintSemantics=new EnterpriseConstraintSemantics();
-  registerRecovery(config.get(GraphDatabaseFacadeFactory.Configuration.editionName),life,dependencies);
-  publishEditionInfo(dependencies.resolveDependency(UsageData.class));
+  registerRecovery(platformModule.databaseInfo,life,dependencies);
+  publishEditionInfo(dependencies.resolveDependency(UsageData.class),platformModule.databaseInfo,config);
   ExpiryScheduler expiryScheduler=new ExpiryScheduler(platformModule.jobScheduler);
   Expiration expiration=new Expiration(SYSTEM_CLOCK);
   CoreToCoreClient.ChannelInitializer channelInitializer=new CoreToCoreClient.ChannelInitializer(logProvider);
