@@ -2,11 +2,10 @@
   long s, n;
   for (; ; ) {
     s=getState();
-    if ((s & EXCL_MASK) == EXCL_MASK) {
-      return false;
-    }
-    if ((s & CNT_MASK) == CNT_MASK) {
-      throwWriteLockOverflow(s);
+    boolean unwritablyLocked=(s & FAE_MASK) != 0;
+    boolean writeCountOverflow=(s & CNT_MASK) == CNT_MASK;
+    if (unwritablyLocked | writeCountOverflow) {
+      return failWriteLock(s,writeCountOverflow);
     }
     n=s + CNT_UNIT;
     if (compareAndSetState(s,n)) {
