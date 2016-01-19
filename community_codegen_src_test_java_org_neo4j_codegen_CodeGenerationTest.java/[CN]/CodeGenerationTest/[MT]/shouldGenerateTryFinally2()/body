@@ -1,0 +1,28 @@
+{
+  ClassHandle handle;
+  try (ClassGenerator simple=generateClass("SimpleClass")){
+    try (CodeBlock run=simple.generateMethod(void.class,"run",param(Runnable.class,"body"),param(Runnable.class,"finalize"))){
+      try (TryBlock tryBlock=run.tryBlock()){
+        tryBlock.expression(invoke(run.load("body"),RUN));
+        try (CodeBlock finallyBlock=tryBlock.finallyBlock()){
+          finallyBlock.expression(invoke(run.load("finalize"),RUN));
+        }
+       }
+     }
+     handle=simple.handle();
+  }
+   Runnable body=mock(Runnable.class), finalize=mock(Runnable.class);
+  RuntimeException theFailure=new RuntimeException();
+  doThrow(theFailure).when(body).run();
+  MethodHandle run=instanceMethod(handle.newInstance(),"run",Runnable.class,Runnable.class);
+  try {
+    run.invoke(body,finalize);
+    fail("expected exception");
+  }
+ catch (  RuntimeException e) {
+    assertSame(theFailure,e);
+  }
+  InOrder order=inOrder(body,finalize);
+  order.verify(body).run();
+  order.verify(finalize).run();
+}

@@ -1,0 +1,28 @@
+{
+  ClassHandle handle;
+  try (ClassGenerator simple=generateClass("SimpleClass")){
+    try (CodeBlock body=simple.generateMethod(void.class,"nested",param(Runnable.class,"body"),param(Runnable.class,"always"),param(Runnable.class,"onError"))){
+      try (TryBlock tryBlock=body.tryBlock()){
+        try (TryBlock innerBlock=tryBlock.tryBlock()){
+          innerBlock.expression(invoke(innerBlock.load("body"),RUN));
+          try (CodeBlock innerCatch=innerBlock.catchBlock(param(RuntimeException.class,"E"))){
+            innerCatch.expression(invoke(innerCatch.load("onError"),RUN));
+          }
+         }
+         try (CodeBlock finallyBlock=tryBlock.finallyBlock()){
+          finallyBlock.expression(invoke(finallyBlock.load("always"),RUN));
+        }
+       }
+     }
+     handle=simple.handle();
+  }
+   Runnable a=mock(Runnable.class);
+  Runnable b=mock(Runnable.class);
+  Runnable c=mock(Runnable.class);
+  doThrow(IllegalArgumentException.class).when(a).run();
+  MethodHandle nested=instanceMethod(handle.newInstance(),"nested",Runnable.class,Runnable.class,Runnable.class);
+  nested.invoke(a,b,c);
+  verify(a,times(1)).run();
+  verify(b,times(1)).run();
+  verify(c,times(1)).run();
+}
