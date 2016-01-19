@@ -1,0 +1,15 @@
+{
+  DirectReplicator replicator=new DirectReplicator();
+  LockTokenManager stateMachine=new ReplicatedLockTokenStateMachine<>(replicator);
+  int firstCandidateId=stateMachine.nextCandidateId();
+  replicator.replicate(new ReplicatedLockTokenRequest<>(member(0),firstCandidateId + 1));
+  assertEquals(stateMachine.currentToken().id(),LockToken.INVALID_LOCK_TOKEN_ID);
+  replicator.replicate(new ReplicatedLockTokenRequest<>(member(0),firstCandidateId));
+  assertEquals(stateMachine.currentToken().id(),firstCandidateId);
+  replicator.replicate(new ReplicatedLockTokenRequest<>(member(0),firstCandidateId + 1));
+  assertEquals(stateMachine.currentToken().id(),firstCandidateId + 1);
+  replicator.replicate(new ReplicatedLockTokenRequest<>(member(0),firstCandidateId));
+  assertEquals(stateMachine.currentToken().id(),firstCandidateId + 1);
+  replicator.replicate(new ReplicatedLockTokenRequest<>(member(0),firstCandidateId + 3));
+  assertEquals(stateMachine.currentToken().id(),firstCandidateId + 1);
+}
