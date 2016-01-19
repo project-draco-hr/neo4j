@@ -1,0 +1,31 @@
+{
+  File dbDir=dir.directory();
+  Cluster cluster=Cluster.start(dbDir,3,1);
+  GraphDatabaseService coreDB=cluster.findLeader(5000);
+  try (Transaction tx=coreDB.beginTx()){
+    Node node=coreDB.createNode(label("boo"));
+    node.setProperty("foobar","baz_bat");
+    tx.success();
+  }
+   for (  final CoreGraphDatabase db : cluster.coreServers()) {
+    assertAllNodesVisible(db);
+  }
+  for (  final EdgeGraphDatabase db : cluster.edgeServers()) {
+    assertAllNodesVisible(db);
+  }
+  File appendMetrics=metricsCsv(dbDir,CoreMetrics.APPEND_INDEX);
+  assertThat(readLastValue(appendMetrics),greaterThan(0L));
+  File commitMetrics=metricsCsv(dbDir,CoreMetrics.COMMIT_INDEX);
+  assertThat(readLastValue(commitMetrics),greaterThan(0L));
+  File termMetrics=metricsCsv(dbDir,CoreMetrics.TERM);
+  assertThat(readLastValue(termMetrics),greaterThan(0L));
+  File leaderNotFoundMetrics=metricsCsv(dbDir,CoreMetrics.LEADER_NOT_FOUND);
+  assertThat(readLastValue(leaderNotFoundMetrics),equalTo(0L));
+  File txPullRequestsMetrics=metricsCsv(dbDir,CoreMetrics.TX_PULL_REQUESTS_RECEIVED);
+  assertThat(readLastValue(txPullRequestsMetrics),greaterThan(0L));
+  File txRetryMetrics=metricsCsv(dbDir,CoreMetrics.TX_RETRIES);
+  assertThat(readLastValue(txRetryMetrics),equalTo(0L));
+  File isLeaderMetrics=metricsCsv(dbDir,CoreMetrics.IS_LEADER);
+  assertThat(readLastValue(isLeaderMetrics),greaterThanOrEqualTo(0L));
+  cluster.shutdown();
+}

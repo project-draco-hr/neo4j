@@ -20,6 +20,7 @@
           throw new TransactionFailureException(CouldNotCommit,"Failed to replicate transaction",e);
         }
         log.warn("Transaction replication failed, but a previous attempt may have succeeded," + "so commit process must keep waiting for possible success.",e);
+        txRetryMonitor.retry();
       }
       try {
         Long txId=futureTxId.waitUntilCommitted(retryIntervalMillis,TimeUnit.MILLISECONDS);
@@ -29,9 +30,11 @@
  catch (      InterruptedException e) {
         interrupted=true;
         log.info("Replication of %s was interrupted; retrying.",operationContext);
+        txRetryMonitor.retry();
       }
 catch (      TimeoutException e) {
         log.info("Replication of %s timed out after %d %s; retrying.",operationContext,retryIntervalMillis,TimeUnit.MILLISECONDS);
+        txRetryMonitor.retry();
       }
     }
   }
