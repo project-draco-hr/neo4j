@@ -7,7 +7,7 @@
   this.pageCache=createPageCache(fileSystem,neo4jConfig,logProvider,tracer);
   this.ioTracer=new IoTracer(){
     @Override public long countBytesWritten(){
-      return tracer.countBytesWritten();
+      return tracer.bytesWritten();
     }
   }
 ;
@@ -31,15 +31,7 @@
   dependencies.satisfyDependency(fileSystem);
   dependencies.satisfyDependency(this);
   dependencies.satisfyDependency(logService);
-  KernelContext kernelContext=new KernelContext(){
-    @Override public FileSystemAbstraction fileSystem(){
-      return BatchingNeoStores.this.fileSystem;
-    }
-    @Override public File storeDir(){
-      return BatchingNeoStores.this.storeDir;
-    }
-  }
-;
+  KernelContext kernelContext=new SimpleKernelContext(fileSystem,storeDir,DatabaseInfo.UNKNOWN);
   @SuppressWarnings({"unchecked","rawtypes"}) KernelExtensions extensions=life.add(new KernelExtensions(kernelContext,(Iterable)Service.load(KernelExtensionFactory.class),dependencies,UnsatisfiedDependencyStrategies.ignore()));
   life.start();
   labelScanStore=life.add(extensions.resolveDependency(LabelScanStoreProvider.class,HighestSelectionStrategy.getInstance()).getLabelScanStore());
