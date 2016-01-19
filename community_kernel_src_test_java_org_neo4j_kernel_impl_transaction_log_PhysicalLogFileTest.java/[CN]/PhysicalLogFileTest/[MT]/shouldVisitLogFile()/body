@@ -1,28 +1,2 @@
 {
-  String name="log";
-  StoreFlusher storeFlusher=mock(StoreFlusher.class);
-  LifeSupport life=new LifeSupport();
-  PhysicalLogFiles logFiles=new PhysicalLogFiles(directory.directory(),name,fs);
-  LogFile logFile=life.add(new PhysicalLogFile(fs,logFiles,50,transactionIdStore,logVersionRepository,mock(Monitor.class),new TransactionMetadataCache(10,100)));
-  life.start();
-  WritableLogChannel writer=logFile.getWriter();
-  LogPositionMarker mark=new LogPositionMarker();
-  writer.getCurrentPosition(mark);
-  for (int i=0; i < 5; i++) {
-    writer.put((byte)i);
-  }
-  writer.emptyBufferIntoChannelAndClearIt();
-  final AtomicBoolean called=new AtomicBoolean();
-  logFile.accept(new LogFileVisitor(){
-    @Override public boolean visit(    LogPosition position,    ReadableLogChannel channel) throws IOException {
-      for (int i=0; i < 5; i++) {
-        assertEquals((byte)i,channel.get());
-      }
-      called.set(true);
-      return true;
-    }
-  }
-,mark.newPosition());
-  assertTrue(called.get());
-  life.shutdown();
 }

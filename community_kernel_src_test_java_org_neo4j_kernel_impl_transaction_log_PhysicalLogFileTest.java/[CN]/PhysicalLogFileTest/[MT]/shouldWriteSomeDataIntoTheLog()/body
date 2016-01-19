@@ -7,15 +7,15 @@
   LogFile logFile=life.add(new PhysicalLogFile(fs,logFiles,1000,transactionIdStore,logVersionRepository,monitor,new TransactionMetadataCache(10,100)));
   try {
     life.start();
-    WritableLogChannel writer=logFile.getWriter();
+    FlushablePositionAwareChannel writer=logFile.getWriter();
     LogPositionMarker positionMarker=new LogPositionMarker();
     writer.getCurrentPosition(positionMarker);
     int intValue=45;
     long longValue=4854587;
     writer.putInt(intValue);
     writer.putLong(longValue);
-    writer.emptyBufferIntoChannelAndClearIt().flush();
-    try (ReadableLogChannel reader=logFile.getReader(positionMarker.newPosition())){
+    writer.prepareForFlush().flush();
+    try (ReadableClosableChannel reader=logFile.getReader(positionMarker.newPosition())){
       assertEquals(intValue,reader.getInt());
       assertEquals(longValue,reader.getLong());
     }
