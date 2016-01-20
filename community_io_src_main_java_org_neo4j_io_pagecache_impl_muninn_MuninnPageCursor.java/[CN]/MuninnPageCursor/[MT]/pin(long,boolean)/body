@@ -12,21 +12,18 @@
     item=UnsafeUtil.getObjectVolatile(chunk,chunkOffset);
     if (item != null && item.getClass() == MuninnPage.class) {
       MuninnPage page=(MuninnPage)item;
-      if (tryLockPage(page)) {
-        if (!page.isBoundTo(swapper,filePageId)) {
-          unlockPage(page);
-          item=null;
-        }
+      boolean locked=tryLockPage(page);
+      if (locked & page.isBoundTo(swapper,filePageId)) {
+        pinCursorToPage(page,filePageId,swapper);
+        return;
       }
- else {
-        item=null;
+      if (locked) {
+        unlockPage(page);
       }
-    }
- else     if (item == null) {
-      item=initiatePageFault(filePageId,chunkOffset,chunk);
+      item=null;
     }
  else {
-      item=awaitPageFault(item);
+      item=uncommonPin(item,filePageId,chunkOffset,chunk);
     }
   }
  while (item == null);
