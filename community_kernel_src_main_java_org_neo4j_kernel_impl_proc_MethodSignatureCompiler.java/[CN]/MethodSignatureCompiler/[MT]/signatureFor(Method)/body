@@ -1,0 +1,20 @@
+{
+  Parameter[] params=method.getParameters();
+  Type[] types=method.getGenericParameterTypes();
+  List<FieldSignature> signature=new ArrayList<>(params.length);
+  for (int i=0; i < params.length; i++) {
+    Parameter param=params[i];
+    Type type=types[i];
+    if (!param.isAnnotationPresent(Name.class)) {
+      throw new ProcedureException(Status.Procedure.FailedRegistration,"Argument at position %d in method `%s` is missing an `@%s` annotation. " + "Please add the annotation, recompile the class and try again.",i,method.getName(),Name.class.getSimpleName());
+    }
+    String name=param.getAnnotation(Name.class).value();
+    try {
+      signature.add(new FieldSignature(name,typeMappers.neoTypeFor(type)));
+    }
+ catch (    ProcedureException e) {
+      throw new ProcedureException(e.status(),"Argument `%s` at position %d in `%s` with type `%s` cannot be converted to a Neo4j type: %s",name,i,method.getName(),param.getType().getSimpleName(),e.getLocalizedMessage());
+    }
+  }
+  return signature;
+}

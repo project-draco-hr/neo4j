@@ -1,0 +1,21 @@
+{
+  NeoValueConverter converter=javaToNeo.get(javaType);
+  if (converter != null) {
+    return converter;
+  }
+  if (javaType instanceof ParameterizedType) {
+    ParameterizedType pt=(ParameterizedType)javaType;
+    Type rawType=pt.getRawType();
+    if (rawType == List.class) {
+      return toList(converterFor(pt.getActualTypeArguments()[0]));
+    }
+ else     if (rawType == Map.class) {
+      Type type=pt.getActualTypeArguments()[0];
+      if (type != String.class) {
+        throw new ProcedureException(Status.Procedure.FailedRegistration,"Maps are required to have `String` keys - but this map has `%s` keys.",type.getTypeName());
+      }
+      return TO_MAP;
+    }
+  }
+  throw javaToNeoMappingError(javaType,Neo4jTypes.NTAny);
+}
