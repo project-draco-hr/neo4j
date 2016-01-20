@@ -1,9 +1,11 @@
 {
   final AtomicBoolean shouldStop=new AtomicBoolean();
-  final int cachePages=20;
+  final int cachePages=40;
   final int filePages=cachePages * 2;
   final int threadCount=8;
   final int pageSize=threadCount * 4;
+  final int maxCursorsPerThread=cachePages / (1 + threadCount);
+  assertThat(maxCursorsPerThread * threadCount,lessThan(cachePages));
   getPageCache(fs,cachePages,pageSize,PageCacheTracer.NULL);
   final PagedFile pagedFile=pageCache.map(file("a"),pageSize);
   ensureAllPagesExists(filePages,pagedFile);
@@ -12,7 +14,7 @@
     UpdateWorker worker=new UpdateWorker(i,filePages,shouldStop,pagedFile){
       protected void performReadOrUpdate(      ThreadLocalRandom rng,      boolean updateCounter,      int pf_flags) throws IOException {
         try {
-          int pageCount=rng.nextInt(1,filePages / 10);
+          int pageCount=rng.nextInt(1,maxCursorsPerThread);
           int[] pageIds=new int[pageCount];
           for (int j=0; j < pageCount; j++) {
             pageIds[j]=rng.nextInt(0,filePages);
@@ -32,7 +34,8 @@
             }
  while (cursor.shouldRetry());
             String lockName=updateCounter ? "PF_SHARED_WRITE_LOCK" : "PF_SHARED_READ_LOCK";
-            assertThat("inconsistent page read from filePageId = " + pageId + ", with "+ lockName+ ", workerId = "+ threadId+ " [t:"+ Thread.currentThread().getId()+ "]",counter,is(pageCounts[pageId]));
+            String reason=String.format("inconsistent page read from filePageId = %s, with %s, workerId = %s [t:%s]",pageId,lockName,threadId,Thread.currentThread().getId());
+            assertThat(reason,counter,is(pageCounts[pageId]));
             if (updateCounter) {
               counter++;
               pageCounts[pageId]++;
