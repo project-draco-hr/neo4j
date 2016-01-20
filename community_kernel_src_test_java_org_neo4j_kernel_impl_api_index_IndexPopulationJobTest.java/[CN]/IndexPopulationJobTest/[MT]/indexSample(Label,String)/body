@@ -1,8 +1,9 @@
 {
-  try (Transaction tx=db.beginTx()){
-    ReadOperations statement=ctxSupplier.get().readOperations();
+  try (KernelTransaction tx=kernel.newTransaction();Statement statement=tx.acquireStatement()){
     DoubleLongRegister result=Registers.newDoubleLongRegister();
-    counts.indexSample(statement.labelGetForName(label.name()),statement.propertyKeyGetForName(propertyKey),result);
+    int labelId=statement.readOperations().labelGetForName(label.name());
+    int propertyKeyId=statement.readOperations().propertyKeyGetForName(propertyKey);
+    statement.readOperations().indexSample(new IndexDescriptor(labelId,propertyKeyId),result);
     tx.success();
     return result;
   }

@@ -1,14 +1,11 @@
 {
   db=(GraphDatabaseAPI)new TestGraphDatabaseFactory().newImpermanentDatabase();
-  ctxSupplier=db.getDependencyResolver().resolveDependency(ThreadToStatementContextBridge.class);
-  counts=db.getDependencyResolver().resolveDependency(NeoStoresSupplier.class).get().getCounts();
+  kernel=db.getDependencyResolver().resolveDependency(KernelAPI.class);
   stateHolder=new KernelSchemaStateStore(NullLogProvider.getInstance());
-  indexStoreView=newStoreView();
-  try (Transaction tx=db.beginTx()){
-    Statement statement=ctxSupplier.get();
+  indexStoreView=indexStoreView();
+  try (KernelTransaction tx=kernel.newTransaction();Statement statement=tx.acquireStatement()){
     labelId=statement.schemaWriteOperations().labelGetOrCreateForName(FIRST.name());
     statement.schemaWriteOperations().labelGetOrCreateForName(SECOND.name());
-    statement.close();
     tx.success();
   }
  }

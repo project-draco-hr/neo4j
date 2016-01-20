@@ -1,5 +1,10 @@
 {
-  NeoStores neoStores=((GraphDatabaseAPI)db).getDependencyResolver().resolveDependency(NeoStoresSupplier.class).get();
-  NodeRecord record=neoStores.getNodeStore().getRecord(node.getId());
-  assertEquals(dense,record.isDense());
+  try (KernelTransaction tx=((GraphDatabaseAPI)db).getDependencyResolver().resolveDependency(KernelAPI.class).newTransaction();Statement statement=tx.acquireStatement()){
+    Cursor<NodeItem> nodeCursor=statement.readOperations().nodeCursor(node.getId());
+    assertTrue(nodeCursor.next());
+    assertEquals(dense,nodeCursor.get().isDense());
+  }
+ catch (  TransactionFailureException|IllegalArgumentException e) {
+    throw new RuntimeException(e);
+  }
 }

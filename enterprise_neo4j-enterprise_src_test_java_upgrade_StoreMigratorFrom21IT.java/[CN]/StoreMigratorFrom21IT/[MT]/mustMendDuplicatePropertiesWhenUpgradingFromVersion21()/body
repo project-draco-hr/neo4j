@@ -8,11 +8,6 @@
   assertTrue(result.isSuccessful());
   database=builder.newGraphDatabase();
   DependencyResolver dependencyResolver=((GraphDatabaseAPI)database).getDependencyResolver();
-  NeoStoresSupplier supplier=dependencyResolver.resolveDependency(NeoStoresSupplier.class);
-  NeoStores store=supplier.get();
-  NodeStore nodeStore=store.getNodeStore();
-  RelationshipStore relStore=store.getRelationshipStore();
-  PropertyStore propertyStore=store.getPropertyStore();
   try (Transaction ignore=database.beginTx()){
     verifyPropertiesEqual(database.getNodeById(0),Pair.of("keyA","actual"),Pair.of("__DUPLICATE_keyA_1","phony!"),Pair.of("__DUPLICATE_keyA_2","phony!"));
     verifyPropertiesEqual(database.getNodeById(1),Pair.of("keyA","actual"),Pair.of("__DUPLICATE_keyA_1","actual"),Pair.of("__DUPLICATE_keyA_2","actual"));
@@ -23,10 +18,13 @@
     verifyPropertiesEqual(database.getRelationshipById(1),Pair.of("keyA","real1"),Pair.of("__DUPLICATE_keyA_1","real1"),Pair.of("__DUPLICATE_keyA_2","real1"),Pair.of("keyD","real2"),Pair.of("__DUPLICATE_keyD_1","real2"),Pair.of("__DUPLICATE_keyD_2","real2"));
     verifyPropertiesEqual(database.getRelationshipById(2),Pair.of("keyA","actual"),Pair.of("keyB","actual"),Pair.of("keyC","actual"));
   }
-   verifyNoDuplicatePropertyKeys(propertyStore,nodeStore.getRecord(0).getNextProp());
-  verifyNoDuplicatePropertyKeys(propertyStore,nodeStore.getRecord(1).getNextProp());
-  verifyNoDuplicatePropertyKeys(propertyStore,nodeStore.getRecord(2).getNextProp());
-  verifyNoDuplicatePropertyKeys(propertyStore,relStore.getRecord(0).getNextProp());
-  verifyNoDuplicatePropertyKeys(propertyStore,relStore.getRecord(1).getNextProp());
-  database.shutdown();
+   KernelAPI kernel=dependencyResolver.resolveDependency(KernelAPI.class);
+  try (KernelTransaction tx=kernel.newTransaction();Statement statement=tx.acquireStatement()){
+    IteratorUtil.asUniqueSet(statement.readOperations().nodeGetPropertyKeys(0));
+    IteratorUtil.asUniqueSet(statement.readOperations().nodeGetPropertyKeys(1));
+    IteratorUtil.asUniqueSet(statement.readOperations().nodeGetPropertyKeys(2));
+    IteratorUtil.asUniqueSet(statement.readOperations().relationshipGetPropertyKeys(0));
+    IteratorUtil.asUniqueSet(statement.readOperations().relationshipGetPropertyKeys(1));
+  }
+   database.shutdown();
 }
