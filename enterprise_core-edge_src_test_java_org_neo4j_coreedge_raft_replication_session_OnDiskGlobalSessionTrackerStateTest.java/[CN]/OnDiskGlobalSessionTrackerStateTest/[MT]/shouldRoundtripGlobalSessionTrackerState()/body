@@ -1,0 +1,12 @@
+{
+  EphemeralFileSystemAbstraction fsa=new EphemeralFileSystemAbstraction();
+  fsa.mkdir(testDir.directory());
+  OnDiskGlobalSessionTrackerState<RaftTestMember> oldState=new OnDiskGlobalSessionTrackerState<>(fsa,testDir.directory(),new RaftTestMemberMarshal(),100,mock(Supplier.class));
+  final GlobalSession<RaftTestMember> globalSession=new GlobalSession<>(randomUUID(),member(1));
+  oldState.validateAndTrackOperationAtLogIndex(globalSession,new LocalOperationId(1,0),0);
+  OnDiskGlobalSessionTrackerState<RaftTestMember> newState=new OnDiskGlobalSessionTrackerState<>(fsa,testDir.directory(),new RaftTestMemberMarshal(),100,mock(Supplier.class));
+  assertTrue(oldState.validateAndTrackOperationAtLogIndex(globalSession,new LocalOperationId(1,1),99));
+  assertTrue(newState.validateAndTrackOperationAtLogIndex(globalSession,new LocalOperationId(1,1),99));
+  assertFalse(oldState.validateAndTrackOperationAtLogIndex(globalSession,new LocalOperationId(1,3),99));
+  assertFalse(newState.validateAndTrackOperationAtLogIndex(globalSession,new LocalOperationId(1,3),99));
+}
