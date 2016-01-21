@@ -1,0 +1,19 @@
+{
+  for (  Future<UpdateResult> future : futures) {
+    UpdateResult result=future.get();
+    try (PageCursor cursor=pagedFile.io(0,PF_SHARED_READ_LOCK)){
+      for (int i=0; i < filePages; i++) {
+        assertTrue(cursor.next());
+        int threadId=result.threadId;
+        int expectedCount=result.pageCounts[i];
+        int actualCount;
+        do {
+          cursor.setOffset(threadId * 4);
+          actualCount=cursor.getInt();
+        }
+ while (cursor.shouldRetry());
+        assertThat("wrong count for threadId = " + threadId + ", pageId = "+ i,actualCount,is(expectedCount));
+      }
+    }
+   }
+}

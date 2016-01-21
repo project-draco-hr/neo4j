@@ -1,5 +1,5 @@
 {
-  pinEvent=tracer.beginPin(exclusive,filePageId,swapper);
+  pinEvent=tracer.beginPin(writeLock,filePageId,swapper);
   int chunkId=MuninnPagedFile.computeChunkId(filePageId);
   long chunkOffset=MuninnPagedFile.computeChunkOffset(filePageId);
   Object[][] tt=pagedFile.translationTable;
@@ -12,17 +12,18 @@
     item=UnsafeUtil.getObjectVolatile(chunk,chunkOffset);
     if (item != null && item.getClass() == MuninnPage.class) {
       MuninnPage page=(MuninnPage)item;
-      lockPage(page);
-      if (!page.isBoundTo(swapper,filePageId)) {
-        unlockPage(page);
-        item=null;
+      boolean locked=tryLockPage(page);
+      if (locked & page.isBoundTo(swapper,filePageId)) {
+        pinCursorToPage(page,filePageId,swapper);
+        return;
       }
-    }
- else     if (item == null) {
-      item=initiatePageFault(filePageId,chunkOffset,chunk);
+      if (locked) {
+        unlockPage(page);
+      }
+      item=null;
     }
  else {
-      item=awaitPageFault(item);
+      item=uncommonPin(item,filePageId,chunkOffset,chunk);
     }
   }
  while (item == null);

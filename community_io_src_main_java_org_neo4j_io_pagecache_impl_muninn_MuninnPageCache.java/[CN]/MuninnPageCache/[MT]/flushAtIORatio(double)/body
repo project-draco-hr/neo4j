@@ -10,13 +10,12 @@
         thread.interrupt();
         return 0;
       }
-      boolean thisPageIsDirty=false;
-      if (page.isWriteLocked() || !(thisPageIsDirty=page.isDirty()) || !page.decrementUsage()) {
+      boolean thisPageIsDirty;
+      if (!(thisPageIsDirty=page.isDirty()) || !page.decrementUsage()) {
         seenDirtyPages|=thisPageIsDirty;
         continue;
       }
-      long stamp=page.tryReadLock();
-      if (stamp != 0) {
+      if (page.tryFreezeLock()) {
         try {
           if (!page.isDirty()) {
             continue;
@@ -30,7 +29,7 @@
  catch (        Throwable ignore) {
         }
  finally {
-          page.unlockRead(stamp);
+          page.unlockFreeze();
         }
       }
       if (sleepDebtNanos > sleepPaymentThreshold) {

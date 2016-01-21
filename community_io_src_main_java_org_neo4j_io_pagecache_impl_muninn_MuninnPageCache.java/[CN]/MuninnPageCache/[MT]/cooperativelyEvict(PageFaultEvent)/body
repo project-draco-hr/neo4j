@@ -1,10 +1,15 @@
 {
+  int iterations=0;
   int clockArm=ThreadLocalRandom.current().nextInt(pages.length);
   MuninnPage page;
   boolean evicted=false;
   do {
     assertHealthy();
     if (clockArm == pages.length) {
+      if (iterations == cooperativeEvictionLiveLockThreshold) {
+        throw cooperativeEvictionLiveLock();
+      }
+      iterations++;
       clockArm=0;
     }
     page=pages[clockArm];
@@ -12,13 +17,14 @@
       throw new IllegalStateException("The PageCache has been shut down");
     }
     if (page.isLoaded() && page.decrementUsage()) {
-      long stamp=page.tryWriteLock();
-      if (stamp != 0) {
+      if (page.tryExclusiveLock()) {
         try (EvictionEvent evictionEvent=faultEvent.beginEviction()){
           evicted=page.isLoaded() && evictPage(page,evictionEvent);
         }
   finally {
-          page.unlockWrite(stamp);
+          if (!evicted) {
+            page.unlockExclusive();
+          }
         }
       }
     }

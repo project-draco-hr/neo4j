@@ -1,11 +1,10 @@
 {
   getPageCache(fs,maxPages,pageCachePageSize,PageCacheTracer.NULL);
   PagedFile pagedFile=pageCache.map(file("a"),filePageSize);
-  PageCursor cursor=pagedFile.io(0,PF_EXCLUSIVE_LOCK);
+  PageCursor cursor=pagedFile.io(0,PF_SHARED_WRITE_LOCK);
   assertTrue(cursor.next());
   Thread unmapper=fork($close(pagedFile));
-  awaitThreadState(unmapper,1000,Thread.State.BLOCKED,Thread.State.WAITING,Thread.State.TIMED_WAITING);
-  assertFalse(cursor.shouldRetry());
+  unmapper.join(100);
   cursor.close();
   unmapper.join();
 }
