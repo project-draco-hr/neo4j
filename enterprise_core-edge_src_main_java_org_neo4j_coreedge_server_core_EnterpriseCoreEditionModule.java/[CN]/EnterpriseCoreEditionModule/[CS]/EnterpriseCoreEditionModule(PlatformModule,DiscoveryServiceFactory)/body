@@ -32,14 +32,14 @@
   }
   VoteState<CoreMember> voteState;
   try {
-    voteState=life.add(new OnDiskVoteState<>(fileSystem,new File(clusterStateDirectory,OnDiskVoteState.DIRECTORY_NAME),config.get(CoreEdgeClusterSettings.vote_state_size),databaseHealthSupplier,new CoreMember.CoreMemberMarshal()));
+    voteState=life.add(new OnDiskVoteState<>(fileSystem,new File(clusterStateDirectory,OnDiskVoteState.DIRECTORY_NAME),config.get(CoreEdgeClusterSettings.vote_state_size),databaseHealthSupplier,new CoreMemberMarshal()));
   }
  catch (  IOException e) {
     throw new RuntimeException(e);
   }
   RaftMembershipState<CoreMember> raftMembershipState;
   try {
-    raftMembershipState=life.add(new OnDiskRaftMembershipState<>(fileSystem,new File(clusterStateDirectory,OnDiskRaftMembershipState.DIRECTORY_NAME),config.get(CoreEdgeClusterSettings.raft_membership_state_size),databaseHealthSupplier,new CoreMember.CoreMemberMarshal()));
+    raftMembershipState=life.add(new OnDiskRaftMembershipState<>(fileSystem,new File(clusterStateDirectory,OnDiskRaftMembershipState.DIRECTORY_NAME),config.get(CoreEdgeClusterSettings.raft_membership_state_size),databaseHealthSupplier,new CoreMemberMarshal()));
   }
  catch (  IOException e) {
     throw new RuntimeException(e);
@@ -49,8 +49,22 @@
   dependencies.satisfyDependency(raft);
   RaftReplicator<CoreMember> replicator=new RaftReplicator<>(raft,myself,new RaftOutbound(loggingOutbound));
   LocalSessionPool localSessionPool=new LocalSessionPool(myself);
-  ReplicatedLockTokenStateMachine<CoreMember> replicatedLockTokenStateMachine=new ReplicatedLockTokenStateMachine<>(replicator);
-  commitProcessFactory=createCommitProcessFactory(replicator,localSessionPool,replicatedLockTokenStateMachine,dependencies,logging,platformModule.monitors);
+  OnDiskReplicatedLockTokenState<CoreMember> onDiskReplicatedLockTokenState;
+  try {
+    onDiskReplicatedLockTokenState=life.add(new OnDiskReplicatedLockTokenState<>(fileSystem,new File(clusterStateDirectory,OnDiskReplicatedLockTokenState.DIRECTORY_NAME),config.get(CoreEdgeClusterSettings.replicated_lock_token_state_size),new CoreMember.CoreMemberMarshal(),databaseHealthSupplier));
+  }
+ catch (  IOException e) {
+    throw new RuntimeException(e);
+  }
+  ReplicatedLockTokenStateMachine<CoreMember> replicatedLockTokenStateMachine=new ReplicatedLockTokenStateMachine<>(replicator,onDiskReplicatedLockTokenState);
+  OnDiskGlobalSessionTrackerState<CoreMember> onDiskGlobalSessionTrackerState;
+  try {
+    onDiskGlobalSessionTrackerState=new OnDiskGlobalSessionTrackerState<>(fileSystem,new File(clusterStateDirectory,OnDiskGlobalSessionTrackerState.DIRECTORY_NAME),new CoreMemberMarshal(),config.get(CoreEdgeClusterSettings.global_session_tracker_state_size),databaseHealthSupplier);
+  }
+ catch (  IOException e) {
+    throw new RuntimeException(e);
+  }
+  commitProcessFactory=createCommitProcessFactory(replicator,localSessionPool,replicatedLockTokenStateMachine,dependencies,logging,platformModule.monitors,onDiskGlobalSessionTrackerState);
   final IdAllocationState idAllocationState;
   try {
     idAllocationState=life.add(new OnDiskIdAllocationState(fileSystem,new File(clusterStateDirectory,OnDiskIdAllocationState.DIRECTORY_NAME),config.get(CoreEdgeClusterSettings.id_alloc_state_size),databaseHealthSupplier));
