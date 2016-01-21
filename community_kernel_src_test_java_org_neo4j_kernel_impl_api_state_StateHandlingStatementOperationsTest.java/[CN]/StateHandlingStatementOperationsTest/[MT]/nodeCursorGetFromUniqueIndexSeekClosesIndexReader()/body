@@ -1,0 +1,14 @@
+{
+  KernelStatement kernelStatement=mock(KernelStatement.class);
+  IndexReader indexReader=mock(IndexReader.class);
+  StoreStatement storeStatement=new StoreStatementWithSingleFreshIndexReader(indexReader);
+  when(indexReader.seek(any())).thenReturn(PrimitiveLongCollections.emptyIterator());
+  when(kernelStatement.getStoreStatement()).thenReturn(storeStatement);
+  StateHandlingStatementOperations operations=newTxStateOps(mock(StoreReadLayer.class));
+  try (Cursor<NodeItem> cursor=operations.nodeCursorGetFromUniqueIndexSeek(kernelStatement,new IndexDescriptor(1,1),"foo")){
+    while (cursor.next()) {
+      fail("Cursor should be empty");
+    }
+  }
+   verify(indexReader).close();
+}
