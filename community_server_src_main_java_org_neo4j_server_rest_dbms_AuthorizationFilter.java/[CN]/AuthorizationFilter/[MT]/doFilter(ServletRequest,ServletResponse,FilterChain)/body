@@ -10,12 +10,12 @@
   }
   final String header=request.getHeader(HttpHeaders.AUTHORIZATION);
   if (header == null) {
-    noHeader().writeResponse(response);
+    requestAuthentication(request,noHeader).accept(response);
     return;
   }
   final String[] usernameAndPassword=extractCredential(header);
   if (usernameAndPassword == null) {
-    badHeader().writeResponse(response);
+    badHeader.accept(response);
     return;
   }
   final String username=usernameAndPassword[0];
@@ -23,18 +23,18 @@
 switch (authManager.authenticate(username,password)) {
 case PASSWORD_CHANGE_REQUIRED:
     if (!PASSWORD_CHANGE_WHITELIST.matcher(path).matches()) {
-      passwordChangeRequired(username,baseURL(request)).writeResponse(response);
+      passwordChangeRequired(username,baseURL(request)).accept(response);
       return;
     }
 case SUCCESS:
   filterChain.doFilter(new AuthorizedRequestWrapper(BASIC_AUTH,username,request),servletResponse);
 return;
 case TOO_MANY_ATTEMPTS:
-tooManyAttemptes().writeResponse(response);
+tooManyAttempts.accept(response);
 return;
 default :
 log.warn("Failed authentication attempt for '%s' from %s",username,request.getRemoteAddr());
-invalidCredential().writeResponse(response);
+requestAuthentication(request,invalidCredential).accept(response);
 return;
 }
 }
