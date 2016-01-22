@@ -1,0 +1,13 @@
+{
+  TransactionCommitProcess commitProcess=mock(TransactionCommitProcess.class);
+  InMemoryGlobalSessionTrackerState<RaftTestMember> sessionTrackerState=spy(new InMemoryGlobalSessionTrackerState<>());
+  ReplicatedTransactionStateMachine<RaftTestMember> rtsm=new ReplicatedTransactionStateMachine<>(commitProcess,new GlobalSession<>(UUID.randomUUID(),RaftTestMember.member(1)),mock(LockTokenManager.class,RETURNS_MOCKS),new CommittingTransactionsRegistry(),sessionTrackerState);
+  TransactionRepresentation tx=new PhysicalTransactionRepresentation(Collections.emptySet());
+  ReplicatedTransaction<RaftTestMember> rtx=ReplicatedTransactionFactory.createImmutableReplicatedTransaction(tx,new GlobalSession<>(UUID.randomUUID(),RaftTestMember.member(2)),new LocalOperationId(1,0));
+  final int commitAtRaftLogIndex=99;
+  rtsm.onReplicated(rtx,commitAtRaftLogIndex);
+  assertEquals(commitAtRaftLogIndex,sessionTrackerState.logIndex());
+  rtsm.onReplicated(rtx,commitAtRaftLogIndex);
+  verify(commitProcess,times(1)).commit(any(),any(),any());
+  verify(sessionTrackerState,times(1)).update(any(),any(),eq(99L));
+}
