@@ -13,6 +13,7 @@
   int badTolerance;
   Charset inputEncoding;
   boolean skipBadRelationships, skipDuplicateNodes, ignoreExtraColumns;
+  Config dbConfig;
   try {
     storeDir=args.interpretOption(Options.STORE_DIR.key(),Converters.<File>mandatory(),Converters.toFile(),Validators.DIRECTORY_IS_WRITABLE,Validators.CONTAINS_NO_EXISTING_DATABASE);
     File badFile=new File(storeDir,BAD_FILE_NAME);
@@ -30,6 +31,7 @@
     ignoreExtraColumns=args.getBoolean(Options.IGNORE_EXTRA_COLUMNS.key(),(Boolean)Options.IGNORE_EXTRA_COLUMNS.defaultValue(),true);
     Collector badCollector=badCollector(badOutput,badTolerance,collect(skipBadRelationships,skipDuplicateNodes,ignoreExtraColumns));
     input=new CsvInput(nodeData(inputEncoding,nodesFiles),defaultFormatNodeFileHeader(),relationshipData(inputEncoding,relationshipsFiles),defaultFormatRelationshipFileHeader(),idType,csvConfiguration(args,defaultSettingsSuitableForTests),badCollector);
+    dbConfig=loadDbConfig(args.interpretOption(Options.DATABASE_CONFIG.key(),Converters.<File>optional(),Converters.toFile(),Validators.REGEX_FILE_EXISTS));
   }
  catch (  IllegalArgumentException e) {
     throw andPrintError("Input error",e,false);
@@ -40,8 +42,8 @@ catch (  IOException e) {
   LifeSupport life=new LifeSupport();
   LogService logService=life.add(StoreLogService.inStoreDirectory(fs,storeDir));
   life.start();
-  org.neo4j.unsafe.impl.batchimport.Configuration configuration=importConfiguration(processors,defaultSettingsSuitableForTests);
-  BatchImporter importer=new ParallelBatchImporter(storeDir,configuration,logService,ExecutionMonitors.defaultVisible());
+  org.neo4j.unsafe.impl.batchimport.Configuration configuration=importConfiguration(processors,defaultSettingsSuitableForTests,dbConfig);
+  BatchImporter importer=new ParallelBatchImporter(storeDir,configuration,logService,ExecutionMonitors.defaultVisible(),dbConfig);
   printOverview(storeDir,nodesFiles,relationshipsFiles);
   boolean success=false;
   try {
