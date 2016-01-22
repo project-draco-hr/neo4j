@@ -1,0 +1,16 @@
+{
+  try (LuceneIndexAccessor indexAccessor=createDefaultIndexAccessor()){
+    generateUpdates(indexAccessor,32);
+    indexAccessor.force();
+    List<String> singlePartitionFileTemplates=Arrays.asList(".cfe",".cfs",".si","segments_1");
+    try (ResourceIterator<File> snapshotIterator=indexAccessor.snapshotFiles()){
+      List<String> indexFileNames=asFileInsidePartitionNames(snapshotIterator);
+      assertTrue("Expect files from 4 partitions",indexFileNames.size() >= (singlePartitionFileTemplates.size() * 4));
+      Map<String,Integer> templateMatches=countTemplateMatches(singlePartitionFileTemplates,indexFileNames);
+      for (      String fileTemplate : singlePartitionFileTemplates) {
+        Integer matches=templateMatches.get(fileTemplate);
+        assertTrue("Expect to see at least 4 matches for template: " + fileTemplate,matches >= 4);
+      }
+    }
+   }
+ }

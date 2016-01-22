@@ -1,0 +1,29 @@
+{
+  LuceneSchemaIndex reopenIndex=null;
+  try {
+    reopenIndex=LuceneSchemaIndexBuilder.create().withIndexRootFolder(testDir.directory("reopenIndexFolder")).withIndexIdentifier("reopenIndex").build();
+    reopenIndex.open();
+    addDocumentToIndex(reopenIndex,1);
+    reopenIndex.close();
+    assertFalse(reopenIndex.isOpen());
+    reopenIndex.open();
+    assertTrue(reopenIndex.isOpen());
+    addDocumentToIndex(reopenIndex,10);
+    reopenIndex.close();
+    assertFalse(reopenIndex.isOpen());
+    reopenIndex.open();
+    assertTrue(reopenIndex.isOpen());
+    reopenIndex.close();
+    reopenIndex.open();
+    addDocumentToIndex(reopenIndex,100);
+    reopenIndex.maybeRefreshBlocking();
+    try (LuceneAllDocumentsReader allDocumentsReader=reopenIndex.allDocumentsReader()){
+      assertEquals("All documents should be visible",111,allDocumentsReader.maxCount());
+    }
+   }
+  finally {
+    if (reopenIndex != null) {
+      reopenIndex.close();
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  if (open) {
+    return true;
+  }
+  Collection<Directory> directories=null;
+  try {
+    directories=indexStorage.openIndexDirectories().values();
+    for (    Directory directory : directories) {
+      if (!ArrayUtil.isEmpty(directory.listAll())) {
+        try (CheckIndex checker=new CheckIndex(directory)){
+          CheckIndex.Status status=checker.checkIndex();
+          if (!status.clean) {
+            return false;
+          }
+        }
+       }
+    }
+  }
+ catch (  IOException e) {
+    return false;
+  }
+ finally {
+    IOUtils.closeAllSilently(directories);
+  }
+  return true;
+}

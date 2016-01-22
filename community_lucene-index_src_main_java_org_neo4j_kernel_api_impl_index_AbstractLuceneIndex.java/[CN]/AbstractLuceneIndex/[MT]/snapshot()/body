@@ -1,0 +1,27 @@
+{
+  ensureOpen();
+  commitCloseLock.lock();
+  List<ResourceIterator<File>> snapshotIterators=null;
+  try {
+    List<IndexPartition> partitions=getPartitions();
+    snapshotIterators=new ArrayList<>(partitions.size());
+    for (    IndexPartition partition : partitions) {
+      snapshotIterators.add(partition.snapshot());
+    }
+    return Iterables.concatResourceIterators(snapshotIterators.iterator());
+  }
+ catch (  Exception e) {
+    if (snapshotIterators != null) {
+      try {
+        IOUtils.closeAll(snapshotIterators);
+      }
+ catch (      IOException ex) {
+        throw Exceptions.withCause(ex,e);
+      }
+    }
+    throw e;
+  }
+ finally {
+    commitCloseLock.unlock();
+  }
+}
