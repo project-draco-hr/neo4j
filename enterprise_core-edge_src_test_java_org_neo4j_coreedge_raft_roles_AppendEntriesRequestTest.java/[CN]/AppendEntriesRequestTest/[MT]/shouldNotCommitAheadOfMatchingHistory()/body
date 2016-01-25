@@ -1,0 +1,10 @@
+{
+  InMemoryRaftLog raftLog=new InMemoryRaftLog();
+  RaftState<RaftTestMember> state=raftState().entryLog(raftLog).myself(myself).build();
+  long leaderTerm=state.term() + leaderTermDifference;
+  RaftLogEntry previouslyAppendedEntry=new RaftLogEntry(leaderTerm,content());
+  raftLog.append(previouslyAppendedEntry);
+  Outcome<RaftTestMember> outcome=role.handler.handle(appendEntriesRequest().from(leader).leaderTerm(leaderTerm).prevLogIndex(raftLog.appendIndex() + 1).prevLogTerm(leaderTerm).leaderCommit(0).build(),state,log());
+  assertFalse(((Response)messageFor(outcome,leader)).success());
+  assertThat(outcome.getLogCommands(),empty());
+}
