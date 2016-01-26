@@ -1,0 +1,15 @@
+{
+  new JarBuilder().createJarFor(plugins.newFile("myProcedures.jar"),ProcedureExample.class);
+  db=new TestGraphDatabaseFactory().newImpermanentDatabaseBuilder().setConfig(GraphDatabaseSettings.plugin_dir,plugins.getRoot().getAbsolutePath()).newGraphDatabase();
+  try (Transaction ignore=db.beginTx()){
+    Node node1=db.createNode();
+    Node node2=db.createNode();
+    Node node3=db.createNode();
+    node1.createRelationshipTo(node1,RelationshipType.withName("KNOWS"));
+    node1.createRelationshipTo(node2,RelationshipType.withName("KNOWS"));
+    node1.createRelationshipTo(node3,RelationshipType.withName("KNOWS"));
+    Result res=db.execute("CALL org.neo4j.procedure.impl.findSuperNodes(2)");
+    assertEquals(map("degree",3l,"nodeId",node1.getId()),res.next());
+    assertFalse(res.hasNext());
+  }
+ }
