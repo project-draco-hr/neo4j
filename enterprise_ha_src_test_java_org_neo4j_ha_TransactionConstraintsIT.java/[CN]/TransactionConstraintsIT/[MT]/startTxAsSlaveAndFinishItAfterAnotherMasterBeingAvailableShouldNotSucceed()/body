@@ -1,19 +1,22 @@
 {
-  HighlyAvailableGraphDatabase db=cluster.getAnySlave();
-  HighlyAvailableGraphDatabase theOtherSlave;
+  HighlyAvailableGraphDatabase db=getSlaveOnlySlave();
+  HighlyAvailableGraphDatabase oldMaster=cluster.getMaster();
   Transaction tx=db.beginTx();
   try {
     db.createNode().setProperty("name","slave");
     tx.success();
   }
   finally {
-    theOtherSlave=cluster.getAnySlave(db);
-    takeTheLeadInAnEventualMasterSwitch(theOtherSlave);
-    cluster.shutdown(cluster.getMaster());
+    cluster.shutdown(oldMaster);
     assertFinishGetsTransactionFailure(tx);
   }
-  cluster.await(ClusterManager.masterAvailable());
+  try {
+    cluster.await(ClusterManager.masterAvailable());
+  }
+ catch (  Exception e) {
+    throw e;
+  }
   assertFalse(db.isMaster());
-  assertTrue(theOtherSlave.isMaster());
+  assertFalse(oldMaster.isMaster());
   awaitFullyOperational(db);
 }
