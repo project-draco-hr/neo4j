@@ -1,0 +1,9 @@
+{
+  InMemoryRaftLog raftLog=new InMemoryRaftLog();
+  RaftState<RaftTestMember> state=raftState().myself(myself).entryLog(raftLog).build();
+  long leaderTerm=state.term() + leaderTermDifference;
+  raftLog.append(new RaftLogEntry(leaderTerm - 1,content()));
+  RaftMessages.Heartbeat<RaftTestMember> heartbeat=heartbeat().from(leader).commitIndex(raftLog.appendIndex()).commitIndexTerm(leaderTerm).leaderTerm(leaderTerm).build();
+  Outcome<RaftTestMember> outcome=role.handler.handle(heartbeat,state,log());
+  assertThat(outcome.getLogCommands(),empty());
+}

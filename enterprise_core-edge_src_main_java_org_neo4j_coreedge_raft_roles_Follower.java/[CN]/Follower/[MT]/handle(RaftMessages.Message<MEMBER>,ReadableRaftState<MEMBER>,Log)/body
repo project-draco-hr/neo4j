@@ -1,2 +1,38 @@
 {
+  Outcome<MEMBER> outcome=new Outcome<>(FOLLOWER,ctx);
+switch (message.type()) {
+case HEARTBEAT:
+{
+      Heart.beat(ctx,outcome,(Heartbeat<MEMBER>)message);
+      break;
+    }
+case APPEND_ENTRIES_REQUEST:
+{
+    Appending.handleAppendEntriesRequest(ctx,outcome,(AppendEntries.Request<MEMBER>)message);
+    break;
+  }
+case VOTE_REQUEST:
+{
+  Voting.handleVoteRequest(ctx,outcome,(RaftMessages.Vote.Request<MEMBER>)message);
+  break;
+}
+case ELECTION_TIMEOUT:
+{
+Set<MEMBER> currentMembers=ctx.votingMembers();
+if (currentMembers == null || !currentMembers.contains(ctx.myself())) {
+  break;
+}
+outcome.setNextTerm(ctx.term() + 1);
+RaftMessages.Vote.Request<MEMBER> voteForMe=new RaftMessages.Vote.Request<>(ctx.myself(),outcome.getTerm(),ctx.myself(),ctx.entryLog().appendIndex(),ctx.entryLog().readEntryTerm(ctx.entryLog().appendIndex()));
+for (MEMBER member : currentMembers) {
+  if (!member.equals(ctx.myself())) {
+    outcome.addOutgoingMessage(new RaftMessages.Directed<>(member,voteForMe));
+  }
+}
+outcome.setVotedFor(ctx.myself());
+outcome.setNextRole(CANDIDATE);
+break;
+}
+}
+return outcome;
 }
