@@ -1,14 +1,20 @@
 {
   MEMBER oldLeader=state.leader();
-  if (outcome.getLeader() != null && outcome.getLeader().equals(myself)) {
+  if (myself.equals(outcome.getLeader())) {
     LeaderContext leaderContext=new LeaderContext(outcome.getTerm(),outcome.getLeaderCommit());
-    if (oldLeader == null || !oldLeader.equals(myself)) {
+    if (!myself.equals(oldLeader)) {
       logShipping.start(leaderContext);
     }
     logShipping.handleCommands(outcome.getShipCommands(),leaderContext);
   }
- else   if (oldLeader != null && oldLeader.equals(myself) && !outcome.getLeader().equals(myself)) {
+ else   if (myself.equals(oldLeader) && !myself.equals(outcome.getLeader())) {
     logShipping.stop();
   }
+  if (leaderChanged(outcome,state.leader())) {
+    for (    Listener<MEMBER> listener : leaderListeners) {
+      listener.receive(outcome.getLeader());
+    }
+  }
   state.update(outcome);
+  volatileLeader.set(outcome.getLeader());
 }
