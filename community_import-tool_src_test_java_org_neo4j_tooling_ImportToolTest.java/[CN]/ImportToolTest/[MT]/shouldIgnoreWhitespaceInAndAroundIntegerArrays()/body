@@ -1,0 +1,52 @@
+{
+  String[] values=new String[]{"   17","21","99   ","  34  ","-34","        -12","-92 "};
+  File data=writeArrayCsv(new String[]{"s:short[]","b:byte[]","i:int[]","l:long[]","f:float[]","d:double[]"},values);
+  importTool("--into",dbRule.getStoreDirAbsolutePath(),"--quote","'","--nodes",data.getAbsolutePath());
+  String iExpected="[";
+  for (  String value : values) {
+    iExpected+=value.trim() + ", ";
+  }
+  iExpected=iExpected.substring(0,iExpected.length() - 2) + "]";
+  String fExpected="[";
+  for (  String value : values) {
+    fExpected+=Double.valueOf(value.trim()) + ", ";
+  }
+  fExpected=fExpected.substring(0,fExpected.length() - 2) + "]";
+  int nodeCount=0;
+  try (Transaction tx=dbRule.beginTx()){
+    for (    Node node : dbRule.getAllNodes()) {
+      nodeCount++;
+      assertEquals(6,node.getAllProperties().size());
+      for (      String key : node.getPropertyKeys()) {
+        Object things=node.getProperty(key);
+        String result="";
+        String expected=iExpected;
+switch (key) {
+case "s":
+          result=Arrays.toString((short[])things);
+        break;
+case "b":
+      result=Arrays.toString((byte[])things);
+    break;
+case "i":
+  result=Arrays.toString((int[])things);
+break;
+case "l":
+result=Arrays.toString((long[])things);
+break;
+case "f":
+result=Arrays.toString((float[])things);
+expected=fExpected;
+break;
+case "d":
+result=Arrays.toString((double[])things);
+expected=fExpected;
+break;
+}
+assertEquals(expected,result);
+}
+}
+tx.success();
+}
+ assertEquals(1,nodeCount);
+}
