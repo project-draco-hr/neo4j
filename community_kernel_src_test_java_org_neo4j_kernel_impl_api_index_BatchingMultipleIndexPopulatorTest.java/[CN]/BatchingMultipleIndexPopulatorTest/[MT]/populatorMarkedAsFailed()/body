@@ -1,0 +1,20 @@
+{
+  setProperty(BATCH_SIZE_NAME,2);
+  NodePropertyUpdate update1=NodePropertyUpdate.add(1,1,"aaa",new long[]{1});
+  NodePropertyUpdate update2=NodePropertyUpdate.add(1,1,"bbb",new long[]{1});
+  IndexStoreView storeView=newStoreView(update1,update2);
+  RuntimeException batchFlushError=new RuntimeException("Batch failed");
+  IndexPopulator populator;
+  ExecutorService executor=Executors.newSingleThreadExecutor();
+  try {
+    BatchingMultipleIndexPopulator batchingPopulator=new BatchingMultipleIndexPopulator(storeView,executor,NullLogProvider.getInstance());
+    populator=addPopulator(batchingPopulator,1);
+    doThrow(batchFlushError).when(populator).add(Arrays.asList(update1,update2));
+    batchingPopulator.indexAllNodes().run();
+  }
+  finally {
+    executor.shutdown();
+    executor.awaitTermination(1,TimeUnit.MINUTES);
+  }
+  verify(populator).markAsFailed(failure(batchFlushError).asString());
+}

@@ -1,0 +1,16 @@
+{
+  PropertyAccessor propertyAccessor=mock(PropertyAccessor.class);
+  NodePropertyUpdate update1=NodePropertyUpdate.add(1,1,"foo",new long[]{1});
+  NodePropertyUpdate update2=NodePropertyUpdate.add(2,1,"bar",new long[]{1});
+  IndexUpdater updater=mock(IndexUpdater.class);
+  IndexPopulator populator=createIndexPopulator(updater);
+  addPopulator(populator,1);
+  doThrow(getPopulatorException()).when(updater).process(any(NodePropertyUpdate.class));
+  IndexUpdater multipleIndexUpdater=multipleIndexPopulator.newPopulatingUpdater(propertyAccessor);
+  multipleIndexUpdater.process(update1);
+  multipleIndexUpdater.process(update2);
+  verify(updater).process(update1);
+  verify(updater,never()).process(update2);
+  verify(updater).close();
+  checkPopulatorFailure(populator);
+}
