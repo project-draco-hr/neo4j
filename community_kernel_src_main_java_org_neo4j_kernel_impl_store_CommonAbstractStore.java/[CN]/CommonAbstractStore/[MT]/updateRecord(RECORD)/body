@@ -1,0 +1,20 @@
+{
+  long id=record.getId();
+  long pageId=pageIdForRecord(id);
+  int offset=offsetForId(id);
+  try (PageCursor cursor=storeFile.io(pageId,PF_SHARED_WRITE_LOCK)){
+    if (cursor.next()) {
+      do {
+        cursor.setOffset(offset);
+        writeRecord(cursor,record);
+      }
+ while (cursor.shouldRetry());
+      if (!record.inUse()) {
+        freeId(id);
+      }
+    }
+  }
+ catch (  IOException e) {
+    throw new UnderlyingStorageException(e);
+  }
+}
