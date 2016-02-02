@@ -1,0 +1,14 @@
+{
+  StoreFile.fileOperation(MOVE,fileSystem,migrationDir,storeDir,StoreFile.currentStoreFiles(),true,true,StoreFileType.values());
+  if (!LowLimitV2_3.STORE_VERSION.equals(versionToUpgradeFrom)) {
+    StoreFile.removeTrailers(versionToUpgradeFrom,fileSystem,storeDir,pageCache.pageSize());
+  }
+  File neoStore=new File(storeDir,MetaDataStore.DEFAULT_NAME);
+  long logVersion=MetaDataStore.getRecord(pageCache,neoStore,Position.LOG_VERSION);
+  long lastCommittedTx=MetaDataStore.getRecord(pageCache,neoStore,Position.LAST_TRANSACTION_ID);
+  updateOrAddNeoStoreFieldsAsPartOfMigration(migrationDir,storeDir,versionToUpgradeTo);
+  legacyLogs.deleteUnusedLogFiles(storeDir);
+  if (!LowLimitV2_3.STORE_VERSION.equals(versionToUpgradeFrom)) {
+    new StoreMigratorCheckPointer(storeDir,fileSystem).checkPoint(logVersion,lastCommittedTx);
+  }
+}

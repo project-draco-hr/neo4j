@@ -1,0 +1,23 @@
+{
+  File neoStore=new File(storeDir,MetaDataStore.DEFAULT_NAME);
+  long lastTxId=MetaDataStore.getRecord(pageCache,neoStore,Position.LAST_TRANSACTION_ID);
+  long lastTxChecksum=extractTransactionChecksum(neoStore,storeDir,lastTxId);
+  LogPosition lastTxLogPosition=extractTransactionLogPosition(neoStore,storeDir,lastTxId);
+  writeLastTxChecksum(migrationDir,lastTxChecksum);
+  writeLastTxLogPosition(migrationDir,lastTxLogPosition);
+  RecordFormats oldFormat=InternalRecordFormatSelector.fromVersion(versionToMigrateFrom);
+  RecordFormats newFormat=InternalRecordFormatSelector.fromVersion(versionToMigrateTo);
+  if (!oldFormat.equals(newFormat)) {
+    if (newFormat.hasSameCapabilities(oldFormat,Capability.TYPE_FORMAT)) {
+      migrateWithDirectMigration(storeDir,migrationDir,oldFormat,newFormat);
+    }
+ else {
+      migrateWithBatchImporter(storeDir,migrationDir,lastTxId,lastTxChecksum,lastTxLogPosition.getLogVersion(),lastTxLogPosition.getByteOffset(),progressMonitor,oldFormat,newFormat);
+    }
+  }
+ else {
+    if (versionToMigrateFrom.equals(LowLimitV2_1.STORE_VERSION)) {
+      removeDuplicateEntityProperties(storeDir,migrationDir,pageCache,schemaIndexProvider,oldFormat);
+    }
+  }
+}
