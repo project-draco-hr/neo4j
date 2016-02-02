@@ -18,19 +18,9 @@ case VOTE_REQUEST:
 }
 case ELECTION_TIMEOUT:
 {
-Set<MEMBER> currentMembers=ctx.votingMembers();
-if (currentMembers == null || !currentMembers.contains(ctx.myself())) {
-  break;
+if (Election.start(ctx,outcome)) {
+  outcome.setNextRole(CANDIDATE);
 }
-outcome.setNextTerm(ctx.term() + 1);
-RaftMessages.Vote.Request<MEMBER> voteForMe=new RaftMessages.Vote.Request<>(ctx.myself(),outcome.getTerm(),ctx.myself(),ctx.entryLog().appendIndex(),ctx.entryLog().readEntryTerm(ctx.entryLog().appendIndex()));
-for (MEMBER member : currentMembers) {
-  if (!member.equals(ctx.myself())) {
-    outcome.addOutgoingMessage(new RaftMessages.Directed<>(member,voteForMe));
-  }
-}
-outcome.setVotedFor(ctx.myself());
-outcome.setNextRole(CANDIDATE);
 break;
 }
 }
