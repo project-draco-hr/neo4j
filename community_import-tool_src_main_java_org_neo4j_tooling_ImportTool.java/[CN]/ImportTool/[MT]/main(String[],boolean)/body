@@ -14,10 +14,12 @@
   Charset inputEncoding;
   boolean skipBadRelationships, skipDuplicateNodes, ignoreExtraColumns;
   Config dbConfig;
+  OutputStream badOutput=null;
+  boolean success=false;
   try {
     storeDir=args.interpretOption(Options.STORE_DIR.key(),Converters.<File>mandatory(),Converters.toFile(),Validators.DIRECTORY_IS_WRITABLE,Validators.CONTAINS_NO_EXISTING_DATABASE);
     File badFile=new File(storeDir,BAD_FILE_NAME);
-    OutputStream badOutput=new BufferedOutputStream(fs.openAsOutputStream(badFile,false));
+    badOutput=new BufferedOutputStream(fs.openAsOutputStream(badFile,false));
     nodesFiles=INPUT_FILES_EXTRACTOR.apply(args,Options.NODE_DATA.key());
     relationshipsFiles=INPUT_FILES_EXTRACTOR.apply(args,Options.RELATIONSHIP_DATA.key());
     validateInputFiles(nodesFiles,relationshipsFiles);
@@ -32,6 +34,7 @@
     Collector badCollector=badCollector(badOutput,badTolerance,collect(skipBadRelationships,skipDuplicateNodes,ignoreExtraColumns));
     input=new CsvInput(nodeData(inputEncoding,nodesFiles),defaultFormatNodeFileHeader(),relationshipData(inputEncoding,relationshipsFiles),defaultFormatRelationshipFileHeader(),idType,csvConfiguration(args,defaultSettingsSuitableForTests),badCollector);
     dbConfig=loadDbConfig(args.interpretOption(Options.DATABASE_CONFIG.key(),Converters.<File>optional(),Converters.toFile(),Validators.REGEX_FILE_EXISTS));
+    success=true;
   }
  catch (  IllegalArgumentException e) {
     throw andPrintError("Input error",e,false);
@@ -39,13 +42,18 @@
 catch (  IOException e) {
     throw andPrintError("File error",e,false);
   }
+ finally {
+    if (!success && badOutput != null) {
+      badOutput.close();
+    }
+  }
   LifeSupport life=new LifeSupport();
   LogService logService=life.add(StoreLogService.inStoreDirectory(fs,storeDir));
   life.start();
   org.neo4j.unsafe.impl.batchimport.Configuration configuration=importConfiguration(processors,defaultSettingsSuitableForTests,dbConfig);
   BatchImporter importer=new ParallelBatchImporter(storeDir,configuration,logService,ExecutionMonitors.defaultVisible(),dbConfig);
   printOverview(storeDir,nodesFiles,relationshipsFiles);
-  boolean success=false;
+  success=false;
   try {
     importer.doImport(input);
     success=true;
@@ -55,6 +63,7 @@ catch (  IOException e) {
   }
  finally {
     input.badCollector().close();
+    badOutput.close();
     if (input.badCollector().badEntries() > 0) {
       File badFile=new File(storeDir,BAD_FILE_NAME);
       if (badFile.exists()) {
