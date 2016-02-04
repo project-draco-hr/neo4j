@@ -1,0 +1,21 @@
+{
+  long startPageId=pageIdForRecord(0);
+  long currentPageId=startPageId;
+  long endPageId=pageIdForRecord(getHighestPossibleIdInUse());
+  long currentRecordId=0;
+  RECORD record=newRecord();
+  int recordsPerPage=storeFile.pageSize() / getRecordSize();
+  try (PageCursor cursor=storeFile.io(startPageId,PF_SHARED_READ_LOCK | PF_READ_AHEAD)){
+    while (currentPageId <= endPageId && cursor.next()) {
+      for (int i=0; i < recordsPerPage; i++) {
+        if (getRecord(currentRecordId,record,CHECK,cursor,currentPageId).inUse()) {
+          if (visitor.visit(record)) {
+            return;
+          }
+        }
+        currentRecordId++;
+      }
+      currentPageId++;
+    }
+  }
+ }

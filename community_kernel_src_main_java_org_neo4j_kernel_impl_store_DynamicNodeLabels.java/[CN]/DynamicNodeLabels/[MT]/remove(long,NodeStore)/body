@@ -1,19 +1,18 @@
 {
   nodeStore.ensureHeavy(node,firstDynamicLabelRecordId(labelField));
-  Collection<DynamicRecord> existingRecords=node.getDynamicLabelRecords();
-  long[] existingLabelIds=nodeStore.getDynamicLabelsArray(existingRecords);
+  long[] existingLabelIds=getDynamicLabelsArray(node.getUsedDynamicLabelRecords(),nodeStore.getDynamicLabelStore());
   long[] newLabelIds=filter(existingLabelIds,labelId);
+  Collection<DynamicRecord> existingRecords=node.getDynamicLabelRecords();
   if (InlineNodeLabels.tryInlineInNodeRecord(node,newLabelIds,existingRecords)) {
     setNotInUse(existingRecords);
   }
  else {
-    Collection<DynamicRecord> newRecords=nodeStore.allocateRecordsForDynamicLabels(node.getId(),newLabelIds,existingRecords.iterator());
+    Collection<DynamicRecord> newRecords=allocateRecordsForDynamicLabels(node.getId(),newLabelIds,existingRecords.iterator(),nodeStore.getDynamicLabelStore());
     node.setLabelField(dynamicPointer(newRecords),existingRecords);
     if (!newRecords.equals(existingRecords)) {
       for (      DynamicRecord record : existingRecords) {
         if (!newRecords.contains(record)) {
           record.setInUse(false);
-          record.setLength(0);
         }
       }
     }
