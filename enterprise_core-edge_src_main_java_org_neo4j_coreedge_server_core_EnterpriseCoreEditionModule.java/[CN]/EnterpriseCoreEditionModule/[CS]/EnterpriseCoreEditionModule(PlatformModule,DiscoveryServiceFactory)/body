@@ -21,61 +21,40 @@
   ListenSocketAddress raftListenAddress=config.get(CoreEdgeClusterSettings.raft_listen_address);
   RaftServer<CoreMember> raftServer=new RaftServer<>(marshal,raftListenAddress,logProvider);
   final DelayedRenewableTimeoutService raftTimeoutService=new DelayedRenewableTimeoutService(SYSTEM_CLOCK,logProvider);
-  NaiveDurableRaftLog raftLog=life.add(new NaiveDurableRaftLog(fileSystem,new File(clusterStateDirectory,NaiveDurableRaftLog.DIRECTORY_NAME),new RaftContentSerializer(),logProvider));
-  MonitoredRaftLog monitoredRaftLog=new MonitoredRaftLog(raftLog,platformModule.monitors);
-  TermState termState;
-  try {
-    OnDiskTermState onDiskTermState=life.add(new OnDiskTermState(fileSystem,new File(clusterStateDirectory,OnDiskTermState.DIRECTORY_NAME),config.get(CoreEdgeClusterSettings.term_state_size),databaseHealthSupplier,logProvider));
-    termState=new MonitoredTermState(onDiskTermState,platformModule.monitors);
-  }
- catch (  IOException e) {
-    throw new RuntimeException(e);
-  }
-  VoteState<CoreMember> voteState;
-  try {
-    voteState=life.add(new OnDiskVoteState<>(fileSystem,new File(clusterStateDirectory,OnDiskVoteState.DIRECTORY_NAME),config.get(CoreEdgeClusterSettings.vote_state_size),databaseHealthSupplier,new CoreMemberMarshal(),logProvider));
-  }
- catch (  IOException e) {
-    throw new RuntimeException(e);
-  }
-  RaftMembershipState<CoreMember> raftMembershipState;
-  try {
-    raftMembershipState=life.add(new OnDiskRaftMembershipState<>(fileSystem,new File(clusterStateDirectory,OnDiskRaftMembershipState.DIRECTORY_NAME),config.get(CoreEdgeClusterSettings.raft_membership_state_size),databaseHealthSupplier,new CoreMemberMarshal(),logProvider));
-  }
- catch (  IOException e) {
-    throw new RuntimeException(e);
-  }
-  raft=createRaft(life,loggingOutbound,discoveryService,config,messageLogger,monitoredRaftLog,termState,voteState,myself,logProvider,raftServer,raftTimeoutService,databaseHealthSupplier,raftMembershipState,platformModule.monitors);
+  MonitoredRaftLog monitoredRaftLog=new MonitoredRaftLog(life.add(new NaiveDurableRaftLog(fileSystem,new File(clusterStateDirectory,NaiveDurableRaftLog.DIRECTORY_NAME),new RaftContentSerializer(),logProvider)),platformModule.monitors);
+  StateMachines stateMachines=new StateMachines();
+  int flushAfter=config.get(CoreEdgeClusterSettings.state_machine_flush_window_size);
+  raft=createRaft(life,loggingOutbound,discoveryService,config,messageLogger,monitoredRaftLog,stateMachines,fileSystem,clusterStateDirectory,myself,logProvider,raftServer,raftTimeoutService,databaseHealthSupplier,platformModule.monitors,flushAfter);
   dependencies.satisfyDependency(raft);
   RaftReplicator<CoreMember> replicator=new RaftReplicator<>(raft,myself,new RaftOutbound(loggingOutbound));
   LocalSessionPool localSessionPool=new LocalSessionPool(myself);
-  OnDiskReplicatedLockTokenState<CoreMember> onDiskReplicatedLockTokenState;
+  StateStorage<InMemoryReplicatedLockTokenState<CoreMember>> lockTokenState;
   try {
-    onDiskReplicatedLockTokenState=life.add(new OnDiskReplicatedLockTokenState<>(fileSystem,new File(clusterStateDirectory,OnDiskReplicatedLockTokenState.DIRECTORY_NAME),config.get(CoreEdgeClusterSettings.replicated_lock_token_state_size),new CoreMember.CoreMemberMarshal(),databaseHealthSupplier,logProvider));
+    lockTokenState=life.add(new DurableStateStorage<>(fileSystem,new File(clusterStateDirectory,"lock-token-state"),"lock-token",new InMemoryReplicatedLockTokenState.Marshal<>(new CoreMemberMarshal()),config.get(CoreEdgeClusterSettings.replicated_lock_token_state_size),databaseHealthSupplier,logProvider));
   }
  catch (  IOException e) {
     throw new RuntimeException(e);
   }
-  ReplicatedLockTokenStateMachine<CoreMember> replicatedLockTokenStateMachine=new ReplicatedLockTokenStateMachine<>(replicator,onDiskReplicatedLockTokenState);
-  OnDiskGlobalSessionTrackerState<CoreMember> onDiskGlobalSessionTrackerState;
+  ReplicatedLockTokenStateMachine<CoreMember> replicatedLockTokenStateMachine=new ReplicatedLockTokenStateMachine<>(lockTokenState);
+  stateMachines.add(replicatedLockTokenStateMachine);
+  StateStorage<GlobalSessionTrackerState<CoreMember>> onDiskGlobalSessionTrackerState;
   try {
-    onDiskGlobalSessionTrackerState=new OnDiskGlobalSessionTrackerState<>(fileSystem,new File(clusterStateDirectory,OnDiskGlobalSessionTrackerState.DIRECTORY_NAME),new CoreMemberMarshal(),config.get(CoreEdgeClusterSettings.global_session_tracker_state_size),databaseHealthSupplier,logProvider);
+    onDiskGlobalSessionTrackerState=life.add(new DurableStateStorage<>(fileSystem,new File(clusterStateDirectory,"session-tracker-state"),"session-tracker",new GlobalSessionTrackerState.Marshal<>(new CoreMemberMarshal()),config.get(CoreEdgeClusterSettings.global_session_tracker_state_size),databaseHealthSupplier,logProvider));
   }
  catch (  IOException e) {
     throw new RuntimeException(e);
   }
-  commitProcessFactory=createCommitProcessFactory(replicator,localSessionPool,replicatedLockTokenStateMachine,dependencies,logging,platformModule.monitors,onDiskGlobalSessionTrackerState);
-  final IdAllocationState idAllocationState;
+  commitProcessFactory=createCommitProcessFactory(replicator,localSessionPool,replicatedLockTokenStateMachine,dependencies,logging,platformModule.monitors,onDiskGlobalSessionTrackerState,stateMachines);
+  final StateStorage<IdAllocationState> idAllocationState;
   try {
-    idAllocationState=life.add(new OnDiskIdAllocationState(fileSystem,new File(clusterStateDirectory,OnDiskIdAllocationState.DIRECTORY_NAME),config.get(CoreEdgeClusterSettings.id_alloc_state_size),databaseHealthSupplier,logProvider));
+    idAllocationState=life.add(new DurableStateStorage<>(fileSystem,new File(clusterStateDirectory,"id-allocation-state"),"id-allocation",new IdAllocationState.Marshal(),config.get(CoreEdgeClusterSettings.id_alloc_state_size),databaseHealthSupplier,logProvider));
   }
  catch (  IOException e) {
     throw new RuntimeException(e);
   }
   ReplicatedIdAllocationStateMachine idAllocationStateMachine=new ReplicatedIdAllocationStateMachine(myself,idAllocationState,logProvider);
-  replicator.subscribe(idAllocationStateMachine);
+  stateMachines.add(idAllocationStateMachine);
   ReplicatedIdRangeAcquirer idRangeAcquirer=new ReplicatedIdRangeAcquirer(replicator,idAllocationStateMachine,1024,1000,myself,logProvider);
-  monitoredRaftLog.registerListener(replicator);
   long electionTimeout=config.get(CoreEdgeClusterSettings.leader_election_timeout);
   MembershipWaiter<CoreMember> membershipWaiter=new MembershipWaiter<>(myself,platformModule.jobScheduler,electionTimeout * 4,logProvider);
   ReplicatedIdGeneratorFactory replicatedIdGeneratorFactory=createIdGeneratorFactory(fileSystem,idRangeAcquirer,logProvider);
@@ -85,6 +64,9 @@
   ReplicatedRelationshipTypeTokenHolder relationshipTypeTokenHolder=new ReplicatedRelationshipTypeTokenHolder(replicator,this.idGeneratorFactory,dependencies,tokenCreationTimeout,logProvider);
   ReplicatedPropertyKeyTokenHolder propertyKeyTokenHolder=new ReplicatedPropertyKeyTokenHolder(replicator,this.idGeneratorFactory,dependencies,tokenCreationTimeout,logProvider);
   ReplicatedLabelTokenHolder labelTokenHolder=new ReplicatedLabelTokenHolder(replicator,this.idGeneratorFactory,dependencies,tokenCreationTimeout,logProvider);
+  stateMachines.add(labelTokenHolder);
+  stateMachines.add(relationshipTypeTokenHolder);
+  stateMachines.add(propertyKeyTokenHolder);
   LifeSupport tokenLife=new LifeSupport();
   this.relationshipTypeTokenHolder=tokenLife.add(relationshipTypeTokenHolder);
   this.propertyKeyTokenHolder=tokenLife.add(propertyKeyTokenHolder);
@@ -104,5 +86,6 @@
   long leaderLockTokenTimeout=config.get(CoreEdgeClusterSettings.leader_lock_token_timeout);
   lockManager=dependencies.satisfyDependency(createLockManager(config,logging,replicator,myself,replicatedLockTokenStateMachine,raft,leaderLockTokenTimeout));
   CatchupServer catchupServer=new CatchupServer(logProvider,new StoreIdSupplier(platformModule),platformModule.dependencies.provideDependency(TransactionIdStore.class),platformModule.dependencies.provideDependency(LogicalTransactionStore.class),new DataSourceSupplier(platformModule),new CheckpointerSupplier(platformModule.dependencies),config.get(CoreEdgeClusterSettings.transaction_listen_address),platformModule.monitors);
-  life.add(CoreServerStartupProcess.createLifeSupport(platformModule.dataSourceManager,replicatedIdGeneratorFactory,raft,new RaftLogReplay(monitoredRaftLog,logProvider),raftServer,catchupServer,raftTimeoutService,membershipWaiter,config.get(CoreEdgeClusterSettings.join_catch_up_timeout),new RecoverTransactionLogState(dependencies,logProvider,relationshipTypeTokenHolder,propertyKeyTokenHolder,labelTokenHolder),tokenLife));
+  long joinCatchupTimeout=config.get(CoreEdgeClusterSettings.join_catch_up_timeout);
+  life.add(CoreServerStartupProcess.createLifeSupport(platformModule.dataSourceManager,replicatedIdGeneratorFactory,raft,new RaftLogReplay(stateMachines,monitoredRaftLog,logProvider,flushAfter),raftServer,catchupServer,raftTimeoutService,membershipWaiter,joinCatchupTimeout,new RecoverTransactionLogState(dependencies,logProvider,relationshipTypeTokenHolder,propertyKeyTokenHolder,labelTokenHolder),tokenLife));
 }

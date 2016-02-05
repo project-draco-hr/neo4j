@@ -1,20 +1,15 @@
 {
-  MEMBER oldLeader=state.leader();
-  if (myself.equals(outcome.getLeader())) {
-    LeaderContext leaderContext=new LeaderContext(outcome.getTerm(),outcome.getLeaderCommit());
-    if (!myself.equals(oldLeader)) {
-      logShipping.start(leaderContext);
-    }
-    logShipping.handleCommands(outcome.getShipCommands(),leaderContext);
-  }
- else   if (myself.equals(oldLeader) && !myself.equals(outcome.getLeader())) {
-    logShipping.stop();
-  }
-  if (leaderChanged(outcome,state.leader())) {
-    for (    Listener<MEMBER> listener : leaderListeners) {
-      listener.receive(outcome.getLeader());
+  adjustLogShipping(outcome);
+  notifyLeaderChanges(outcome);
+  raftState.update(outcome);
+  membershipManager.processLog(outcome.getLogCommands());
+  for (long index=lastApplied + 1; index <= raftState.entryLog().commitIndex(); index++) {
+    ReplicatedContent content=raftState.entryLog().readEntryContent(index);
+    stateMachine.applyCommand(content,index);
+    if (index % this.flushAfter == 0) {
+      stateMachine.flush();
     }
   }
-  state.update(outcome);
+  lastApplied=raftState.entryLog().commitIndex();
   volatileLeader.set(outcome.getLeader());
 }

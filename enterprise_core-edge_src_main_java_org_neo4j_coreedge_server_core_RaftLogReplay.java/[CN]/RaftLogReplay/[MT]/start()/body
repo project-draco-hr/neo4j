@@ -1,5 +1,11 @@
 {
-  long start=System.currentTimeMillis();
-  raftLog.replay();
-  log.info("Replay done, took %d ms",System.currentTimeMillis() - start);
+  long start=currentTimeMillis();
+  long index=max(0,raftLog.commitIndex() - 1 - flushAfter);
+  log.info("Starting replay at index %d",index);
+  for (; index <= raftLog.commitIndex(); index++) {
+    ReplicatedContent content=raftLog.readEntryContent(index);
+    stateMachine.applyCommand(content,index);
+    log.info("Index %d replayed as committed",index);
+  }
+  log.info("Replay done, took %d ms",currentTimeMillis() - start);
 }

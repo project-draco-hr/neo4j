@@ -1,12 +1,14 @@
 {
   CoreMember coreMember=new CoreMember(new AdvertisedSocketAddress("core:1"),new AdvertisedSocketAddress("raft:1"));
-  TriggeredReplicator replicator=new TriggeredReplicator();
+  StateMachines stateMachines=new StateMachines();
+  TriggeredReplicator replicator=new TriggeredReplicator(stateMachines);
   CommittingTransactions txFutures=new StubCommittingTransactionsRegistry(replicator);
   TransactionCommitProcess localCommitProcess=mock(TransactionCommitProcess.class);
   LocalSessionPool sessionPool=new LocalSessionPool(coreMember);
   LockTokenManager lockState=lockState(1);
-  final ReplicatedTransactionStateMachine stateMachine=new ReplicatedTransactionStateMachine<>(localCommitProcess,sessionPool.getGlobalSession(),lockState,txFutures,new InMemoryGlobalSessionTrackerState<>(),NullLogProvider.getInstance());
-  ReplicatedTransactionCommitProcess commitProcess=new ReplicatedTransactionCommitProcess(replicator,sessionPool,stateMachine,1,NullLogService.getInstance(),txFutures,new Monitors());
+  final ReplicatedTransactionStateMachine stateMachine=new ReplicatedTransactionStateMachine<>(localCommitProcess,sessionPool.getGlobalSession(),lockState,txFutures,new StubStateStorage<>(new GlobalSessionTrackerState<>()),NullLogProvider.getInstance());
+  stateMachines.add(stateMachine);
+  ReplicatedTransactionCommitProcess commitProcess=new ReplicatedTransactionCommitProcess(replicator,sessionPool,1,NullLogService.getInstance(),txFutures,new Monitors());
   try {
     commitProcess.commit(tx(),NULL,INTERNAL);
     fail("Should have thrown exception.");
