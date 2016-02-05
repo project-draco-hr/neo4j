@@ -1,0 +1,27 @@
+{
+  while (!done) {
+    long now=System.currentTimeMillis();
+    Iterator<MessageContext> itr=msgQueue.iterator();
+    MessageContext context;
+    while (itr.hasNext() && (context=itr.next()).atMillis <= now) {
+      itr.remove();
+      Inbound inbound=inboundChannels.get(context.destination);
+      if (inbound != null) {
+        inbound.deliver(context.message);
+      }
+    }
+    try {
+      try {
+        MessageContext first=msgQueue.first();
+        long waitTime=first.atMillis - System.currentTimeMillis();
+        wait(waitTime);
+      }
+ catch (      NoSuchElementException e) {
+        wait(1000);
+      }
+    }
+ catch (    InterruptedException e) {
+      done=true;
+    }
+  }
+}
