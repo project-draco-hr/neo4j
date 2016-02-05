@@ -1,0 +1,21 @@
+{
+  if (fromIndex <= commitIndex) {
+    throw new IllegalArgumentException(format("cannot truncate (%d) before the commit index (%d)",fromIndex,commitIndex));
+  }
+  if (appendIndex.get() >= fromIndex) {
+    appendIndex.set(fromIndex - 1);
+    for (    Listener listener : listeners) {
+      listener.onTruncated(fromIndex);
+    }
+    try {
+      writer.put(RecordType.TRUNCATE.value);
+      writer.putLong(fromIndex);
+      writer.prepareForFlush().flush();
+      logRotation.rotateLogIfNeeded(LogAppendEvent.NULL);
+    }
+ catch (    IOException e) {
+      throw new RaftStorageException(e);
+    }
+  }
+  term=readEntryTerm(appendIndex.get());
+}

@@ -1,0 +1,22 @@
+{
+  if (appendIndex.get() == -1 || commitIndex == appendIndex.get()) {
+    return;
+  }
+  long actualNewCommitIndex=Math.min(newCommitIndex,appendIndex.get());
+  while (commitIndex < actualNewCommitIndex) {
+    commitIndex++;
+    for (    Listener listener : listeners) {
+      ReplicatedContent content=readEntryContent(commitIndex);
+      listener.onCommitted(content,commitIndex);
+    }
+  }
+  try {
+    writer.put(RecordType.COMMIT.value);
+    writer.putLong(commitIndex);
+    writer.prepareForFlush().flush();
+    logRotation.rotateLogIfNeeded(LogAppendEvent.NULL);
+  }
+ catch (  IOException e) {
+    throw new RaftStorageException(e);
+  }
+}

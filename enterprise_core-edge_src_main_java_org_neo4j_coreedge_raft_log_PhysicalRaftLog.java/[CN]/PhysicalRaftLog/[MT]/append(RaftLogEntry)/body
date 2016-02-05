@@ -1,0 +1,26 @@
+{
+  if (entry.term() >= term) {
+    term=entry.term();
+  }
+ else {
+    throw new RaftStorageException(format("Non-monotonic term %d for in entry %s in term %d",entry.term(),entry.toString(),term));
+  }
+  try {
+    appendIndex.incrementAndGet();
+    LogPositionMarker entryStartPosition=writer.getCurrentPosition(positionMarker);
+    writer.put(RecordType.APPEND.value);
+    writer.putLong(appendIndex.get());
+    writer.putLong(entry.term());
+    marshal.marshal(entry.content(),writer);
+    metadataCache.cacheMetadata(appendIndex.get(),entry.term(),entryStartPosition.newPosition());
+    writer.prepareForFlush().flush();
+    for (    Listener listener : listeners) {
+      listener.onAppended(entry.content(),appendIndex.get());
+    }
+    logRotation.rotateLogIfNeeded(LogAppendEvent.NULL);
+  }
+ catch (  IOException e) {
+    throw new RaftStorageException(e);
+  }
+  return appendIndex.get();
+}
