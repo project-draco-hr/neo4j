@@ -6,14 +6,17 @@
     Parameter param=params[i];
     Type type=types[i];
     if (!param.isAnnotationPresent(Name.class)) {
-      throw new ProcedureException(Status.Procedure.FailedRegistration,"Argument at position %d in method `%s` is missing an `@%s` annotation. " + "Please add the annotation, recompile the class and try again.",i,method.getName(),Name.class.getSimpleName());
+      throw new ProcedureException(Status.Procedure.FailedRegistration,Messages.get(proc_argument_missing_name,i,method.getName(),Name.class.getSimpleName()));
     }
     String name=param.getAnnotation(Name.class).value();
+    if (name.trim().length() == 0) {
+      throw new ProcedureException(Status.Procedure.FailedRegistration,Messages.get(proc_argument_name_empty,i,method.getName()));
+    }
     try {
       signature.add(new FieldSignature(name,typeMappers.neoTypeFor(type)));
     }
  catch (    ProcedureException e) {
-      throw new ProcedureException(e.status(),"Argument `%s` at position %d in `%s` with type `%s` cannot be converted to a Neo4j type: %s",name,i,method.getName(),param.getType().getSimpleName(),e.getLocalizedMessage());
+      throw new ProcedureException(e.status(),Messages.get(proc_unmappable_argument_type,name,i,method.getName(),param.getType().getSimpleName(),e.getMessage()));
     }
   }
   return signature;
