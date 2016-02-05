@@ -9,17 +9,18 @@
     serialize(tempChannel,countsSnapshot);
   }
    rawChannel=fs.open(tempFile,"r");
-  ReadAheadChannel<StoreChannel> readAheadChannel=new ReadAheadChannel<>(rawChannel);
-  recovered=deserialize(readAheadChannel);
-  Assert.assertEquals(countsSnapshot.getTxId(),recovered.getTxId());
-  for (  Map.Entry<CountsKey,long[]> pair : countsSnapshot.getMap().entrySet()) {
-    long[] value=recovered.getMap().get(pair.getKey());
-    Assert.assertNotNull(value);
-    Assert.assertArrayEquals(value,pair.getValue());
+  try (ReadAheadChannel<StoreChannel> readAheadChannel=new ReadAheadChannel<>(rawChannel)){
+    recovered=deserialize(readAheadChannel);
+    Assert.assertEquals(countsSnapshot.getTxId(),recovered.getTxId());
+    for (    Map.Entry<CountsKey,long[]> pair : countsSnapshot.getMap().entrySet()) {
+      long[] value=recovered.getMap().get(pair.getKey());
+      Assert.assertNotNull(value);
+      Assert.assertArrayEquals(value,pair.getValue());
+    }
+    for (    Map.Entry<CountsKey,long[]> pair : recovered.getMap().entrySet()) {
+      long[] value=countsSnapshot.getMap().get(pair.getKey());
+      Assert.assertNotNull(value);
+      Assert.assertArrayEquals(value,pair.getValue());
+    }
   }
-  for (  Map.Entry<CountsKey,long[]> pair : recovered.getMap().entrySet()) {
-    long[] value=countsSnapshot.getMap().get(pair.getKey());
-    Assert.assertNotNull(value);
-    Assert.assertArrayEquals(value,pair.getValue());
-  }
-}
+ }
