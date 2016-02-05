@@ -1,22 +1,8 @@
 {
-  String propertiesFile=System.getProperty(ServerSettings.SERVER_CONFIG_FILE_KEY);
-  File dbProperties=extractDbTuningProperties(propertiesFile);
-  Map<String,String> config=stringMap();
-  if (dbProperties != null) {
-    if (!dbProperties.exists()) {
-      throw new IllegalArgumentException(dbProperties + " doesn't exist");
-    }
-    config=readFromConfigConfig(config,dbProperties);
-  }
-  config.putAll(Args.parse(args).asMap());
-  verifyConfig(config);
   try {
-    JobScheduler jobScheduler=new Neo4jJobScheduler();
-    LogService logService=logService(new DefaultFileSystemAbstraction());
     LifeSupport life=new LifeSupport();
-    life.add(jobScheduler);
-    Dependencies dependencies=new Dependencies();
-    new ClusterClientModule(life,dependencies,new Monitors(),new Config(config),logService,new NotElectableElectionCredentialsProvider());
+    life.add(new Neo4jJobScheduler());
+    new ClusterClientModule(life,new Dependencies(),new Monitors(),getConfig(args),logService(new DefaultFileSystemAbstraction()),new NotElectableElectionCredentialsProvider());
     new StandaloneClusterClient(life);
   }
  catch (  LifecycleException e) {
