@@ -1,16 +1,16 @@
 {
-  GraphDatabaseService db=cluster.getAnySlave();
-  takeTheLeadInAnEventualMasterSwitch(db);
+  GraphDatabaseService db=cluster.getAnySlave(getSlaveOnlySlave());
   Transaction tx=db.beginTx();
   try {
     db.createNode().setProperty("name","slave");
     tx.success();
   }
   finally {
-    cluster.shutdown(cluster.getMaster());
+    HighlyAvailableGraphDatabase oldMaster=cluster.getMaster();
+    cluster.shutdown(oldMaster);
+    cluster.await(masterAvailable(oldMaster));
     assertFinishGetsTransactionFailure(tx);
   }
-  cluster.await(masterAvailable());
   assertEquals(db,cluster.getMaster());
   awaitFullyOperational(db);
 }
