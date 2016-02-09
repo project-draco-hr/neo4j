@@ -6,7 +6,7 @@
   final Log log=logging.getInternalLog(Sessions.class);
   final LifeSupport life=new LifeSupport();
   final JobScheduler scheduler=dependencies.scheduler();
-  final Sessions sessions=new ThreadedSessions(life.add(new StandardSessions(api,dependencies.usageData(),logging)),scheduler,logging);
+  Sessions sessions=new MonitoredSessions(dependencies.monitors(),new ThreadedSessions(life.add(new StandardSessions(api,dependencies.usageData(),logging)),scheduler,logging),Clock.systemUTC());
   List<NettyServer.ProtocolInitializer> connectors=new ArrayList<>();
   List<Configuration> view=config.view(Settings.connector_group);
   for (  Configuration connector : view) {
@@ -25,14 +25,7 @@ default :
 sslCtx=null;
 break;
 }
-PrimitiveLongObjectMap<BiFunction<Channel,Boolean,BoltProtocol>> availableVersions;
-if (requireEncryption) {
-availableVersions=newVersions(logging,new EncryptionRequiredSessions(sessions));
-}
- else {
-availableVersions=newVersions(logging,sessions);
-}
-connectors.add(new SocketTransport(socketAddress,sslCtx,logging.getInternalLogProvider(),availableVersions));
+connectors.add(new SocketTransport(socketAddress,sslCtx,logging.getInternalLogProvider(),newVersions(logging,requireEncryption ? new EncryptionRequiredSessions(sessions) : sessions)));
 }
 }
 if (connectors.size() > 0) {
