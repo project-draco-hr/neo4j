@@ -1,12 +1,11 @@
 {
   Replicator replicator=mock(Replicator.class);
-  ReplicatedTransactionStateMachine transactionStateMachine=mock(ReplicatedTransactionStateMachine.class);
   CommittingTransaction future=mock(CommittingTransaction.class);
   LockTokenManager currentReplicatedLockState=mock(LockTokenManager.class);
   when(currentReplicatedLockState.currentToken()).thenReturn(new ReplicatedLockTokenRequest<>(null,0));
   CommittingTransactions txFutures=mock(CommittingTransactionsRegistry.class);
   when(txFutures.register(any(LocalOperationId.class))).thenReturn(future);
-  when(future.waitUntilCommitted(anyInt(),any(TimeUnit.class))).thenThrow(TimeoutException.class).thenReturn(23l);
-  new ReplicatedTransactionCommitProcess(replicator,new LocalSessionPool(coreMember),1,NullLogService.getInstance(),txFutures,new Monitors()).commit(tx(),NULL,INTERNAL);
+  when(future.waitUntilCommitted(anyInt(),any(TimeUnit.class))).thenThrow(TimeoutException.class).thenReturn(23L);
+  new ReplicatedTransactionCommitProcess(replicator,new LocalSessionPool(coreMember),new ConstantTimeRetryStrategy(1,SECONDS),NullLogService.getInstance(),txFutures,new Monitors()).commit(tx(),NULL,INTERNAL);
   verify(replicator,times(2)).replicate(any(ReplicatedTransaction.class));
 }
