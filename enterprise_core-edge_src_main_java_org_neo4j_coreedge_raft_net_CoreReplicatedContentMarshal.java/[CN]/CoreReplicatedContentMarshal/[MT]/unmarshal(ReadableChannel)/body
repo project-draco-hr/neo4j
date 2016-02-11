@@ -1,0 +1,32 @@
+{
+  try {
+    byte type=channel.get();
+    final ReplicatedContent content;
+switch (type) {
+case TX_CONTENT_TYPE:
+      content=ReplicatedTransactionSerializer.unmarshal(channel);
+    break;
+case RAFT_MEMBER_SET_TYPE:
+  content=CoreMemberSetSerializer.unmarshal(channel);
+break;
+case ID_RANGE_REQUEST_TYPE:
+content=ReplicatedIdAllocationRequestSerializer.unmarshal(channel);
+break;
+case TOKEN_REQUEST_TYPE:
+content=ReplicatedTokenRequestSerializer.unmarshal(channel);
+break;
+case NEW_LEADER_BARRIER_TYPE:
+content=new NewLeaderBarrier();
+break;
+case LOCK_TOKEN_REQUEST:
+content=ReplicatedLockTokenSerializer.unmarshal(channel);
+break;
+default :
+throw new IllegalArgumentException(String.format("Unknown content type 0x%x",type));
+}
+return content;
+}
+ catch (ReadPastEndException notEnoughBytes) {
+return null;
+}
+}

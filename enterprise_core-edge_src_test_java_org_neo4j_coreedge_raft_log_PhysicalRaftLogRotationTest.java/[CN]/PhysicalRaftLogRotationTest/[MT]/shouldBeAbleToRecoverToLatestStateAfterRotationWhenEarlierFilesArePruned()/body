@@ -1,0 +1,21 @@
+{
+  int rotateAtSize=100;
+  PhysicalRaftLog log=createRaftLog(rotateAtSize,new PhysicalLogFile.Monitor.Adapter());
+  StringBuilder builder=new StringBuilder();
+  for (int i=0; i < rotateAtSize - 40; i++) {
+    builder.append("i");
+  }
+  ReplicatedString stringThatGetsTheSizeToAlmost100Bytes=new ReplicatedString(builder.toString());
+  int term=0;
+  long indexToCommit=log.append(new RaftLogEntry(term,stringThatGetsTheSizeToAlmost100Bytes));
+  log.commit(indexToCommit);
+  indexToCommit=log.append(new RaftLogEntry(term,ReplicatedInteger.valueOf(1)));
+  log.commit(indexToCommit);
+  life.remove(log);
+  fileSystem.deleteFile(new File(new File("raft-log"),"raft.log.0"));
+  log=createRaftLog(rotateAtSize,new PhysicalLogFile.Monitor.Adapter());
+  assertEquals(indexToCommit,log.commitIndex());
+  assertEquals(indexToCommit,log.appendIndex());
+  assertTrue(log.entryExists(indexToCommit));
+  assertEquals(term,log.readEntryTerm(indexToCommit));
+}
