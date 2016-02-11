@@ -1,11 +1,11 @@
 {
   final InMemoryRaftLog log=new InMemoryRaftLog();
-  RaftMembershipManager<RaftTestMember> membershipManager=new RaftMembershipManager<>(new DirectReplicator(),RaftTestMemberSetBuilder.INSTANCE,log,NullLogProvider.getInstance(),3,1000,new FakeClock(),1000,new InMemoryRaftMembershipState<>());
-  log.registerListener(membershipManager);
-  log.append(new RaftLogEntry(0,new RaftTestGroup(1,2,3,4)));
-  log.commit(0);
-  log.append(new RaftLogEntry(0,new RaftTestGroup(1,2,3,5)));
-  log.truncate(log.appendIndex());
+  RaftMembershipManager<RaftTestMember> membershipManager=new RaftMembershipManager<>(null,RaftTestMemberSetBuilder.INSTANCE,log,NullLogProvider.getInstance(),3,1000,new FakeClock(),1000,new StubStateStorage<>(new RaftMembershipState<>()));
+  List<LogCommand> logCommands=asList(new AppendLogEntry(0,new RaftLogEntry(0,new RaftTestGroup(1,2,3,4))),new CommitCommand(0),new AppendLogEntry(1,new RaftLogEntry(0,new RaftTestGroup(1,2,3,5))),new TruncateLogCommand(1));
+  for (  LogCommand logCommand : logCommands) {
+    logCommand.applyTo(log);
+  }
+  membershipManager.processLog(logCommands);
   assertEquals(new RaftTestGroup(1,2,3,4).getMembers(),membershipManager.votingMembers());
   assertFalse(membershipManager.uncommittedMemberChangeInLog());
 }

@@ -8,10 +8,12 @@
   when(dependencies.resolveDependency(TransactionRepresentationCommitProcess.class)).thenReturn(commitProcess);
   StorageEngine storageEngine=mockedStorageEngine();
   when(dependencies.resolveDependency(StorageEngine.class)).thenReturn(storageEngine);
-  ReplicatedTokenHolder<Token,LabelTokenRecord> tokenHolder=new ReplicatedLabelTokenHolder(new StubReplicator(),idGeneratorFactory,dependencies,TIMEOUT_MILLIS,NullLogProvider.getInstance());
+  StateMachines stateMachines=new StateMachines();
+  ReplicatedTokenHolder<Token,LabelTokenRecord> tokenHolder=new ReplicatedLabelTokenHolder(new DirectReplicator(stateMachines),idGeneratorFactory,dependencies,TIMEOUT_MILLIS,NullLogProvider.getInstance());
   tokenHolder.setLastCommittedIndex(-1);
+  stateMachines.add(tokenHolder);
   ReplicatedTokenRequest tokenRequest=new ReplicatedTokenRequest(LABEL,"Person",createCommandBytes(createCommands(EXPECTED_TOKEN_ID)));
-  tokenHolder.onReplicated(tokenRequest,logIndex);
+  tokenHolder.applyCommand(tokenRequest,logIndex);
   List<TransactionRepresentation> transactions=commitProcess.transactionsToApply;
   assertEquals(1,transactions.size());
   assertEquals(logIndex,decodeLogIndexFromTxHeader(transactions.get(0).additionalHeader()));

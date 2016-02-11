@@ -1,17 +1,17 @@
 {
   final long AN_INDEX=24;
-  IdAllocationState idAllocationState=new InMemoryIdAllocationState();
-  ReplicatedIdAllocationStateMachine stateMachine=new ReplicatedIdAllocationStateMachine(me,idAllocationState,NullLogProvider.getInstance());
+  StateStorage<IdAllocationState> stateStorage=new StubStateStorage<>(new IdAllocationState());
+  ReplicatedIdAllocationStateMachine stateMachine=new ReplicatedIdAllocationStateMachine(me,stateStorage,NullLogProvider.getInstance());
   ReplicatedIdAllocationRequest mockRequest=mock(ReplicatedIdAllocationRequest.class);
   when(mockRequest.owner()).thenReturn(someoneElse);
   when(mockRequest.idType()).thenReturn(someType);
-  stateMachine.onReplicated(mockRequest,AN_INDEX);
+  stateMachine.applyCommand(mockRequest,AN_INDEX);
   ReplicatedIdAllocationRequest replicatedMockRequest=mock(ReplicatedIdAllocationRequest.class);
   when(replicatedMockRequest.owner()).thenReturn(someoneElse);
-  stateMachine.onReplicated(replicatedMockRequest,AN_INDEX - 3);
+  stateMachine.applyCommand(replicatedMockRequest,AN_INDEX - 3);
   ReplicatedIdAllocationRequest anotherReplicatedMockRequest=mock(ReplicatedIdAllocationRequest.class);
   when(anotherReplicatedMockRequest.owner()).thenReturn(someoneElse);
-  stateMachine.onReplicated(anotherReplicatedMockRequest,AN_INDEX);
+  stateMachine.applyCommand(anotherReplicatedMockRequest,AN_INDEX);
   verifyZeroInteractions(replicatedMockRequest);
   verifyZeroInteractions(anotherReplicatedMockRequest);
 }
