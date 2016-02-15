@@ -1,0 +1,17 @@
+{
+  if (rushCount > 0) {
+    return INITIAL_STAMP;
+  }
+  long now=currentTimeMillis() & TIME_MASK;
+  long then=previousStamp & TIME_MASK;
+  if (now - then > QUANTUM_MILLIS) {
+    return now + (((long)recentlyCompletedIOs) << TIME_BITS);
+  }
+  long ioSum=(previousStamp >> TIME_BITS) + recentlyCompletedIOs;
+  if (ioSum >= iopq) {
+    long millisLeftInQuantum=QUANTUM_MILLIS - (now - then);
+    pauseNanos.accept(this,TimeUnit.MILLISECONDS.toNanos(millisLeftInQuantum));
+    return currentTimeMillis() & TIME_MASK;
+  }
+  return then + (ioSum << TIME_BITS);
+}
