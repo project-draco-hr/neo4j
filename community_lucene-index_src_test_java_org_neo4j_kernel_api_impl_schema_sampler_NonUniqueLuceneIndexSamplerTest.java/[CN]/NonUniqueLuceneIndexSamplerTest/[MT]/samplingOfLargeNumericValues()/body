@@ -1,0 +1,20 @@
+{
+  try (RAMDirectory dir=new RAMDirectory();IndexPartition indexPartition=new IndexPartition(new File("testPartition"),dir)){
+    insertDocument(indexPartition,1,Long.MAX_VALUE);
+    insertDocument(indexPartition,2,Integer.MAX_VALUE);
+    indexPartition.maybeRefreshBlocking();
+    long indexSize;
+    long uniqueElements;
+    long sampleSize;
+    try (PartitionSearcher searcher=indexPartition.acquireSearcher()){
+      NonUniqueLuceneIndexSampler sampler=new NonUniqueLuceneIndexSampler(searcher.getIndexSearcher(),taskControl.newInstance(),new IndexSamplingConfig(new Config()));
+      Register.DoubleLongRegister register=Registers.newDoubleLongRegister();
+      indexSize=sampler.sampleIndex(register);
+      uniqueElements=register.readFirst();
+      sampleSize=register.readSecond();
+    }
+     assertEquals(2,indexSize);
+    assertEquals(2,uniqueElements);
+    assertEquals(2,sampleSize);
+  }
+ }
