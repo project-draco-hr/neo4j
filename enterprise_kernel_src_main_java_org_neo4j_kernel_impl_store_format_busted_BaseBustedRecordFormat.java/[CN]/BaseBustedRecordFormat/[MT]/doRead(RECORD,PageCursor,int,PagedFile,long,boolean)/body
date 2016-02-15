@@ -7,27 +7,20 @@
       return;
     }
   }
-  long secondaryId=-1;
-  DataAdapter<PageCursor> dataAdapter=PAGE_CURSOR_ADAPTER;
-  SecondaryPageCursorControl secondaryPageCursorControl=SecondaryPageCursorControl.NULL;
   if (recordUnit) {
     int primaryEndOffset=primaryCursor.getOffset() + recordSize - 1;
-    secondaryId=Reference.decode(primaryCursor,dataAdapter);
+    long secondaryId=Reference.decode(primaryCursor,PAGE_CURSOR_ADAPTER);
     @SuppressWarnings("resource") SecondaryPageCursorReadDataAdapter readAdapter=new SecondaryPageCursorReadDataAdapter(primaryCursor,storeFile,pageIdForRecord(secondaryId,storeFile.pageSize(),recordSize),offsetForId(secondaryId,storeFile.pageSize(),recordSize),primaryEndOffset,PagedFile.PF_SHARED_READ_LOCK);
-    dataAdapter=readAdapter;
-    secondaryPageCursorControl=readAdapter;
-  }
-  try {
-    do {
-      secondaryPageCursorControl.reposition();
-      doReadInternal(record,primaryCursor,recordSize,headerByte,inUse,dataAdapter);
-    }
+    try (SecondaryPageCursorControl secondaryPageCursorControl=readAdapter){
+      do {
+        secondaryPageCursorControl.reposition();
+        doReadInternal(record,primaryCursor,recordSize,headerByte,inUse,readAdapter);
+      }
  while (secondaryPageCursorControl.shouldRetry());
-    if (recordUnit) {
       record.setSecondaryId(secondaryId);
     }
-  }
-  finally {
-    secondaryPageCursorControl.close();
+   }
+ else {
+    doReadInternal(record,primaryCursor,recordSize,headerByte,inUse,PAGE_CURSOR_ADAPTER);
   }
 }
