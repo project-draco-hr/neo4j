@@ -16,7 +16,13 @@
   final SenderService senderService=new SenderService(new ExpiryScheduler(platformModule.jobScheduler),new Expiration(SYSTEM_CLOCK),new RaftChannelInitializer(marshal),logProvider,platformModule.monitors,maxQueueSize);
   life.add(senderService);
   final CoreMember myself=new CoreMember(config.get(CoreEdgeClusterSettings.transaction_advertised_address),config.get(CoreEdgeClusterSettings.raft_advertised_address));
-  final MessageLogger<AdvertisedSocketAddress> messageLogger=new BetterMessageLogger<>(myself.getRaftAddress(),raftMessagesLog(storeDir));
+  final MessageLogger<AdvertisedSocketAddress> messageLogger;
+  if (config.get(CoreEdgeClusterSettings.raft_messages_log_enable)) {
+    messageLogger=new BetterMessageLogger<>(myself.getRaftAddress(),raftMessagesLog(storeDir));
+  }
+ else {
+    messageLogger=new NullMessageLogger<>();
+  }
   LoggingOutbound<AdvertisedSocketAddress> loggingOutbound=new LoggingOutbound<>(senderService,myself.getRaftAddress(),messageLogger);
   ListenSocketAddress raftListenAddress=config.get(CoreEdgeClusterSettings.raft_listen_address);
   RaftServer<CoreMember> raftServer=new RaftServer<>(marshal,raftListenAddress,logProvider);
