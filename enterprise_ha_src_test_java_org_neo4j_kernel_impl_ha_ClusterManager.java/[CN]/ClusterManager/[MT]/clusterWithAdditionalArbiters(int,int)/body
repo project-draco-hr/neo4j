@@ -1,0 +1,22 @@
+{
+  Clusters.Cluster cluster=new Clusters.Cluster("neo4j.ha");
+  HashSet<Integer> takenPorts=new HashSet<>();
+  try {
+    for (int i=0; i < arbiterCount; i++) {
+      int port=findFreePort(CLUSTER_MIN_PORT,CLUSTER_MAX_PORT,takenPorts);
+      takenPorts.add(port);
+      cluster.getMembers().add(new Clusters.Member(port,false));
+    }
+    for (int i=0; i < haMemberCount; i++) {
+      int port=findFreePort(CLUSTER_MIN_PORT,CLUSTER_MAX_PORT,takenPorts);
+      takenPorts.add(port);
+      cluster.getMembers().add(new Clusters.Member(port,true));
+    }
+  }
+ catch (  IOException e) {
+    throw new AssertionError("Failed to find an open port");
+  }
+  final Clusters clusters=new Clusters();
+  clusters.getClusters().add(cluster);
+  return provided(clusters);
+}

@@ -24,7 +24,8 @@
         txRetryMonitor.retry();
       }
       try {
-        Long txId=futureTxId.waitUntilCommitted(retryIntervalMillis,TimeUnit.MILLISECONDS);
+        Long txId=futureTxId.waitUntilCommitted(retryStrategy.get(),TimeUnit.MILLISECONDS);
+        retryStrategy.increaseTimeout();
         sessionPool.releaseSession(operationContext);
         return txId;
       }
@@ -34,7 +35,7 @@
         txRetryMonitor.retry();
       }
 catch (      TimeoutException e) {
-        log.info("Replication of %s timed out after %d %s; retrying.",operationContext,retryIntervalMillis,TimeUnit.MILLISECONDS);
+        log.info("Replication of %s timed out after %d %s; retrying.",operationContext,retryStrategy.get(),TimeUnit.MILLISECONDS);
         txRetryMonitor.retry();
       }
     }
