@@ -1,0 +1,21 @@
+{
+  IndexStoreView storeView=mock(IndexStoreView.class);
+  StoreScan<Exception> failingStoreScan=mock(StoreScan.class);
+  RuntimeException scanError=new RuntimeException();
+  doThrow(scanError).when(failingStoreScan).run();
+  when(storeView.visitNodes(any(),any(),any(),any())).thenReturn(failingStoreScan);
+  ExecutorService executor=mock(ExecutorService.class);
+  when(executor.awaitTermination(anyLong(),any())).thenReturn(true);
+  BatchingMultipleIndexPopulator batchingPopulator=new BatchingMultipleIndexPopulator(storeView,executor,NullLogProvider.getInstance());
+  StoreScan<IndexPopulationFailedKernelException> storeScan=batchingPopulator.indexAllNodes();
+  verify(executor,never()).shutdown();
+  try {
+    storeScan.run();
+    fail("Exception expected");
+  }
+ catch (  Throwable t) {
+    assertSame(scanError,t);
+  }
+  verify(executor).shutdownNow();
+  verify(executor).awaitTermination(anyLong(),any());
+}

@@ -1,0 +1,21 @@
+{
+  populator=newPopulator();
+  int iterations=228;
+  long[] labels=new long[0];
+  IndexUpdater updater=populator.newPopulatingUpdater(propertyAccessor);
+  for (int nodeId=0; nodeId < iterations; nodeId++) {
+    updater.process(NodePropertyUpdate.add(nodeId,PROPERTY_KEY_ID,1,labels));
+    when(propertyAccessor.getProperty(nodeId,PROPERTY_KEY_ID)).thenReturn(intProperty(PROPERTY_KEY_ID,nodeId));
+  }
+  updater.process(NodePropertyUpdate.add(iterations,PROPERTY_KEY_ID,1,labels));
+  when(propertyAccessor.getProperty(iterations,PROPERTY_KEY_ID)).thenReturn(intProperty(PROPERTY_KEY_ID,1));
+  try {
+    updater.close();
+    fail("should have thrown exception");
+  }
+ catch (  PreexistingIndexEntryConflictException conflict) {
+    assertEquals(1,conflict.getExistingNodeId());
+    assertEquals(1,conflict.getPropertyValue());
+    assertEquals(iterations,conflict.getAddedNodeId());
+  }
+}

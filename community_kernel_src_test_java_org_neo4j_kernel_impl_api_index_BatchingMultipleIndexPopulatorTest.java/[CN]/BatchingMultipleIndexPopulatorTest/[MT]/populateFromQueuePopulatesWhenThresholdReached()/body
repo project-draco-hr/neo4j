@@ -1,0 +1,20 @@
+{
+  setProperty(QUEUE_THRESHOLD_NAME,2);
+  BatchingMultipleIndexPopulator batchingPopulator=new BatchingMultipleIndexPopulator(mock(IndexStoreView.class),mock(ExecutorService.class),NullLogProvider.getInstance());
+  IndexPopulator populator1=addPopulator(batchingPopulator,1);
+  IndexUpdater updater1=mock(IndexUpdater.class);
+  when(populator1.newPopulatingUpdater(any())).thenReturn(updater1);
+  IndexPopulator populator2=addPopulator(batchingPopulator,2);
+  IndexUpdater updater2=mock(IndexUpdater.class);
+  when(populator2.newPopulatingUpdater(any())).thenReturn(updater2);
+  NodePropertyUpdate update1=NodePropertyUpdate.add(1,1,"foo",new long[]{1});
+  NodePropertyUpdate update2=NodePropertyUpdate.add(2,2,"bar",new long[]{2});
+  NodePropertyUpdate update3=NodePropertyUpdate.add(3,1,"baz",new long[]{1});
+  batchingPopulator.queue(update1);
+  batchingPopulator.queue(update2);
+  batchingPopulator.queue(update3);
+  batchingPopulator.populateFromQueue(42);
+  verify(updater1).process(update1);
+  verify(updater1).process(update3);
+  verify(updater2).process(update2);
+}

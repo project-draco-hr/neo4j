@@ -1,0 +1,18 @@
+{
+  populator=newPopulator();
+  String value="value1";
+  IndexUpdater updater=populator.newPopulatingUpdater(propertyAccessor);
+  updater.process(NodePropertyUpdate.add(1,PROPERTY_KEY_ID,value,new long[]{}));
+  addUpdate(populator,2,value);
+  when(propertyAccessor.getProperty(1,PROPERTY_KEY_ID)).thenReturn(stringProperty(PROPERTY_KEY_ID,value));
+  when(propertyAccessor.getProperty(2,PROPERTY_KEY_ID)).thenReturn(stringProperty(PROPERTY_KEY_ID,value));
+  try {
+    populator.verifyDeferredConstraints(propertyAccessor);
+    fail("should have thrown exception");
+  }
+ catch (  PreexistingIndexEntryConflictException conflict) {
+    assertEquals(1,conflict.getExistingNodeId());
+    assertEquals(value,conflict.getPropertyValue());
+    assertEquals(2,conflict.getAddedNodeId());
+  }
+}

@@ -1,7 +1,7 @@
 {
   when(populator.newPopulatingUpdater(storeView)).thenReturn(updater);
   CountDownLatch latch=new CountDownLatch(1);
-  doAnswer(afterAwaiting(latch)).when(populator).add(anyLong(),any());
+  doAnswer(afterAwaiting(latch)).when(populator).add(any());
   IndexingService indexingService=newIndexingServiceWithMockedDependencies(populator,accessor,withData(add(1,"value1")));
   life.start();
   indexingService.createIndexes(indexRule(0,labelId,propertyKeyId,PROVIDER_DESCRIPTOR));
@@ -17,7 +17,8 @@
   assertEquals(InternalIndexState.ONLINE,proxy.getState());
   InOrder order=inOrder(populator,accessor,updater);
   order.verify(populator).create();
-  order.verify(populator).add(1,"value1");
+  order.verify(populator).includeSample(add(1,"value1"));
+  order.verify(populator).add(singletonList(add(1,"value1")));
   order.verify(populator).newPopulatingUpdater(storeView);
   order.verify(updater).close();
   order.verify(populator).verifyDeferredConstraints(storeView);
