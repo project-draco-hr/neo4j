@@ -1,0 +1,26 @@
+{
+  FileSystemAbstraction fs=new EphemeralFileSystemAbstraction();
+  StoreChannel channel=fs.open(new File("id.file"),"rw");
+  int threshold=10;
+  FreeIdKeeper keeper=new FreeIdKeeper(channel,threshold,true);
+  Set<Long> freeIds=new HashSet<>();
+  for (long i=0; i < threshold; i++) {
+    keeper.freeId(i);
+    freeIds.add(i);
+  }
+  int extraIds=3;
+  for (long i=threshold; i < threshold + extraIds; i++) {
+    keeper.freeId(i);
+    freeIds.add(i);
+  }
+  keeper.close();
+  channel.close();
+  channel=fs.open(new File("id.file"),"rw");
+  keeper=new FreeIdKeeper(channel,threshold,true);
+  assertEquals(threshold + extraIds,keeper.getCount());
+  assertEquals(freeIds.size(),keeper.getCount());
+  for (int i=threshold + extraIds - 1; i >= 0; i--) {
+    long id=keeper.getId();
+    assertTrue(freeIds.contains(id));
+  }
+}
