@@ -1,0 +1,22 @@
+{
+  int offsetAtBeginning=cursor.getOffset();
+  byte modifiers=cursor.getByte();
+  long prevMod=(modifiers & 0xF0L) << 28;
+  long nextMod=(modifiers & 0x0FL) << 32;
+  long prevProp=cursor.getUnsignedInt();
+  long nextProp=cursor.getUnsignedInt();
+  record.initialize(false,BaseRecordFormat.longFromIntAndMod(prevProp,prevMod),BaseRecordFormat.longFromIntAndMod(nextProp,nextMod));
+  while (cursor.getOffset() - offsetAtBeginning < RECORD_SIZE) {
+    long block=cursor.getLong();
+    PropertyType type=PropertyType.getPropertyType(block,true);
+    if (type == null) {
+      break;
+    }
+    record.setInUse(true);
+    record.addLoadedBlock(block);
+    int additionalBlocks=type.calculateNumberOfBlocksUsed(block) - 1;
+    while (additionalBlocks-- > 0) {
+      record.addLoadedBlock(cursor.getLong());
+    }
+  }
+}
