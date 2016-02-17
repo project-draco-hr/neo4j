@@ -1,0 +1,22 @@
+{
+  assertAuthEnabled();
+  Subject subject=new Subject.Builder(securityManager).buildSubject();
+  UsernamePasswordToken token=new UsernamePasswordToken(username,password);
+  AuthenticationResult result=AuthenticationResult.SUCCESS;
+  if (!authStrategy.isAuthenticationPermitted(username)) {
+    result=AuthenticationResult.TOO_MANY_ATTEMPTS;
+  }
+ else {
+    try {
+      subject.login(token);
+    }
+ catch (    ExpiredCredentialsException e) {
+      result=AuthenticationResult.PASSWORD_CHANGE_REQUIRED;
+    }
+catch (    AuthenticationException e) {
+      result=AuthenticationResult.FAILURE;
+    }
+    authStrategy.updateWithAuthenticationResult(result,username);
+  }
+  return new ShiroAuthSubject(this,subject,result);
+}
