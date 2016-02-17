@@ -1,9 +1,13 @@
 {
   clearWaitList();
   lock.copyHolderWaitListsInto(waitList);
-  if (lock.anyHolderIsWaitingFor(clientId) && lock.holderWaitListSize() >= waitListSize()) {
+  int b=lock.detectDeadlock(id());
+  if (b != -1 && deadlockResolutionStrategy.shouldAbort(this,clientById.apply(b))) {
+    UnsafeUtil.loadFence();
     String message=this + " can't acquire " + lock+ " on "+ type+ "("+ resourceId+ "), because holders of that lock "+ "are waiting for "+ this+ ".\n Wait list:"+ lock.describeWaitList();
-    waitList.clear();
-    throw new DeadlockDetectedException(message);
+    if (lock.detectDeadlock(id()) != -1) {
+      waitList.clear();
+      throw new DeadlockDetectedException(message);
+    }
   }
 }
