@@ -1,0 +1,66 @@
+{
+  KernelTransaction transaction=context.get(CallableProcedure.Context.KERNEL_TRANSACTION);
+  GraphDatabaseFacade facade=new GraphDatabaseFacade();
+  facade.init(config,new GraphDatabaseFacade.SPI(){
+    @Override public boolean databaseIsAvailable(    long timeout){
+      return availability.isAvailable(timeout);
+    }
+    @Override public DependencyResolver resolver(){
+      return resolver;
+    }
+    @Override public StoreId storeId(){
+      return storeId.get();
+    }
+    @Override public String storeDir(){
+      throw new UnsupportedOperationException();
+    }
+    @Override public String name(){
+      return "ProcedureGraphDatabaseService";
+    }
+    @Override public KernelTransaction currentTransaction(){
+      availability.assertDatabaseAvailable();
+      return transaction;
+    }
+    @Override public boolean isInOpenTransaction(){
+      return transaction.isOpen();
+    }
+    @Override public Statement currentStatement(){
+      return transaction.acquireStatement();
+    }
+    @Override public Result executeQuery(    String query,    Map<String,Object> parameters,    QuerySession querySession){
+      try {
+        availability.assertDatabaseAvailable();
+        return queryExecutor.get().executeQuery(query,parameters,querySession);
+      }
+ catch (      QueryExecutionKernelException e) {
+        throw e.asUserException();
+      }
+    }
+    @Override public AutoIndexing autoIndexing(){
+      return autoIndexing;
+    }
+    @Override public void registerKernelEventHandler(    KernelEventHandler handler){
+      throw new UnsupportedOperationException();
+    }
+    @Override public void unregisterKernelEventHandler(    KernelEventHandler handler){
+      throw new UnsupportedOperationException();
+    }
+    @Override public <T>void registerTransactionEventHandler(    TransactionEventHandler<T> handler){
+      throw new UnsupportedOperationException();
+    }
+    @Override public <T>void unregisterTransactionEventHandler(    TransactionEventHandler<T> handler){
+      throw new UnsupportedOperationException();
+    }
+    @Override public URL validateURLAccess(    URL url) throws URLAccessValidationError {
+      return urlValidator.apply(url);
+    }
+    @Override public void shutdown(){
+      throw new UnsupportedOperationException();
+    }
+    @Override public KernelTransaction beginTransaction(){
+      throw new UnsupportedOperationException();
+    }
+  }
+);
+  return facade;
+}
