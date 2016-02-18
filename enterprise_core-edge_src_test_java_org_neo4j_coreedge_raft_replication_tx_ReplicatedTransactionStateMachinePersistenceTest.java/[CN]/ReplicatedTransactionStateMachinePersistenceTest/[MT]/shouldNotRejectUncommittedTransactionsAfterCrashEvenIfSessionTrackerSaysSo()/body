@@ -1,9 +1,10 @@
 {
   TransactionCommitProcess commitProcess=mock(TransactionCommitProcess.class);
   when(commitProcess.commit(any(),any(),any())).thenThrow(new TransactionFailureException("testing")).thenReturn(123L);
-  ReplicatedTransactionStateMachine<RaftTestMember> stateMachine=stateMachine(commitProcess,new GlobalSessionTrackerState<RaftTestMember>());
+  RecoverTransactionLogState recoverTransactionLogState=mock(RecoverTransactionLogState.class);
+  when(recoverTransactionLogState.findLastCommittedIndex()).thenReturn(99L);
+  ReplicatedTransactionStateMachine<RaftTestMember> stateMachine=stateMachine(commitProcess,new GlobalSessionTrackerState<>(),recoverTransactionLogState);
   ReplicatedTransaction<RaftTestMember> rtx=replicatedTx();
-  stateMachine.setLastCommittedIndex(99);
   try {
     stateMachine.applyCommand(rtx,100);
     fail("test design throws exception here");

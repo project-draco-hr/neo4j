@@ -1,24 +1,25 @@
 {
   while (true) {
-    long firstNotAllocated=idAllocationStateMachine.getFirstNotAllocated(idType);
+    long firstNotAllocated=pendingIdAllocationRequests.firstUnallocated(idType);
     ReplicatedIdAllocationRequest idAllocationRequest=new ReplicatedIdAllocationRequest(me,idType,firstNotAllocated,allocationChunk);
-    try {
-      replicator.replicate(idAllocationRequest);
+    try (PendingIdAllocationRequest pendingIdAllocationRequest=pendingIdAllocationRequests.register(idAllocationRequest)){
+      try {
+        replicator.replicate(idAllocationRequest);
+      }
+ catch (      Replicator.ReplicationFailedException e) {
+        log.error(format("Failed to acquire id range for idType %s",idType),e);
+        throw new IdGenerationException(e);
+      }
+      try {
+        if (pendingIdAllocationRequest.waitUntilAcquired(retryTimeoutMillis,TimeUnit.MILLISECONDS)) {
+          IdRange idRange=new IdRange(EMPTY_LONG_ARRAY,firstNotAllocated,allocationChunk);
+          return new IdAllocation(idRange,-1,0);
+        }
+      }
+ catch (      InterruptedException|TimeoutException e) {
+        log.error(format("Failed to acquire id range for idType %s",idType),e);
+        throw new IdGenerationException(e);
+      }
     }
- catch (    Replicator.ReplicationFailedException e) {
-      log.error(format("Failed to acquire id range for idType %s",idType),e);
-      throw new IdGenerationException(e);
-    }
-    try {
-      idAllocationStateMachine.waitForAnyChange(retryTimeoutMillis);
-    }
- catch (    InterruptedException e) {
-      log.error(format("Failed to acquire id range for idType %s",idType),e);
-      throw new IdGenerationException(e);
-    }
-    IdRange myHighestIdRange=idAllocationStateMachine.getHighestIdRange(me,idType);
-    if (myHighestIdRange != null && myHighestIdRange.getRangeStart() == idAllocationRequest.idRangeStart()) {
-      return new IdAllocation(myHighestIdRange,myHighestIdRange.getRangeStart() - 1,0);
-    }
-  }
+   }
 }
