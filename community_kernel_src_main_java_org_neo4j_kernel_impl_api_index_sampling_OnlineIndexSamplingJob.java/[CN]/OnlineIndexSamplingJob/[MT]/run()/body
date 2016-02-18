@@ -2,15 +2,12 @@
   try (DurationLogger durationLogger=new DurationLogger(log,"Sampling index " + indexUserDescription)){
     try {
       try (IndexReader reader=indexProxy.newReader()){
-        Register.DoubleLongRegister sample=Registers.newDoubleLongRegister(0,0);
         IndexSampler sampler=reader.createSampler();
-        long indexSize=sampler.sampleIndex(sample);
+        IndexSample sample=sampler.sampleIndex();
         if (indexProxy.getState() == ONLINE) {
-          long unique=sample.readFirst();
-          long sampleSize=sample.readSecond();
-          storeView.replaceIndexCounts(indexDescriptor,unique,sampleSize,indexSize);
+          storeView.replaceIndexCounts(indexDescriptor,sample.uniqueValues(),sample.sampleSize(),sample.indexSize());
           durationLogger.markAsFinished();
-          log.info(format("Sampled index %s with %d unique values in sample of avg size %d taken from " + "index containing %d entries",indexUserDescription,unique,sampleSize,indexSize));
+          log.info(format("Sampled index %s with %d unique values in sample of avg size %d taken from " + "index containing %d entries",indexUserDescription,sample.uniqueValues(),sample.sampleSize(),sample.indexSize()));
         }
  else {
           durationLogger.markAsAborted("Index no longer ONLINE");
