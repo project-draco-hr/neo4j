@@ -1,28 +1,27 @@
 {
   try {
-    fileChannel.position(fileChannel.size());
+    positionChannel(channel.size());
     writeBuffer.clear();
-    while (!releasedIdList.isEmpty()) {
-      long id=releasedIdList.removeFirst();
-      if (id == INTEGER_MINUS_ONE) {
+    while (!freeIds.isEmpty()) {
+      long id=freeIds.removeFirst();
+      if (id == NO_RESULT) {
         continue;
       }
       writeBuffer.putLong(id);
       if (writeBuffer.position() == writeBuffer.capacity()) {
         writeBuffer.flip();
         while (writeBuffer.hasRemaining()) {
-          fileChannel.write(writeBuffer);
+          channel.write(writeBuffer);
         }
         writeBuffer.clear();
       }
     }
     writeBuffer.flip();
     while (writeBuffer.hasRemaining()) {
-      fileChannel.write(writeBuffer);
+      channel.write(writeBuffer);
     }
-    fileChannel.position(readPosition);
     if (aggressiveReuse) {
-      maxReadPosition=fileChannel.size();
+      maxReadPosition=channel.size();
     }
   }
  catch (  IOException e) {
