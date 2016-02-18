@@ -3,13 +3,12 @@
   notifyLeaderChanges(outcome);
   raftState.update(outcome);
   membershipManager.processLog(outcome.getLogCommands());
-  for (long index=lastApplied + 1; index <= raftState.entryLog().commitIndex(); index++) {
+  for (long index=stateMachine.lastApplied() + 1; index <= raftState.entryLog().commitIndex(); index++) {
     ReplicatedContent content=raftState.entryLog().readEntryContent(index);
     stateMachine.applyCommand(content,index);
     if (index % this.flushAfter == 0) {
       stateMachine.flush();
     }
   }
-  lastApplied=raftState.entryLog().commitIndex();
   volatileLeader.set(outcome.getLeader());
 }
