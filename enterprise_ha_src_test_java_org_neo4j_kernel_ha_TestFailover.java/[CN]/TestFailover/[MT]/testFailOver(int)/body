@@ -1,0 +1,16 @@
+{
+  ClusterManager clusterManager=new ClusterManager.Builder().withRootDirectory(dir.cleanDirectory("failover")).withProvider(ClusterManager.clusterOfSize(clusterSize)).withSharedConfig(stringMap(ClusterSettings.heartbeat_interval.name(),"1")).build();
+  clusterManager.start();
+  ClusterManager.ManagedCluster cluster=clusterManager.getDefaultCluster();
+  cluster.await(ClusterManager.allSeesAllAsAvailable());
+  HighlyAvailableGraphDatabase oldMaster=cluster.getMaster();
+  long start=System.nanoTime();
+  ClusterManager.RepairKit repairKit=cluster.fail(oldMaster);
+  logger.getLogger().warning("Shut down master");
+  cluster.await(ClusterManager.masterAvailable(oldMaster));
+  long end=System.nanoTime();
+  logger.getLogger().warning("Failover took:" + (end - start) / 1000000 + "ms");
+  repairKit.repair();
+  Thread.sleep(3000);
+  clusterManager.stop();
+}
