@@ -1,16 +1,13 @@
 {
   byte flags=channel.get();
-  boolean inUse=false;
-  if (notFlag(notFlag(flags,Record.IN_USE.byteValue()),Record.CREATED_IN_TX) != 0) {
-    throw new IOException("Illegal in use flag: " + flags);
-  }
-  if (bitFlag(flags,Record.IN_USE.byteValue())) {
-    inUse=true;
-  }
+  boolean inUse=bitFlag(flags,Record.IN_USE.byteValue());
+  boolean requiresSecondaryUnit=bitFlag(flags,Record.REQUIRE_SECONDARY_UNIT);
+  boolean hasSecondaryUnit=bitFlag(flags,Record.HAS_SECONDARY_UNIT);
   RelationshipRecord record;
   if (inUse) {
     record=new RelationshipRecord(id,channel.getLong(),channel.getLong(),channel.getInt());
     record.setInUse(true);
+    record.setRequiresSecondaryUnit(requiresSecondaryUnit);
     record.setFirstPrevRel(channel.getLong());
     record.setFirstNextRel(channel.getLong());
     record.setSecondPrevRel(channel.getLong());
@@ -19,6 +16,9 @@
     byte extraByte=channel.get();
     record.setFirstInFirstChain((extraByte & 0x1) > 0);
     record.setFirstInSecondChain((extraByte & 0x2) > 0);
+    if (hasSecondaryUnit) {
+      record.setSecondaryUnitId(channel.getLong());
+    }
   }
  else {
     record=new RelationshipRecord(id,-1,-1,channel.getInt());
