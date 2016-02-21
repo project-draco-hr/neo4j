@@ -3,9 +3,13 @@
     throw new NotFoundException(format("Relationship %d not found",id),new EntityNotFoundException(EntityType.RELATIONSHIP,id));
   }
   try (Statement statement=spi.currentStatement()){
-    if (!statement.readOperations().relationshipExists(id)) {
-      throw new NotFoundException(format("Relationship %d not found",id),new EntityNotFoundException(EntityType.RELATIONSHIP,id));
+    try {
+      RelationshipProxy relationship=new RelationshipProxy(relActions,id);
+      statement.readOperations().relationshipVisit(id,relationship);
+      return relationship;
     }
-    return new RelationshipProxy(relActions,id);
+ catch (    EntityNotFoundException e) {
+      throw new NotFoundException(format("Relationship %d not found",id),e);
+    }
   }
  }
