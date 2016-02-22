@@ -6,12 +6,20 @@
   }
   boolean createIfNotExists=false;
   boolean truncateExisting=false;
+  boolean deleteOnClose=false;
+  boolean exclusiveMapping=false;
   for (  OpenOption option : openOptions) {
     if (option.equals(StandardOpenOption.CREATE)) {
       createIfNotExists=true;
     }
  else     if (option.equals(StandardOpenOption.TRUNCATE_EXISTING)) {
       truncateExisting=true;
+    }
+ else     if (option.equals(StandardOpenOption.DELETE_ON_CLOSE)) {
+      deleteOnClose=true;
+    }
+ else     if (option.equals(PageCacheOpenOptions.EXCLUSIVE)) {
+      exclusiveMapping=true;
     }
  else     if (!ignoredOpenOptions.contains(option)) {
       throw new UnsupportedOperationException("Unsupported OpenOption: " + option);
@@ -28,13 +36,25 @@
       if (truncateExisting) {
         throw new UnsupportedOperationException("Cannot truncate a file that is already mapped");
       }
+      if (exclusiveMapping || pagedFile.isExclusiveMapping()) {
+        String msg;
+        if (exclusiveMapping) {
+          msg="Cannot exclusively map file because it is already mapped: " + file;
+        }
+ else {
+          msg="Cannot map file because it is already exclusively mapped: " + file;
+        }
+        throw new IOException(msg);
+      }
       pagedFile.incrementRefCount();
+      pagedFile.markDeleteOnClose(deleteOnClose);
       return pagedFile;
     }
     current=current.next;
   }
-  MuninnPagedFile pagedFile=new MuninnPagedFile(file,this,filePageSize,swapperFactory,tracer,createIfNotExists,truncateExisting);
+  MuninnPagedFile pagedFile=new MuninnPagedFile(file,this,filePageSize,swapperFactory,tracer,createIfNotExists,truncateExisting,exclusiveMapping);
   pagedFile.incrementRefCount();
+  pagedFile.markDeleteOnClose(deleteOnClose);
   current=new FileMapping(file,pagedFile);
   current.next=mappedFiles;
   mappedFiles=current;
