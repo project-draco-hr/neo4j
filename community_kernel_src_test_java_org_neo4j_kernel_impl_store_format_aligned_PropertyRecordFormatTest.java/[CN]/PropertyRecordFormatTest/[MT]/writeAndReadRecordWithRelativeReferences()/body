@@ -1,0 +1,21 @@
+{
+  PropertyRecordFormat format=new PropertyRecordFormat();
+  int recordSize=format.getRecordSize(new IntStoreHeader(DATA_SIZE));
+  StubPageCursor cursor=new StubPageCursor(0,(int)ByteUnit.kibiBytes(4));
+  long recordId=0xF1F1F1F1F1F1L;
+  int recordOffset=cursor.getOffset();
+  PropertyRecord record=createRecord(format,recordId);
+  format.write(record,cursor,recordSize,null);
+  PropertyRecord recordFromStore=format.newRecord();
+  recordFromStore.setId(recordId);
+  resetCursor(cursor,recordOffset);
+  format.read(recordFromStore,cursor,RecordLoad.NORMAL,recordSize,null);
+  assertEquals(record.getNextProp(),recordFromStore.getNextProp());
+  assertEquals(record.getPrevProp(),recordFromStore.getPrevProp());
+  resetCursor(cursor,recordOffset);
+  PropertyRecord recordWithOtherId=format.newRecord();
+  recordWithOtherId.setId(1L);
+  format.read(recordWithOtherId,cursor,RecordLoad.NORMAL,recordSize,null);
+  assertNotEquals(record.getNextProp(),recordWithOtherId.getNextProp());
+  assertNotEquals(record.getPrevProp(),recordWithOtherId.getPrevProp());
+}
