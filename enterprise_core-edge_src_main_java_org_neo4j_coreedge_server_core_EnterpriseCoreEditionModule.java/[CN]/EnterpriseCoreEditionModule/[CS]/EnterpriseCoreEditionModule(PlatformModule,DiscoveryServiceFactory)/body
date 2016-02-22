@@ -21,7 +21,8 @@
   ListenSocketAddress raftListenAddress=config.get(CoreEdgeClusterSettings.raft_listen_address);
   RaftServer<CoreMember> raftServer=new RaftServer<>(marshal,raftListenAddress,logProvider);
   final DelayedRenewableTimeoutService raftTimeoutService=new DelayedRenewableTimeoutService(SYSTEM_CLOCK,logProvider);
-  MonitoredRaftLog monitoredRaftLog=new MonitoredRaftLog(life.add(new NaiveDurableRaftLog(fileSystem,new File(clusterStateDirectory,NaiveDurableRaftLog.DIRECTORY_NAME),marshal,logProvider)),platformModule.monitors);
+  RaftLog underlyingLog=createRaftLog(config,life,fileSystem,clusterStateDirectory,marshal,logProvider,databaseHealthSupplier);
+  MonitoredRaftLog monitoredRaftLog=new MonitoredRaftLog(underlyingLog,platformModule.monitors);
   StateMachines stateMachines=new StateMachines();
   LastAppliedTrackingStateMachine lastAppliedStateMachine=new LastAppliedTrackingStateMachine(stateMachines);
   int flushAfter=config.get(CoreEdgeClusterSettings.state_machine_flush_window_size);
