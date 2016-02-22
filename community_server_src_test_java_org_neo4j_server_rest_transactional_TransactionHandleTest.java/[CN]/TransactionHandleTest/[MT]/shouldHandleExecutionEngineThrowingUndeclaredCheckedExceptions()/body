@@ -1,23 +1,2 @@
 {
-  QueryExecutionEngine executionEngine=mock(QueryExecutionEngine.class);
-  QuerySession querySession=mock(QuerySession.class);
-  QuerySessionProvider querySessionProvider=mock(QuerySessionProvider.class);
-  when(querySessionProvider.create(any(HttpServletRequest.class))).thenReturn(querySession);
-  when(executionEngine.executeQuery("match (n) return n",map(),querySession)).thenAnswer(new Answer(){
-    @Override public Object answer(    InvocationOnMock invocationOnMock) throws Throwable {
-      throw new Exception("BOO");
-    }
-  }
-);
-  TransactionRegistry registry=mock(TransactionRegistry.class);
-  when(registry.begin(any(TransactionHandle.class))).thenReturn(1337l);
-  TransactionHandle handle=new TransactionHandle(mockKernel(),executionEngine,registry,uriScheme,NullLogProvider.getInstance(),querySessionProvider);
-  ExecutionResultSerializer output=mock(ExecutionResultSerializer.class);
-  Statement statement=new Statement("match (n) return n",map(),false,(ResultDataContent[])null);
-  handle.commit(statements(statement),output,false,mock(HttpServletRequest.class));
-  verify(registry).forget(1337l);
-  InOrder outputOrder=inOrder(output);
-  outputOrder.verify(output).errors(argThat(hasErrors(Status.Statement.ExecutionFailure)));
-  outputOrder.verify(output).finish();
-  verifyNoMoreInteractions(output);
 }
