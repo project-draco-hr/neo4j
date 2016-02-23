@@ -1,6 +1,18 @@
 {
-  AdvertisedSocketAddress transactionServer=connectionStrategy.coreServer();
-  localDatabase.copyStoreFrom(transactionServer,storeFetcher);
+  boolean copiedStore=false;
+  do {
+    try {
+      AdvertisedSocketAddress transactionServer=connectionStrategy.coreServer();
+      localDatabase.copyStoreFrom(transactionServer,storeFetcher);
+      copiedStore=true;
+    }
+ catch (    EdgeServerConnectionException ex) {
+      log.info("Failed to connect to core server. Retrying in %d ms.",timeout.getMillis());
+      timeout.increment();
+      Thread.sleep(timeout.getMillis());
+    }
+  }
+ while (!copiedStore);
   dataSourceManager.start();
   txPuller.startPolling();
 }
