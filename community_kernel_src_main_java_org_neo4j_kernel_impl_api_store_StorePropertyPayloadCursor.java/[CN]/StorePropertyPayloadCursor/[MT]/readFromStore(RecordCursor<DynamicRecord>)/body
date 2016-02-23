@@ -1,21 +1,20 @@
 {
   buffer.clear();
   long startBlockId=PropertyBlock.fetchLong(currentHeader());
-  try (Cursor<DynamicRecord> records=cursor.acquire(startBlockId,FORCE)){
-    while (true) {
-      records.next();
-      DynamicRecord dynamicRecord=records.get();
-      byte[] data=dynamicRecord.getData();
-      if (buffer.remaining() < data.length) {
-        buffer.flip();
-        ByteBuffer newBuffer=newBiggerBuffer(data.length);
-        newBuffer.put(buffer);
-        buffer=newBuffer;
-      }
-      buffer.put(data,0,data.length);
-      if (Record.NULL_REFERENCE.is(dynamicRecord.getNextBlock())) {
-        break;
-      }
+  cursor.placeAt(startBlockId,FORCE);
+  while (true) {
+    cursor.next();
+    DynamicRecord dynamicRecord=cursor.get();
+    byte[] data=dynamicRecord.getData();
+    if (buffer.remaining() < data.length) {
+      buffer.flip();
+      ByteBuffer newBuffer=newBiggerBuffer(data.length);
+      newBuffer.put(buffer);
+      buffer=newBuffer;
+    }
+    buffer.put(data,0,data.length);
+    if (Record.NULL_REFERENCE.is(dynamicRecord.getNextBlock())) {
+      break;
     }
   }
- }
+}
