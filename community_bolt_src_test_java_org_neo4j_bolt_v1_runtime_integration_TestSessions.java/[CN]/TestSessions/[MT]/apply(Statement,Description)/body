@@ -1,9 +1,10 @@
 {
   return new Statement(){
     @Override public void evaluate() throws Throwable {
-      gdb=new TestGraphDatabaseFactory().newImpermanentDatabase();
+      gdb=(GraphDatabaseAPI)new TestGraphDatabaseFactory().newImpermanentDatabase();
       Neo4jJobScheduler scheduler=life.add(new Neo4jJobScheduler());
-      StandardSessions sessions=life.add(new StandardSessions((GraphDatabaseAPI)gdb,new UsageData(),NullLogService.getInstance()));
+      DependencyResolver resolver=gdb.getDependencyResolver();
+      StandardSessions sessions=life.add(new StandardSessions(gdb,new UsageData(),NullLogService.getInstance(),resolver.resolveDependency(ThreadToStatementContextBridge.class),resolver.resolveDependency(QueryExecutionEngine.class)));
       actual=new ThreadedSessions(sessions,scheduler,NullLogService.getInstance());
       life.start();
       try {
