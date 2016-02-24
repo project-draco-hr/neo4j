@@ -1,0 +1,18 @@
+{
+  assertAuthEnabled();
+  User existingUser=users.findByName(username);
+  if (existingUser == null) {
+    return null;
+  }
+  if (existingUser.credentials().matchesPassword(password)) {
+    return existingUser;
+  }
+  try {
+    User updatedUser=existingUser.augment().withCredentials(Credential.forPassword(password)).withRequiredPasswordChange(false).build();
+    users.update(existingUser,updatedUser);
+    return updatedUser;
+  }
+ catch (  ConcurrentModificationException e) {
+    return setUserPassword(username,password);
+  }
+}
