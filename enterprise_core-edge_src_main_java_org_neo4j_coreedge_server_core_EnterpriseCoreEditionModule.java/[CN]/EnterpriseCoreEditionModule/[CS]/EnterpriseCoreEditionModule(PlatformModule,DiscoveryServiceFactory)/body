@@ -24,9 +24,17 @@
   RaftLog underlyingLog=createRaftLog(config,life,fileSystem,clusterStateDirectory,marshal,logProvider,databaseHealthSupplier);
   MonitoredRaftLog monitoredRaftLog=new MonitoredRaftLog(underlyingLog,platformModule.monitors);
   StateMachines stateMachines=new StateMachines();
-  LastAppliedTrackingStateMachine lastAppliedStateMachine=new LastAppliedTrackingStateMachine(stateMachines);
-  int flushAfter=config.get(CoreEdgeClusterSettings.state_machine_flush_window_size);
-  raft=createRaft(life,loggingOutbound,discoveryService,config,messageLogger,monitoredRaftLog,lastAppliedStateMachine,fileSystem,clusterStateDirectory,myself,logProvider,raftServer,raftTimeoutService,databaseHealthSupplier,platformModule.monitors,flushAfter);
+  StateMachineApplier recoverableStateMachine;
+  try {
+    DurableStateStorage<LastAppliedState> lastAppliedStorage=life.add(new DurableStateStorage<>(fileSystem,new File(clusterStateDirectory,"last-applied-state"),"last-applied",new LastAppliedState.Marshal(),config.get(CoreEdgeClusterSettings.last_applied_state_size),databaseHealthSupplier,logProvider));
+    ExecutorService applyExecutor=Executors.newSingleThreadExecutor();
+    life.add(new ExecutorServiceLifecycleAdapter(applyExecutor));
+    recoverableStateMachine=new StateMachineApplier(stateMachines,monitoredRaftLog,lastAppliedStorage,applyExecutor,config.get(CoreEdgeClusterSettings.state_machine_flush_window_size),databaseHealthSupplier,logProvider);
+  }
+ catch (  IOException e) {
+    throw new RuntimeException(e);
+  }
+  raft=createRaft(life,loggingOutbound,discoveryService,config,messageLogger,monitoredRaftLog,recoverableStateMachine,fileSystem,clusterStateDirectory,myself,logProvider,raftServer,raftTimeoutService,databaseHealthSupplier,platformModule.monitors);
   dependencies.satisfyDependency(raft);
   RaftReplicator<CoreMember> replicator=new RaftReplicator<>(raft,myself,new RaftOutbound(loggingOutbound));
   LocalSessionPool localSessionPool=new LocalSessionPool(myself);
@@ -90,5 +98,5 @@
   lockManager=dependencies.satisfyDependency(createLockManager(config,logging,replicator,myself,replicatedLockTokenStateMachine,raft,leaderLockTokenTimeout));
   CatchupServer catchupServer=new CatchupServer(logProvider,new StoreIdSupplier(platformModule),platformModule.dependencies.provideDependency(TransactionIdStore.class),platformModule.dependencies.provideDependency(LogicalTransactionStore.class),new DataSourceSupplier(platformModule),new CheckpointerSupplier(platformModule.dependencies),config.get(CoreEdgeClusterSettings.transaction_listen_address),platformModule.monitors);
   long joinCatchupTimeout=config.get(CoreEdgeClusterSettings.join_catch_up_timeout);
-  life.add(CoreServerStartupProcess.createLifeSupport(platformModule.dataSourceManager,replicatedIdGeneratorFactory,raft,new RaftLogReplay(lastAppliedStateMachine,monitoredRaftLog,logProvider,flushAfter),raftServer,catchupServer,raftTimeoutService,membershipWaiter,joinCatchupTimeout,new RecoverTransactionLogState(dependencies,logProvider,relationshipTypeTokenHolder,propertyKeyTokenHolder,labelTokenHolder),tokenLife));
+  life.add(CoreServerStartupProcess.createLifeSupport(platformModule.dataSourceManager,replicatedIdGeneratorFactory,raft,recoverableStateMachine,raftServer,catchupServer,raftTimeoutService,membershipWaiter,joinCatchupTimeout,new RecoverTransactionLogState(dependencies,logProvider,relationshipTypeTokenHolder,propertyKeyTokenHolder,labelTokenHolder),tokenLife));
 }

@@ -3,12 +3,6 @@
   notifyLeaderChanges(outcome);
   raftState.update(outcome);
   membershipManager.processLog(outcome.getLogCommands());
-  for (long index=stateMachine.lastApplied() + 1; index <= raftState.entryLog().commitIndex(); index++) {
-    ReplicatedContent content=raftState.entryLog().readEntryContent(index);
-    stateMachine.applyCommand(content,index);
-    if (index % this.flushAfter == 0) {
-      stateMachine.flush();
-    }
-  }
+  consensusListener.notifyCommitted();
   volatileLeader.set(outcome.getLeader());
 }
