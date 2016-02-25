@@ -1,17 +1,26 @@
 {
   RaftLogMetadataCache.RaftLogEntryMetadata metadata=metadataCache.getMetadata(indexToStartFrom);
-  LogPosition startPosition=null;
+  LogPosition startPosition;
+  boolean positionedCorrectly=false;
   if (metadata != null) {
     startPosition=metadata.getStartPosition();
+    positionedCorrectly=true;
   }
  else {
     LogVersionLocator headerVisitor=new LogVersionLocator(indexToStartFrom);
     logFile.accept(headerVisitor);
-    startPosition=headerVisitor.getLogPosition();
+    startPosition=headerVisitor.foundPosition;
+    if (headerVisitor.firstLogIndexForFoundFile == indexToStartFrom) {
+      positionedCorrectly=true;
+    }
   }
   if (startPosition == null) {
     return IOCursor.getEmpty();
   }
   ReadableLogChannel reader=logFile.getReader(startPosition);
-  return new PhysicalRaftLogEntryCursor(new RaftRecordCursor<>(reader,marshal));
+  PhysicalRaftLogEntryCursor physicalRaftLogEntryCursor=new PhysicalRaftLogEntryCursor(new RaftRecordCursor<>(reader,marshal));
+  if (!positionedCorrectly) {
+    while (physicalRaftLogEntryCursor.next() && physicalRaftLogEntryCursor.get().getLogIndex() < indexToStartFrom - 1)     ;
+  }
+  return physicalRaftLogEntryCursor;
 }
