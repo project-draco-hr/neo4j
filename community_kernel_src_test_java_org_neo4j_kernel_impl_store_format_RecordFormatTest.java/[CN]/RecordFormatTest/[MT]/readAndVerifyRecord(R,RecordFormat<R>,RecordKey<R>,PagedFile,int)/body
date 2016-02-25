@@ -1,0 +1,22 @@
+{
+  try (PageCursor cursor=storeFile.io(0,PagedFile.PF_SHARED_READ_LOCK)){
+    assertedNext(cursor);
+    R read=format.newRecord();
+    read.setId(written.getId());
+    int offset=Math.toIntExact(written.getId() * recordSize);
+    do {
+      cursor.setOffset(offset);
+      format.read(read,cursor,NORMAL,recordSize,storeFile);
+    }
+ while (cursor.shouldRetry());
+    if (written.inUse()) {
+      assertEquals(written.inUse(),read.inUse());
+      assertEquals(written.getId(),read.getId());
+      assertEquals(written.getSecondaryUnitId(),read.getSecondaryUnitId());
+      key.assertRecordsEquals(written,read);
+    }
+ else {
+      assertEquals(written.inUse(),read.inUse());
+    }
+  }
+ }
