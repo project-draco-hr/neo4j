@@ -1,21 +1,19 @@
 {
   String key=config.get(GraphDatabaseFacadeFactory.Configuration.record_format);
-  for (  RecordFormats.Factory candidate : Service.load(RecordFormats.Factory.class)) {
+  for (  RecordFormats.Factory candidate : loadAdditionalFormats()) {
     String candidateId=candidate.getKeys().iterator().next();
     if (candidateId.equals(key)) {
-      return FALLBACK;
+      return candidate.newInstance();
     }
  else     if (key.equals("")) {
-      logging.getInternalLog(CommunityFacadeFactory.class).info("No record format specified, defaulting to '" + candidateId + "'");
-      return FALLBACK;
+      return loggedSelection(candidate.newInstance(),candidateId,logging);
     }
   }
-  if (key.equals("")) {
-    logging.getInternalLog(CommunityFacadeFactory.class).info("No record format specified, defaulting to 'community'");
+  if (key.equals(COMMUNITY_KEY)) {
     return FALLBACK;
   }
- else   if (key.equals("community")) {
-    return FALLBACK;
+  if (key.equals("")) {
+    return loggedSelection(FALLBACK,COMMUNITY_KEY,logging);
   }
   throw new IllegalArgumentException("No record format found with the name '" + key + "'.");
 }
