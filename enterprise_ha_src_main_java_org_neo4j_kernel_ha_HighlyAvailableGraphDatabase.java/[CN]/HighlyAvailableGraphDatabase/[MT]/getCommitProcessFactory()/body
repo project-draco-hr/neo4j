@@ -1,7 +1,8 @@
 {
   final DelegateInvocationHandler<TransactionCommitProcess> commitProcessDelegate=new DelegateInvocationHandler<>(TransactionCommitProcess.class);
   DefaultSlaveFactory slaveFactory=dependencies.satisfyDependency(new DefaultSlaveFactory(logging,monitors,config.get(HaSettings.com_chunk_size).intValue()));
-  Slaves slaves=dependencies.satisfyDependency(life.add(new HighAvailabilitySlaves(members,clusterClient,slaveFactory)));
+  HostnamePort me=config.get(ClusterSettings.cluster_server);
+  Slaves slaves=dependencies.satisfyDependency(life.add(new HighAvailabilitySlaves(members,clusterClient,slaveFactory,me)));
   final TransactionPropagator pusher=life.add(new TransactionPropagator(TransactionPropagator.from(config),msgLog,slaves,new CommitPusher(jobScheduler)));
   return new CommitProcessFactory(){
     @Override public TransactionCommitProcess create(    LogicalTransactionStore logicalTransactionStore,    NeoStore neoStore,    TransactionRepresentationStoreApplier storeApplier,    NeoStoreInjectedTransactionValidator txValidator,    IndexUpdatesValidator indexUpdatesValidator,    Config config){
