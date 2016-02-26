@@ -1,0 +1,41 @@
+{
+  getPageCache(fs,maxPages,pageCachePageSize,PageCacheTracer.NULL);
+  int pageSize=16;
+  try (PagedFile pf=pageCache.map(file("a"),pageSize);PageCursor cursorA=pf.io(0,PF_SHARED_READ_LOCK);PageCursor cursorB=pf.io(0,PF_SHARED_WRITE_LOCK)){
+    assertTrue(cursorB.next());
+    assertTrue(cursorB.next());
+    assertTrue(cursorA.next());
+    try {
+      cursorA.copyTo(-1,cursorB,0,1);
+      fail("should have thrown on source buffer underflow");
+    }
+ catch (    IndexOutOfBoundsException ignore) {
+    }
+    try {
+      cursorA.copyTo(0,cursorB,-1,1);
+      fail("should have thrown on target buffer underflow");
+    }
+ catch (    IndexOutOfBoundsException ignore) {
+    }
+    try {
+      cursorA.copyTo(pageSize,cursorB,0,1);
+      fail("should have thrown on source buffer overflow");
+    }
+ catch (    IndexOutOfBoundsException ignore) {
+    }
+    try {
+      cursorA.copyTo(0,cursorB,pageSize,1);
+      fail("should have thrown on target buffer overflow");
+    }
+ catch (    IndexOutOfBoundsException ignore) {
+    }
+    assertThat(cursorA.copyTo(1,cursorB,0,pageSize),is(pageSize - 1));
+    assertThat(cursorA.copyTo(0,cursorB,1,pageSize),is(pageSize - 1));
+    try {
+      cursorA.copyTo(1,cursorB,1,-1);
+      fail("should have thrown on negative length");
+    }
+ catch (    IllegalArgumentException ignore) {
+    }
+  }
+ }
