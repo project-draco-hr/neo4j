@@ -1,10 +1,18 @@
 {
-  boolean matches=true;
-  int counter=0;
-  while (value.hasNext() && counter < rowMatchers.size()) {
-    matches&=rowMatchers.get(counter++).matches(value.next());
+  List<RowMatcher> mutableCopy=new ArrayList<>(rowMatchers);
+  while (value.hasNext() && !mutableCopy.isEmpty()) {
+    Map<String,Object> nextRow=value.next();
+    for (int i=0; i < mutableCopy.size(); ++i) {
+      if (mutableCopy.get(i).matches(nextRow)) {
+        mutableCopy.remove(i);
+        break;
+      }
+ else       if (i == mutableCopy.size() - 1) {
+        return false;
+      }
+    }
   }
   boolean nothingLeftInReal=!value.hasNext();
-  boolean nothingLeftInMatcher=counter == rowMatchers.size();
-  return matches && nothingLeftInMatcher && nothingLeftInReal;
+  boolean nothingLeftInMatcher=mutableCopy.isEmpty();
+  return nothingLeftInMatcher && nothingLeftInReal;
 }
