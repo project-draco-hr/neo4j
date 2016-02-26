@@ -1,22 +1,17 @@
 {
   Long logIndex=findLastMembershipEntry();
   if (logIndex != null) {
-    RaftGroup<MEMBER> lastMembershipEntry=(RaftGroup<MEMBER>)entryLog.readEntryContent(logIndex);
+    RaftGroup<MEMBER> lastMembershipEntry=(RaftGroup<MEMBER>)entryLog.readLogEntry(logIndex).content();
     raftMembershipState.setVotingMembers(lastMembershipEntry.getMembers());
     raftMembershipState.logIndex(logIndex);
-    try {
-      stateStorage.persistStoreData(raftMembershipState);
-    }
- catch (    IOException e) {
-      throw new RaftStorageException(e);
-    }
+    stateStorage.persistStoreData(raftMembershipState);
   }
  else {
     raftMembershipState.setVotingMembers(Collections.<MEMBER>emptySet());
   }
   uncommittedMemberChanges=0;
   for (long i=entryLog.commitIndex() + 1; i <= entryLog.appendIndex(); i++) {
-    ReplicatedContent content=entryLog.readEntryContent(i);
+    ReplicatedContent content=entryLog.readLogEntry(i).content();
     if (content instanceof RaftGroup) {
       uncommittedMemberChanges++;
     }

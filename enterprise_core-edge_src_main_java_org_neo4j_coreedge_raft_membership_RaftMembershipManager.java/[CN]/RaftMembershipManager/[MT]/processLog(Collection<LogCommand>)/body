@@ -14,11 +14,17 @@
       }
     }
     if (logCommand instanceof CommitCommand) {
-      for (long index=lastApplied + 1; index <= entryLog.commitIndex(); index++) {
-        ReplicatedContent content=entryLog.readEntryContent(index);
-        onCommitted(content,index);
+      long index=lastApplied + 1;
+      try (IOCursor<RaftLogEntry> entryCursor=entryLog.getEntryCursor(index)){
+        while (entryCursor.next()) {
+          if (index == entryLog.commitIndex() + 1) {
+            break;
+          }
+          ReplicatedContent content=entryCursor.get().content();
+          onCommitted(content,index);
+        }
       }
-      lastApplied=entryLog.commitIndex();
+       lastApplied=entryLog.commitIndex();
     }
   }
 }
