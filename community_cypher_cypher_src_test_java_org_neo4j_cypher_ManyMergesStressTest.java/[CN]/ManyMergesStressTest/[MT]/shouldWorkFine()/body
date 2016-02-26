@@ -1,5 +1,5 @@
 {
-  GraphDatabaseService db=dbRule.getGraphDatabaseService();
+  GraphDatabaseService db=dbRule.getGraphDatabaseAPI();
   GraphDatabaseQueryService graph=new GraphDatabaseCypherService(db);
   Label person=Label.label("Person");
   try (Transaction tx=db.beginTx()){
@@ -15,14 +15,14 @@
     db.schema().awaitIndexesOnline(1,TimeUnit.MINUTES);
     tx.success();
   }
-   ExecutionEngine engine=new ExecutionEngine(graph);
+   ExecutionEngine engine=new ExecutionEngine(graph,NullLogProvider.getInstance());
   for (int count=0; count < TRIES; count++) {
     Pair<String,String> stringPair=getRandomName();
     String ident=stringPair.first();
     String name=stringPair.other();
     String id=Long.toString(Math.abs(random.nextLong()));
     String query=format("MERGE (%s:Person {id: %s}) ON CREATE SET %s.name = \"%s\";",ident,id,ident,name);
-    ExecutionResult result=engine.execute(query);
-    result.iterator().close();
+    Result result=engine.executeQuery(query,Collections.emptyMap(),QueryEngineProvider.embeddedSession());
+    result.close();
   }
 }
