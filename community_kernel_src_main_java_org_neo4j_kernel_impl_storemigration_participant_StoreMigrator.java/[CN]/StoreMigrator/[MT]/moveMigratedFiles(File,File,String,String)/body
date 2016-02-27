@@ -1,6 +1,9 @@
 {
   StoreFile.fileOperation(MOVE,fileSystem,migrationDir,storeDir,StoreFile.currentStoreFiles(),true,true,StoreFileType.values());
-  if (!LowLimitV2_3.STORE_VERSION.equals(versionToUpgradeFrom)) {
+  RecordFormats oldFormat=InternalRecordFormatSelector.fromVersion(versionToUpgradeFrom);
+  RecordFormats newFormat=InternalRecordFormatSelector.fromVersion(versionToUpgradeTo);
+  boolean movingAwayFromVersionTrailers=oldFormat.hasCapability(VERSION_TRAILERS) && !newFormat.hasCapability(VERSION_TRAILERS);
+  if (movingAwayFromVersionTrailers) {
     StoreFile.removeTrailers(versionToUpgradeFrom,fileSystem,storeDir,pageCache.pageSize());
   }
   File neoStore=new File(storeDir,MetaDataStore.DEFAULT_NAME);
@@ -8,7 +11,7 @@
   long lastCommittedTx=MetaDataStore.getRecord(pageCache,neoStore,Position.LAST_TRANSACTION_ID);
   updateOrAddNeoStoreFieldsAsPartOfMigration(migrationDir,storeDir,versionToUpgradeTo);
   legacyLogs.deleteUnusedLogFiles(storeDir);
-  if (!LowLimitV2_3.STORE_VERSION.equals(versionToUpgradeFrom)) {
+  if (movingAwayFromVersionTrailers) {
     new StoreMigratorCheckPointer(storeDir,fileSystem).checkPoint(logVersion,lastCommittedTx);
   }
 }
