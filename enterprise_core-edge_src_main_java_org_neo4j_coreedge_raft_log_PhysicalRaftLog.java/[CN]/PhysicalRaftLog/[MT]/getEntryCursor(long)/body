@@ -1,14 +1,22 @@
 {
   final IOCursor<RaftLogAppendRecord> inner=entryStore.getEntriesFrom(fromIndex);
   return new IOCursor<RaftLogEntry>(){
+    private RaftLogEntry current=null;
     @Override public boolean next() throws IOException {
-      return inner.next();
+      boolean hasNext=inner.next();
+      if (hasNext) {
+        current=inner.get().getLogEntry();
+      }
+ else {
+        current=null;
+      }
+      return hasNext;
     }
     @Override public void close() throws IOException {
       inner.close();
     }
     @Override public RaftLogEntry get(){
-      return inner.get().getLogEntry();
+      return current;
     }
   }
 ;

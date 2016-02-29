@@ -1,2 +1,32 @@
 {
+  RaftLogRecord record;
+  while (recordCursor.next()) {
+    record=recordCursor.get();
+switch (record.getType()) {
+case APPEND:
+      if (skipMode) {
+      }
+ else       if (record.getLogIndex() == nextIndex) {
+        currentEntry=(RaftLogAppendRecord)record;
+        nextIndex++;
+        if (nextIndex == skipPoint) {
+          skipMode=true;
+        }
+        return true;
+      }
+    break;
+case CONTINUATION:
+{
+    if (skipMode) {
+      popSkip();
+      if (skipPoint == NO_SKIP || skipPoint > nextIndex) {
+        skipMode=false;
+      }
+    }
+    break;
+  }
+}
+}
+currentEntry=null;
+return false;
 }
