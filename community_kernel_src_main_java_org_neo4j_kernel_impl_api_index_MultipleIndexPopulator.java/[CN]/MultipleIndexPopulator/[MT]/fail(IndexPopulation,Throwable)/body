@@ -1,0 +1,23 @@
+{
+  boolean removed=populations.remove(population);
+  if (!removed) {
+    return;
+  }
+  if (failure instanceof IndexPopulationFailedKernelException) {
+    Throwable cause=failure.getCause();
+    if (cause instanceof IndexEntryConflictException) {
+      failure=cause;
+    }
+  }
+  if (!(failure instanceof IndexEntryConflictException)) {
+    log.error(format("Failed to populate index: [%s]",population.indexUserDescription),failure);
+  }
+  population.flipToFailed(failure);
+  try {
+    population.populator.markAsFailed(failure(failure).asString());
+    population.populator.close(false);
+  }
+ catch (  Throwable e) {
+    log.error(format("Unable to close failed populator for index: [%s]",population.indexUserDescription),e);
+  }
+}

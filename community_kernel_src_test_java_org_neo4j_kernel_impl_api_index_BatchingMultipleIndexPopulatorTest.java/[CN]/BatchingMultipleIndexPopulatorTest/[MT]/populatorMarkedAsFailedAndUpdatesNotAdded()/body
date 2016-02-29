@@ -1,0 +1,18 @@
+{
+  setProperty(BATCH_SIZE_NAME,2);
+  NodePropertyUpdate update1=NodePropertyUpdate.add(1,1,"aaa",new long[]{1});
+  NodePropertyUpdate update2=NodePropertyUpdate.add(1,1,"bbb",new long[]{1});
+  NodePropertyUpdate update3=NodePropertyUpdate.add(1,1,"ccc",new long[]{1});
+  NodePropertyUpdate update4=NodePropertyUpdate.add(1,1,"ddd",new long[]{1});
+  NodePropertyUpdate update5=NodePropertyUpdate.add(1,1,"eee",new long[]{1});
+  IndexStoreView storeView=newStoreView(update1,update2,update3,update4,update5);
+  RuntimeException batchFlushError=new RuntimeException("Batch failed");
+  BatchingMultipleIndexPopulator batchingPopulator=new BatchingMultipleIndexPopulator(storeView,sameThreadExecutor(),NullLogProvider.getInstance());
+  IndexPopulator populator=addPopulator(batchingPopulator,1);
+  doThrow(batchFlushError).when(populator).add(Arrays.asList(update3,update4));
+  batchingPopulator.indexAllNodes().run();
+  verify(populator).add(Arrays.asList(update1,update2));
+  verify(populator).add(Arrays.asList(update3,update4));
+  verify(populator).markAsFailed(failure(batchFlushError).asString());
+  verify(populator,never()).add(singletonList(update5));
+}
