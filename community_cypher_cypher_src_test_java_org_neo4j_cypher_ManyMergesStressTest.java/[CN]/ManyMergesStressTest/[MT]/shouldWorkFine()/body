@@ -15,14 +15,16 @@
     db.schema().awaitIndexesOnline(1,TimeUnit.MINUTES);
     tx.success();
   }
-   ExecutionEngine engine=new ExecutionEngine(graph,NullLogProvider.getInstance());
-  for (int count=0; count < TRIES; count++) {
+   for (int count=0; count < TRIES; count++) {
     Pair<String,String> stringPair=getRandomName();
     String ident=stringPair.first();
     String name=stringPair.other();
     String id=Long.toString(Math.abs(random.nextLong()));
     String query=format("MERGE (%s:Person {id: %s}) ON CREATE SET %s.name = \"%s\";",ident,id,ident,name);
-    Result result=engine.executeQuery(query,Collections.emptyMap(),QueryEngineProvider.embeddedSession());
-    result.close();
-  }
+    try (InternalTransaction tx=graph.beginTransaction(KernelTransaction.Type.implicit,AccessMode.FULL)){
+      Result result=db.execute(query);
+      result.close();
+      tx.success();
+    }
+   }
 }
