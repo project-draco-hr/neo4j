@@ -1,9 +1,8 @@
 {
-  byte inUseByte=channel.get();
-  boolean inUse=inUseByte == Record.IN_USE.byteValue();
-  if (inUseByte != Record.IN_USE.byteValue() && inUseByte != Record.NOT_IN_USE.byteValue()) {
-    throw new IOException("Illegal in use flag: " + inUseByte);
-  }
+  byte flags=channel.get();
+  boolean inUse=bitFlag(flags,Record.IN_USE.byteValue());
+  boolean requireSecondaryUnit=bitFlag(flags,Record.REQUIRE_SECONDARY_UNIT);
+  boolean hasSecondaryUnit=bitFlag(flags,Record.HAS_SECONDARY_UNIT);
   int type=channel.getShort();
   RelationshipGroupRecord record=new RelationshipGroupRecord(id,type);
   record.setInUse(inUse);
@@ -12,5 +11,9 @@
   record.setFirstIn(channel.getLong());
   record.setFirstLoop(channel.getLong());
   record.setOwningNode(channel.getLong());
+  record.setRequiresSecondaryUnit(requireSecondaryUnit);
+  if (hasSecondaryUnit) {
+    record.setSecondaryUnitId(channel.getLong());
+  }
   return record;
 }
