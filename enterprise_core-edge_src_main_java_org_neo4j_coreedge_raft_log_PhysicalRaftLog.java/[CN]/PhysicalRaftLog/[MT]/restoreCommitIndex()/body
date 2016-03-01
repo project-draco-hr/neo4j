@@ -1,0 +1,13 @@
+{
+  long lowestLogVersion=logFiles.getLowestLogVersion();
+  ReadableLogChannel reader=logFile.getReader(new LogPosition(lowestLogVersion,LogHeader.LOG_HEADER_SIZE));
+  try (RaftRecordCursor<ReadableLogChannel> recordCursor=new RaftRecordCursor<>(reader,marshal)){
+    while (recordCursor.next()) {
+      RaftLogRecord record=recordCursor.get();
+      if (record.getType() == COMMIT) {
+        commitIndex=record.getLogIndex();
+      }
+    }
+  }
+   log.info("Restored commit index at %d",commitIndex);
+}

@@ -53,14 +53,14 @@
   }
   ReplicatedLockTokenStateMachine<CoreMember> replicatedLockTokenStateMachine=new ReplicatedLockTokenStateMachine<>(lockTokenState);
   stateMachines.add(replicatedLockTokenStateMachine);
-  StateStorage<GlobalSessionTrackerState<CoreMember>> onDiskGlobalSessionTrackerState;
+  StateStorage<GlobalSessionTrackerState<CoreMember>> sessionTrackerStorage;
   try {
-    onDiskGlobalSessionTrackerState=life.add(new DurableStateStorage<>(fileSystem,new File(clusterStateDirectory,"session-tracker-state"),"session-tracker",new GlobalSessionTrackerState.Marshal<>(new CoreMemberMarshal()),config.get(CoreEdgeClusterSettings.global_session_tracker_state_size),databaseHealthSupplier,logProvider));
+    sessionTrackerStorage=life.add(new DurableStateStorage<>(fileSystem,new File(clusterStateDirectory,"session-tracker-state"),"session-tracker",new GlobalSessionTrackerState.Marshal<>(new CoreMemberMarshal()),config.get(CoreEdgeClusterSettings.global_session_tracker_state_size),databaseHealthSupplier,logProvider));
   }
  catch (  IOException e) {
     throw new RuntimeException(e);
   }
-  commitProcessFactory=createCommitProcessFactory(replicator,localSessionPool,replicatedLockTokenStateMachine,dependencies,logging,platformModule.monitors,onDiskGlobalSessionTrackerState,stateMachines);
+  commitProcessFactory=createCommitProcessFactory(replicator,localSessionPool,replicatedLockTokenStateMachine,dependencies,logging,platformModule.monitors,sessionTrackerStorage,stateMachines);
   final StateStorage<IdAllocationState> idAllocationState;
   try {
     idAllocationState=life.add(new DurableStateStorage<>(fileSystem,new File(clusterStateDirectory,"id-allocation-state"),"id-allocation",new IdAllocationState.Marshal(),config.get(CoreEdgeClusterSettings.id_alloc_state_size),databaseHealthSupplier,logProvider));
