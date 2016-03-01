@@ -13,7 +13,12 @@
   try (PagedFile pfA=pageCache.map(file("a"),pageSize);PagedFile pfB=pageCache.map(existingFile("b"),pageSize);PageCursor cursorA=pfA.io(0,PF_SHARED_READ_LOCK);PageCursor cursorB=pfB.io(0,PF_SHARED_WRITE_LOCK)){
     while (cursorA.next()) {
       assertTrue(cursorB.next());
-      assertThat(cursorA.copyTo(0,cursorB,0,cursorA.getCurrentPageSize()),is(pageSize));
+      int bytesCopied;
+      do {
+        bytesCopied=cursorA.copyTo(0,cursorB,0,cursorA.getCurrentPageSize());
+      }
+ while (cursorA.shouldRetry());
+      assertThat(bytesCopied,is(pageSize));
     }
   }
    try (PagedFile pf=pageCache.map(file("b"),32);PageCursor cursor=pf.io(0,PF_SHARED_READ_LOCK)){
@@ -21,7 +26,12 @@
       if ((i & 31) == 0) {
         assertTrue(cursor.next());
       }
-      assertThat(cursor.getByte(),is((byte)i));
+      byte b;
+      do {
+        b=cursor.getByte();
+      }
+ while (cursor.shouldRetry());
+      assertThat(b,is((byte)i));
     }
   }
  }
