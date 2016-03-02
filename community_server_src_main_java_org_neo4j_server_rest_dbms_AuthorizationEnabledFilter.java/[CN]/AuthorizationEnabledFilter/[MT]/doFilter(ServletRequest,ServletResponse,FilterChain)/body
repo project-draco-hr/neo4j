@@ -20,8 +20,8 @@
   }
   final String username=usernameAndPassword[0];
   final String password=usernameAndPassword[1];
-  AuthManager authManager=authManagerSupplier.get();
-switch (authManager.authenticate(username,password)) {
+  AuthSubject authSubject=authenticate(username,password);
+switch (authSubject.getAuthenticationResult()) {
 case PASSWORD_CHANGE_REQUIRED:
     if (!PASSWORD_CHANGE_WHITELIST.matcher(path).matches()) {
       passwordChangeRequired(username,baseURL(request)).accept(response);
@@ -29,7 +29,7 @@ case PASSWORD_CHANGE_REQUIRED:
     }
 case SUCCESS:
   try {
-    filterChain.doFilter(new AuthorizedRequestWrapper(BASIC_AUTH,username,request),servletResponse);
+    filterChain.doFilter(new AuthorizedRequestWrapper(BASIC_AUTH,username,request,authSubject),servletResponse);
   }
  catch (  AuthorizationViolationException e) {
     unauthorizedAccess(e.getMessage()).accept(response);
