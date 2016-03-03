@@ -1,7 +1,21 @@
 {
   long pageId=pageIdForRecord(id);
+  int offset=offsetForId(id);
   try (PageCursor cursor=storeFile.io(pageId,PF_SHARED_READ_LOCK)){
-    return getRecord(id,record,mode,cursor,pageId);
+    record.setId(id);
+    if (cursor.next(pageId)) {
+      do {
+        prepareForReading(cursor,offset,record);
+        readRecord(cursor,record,mode);
+      }
+ while (cursor.shouldRetry());
+      verifyAfterReading(record,mode);
+    }
+ else {
+      verifyAfterNotRead(record,mode);
+      ;
+    }
+    return record;
   }
  catch (  IOException e) {
     throw new UnderlyingStorageException(e);

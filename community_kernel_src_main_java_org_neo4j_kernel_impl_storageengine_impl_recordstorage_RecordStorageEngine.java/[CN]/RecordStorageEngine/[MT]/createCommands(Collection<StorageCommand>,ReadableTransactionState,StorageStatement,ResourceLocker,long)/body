@@ -1,0 +1,15 @@
+{
+  if (txState != null) {
+    RecordChangeSet recordChangeSet=new RecordChangeSet(loaders);
+    TransactionRecordState recordState=new TransactionRecordState(neoStores,integrityValidator,recordChangeSet,lastTransactionIdWhenStarted,locks,relationshipCreator,relationshipDeleter,propertyCreator,propertyDeleter);
+    TxStateVisitor txStateVisitor=new TransactionToRecordStateVisitor(recordState,schemaStateChangeCallback,schemaStorage,constraintSemantics,schemaIndexProviderMap);
+    CountsRecordState countsRecordState=new CountsRecordState();
+    txStateVisitor=constraintSemantics.decorateTxStateVisitor(storeLayer,txState,txStateVisitor);
+    txStateVisitor=new TransactionCountingStateVisitor(txStateVisitor,storeLayer,storageStatement,txState,countsRecordState);
+    try (TxStateVisitor visitor=txStateVisitor){
+      txState.accept(txStateVisitor);
+    }
+     recordState.extractCommands(commands);
+    countsRecordState.extractCommands(commands);
+  }
+}
