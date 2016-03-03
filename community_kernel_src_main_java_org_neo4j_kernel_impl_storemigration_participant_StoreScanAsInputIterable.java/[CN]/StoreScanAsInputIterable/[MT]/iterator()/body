@@ -1,0 +1,30 @@
+{
+  store.placeRecordCursor(0,cursor,CHECK);
+  return new InputIterator.Adapter<INPUT>(){
+    private final long highId=store.getHighId();
+    private long id;
+    @Override public String sourceDescription(){
+      return traceability.sourceDescription();
+    }
+    @Override public long lineNumber(){
+      return traceability.lineNumber();
+    }
+    @Override public long position(){
+      return traceability.position();
+    }
+    @Override public void close(){
+      cursor.close();
+    }
+    @Override protected INPUT fetchNextOrNull(){
+      while (id < highId) {
+        if (cursor.next(id++)) {
+          RECORD record=cursor.get();
+          traceability.atId(record.getId());
+          return inputEntityOf(record);
+        }
+      }
+      return null;
+    }
+  }
+;
+}

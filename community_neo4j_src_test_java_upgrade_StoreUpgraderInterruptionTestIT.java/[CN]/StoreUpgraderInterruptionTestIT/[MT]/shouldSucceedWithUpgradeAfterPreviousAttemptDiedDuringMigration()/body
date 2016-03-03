@@ -4,18 +4,18 @@
   MigrationTestUtils.prepareSampleLegacyDatabase(version,fs,workingDirectory,prepareDirectory);
   PageCache pageCache=pageCacheRule.getPageCache(fs);
   StoreVersionCheck check=new StoreVersionCheck(pageCache);
-  UpgradableDatabase upgradableDatabase=new UpgradableDatabase(fs,check,new LegacyStoreVersionCheck(fs));
+  UpgradableDatabase upgradableDatabase=new UpgradableDatabase(fs,check,new LegacyStoreVersionCheck(fs),InternalRecordFormatSelector.select());
   SilentMigrationProgressMonitor progressMonitor=new SilentMigrationProgressMonitor();
   LogService logService=NullLogService.getInstance();
   final Config config=Config.empty();
   StoreMigrator failingStoreMigrator=new StoreMigrator(fs,pageCache,config,logService,schemaIndexProvider){
-    @Override public void migrate(    File sourceStoreDir,    File targetStoreDir,    MigrationProgressMonitor.Section progressMonitor,    String versionToMigrateFrom) throws IOException {
-      super.migrate(sourceStoreDir,targetStoreDir,progressMonitor,versionToMigrateFrom);
+    @Override public void migrate(    File sourceStoreDir,    File targetStoreDir,    MigrationProgressMonitor.Section progressMonitor,    String versionToMigrateFrom,    String versionToMigrateTo) throws IOException {
+      super.migrate(sourceStoreDir,targetStoreDir,progressMonitor,versionToMigrateFrom,versionToMigrateTo);
       throw new RuntimeException("This upgrade is failing");
     }
   }
 ;
-  assertEquals(!Legacy23Store.LEGACY_VERSION.equals(version),allLegacyStoreFilesHaveVersion(fs,workingDirectory,version));
+  assertEquals(!LowLimitV2_3.STORE_VERSION.equals(version),allLegacyStoreFilesHaveVersion(fs,workingDirectory,version));
   try {
     newUpgrader(upgradableDatabase,progressMonitor,createIndexMigrator(),failingStoreMigrator).migrateIfNeeded(workingDirectory);
     fail("Should throw exception");
@@ -23,12 +23,12 @@
  catch (  RuntimeException e) {
     assertEquals("This upgrade is failing",e.getMessage());
   }
-  assertEquals(!Legacy23Store.LEGACY_VERSION.equals(version),allLegacyStoreFilesHaveVersion(fs,workingDirectory,version));
+  assertEquals(!LowLimitV2_3.STORE_VERSION.equals(version),allLegacyStoreFilesHaveVersion(fs,workingDirectory,version));
   progressMonitor=new SilentMigrationProgressMonitor();
   StoreMigrator migrator=new StoreMigrator(fs,pageCache,config,logService,schemaIndexProvider);
   SchemaIndexMigrator indexMigrator=createIndexMigrator();
   newUpgrader(upgradableDatabase,progressMonitor,indexMigrator,migrator).migrateIfNeeded(workingDirectory);
-  assertTrue(checkNeoStoreHasLatestVersion(check,workingDirectory));
+  assertTrue(checkNeoStoreHasCurrentFormatVersion(check,workingDirectory));
   assertTrue(allStoreFilesHaveNoTrailer(fs,workingDirectory));
   assertConsistentStore(workingDirectory);
 }
