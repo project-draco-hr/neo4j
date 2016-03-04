@@ -1,19 +1,17 @@
 {
-  bootstrap=new ClientBootstrap(new NioClientSocketChannelFactory(newCachedThreadPool(daemon(getClass().getSimpleName() + "-boss@" + destination)),newCachedThreadPool(daemon(getClass().getSimpleName() + "-worker@" + destination))));
+  bootstrap=new ClientBootstrap(new NioClientSocketChannelFactory(newCachedThreadPool(daemon(getClass().getSimpleName() + "-boss@" + address)),newCachedThreadPool(daemon(getClass().getSimpleName() + "-worker@" + address))));
   bootstrap.setPipelineFactory(this);
   channelPool=new ResourcePool<ChannelContext>(maxUnusedChannels,new ResourcePool.CheckStrategy.TimeoutCheckStrategy(DEFAULT_CHECK_INTERVAL,SYSTEM_CLOCK),new LoggingResourcePoolMonitor(msgLog)){
     @Override protected ChannelContext create(){
-      msgLog.info(threadInfo() + "Trying to open a new channel from " + origin+ " to "+ destination,true);
-      ChannelFuture channelFuture=bootstrap.connect(destination,origin);
+      ChannelFuture channelFuture=bootstrap.connect(address);
       channelFuture.awaitUninterruptibly(5,TimeUnit.SECONDS);
       if (channelFuture.isSuccess()) {
-        msgLog.info(threadInfo() + "Opened a new channel from " + channelFuture.getChannel().getLocalAddress()+ " to "+ channelFuture.getChannel().getRemoteAddress());
+        msgLog.info(threadInfo() + "Opened a new channel to " + address);
         return new ChannelContext(channelFuture.getChannel(),ChannelBuffers.dynamicBuffer(),ByteBuffer.allocate(1024 * 1024));
       }
-      Throwable cause=channelFuture.getCause();
-      String msg=Client.this.getClass().getSimpleName() + " could not connect from " + origin+ " to "+ destination;
+      String msg=Client.this.getClass().getSimpleName() + " could not connect to " + address;
       msgLog.debug(msg,true);
-      throw traceComException(new ComException(msg,cause),"Client.start");
+      throw traceComException(new ComException(msg,channelFuture.getCause()),"Client.start");
     }
     @Override protected boolean isAlive(    ChannelContext context){
       return context.channel().isConnected();

@@ -1,15 +1,17 @@
 {
-  SocketAddress destination=new InetSocketAddress(clusterUri.getHost(),clusterUri.getPort() == -1 ? config.defaultPort() : clusterUri.getPort());
-  SocketAddress origin=new InetSocketAddress(me.getHost(),0);
-  msgLog.info("Attempting to connect from " + origin + " to "+ destination);
-  ChannelFuture channelFuture=clientBootstrap.connect(destination,origin);
-  channelFuture.awaitUninterruptibly(5,TimeUnit.SECONDS);
-  if (channelFuture.isSuccess()) {
-    Channel channel=channelFuture.getChannel();
-    msgLog.info("Connected from " + channel.getLocalAddress() + " to "+ channel.getRemoteAddress());
-    return channel;
+  SocketAddress address=new InetSocketAddress(clusterUri.getHost(),clusterUri.getPort() == -1 ? config.defaultPort() : clusterUri.getPort());
+  ChannelFuture channelFuture=clientBootstrap.connect(address);
+  try {
+    if (channelFuture.await(5,TimeUnit.SECONDS) && channelFuture.getChannel().isConnected()) {
+      msgLog.info(me + " opened a new channel to " + address);
+      return channelFuture.getChannel();
+    }
+    String msg="Client could not connect to " + address;
+    throw new ChannelOpenFailedException(msg);
   }
-  Throwable cause=channelFuture.getCause();
-  msgLog.info("Failed to connect to " + destination + " due to: "+ cause);
-  throw new ChannelOpenFailedException(cause);
+ catch (  InterruptedException e) {
+    msgLog.warn("Interrupted",e);
+    Thread.currentThread().interrupt();
+    throw new ChannelOpenFailedException(e);
+  }
 }
