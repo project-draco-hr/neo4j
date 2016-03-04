@@ -1,12 +1,11 @@
 {
-  StoreProcessor processor=new StoreProcessor(CheckDecorator.NONE,mock(ConsistencyReport.Reporter.class),Stage.SEQUENTIAL_FORWARD,CacheAccess.EMPTY);
-  RecordStore<NodeRecord> recordStore=mock(RecordStore.class);
-  when(recordStore.newRecord()).thenAnswer(new NewNodeRecordAnswer());
-  when(recordStore.getHighId()).thenReturn(3L);
-  when(recordStore.getRecord(anyLong(),any(NodeRecord.class),any(RecordLoad.class))).thenAnswer(new ReadNodeAnswer(false,0,0));
-  processor.applyFiltered(recordStore);
-  verify(recordStore).getRecord(eq(0L),any(NodeRecord.class),any(RecordLoad.class));
-  verify(recordStore).getRecord(eq(1L),any(NodeRecord.class),any(RecordLoad.class));
-  verify(recordStore).getRecord(eq(2L),any(NodeRecord.class),any(RecordLoad.class));
-  verify(recordStore,never()).getRecord(eq(3L),any(NodeRecord.class),any(RecordLoad.class));
+  RecordStore<NodeRecord> nodeStore=stores.open().getNodeStore();
+  ConsistencyReport.Reporter reporter=mock(ConsistencyReport.Reporter.class);
+  StoreProcessor processor=new StoreProcessor(CheckDecorator.NONE,reporter,Stage.SEQUENTIAL_FORWARD,CacheAccess.EMPTY);
+  nodeStore.updateRecord(node(0,false,0,0));
+  nodeStore.updateRecord(node(1,false,0,0));
+  nodeStore.updateRecord(node(2,false,0,0));
+  nodeStore.setHighestPossibleIdInUse(2);
+  processor.applyFiltered(nodeStore);
+  verify(reporter,times(3)).forNode(any(NodeRecord.class),any(RecordCheck.class));
 }
