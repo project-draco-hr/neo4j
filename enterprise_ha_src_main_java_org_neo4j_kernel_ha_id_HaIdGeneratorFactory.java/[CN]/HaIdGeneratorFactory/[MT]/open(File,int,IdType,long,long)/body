@@ -1,0 +1,21 @@
+{
+  HaIdGenerator previous=generators.remove(idType);
+  if (previous != null) {
+    previous.close();
+  }
+  IdGenerator initialIdGenerator;
+switch (globalState) {
+case MASTER:
+    initialIdGenerator=localFactory.open(fileName,grabSize,idType,highId,maxId);
+  break;
+case SLAVE:
+fs.deleteFile(fileName);
+initialIdGenerator=new SlaveIdGenerator(idType,highId,master.cement(),log,requestContextFactory);
+break;
+default :
+throw new IllegalStateException(globalState.name());
+}
+HaIdGenerator haIdGenerator=new HaIdGenerator(initialIdGenerator,fileName,grabSize,idType,globalState,maxId);
+generators.put(idType,haIdGenerator);
+return haIdGenerator;
+}
