@@ -11,13 +11,15 @@
   }
   RaftMessages.AppendEntries.Request<MEMBER> appendRequest=new RaftMessages.AppendEntries.Request<>(leader,leaderContext.term,prevLogIndex,prevLogTerm,entries,leaderContext.commitIndex);
   int offset=0;
-  while (offset < batchSize) {
-    entries[offset]=raftLog.readLogEntry(startIndex + offset);
-    if (entries[offset].term() > leaderContext.term) {
-      log.warn(format("Aborting send. Not leader anymore? %s, entryTerm=%d",leaderContext,entries[offset].term()));
-      return;
+  try (IOCursor<RaftLogEntry> cursor=raftLog.getEntryCursor(startIndex)){
+    while (offset < batchSize && cursor.next()) {
+      entries[offset]=cursor.get();
+      if (entries[offset].term() > leaderContext.term) {
+        log.warn(format("Aborting send. Not leader anymore? %s, entryTerm=%d",leaderContext,entries[offset].term()));
+        return;
+      }
+      offset++;
     }
-    offset++;
   }
-  outbound.send(follower,appendRequest);
+   outbound.send(follower,appendRequest);
 }
