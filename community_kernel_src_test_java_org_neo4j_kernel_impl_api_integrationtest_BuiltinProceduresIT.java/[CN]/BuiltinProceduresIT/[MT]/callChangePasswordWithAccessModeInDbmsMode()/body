@@ -1,12 +1,8 @@
 {
   Object[] inputArray=new Object[1];
   inputArray[0]="newPassword";
-  UserRepository userRepository=mock(FileUserRepository.class);
-  BasicAuthManager authManager=new BasicAuthManager(userRepository,mock(AuthenticationStrategy.class));
-  when(userRepository.isValidName("neo4j")).thenReturn(true);
-  User user=authManager.newUser("neo4j","neo4j",true);
-  when(userRepository.findByName("neo4j")).thenReturn(user);
-  AuthSubject authSubject=new BasicAuthSubject(authManager,user,AuthenticationResult.PASSWORD_CHANGE_REQUIRED);
-  RawIterator<Object[],ProcedureException> stream=dbmsOperationsWithAuthSubjectInNewTransaction(authSubject).procedureCallDbms(procedureName("sys","changePassword"),inputArray);
+  AuthSubject authSubject=mock(AuthSubject.class);
+  RawIterator<Object[],ProcedureException> stream=dbmsOperations().procedureCallDbms(procedureName("sys","changePassword"),inputArray,authSubject);
+  verify(authSubject).setPassword((String)inputArray[0]);
   assertThat(asList(stream),emptyIterable());
 }
