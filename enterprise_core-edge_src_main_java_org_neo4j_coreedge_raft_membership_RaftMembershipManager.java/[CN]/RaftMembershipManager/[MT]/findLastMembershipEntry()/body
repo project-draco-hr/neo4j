@@ -1,10 +1,14 @@
 {
-  for (long logIndex=entryLog.appendIndex(); logIndex >= 0; logIndex--) {
-    RaftLogEntry raftLogEntry=entryLog.readLogEntry(logIndex);
-    ReplicatedContent content=raftLogEntry.content();
-    if (content instanceof RaftGroup) {
-      return logIndex;
+  Pair<Long,RaftGroup<MEMBER>> lastMembershipEntry=null;
+  long index=0;
+  try (IOCursor<RaftLogEntry> cursor=entryLog.getEntryCursor(index)){
+    while (cursor.next()) {
+      ReplicatedContent content=cursor.get().content();
+      if (content instanceof RaftGroup) {
+        lastMembershipEntry=Pair.of(index,(RaftGroup<MEMBER>)content);
+      }
+      index++;
     }
   }
-  return null;
+   return lastMembershipEntry;
 }

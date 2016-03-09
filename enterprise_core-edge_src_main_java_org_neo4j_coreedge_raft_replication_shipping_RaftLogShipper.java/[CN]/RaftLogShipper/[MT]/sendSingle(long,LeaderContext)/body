@@ -7,13 +7,12 @@
     log.warn(format("Aborting send. Not leader anymore? %s, prevLogTerm=%d",leaderContext,prevLogTerm));
     return;
   }
-  RaftLogEntry[] logEntries;
-  if (raftLog.entryExists(logIndex)) {
-    logEntries=new RaftLogEntry[]{raftLog.readLogEntry(logIndex)};
+  RaftLogEntry[] logEntries=RaftLogEntry.empty;
+  try (IOCursor<RaftLogEntry> cursor=raftLog.getEntryCursor(logIndex)){
+    if (cursor.next()) {
+      logEntries=new RaftLogEntry[]{cursor.get()};
+    }
   }
- else {
-    logEntries=RaftLogEntry.empty;
-  }
-  RaftMessages.AppendEntries.Request<MEMBER> appendRequest=new RaftMessages.AppendEntries.Request<>(leader,leaderContext.term,prevLogIndex,prevLogTerm,logEntries,leaderContext.commitIndex);
+   RaftMessages.AppendEntries.Request<MEMBER> appendRequest=new RaftMessages.AppendEntries.Request<>(leader,leaderContext.term,prevLogIndex,prevLogTerm,logEntries,leaderContext.commitIndex);
   outbound.send(follower,appendRequest);
 }
