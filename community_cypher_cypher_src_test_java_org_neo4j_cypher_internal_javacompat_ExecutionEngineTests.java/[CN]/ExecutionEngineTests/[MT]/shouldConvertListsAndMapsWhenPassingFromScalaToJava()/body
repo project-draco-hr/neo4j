@@ -1,8 +1,12 @@
 {
-  GraphDatabaseCypherService graph=new GraphDatabaseCypherService(this.database.getGraphDatabaseAPI());
+  GraphDatabaseQueryService graph=new GraphDatabaseCypherService(this.database.getGraphDatabaseAPI());
   ExecutionEngine executionEngine=new ExecutionEngine(graph,NullLogProvider.getInstance());
-  Result result=executionEngine.executeQuery("RETURN { key : 'Value' , collectionKey: [{ inner: 'Map1' }, { inner: 'Map2' }]}",NO_PARAMS,SESSION);
-  Map firstRowValue=(Map)result.next().values().iterator().next();
+  Result result;
+  try (InternalTransaction tx=graph.beginTransaction(KernelTransaction.Type.implicit,AccessMode.FULL)){
+    result=executionEngine.executeQuery("RETURN { key : 'Value' , collectionKey: [{ inner: 'Map1' }, { inner: 'Map2' }]}",NO_PARAMS,newSession(graph,tx));
+    tx.success();
+  }
+   Map firstRowValue=(Map)result.next().values().iterator().next();
   assertThat(firstRowValue.get("key"),is("Value"));
   List theList=(List)firstRowValue.get("collectionKey");
   assertThat(((Map)theList.get(0)).get("inner"),is("Map1"));
