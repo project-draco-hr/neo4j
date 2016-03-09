@@ -1,0 +1,26 @@
+{
+  db=startGraphDatabase(path);
+  int i=0;
+  Node node;
+  DynamicRelationshipType typeToDelete=DynamicRelationshipType.withName("A");
+  DynamicRelationshipType theOtherType=DynamicRelationshipType.withName("B");
+  int defaultDenseNodeThreshold=Integer.parseInt(GraphDatabaseSettings.dense_node_threshold.getDefaultValue());
+  try (Transaction tx=db.beginTx()){
+    node=db.createNode();
+    for (; i < defaultDenseNodeThreshold - 1; i++) {
+      node.createRelationshipTo(db.createNode(),theOtherType);
+    }
+    node.createRelationshipTo(db.createNode(),typeToDelete);
+    tx.success();
+  }
+   try (Transaction tx=db.beginTx()){
+    node.createRelationshipTo(db.createNode(),theOtherType);
+    for (    Relationship relationship : node.getRelationships(Direction.BOTH,typeToDelete)) {
+      relationship.delete();
+    }
+    tx.success();
+  }
+   DbRepresentation result=DbRepresentation.of(db);
+  db.shutdown();
+  return result;
+}

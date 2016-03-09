@@ -1,0 +1,21 @@
+{
+  NeoStores neoStore=newNeoStores();
+  NeoStoreTransactionContext context=mock(NeoStoreTransactionContext.class,RETURNS_MOCKS);
+  RecordAccess<Long,RelationshipGroupRecord,Integer> relGroupRecordsMock=mock(RecordAccess.class);
+  Command.RelationshipGroupCommand theCommand=new Command.RelationshipGroupCommand();
+  RelationshipGroupRecord theRecord=new RelationshipGroupRecord(1,1);
+  theRecord.setInUse(false);
+  theCommand.init(theRecord);
+  LinkedList<RecordAccess.RecordProxy<Long,RelationshipGroupRecord,Integer>> commands=new LinkedList<>();
+  RecordAccess.RecordProxy<Long,RelationshipGroupRecord,Integer> theProxyMock=mock(RecordAccess.RecordProxy.class);
+  when(theProxyMock.isCreated()).thenReturn(true);
+  when(theProxyMock.forReadingLinkage()).thenReturn(theRecord);
+  commands.add(theProxyMock);
+  when(relGroupRecordsMock.changes()).thenReturn(commands);
+  when(context.getRelGroupRecords()).thenReturn(relGroupRecordsMock);
+  when(relGroupRecordsMock.changeSize()).thenReturn(1);
+  TransactionRecordState recordState=new TransactionRecordState(neoStore,mock(IntegrityValidator.class),context);
+  Set<Command> resultingCommands=new HashSet<>();
+  recordState.extractCommands(resultingCommands);
+  assertTrue(resultingCommands.isEmpty());
+}
