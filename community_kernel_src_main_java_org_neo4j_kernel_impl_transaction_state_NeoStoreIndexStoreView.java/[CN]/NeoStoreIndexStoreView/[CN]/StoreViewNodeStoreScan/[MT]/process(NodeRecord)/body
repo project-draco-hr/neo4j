@@ -1,0 +1,22 @@
+{
+  long[] labels=parseLabelsField(node).get(this.nodeStore);
+  if (labels.length == 0) {
+    return;
+  }
+  if (labelUpdateVisitor != null) {
+    labelUpdateVisitor.visit(labelChanges(node.getId(),EMPTY_LONG_ARRAY,labels));
+  }
+  if (propertyUpdatesVisitor != null && containsAnyLabel(labelIdFilter,labels)) {
+    updates.initForNodeId(node.getId());
+    for (    PropertyBlock property : properties(node)) {
+      int propertyKeyId=property.getKeyIndexId();
+      if (propertyKeyIdFilter.test(propertyKeyId)) {
+        updates.add(propertyKeyId,valueOf(property),labels);
+      }
+    }
+    if (updates.containsUpdates()) {
+      propertyUpdatesVisitor.visit(updates);
+      updates.reset();
+    }
+  }
+}
