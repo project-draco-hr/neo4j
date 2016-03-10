@@ -1,15 +1,20 @@
 {
-switch (authManager.authenticate(user,password)) {
+  authSubject=authManager.login(user,password);
+switch (authSubject.getAuthenticationResult()) {
 case SUCCESS:
 case PASSWORD_CHANGE_REQUIRED:
     try {
-      authManager.setPassword(user,newPassword);
+      authSubject.setPassword(newPassword);
     }
- catch (    IOException e) {
+ catch (    AuthorizationViolationException e) {
+      throw new AuthenticationException(Status.Security.Forbidden,identifier.get(),e.getMessage(),e);
+    }
+catch (    IOException e) {
       throw new AuthenticationException(Status.Security.Unauthorized,identifier.get(),e.getMessage(),e);
     }
   break;
 default :
 throw new AuthenticationException(Status.Security.Unauthorized,identifier.get());
 }
+return new BasicAuthenticationResult(authSubject,false);
 }
