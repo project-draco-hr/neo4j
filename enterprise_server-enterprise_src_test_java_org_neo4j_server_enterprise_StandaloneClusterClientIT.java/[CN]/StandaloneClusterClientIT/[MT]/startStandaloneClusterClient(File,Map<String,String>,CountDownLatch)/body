@@ -10,8 +10,13 @@
   }
   finally {
     if (process != null) {
-      kill(process);
-      process.waitFor();
+      try (OutputStream inputToOtherProcess=process.getOutputStream()){
+        inputToOtherProcess.write(0);
+        inputToOtherProcess.flush();
+      }
+       if (!process.waitFor(10,SECONDS)) {
+        kill(process);
+      }
     }
     if (handler != null) {
       handler.done();
