@@ -1,12 +1,6 @@
 {
   String hostName=InetAddress.getLocalHost().getHostName();
-  Clusters.Cluster cluster=new Clusters.Cluster("neo4j.ha");
-  for (int i=0; i < 3; i++) {
-    cluster.getMembers().add(new Clusters.Member(hostName + ":" + (5001 + i),true));
-  }
-  final Clusters clusters=new Clusters();
-  clusters.getClusters().add(cluster);
-  ClusterManager clusterManager=new ClusterManager(ClusterManager.provided(clusters),TargetDirectory.forTest(getClass()).cleanDirectory("testCluster"),MapUtil.stringMap(HaSettings.ha_server.name(),hostName + ":6001-6005",HaSettings.tx_push_factor.name(),"2"));
+  ClusterManager clusterManager=new ClusterManager(ClusterManager.clusterOfSize(hostName,3),TargetDirectory.forTest(getClass()).cleanDirectory("testCluster"),MapUtil.stringMap(HaSettings.tx_push_factor.name(),"2"));
   try {
     clusterManager.start();
     clusterManager.getDefaultCluster().await(allSeesAllAsAvailable());
@@ -24,6 +18,6 @@
     }
    }
   finally {
-    clusterManager.stop();
+    clusterManager.safeShutdown();
   }
 }
