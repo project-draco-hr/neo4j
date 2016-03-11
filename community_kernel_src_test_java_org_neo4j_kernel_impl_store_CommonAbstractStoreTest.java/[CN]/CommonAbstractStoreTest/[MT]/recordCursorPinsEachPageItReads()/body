@@ -5,17 +5,12 @@
   try (NodeStore store=new NodeStore(storeFile,Config.empty(),new DefaultIdGeneratorFactory(fs),pageCache,NullLogProvider.getInstance(),null,LowLimitV3_0.RECORD_FORMATS)){
     store.initialise(true);
     assertNull(tracer.tryObserve(Event.class));
-    NodeRecord record=store.newRecord();
-    record.setId(0);
-    record.initialize(true,NO_NEXT_PROPERTY.intValue(),false,NO_NEXT_RELATIONSHIP.intValue(),42);
-    store.updateRecord(record);
-    assertNotNull(tracer.tryObserve(Pin.class));
-    assertNull(tracer.tryObserve(Event.class));
-    long pageId=store.pageIdForRecord(record.getId());
-    try (RecordCursor<NodeRecord> cursor=store.newRecordCursor(store.newRecord());PageCursor pageCursor=store.storeFile.io(pageId,PF_SHARED_READ_LOCK)){
-      assertTrue(pageCursor.next(pageId));
-      cursor.init(record.getId(),RecordLoad.NORMAL,pageCursor);
-      assertTrue(cursor.next());
+    long nodeId1=insertNodeRecordAndObservePinEvent(tracer,store);
+    long nodeId2=insertNodeRecordAndObservePinEvent(tracer,store);
+    try (RecordCursor<NodeRecord> cursor=store.newRecordCursor(store.newRecord())){
+      cursor.acquire(0,RecordLoad.NORMAL);
+      assertTrue(cursor.next(nodeId1));
+      assertTrue(cursor.next(nodeId2));
       assertNotNull(tracer.tryObserve(Pin.class));
       assertNull(tracer.tryObserve(Event.class));
     }
