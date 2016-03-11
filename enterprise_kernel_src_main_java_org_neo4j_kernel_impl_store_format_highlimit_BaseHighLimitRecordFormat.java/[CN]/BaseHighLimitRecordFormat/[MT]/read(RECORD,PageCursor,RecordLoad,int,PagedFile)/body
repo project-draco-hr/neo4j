@@ -7,7 +7,7 @@
     boolean firstRecordUnit=has(headerByte,HEADER_BIT_FIRST_RECORD_UNIT);
     if (!firstRecordUnit) {
       record.clear();
-      return;
+      return "Expected record to be the first unit in the chain, but record header says it's not";
     }
     long secondaryId=Reference.decode(primaryCursor);
     long pageId=pageIdForRecord(secondaryId,storeFile.pageSize(),recordSize);
@@ -15,16 +15,16 @@
     PageCursor secondaryCursor=primaryCursor.openLinkedCursor(pageId);
     if (!secondaryCursor.next()) {
       record.clear();
-      return;
+      return "Secondary record placed on inaccessible page";
     }
     secondaryCursor.setOffset(offset + HEADER_BYTE);
     int primarySize=recordSize - (primaryCursor.getOffset() - primaryStartOffset);
     int secondarySize=recordSize - HEADER_BYTE;
     PageCursor composite=CompositePageCursor.compose(primaryCursor,primarySize,secondaryCursor,secondarySize);
-    doReadInternal(record,composite,recordSize,headerByte,inUse);
     record.setSecondaryUnitId(secondaryId);
+    return doReadInternal(record,composite,recordSize,headerByte,inUse);
   }
  else {
-    doReadInternal(record,primaryCursor,recordSize,headerByte,inUse);
+    return doReadInternal(record,primaryCursor,recordSize,headerByte,inUse);
   }
 }
