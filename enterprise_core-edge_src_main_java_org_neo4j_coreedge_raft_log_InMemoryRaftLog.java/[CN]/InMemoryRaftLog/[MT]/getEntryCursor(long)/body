@@ -1,14 +1,27 @@
 {
-  return new IOCursor<RaftLogEntry>(){
+  return new RaftLogCursor(){
     private long currentIndex=fromIndex - 1;
+    RaftLogEntry current=null;
     @Override public boolean next() throws IOException {
       currentIndex++;
-      return currentIndex <= appendIndex;
+      boolean hasNext=currentIndex <= appendIndex;
+      if (hasNext) {
+        try {
+          current=readLogEntry(currentIndex);
+        }
+ catch (        RaftLogCompactedException e) {
+          throw new IOException(e);
+        }
+      }
+ else {
+        current=null;
+      }
+      return hasNext;
     }
     @Override public void close() throws IOException {
     }
     @Override public RaftLogEntry get(){
-      return (currentIndex <= appendIndex) ? readLogEntry(currentIndex) : null;
+      return current;
     }
   }
 ;

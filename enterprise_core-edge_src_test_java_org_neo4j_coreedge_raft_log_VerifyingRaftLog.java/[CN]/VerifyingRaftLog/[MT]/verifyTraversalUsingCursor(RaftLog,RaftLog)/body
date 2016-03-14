@@ -1,11 +1,14 @@
 {
-  try (IOCursor<RaftLogEntry> expectedCursor=expected.getEntryCursor(0)){
-    try (IOCursor<RaftLogEntry> otherCursor=other.getEntryCursor(0)){
+  long startIndex=expected.prevIndex() + 1;
+  try (RaftLogCursor expectedCursor=expected.getEntryCursor(startIndex)){
+    try (RaftLogCursor otherCursor=other.getEntryCursor(startIndex)){
       boolean expectedNext;
       do {
         expectedNext=expectedCursor.next();
         assertEquals(expectedNext,otherCursor.next());
-        assertEquals(expectedCursor.get(),otherCursor.get());
+        if (expectedNext) {
+          assertEquals(expectedCursor.get(),otherCursor.get());
+        }
       }
  while (expectedNext);
     }

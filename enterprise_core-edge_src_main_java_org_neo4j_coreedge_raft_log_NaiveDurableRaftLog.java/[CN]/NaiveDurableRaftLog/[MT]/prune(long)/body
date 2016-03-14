@@ -1,0 +1,33 @@
+{
+  try {
+    if (safeIndex > prevIndex) {
+      long safeIndexTerm=readEntryTerm(safeIndex);
+      StoreChannel tempEntriesChannel=fileSystem.open(new File(directory,"temp-entries.log"),"rw");
+      StoreChannel tempContentChannel=fileSystem.open(new File(directory,"temp-content.log"),"rw");
+      contentOffset=0;
+      for (long i=safeIndex + 1; i <= appendIndex; i++) {
+        RaftLogEntry logEntry=readLogEntry(i);
+        int length=writeContent(logEntry,tempContentChannel);
+        writeEntry(i - (safeIndex + 1),new Entry(logEntry.term(),contentOffset),tempEntriesChannel);
+        contentOffset+=length;
+      }
+      tempEntriesChannel.close();
+      tempContentChannel.close();
+      entriesChannel.close();
+      contentChannel.close();
+      fileSystem.deleteFile(new File(directory,"entries.log"));
+      fileSystem.deleteFile(new File(directory,"content.log"));
+      fileSystem.renameFile(new File(directory,"temp-entries.log"),new File(directory,"entries.log"));
+      fileSystem.renameFile(new File(directory,"temp-content.log"),new File(directory,"content.log"));
+      entriesChannel=fileSystem.open(new File(directory,"entries.log"),"rw");
+      contentChannel=fileSystem.open(new File(directory,"content.log"),"rw");
+      prevTerm=safeIndexTerm;
+      prevIndex=safeIndex;
+      storeMetadata();
+    }
+    return prevIndex;
+  }
+ catch (  MarshallingException e) {
+    throw new IOException(e);
+  }
+}
