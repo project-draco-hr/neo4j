@@ -1,6 +1,8 @@
 {
   try {
     Outcome<MEMBER> outcome=currentRole.handler.handle((RaftMessages.RaftMessage<MEMBER>)incomingMessage,state,log);
+    boolean newLeaderWasElected=leaderChanged(outcome,state.leader());
+    boolean newCommittedEntry=newCommittedEntry(state,outcome.getLogCommands());
     state.update(outcome);
     sendMessages(outcome);
     handleTimers(outcome);
@@ -8,8 +10,13 @@
     membershipManager.processLog(outcome.getLogCommands());
     driveMembership(outcome);
     volatileLeader.set(outcome.getLeader());
-    raftStateMachine.notifyUpdate();
-    notifyLeaderChanges(outcome);
+    if (newCommittedEntry) {
+      raftStateMachine.notifyCommitted(state.entryLog().commitIndex());
+    }
+    if (newLeaderWasElected) {
+      notifyLeaderChanges(outcome);
+    }
+    checkForSnapshotNeed(outcome);
   }
  catch (  Throwable e) {
     log.error("Failed to process RAFT message " + incomingMessage,e);
