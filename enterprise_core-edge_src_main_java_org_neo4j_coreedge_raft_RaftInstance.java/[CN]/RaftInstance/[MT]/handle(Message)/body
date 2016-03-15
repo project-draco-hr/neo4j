@@ -1,28 +1,25 @@
 {
-  if (handlingMessage) {
-    throw new IllegalStateException("recursive use");
-  }
   try {
-    handlingMessage=true;
-    Outcome<MEMBER> outcome=currentRole.handler.handle((RaftMessages.RaftMessage<MEMBER>)incomingMessage,raftState,log);
-    handleOutcome(outcome);
-    currentRole=outcome.getNewRole();
-    for (    RaftMessages.Directed<MEMBER> outgoingMessage : outcome.getOutgoingMessages()) {
-      outbound.send(outgoingMessage.to(),outgoingMessage.message());
+    Outcome<MEMBER> outcome=currentRole.handler.handle((RaftMessages.RaftMessage<MEMBER>)incomingMessage,state,log);
+    boolean newLeaderWasElected=leaderChanged(outcome,state.leader());
+    boolean newCommittedEntry=newCommittedEntry(state,outcome.getLogCommands());
+    state.update(outcome);
+    sendMessages(outcome);
+    handleTimers(outcome);
+    handleLogShipping(outcome);
+    membershipManager.processLog(outcome.getLogCommands());
+    driveMembership(outcome);
+    volatileLeader.set(outcome.getLeader());
+    if (newCommittedEntry) {
+      raftStateMachine.notifyCommitted(state.entryLog().commitIndex());
     }
-    if (outcome.electionTimeoutRenewed()) {
-      electionTimer.renew();
+    if (newLeaderWasElected) {
+      notifyLeaderChanges(outcome);
     }
-    membershipManager.onRole(currentRole);
-    if (currentRole == LEADER) {
-      membershipManager.onFollowerStateChange(raftState.followerStates());
-    }
+    checkForSnapshotNeed(outcome);
   }
- catch (  IOException e) {
+ catch (  Throwable e) {
     log.error("Failed to process RAFT message " + incomingMessage,e);
     databaseHealthSupplier.get().panic(e);
-  }
- finally {
-    handlingMessage=false;
   }
 }

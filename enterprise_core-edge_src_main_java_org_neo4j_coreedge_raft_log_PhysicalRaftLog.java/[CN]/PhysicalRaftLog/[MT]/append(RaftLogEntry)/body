@@ -3,7 +3,7 @@
     term=entry.term();
   }
  else {
-    throw new IllegalStateException(format("Non-monotonic term %d for in entry %s in term %d",entry.term(),entry.toString(),term));
+    throw new IllegalStateException(format("Non-monotonic term %d for entry %s in term %d",entry.term(),entry.toString(),term));
   }
   long newAppendIndex=appendIndex.incrementAndGet();
   LogPositionMarker entryStartPosition=writer.getCurrentPosition(positionMarker);
@@ -12,7 +12,8 @@
   entryCache.put(newAppendIndex,entry);
   metadataCache.cacheMetadata(newAppendIndex,entry.term(),entryStartPosition.newPosition());
   if (logRotation.rotateLogIfNeeded(LogAppendEvent.NULL)) {
-    RaftLogContinuationRecord.write(writer,newAppendIndex);
+    RaftLogContinuationRecord.write(writer,newAppendIndex,term);
+    writer.prepareForFlush().flush();
   }
   return newAppendIndex;
 }

@@ -1,18 +1,23 @@
 {
   scheduleTimeout(retryTimeMillis);
   lastSentIndex=logIndex;
-  long prevLogIndex=logIndex - 1;
-  long prevLogTerm=raftLog.readEntryTerm(prevLogIndex);
-  if (prevLogTerm > leaderContext.term) {
-    log.warn(format("Aborting send. Not leader anymore? %s, prevLogTerm=%d",leaderContext,prevLogTerm));
-    return;
-  }
-  RaftLogEntry[] logEntries=RaftLogEntry.empty;
-  try (IOCursor<RaftLogEntry> cursor=raftLog.getEntryCursor(logIndex)){
-    if (cursor.next()) {
-      logEntries=new RaftLogEntry[]{cursor.get()};
+  try {
+    long prevLogIndex=logIndex - 1;
+    long prevLogTerm=raftLog.readEntryTerm(prevLogIndex);
+    if (prevLogTerm > leaderContext.term) {
+      log.warn(format("Aborting send. Not leader anymore? %s, prevLogTerm=%d",leaderContext,prevLogTerm));
+      return;
     }
+    RaftLogEntry[] logEntries=RaftLogEntry.empty;
+    try (RaftLogCursor cursor=raftLog.getEntryCursor(logIndex)){
+      if (cursor.next()) {
+        logEntries=new RaftLogEntry[]{cursor.get()};
+      }
+    }
+     RaftMessages.AppendEntries.Request<MEMBER> appendRequest=new RaftMessages.AppendEntries.Request<>(leader,leaderContext.term,prevLogIndex,prevLogTerm,logEntries,leaderContext.commitIndex);
+    outbound.send(follower,appendRequest);
   }
-   RaftMessages.AppendEntries.Request<MEMBER> appendRequest=new RaftMessages.AppendEntries.Request<>(leader,leaderContext.term,prevLogIndex,prevLogTerm,logEntries,leaderContext.commitIndex);
-  outbound.send(follower,appendRequest);
+ catch (  RaftLogCompactedException|IOException e) {
+    log.warn("Tried to send entry at index %d that can't be found in the raft log; it has likely been pruned. " + "This is a temporary state and the system should recover automatically in a short while.",logIndex);
+  }
 }

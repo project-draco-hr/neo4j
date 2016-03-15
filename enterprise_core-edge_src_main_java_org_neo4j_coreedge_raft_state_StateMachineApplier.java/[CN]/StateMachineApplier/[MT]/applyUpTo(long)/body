@@ -1,5 +1,5 @@
 {
-  try (IOCursor<RaftLogEntry> cursor=raftLog.getEntryCursor(lastApplied + 1)){
+  try (RaftLogCursor cursor=raftLog.getEntryCursor(lastApplied + 1)){
     while (cursor.next() && lastApplied < commitIndex) {
       long indexToApply=lastApplied + 1;
       stateMachine.applyCommand(cursor.get().content(),indexToApply);
@@ -7,6 +7,7 @@
       if (indexToApply % this.flushEvery == 0) {
         stateMachine.flush();
         lastAppliedStorage.persistStoreData(new LastAppliedState(lastApplied));
+        lastFlushed=lastApplied;
       }
     }
   }

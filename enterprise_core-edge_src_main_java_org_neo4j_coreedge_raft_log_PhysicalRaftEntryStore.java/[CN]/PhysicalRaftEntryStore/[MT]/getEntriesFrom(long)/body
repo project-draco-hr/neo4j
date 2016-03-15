@@ -4,10 +4,10 @@
   logFile.accept(skipStackGenerator);
   LogPosition startPosition=skipStackGenerator.logStartPosition;
   if (startPosition == null) {
-    return IOCursor.getEmpty();
+    throw new RaftLogCompactedException();
   }
   RaftLogMetadataCache.RaftLogEntryMetadata logEntryInfo=metadataCache.getMetadata(fromIndex);
-  if (logEntryInfo != null && logEntryInfo.getStartPosition().getLogVersion() == startPosition.getLogVersion()) {
+  if (logEntryInfo != null && !logEntryInfo.getStartPosition().equals(LogPosition.UNSPECIFIED) && logEntryInfo.getStartPosition().getLogVersion() == startPosition.getLogVersion()) {
     startPosition=logEntryInfo.getStartPosition();
   }
   return new PhysicalRaftLogEntryCursor(new RaftRecordCursor<>(logFile.getReader(startPosition),marshal),skipStack,fromIndex);
