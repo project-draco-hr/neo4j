@@ -1,0 +1,21 @@
+{
+  final File logDirectory=testDirectory.directory("givenExplicitlyEnabledServerLoggingConfigurationShouldLogAccess-logdir");
+  FileUtils.forceMkdir(logDirectory);
+  System.out.println(logDirectory);
+  final File confDir=testDirectory.directory("givenExplicitlyEnabledServerLoggingConfigurationShouldLogAccess-confdir");
+  FileUtils.forceMkdir(confDir);
+  final String query="?explicitlyEnabled=" + randomString();
+  NeoServer server=CommunityServerBuilder.server().withDefaultDatabaseTuning().withProperty(ServerSettings.http_logging_enabled.name(),"true").withProperty(GraphDatabaseSettings.logs_directory.name(),logDirectory.getAbsolutePath()).usingDataDir(testDirectory.directory("givenExplicitlyEnabledServerLoggingConfigurationShouldLogAccess-dbdir").getAbsolutePath()).build();
+  try {
+    server.start();
+    FunctionalTestHelper functionalTestHelper=new FunctionalTestHelper(server);
+    JaxRsResponse response=new RestRequest().get(functionalTestHelper.managementUri() + query);
+    assertThat(response.getStatus(),is(200));
+    response.close();
+    File httpLog=new File(logDirectory,"http.log");
+    assertEventually("request appears in log",fileContentSupplier(httpLog),containsString(query),5,TimeUnit.SECONDS);
+  }
+  finally {
+    server.stop();
+  }
+}
