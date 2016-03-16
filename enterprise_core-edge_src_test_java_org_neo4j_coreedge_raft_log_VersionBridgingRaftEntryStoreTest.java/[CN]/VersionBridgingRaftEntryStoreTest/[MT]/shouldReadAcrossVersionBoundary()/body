@@ -1,0 +1,15 @@
+{
+  SingleVersionReader versionReader=mock(SingleVersionReader.class);
+  RaftLogAppendRecord truncatedEntry4=new RaftLogAppendRecord(3,new RaftLogEntry(10,valueOf(-1)));
+  when(versionReader.readEntriesFrom(positionAtBeginningOfVersion(0))).thenReturn(cursor(entry0,entry1,entry2,entry3,truncatedEntry4));
+  when(versionReader.readEntriesFrom(positionAtBeginningOfVersion(2))).thenReturn(cursor(entry4,entry5));
+  when(versionReader.readEntriesFrom(positionAtBeginningOfVersion(3))).thenReturn(cursor(entry6,entry7,entry8));
+  VersionIndexRanges ranges=new VersionIndexRanges();
+  ranges.add(0,-1);
+  ranges.add(2,3);
+  ranges.add(3,5);
+  VersionBridgingRaftEntryStore store=new VersionBridgingRaftEntryStore(ranges,versionReader,mock(RaftLogMetadataCache.class));
+  try (IOCursor<RaftLogAppendRecord> cursor=store.getEntriesFrom(0)){
+    assertThat(allItems(cursor),consistsOf(entry0,entry1,entry2,entry3,entry4,entry5,entry6,entry7,entry8));
+  }
+ }

@@ -1,0 +1,13 @@
+{
+  long appendIndex=5;
+  long localTermForAllEntries=1L;
+  Outcome outcome=mock(Outcome.class);
+  ReadableRaftLog logMock=mock(ReadableRaftLog.class);
+  when(logMock.readEntryTerm(anyLong())).thenReturn(localTermForAllEntries);
+  when(logMock.appendIndex()).thenReturn(appendIndex);
+  ReadableRaftState state=mock(ReadableRaftState.class);
+  when(state.entryLog()).thenReturn(logMock);
+  when(state.commitIndex()).thenReturn(appendIndex - 3);
+  Appending.handleAppendEntriesRequest(state,outcome,new RaftMessages.AppendEntries.Request<>(aMember,localTermForAllEntries,appendIndex - 2,localTermForAllEntries,new RaftLogEntry[]{new RaftLogEntry(localTermForAllEntries + 1,ReplicatedInteger.valueOf(2))},appendIndex + 3));
+  verify(outcome,times(1)).addLogCommand(argThat(new LogCommandMatcher(appendIndex - 1)));
+}

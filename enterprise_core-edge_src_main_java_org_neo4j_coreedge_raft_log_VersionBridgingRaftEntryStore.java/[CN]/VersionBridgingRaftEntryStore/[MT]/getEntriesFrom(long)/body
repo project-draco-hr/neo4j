@@ -1,0 +1,42 @@
+{
+  return new IOCursor<RaftLogAppendRecord>(){
+    private CursorValue<RaftLogAppendRecord> cursorValue=new CursorValue<>();
+    private long nextIndex=logIndex;
+    private VersionIndexRange currentRange=VersionIndexRange.OUT_OF_RANGE;
+    private IOCursor<RaftLogAppendRecord> versionCursor;
+    @Override public boolean next() throws IOException {
+      if (!currentRange.includes(nextIndex)) {
+        currentRange=ranges.versionForIndex(nextIndex);
+        if (!currentRange.includes(nextIndex)) {
+          return false;
+        }
+        close();
+        RaftLogMetadataCache.RaftLogEntryMetadata metadata=raftLogMetadataCache.getMetadata(nextIndex);
+        LogPosition thePosition=new LogPosition(currentRange.version,LogHeader.LOG_HEADER_SIZE);
+        if (metadata != null) {
+          thePosition=metadata.getStartPosition();
+        }
+        versionCursor=reader.readEntriesFrom(thePosition);
+      }
+      while (versionCursor.next()) {
+        RaftLogAppendRecord record=versionCursor.get();
+        if (record.logIndex() == nextIndex) {
+          cursorValue.set(record);
+          nextIndex++;
+          return true;
+        }
+      }
+      cursorValue.invalidate();
+      return false;
+    }
+    @Override public void close() throws IOException {
+      if (versionCursor != null) {
+        versionCursor.close();
+      }
+    }
+    @Override public RaftLogAppendRecord get(){
+      return cursorValue.get();
+    }
+  }
+;
+}

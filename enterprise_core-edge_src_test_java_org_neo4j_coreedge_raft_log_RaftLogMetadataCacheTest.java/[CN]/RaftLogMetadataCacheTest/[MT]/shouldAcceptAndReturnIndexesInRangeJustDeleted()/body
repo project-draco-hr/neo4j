@@ -1,0 +1,21 @@
+{
+  int cacheSize=100;
+  RaftLogMetadataCache cache=new RaftLogMetadataCache(cacheSize);
+  for (int i=0; i < cacheSize; i++) {
+    cache.cacheMetadata(i,i,new LogPosition(i,i));
+  }
+  int upFrom=60;
+  cache.removeUpwardsFrom(upFrom);
+  int insertedIndex=70;
+  long insertedTerm=150;
+  cache.cacheMetadata(insertedIndex,insertedTerm,new LogPosition(insertedIndex,insertedIndex));
+  int i=upFrom;
+  for (; i < insertedIndex; i++) {
+    assertNull(cache.getMetadata(i));
+  }
+  assertEquals(insertedTerm,cache.getMetadata(i).getEntryTerm());
+  i++;
+  for (; i < cacheSize; i++) {
+    assertNull(cache.getMetadata(i));
+  }
+}

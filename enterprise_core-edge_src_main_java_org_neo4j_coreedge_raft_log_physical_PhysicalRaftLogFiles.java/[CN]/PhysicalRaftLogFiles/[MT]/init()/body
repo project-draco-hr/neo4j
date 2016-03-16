@@ -1,0 +1,30 @@
+{
+  long lowest=-1;
+  long highest=-1;
+  SortedSet<Long> versions=new TreeSet<>();
+  for (  File file : fileSystem.listFiles(logBaseName.getParentFile())) {
+    if (logFilePattern.matcher(file.getName()).matches()) {
+      long logVersion=getLogVersion(file.getName());
+      versions.add(logVersion);
+      highest=max(highest,logVersion);
+      lowest=lowest == -1 ? logVersion : min(lowest,logVersion);
+    }
+  }
+  long appendIndex=-1;
+  Long previousVersion=null;
+  for (  Long version : versions) {
+    File file=getLogFileForVersion(version);
+    LogHeader logHeader=readLogHeader(fileSystem,file,false);
+    if (logHeader == null) {
+      if (previousVersion != null) {
+        appendIndex=readLastIndex(previousVersion,appendIndex);
+      }
+      writeHeader(file,version,appendIndex);
+    }
+ else {
+      appendIndex=logHeader.lastCommittedTxId;
+    }
+    versionRanges.add(version,appendIndex);
+    previousVersion=version;
+  }
+}

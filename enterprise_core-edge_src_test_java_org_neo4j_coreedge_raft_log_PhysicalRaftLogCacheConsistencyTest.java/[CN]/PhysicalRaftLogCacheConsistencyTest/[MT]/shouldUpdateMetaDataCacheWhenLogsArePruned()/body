@@ -1,0 +1,15 @@
+{
+  int entryCount=100;
+  RaftLogMetadataCache metadataCache=new RaftLogMetadataCache(entryCount * 2);
+  PhysicalRaftLog log=createRaftLog(100,mock(PhysicalRaftLogFile.Monitor.class),metadataCache);
+  for (int i=0; i < entryCount; i++) {
+    log.append(new RaftLogEntry(i,ReplicatedInteger.valueOf(i)));
+  }
+  long newPrevIndex=log.prune(50L);
+  for (int i=0; i < newPrevIndex; i++) {
+    assertNull(metadataCache.getMetadata(i));
+  }
+  for (long i=newPrevIndex; i < entryCount; i++) {
+    assertNotNull(metadataCache.getMetadata(i));
+  }
+}

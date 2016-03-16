@@ -1,0 +1,31 @@
+{
+  for (  LogCommand logCommand : logCommands) {
+    if (logCommand instanceof TruncateLogCommand) {
+      onTruncated(commitIndex);
+    }
+    if (logCommand instanceof AppendLogEntry) {
+      AppendLogEntry command=(AppendLogEntry)logCommand;
+      onAppended(command.entry.content(),command.index);
+    }
+    if (logCommand instanceof BatchAppendLogEntries) {
+      BatchAppendLogEntries command=(BatchAppendLogEntries)logCommand;
+      for (int i=command.offset; i < command.entries.length; i++) {
+        onAppended(command.entries[i].content(),command.baseIndex + i);
+      }
+    }
+  }
+  if (commitIndex > lastApplied) {
+    long index=lastApplied + 1;
+    try (RaftLogCursor entryCursor=entryLog.getEntryCursor(index)){
+      while (entryCursor.next()) {
+        if (index == commitIndex + 1) {
+          break;
+        }
+        ReplicatedContent content=entryCursor.get().content();
+        onCommitted(content,index);
+        index++;
+      }
+    }
+     lastApplied=commitIndex;
+  }
+}
