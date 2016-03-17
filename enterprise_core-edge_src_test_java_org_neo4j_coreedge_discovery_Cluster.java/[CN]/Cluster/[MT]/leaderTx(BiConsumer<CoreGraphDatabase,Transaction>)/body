@@ -1,6 +1,7 @@
 {
-  while (true) {
-    CoreGraphDatabase db=awaitCoreGraphDatabaseWithRole(5000,Role.LEADER);
+  long endTime=System.currentTimeMillis() + DEFAULT_TIMEOUT_MS;
+  do {
+    CoreGraphDatabase db=awaitCoreGraphDatabaseWithRole(DEFAULT_TIMEOUT_MS,Role.LEADER);
     try {
       Transaction tx=db.beginTx();
       op.accept(db,tx);
@@ -9,11 +10,13 @@
     }
  catch (    TransactionFailureException e) {
       if (isTransientFailure(e)) {
-        Thread.sleep(100);
+        Thread.sleep(DEFAULT_BACKOFF_MS);
       }
  else {
         throw e;
       }
     }
   }
+ while (System.currentTimeMillis() < endTime);
+  throw new TimeoutException("Transaction did not succeed in time");
 }
