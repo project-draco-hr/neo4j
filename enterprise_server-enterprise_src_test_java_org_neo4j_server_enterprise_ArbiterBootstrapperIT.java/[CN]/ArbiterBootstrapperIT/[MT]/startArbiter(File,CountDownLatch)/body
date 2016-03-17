@@ -1,0 +1,25 @@
+{
+  Process process=null;
+  ProcessStreamHandler handler=null;
+  try {
+    process=startArbiterProcess(configFile);
+    new InputStreamAwaiter(process.getInputStream()).awaitLine(START_SIGNAL,20,SECONDS);
+    handler=new ProcessStreamHandler(process,false,"",IGNORE_FAILURES);
+    handler.launch();
+    return latch.await(10,SECONDS);
+  }
+  finally {
+    if (process != null) {
+      try (OutputStream inputToOtherProcess=process.getOutputStream()){
+        inputToOtherProcess.write(0);
+        inputToOtherProcess.flush();
+      }
+       if (!process.waitFor(10,SECONDS)) {
+        kill(process);
+      }
+    }
+    if (handler != null) {
+      handler.done();
+    }
+  }
+}
