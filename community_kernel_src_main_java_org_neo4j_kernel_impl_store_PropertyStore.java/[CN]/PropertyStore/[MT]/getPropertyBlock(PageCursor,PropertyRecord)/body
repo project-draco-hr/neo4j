@@ -1,0 +1,24 @@
+{
+  long header=cursor.getLong();
+  PropertyType type=PropertyType.getPropertyType(header,true);
+  if (type == null) {
+    return null;
+  }
+  PropertyBlock toReturn=new PropertyBlock();
+  int numBlocks=type.calculateNumberOfBlocksUsed(header);
+  if (numBlocks == PropertyType.BLOCKS_USED_FOR_BAD_TYPE_OR_ENCODING) {
+    record.setMalformedMessage("Invalid type or encoding of property block");
+    return null;
+  }
+  if (numBlocks > PropertyType.getPayloadSizeLongs()) {
+    record.setMalformedMessage("I was given an array of size " + numBlocks + ", but I wanted it to be "+ PropertyType.getPayloadSizeLongs());
+    return null;
+  }
+  long[] blockData=new long[numBlocks];
+  blockData[0]=header;
+  for (int i=1; i < numBlocks; i++) {
+    blockData[i]=cursor.getLong();
+  }
+  toReturn.setValueBlocks(blockData);
+  return toReturn;
+}
