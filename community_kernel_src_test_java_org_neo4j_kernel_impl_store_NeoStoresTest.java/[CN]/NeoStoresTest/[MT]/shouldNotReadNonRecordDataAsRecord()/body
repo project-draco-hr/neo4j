@@ -2,13 +2,14 @@
   FileSystemAbstraction fileSystem=fs.get();
   File neoStoreDir=new File("/tmp/graph.db/neostore").getAbsoluteFile();
   StoreFactory factory=new StoreFactory(fileSystem,neoStoreDir,pageCache,NullLogProvider.getInstance());
+  long recordVersion=MetaDataStore.versionStringToLong(InternalRecordFormatSelector.select().storeVersion());
   try (NeoStores neoStores=factory.openAllNeoStores(true)){
     MetaDataStore metaDataStore=neoStores.getMetaDataStore();
     metaDataStore.setCreationTime(3);
     metaDataStore.setRandomNumber(4);
     metaDataStore.setCurrentLogVersion(5);
     metaDataStore.setLastCommittedAndClosedTransactionId(6,0,0,0);
-    metaDataStore.setStoreVersion(7);
+    metaDataStore.setStoreVersion(recordVersion);
     metaDataStore.setGraphNextProp(8);
     metaDataStore.setLatestConstraintIntroducingTx(9);
   }
@@ -17,13 +18,14 @@
     channel.position(0);
     channel.write(ByteBuffer.wrap(UTF8.encode("This is some data that is not a record.")));
   }
-   try (NeoStores neoStores=factory.openAllNeoStores()){
+   MetaDataStore.setRecord(pageCache,file,Position.STORE_VERSION,recordVersion);
+  try (NeoStores neoStores=factory.openAllNeoStores()){
     MetaDataStore metaDataStore=neoStores.getMetaDataStore();
     assertEquals(FIELD_NOT_PRESENT,metaDataStore.getCreationTime());
     assertEquals(FIELD_NOT_PRESENT,metaDataStore.getRandomNumber());
     assertEquals(FIELD_NOT_PRESENT,metaDataStore.getCurrentLogVersion());
     assertEquals(FIELD_NOT_PRESENT,metaDataStore.getLastCommittedTransactionId());
-    assertEquals(FIELD_NOT_PRESENT,metaDataStore.getStoreVersion());
+    assertEquals(recordVersion,metaDataStore.getStoreVersion());
     assertEquals(8,metaDataStore.getGraphNextProp());
     assertEquals(9,metaDataStore.getLatestConstraintIntroducingTx());
   }
