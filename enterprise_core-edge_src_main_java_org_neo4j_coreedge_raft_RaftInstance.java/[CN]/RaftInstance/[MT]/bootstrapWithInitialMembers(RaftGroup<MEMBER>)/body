@@ -4,11 +4,12 @@
   }
   RaftLogEntry membershipLogEntry=new RaftLogEntry(0,memberSet);
   try {
-    List<LogCommand> logCommands=asList(new AppendLogEntry(0,membershipLogEntry),new CommitCommand(0));
-    for (    LogCommand logCommand : logCommands) {
-      logCommand.applyTo(entryLog);
-    }
-    membershipManager.processLog(logCommands);
+    Outcome<MEMBER> outcome=new Outcome<>(currentRole,state);
+    outcome.setCommitIndex(0);
+    AppendLogEntry appendCommand=new AppendLogEntry(0,membershipLogEntry);
+    outcome.addLogCommand(appendCommand);
+    state.update(outcome);
+    membershipManager.processLog(0,singletonList(appendCommand));
   }
  catch (  IOException e) {
     databaseHealthSupplier.get().panic(e);

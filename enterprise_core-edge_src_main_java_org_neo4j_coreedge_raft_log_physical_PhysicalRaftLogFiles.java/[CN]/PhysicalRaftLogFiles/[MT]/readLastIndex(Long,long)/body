@@ -1,0 +1,13 @@
+{
+  long lastIndex=previousAppendIndex;
+  PhysicalLogVersionedStoreChannel logChannel=openForVersion(this,fileSystem,version);
+  try (RaftRecordCursor<ReadAheadLogChannel> cursor=new RaftRecordCursor<>(new ReadAheadLogChannel(logChannel,LogVersionBridge.NO_MORE_CHANNELS),marshal)){
+    while (cursor.next()) {
+      RaftLogRecord raftLogRecord=cursor.get();
+      if (raftLogRecord.getType() == PhysicalRaftLog.RecordType.APPEND) {
+        lastIndex=((RaftLogAppendRecord)raftLogRecord).logIndex();
+      }
+    }
+  }
+   return lastIndex;
+}

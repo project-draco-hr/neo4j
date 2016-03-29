@@ -1,0 +1,17 @@
+{
+  long commitIndex=5;
+  long localTermForAllEntries=1L;
+  Outcome outcome=mock(Outcome.class);
+  ReadableRaftLog logMock=mock(ReadableRaftLog.class);
+  when(logMock.readEntryTerm(anyLong())).thenReturn(localTermForAllEntries);
+  when(logMock.appendIndex()).thenReturn(commitIndex);
+  ReadableRaftState state=mock(ReadableRaftState.class);
+  when(state.entryLog()).thenReturn(logMock);
+  when(state.commitIndex()).thenReturn(commitIndex);
+  try {
+    Appending.handleAppendEntriesRequest(state,outcome,new RaftMessages.AppendEntries.Request<>(aMember,localTermForAllEntries,commitIndex - 2,localTermForAllEntries,new RaftLogEntry[]{new RaftLogEntry(localTermForAllEntries + 1,ReplicatedInteger.valueOf(2))},commitIndex + 3));
+    fail("Appending should not allow truncation at or before the commit index");
+  }
+ catch (  IllegalStateException expected) {
+  }
+}

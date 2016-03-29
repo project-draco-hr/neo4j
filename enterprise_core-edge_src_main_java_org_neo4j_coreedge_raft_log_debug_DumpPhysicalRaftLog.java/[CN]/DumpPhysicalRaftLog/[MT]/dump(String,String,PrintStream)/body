@@ -1,5 +1,6 @@
 {
   int logsFound=0;
+  PhysicalRaftLogFiles files=new PhysicalRaftLogFiles(new File(filenameOrDirectory),fileSystem,marshal,new VersionIndexRanges());
   for (  String fileName : filenamesOf(filenameOrDirectory,logPrefix)) {
     logsFound++;
     out.println("=== " + fileName + " ===");
@@ -15,9 +16,8 @@
       throw ex;
     }
     out.println("Logical log format:" + logHeader.logFormatVersion + "version: "+ logHeader.logVersion+ " with prev committed tx["+ logHeader.lastCommittedTxId+ "]");
-    PhysicalLogVersionedStoreChannel channel=new PhysicalLogVersionedStoreChannel(fileChannel,logHeader.logVersion,logHeader.logFormatVersion);
-    ReadableLogChannel logChannel=new ReadAheadLogChannel(channel,NO_MORE_CHANNELS);
-    try (PhysicalRaftLogEntryCursor cursor=new PhysicalRaftLogEntryCursor(new RaftRecordCursor<>(logChannel,marshal),new Stack<>(),0)){
+    SingleVersionReader reader=new SingleVersionReader(files,fileSystem,marshal);
+    try (IOCursor<RaftLogAppendRecord> cursor=reader.readEntriesFrom(new LogPosition(0,LogHeader.LOG_HEADER_SIZE))){
       while (cursor.next()) {
         out.println(cursor.get().toString());
       }
