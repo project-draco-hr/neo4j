@@ -2,29 +2,32 @@
   long currentIndex=relGroupIndex;
   long previousIndex=EMPTY;
   while (currentIndex != EMPTY) {
-    long foundType=NextFieldManipulator.getType(getField(currentIndex,INDEX_NEXT_AND_TYPE));
+    long currentIndexRebased=rebase(currentIndex);
+    ByteArray array=this.array.at(currentIndexRebased);
+    long foundType=array.getShort(currentIndexRebased,TYPE_OFFSET);
     if (foundType == type) {
-      return putRelField(currentIndex,direction,relId,trueForIncrement);
+      return putRelField(array,currentIndex,direction,relId,trueForIncrement);
     }
  else     if (foundType > type) {
       break;
     }
     previousIndex=currentIndex;
-    currentIndex=NextFieldManipulator.getNext(getField(currentIndex,INDEX_NEXT_AND_TYPE));
+    currentIndex=all48Bits(array,currentIndexRebased,NEXT_OFFSET);
   }
   long newIndex=nextFreeId();
   if (previousIndex == EMPTY) {
-    array.swap(index(currentIndex,0),index(newIndex,0),ENTRY_SIZE);
+    array.swap(rebase(currentIndex),rebase(newIndex),1);
     long swap=newIndex;
     newIndex=currentIndex;
     currentIndex=swap;
   }
-  initializeGroup(newIndex,type);
+  ByteArray array=this.array.at(rebase(newIndex));
+  initializeGroup(array,newIndex,type);
   if (currentIndex != EMPTY) {
-    setNextField(newIndex,currentIndex);
+    setNextField(array,newIndex,currentIndex);
   }
   if (previousIndex != EMPTY) {
-    setNextField(previousIndex,newIndex);
+    setNextField(this.array,previousIndex,newIndex);
   }
-  return putRelField(newIndex,direction,relId,trueForIncrement);
+  return putRelField(array,newIndex,direction,relId,trueForIncrement);
 }
