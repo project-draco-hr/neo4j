@@ -1,25 +1,21 @@
 {
   while (true) {
-    long firstNotAllocated=pendingIdAllocationRequests.firstUnallocated(idType);
-    ReplicatedIdAllocationRequest idAllocationRequest=new ReplicatedIdAllocationRequest(me,idType,firstNotAllocated,allocationChunk);
-    try (PendingIdAllocationRequest pendingIdAllocationRequest=pendingIdAllocationRequests.register(idAllocationRequest)){
-      try {
-        replicator.replicate(idAllocationRequest);
+    long firstUnallocated=idAllocationStateMachine.firstUnallocated(idType);
+    ReplicatedIdAllocationRequest idAllocationRequest=new ReplicatedIdAllocationRequest(me,idType,firstUnallocated,allocationChunk);
+    Future<Object> futureResult=replicator.replicate(idAllocationRequest,true);
+    try {
+      boolean success=(boolean)futureResult.get();
+      if (success) {
+        IdRange idRange=new IdRange(EMPTY_LONG_ARRAY,firstUnallocated,allocationChunk);
+        return new IdAllocation(idRange,-1,0);
       }
- catch (      Replicator.ReplicationFailedException e) {
-        log.error(format("Failed to acquire id range for idType %s",idType),e);
-        throw new IdGenerationException(e);
-      }
-      try {
-        if (pendingIdAllocationRequest.waitUntilAcquired(retryTimeoutMillis,TimeUnit.MILLISECONDS)) {
-          IdRange idRange=new IdRange(EMPTY_LONG_ARRAY,firstNotAllocated,allocationChunk);
-          return new IdAllocation(idRange,-1,0);
-        }
-      }
- catch (      InterruptedException|TimeoutException e) {
-        log.error(format("Failed to acquire id range for idType %s",idType),e);
-        throw new IdGenerationException(e);
+ else {
+        log.info("Retrying ID generation due to conflict. Request was: " + idAllocationRequest);
       }
     }
-   }
+ catch (    InterruptedException|ExecutionException e) {
+      log.error(format("Failed to acquire id range for idType %s",idType),e);
+      throw new IdGenerationException(e);
+    }
+  }
 }

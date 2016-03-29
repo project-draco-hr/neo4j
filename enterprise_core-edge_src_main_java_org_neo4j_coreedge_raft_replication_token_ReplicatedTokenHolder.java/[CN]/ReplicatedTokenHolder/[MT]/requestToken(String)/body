@@ -1,12 +1,13 @@
 {
-  try (TokenFutures.CompletableFutureTokenId tokenFuture=tokenRegistry.createFuture(tokenName)){
-    ReplicatedTokenRequest tokenRequest=new ReplicatedTokenRequest(type,tokenName,createCommands(tokenName));
-    try {
-      replicator.replicate(tokenRequest);
-      return tokenFuture.get(timeoutMillis,TimeUnit.MILLISECONDS);
-    }
- catch (    Replicator.ReplicationFailedException|InterruptedException|ExecutionException|TimeoutException e) {
-      throw new org.neo4j.graphdb.TransactionFailureException("Could not create token",e);
-    }
+  ReplicatedTokenRequest tokenRequest=new ReplicatedTokenRequest(type,tokenName,createCommands(tokenName));
+  try {
+    Future<Object> future=replicator.replicate(tokenRequest,true);
+    return (int)future.get(timeoutMillis,MILLISECONDS);
   }
- }
+ catch (  InterruptedException|TimeoutException e) {
+    throw new org.neo4j.graphdb.TransactionFailureException("Could not create token",e);
+  }
+catch (  ExecutionException e) {
+    throw new IllegalStateException(e);
+  }
+}
