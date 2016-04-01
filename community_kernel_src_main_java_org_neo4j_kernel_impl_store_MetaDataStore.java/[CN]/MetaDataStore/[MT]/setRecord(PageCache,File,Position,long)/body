@@ -1,23 +1,29 @@
 {
   long previousValue=FIELD_NOT_INITIALIZED;
-  try (PagedFile pagedFile=pageCache.map(neoStore,getPageSize(pageCache))){
-    int recordOffset=RECORD_SIZE * position.id;
-    try (PageCursor pageCursor=pagedFile.io(0,PagedFile.PF_SHARED_WRITE_LOCK)){
-      if (pageCursor.next()) {
+  int pageSize=getPageSize(pageCache);
+  try (PagedFile pagedFile=pageCache.map(neoStore,pageSize)){
+    int offset=offset(position);
+    try (PageCursor cursor=pagedFile.io(0,PagedFile.PF_SHARED_WRITE_LOCK)){
+      if (cursor.next()) {
         long record;
         byte inUse;
         do {
-          pageCursor.setOffset(recordOffset);
-          inUse=pageCursor.getByte();
-          record=pageCursor.getLong();
+          cursor.setOffset(offset);
+          inUse=cursor.getByte();
+          record=cursor.getLong();
           if (inUse == Record.IN_USE.byteValue()) {
             previousValue=record;
           }
-          pageCursor.setOffset(recordOffset);
-          pageCursor.putByte(Record.IN_USE.byteValue());
-          pageCursor.putLong(value);
+          cursor.setOffset(offset);
+          cursor.putByte(Record.IN_USE.byteValue());
+          cursor.putLong(value);
         }
- while (pageCursor.shouldRetry());
+ while (cursor.shouldRetry());
+        if (cursor.checkAndClearBoundsFlag()) {
+          MetaDataRecord neoStoreRecord=new MetaDataRecord();
+          neoStoreRecord.setId(position.id);
+          throw new UnderlyingStorageException(buildOutOfBoundsExceptionMessage(neoStoreRecord,0,offset,RECORD_SIZE,pageSize,neoStore.getAbsolutePath()));
+        }
       }
     }
    }
