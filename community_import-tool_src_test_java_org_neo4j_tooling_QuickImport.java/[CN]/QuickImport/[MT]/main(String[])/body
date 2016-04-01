@@ -10,7 +10,16 @@
   Header nodeHeader=parseNodeHeader(args,idType,extractors);
   Header relationshipHeader=parseRelationshipHeader(args,idType,extractors);
   FormattedLogProvider sysoutLogProvider=FormattedLogProvider.toOutputStream(System.out);
+  org.neo4j.unsafe.impl.batchimport.Configuration importConfig=new Default(){
+    @Override public int maxNumberOfProcessors(){
+      return args.getNumber(ImportTool.Options.PROCESSORS.key(),super.maxNumberOfProcessors()).intValue();
+    }
+    @Override public int denseNodeThreshold(){
+      return args.getNumber(dense_node_threshold.name(),super.denseNodeThreshold()).intValue();
+    }
+  }
+;
   Input input=new CsvDataGeneratorInput(nodeHeader,relationshipHeader,COMMAS,nodeCount,relationshipCount,new Groups(),idType,labelCount,relationshipTypeCount,silentBadCollector(0));
-  BatchImporter importer=new ParallelBatchImporter(dir,DEFAULT,new SimpleLogService(sysoutLogProvider,sysoutLogProvider),defaultVisible(),Config.defaults());
+  BatchImporter importer=new ParallelBatchImporter(dir,importConfig,new SimpleLogService(sysoutLogProvider,sysoutLogProvider),defaultVisible(),Config.defaults());
   importer.doImport(input);
 }
