@@ -1,11 +1,10 @@
 {
-  LocalOperationId localOperationId=new LocalOperationId(0,0);
   int lockSessionId=23;
-  ReplicatedTransaction tx=ReplicatedTransactionFactory.createImmutableReplicatedTransaction(physicalTx(lockSessionId),globalSession,localOperationId);
+  ReplicatedTransaction tx=ReplicatedTransactionFactory.createImmutableReplicatedTransaction(physicalTx(lockSessionId));
   TransactionCommitProcess localCommitProcess=mock(TransactionCommitProcess.class);
   RecoverTransactionLogState recoverTransactionLogState=mock(RecoverTransactionLogState.class);
   when(recoverTransactionLogState.findLastAppliedIndex()).thenReturn(-1L);
-  final ReplicatedTransactionStateMachine listener=new ReplicatedTransactionStateMachine<>(localCommitProcess,globalSession,lockState(lockSessionId),new CommittingTransactionsRegistry(),new InMemoryStateStorage<>(new GlobalSessionTrackerState<>()),NullLogProvider.getInstance(),recoverTransactionLogState);
-  listener.applyCommand(tx,0);
+  ReplicatedTransactionStateMachine stateMachine=new ReplicatedTransactionStateMachine<>(localCommitProcess,lockState(lockSessionId),NullLogProvider.getInstance(),recoverTransactionLogState);
+  stateMachine.applyCommand(tx,0);
   verify(localCommitProcess,times(1)).commit(any(TransactionToApply.class),any(CommitEvent.class),any(TransactionApplicationMode.class));
 }

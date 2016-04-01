@@ -1,14 +1,13 @@
 {
   RaftTestMember me=member(0);
   RaftTestMember leader=member(1);
-  ReplicatedLockTokenStateMachine<RaftTestMember> replicatedLockStateMachine=new ReplicatedLockTokenStateMachine<>(new InMemoryStateStorage(new ReplicatedLockTokenState<>()),new PendingLockTokensRequests<>());
-  StateMachines stateMachines=new StateMachines(replicatedLockStateMachine);
-  DirectReplicator replicator=new DirectReplicator(stateMachines);
+  ReplicatedLockTokenStateMachine<RaftTestMember> replicatedLockStateMachine=new ReplicatedLockTokenStateMachine<>(new InMemoryStateStorage(new ReplicatedLockTokenState<>()));
+  DirectReplicator replicator=new DirectReplicator(replicatedLockStateMachine);
   LeaderLocator<RaftTestMember> leaderLocator=mock(LeaderLocator.class);
   when(leaderLocator.getLeader()).thenReturn(leader);
   Locks locks=mock(Locks.class);
   when(locks.newClient()).thenReturn(mock(Locks.Client.class));
-  LeaderOnlyLockManager<RaftTestMember> lockManager=new LeaderOnlyLockManager<>(me,replicator,leaderLocator,locks,new PendingLockTokensRequests<>(),LEADER_LOCK_TOKEN_TIMEOUT);
+  LeaderOnlyLockManager<RaftTestMember> lockManager=new LeaderOnlyLockManager<>(me,replicator,leaderLocator,locks,LEADER_LOCK_TOKEN_TIMEOUT,replicatedLockStateMachine);
   Locks.Client lockClient=lockManager.newClient();
   try {
     lockClient.acquireExclusive(ResourceTypes.NODE,0L);

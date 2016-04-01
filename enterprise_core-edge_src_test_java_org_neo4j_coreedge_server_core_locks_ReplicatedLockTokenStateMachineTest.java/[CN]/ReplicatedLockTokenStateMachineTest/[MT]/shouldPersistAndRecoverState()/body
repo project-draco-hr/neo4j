@@ -1,11 +1,11 @@
 {
   EphemeralFileSystemAbstraction fsa=new EphemeralFileSystemAbstraction();
   fsa.mkdir(testDir.directory());
-  StateMarshal<ReplicatedLockTokenState<CoreMember>> marshal=new ReplicatedLockTokenState.Marshal<>(new CoreMember.CoreMemberMarshal());
-  DurableStateStorage<ReplicatedLockTokenState<CoreMember>> storage=new DurableStateStorage<>(fsa,testDir.directory(),"state",marshal,100,health(),NullLogProvider.getInstance());
-  ReplicatedLockTokenStateMachine stateMachine=new ReplicatedLockTokenStateMachine<>(storage,new PendingLockTokensRequests<>());
-  CoreMember memberA=new CoreMember(new AdvertisedSocketAddress("1"),new AdvertisedSocketAddress("2"));
-  CoreMember memberB=new CoreMember(new AdvertisedSocketAddress("3"),new AdvertisedSocketAddress("4"));
+  StateMarshal<ReplicatedLockTokenState<RaftTestMember>> marshal=new ReplicatedLockTokenState.Marshal<>(new RaftTestMember.RaftTestMemberMarshal());
+  DurableStateStorage<ReplicatedLockTokenState<RaftTestMember>> storage=new DurableStateStorage<>(fsa,testDir.directory(),"state",marshal,100,health(),NullLogProvider.getInstance());
+  ReplicatedLockTokenStateMachine<RaftTestMember> stateMachine=new ReplicatedLockTokenStateMachine<>(storage);
+  RaftTestMember memberA=new RaftTestMember(0);
+  RaftTestMember memberB=new RaftTestMember(1);
   int candidateId;
   candidateId=0;
   stateMachine.applyCommand(new ReplicatedLockTokenRequest<>(memberA,candidateId),0);
@@ -13,8 +13,8 @@
   stateMachine.applyCommand(new ReplicatedLockTokenRequest<>(memberB,candidateId),1);
   stateMachine.flush();
   fsa.crash();
-  DurableStateStorage<ReplicatedLockTokenState<CoreMember>> storage2=new DurableStateStorage<>(fsa,testDir.directory(),"state",marshal,100,health(),NullLogProvider.getInstance());
-  ReplicatedLockTokenState<CoreMember> initialState=storage2.getInitialState();
+  DurableStateStorage<ReplicatedLockTokenState<RaftTestMember>> storage2=new DurableStateStorage<>(fsa,testDir.directory(),"state",marshal,100,health(),NullLogProvider.getInstance());
+  ReplicatedLockTokenState<RaftTestMember> initialState=storage2.getInitialState();
   assertEquals(memberB,initialState.get().owner());
   assertEquals(candidateId,initialState.get().id());
 }

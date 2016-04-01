@@ -1,20 +1,17 @@
 {
-  LocalOperationId localOperationId=new LocalOperationId(0,0);
   int txLockSessionId=23;
   int currentLockSessionId=24;
-  ReplicatedTransaction tx=ReplicatedTransactionFactory.createImmutableReplicatedTransaction(physicalTx(txLockSessionId),globalSession,localOperationId);
+  ReplicatedTransaction tx=ReplicatedTransactionFactory.createImmutableReplicatedTransaction(physicalTx(txLockSessionId));
   TransactionCommitProcess localCommitProcess=mock(TransactionCommitProcess.class);
   RecoverTransactionLogState recoverTransactionLogState=mock(RecoverTransactionLogState.class);
   when(recoverTransactionLogState.findLastAppliedIndex()).thenReturn(-1L);
-  CommittingTransactions committingTransactions=new CommittingTransactionsRegistry();
-  final ReplicatedTransactionStateMachine listener=new ReplicatedTransactionStateMachine<>(localCommitProcess,globalSession,lockState(currentLockSessionId),committingTransactions,new InMemoryStateStorage<>(new GlobalSessionTrackerState<>()),NullLogProvider.getInstance(),recoverTransactionLogState);
-  CommittingTransaction future=committingTransactions.register(localOperationId);
-  listener.applyCommand(tx,0);
+  final ReplicatedTransactionStateMachine<RaftTestMember> stateMachine=new ReplicatedTransactionStateMachine<>(localCommitProcess,lockState(currentLockSessionId),NullLogProvider.getInstance(),recoverTransactionLogState);
+  Optional<Result> result=stateMachine.applyCommand(tx,0);
   try {
-    future.waitUntilCommitted(1,TimeUnit.SECONDS);
-    fail("Should have thrown exception");
+    assertTrue(result.isPresent());
+    result.get().consume();
   }
- catch (  TransactionFailureException e) {
-    assertEquals(Status.Transaction.LockSessionExpired,e.status());
+ catch (  TransactionFailureException tfe) {
+    assertEquals(Status.Transaction.LockSessionExpired,tfe.status());
   }
 }

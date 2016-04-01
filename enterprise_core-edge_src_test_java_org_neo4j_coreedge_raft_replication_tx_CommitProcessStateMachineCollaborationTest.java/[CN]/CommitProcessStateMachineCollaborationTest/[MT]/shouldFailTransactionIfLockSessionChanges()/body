@@ -1,18 +1,15 @@
 {
-  CoreMember coreMember=new CoreMember(new AdvertisedSocketAddress("core:1"),new AdvertisedSocketAddress("raft:1"));
-  TransactionCommitProcess localCommitProcess=mock(TransactionCommitProcess.class);
-  LocalSessionPool sessionPool=new LocalSessionPool(coreMember);
-  ReplicatedLockTokenStateMachine<Object> lockState=lockState(1);
+  int initialLockSessionId=23;
+  TransactionToApply transactionToApply=new TransactionToApply(physicalTx(initialLockSessionId));
+  int finalLockSessionId=24;
   RecoverTransactionLogState recoverTransactionLogState=mock(RecoverTransactionLogState.class);
   when(recoverTransactionLogState.findLastAppliedIndex()).thenReturn(-1L);
-  TriggeredReplicator replicator=new TriggeredReplicator();
-  CommittingTransactions txFutures=new StubCommittingTransactionsRegistry(replicator);
-  final ReplicatedTransactionStateMachine stateMachine=new ReplicatedTransactionStateMachine<>(localCommitProcess,sessionPool.getGlobalSession(),lockState,txFutures,new InMemoryStateStorage<>(new GlobalSessionTrackerState<>()),NullLogProvider.getInstance(),recoverTransactionLogState);
-  StateMachines stateMachines=new StateMachines(stateMachine);
-  replicator.setStateMachines(stateMachines);
-  ReplicatedTransactionCommitProcess commitProcess=new ReplicatedTransactionCommitProcess(replicator,sessionPool,new ExponentialBackoffStrategy(10,SECONDS),NullLogService.getInstance(),txFutures,new Monitors());
+  TransactionCommitProcess localCommitProcess=mock(TransactionCommitProcess.class);
+  ReplicatedTransactionStateMachine<RaftTestMember> stateMachine=new ReplicatedTransactionStateMachine<>(localCommitProcess,lockState(finalLockSessionId),NullLogProvider.getInstance(),recoverTransactionLogState);
+  DirectReplicator<ReplicatedTransaction> replicator=new DirectReplicator<>(stateMachine);
+  ReplicatedTransactionCommitProcess commitProcess=new ReplicatedTransactionCommitProcess(replicator);
   try {
-    commitProcess.commit(tx(),NULL,INTERNAL);
+    commitProcess.commit(transactionToApply,NULL,EXTERNAL);
     fail("Should have thrown exception.");
   }
  catch (  TransactionFailureException e) {
