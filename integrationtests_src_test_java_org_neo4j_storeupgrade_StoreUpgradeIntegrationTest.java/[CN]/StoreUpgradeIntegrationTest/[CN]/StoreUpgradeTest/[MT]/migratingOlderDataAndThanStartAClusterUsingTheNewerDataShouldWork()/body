@@ -4,6 +4,7 @@
   GraphDatabaseBuilder builder=factory.newEmbeddedDatabaseBuilder(dir);
   builder.setConfig(GraphDatabaseSettings.allow_store_upgrade,"true");
   builder.setConfig(GraphDatabaseSettings.pagecache_memory,"8m");
+  builder.setConfig(GraphDatabaseFacadeFactory.Configuration.record_format,HighLimit.NAME);
   GraphDatabaseService db=builder.newGraphDatabase();
   try {
     checkInstance(store,(GraphDatabaseAPI)db);
@@ -11,7 +12,7 @@
   finally {
     db.shutdown();
   }
-  assertConsistentStore(dir);
+  assertConsistentStore(dir,getConfig());
   File haDir=new File(dir.getParentFile(),"ha-stuff");
   FileUtils.deleteRecursively(haDir);
   ClusterManager clusterManager=new ClusterManager.Builder(haDir).withSeedDir(dir).withCluster(clusterOfSize(2)).build();
@@ -28,6 +29,6 @@
   finally {
     clusterManager.safeShutdown();
   }
-  assertConsistentStore(new File(master.getStoreDir()));
-  assertConsistentStore(new File(slave.getStoreDir()));
+  assertConsistentStore(new File(master.getStoreDir()),getConfig());
+  assertConsistentStore(new File(slave.getStoreDir()),getConfig());
 }
