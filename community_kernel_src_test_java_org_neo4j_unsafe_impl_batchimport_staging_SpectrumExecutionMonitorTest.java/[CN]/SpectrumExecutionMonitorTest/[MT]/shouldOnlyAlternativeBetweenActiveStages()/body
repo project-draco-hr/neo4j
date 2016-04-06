@@ -1,0 +1,31 @@
+{
+  ByteArrayOutputStream bytes=new ByteArrayOutputStream();
+  PrintStream out=new PrintStream(bytes);
+  SpectrumExecutionMonitor monitor=new SpectrumExecutionMonitor(0,MILLISECONDS,new PrintStream(out),100);
+  StageExecution stageB;
+  StageExecution[] stages=new StageExecution[]{stage("A_1","A_2"),stageB=stage("B_1","B_2"),stage("C_1","C_2")};
+{
+    monitor.check(stages);
+    String[] lines=linesOf(out,bytes);
+    assertEquals(1,lines.length);
+    assertTrue(lines[0],lines[0].contains("A_1"));
+    assertFalse(lines[0],lines[0].contains("B_1"));
+  }
+  complete(stageB);
+{
+    monitor.check(stages);
+    String[] lines=linesOf(out,bytes);
+    assertEquals(2,lines.length);
+    assertTrue(lines[1],lines[1].contains("C_1"));
+    assertFalse(lines[1],lines[1].contains("A_1"));
+    assertFalse(lines[1],lines[1].contains("B_1"));
+  }
+{
+    monitor.check(stages);
+    String[] lines=linesOf(out,bytes);
+    assertEquals(3,lines.length);
+    assertTrue(lines[2],lines[2].contains("A_1"));
+    assertFalse(lines[2],lines[2].contains("B_1"));
+    assertFalse(lines[2],lines[2].contains("C_1"));
+  }
+}
