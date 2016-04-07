@@ -1,22 +1,27 @@
 {
   final IOCursor<RaftLogAppendRecord> inner=entryStore.getEntriesFrom(fromIndex);
   return new RaftLogCursor(){
-    private RaftLogEntry current=null;
+    private CursorValue<RaftLogEntry> current=new CursorValue<>();
+    private long index=fromIndex - 1;
     @Override public boolean next() throws IOException {
       boolean hasNext=inner.next();
       if (hasNext) {
-        current=inner.get().logEntry();
+        current.set(inner.get().logEntry());
+        index++;
       }
  else {
-        current=null;
+        current.invalidate();
       }
       return hasNext;
     }
     @Override public void close() throws IOException {
       inner.close();
     }
+    @Override public long index(){
+      return index;
+    }
     @Override public RaftLogEntry get(){
-      return current;
+      return current.get();
     }
   }
 ;
