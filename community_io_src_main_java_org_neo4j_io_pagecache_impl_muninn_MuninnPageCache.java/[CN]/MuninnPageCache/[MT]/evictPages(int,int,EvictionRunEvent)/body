@@ -10,24 +10,26 @@
     if (page.isLoaded() && page.decrementUsage()) {
       if (page.tryExclusiveLock()) {
         pageCountToEvict--;
-        boolean pageEvicted;
+        boolean pageEvicted=false;
         try (EvictionEvent evictionEvent=evictionRunEvent.beginEviction()){
           pageEvicted=page.isLoaded() && evictPage(page,evictionEvent);
-        }
-         if (pageEvicted) {
-          Object current;
-          Object nextListHead;
-          FreePage freePage=null;
-          do {
-            current=getFreelistHead();
-            freePage=freePage == null ? new FreePage(page) : freePage;
-            freePage.setNext((FreePage)current);
-            nextListHead=freePage;
-          }
+          if (pageEvicted) {
+            Object current;
+            Object nextListHead;
+            FreePage freePage=null;
+            do {
+              current=getFreelistHead();
+              freePage=freePage == null ? new FreePage(page) : freePage;
+              freePage.setNext((FreePage)current);
+              nextListHead=freePage;
+            }
  while (!compareAndSetFreelistHead(current,nextListHead));
+          }
         }
- else {
-          page.unlockExclusive();
+  finally {
+          if (!pageEvicted) {
+            page.unlockExclusive();
+          }
         }
       }
     }
