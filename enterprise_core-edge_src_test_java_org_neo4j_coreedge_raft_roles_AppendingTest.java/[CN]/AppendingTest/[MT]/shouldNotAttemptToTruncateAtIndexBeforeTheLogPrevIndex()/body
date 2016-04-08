@@ -1,0 +1,16 @@
+{
+  ReadableRaftLog logMock=mock(ReadableRaftLog.class);
+  long prevIndex=5;
+  long prevTerm=5;
+  when(logMock.prevIndex()).thenReturn(prevIndex);
+  when(logMock.readEntryTerm(prevIndex)).thenReturn(prevTerm);
+  when(logMock.readEntryTerm(prevIndex - 2)).thenReturn(-1L);
+  long commitIndex=10;
+  ReadableRaftState state=mock(ReadableRaftState.class);
+  when(state.entryLog()).thenReturn(logMock);
+  when(state.commitIndex()).thenReturn(commitIndex);
+  when(logMock.appendIndex()).thenReturn(commitIndex);
+  Outcome outcome=mock(Outcome.class);
+  Appending.handleAppendEntriesRequest(state,outcome,new RaftMessages.AppendEntries.Request<>(aMember,prevTerm,prevIndex - 2,prevTerm,new RaftLogEntry[]{new RaftLogEntry(prevTerm,ReplicatedInteger.valueOf(2))},commitIndex + 3));
+  verify(outcome,times(0)).addLogCommand(any());
+}
