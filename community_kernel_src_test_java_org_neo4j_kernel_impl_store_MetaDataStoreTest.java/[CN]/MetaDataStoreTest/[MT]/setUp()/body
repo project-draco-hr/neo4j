@@ -1,4 +1,21 @@
 {
   fs=fsRule.get();
   pageCache=pageCacheRule.getPageCache(fs);
+  fakePageCursorOverflow=false;
+  pageCacheWithFakeOverflow=new DelegatingPageCache(pageCache){
+    @Override public PagedFile map(    File file,    int pageSize,    OpenOption... openOptions) throws IOException {
+      return new DelegatingPagedFile(super.map(file,pageSize,openOptions)){
+        @Override public PageCursor io(        long pageId,        int pf_flags) throws IOException {
+          return new DelegatingPageCursor(super.io(pageId,pf_flags)){
+            @Override public boolean checkAndClearBoundsFlag(){
+              return fakePageCursorOverflow | super.checkAndClearBoundsFlag();
+            }
+          }
+;
+        }
+      }
+;
+    }
+  }
+;
 }

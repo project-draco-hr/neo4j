@@ -1,4 +1,5 @@
 {
+  int primaryStartOffset=primaryCursor.getOffset();
   byte headerByte=primaryCursor.getByte();
   boolean inUse=isInUse(headerByte);
   boolean doubleRecordUnit=has(headerByte,HEADER_BIT_RECORD_UNIT);
@@ -8,20 +9,22 @@
       record.clear();
       return;
     }
-    int primaryEndOffset=calculatePrimaryCursorEndOffset(primaryCursor,recordSize);
-    long secondaryId=Reference.decode(primaryCursor,PAGE_CURSOR_ADAPTER);
+    long secondaryId=Reference.decode(primaryCursor);
     long pageId=pageIdForRecord(secondaryId,storeFile.pageSize(),recordSize);
     int offset=offsetForId(secondaryId,storeFile.pageSize(),recordSize);
-    try (SecondaryPageCursorReadDataAdapter readAdapter=new SecondaryPageCursorReadDataAdapter(primaryCursor,storeFile,pageId,offset,primaryEndOffset,PagedFile.PF_SHARED_READ_LOCK)){
-      do {
-        readAdapter.reposition();
-        doReadInternal(record,primaryCursor,recordSize,headerByte,inUse,readAdapter);
-      }
- while (readAdapter.shouldRetry());
-      record.setSecondaryUnitId(secondaryId);
+    PageCursor secondaryCursor=primaryCursor.openLinkedCursor(pageId);
+    if (!secondaryCursor.next()) {
+      record.clear();
+      return;
     }
-   }
+    secondaryCursor.setOffset(offset + HEADER_BYTE);
+    int primarySize=recordSize - (primaryCursor.getOffset() - primaryStartOffset);
+    int secondarySize=recordSize - HEADER_BYTE;
+    PageCursor composite=CompositePageCursor.compose(primaryCursor,primarySize,secondaryCursor,secondarySize);
+    doReadInternal(record,composite,recordSize,headerByte,inUse);
+    record.setSecondaryUnitId(secondaryId);
+  }
  else {
-    doReadInternal(record,primaryCursor,recordSize,headerByte,inUse,PAGE_CURSOR_ADAPTER);
+    doReadInternal(record,primaryCursor,recordSize,headerByte,inUse);
   }
 }

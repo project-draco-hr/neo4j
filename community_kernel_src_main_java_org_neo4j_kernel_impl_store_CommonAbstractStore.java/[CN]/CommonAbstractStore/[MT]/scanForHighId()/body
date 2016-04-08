@@ -4,9 +4,12 @@
     long nextPageId=storeFile.getLastPageId();
     int recordsPerPage=getRecordsPerPage();
     int recordSize=getRecordSize();
+    long highestId=getNumberOfReservedLowIds();
     while (nextPageId >= 0 && cursor.next(nextPageId)) {
       nextPageId--;
+      boolean found;
       do {
+        found=false;
         int currentRecord=recordsPerPage;
         while (currentRecord-- > 0) {
           int offset=currentRecord * recordSize;
@@ -15,12 +18,19 @@
           if (isInUse(cursor)) {
             boolean justLegacyStoreTrailer=isJustLegacyStoreTrailer(cursor,offset,expectedLegacyVersionBytes,recordSize);
             if (!justLegacyStoreTrailer) {
-              return recordId + 1;
+              found=true;
+              highestId=recordId + 1;
+              ;
+              break;
             }
           }
         }
       }
  while (cursor.shouldRetry());
+      checkIdScanCursorBounds(cursor);
+      if (found) {
+        return highestId;
+      }
     }
     return getNumberOfReservedLowIds();
   }
