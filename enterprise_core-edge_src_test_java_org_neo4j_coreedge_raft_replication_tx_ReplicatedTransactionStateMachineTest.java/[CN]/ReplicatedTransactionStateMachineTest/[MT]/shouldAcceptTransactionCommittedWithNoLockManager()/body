@@ -3,9 +3,8 @@
   int currentLockSessionId=24;
   ReplicatedTransaction tx=ReplicatedTransactionFactory.createImmutableReplicatedTransaction(physicalTx(txLockSessionId));
   TransactionCommitProcess localCommitProcess=mock(TransactionCommitProcess.class);
-  RecoverTransactionLogState recoverTransactionLogState=mock(RecoverTransactionLogState.class);
-  when(recoverTransactionLogState.findLastAppliedIndex()).thenReturn(-1L);
-  ReplicatedTransactionStateMachine<RaftStateMachine> stateMachine=new ReplicatedTransactionStateMachine<>(localCommitProcess,lockState(currentLockSessionId),NullLogProvider.getInstance(),recoverTransactionLogState);
+  ReplicatedTransactionStateMachine<RaftStateMachine> stateMachine=new ReplicatedTransactionStateMachine<>(lockState(currentLockSessionId),NullLogProvider.getInstance());
+  stateMachine.installCommitProcess(localCommitProcess,-1L);
   Optional<Result> result=stateMachine.applyCommand(tx,0);
   assertTrue(result.isPresent());
   assertEquals(0L,(long)result.get().consume());

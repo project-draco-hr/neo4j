@@ -2,14 +2,20 @@
   localDatabase.stop();
   try {
     log.info("Downloading snapshot from core server at %s",source);
+    CompletableFuture<CoreSnapshot> snapshotFuture=coreClient.requestCoreSnapshot(source);
+    CoreSnapshot coreSnapshot;
+    try {
+      coreSnapshot=snapshotFuture.get(1,MINUTES);
+    }
+ catch (    TimeoutException e) {
+      throw new StoreCopyFailedException(e);
+    }
     localDatabase.copyStoreFrom(source,storeFetcher);
-    stateFetcher.copyRaftState(source,receiver);
+    coreState.installSnapshot(coreSnapshot);
     localDatabase.start();
   }
- catch (  StoreCopyFailedException e) {
-    log.warn("Failed to download snapshot",e);
-  }
-catch (  IOException e) {
+ catch (  IOException|ExecutionException e) {
     localDatabase.panic(e);
+    throw new StoreCopyFailedException(e);
   }
 }
