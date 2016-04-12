@@ -1,17 +1,21 @@
 {
-  long waitUntil=System.currentTimeMillis() + timeUnit.toMillis(timeout);
+  long endTimeMillis=System.currentTimeMillis() + timeUnit.toMillis(timeout);
+  T last;
   boolean matched;
-  while (!(matched=matcher.matches(actual.get())) && System.currentTimeMillis() <= waitUntil) {
-    try {
-      Thread.sleep(250);
+  do {
+    long sampleTime=System.currentTimeMillis();
+    last=actual.get();
+    matched=matcher.matches(last);
+    if (matched || sampleTime > endTimeMillis) {
+      break;
     }
- catch (    InterruptedException e) {
-    }
+    Thread.sleep(100);
   }
+ while (true);
   if (!matched) {
     Description description=new StringDescription();
     description.appendText(reason).appendText("\nExpected: ").appendDescriptionOf(matcher).appendText("\n     but: ");
-    matcher.describeMismatch(actual,description);
+    matcher.describeMismatch(last,description);
     throw new AssertionError("Timeout hit (" + timeout + " "+ timeUnit.toString().toLowerCase()+ ") while waiting for condition to match: "+ description.toString());
   }
 }
