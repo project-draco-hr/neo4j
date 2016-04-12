@@ -1,0 +1,20 @@
+{
+  if (firstRelId > MAX_RELATIONSHIP_ID) {
+    throw new IllegalArgumentException("Illegal relationship id, max is " + MAX_RELATIONSHIP_ID);
+  }
+  ByteArray array=this.array.at(nodeId);
+  long existingId=all48Bits(array,nodeId,SPARSE_ID_OFFSET);
+  boolean dense=isDense(array,nodeId);
+  boolean wasChanged=markAsChanged(array,nodeId,changeMask(dense));
+  markChunkAsChanged(nodeId,dense);
+  if (dense) {
+    if (existingId == EMPTY) {
+      existingId=relGroupCache.allocate();
+      setRelationshipId(array,nodeId,existingId);
+      wasChanged=false;
+    }
+    return relGroupCache.putRelationship(existingId,direction,firstRelId,incrementCount,wasChanged);
+  }
+  setRelationshipId(array,nodeId,firstRelId);
+  return wasChanged ? EMPTY : existingId;
+}
