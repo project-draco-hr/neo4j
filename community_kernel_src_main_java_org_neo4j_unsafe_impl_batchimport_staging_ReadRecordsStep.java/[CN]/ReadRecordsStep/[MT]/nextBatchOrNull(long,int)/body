@@ -1,0 +1,22 @@
+{
+  if (!ids.hasNext()) {
+    return null;
+  }
+  RECORD[] batch=(RECORD[])Array.newInstance(klass,batchSize);
+  boolean seenReservedId=false;
+  int i=0;
+  while (i < batchSize && ids.hasNext()) {
+    cursor.next(ids.next());
+    if (!filter.test(record)) {
+      continue;
+    }
+    RECORD newRecord=(RECORD)record.clone();
+    batch[i]=newRecord;
+    seenReservedId|=IdValidator.isReservedId(newRecord.getId());
+    i++;
+    count++;
+  }
+  batch=i == batchSize ? batch : Arrays.copyOf(batch,i);
+  batch=removeRecordWithReservedId(batch,seenReservedId);
+  return batch.length > 0 ? batch : null;
+}
