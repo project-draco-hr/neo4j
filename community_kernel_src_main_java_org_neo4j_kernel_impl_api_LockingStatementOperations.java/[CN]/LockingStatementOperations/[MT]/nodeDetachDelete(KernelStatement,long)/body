@@ -1,0 +1,19 @@
+{
+  final AtomicInteger count=new AtomicInteger();
+  TwoPhaseNodeForRelationshipLocking locking=new TwoPhaseNodeForRelationshipLocking(entityReadDelegate,new Consumer<Long>(){
+    @Override public void accept(    Long relId){
+      state.assertOpen();
+      try {
+        entityWriteDelegate.relationshipDelete(state,relId);
+        count.incrementAndGet();
+      }
+ catch (      EntityNotFoundException e) {
+      }
+    }
+  }
+);
+  locking.lockAllNodesAndConsumeRelationships(nodeId,state);
+  state.assertOpen();
+  entityWriteDelegate.nodeDetachDelete(state,nodeId);
+  return count.get();
+}
