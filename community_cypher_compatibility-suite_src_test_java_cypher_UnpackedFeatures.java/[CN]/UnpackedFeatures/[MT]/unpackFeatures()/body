@@ -1,0 +1,24 @@
+{
+  File directory=createTargetDirectory();
+  URI uri;
+  try {
+    uri=TCKCucumberTemplate.class.getResource("").toURI();
+  }
+ catch (  URISyntaxException e) {
+    throw new IllegalStateException("Failed to find resources for TCK feature files in JAR!",e);
+  }
+  try (FileSystem fileSystem=FileSystems.newFileSystem(uri,Collections.emptyMap())){
+    PathMatcher matcher=fileSystem.getPathMatcher("glob:**/*.feature");
+    for (Iterator<Path> it=Files.walk(fileSystem.getPath("/"),1).iterator(); it.hasNext(); ) {
+      Path next=it.next();
+      if (matcher.matches(next)) {
+        File target=new File(directory,next.toString());
+        Files.copy(next,target.toPath());
+        System.out.println("Unpacked " + target.getName());
+      }
+    }
+  }
+ catch (  IOException e) {
+    throw new IllegalStateException("Unexpected error while unpacking Cypher TCK feature files",e);
+  }
+}
