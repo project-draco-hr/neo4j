@@ -1,0 +1,13 @@
+{
+  final File copyDir=new File(testDir.directory(),"copy");
+  final File originalDir=new File(testDir.directory(),"original");
+  PageCache pageCache=pageCacheRule.getPageCache(fs);
+  Config config=Config.empty().augment(stringMap(record_format.name(),LowLimitV3_0.NAME));
+  StoreCopyClient copier=new StoreCopyClient(copyDir,config,loadKernelExtensions(),NullLogProvider.getInstance(),fs,pageCache,new StoreCopyClient.Monitor.Adapter(),false);
+  final GraphDatabaseAPI original=(GraphDatabaseAPI)startDatabase(originalDir,LowLimitV3_0.NAME);
+  StoreCopyClient.StoreCopyRequester storeCopyRequest=storeCopyRequest(originalDir,original);
+  copier.copyStore(storeCopyRequest,CancellationRequest.NEVER_CANCELLED);
+  GraphDatabaseService copy=startDatabase(copyDir,LowLimitV3_0.NAME);
+  copy.shutdown();
+  original.shutdown();
+}
