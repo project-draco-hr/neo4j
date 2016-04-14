@@ -2,23 +2,27 @@
   try {
     final long logIndex=source.getLong();
     final int sessionTrackerSize=source.getInt();
-    final Map<MEMBER,LocalSessionTracker> theMainMap=new HashMap<>();
+    final Map<MEMBER,LocalSessionTracker> sessionTrackers=new HashMap<>();
     for (int i=0; i < sessionTrackerSize; i++) {
       final MEMBER unmarshal=memberMarshal.unmarshal(source);
       if (unmarshal == null) {
         return null;
       }
-      final LocalSessionTracker localSessionTracker=new LocalSessionTracker(new UUID(source.getLong(),source.getLong()));
+      long mostSigBits=source.getLong();
+      long leastSigBits=source.getLong();
+      UUID globalSessionId=new UUID(mostSigBits,leastSigBits);
       final int localSessionTrackerSize=source.getInt();
-      final HashMap<Long,Long> notSureAboutTheName=new HashMap<>();
+      final Map<Long,Long> lastSequenceNumberPerSession=new HashMap<>();
       for (int j=0; j < localSessionTrackerSize; j++) {
-        notSureAboutTheName.put(source.getLong(),source.getLong());
+        long localSessionId=source.getLong();
+        long sequenceNumber=source.getLong();
+        lastSequenceNumberPerSession.put(localSessionId,sequenceNumber);
       }
-      localSessionTracker.lastSequenceNumberPerSession=notSureAboutTheName;
-      theMainMap.put(unmarshal,localSessionTracker);
+      final LocalSessionTracker localSessionTracker=new LocalSessionTracker(globalSessionId,lastSequenceNumberPerSession);
+      sessionTrackers.put(unmarshal,localSessionTracker);
     }
     GlobalSessionTrackerState<MEMBER> result=new GlobalSessionTrackerState<>();
-    result.sessionTrackers=theMainMap;
+    result.sessionTrackers=sessionTrackers;
     result.logIndex=logIndex;
     return result;
   }
