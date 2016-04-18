@@ -1,0 +1,15 @@
+{
+  File logFilename=new File(testDirectory.graphDbDir(),"queries.log");
+  GraphDatabaseService database=databaseBuilder.setConfig(GraphDatabaseSettings.log_queries,Settings.TRUE).setConfig(GraphDatabaseSettings.log_queries_filename,logFilename.getPath()).setConfig(GraphDatabaseSettings.log_queries_parameter_logging_enabled,Settings.TRUE).newGraphDatabase();
+  Map<String,Object> props=new LinkedHashMap<>();
+  props.put("name","Roland");
+  props.put("position","Gunslinger");
+  props.put("followers",Arrays.asList("Jake","Eddie","Susannah"));
+  Map<String,Object> params=new HashMap<>();
+  params.put("props",props);
+  String query="CREATE ({props})";
+  executeQueryAndShutdown(database,query,params);
+  List<String> logLines=readAllLines(logFilename);
+  assertEquals(1,logLines.size());
+  assertThat(logLines.get(0),endsWith(String.format(" ms: %s - %s - {props: {name: Roland, position: Gunslinger, followers: [Jake, Eddie, Susannah]}}",QueryEngineProvider.embeddedSession(),query)));
+}
