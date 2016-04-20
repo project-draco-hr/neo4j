@@ -1,5 +1,6 @@
 {
   GraphDatabaseService db=null;
+  long deletedNodes=0;
   try {
     db=new TestGraphDatabaseFactory().newEmbeddedDatabase(testDirectory.graphDbDir().getAbsolutePath());
     try (Transaction tx=db.beginTx()){
@@ -12,6 +13,15 @@
         tx.success();
       }
     }
+     try (Transaction tx=db.beginTx()){
+      for (int i=0; i < nodes; i++) {
+        if (i % 10 == 0) {
+          deletedNodes++;
+          db.findNode(label,property,"" + i).delete();
+          tx.success();
+        }
+      }
+    }
    }
   finally {
     if (db != null) {
@@ -19,7 +29,10 @@
     }
   }
   triggerIndexResamplingOnNextStartup();
-  DoubleLongRegister register=fetchIndexSamplingValues(db);
-  assertEquals(nodes,register.readFirst());
-  assertEquals(nodes,register.readSecond());
+  DoubleLongRegister indexSampleRegister=fetchIndexSamplingValues(db);
+  assertEquals(nodes - deletedNodes,indexSampleRegister.readFirst());
+  assertEquals(nodes - deletedNodes,indexSampleRegister.readSecond());
+  DoubleLongRegister indexSizeRegister=fetchIndexSizeValues(db);
+  assertEquals(0,indexSizeRegister.readFirst());
+  assertEquals(nodes - deletedNodes,indexSizeRegister.readSecond());
 }
