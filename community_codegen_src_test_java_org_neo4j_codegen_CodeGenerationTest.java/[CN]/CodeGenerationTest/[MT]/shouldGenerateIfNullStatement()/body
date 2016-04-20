@@ -1,0 +1,18 @@
+{
+  ClassHandle handle;
+  try (ClassGenerator simple=generateClass("SimpleClass")){
+    try (CodeBlock conditional=simple.generateMethod(void.class,"conditional",param(Object.class,"test"),param(Runnable.class,"runner"))){
+      try (CodeBlock doStuff=conditional.ifNullStatement(conditional.load("test"))){
+        doStuff.expression(invoke(doStuff.load("runner"),RUN));
+      }
+     }
+     handle=simple.handle();
+  }
+   Runnable runner1=mock(Runnable.class);
+  Runnable runner2=mock(Runnable.class);
+  MethodHandle conditional=instanceMethod(handle.newInstance(),"conditional",Object.class,Runnable.class);
+  conditional.invoke(null,runner1);
+  conditional.invoke(new Object(),runner2);
+  verify(runner1).run();
+  verifyZeroInteractions(runner2);
+}
