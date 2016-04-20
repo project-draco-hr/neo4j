@@ -12,10 +12,16 @@
     return RecordStream.EMPTY;
   }
  else {
-    if (!ctx.hasTransaction()) {
+    boolean hasTx=ctx.hasTransaction();
+    boolean isPeriodicCommit=queryExecutionEngine.isPeriodicCommit(statement);
+    if (!hasTx && !isPeriodicCommit) {
       ctx.beginImplicitTransaction();
     }
     QuerySession session=ctx.createSession(queryExecutionEngine.queryService(),locker);
-    return new CypherAdapterStream(queryExecutionEngine.executeQuery(statement,params,session));
+    Result result=queryExecutionEngine.executeQuery(statement,params,session);
+    if (isPeriodicCommit) {
+      ctx.beginImplicitTransaction();
+    }
+    return new CypherAdapterStream(result);
   }
 }
