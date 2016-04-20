@@ -14,6 +14,11 @@
   }
   try {
     QueryExecutionEngine executionEngine=cypherExecutor.getExecutionEngine();
+    boolean periodicCommitQuery=executionEngine.isPeriodicCommit(query);
+    CommitOnSuccessfulStatusCodeRepresentationWriteHandler handler=(CommitOnSuccessfulStatusCodeRepresentationWriteHandler)output.getRepresentationWriteHandler();
+    if (periodicCommitQuery) {
+      handler.closeTransaction();
+    }
     QuerySession querySession=cypherExecutor.createSession(request);
     Result result;
     if (profile) {
@@ -23,6 +28,9 @@
  else {
       result=executionEngine.executeQuery(query,params,querySession);
       includePlan=result.getQueryExecutionType().requestedExecutionPlanDescription();
+    }
+    if (periodicCommitQuery) {
+      handler.setTransaction(database.beginTx());
     }
     return output.ok(new CypherResultRepresentation(result,includeStats,includePlan));
   }
