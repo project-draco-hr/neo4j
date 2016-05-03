@@ -1,0 +1,33 @@
+{
+  Cursor<NodeItem> cursor=mock(Cursor.class);
+  when(ops.nodeCursorById(state,nodeId)).thenReturn(cursor);
+  NodeItem nodeItem=mock(NodeItem.class);
+  when(cursor.get()).thenReturn(nodeItem);
+  when(nodeItem.getRelationships(Direction.BOTH)).thenAnswer(new Answer<RelationshipIterator>(){
+    private boolean first=skipFirst;
+    @Override public RelationshipIterator answer(    InvocationOnMock invocation) throws Throwable {
+      try {
+        return new RelationshipIterator(){
+          private int i=first ? 1 : 0;
+          @Override public <EXCEPTION extends Exception>boolean relationshipVisit(          long relationshipId,          RelationshipVisitor<EXCEPTION> visitor){
+            throw new NotImplementedException("don't call this!");
+          }
+          @Override public boolean hasNext(){
+            return i < relIds.length;
+          }
+          @Override public long next(){
+            if (!hasNext()) {
+              throw new NoSuchElementException();
+            }
+            return relIds[i++];
+          }
+        }
+;
+      }
+  finally {
+        first=false;
+      }
+    }
+  }
+);
+}
