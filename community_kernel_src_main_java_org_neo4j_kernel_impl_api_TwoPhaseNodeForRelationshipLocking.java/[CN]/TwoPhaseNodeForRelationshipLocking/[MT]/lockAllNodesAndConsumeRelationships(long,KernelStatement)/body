@@ -1,0 +1,31 @@
+{
+  while (retry) {
+    retry=false;
+    try (Cursor<NodeItem> cursor=reads.nodeCursorById(state,nodeId)){
+      RelationshipIterator relationships=cursor.get().getRelationships(Direction.BOTH);
+      while (relationships.hasNext()) {
+        reads.relationshipVisit(state,relationships.next(),collectNodeIdVisitor);
+      }
+    }
+ {
+      PrimitiveLongIterator iterator=nodeIds.iterator();
+      while (iterator.hasNext()) {
+        state.locks().acquireExclusive(ResourceTypes.NODE,iterator.next());
+      }
+    }
+    try (Cursor<NodeItem> cursor=reads.nodeCursorById(state,nodeId)){
+      RelationshipIterator relationships=cursor.get().getRelationships(Direction.BOTH);
+      while (relationships.hasNext()) {
+        reads.relationshipVisit(state,relationships.next(),relationshipConsumingVisitor);
+        if (retry) {
+          PrimitiveLongIterator iterator=nodeIds.iterator();
+          while (iterator.hasNext()) {
+            state.locks().releaseExclusive(ResourceTypes.NODE,iterator.next());
+          }
+          nodeIds.clear();
+          break;
+        }
+      }
+    }
+   }
+}
