@@ -1,0 +1,55 @@
+{
+  return new IOCursor<EntryRecord>(){
+    IOCursor<EntryRecord> reader;
+    ValueRange<Long,SegmentFile> segmentRange=null;
+    long currentIndex=logIndex - 1;
+    long limit=Long.MAX_VALUE;
+    CursorValue<EntryRecord> currentRecord=new CursorValue<>();
+    @Override public boolean next() throws IOException {
+      currentIndex++;
+      if (segmentRange == null || currentIndex >= limit) {
+        if (!nextSegment()) {
+          return false;
+        }
+      }
+      if (reader.next()) {
+        currentRecord.set(reader.get());
+        return true;
+      }
+      currentRecord.invalidate();
+      return false;
+    }
+    private boolean nextSegment() throws IOException {
+      segmentRange=segments.getForIndex(currentIndex);
+      if (!segmentRange.value().isPresent()) {
+        currentRecord.invalidate();
+        return false;
+      }
+ else       if (segmentRange.limit().isPresent()) {
+        limit=segmentRange.limit().get();
+      }
+ else {
+        limit=Long.MAX_VALUE;
+      }
+      try {
+        IOCursor<EntryRecord> newReader=segmentRange.value().get().getReader(currentIndex);
+        if (reader != null) {
+          reader.close();
+        }
+        reader=newReader;
+      }
+ catch (      DisposedException e) {
+      }
+      return true;
+    }
+    @Override public void close() throws IOException {
+      if (reader != null) {
+        reader.close();
+      }
+    }
+    @Override public EntryRecord get(){
+      return currentRecord.get();
+    }
+  }
+;
+}
