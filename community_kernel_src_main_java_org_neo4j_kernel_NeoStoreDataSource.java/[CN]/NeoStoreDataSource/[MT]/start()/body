@@ -15,6 +15,12 @@
   upgradeStore(storeDir,storeMigrationProcess,indexProvider);
   try {
     LegacyIndexApplierLookup legacyIndexApplierLookup=dependencies.satisfyDependency(new LegacyIndexApplierLookup.Direct(legacyIndexProviderLookup));
+    BufferingIdGeneratorFactory bufferingIdGeneratorFactory=null;
+    boolean safeIdBuffering=FeatureToggles.flag(getClass(),"safeIdBuffering",true);
+    if (safeIdBuffering) {
+      bufferingIdGeneratorFactory=new BufferingIdGeneratorFactory(idGeneratorFactory);
+      storeFactory.setIdGeneratorFactory(bufferingIdGeneratorFactory);
+    }
     final NeoStoreModule neoStoreModule=buildNeoStore(storeFactory,labelTokens,relationshipTypeTokens,propertyKeyTokenHolder);
     this.neoStoreModule=neoStoreModule;
     CacheModule cacheModule=buildCaches(labelTokens,relationshipTypeTokens,propertyKeyTokenHolder);
@@ -22,7 +28,11 @@
     StoreLayerModule storeLayerModule=buildStoreLayer(neoStoreModule.neoStores(),propertyKeyTokenHolder,labelTokens,relationshipTypeTokens,indexingModule.indexingService(),cacheModule.schemaCache(),cacheModule.procedureCache());
     TransactionLogModule transactionLogModule=buildTransactionLogs(storeDir,config,logProvider,scheduler,indexingModule.labelScanStore(),fs,neoStoreModule.neoStores(),cacheModule.cacheAccess(),indexingModule.indexingService(),indexProviders.values(),legacyIndexApplierLookup);
     buildRecovery(fs,cacheModule.cacheAccess(),indexingModule.indexingService(),indexingModule.labelScanStore(),neoStoreModule.neoStores(),monitors.newMonitor(RecoveryVisitor.Monitor.class),monitors.newMonitor(Recovery.Monitor.class),transactionLogModule.logFiles(),transactionLogModule.storeFlusher(),startupStatistics,legacyIndexApplierLookup);
-    KernelModule kernelModule=buildKernel(indexingModule.integrityValidator(),transactionLogModule.transactionAppender(),neoStoreModule.neoStores(),transactionLogModule.storeApplier(),indexingModule.indexingService(),indexingModule.indexUpdatesValidator(),storeLayerModule.storeLayer(),cacheModule.updateableSchemaState(),indexingModule.labelScanStore(),indexingModule.schemaIndexProviderMap(),cacheModule.procedureCache());
+    final KernelModule kernelModule=buildKernel(indexingModule.integrityValidator(),transactionLogModule.transactionAppender(),neoStoreModule.neoStores(),transactionLogModule.storeApplier(),indexingModule.indexingService(),indexingModule.indexUpdatesValidator(),storeLayerModule.storeLayer(),cacheModule.updateableSchemaState(),indexingModule.labelScanStore(),indexingModule.schemaIndexProviderMap(),cacheModule.procedureCache());
+    if (safeIdBuffering) {
+      bufferingIdGeneratorFactory.initialize(kernelModule.kernelTransactions());
+      life.add(freeIdMaintenance(bufferingIdGeneratorFactory));
+    }
     this.cacheModule=cacheModule;
     this.indexingModule=indexingModule;
     this.storeLayerModule=storeLayerModule;
