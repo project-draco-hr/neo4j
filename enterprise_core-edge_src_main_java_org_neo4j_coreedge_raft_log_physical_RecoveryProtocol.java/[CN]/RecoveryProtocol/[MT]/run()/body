@@ -1,0 +1,57 @@
+{
+  State state=new State();
+  SortedMap<Long,File> files=fileNames.getAllFiles(fileSystem,log);
+  if (files.entrySet().isEmpty()) {
+    state.segments=new Segments(fileSystem,fileNames,emptyList(),contentMarshal,logProvider,-1);
+    state.segments.rotate(-1,-1,-1);
+    return state;
+  }
+  List<SegmentFile> segmentFiles=new ArrayList<>();
+  long firstVersion=files.firstKey();
+  expectedVersion=firstVersion;
+  for (  Map.Entry<Long,File> entry : files.entrySet()) {
+    try {
+      long fileNameVersion=entry.getKey();
+      File file=entry.getValue();
+      SegmentHeader header;
+      try {
+        header=loadHeader(fileSystem,file);
+      }
+ catch (      UnexpectedEndOfStreamException e) {
+        if (files.lastKey() != fileNameVersion) {
+          throw new DamagedLogStorageException(e,"File with incomplete or no header found: %s",file);
+        }
+        header=new SegmentHeader(state.appendIndex,fileNameVersion,state.appendIndex,state.currentTerm);
+        writeHeader(fileSystem,file,header);
+      }
+      SegmentFile segment=new SegmentFile(fileSystem,file,contentMarshal,logProvider,header);
+      checkVersionStrictlyMonotonic(fileNameVersion);
+      checkVersionMatches(segment.header().version(),fileNameVersion);
+      segmentFiles.add(segment);
+      if (fileNameVersion == firstVersion) {
+        state.prevIndex=segment.header().prevIndex();
+        state.prevTerm=segment.header().prevTerm();
+      }
+      expectedVersion++;
+    }
+ catch (    IOException e) {
+      log.error("Error during recovery",e);
+    }
+  }
+  SegmentFile last=segmentFiles.get(segmentFiles.size() - 1);
+  state.segments=new Segments(fileSystem,fileNames,segmentFiles,contentMarshal,logProvider,firstVersion - 1);
+  state.appendIndex=last.header().prevIndex();
+  state.currentTerm=last.header().prevTerm();
+  long firstIndexInLastSegmentFile=last.header().prevIndex() + 1;
+  try (IOCursor<EntryRecord> reader=last.getReader(firstIndexInLastSegmentFile)){
+    while (reader.next()) {
+      EntryRecord entry=reader.get();
+      state.appendIndex=entry.logIndex();
+      state.currentTerm=entry.logEntry().term();
+    }
+  }
+ catch (  DisposedException e) {
+    throw new RuntimeException("Unexpected exception",e);
+  }
+  return state;
+}
