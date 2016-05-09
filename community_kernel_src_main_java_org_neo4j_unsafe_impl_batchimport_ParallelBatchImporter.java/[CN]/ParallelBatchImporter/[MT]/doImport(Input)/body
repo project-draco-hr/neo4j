@@ -15,22 +15,24 @@
     StatsProvider memoryUsageStats=new MemoryUsageStatsProvider(nodeRelationshipCache,idMapper);
     InputIterable<InputNode> nodes=input.nodes();
     InputIterable<InputRelationship> relationships=input.relationships();
+    InputIterable<InputNode> cachedNodes=cachedForSure(nodes,inputCache.nodes(MAIN,true));
+    InputIterable<InputRelationship> cachedRelationships=cachedForSure(relationships,inputCache.relationships(MAIN,true));
     RelationshipStore relationshipStore=neoStore.getRelationshipStore();
     NodeStage nodeStage=new NodeStage(config,writeMonitor,nodes,idMapper,idGenerator,neoStore,inputCache,neoStore.getLabelScanStore(),storeUpdateMonitor,memoryUsageStats);
-    CalculateDenseNodesStage calculateDenseNodesStage=new CalculateDenseNodesStage(config,relationships,relationshipStore,nodeRelationshipCache,idMapper,badCollector,inputCache);
+    CalculateDenseNodesStage calculateDenseNodesStage=new CalculateDenseNodesStage(config,relationships,nodeRelationshipCache,idMapper,badCollector,inputCache,neoStore);
     if (idMapper.needsPreparation()) {
       executeStages(nodeStage);
-      executeStages(new IdMapperPreparationStage(config,idMapper,nodes,inputCache,badCollector,memoryUsageStats));
+      executeStages(new IdMapperPreparationStage(config,idMapper,cachedNodes,badCollector,memoryUsageStats));
+      PrimitiveLongIterator duplicateNodeIds=badCollector.leftOverDuplicateNodesIds();
+      if (duplicateNodeIds.hasNext()) {
+        executeStages(new DeleteDuplicateNodesStage(config,duplicateNodeIds,neoStore));
+      }
       executeStages(calculateDenseNodesStage);
     }
  else {
       executeStages(nodeStage,calculateDenseNodesStage);
     }
-    final RelationshipStage relationshipStage=new RelationshipStage(config,writeMonitor,relationships.supportsMultiplePasses() ? relationships : inputCache.relationships(),idMapper,neoStore,nodeRelationshipCache,input.specificRelationshipIds(),storeUpdateMonitor);
-    executeStages(relationshipStage);
-    executeStages(new NodeFirstRelationshipStage(config,neoStore.getNodeStore(),neoStore.getRelationshipGroupStore(),nodeRelationshipCache,badCollector,neoStore.getLabelScanStore()));
-    nodeRelationshipCache.clearRelationships();
-    executeStages(new RelationshipLinkbackStage(config,relationshipStore,nodeRelationshipCache));
+    importRelationships(nodeRelationshipCache,storeUpdateMonitor,neoStore,writeMonitor,idMapper,cachedRelationships,inputCache,calculateDenseNodesStage.getRelationshipTypes(Long.MAX_VALUE),calculateDenseNodesStage.getRelationshipTypes(config.batchSize()));
     nodeRelationshipCache.close();
     nodeRelationshipCache=null;
     nodeLabelsCache=new NodeLabelsCache(AUTO,neoStore.getLabelRepository().getHighId());
