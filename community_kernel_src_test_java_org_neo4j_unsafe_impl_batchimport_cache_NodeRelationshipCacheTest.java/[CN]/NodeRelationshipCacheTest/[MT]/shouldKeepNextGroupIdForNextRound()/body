@@ -1,0 +1,37 @@
+{
+  cache=new NodeRelationshipCache(NumberArrayFactory.HEAP,1,100,base);
+  long nodeId=0;
+  cache.incrementCount(nodeId);
+  cache.setHighNodeId(nodeId + 1);
+  GroupVisitor groupVisitor=mock(GroupVisitor.class);
+  when(groupVisitor.visit(anyLong(),anyLong(),anyLong(),anyLong(),anyLong())).thenReturn(1L,2L,3L);
+  long firstRelationshipGroupId;
+{
+    long relationshipId=10;
+    cache.getAndPutRelationship(nodeId,OUTGOING,relationshipId,true);
+    firstRelationshipGroupId=cache.getFirstRel(nodeId,groupVisitor);
+    assertEquals(1L,firstRelationshipGroupId);
+    verify(groupVisitor).visit(nodeId,-1L,relationshipId,-1L,-1L);
+    cache.setForwardScan(false);
+    cache.getAndPutRelationship(nodeId,OUTGOING,relationshipId,false);
+    cache.setForwardScan(true);
+  }
+  long secondRelationshipGroupId;
+{
+    long relationshipId=11;
+    cache.getAndPutRelationship(nodeId,INCOMING,relationshipId,true);
+    secondRelationshipGroupId=cache.getFirstRel(nodeId,groupVisitor);
+    assertEquals(2L,secondRelationshipGroupId);
+    verify(groupVisitor).visit(nodeId,firstRelationshipGroupId,-1,relationshipId,-1L);
+    cache.setForwardScan(false);
+    cache.getAndPutRelationship(nodeId,OUTGOING,relationshipId,false);
+    cache.setForwardScan(true);
+  }
+{
+    long relationshipId=10;
+    cache.getAndPutRelationship(nodeId,BOTH,relationshipId,true);
+    long thirdRelationshipGroupId=cache.getFirstRel(nodeId,groupVisitor);
+    assertEquals(3L,thirdRelationshipGroupId);
+    verify(groupVisitor).visit(nodeId,secondRelationshipGroupId,-1L,-1L,relationshipId);
+  }
+}
