@@ -1,8 +1,9 @@
 {
   buffer.clear();
   long startBlockId=PropertyBlock.fetchLong(currentHeader());
-  try (Cursor<DynamicRecord> records=cursor.acquire(startBlockId,NORMAL)){
-    while (records.next()) {
+  try (Cursor<DynamicRecord> records=cursor.acquire(startBlockId,FORCE)){
+    while (true) {
+      records.next();
       DynamicRecord dynamicRecord=records.get();
       byte[] data=dynamicRecord.getData();
       if (buffer.remaining() < data.length) {
@@ -12,6 +13,9 @@
         buffer=newBuffer;
       }
       buffer.put(data,0,data.length);
+      if (Record.NULL_REFERENCE.is(dynamicRecord.getNextBlock())) {
+        break;
+      }
     }
   }
  }
