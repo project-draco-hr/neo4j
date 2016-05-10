@@ -4,17 +4,20 @@
     RaftLogEntry current=null;
     @Override public boolean next() throws IOException {
       currentIndex++;
-      boolean hasNext=currentIndex <= appendIndex;
-      if (hasNext) {
-        try {
-          current=readLogEntry(currentIndex);
+      boolean hasNext;
+synchronized (InMemoryRaftLog.this) {
+        hasNext=currentIndex <= appendIndex;
+        if (hasNext) {
+          try {
+            current=readLogEntry(currentIndex);
+          }
+ catch (          RaftLogCompactedException e) {
+            throw new IOException(e);
+          }
         }
- catch (        RaftLogCompactedException e) {
-          throw new IOException(e);
-        }
-      }
  else {
-        current=null;
+          current=null;
+        }
       }
       return hasNext;
     }
