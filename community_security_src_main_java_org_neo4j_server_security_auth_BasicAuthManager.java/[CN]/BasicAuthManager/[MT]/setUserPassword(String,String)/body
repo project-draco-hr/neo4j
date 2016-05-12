@@ -1,0 +1,17 @@
+{
+  assertAuthEnabled();
+  User existingUser=users.findByName(username);
+  if (existingUser == null) {
+    throw new IllegalCredentialsException("User " + username + " does not exist");
+  }
+  if (existingUser.credentials().matchesPassword(password)) {
+    return;
+  }
+  try {
+    User updatedUser=existingUser.augment().withCredentials(Credential.forPassword(password)).withRequiredPasswordChange(false).build();
+    users.update(existingUser,updatedUser);
+  }
+ catch (  ConcurrentModificationException e) {
+    setUserPassword(username,password);
+  }
+}

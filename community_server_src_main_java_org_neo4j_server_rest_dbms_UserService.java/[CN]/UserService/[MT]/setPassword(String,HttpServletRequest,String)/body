@@ -21,22 +21,21 @@
   if (newPassword.length() == 0) {
     return output.response(UNPROCESSABLE,new ExceptionRepresentation(new Neo4jError(Status.Request.Invalid,"Password cannot be empty.")));
   }
-  final User currentUser=authManager.getUser(username);
+  final User currentUser=userManager.getUser(username);
   if (currentUser == null) {
     return output.notFound();
   }
   if (currentUser.credentials().matchesPassword(newPassword)) {
     return output.response(UNPROCESSABLE,new ExceptionRepresentation(new Neo4jError(Status.Request.Invalid,"Old password and new password cannot be the same.")));
   }
-  final User updatedUser;
   try {
-    updatedUser=authManager.setPassword(username,newPassword);
+    userManager.setUserPassword(username,newPassword);
   }
  catch (  IOException e) {
     return output.serverErrorWithoutLegacyStacktrace(e);
   }
-  if (updatedUser == null) {
-    return output.notFound();
+catch (  IllegalCredentialsException e) {
+    return output.response(UNPROCESSABLE,new ExceptionRepresentation(new Neo4jError(e.status(),e.getMessage())));
   }
   return output.ok();
 }
