@@ -1,15 +1,20 @@
 {
+  final Map<String,String> params=new HashMap<>();
+  params.put(new GraphDatabaseSettings.BoltConnector("bolt").type.name(),"BOLT");
+  params.put(new GraphDatabaseSettings.BoltConnector("bolt").enabled.name(),"true");
+  params.put(new GraphDatabaseSettings.BoltConnector("bolt").address.name(),"127.0.0.1:" + 8001);
+  Config config=new Config(params);
   StoreFetcher storeFetcher=mock(StoreFetcher.class);
   LocalDatabase localDatabase=mock(LocalDatabase.class);
   AdvertisedSocketAddress coreServerAddress=new AdvertisedSocketAddress("localhost:1999");
-  CoreDiscoveryService hazelcastTopology=mock(CoreDiscoveryService.class);
+  EdgeTopologyService hazelcastTopology=mock(EdgeTopologyService.class);
   HazelcastClusterTopology clusterTopology=mock(HazelcastClusterTopology.class);
   when(hazelcastTopology.currentTopology()).thenReturn(clusterTopology);
-  when(clusterTopology.firstTransactionServer()).thenReturn(coreServerAddress);
+  when(clusterTopology.coreMembers()).thenReturn(coreMembers(coreServerAddress));
   when(localDatabase.isEmpty()).thenReturn(true);
   DataSourceManager dataSourceManager=mock(DataSourceManager.class);
   TxPollingClient txPuller=mock(TxPollingClient.class);
-  EdgeServerStartupProcess edgeServerStartupProcess=new EdgeServerStartupProcess(storeFetcher,localDatabase,txPuller,dataSourceManager,new AlwaysChooseFirstServer(hazelcastTopology),new ConstantTimeRetryStrategy(1,MILLISECONDS),NullLogProvider.getInstance());
+  EdgeServerStartupProcess edgeServerStartupProcess=new EdgeServerStartupProcess(storeFetcher,localDatabase,txPuller,dataSourceManager,new AlwaysChooseFirstServer(hazelcastTopology),new ConstantTimeRetryStrategy(1,MILLISECONDS),NullLogProvider.getInstance(),mock(EdgeTopologyService.class),config);
   edgeServerStartupProcess.start();
   verify(localDatabase).copyStoreFrom(coreServerAddress,storeFetcher);
   verify(dataSourceManager).start();
