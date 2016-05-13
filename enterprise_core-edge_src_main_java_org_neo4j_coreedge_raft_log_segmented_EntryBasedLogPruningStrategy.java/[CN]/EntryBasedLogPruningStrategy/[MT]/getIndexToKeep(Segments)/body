@@ -1,0 +1,20 @@
+{
+  ListIterator<SegmentFile> iterator=segments.getSegmentFileIteratorAtEnd();
+  SegmentFile segmentFile=null;
+  long nextPrevIndex=0;
+  long accumulated=0;
+  if (!iterator.hasPrevious()) {
+    log.warn("No log files found during the prune operation. This state should resolve on its own, but" + " if this warning continues, you may want to look for other errors in the user log.");
+    return -1;
+  }
+  segmentFile=iterator.previous();
+  nextPrevIndex=segmentFile.header().prevIndex();
+  long prevIndex;
+  while (accumulated < entriesToKeep && iterator.hasPrevious()) {
+    segmentFile=iterator.previous();
+    prevIndex=segmentFile.header().prevIndex();
+    accumulated+=(nextPrevIndex - prevIndex);
+    nextPrevIndex=prevIndex;
+  }
+  return segmentFile.header().prevIndex();
+}
