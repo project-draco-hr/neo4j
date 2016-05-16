@@ -1,23 +1,32 @@
 {
+  int propertyCount=10;
+  int labelCount=15;
   GraphDatabaseAPI db=dbRule.getGraphDatabaseAPI();
   Node node;
   try (Transaction tx=db.beginTx()){
     node=db.createNode();
-    node.setProperty("foo","bar");
-    for (int i=0; i < 20; i++) {
-      node.addLabel(label("label:" + i));
+    for (int i=0; i < propertyCount; i++) {
+      node.setProperty("foo" + i,"bar");
+    }
+    for (int i=0; i < labelCount; i++) {
+      node.addLabel(label("label" + i));
     }
     tx.success();
   }
-   try (Transaction tx=db.beginTx()){
-    ThreadToStatementContextBridge bridge=db.getDependencyResolver().resolveDependency(ThreadToStatementContextBridge.class);
+   Set<Integer> seenProperties=new HashSet<>();
+  Set<Integer> seenLabels=new HashSet<>();
+  try (Transaction tx=db.beginTx()){
+    DependencyResolver resolver=db.getDependencyResolver();
+    ThreadToStatementContextBridge bridge=resolver.resolveDependency(ThreadToStatementContextBridge.class);
     try (Statement statement=bridge.getTopLevelTransactionBoundToThisThread(true).acquireStatement()){
       try (Cursor<NodeItem> nodeCursor=statement.readOperations().nodeCursor(node.getId())){
         if (nodeCursor.next()) {
           try (Cursor<PropertyItem> properties=nodeCursor.get().properties()){
             while (properties.next()) {
+              seenProperties.add(properties.get().propertyKeyId());
               try (Cursor<LabelItem> labels=nodeCursor.get().labels()){
                 while (labels.next()) {
+                  seenLabels.add(labels.get().getAsInt());
                 }
               }
              }
@@ -27,4 +36,6 @@
      }
      tx.success();
   }
- }
+   assertEquals(propertyCount,seenProperties.size());
+  assertEquals(labelCount,seenLabels.size());
+}
