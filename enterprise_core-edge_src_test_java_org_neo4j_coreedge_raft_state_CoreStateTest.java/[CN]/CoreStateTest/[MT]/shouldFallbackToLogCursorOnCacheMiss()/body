@@ -1,0 +1,20 @@
+{
+  coreState.setStateMachine(txStateMachine,-1);
+  coreState.start();
+  ReplicatedContent operation0=operation(nullTx);
+  ReplicatedContent operation1=operation(nullTx);
+  ReplicatedContent operation2=operation(nullTx);
+  inFlightMap.register(0L,new RaftLogEntry(0,operation0));
+  inFlightMap.register(2L,new RaftLogEntry(2,operation2));
+  raftLog.append(new RaftLogEntry(0,operation0));
+  raftLog.append(new RaftLogEntry(1,operation1));
+  raftLog.append(new RaftLogEntry(2,operation2));
+  coreState.notifyCommitted(2);
+  applier.sync(false);
+  verify(inFlightMap,times(0)).retrieve(2L);
+  verify(inFlightMap,times(3)).unregister(anyLong());
+  verify(txStateMachine,times(1)).dispatch(nullTx,0L);
+  verify(txStateMachine,times(1)).dispatch(nullTx,1L);
+  verify(txStateMachine,times(1)).dispatch(nullTx,2L);
+  verify(raftLog,times(1)).getEntryCursor(1);
+}
