@@ -1,14 +1,12 @@
 {
-  TimestampedNonBlockingChannel timestampedLazyChannel=lazyChannelMap.get(to);
-  if (timestampedLazyChannel == null) {
-    Expiration.ExpirationTime expirationTime=expiration.new ExpirationTime();
-    timestampedLazyChannel=new TimestampedNonBlockingChannel(expirationTime,new NonBlockingChannel(bootstrap,to.socketAddress(),new InboundKeepAliveHandler(expirationTime),log,monitor,maxQueueSize));
-    TimestampedNonBlockingChannel existingTimestampedLazyChannel=lazyChannelMap.putIfAbsent(to,timestampedLazyChannel);
-    if (existingTimestampedLazyChannel != null) {
-      timestampedLazyChannel.get().dispose();
-      timestampedLazyChannel=existingTimestampedLazyChannel;
+  NonBlockingChannel nonBlockingChannel=nonBlockingChannels.get(to);
+  if (nonBlockingChannel == null) {
+    nonBlockingChannel=new NonBlockingChannel(bootstrap,to.socketAddress(),log,monitor,maxQueueSize);
+    NonBlockingChannel existingNonBlockingChannel=nonBlockingChannels.putIfAbsent(to,nonBlockingChannel);
+    if (existingNonBlockingChannel != null) {
+      nonBlockingChannel.dispose();
+      nonBlockingChannel=existingNonBlockingChannel;
     }
   }
-  timestampedLazyChannel.getEndOfLife().renew();
-  return timestampedLazyChannel;
+  return nonBlockingChannel;
 }
