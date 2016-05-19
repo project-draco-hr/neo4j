@@ -1,0 +1,11 @@
+{
+  AssertableLogProvider logProvider=new AssertableLogProvider();
+  Files.createDirectories(authFile.getParent());
+  Files.write(authFile,UTF8.encode("neo4j:admin:\n" + "admin:admin:\n"));
+  FileGroupRepository groups=new FileGroupRepository(authFile,logProvider);
+  thrown.expect(IllegalStateException.class);
+  thrown.expectMessage(startsWith("Failed to read group file: "));
+  groups.start();
+  assertThat(groups.numberOfGroups(),equalTo(1));
+  logProvider.assertExactly(AssertableLogProvider.inLog(FileGroupRepository.class).error("Ignoring group file \"%s\" (%s)",authFile.toAbsolutePath(),"wrong number of line fields [line 1]"));
+}
