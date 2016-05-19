@@ -15,12 +15,16 @@
       fileChannel.close();
       throw ex;
     }
-    out.println("Logical log format:" + logHeader.logFormatVersion + "version: "+ logHeader.logVersion+ " with prev committed tx["+ logHeader.lastCommittedTxId+ "]");
+    out.println("Logical log format: " + logHeader.logFormatVersion + " version: "+ logHeader.logVersion+ " with prev committed tx["+ logHeader.lastCommittedTxId+ "]");
     PhysicalLogVersionedStoreChannel channel=new PhysicalLogVersionedStoreChannel(fileChannel,logHeader.logVersion,logHeader.logFormatVersion);
     ReadableVersionableLogChannel logChannel=new ReadAheadLogChannel(channel,NO_MORE_CHANNELS,4096);
-    try (IOCursor<LogEntry> cursor=new LogEntryCursor(logChannel)){
+    IOCursor<LogEntry> entryCursor=new LogEntryCursor(logChannel);
+    TransactionLogEntryCursor transactionCursor=new TransactionLogEntryCursor(entryCursor);
+    try (IOCursor<LogEntry[]> cursor=regex == null ? transactionCursor : new FilteringIOCursor<>(transactionCursor,new TransactionRegexCriteria(regex,timeZone))){
       while (cursor.next()) {
-        out.println(cursor.get().toString(timeZone));
+        for (        LogEntry entry : cursor.get()) {
+          out.println(entry.toString(timeZone));
+        }
       }
     }
    }
