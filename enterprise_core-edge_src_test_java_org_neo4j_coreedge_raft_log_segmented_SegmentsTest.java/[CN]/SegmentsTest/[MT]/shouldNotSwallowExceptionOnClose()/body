@@ -1,0 +1,18 @@
+{
+  List<SegmentFile> segmentFiles=new ArrayList<>(this.segmentFiles.size());
+  for (  SegmentFile segmentFile : this.segmentFiles) {
+    SegmentFile spy=spy(segmentFile);
+    doThrow(new RuntimeException()).when(spy).close();
+    segmentFiles.add(spy);
+  }
+  Segments segments=new Segments(fsa,fileNames,segmentFiles,contentMarshal,logProvider,-1);
+  try {
+    segments.close();
+    fail("should have thrown");
+  }
+ catch (  RuntimeException ex) {
+    Throwable[] suppressed=ex.getSuppressed();
+    assertEquals(1,suppressed.length);
+    assertTrue(suppressed[0] instanceof RuntimeException);
+  }
+}
