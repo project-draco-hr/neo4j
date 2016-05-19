@@ -4,9 +4,10 @@
     logsFound++;
     out.println("=== " + fileName + " ===");
     StoreChannel fileChannel=fileSystem.open(new File(fileName),"r");
+    ByteBuffer buffer=ByteBuffer.allocateDirect(LOG_HEADER_SIZE);
     LogHeader logHeader;
     try {
-      logHeader=readLogHeader(ByteBuffer.allocateDirect(LOG_HEADER_SIZE),fileChannel,false);
+      logHeader=readLogHeader(buffer,fileChannel,false);
     }
  catch (    IOException ex) {
       out.println("Unable to read timestamp information, no records in logical log.");
@@ -14,13 +15,17 @@
       fileChannel.close();
       throw ex;
     }
-    out.println("Logical log format:" + logHeader.logFormatVersion + "version: "+ logHeader.logVersion+ " with prev committed tx["+ logHeader.lastCommittedTxId+ "]");
+    out.println("Logical log format: " + logHeader.logFormatVersion + " version: "+ logHeader.logVersion+ " with prev committed tx["+ logHeader.lastCommittedTxId+ "]");
     PhysicalLogVersionedStoreChannel channel=new PhysicalLogVersionedStoreChannel(fileChannel,logHeader.logVersion,logHeader.logFormatVersion);
     ReadableLogChannel logChannel=new ReadAheadLogChannel(channel,NO_MORE_CHANNELS);
     LogEntryReader<ReadableClosablePositionAwareChannel> entryReader=new VersionAwareLogEntryReader<>();
-    try (IOCursor<LogEntry> cursor=new LogEntryCursor(entryReader,logChannel)){
+    IOCursor<LogEntry> entryCursor=new LogEntryCursor(entryReader,logChannel);
+    TransactionLogEntryCursor transactionCursor=new TransactionLogEntryCursor(entryCursor);
+    try (IOCursor<LogEntry[]> cursor=regex == null ? transactionCursor : new FilteringIOCursor<>(transactionCursor,new TransactionRegexCriteria(regex,timeZone))){
       while (cursor.next()) {
-        out.println(cursor.get().toString(timeZone));
+        for (        LogEntry entry : cursor.get()) {
+          out.println(entry.toString(timeZone));
+        }
       }
     }
    }
