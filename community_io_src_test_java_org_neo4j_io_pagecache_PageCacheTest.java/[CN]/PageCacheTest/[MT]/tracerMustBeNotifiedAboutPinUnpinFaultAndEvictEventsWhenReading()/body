@@ -3,17 +3,26 @@
   generateFileWithRecords(file("a"),recordCount,recordSize);
   getPageCache(fs,maxPages,pageCachePageSize,tracer);
   long countedPages=0;
+  long countedFaults=0;
   try (PagedFile pagedFile=pageCache.map(file("a"),filePageSize);PageCursor cursor=pagedFile.io(0,PF_SHARED_READ_LOCK)){
     while (cursor.next()) {
-      assertTrue(cursor.next(cursor.getCurrentPageId()));
+      countedPages++;
+      countedFaults++;
+    }
+    countedPages++;
+    for (int i=0; i < 20; i++) {
+      assertTrue(cursor.next(1));
+    }
+    for (int i=0; i < 20; i++) {
+      assertTrue(cursor.next(i));
       countedPages++;
     }
   }
-   assertThat("wrong count of pins",tracer.pins(),is(countedPages * 2));
-  assertThat("wrong count of unpins",tracer.unpins(),is(countedPages * 2));
+   assertThat("wrong count of pins",tracer.pins(),is(countedPages));
+  assertThat("wrong count of unpins",tracer.unpins(),is(countedPages));
   long faults=tracer.faults();
   long bytesRead=tracer.bytesRead();
-  assertThat("wrong count of faults",faults,greaterThanOrEqualTo(countedPages));
-  assertThat("wrong number of bytes read",bytesRead,greaterThanOrEqualTo(countedPages * filePageSize));
-  assertThat("wrong count of evictions",tracer.evictions(),both(greaterThanOrEqualTo(countedPages - maxPages)).and(lessThanOrEqualTo(countedPages + faults)));
+  assertThat("wrong count of faults",faults,greaterThanOrEqualTo(countedFaults));
+  assertThat("wrong number of bytes read",bytesRead,greaterThanOrEqualTo(countedFaults * filePageSize));
+  assertThat("wrong count of evictions",tracer.evictions(),both(greaterThanOrEqualTo(countedFaults - maxPages)).and(lessThanOrEqualTo(countedPages + faults)));
 }
