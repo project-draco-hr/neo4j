@@ -1,0 +1,26 @@
+{
+  if (!open) {
+    throw new ClosedChannelException();
+  }
+  if (bytesLeftInCurrentPage == 0) {
+    if (cursor.next()) {
+      bytesLeftInCurrentPage=cursor.getCurrentPageSize();
+    }
+ else {
+      return -1;
+    }
+  }
+  int position=dst.position();
+  int remaining=Math.min(dst.remaining(),bytesLeftInCurrentPage);
+  int offset=cursor.getOffset();
+  do {
+    dst.position(position);
+    cursor.setOffset(offset);
+    for (int i=0; i < remaining; i++) {
+      dst.put(cursor.getByte());
+    }
+  }
+ while (cursor.shouldRetry());
+  bytesLeftInCurrentPage-=remaining;
+  return remaining;
+}
