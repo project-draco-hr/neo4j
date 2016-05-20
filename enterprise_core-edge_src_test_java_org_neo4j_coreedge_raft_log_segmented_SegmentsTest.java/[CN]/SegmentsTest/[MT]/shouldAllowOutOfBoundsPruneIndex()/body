@@ -1,0 +1,20 @@
+{
+  FileSystemAbstraction fsa=mock(FileSystemAbstraction.class,RETURNS_MOCKS);
+  File baseDirectory=new File(".");
+  FileNames fileNames=new FileNames(baseDirectory);
+  ChannelMarshal<ReplicatedContent> contentMarshal=mock(ChannelMarshal.class);
+  LogProvider logProvider=mock(LogProvider.class);
+  Segments segments=new Segments(fsa,fileNames,Collections.emptyList(),contentMarshal,logProvider,-1);
+  segments.rotate(-1,-1,-1);
+  segments.last().closeWriter();
+  segments.rotate(10,10,2);
+  segments.last().closeWriter();
+  segments.prune(11);
+  segments.rotate(20,20,3);
+  segments.last().closeWriter();
+  SegmentFile oldestNotDisposed=segments.prune(-1);
+  SegmentHeader header=oldestNotDisposed.header();
+  assertEquals(10,header.prevFileLastIndex());
+  assertEquals(10,header.prevIndex());
+  assertEquals(2,header.prevTerm());
+}
