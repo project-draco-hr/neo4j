@@ -1,0 +1,24 @@
+{
+  if (!open) {
+    throw new ClosedChannelException();
+  }
+  if (bytesLeftInCurrentPage == 0) {
+    if (!cursor.next()) {
+      throw new IOException("Could not advance write cursor");
+    }
+    bytesLeftInCurrentPage=cursor.getCurrentPageSize();
+  }
+  int position=src.position();
+  int remaining=Math.min(src.remaining(),bytesLeftInCurrentPage);
+  int offset=cursor.getOffset();
+  do {
+    src.position(position);
+    cursor.setOffset(offset);
+    for (int i=0; i < remaining; i++) {
+      cursor.putByte(src.get());
+    }
+  }
+ while (cursor.shouldRetry());
+  bytesLeftInCurrentPage-=remaining;
+  return remaining;
+}

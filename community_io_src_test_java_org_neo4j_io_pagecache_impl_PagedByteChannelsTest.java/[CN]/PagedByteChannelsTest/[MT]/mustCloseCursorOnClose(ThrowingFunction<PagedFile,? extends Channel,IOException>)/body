@@ -1,0 +1,17 @@
+{
+  AtomicInteger closeCounter=new AtomicInteger();
+  PagedFile pf=new StubPagedFile(8192){
+    @Override public PageCursor io(    long pageId,    int pf_flags) throws IOException {
+      return new DelegatingPageCursor(super.io(pageId,pf_flags)){
+        @Override public void close(){
+          super.close();
+          closeCounter.getAndIncrement();
+        }
+      }
+;
+    }
+  }
+;
+  channelConstructor.apply(pf).close();
+  assertThat(closeCounter.get(),is(1));
+}
