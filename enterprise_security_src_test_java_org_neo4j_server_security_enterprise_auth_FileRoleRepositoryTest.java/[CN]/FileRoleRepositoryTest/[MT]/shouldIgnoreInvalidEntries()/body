@@ -1,0 +1,11 @@
+{
+  AssertableLogProvider logProvider=new AssertableLogProvider();
+  Files.createDirectories(authFile.getParent());
+  Files.write(authFile,UTF8.encode("neo4j:admin:\n" + "admin:admin:\n"));
+  FileRoleRepository roleRepository=new FileRoleRepository(authFile,logProvider);
+  thrown.expect(IllegalStateException.class);
+  thrown.expectMessage(startsWith("Failed to read role file: "));
+  roleRepository.start();
+  assertThat(roleRepository.numberOfRoles(),equalTo(1));
+  logProvider.assertExactly(AssertableLogProvider.inLog(FileRoleRepository.class).error("Ignoring role file \"%s\" (%s)",authFile.toAbsolutePath(),"wrong number of line fields [line 1]"));
+}
