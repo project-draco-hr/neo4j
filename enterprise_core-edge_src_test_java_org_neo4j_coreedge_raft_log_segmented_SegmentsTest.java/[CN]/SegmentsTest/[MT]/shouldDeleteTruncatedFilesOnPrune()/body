@@ -1,12 +1,16 @@
 {
-  try (Segments segments=new Segments(fsa,fileNames,segmentFiles,contentMarshal,logProvider,-1)){
-    SegmentFile toBePruned=segments.rotate(-1,-1,-1);
-    segments.last().closeWriter();
-    SegmentFile toBeTruncated=segments.rotate(10,10,2);
-    segments.last().closeWriter();
-    segments.truncate(20,9,4);
-    segments.prune(10);
-    verify(fsa,times(segmentFiles.size())).deleteFile(fileNames.getForVersion(toBePruned.header().version()));
-    verify(fsa,times(segmentFiles.size())).deleteFile(fileNames.getForVersion(toBeTruncated.header().version()));
-  }
- }
+  FileSystemAbstraction fsa=mock(FileSystemAbstraction.class,RETURNS_MOCKS);
+  File baseDirectory=new File(".");
+  FileNames fileNames=new FileNames(baseDirectory);
+  ChannelMarshal<ReplicatedContent> contentMarshal=mock(ChannelMarshal.class);
+  LogProvider logProvider=mock(LogProvider.class);
+  Segments segments=new Segments(fsa,fileNames,Collections.emptyList(),contentMarshal,logProvider,-1);
+  SegmentFile toBePruned=segments.rotate(-1,-1,-1);
+  segments.last().closeWriter();
+  SegmentFile toBeTruncated=segments.rotate(10,10,2);
+  segments.last().closeWriter();
+  segments.truncate(20,9,4);
+  segments.prune(10);
+  verify(fsa,times(1)).deleteFile(fileNames.getForVersion(toBePruned.header().version()));
+  verify(fsa,times(1)).deleteFile(fileNames.getForVersion(toBeTruncated.header().version()));
+}

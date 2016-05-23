@@ -1,12 +1,15 @@
 {
-  verifyZeroInteractions(fsa);
-  try (Segments segments=new Segments(fsa,fileNames,segmentFiles,contentMarshal,logProvider,-1)){
-    SegmentFile toPrune=segments.rotate(-1,-1,-1);
-    segments.last().closeWriter();
-    segments.rotate(10,10,2);
-    segments.last().closeWriter();
-    segments.rotate(20,20,2);
-    segments.prune(11);
-    verify(fsa,times(segmentFiles.size())).deleteFile(fileNames.getForVersion(toPrune.header().version()));
-  }
- }
+  FileSystemAbstraction fsa=mock(FileSystemAbstraction.class,RETURNS_MOCKS);
+  File baseDirectory=new File(".");
+  FileNames fileNames=new FileNames(baseDirectory);
+  ChannelMarshal<ReplicatedContent> contentMarshal=mock(ChannelMarshal.class);
+  LogProvider logProvider=mock(LogProvider.class);
+  Segments segments=new Segments(fsa,fileNames,Collections.emptyList(),contentMarshal,logProvider,-1);
+  SegmentFile toPrune=segments.rotate(-1,-1,-1);
+  segments.last().closeWriter();
+  segments.rotate(10,10,2);
+  segments.last().closeWriter();
+  segments.rotate(20,20,2);
+  segments.prune(11);
+  verify(fsa,times(1)).deleteFile(fileNames.getForVersion(toPrune.header().version()));
+}
