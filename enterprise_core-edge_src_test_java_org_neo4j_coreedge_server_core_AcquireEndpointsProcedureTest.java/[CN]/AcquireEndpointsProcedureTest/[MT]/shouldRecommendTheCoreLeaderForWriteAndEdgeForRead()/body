@@ -1,0 +1,12 @@
+{
+  final ReadOnlyTopologyService topologyService=mock(ReadOnlyTopologyService.class);
+  final ClusterTopology clusterTopology=mock(ClusterTopology.class);
+  when(topologyService.currentTopology()).thenReturn(clusterTopology);
+  when(clusterTopology.edgeMembers()).thenReturn(addresses(1));
+  LeaderLocator<CoreMember> leaderLocator=mock(LeaderLocator.class);
+  CoreMember theLeader=coreMemberAtBoltPort(9000);
+  when(leaderLocator.getLeader()).thenReturn(theLeader);
+  AcquireEndpointsProcedure procedure=new AcquireEndpointsProcedure(topologyService,leaderLocator,NullLogProvider.getInstance());
+  final List<Object[]> members=asList(procedure.apply(null,new Object[0]));
+  MatcherAssert.assertThat(members,containsInAnyOrder(new Object[]{"127.0.0.1:9000","write"},new Object[]{"127.0.0.1:3001","read"}));
+}
