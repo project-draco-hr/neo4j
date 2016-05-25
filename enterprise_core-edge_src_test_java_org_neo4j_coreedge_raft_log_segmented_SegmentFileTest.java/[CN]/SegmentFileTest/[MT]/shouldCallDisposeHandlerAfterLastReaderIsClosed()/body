@@ -1,12 +1,14 @@
 {
-  Runnable onDisposeHandler=mock(Runnable.class);
-  IOCursor<EntryRecord> reader0=segment.getReader(0);
-  IOCursor<EntryRecord> reader1=segment.getReader(1);
-  segment.closeWriter();
-  segment.markForDisposal(onDisposeHandler);
-  reader0.close();
-  verify(onDisposeHandler,never()).run();
-  reader1.close();
-  assertTrue(segment.isDisposed());
-  verify(onDisposeHandler).run();
-}
+  try (SegmentFile segment=create(fsRule.get(),raftLogFile,contentMarshal,logProvider,segmentHeader)){
+    Runnable onDisposeHandler=mock(Runnable.class);
+    IOCursor<EntryRecord> reader0=segment.getReader(0);
+    IOCursor<EntryRecord> reader1=segment.getReader(1);
+    segment.closeWriter();
+    segment.markForDisposal(onDisposeHandler);
+    reader0.close();
+    verify(onDisposeHandler,never()).run();
+    reader1.close();
+    assertTrue(segment.isDisposed());
+    verify(onDisposeHandler).run();
+  }
+ }
