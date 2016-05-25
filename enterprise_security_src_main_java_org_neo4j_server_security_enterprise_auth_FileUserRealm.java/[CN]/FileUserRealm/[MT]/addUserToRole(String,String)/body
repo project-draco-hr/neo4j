@@ -1,0 +1,23 @@
+{
+  assertValidUsername(username);
+  assertValidRoleName(roleName);
+synchronized (this) {
+    User user=userRepository.findByName(username);
+    if (user == null) {
+      throw new IllegalArgumentException("User " + username + " does not exist.");
+    }
+    RoleRecord role=roleRepository.findByName(roleName);
+    if (role == null) {
+      throw new IllegalArgumentException("Role " + roleName + " does not exist.");
+    }
+ else {
+      RoleRecord newRole=role.augment().withUser(username).build();
+      try {
+        roleRepository.update(role,newRole);
+      }
+ catch (      ConcurrentModificationException e) {
+        addUserToRole(username,roleName);
+      }
+    }
+  }
+}
