@@ -1,17 +1,20 @@
 {
   boolean success=false;
   try (CommitEvent commitEvent=transactionEvent.beginCommitEvent()){
-    if (hasDataChanges()) {
-      try {
-        if ((hooksState=hooks.beforeCommit(txState,this,storeLayer)) != null && hooksState.failed()) {
-          throw new TransactionFailureException(Status.Transaction.HookFailed,hooksState.failure(),"");
+    if (hasTxStateWithChanges()) {
+      if (txState.hasDataChanges()) {
+        try {
+          if ((hooksState=hooks.beforeCommit(txState,this,storeLayer)) != null && hooksState.failed()) {
+            throw new TransactionFailureException(Status.Transaction.HookFailed,hooksState.failure(),"");
+          }
+        }
+  finally {
+          beforeHookInvoked=true;
         }
       }
-  finally {
-        beforeHookInvoked=true;
-      }
+      context.init(locks);
+      prepareRecordChangesFromTransactionState();
     }
-    prepareRecordChangesFromTransactionState();
     if (hasChanges()) {
       try (LockGroup lockGroup=new LockGroup()){
         extractedCommands.clear();
