@@ -1,0 +1,18 @@
+{
+  byte headerByte=cursor.getByte();
+  boolean inUse=isInUse(headerByte);
+  if (mode.shouldLoad(inUse)) {
+    int length=cursor.getShort() | cursor.getByte() << 16;
+    if (length > recordSize | length < 0) {
+      cursor.setCursorException(payloadLengthErrorMessage(record,recordSize,length));
+      return;
+    }
+    long next=cursor.getLong();
+    boolean isStartRecord=(headerByte & START_RECORD_BIT) != 0;
+    record.initialize(inUse,isStartRecord,next,-1,length);
+    readData(record,cursor);
+  }
+ else {
+    record.setInUse(inUse);
+  }
+}
