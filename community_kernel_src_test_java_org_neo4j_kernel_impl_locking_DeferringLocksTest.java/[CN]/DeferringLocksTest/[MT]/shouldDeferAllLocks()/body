@@ -1,2 +1,16 @@
 {
+  TestLocks actualLocks=new TestLocks();
+  DeferringLocks locks=new DeferringLocks(actualLocks);
+  Locks.Client client=locks.newClient();
+  TestLocksClient actualClient=actualLocks.client;
+  Set<Resource> expected=new HashSet<>();
+  ResourceType[] types=ResourceTypes.values();
+  for (int i=0; i < 10; i++) {
+    Resource resource=new Resource(random.among(types),abs(random.nextLong()),true);
+    client.acquireExclusive(resource.resourceType,resource.resourceId);
+    expected.add(resource);
+  }
+  actualClient.assertRegisteredLocks(new HashSet<Resource>());
+  client.prepare();
+  actualClient.assertRegisteredLocks(expected);
 }

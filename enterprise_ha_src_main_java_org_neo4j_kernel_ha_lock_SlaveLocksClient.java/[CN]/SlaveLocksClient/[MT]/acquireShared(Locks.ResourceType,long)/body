@@ -1,12 +1,10 @@
 {
   assertNotStopped();
   Map<Long,AtomicInteger> lockMap=getLockMap(sharedLocks,resourceType);
-  for (  long resourceId : resourceIds) {
-    AtomicInteger preExistingLock=lockMap.get(resourceId);
-    if (preExistingLock != null) {
-      preExistingLock.incrementAndGet();
-    }
- else     if (getReadLockOnMaster(resourceType,resourceId)) {
+  long[] newResourceIds=onlyFirstTimeLocks(lockMap,resourceIds);
+  if (newResourceIds.length > 0) {
+    acquireSharedOnMaster(resourceType,newResourceIds);
+    for (    long resourceId : newResourceIds) {
       if (client.trySharedLock(resourceType,resourceId)) {
         lockMap.put(resourceId,new AtomicInteger(1));
       }
