@@ -1,12 +1,12 @@
 {
   coreState.setStateMachine(txStateMachine);
   coreState.start();
-  int TIMES=5;
-  for (int i=0; i < flushEvery * TIMES; i++) {
+  int interactions=flushEvery * 5;
+  for (int i=0; i < interactions; i++) {
     raftLog.append(new RaftLogEntry(0,operation(nullTx)));
   }
-  coreState.notifyCommitted(flushEvery * TIMES);
+  coreState.notifyCommitted(interactions);
   applier.sync(false);
-  verify(txStateMachine,times(TIMES)).flush();
-  assertEquals(flushEvery * (TIMES - 1),(long)lastFlushedStorage.getInitialState());
+  verify(txStateMachine,times(interactions / batchSize)).flush();
+  assertEquals(interactions - (interactions % batchSize) - 1,(long)lastFlushedStorage.getInitialState());
 }
