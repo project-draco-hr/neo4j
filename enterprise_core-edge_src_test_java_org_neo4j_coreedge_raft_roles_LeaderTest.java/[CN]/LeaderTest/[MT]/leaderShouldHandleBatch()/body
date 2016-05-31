@@ -1,0 +1,18 @@
+{
+  RaftState<RaftTestMember> state=raftState().votingMembers(asSet(myself,member1,member2)).build();
+  Leader leader=new Leader();
+  int BATCH_SIZE=3;
+  RaftMessages.NewEntry.Batch<RaftTestMember> batchRequest=new RaftMessages.NewEntry.Batch<>(BATCH_SIZE);
+  batchRequest.add(valueOf(0));
+  batchRequest.add(valueOf(1));
+  batchRequest.add(valueOf(2));
+  Outcome<RaftTestMember> outcome=leader.handle(batchRequest,state,log());
+  BatchAppendLogEntries logCommand=(BatchAppendLogEntries)single(outcome.getLogCommands());
+  assertEquals(0,logCommand.baseIndex);
+  for (int i=0; i < BATCH_SIZE; i++) {
+    assertEquals(0,logCommand.entries[i].term());
+    assertEquals(i,((ReplicatedInteger)logCommand.entries[i].content()).get());
+  }
+  ShipCommand.NewEntries shipCommand=(ShipCommand.NewEntries)single(outcome.getShipCommands());
+  assertEquals(shipCommand,new ShipCommand.NewEntries(-1,-1,new RaftLogEntry[]{new RaftLogEntry(0,valueOf(0)),new RaftLogEntry(0,valueOf(1)),new RaftLogEntry(0,valueOf(2))}));
+}
