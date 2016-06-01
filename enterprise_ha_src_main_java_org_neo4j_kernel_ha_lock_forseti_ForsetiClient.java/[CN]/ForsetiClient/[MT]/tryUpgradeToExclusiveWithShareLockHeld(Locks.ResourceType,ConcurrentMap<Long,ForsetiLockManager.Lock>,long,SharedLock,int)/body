@@ -2,7 +2,7 @@
   if (sharedLock.tryAcquireUpdateLock(this)) {
     try {
       while (sharedLock.numberOfHolders() > 1) {
-        waitStrategies[resourceType.typeId()].apply(tries++);
+        applyWaitStrategy(resourceType,tries++);
         markAsWaitingFor(sharedLock,resourceType,resourceId);
       }
       lockMap.put(resourceId,myExclusiveLock);
@@ -12,9 +12,12 @@
       sharedLock.releaseUpdateLock(this);
       throw e;
     }
+catch (    TransactionTerminatedException e) {
+      handleUpgradeToExclusiveFailure(sharedLock);
+      throw e;
+    }
 catch (    Throwable e) {
-      sharedLock.releaseUpdateLock(this);
-      clearWaitList();
+      handleUpgradeToExclusiveFailure(sharedLock);
       throw new RuntimeException(e);
     }
   }

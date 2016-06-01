@@ -1,0 +1,36 @@
+{
+  final LockAcquisition lockAcquisition=new LockAcquisition();
+  Future<Void> future=executor.submit(new Callable<Void>(){
+    @Override public Void call() throws Exception {
+      try (Client client=newLockClient(lockAcquisition)){
+        try {
+          if (firstShared) {
+            client.acquireShared(RESOURCE_TYPE,RESOURCE_ID);
+          }
+ else {
+            client.acquireExclusive(RESOURCE_TYPE,RESOURCE_ID);
+          }
+          fail("Transaction termination expected");
+        }
+ catch (        Exception e) {
+          assertThat(e,instanceOf(TransactionTerminatedException.class));
+        }
+      }
+       lockAcquisition.setClient(null);
+      firstLockFailed.countDown();
+      await(startSecondLock);
+      try (Client client=newLockClient(lockAcquisition)){
+        if (secondShared) {
+          client.acquireShared(RESOURCE_TYPE,RESOURCE_ID);
+        }
+ else {
+          client.acquireExclusive(RESOURCE_TYPE,RESOURCE_ID);
+        }
+      }
+       return null;
+    }
+  }
+);
+  lockAcquisition.setFuture(future);
+  return lockAcquisition;
+}
