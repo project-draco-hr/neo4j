@@ -1,0 +1,20 @@
+{
+  defaultBackupPortHostParams();
+  Config defaultConfig=dbRule.getConfigCopy();
+  dbRule.setConfig(GraphDatabaseSettings.keep_logical_logs,"false");
+  GraphDatabaseAPI db=dbRule.getGraphDatabaseAPI();
+  createAndIndexNode(db,1);
+  backupService().doFullBackup(BACKUP_HOST,backupPort,backupDir.getAbsolutePath(),false,defaultConfig,BackupClient.BIG_READ_TIMEOUT,false);
+  createAndIndexNode(db,2);
+  rotate(db);
+  createAndIndexNode(db,3);
+  rotate(db);
+  createAndIndexNode(db,4);
+  rotate(db);
+  Logging logger=mock(Logging.class);
+  StringLogger stringLogger=mock(StringLogger.class);
+  when(logger.getMessagesLog(BackupService.class)).thenReturn(stringLogger);
+  backupService(logger).doIncrementalBackupOrFallbackToFull(BACKUP_HOST,backupPort,backupDir.getAbsolutePath(),false,dbRule.getConfigCopy(),BackupClient.BIG_READ_TIMEOUT,false);
+  verify(stringLogger).info("Previous backup found, trying incremental backup.");
+  verify(stringLogger).info("Existing backup is too far out of date, a new full backup will be performed.");
+}
