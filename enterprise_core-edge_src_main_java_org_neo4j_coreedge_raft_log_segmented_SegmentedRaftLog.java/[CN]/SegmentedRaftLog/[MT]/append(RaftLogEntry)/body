@@ -1,9 +1,13 @@
 {
   ensureOk();
-  updateTerm(entry);
-  state.appendIndex++;
   try {
-    state.segments.last().write(state.appendIndex,entry);
+    for (    RaftLogEntry entry : entries) {
+      state.appendIndex++;
+      updateTerm(entry);
+      state.segments.last().write(state.appendIndex,entry);
+      cacheEntry(entry);
+    }
+    state.segments.last().flush();
   }
  catch (  Throwable e) {
     needsRecovery=true;
@@ -11,9 +15,6 @@
   }
   if (state.segments.last().position() >= rotateAtSize) {
     rotateSegment(state.appendIndex,state.appendIndex,state.currentTerm);
-  }
-  if (entryCache != null) {
-    entryCache.put(state.appendIndex,entry);
   }
   return state.appendIndex;
 }

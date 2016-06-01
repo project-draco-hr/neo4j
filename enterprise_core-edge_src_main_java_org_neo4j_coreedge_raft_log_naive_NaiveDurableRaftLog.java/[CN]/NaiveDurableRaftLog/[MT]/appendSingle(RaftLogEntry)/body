@@ -1,0 +1,18 @@
+{
+  if (logEntry.term() >= term) {
+    term=logEntry.term();
+  }
+ else {
+    throw new IllegalStateException(String.format("Non-monotonic term %d for in entry %s in term %d",logEntry.term(),logEntry.toString(),term));
+  }
+  try {
+    appendIndex++;
+    int length=writeContent(logEntry,contentChannel);
+    writeEntry(appendIndex - (prevIndex + 1),new Entry(logEntry.term(),contentOffset),entriesChannel);
+    contentOffset+=length;
+    return appendIndex;
+  }
+ catch (  MarshallingException|IOException e) {
+    throw new IOException("Failed to append log entry",e);
+  }
+}
