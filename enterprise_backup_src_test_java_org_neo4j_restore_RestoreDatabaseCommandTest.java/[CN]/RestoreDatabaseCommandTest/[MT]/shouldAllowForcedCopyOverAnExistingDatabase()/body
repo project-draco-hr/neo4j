@@ -1,0 +1,16 @@
+{
+  FileSystemAbstraction fs=new DefaultFileSystemAbstraction();
+  String databaseName="to";
+  Config config=RestoreDatabaseCommand.configWith(Config.empty(),databaseName);
+  File fromPath=new File(directory.absolutePath(),"from");
+  File toPath=config.get(DatabaseManagementSystemSettings.database_path);
+  int fromNodeCount=10;
+  int toNodeCount=20;
+  createDbAt(fromPath,fromNodeCount);
+  createDbAt(toPath,toNodeCount);
+  new RestoreDatabaseCommand(fs,fromPath,config,databaseName,true).execute();
+  GraphDatabaseService copiedDb=new GraphDatabaseFactory().newEmbeddedDatabase(toPath);
+  try (Transaction ignored=copiedDb.beginTx()){
+    assertEquals(fromNodeCount,Iterables.count(copiedDb.getAllNodes()));
+  }
+ }
