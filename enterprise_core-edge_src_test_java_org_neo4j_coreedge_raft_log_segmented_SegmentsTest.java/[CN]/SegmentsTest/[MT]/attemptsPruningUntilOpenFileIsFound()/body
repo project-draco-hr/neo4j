@@ -1,0 +1,32 @@
+{
+  FileSystemAbstraction fsa=mock(FileSystemAbstraction.class,RETURNS_MOCKS);
+  File baseDirectory=new File(".");
+  FileNames fileNames=new FileNames(baseDirectory);
+  ChannelMarshal<ReplicatedContent> contentMarshal=mock(ChannelMarshal.class);
+  LogProvider logProvider=mock(LogProvider.class);
+  Segments segments=new Segments(fsa,fileNames,Collections.emptyList(),contentMarshal,logProvider,-1);
+  segments.rotate(-1,-1,-1);
+  segments.last().closeWriter();
+  segments.rotate(10,10,2);
+  segments.last().closeWriter();
+  IOCursor<EntryRecord> reader=segments.last().getReader(11);
+  segments.rotate(20,20,3);
+  segments.last().closeWriter();
+  segments.rotate(30,30,4);
+  segments.last().closeWriter();
+  segments.prune(31);
+  OpenEndRangeMap.ValueRange<Long,SegmentFile> shouldBePruned=segments.getForIndex(5);
+  OpenEndRangeMap.ValueRange<Long,SegmentFile> shouldNotBePruned=segments.getForIndex(15);
+  OpenEndRangeMap.ValueRange<Long,SegmentFile> shouldAlsoNotBePruned=segments.getForIndex(25);
+  assertFalse(shouldBePruned.value().isPresent());
+  assertTrue(shouldNotBePruned.value().isPresent());
+  assertTrue(shouldAlsoNotBePruned.value().isPresent());
+  reader.close();
+  segments.prune(31);
+  shouldBePruned=segments.getForIndex(5);
+  shouldNotBePruned=segments.getForIndex(15);
+  shouldAlsoNotBePruned=segments.getForIndex(25);
+  assertFalse(shouldBePruned.value().isPresent());
+  assertFalse(shouldNotBePruned.value().isPresent());
+  assertFalse(shouldAlsoNotBePruned.value().isPresent());
+}
