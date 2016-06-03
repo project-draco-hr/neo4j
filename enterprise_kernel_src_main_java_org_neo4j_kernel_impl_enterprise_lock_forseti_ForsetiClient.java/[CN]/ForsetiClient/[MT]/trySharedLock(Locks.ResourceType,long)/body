@@ -1,7 +1,5 @@
 {
-  if (!stateHolder.incrementActiveClients()) {
-    return false;
-  }
+  stateHolder.incrementActiveClients(this);
   try {
     ConcurrentMap<Long,ForsetiLockManager.Lock> lockMap=lockMaps[resourceType.typeId()];
     PrimitiveLongIntMap heldShareLocks=sharedLockCounts[resourceType.typeId()];
@@ -16,9 +14,7 @@
       return true;
     }
     while (true) {
-      if (stateHolder.isStopped()) {
-        return false;
-      }
+      assertNotStopped();
       ForsetiLockManager.Lock existingLock=lockMap.get(resourceId);
       if (existingLock == null) {
         if (lockMap.putIfAbsent(resourceId,new SharedLock(this)) == null) {

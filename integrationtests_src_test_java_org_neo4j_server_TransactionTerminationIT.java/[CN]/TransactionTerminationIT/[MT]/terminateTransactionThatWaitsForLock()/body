@@ -1,0 +1,32 @@
+{
+  final String labelName="foo";
+  final String property="bar";
+  final long value1=1L;
+  final long value2=2L;
+  createNode(labelName);
+  final Response tx1=startTx();
+  final Response tx2=startTx();
+  assertNumberOfActiveTransactions(2);
+  Response update1=executeUpdateStatement(tx1,labelName,property,value1);
+  assertThat(update1.status(),equalTo(200));
+  assertThat(update1,containsNoErrors());
+  final CountDownLatch latch=new CountDownLatch(1);
+  Future<?> tx2Result=Executors.newSingleThreadExecutor().submit(new Runnable(){
+    @Override public void run(){
+      latch.countDown();
+      Response update2=executeUpdateStatement(tx2,labelName,property,value2);
+      assertEquals(200,update2.status());
+      assertThat(update2,hasErrors(Status.Statement.ExecutionFailure));
+      assertThat(update2.rawContent(),containsString(LockClientStoppedException.class.getSimpleName()));
+    }
+  }
+);
+  assertTrue(latch.await(1,TimeUnit.MINUTES));
+  Thread.sleep(2000);
+  terminate(tx2);
+  commit(tx1);
+  Response update3=executeUpdateStatement(tx2,labelName,property,value2);
+  assertThat(update3.status(),equalTo(404));
+  tx2Result.get(1,TimeUnit.MINUTES);
+  assertSingleNodeExists(labelName,property,value1);
+}
