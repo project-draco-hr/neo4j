@@ -1,0 +1,16 @@
+{
+  int clusterSize=3;
+  ClusterManager manager=new ClusterManager.Builder().withRootDirectory(dir.cleanDirectory("testcluster")).withProvider(ClusterManager.clusterOfSize(clusterSize)).withSharedConfig(stringMap(ClusterSettings.heartbeat_interval.name(),"1")).build();
+  try {
+    manager.start();
+    ClusterManager.ManagedCluster cluster=manager.getDefaultCluster();
+    cluster.await(allSeesAllAsAvailable());
+    cluster.await(masterAvailable());
+    HighlyAvailableGraphDatabase oldMaster=cluster.getMaster();
+    cluster.fail(oldMaster,NetworkFlag.values());
+    cluster.await(oldMasterEvicted(oldMaster),20);
+  }
+  finally {
+    manager.safeShutdown();
+  }
+}

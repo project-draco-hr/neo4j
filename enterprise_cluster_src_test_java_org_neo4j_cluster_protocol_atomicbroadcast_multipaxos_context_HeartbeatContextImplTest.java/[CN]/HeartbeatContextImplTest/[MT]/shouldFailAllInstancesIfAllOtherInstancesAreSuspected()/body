@@ -1,0 +1,36 @@
+{
+  InstanceId me=new InstanceId(1);
+  InstanceId member2=new InstanceId(2);
+  InstanceId member3=new InstanceId(3);
+  Timeouts timeouts=mock(Timeouts.class);
+  CommonContextState commonState=mock(CommonContextState.class);
+  ClusterConfiguration configuration=mock(ClusterConfiguration.class);
+  when(commonState.configuration()).thenReturn(configuration);
+  when(configuration.getMembers()).thenReturn(members(3));
+  when(configuration.getMemberIds()).thenReturn(ids(3));
+  DelayedDirectExecutor executor=new DelayedDirectExecutor(NullLogProvider.getInstance());
+  HeartbeatContext context=new HeartbeatContextImpl(me,commonState,NullLogProvider.getInstance(),timeouts,executor);
+  final List<InstanceId> failed=new ArrayList<>(2);
+  HeartbeatListener listener=new HeartbeatListener(){
+    @Override public void failed(    InstanceId server){
+      failed.add(server);
+    }
+    @Override public void alive(    InstanceId server){
+      failed.remove(server);
+    }
+  }
+;
+  context.addHeartbeatListener(listener);
+  context.suspect(member2);
+  executor.drain();
+  assertEquals(0,failed.size());
+  context.suspect(member3);
+  executor.drain();
+  assertEquals(2,failed.size());
+  assertTrue(failed.contains(member2));
+  assertTrue(failed.contains(member3));
+  context.alive(member2);
+  executor.drain();
+  assertEquals(1,failed.size());
+  assertTrue(failed.contains(member3));
+}
