@@ -10,12 +10,18 @@
       return;
     }
     RaftLogEntry[] logEntries=RaftLogEntry.empty;
-    try (RaftLogCursor cursor=raftLog.getEntryCursor(logIndex)){
-      if (cursor.next()) {
-        logEntries=new RaftLogEntry[]{cursor.get()};
+    RaftLogEntry toSend=inFlightMap.retrieve(logIndex);
+    if (toSend == null) {
+      try (RaftLogCursor cursor=raftLog.getEntryCursor(logIndex)){
+        if (cursor.next()) {
+          toSend=cursor.get();
+        }
       }
+     }
+    if (toSend != null) {
+      logEntries=new RaftLogEntry[]{toSend};
     }
-     RaftMessages.AppendEntries.Request<MEMBER> appendRequest=new RaftMessages.AppendEntries.Request<>(leader,leaderContext.term,prevLogIndex,prevLogTerm,logEntries,leaderContext.commitIndex);
+    RaftMessages.AppendEntries.Request<MEMBER> appendRequest=new RaftMessages.AppendEntries.Request<>(leader,leaderContext.term,prevLogIndex,prevLogTerm,logEntries,leaderContext.commitIndex);
     outbound.send(follower,appendRequest);
   }
  catch (  IOException e) {
