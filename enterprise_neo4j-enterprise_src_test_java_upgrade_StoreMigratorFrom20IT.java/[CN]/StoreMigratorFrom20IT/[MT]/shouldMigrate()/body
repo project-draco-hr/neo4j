@@ -1,19 +1,21 @@
 {
-  StoreMigrator storeMigrator=new StoreMigrator(fs,pageCache,config,NullLogService.getInstance(),schemaIndexProvider);
+  StoreMigrator storeMigrator=new StoreMigrator(fs,pageCache,getConfig(),NullLogService.getInstance(),schemaIndexProvider);
   SchemaIndexMigrator indexMigrator=new SchemaIndexMigrator(fs,schemaIndexProvider,labelScanStoreProvider);
   upgrader(indexMigrator,storeMigrator).migrateIfNeeded(find20FormatStoreDirectory(storeDir.directory()));
   assertEquals(2,monitor.progresses().size());
   assertTrue(monitor.isStarted());
   assertTrue(monitor.isFinished());
-  GraphDatabaseService database=new EnterpriseGraphDatabaseFactory().newEmbeddedDatabaseBuilder(storeDir.absolutePath()).setConfig(GraphDatabaseSettings.record_format,formatName).newGraphDatabase();
+  GraphDatabaseService database=new EnterpriseGraphDatabaseFactory().newEmbeddedDatabaseBuilder(storeDir.absolutePath()).newGraphDatabase();
   try {
     verifyDatabaseContents(database);
   }
   finally {
     database.shutdown();
   }
+  LogProvider logProvider=NullLogProvider.getInstance();
+  StoreFactory storeFactory=new StoreFactory(storeDir.directory(),pageCache,fs,logProvider);
   try (NeoStores neoStores=storeFactory.openAllNeoStores(true)){
     verifyNeoStore(neoStores);
   }
-   assertConsistentStore(storeDir.directory(),config);
+   assertConsistentStore(storeDir.directory());
 }
