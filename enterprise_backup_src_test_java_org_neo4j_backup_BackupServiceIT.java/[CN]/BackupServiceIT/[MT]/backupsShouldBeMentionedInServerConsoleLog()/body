@@ -1,0 +1,33 @@
+{
+  defaultBackupPortHostParams();
+  Config config=dbRule.getConfigCopy();
+  dbRule.setConfig(OnlineBackupSettings.online_backup_enabled,"false");
+  Config withOnlineBackupDisabled=dbRule.getConfigCopy();
+  createAndIndexNode(dbRule,1);
+  final Log log=mock(Log.class);
+  LogProvider logProvider=new LogProvider(){
+    @Override public Log getLog(    Class loggingClass){
+      return log;
+    }
+    @Override public Log getLog(    String name){
+      return log;
+    }
+  }
+;
+  Logger logger=mock(Logger.class);
+  when(log.infoLogger()).thenReturn(logger);
+  LogService logService=mock(LogService.class);
+  when(logService.getInternalLogProvider()).thenReturn(logProvider);
+  Dependencies dependencies=new Dependencies(dbRule.getDependencyResolver());
+  dependencies.satisfyDependencies(config,monitors,logService);
+  OnlineBackupKernelExtension backup=(OnlineBackupKernelExtension)new OnlineBackupExtensionFactory().newKernelExtension(DependenciesProxy.dependencies(dependencies,OnlineBackupExtensionFactory.Dependencies.class));
+  backup.start();
+  backupService().doFullBackup(BACKUP_HOST,backupPort,backupDir,ConsistencyCheck.NONE,withOnlineBackupDisabled,BackupClient.BIG_READ_TIMEOUT,false);
+  verify(logger).log("Full backup started...");
+  verify(logger).log("Full backup finished.");
+  createAndIndexNode(dbRule,2);
+  backupService().doIncrementalBackupOrFallbackToFull(BACKUP_HOST,backupPort,backupDir,ConsistencyCheck.NONE,withOnlineBackupDisabled,BackupClient.BIG_READ_TIMEOUT,false);
+  backup.stop();
+  verify(logger).log("Incremental backup started...");
+  verify(logger).log("Incremental backup finished.");
+}
