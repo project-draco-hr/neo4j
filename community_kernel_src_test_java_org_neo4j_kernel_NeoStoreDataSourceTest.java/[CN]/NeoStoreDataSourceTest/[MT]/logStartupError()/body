@@ -1,0 +1,20 @@
+{
+  Config config=new Config(stringMap(),GraphDatabaseSettings.class);
+  StoreFactory storeFactory=mock(StoreFactory.class);
+  NeoStores neoStores=mock(NeoStores.class,RETURNS_MOCKS);
+  Throwable makeStoreOkError=new RuntimeException("Can't make store ok");
+  doThrow(makeStoreOkError).when(neoStores).makeStoreOk();
+  doReturn(neoStores).when(storeFactory).openAllNeoStores(true);
+  AssertableLogProvider logProvider=new AssertableLogProvider();
+  NeoStoreDataSource dataSource=ds.getDataSource(dir.graphDbDir(),fs.get(),config,storeFactory,new DefaultIdGeneratorFactory(fs.get()),mock(KernelHealth.class),logProvider);
+  Throwable dataSourceStartError=null;
+  try {
+    dataSource.start();
+    fail("Exception expected");
+  }
+ catch (  Exception e) {
+    assertEquals(makeStoreOkError,Exceptions.rootCause(e));
+    dataSourceStartError=e;
+  }
+  logProvider.assertAtLeastOnce(inLog(NeoStoreDataSource.class).warn(equalTo("Exception occurred while starting the datasource. Attempting to close things down."),equalTo(dataSourceStartError)));
+}
