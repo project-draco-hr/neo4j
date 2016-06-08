@@ -1,0 +1,31 @@
+{
+  ServerControls server=cleanupRule.add(TestServerBuilders.newInProcessBuilder().withConfig(ServerSettings.auth_enabled,Settings.FALSE).withConfig(GraphDatabaseFacadeFactory.Configuration.lock_manager,lockManagerName).withConfig(KernelTransactions.tx_termination_aware_locks,Settings.TRUE).newServer());
+  GraphDatabaseService db=server.graph();
+  final HTTP.Builder http=withBaseUri(server.httpURI().toString());
+  final long value1=1L;
+  final long value2=2L;
+  createNode(db);
+  final Response tx1=startTx(http);
+  final Response tx2=startTx(http);
+  assertNumberOfActiveTransactions(2,db);
+  Response update1=executeUpdateStatement(tx1,value1,http);
+  assertThat(update1.status(),equalTo(200));
+  assertThat(update1,containsNoErrors());
+  final CountDownLatch latch=new CountDownLatch(1);
+  Future<?> tx2Result=executeInSeparateThread("tx2",new Runnable(){
+    @Override public void run(){
+      latch.countDown();
+      Response update2=executeUpdateStatement(tx2,value2,http);
+      assertTxWasTerminated(update2);
+    }
+  }
+);
+  await(latch);
+  sleepForAWhile();
+  terminate(tx2,http);
+  commit(tx1,http);
+  Response update3=executeUpdateStatement(tx2,value2,http);
+  assertThat(update3.status(),equalTo(404));
+  tx2Result.get(1,TimeUnit.MINUTES);
+  assertNodeExists(db,value1);
+}
