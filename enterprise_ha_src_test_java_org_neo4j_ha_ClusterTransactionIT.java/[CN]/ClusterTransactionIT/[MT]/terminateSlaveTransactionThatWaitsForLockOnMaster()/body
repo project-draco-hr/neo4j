@@ -1,0 +1,45 @@
+{
+  clusterRule.withSharedSetting(HaSettings.lock_read_timeout,"1m");
+  clusterRule.withSharedSetting(KernelTransactions.tx_termination_aware_locks,Settings.TRUE);
+  ClusterManager.ManagedCluster cluster=startCluster();
+  final Label label=DynamicLabel.label("foo");
+  final String property="bar";
+  final String masterValue="master";
+  final String slaveValue="slave";
+  final HighlyAvailableGraphDatabase master=cluster.getMaster();
+  final HighlyAvailableGraphDatabase slave=cluster.getAnySlave();
+  createNodeWithLabel(cluster,label);
+  final CountDownLatch masterTxCommit=new CountDownLatch(1);
+  Future<?> masterTx=newSingleThreadExecutor(named("masterTx")).submit(new Runnable(){
+    @Override public void run(){
+      try (Transaction tx=master.beginTx()){
+        Node node=single(master.findNodes(label));
+        node.setProperty(property,masterValue);
+        await(masterTxCommit);
+        tx.success();
+      }
+     }
+  }
+);
+  final AtomicReference<Transaction> slaveTxReference=new AtomicReference<>();
+  final CountDownLatch slaveTxStarted=new CountDownLatch(1);
+  Future<?> slaveTx=newSingleThreadExecutor(named("slaveTx")).submit(new Runnable(){
+    @Override public void run(){
+      try (Transaction tx=slave.beginTx()){
+        slaveTxReference.set(tx);
+        Node node=single(slave.findNodes(label));
+        slaveTxStarted.countDown();
+        node.setProperty(property,slaveValue);
+        tx.success();
+      }
+     }
+  }
+);
+  slaveTxStarted.await();
+  Thread.sleep(2000);
+  terminate(slaveTxReference);
+  assertTxWasTerminated(slaveTx);
+  masterTxCommit.countDown();
+  assertNull(masterTx.get());
+  assertSingleNodeExists(master,label,property,masterValue);
+}
