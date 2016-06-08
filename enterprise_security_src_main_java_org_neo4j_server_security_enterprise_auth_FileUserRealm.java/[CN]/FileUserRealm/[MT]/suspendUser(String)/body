@@ -1,7 +1,17 @@
 {
-  User user=userRepository.findByName(username);
-  if (user != null && !user.hasFlag(IS_SUSPENDED)) {
-    User suspendedUser=user.augment().withFlag(IS_SUSPENDED).build();
-    userRepository.update(user,suspendedUser);
+synchronized (this) {
+    User user=userRepository.findByName(username);
+    if (user == null) {
+      throw new IllegalArgumentException("User " + username + " does not exist.");
+    }
+    if (!user.hasFlag(IS_SUSPENDED)) {
+      User suspendedUser=user.augment().withFlag(IS_SUSPENDED).build();
+      try {
+        userRepository.update(user,suspendedUser);
+      }
+ catch (      ConcurrentModificationException e) {
+        throw new RuntimeException("Unexpected failure",e);
+      }
+    }
   }
 }
