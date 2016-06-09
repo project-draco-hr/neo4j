@@ -1,0 +1,18 @@
+{
+  final TransactionAppender appender=mockedTransactionAppender();
+  final IndexUpdatesValidator indexUpdatesValidator=mockedIndexUpdatesValidator();
+  final KernelHealth kernelHealth=newKernelHealth();
+  final long idReuseSafeZoneTime=100;
+  Dependencies deps=new MockedDependencies().indexUpdatesValidator(indexUpdatesValidator).kernelHealth(kernelHealth).transactionAppender(appender).idReuseSafeZoneTime(idReuseSafeZoneTime);
+  int maxBatchSize=3;
+  TransactionCommittingResponseUnpacker unpacker=new TransactionCommittingResponseUnpacker(deps,maxBatchSize);
+  unpacker.start();
+  int txCount=maxBatchSize;
+  int doesNotMatter=1;
+  unpacker.unpackResponse(new DummyTransactionResponse(doesNotMatter,txCount,appender,maxBatchSize,idReuseSafeZoneTime + 1),NO_OP_TX_HANDLER);
+  KernelTransactions kernelTransactions=deps.kernelTransactions();
+  BatchingTransactionRepresentationStoreApplier applier=deps.transactionRepresentationStoreApplier();
+  InOrder inOrder=inOrder(kernelTransactions,applier);
+  inOrder.verify(applier,times(1)).closeBatch();
+  inOrder.verify(kernelTransactions,times(1)).unfreezeActiveTx();
+}

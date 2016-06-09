@@ -12,8 +12,11 @@ catch (  ConstraintViolationTransactionFailureException e) {
   }
 catch (  Exception e) {
     String userMessage=successCalled ? "Transaction was marked as successful, but unable to commit transaction so rolled back." : "Unable to rollback transaction";
-    if (e instanceof KernelException && ((KernelException)e).status().code().classification() == Classification.TransientError) {
-      throw new TransientTransactionFailureException(userMessage,e);
+    if (e instanceof KernelException) {
+      Code statusCode=((KernelException)e).status().code();
+      if (statusCode.classification() == Classification.TransientError) {
+        throw new TransientTransactionFailureException(userMessage + ": " + statusCode.description(),e);
+      }
     }
     throw new TransactionFailureException(userMessage,e);
   }
