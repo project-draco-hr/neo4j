@@ -1,0 +1,24 @@
+{
+  Index<Node> index=nodeIndex(stringMap());
+  String stringProperty="NODE_NAME";
+  String[] names=new String[]{"Fry","Leela","Bender","Amy","Hubert","Calculon"};
+  try (Transaction transaction=graphDb.beginTx()){
+    for (    String name : names) {
+      Node node=graphDb.createNode();
+      node.setProperty(stringProperty,name);
+      index.add(node,stringProperty,name);
+    }
+    transaction.success();
+  }
+   try (Transaction transaction=graphDb.beginTx()){
+    QueryContext queryContext=new QueryContext(stringProperty + ":**");
+    queryContext.sort(new Sort(new SortedSetSortField(stringProperty,true)));
+    IndexHits<Node> nodes=index.query(queryContext);
+    int nameIndex=0;
+    String[] sortedNames=new String[]{"Leela","Hubert","Fry","Calculon","Bender","Amy"};
+    for (    Node node : nodes) {
+      assertEquals("Nodes should be sorted by string property",sortedNames[nameIndex++],node.getProperty(stringProperty));
+    }
+    transaction.success();
+  }
+ }
