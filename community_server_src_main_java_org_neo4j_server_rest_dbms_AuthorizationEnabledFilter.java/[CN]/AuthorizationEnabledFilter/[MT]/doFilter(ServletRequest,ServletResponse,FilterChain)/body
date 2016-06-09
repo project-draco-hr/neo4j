@@ -20,26 +20,31 @@
   }
   final String username=usernameAndPassword[0];
   final String password=usernameAndPassword[1];
-  AuthSubject authSubject=authenticate(username,password);
+  try {
+    AuthSubject authSubject=authenticate(username,password);
 switch (authSubject.getAuthenticationResult()) {
 case PASSWORD_CHANGE_REQUIRED:
-    if (!PASSWORD_CHANGE_WHITELIST.matcher(path).matches()) {
-      passwordChangeRequired(username,baseURL(request)).accept(response);
-      return;
-    }
+      if (!PASSWORD_CHANGE_WHITELIST.matcher(path).matches()) {
+        passwordChangeRequired(username,baseURL(request)).accept(response);
+        return;
+      }
 case SUCCESS:
-  try {
-    filterChain.doFilter(new AuthorizedRequestWrapper(BASIC_AUTH,username,request,authSubject),servletResponse);
-  }
- catch (  AuthorizationViolationException e) {
-    unauthorizedAccess(e.getMessage()).accept(response);
-  }
-return;
+    try {
+      filterChain.doFilter(new AuthorizedRequestWrapper(BASIC_AUTH,username,request,authSubject),servletResponse);
+    }
+ catch (    AuthorizationViolationException e) {
+      unauthorizedAccess(e.getMessage()).accept(response);
+    }
+  return;
 case TOO_MANY_ATTEMPTS:
 tooManyAttempts.accept(response);
 return;
 default :
 log.warn("Failed authentication attempt for '%s' from %s",username,request.getRemoteAddr());
 requestAuthentication(request,invalidCredential).accept(response);
+}
+}
+ catch (InvalidAuthTokenException e) {
+requestAuthentication(request,invalidAuthToken(e.getMessage())).accept(response);
 }
 }
