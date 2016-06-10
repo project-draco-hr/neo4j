@@ -9,7 +9,7 @@
     long prevLogIndex=startIndex - 1;
     long prevLogTerm=raftLog.readEntryTerm(prevLogIndex);
     if (prevLogTerm > leaderContext.term) {
-      log.warn(format("Aborting send. Not leader anymore? %s, prevLogTerm=%d",leaderContext,prevLogTerm));
+      log.warn("%s aborting send. Not leader anymore? %s, prevLogTerm=%d",statusAsString(),leaderContext,prevLogTerm);
       return;
     }
     RaftMessages.AppendEntries.Request<MEMBER> appendRequest=new RaftMessages.AppendEntries.Request<>(leader,leaderContext.term,prevLogIndex,prevLogTerm,entries,leaderContext.commitIndex);
@@ -18,7 +18,7 @@
       while (offset < batchSize && cursor.next()) {
         entries[offset]=cursor.get();
         if (entries[offset].term() > leaderContext.term) {
-          log.warn(format("Aborting send. Not leader anymore? %s, entryTerm=%d",leaderContext,entries[offset].term()));
+          log.warn("%s aborting send. Not leader anymore? %s, entryTerm=%d",statusAsString(),leaderContext,entries[offset].term());
           return;
         }
         offset++;
@@ -27,6 +27,6 @@
      outbound.send(follower,appendRequest);
   }
  catch (  IOException e) {
-    log.warn("Exception during batch send",e);
+    log.warn(statusAsString() + " exception during batch send",e);
   }
 }
