@@ -1,0 +1,22 @@
+{
+  Index<Node> index=nodeIndex(stringMap());
+  String numericProperty="NODE_ID";
+  try (Transaction transaction=graphDb.beginTx()){
+    for (int i=0; i < 15; i++) {
+      Node node=graphDb.createNode();
+      node.setProperty(numericProperty,i);
+      index.add(node,numericProperty,new ValueContext(i).indexNumeric());
+    }
+    transaction.success();
+  }
+   try (Transaction transaction=graphDb.beginTx()){
+    QueryContext queryContext=new QueryContext(numericProperty + ":**");
+    queryContext.sort(new Sort(new SortedNumericSortField(numericProperty,SortField.Type.INT,false)));
+    IndexHits<Node> nodes=index.query(queryContext);
+    int expectedIndexId=0;
+    for (    Node node : nodes) {
+      assertEquals("Nodes should be sorted by numeric property",expectedIndexId++,node.getProperty(numericProperty));
+    }
+    transaction.success();
+  }
+ }
