@@ -1,6 +1,6 @@
 {
   try {
-    Outcome<MEMBER> outcome=currentRole.handler.handle(incomingMessage,state,log);
+    Outcome<MEMBER> outcome=currentRole.handler.handle(incomingMessage,state,log,localDatabase);
     boolean newLeaderWasElected=leaderChanged(outcome,state.leader());
     boolean newCommittedEntry=outcome.getCommitIndex() > state.commitIndex();
     state.update(outcome);
@@ -19,7 +19,6 @@
     checkForSnapshotNeed(outcome);
   }
  catch (  Throwable e) {
-    log.error("Failed to process RAFT message " + incomingMessage,e);
-    databaseHealthSupplier.get().panic(e);
+    panicAndStop(incomingMessage,e);
   }
 }

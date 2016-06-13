@@ -3,18 +3,19 @@
   RaftMessages.Type[] values=RaftMessages.Type.values();
   RaftMessages.Type messageType=values[messageTypeWire];
   CoreMember from=retrieveMember(buffer);
+  StoreId storeId=StoreIdMarshal.unmarshal(buffer);
   if (messageType.equals(VOTE_REQUEST)) {
     CoreMember candidate=retrieveMember(buffer);
     long term=buffer.readLong();
     long lastLogIndex=buffer.readLong();
     long lastLogTerm=buffer.readLong();
-    RaftMessages.Vote.Request<CoreMember> request=new RaftMessages.Vote.Request<>(from,term,candidate,lastLogIndex,lastLogTerm);
+    RaftMessages.Vote.Request<CoreMember> request=new RaftMessages.Vote.Request<>(from,term,candidate,lastLogIndex,lastLogTerm,storeId);
     list.add(request);
   }
  else   if (messageType.equals(VOTE_RESPONSE)) {
     long term=buffer.readLong();
     boolean voteGranted=buffer.readBoolean();
-    RaftMessages.Vote.Response<CoreMember> response=new RaftMessages.Vote.Response<>(from,term,voteGranted);
+    RaftMessages.Vote.Response<CoreMember> response=new RaftMessages.Vote.Response<>(from,term,voteGranted,storeId);
     list.add(response);
   }
  else   if (messageType.equals(APPEND_ENTRIES_REQUEST)) {
@@ -29,29 +30,29 @@
       final ReplicatedContent content=marshal.unmarshal(buffer);
       entries[i]=new RaftLogEntry(entryTerm,content);
     }
-    list.add(new RaftMessages.AppendEntries.Request<>(from,term,prevLogIndex,prevLogTerm,entries,leaderCommit));
+    list.add(new RaftMessages.AppendEntries.Request<>(from,term,prevLogIndex,prevLogTerm,entries,leaderCommit,storeId));
   }
  else   if (messageType.equals(APPEND_ENTRIES_RESPONSE)) {
     long term=buffer.readLong();
     boolean success=buffer.readBoolean();
     long matchIndex=buffer.readLong();
     long appendIndex=buffer.readLong();
-    list.add(new RaftMessages.AppendEntries.Response<>(from,term,success,matchIndex,appendIndex));
+    list.add(new RaftMessages.AppendEntries.Response<>(from,term,success,matchIndex,appendIndex,storeId));
   }
  else   if (messageType.equals(NEW_ENTRY_REQUEST)) {
     ReplicatedContent content=marshal.unmarshal(buffer);
-    list.add(new RaftMessages.NewEntry.Request<>(from,content));
+    list.add(new RaftMessages.NewEntry.Request<>(from,content,storeId));
   }
  else   if (messageType.equals(HEARTBEAT)) {
     long leaderTerm=buffer.readLong();
     long commitIndexTerm=buffer.readLong();
     long commitIndex=buffer.readLong();
-    list.add(new RaftMessages.Heartbeat<>(from,leaderTerm,commitIndex,commitIndexTerm));
+    list.add(new RaftMessages.Heartbeat<>(from,leaderTerm,commitIndex,commitIndexTerm,storeId));
   }
  else   if (messageType.equals(LOG_COMPACTION_INFO)) {
     long leaderTerm=buffer.readLong();
     long prevIndex=buffer.readLong();
-    list.add(new RaftMessages.LogCompactionInfo<>(from,leaderTerm,prevIndex));
+    list.add(new RaftMessages.LogCompactionInfo<>(from,leaderTerm,prevIndex,storeId));
   }
  else {
     throw new IllegalArgumentException("Unknown message type");
