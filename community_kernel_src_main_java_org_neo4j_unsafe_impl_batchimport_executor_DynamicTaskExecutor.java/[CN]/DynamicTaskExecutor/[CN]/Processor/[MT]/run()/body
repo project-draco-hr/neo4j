@@ -1,5 +1,6 @@
 {
-  while (!shutDown) {
+  final LOCAL threadLocalState=initialLocalState.get();
+  while (!abortQueued && !shutDown) {
     Task<LOCAL> task=queue.poll();
     if (task != null) {
       try {
@@ -7,11 +8,14 @@
       }
  catch (      Throwable e) {
         panic=e;
-        shutdown(false);
+        shutdown(TaskExecutor.SF_ABORT_QUEUED);
         throw launderedException(e);
       }
     }
  else {
+      if (shutDown) {
+        break;
+      }
       parkAWhile();
     }
   }
