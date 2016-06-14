@@ -1,5 +1,4 @@
 {
-  assumeTrue("For some reason, this test is very flaky on Windows",!SystemUtils.IS_OS_WINDOWS);
   int iterations=1000;
   List<WeakReference<PageCache>> refs=new LinkedList<>();
   final Queue<Throwable> caughtExceptions=new ConcurrentLinkedQueue<>();
@@ -16,28 +15,21 @@
     generateFileWithRecords(file("a"),recordCount,recordSize);
     int filePagesInTotal=recordCount / recordsPerFilePage;
     for (int i=0; i < iterations; i++) {
-      PageCache cache=createPageCache(fs,maxPages,pageCachePageSize,PageCacheTracer.NULL);
-      PagedFile pagedFile=cache.map(file("a"),filePageSize);
-      try (PageCursor cursor=pagedFile.io(0,PF_SHARED_LOCK)){
-        for (int j=0; j < filePagesInTotal; j++) {
-          assertTrue(cursor.next());
-        }
-      }
-       pagedFile.close();
-      cache.close();
-      refs.add(new WeakReference<>(cache));
+      createAndDirtyAndShutDownPageCache(refs,filePagesInTotal);
       assertTrue(caughtExceptions.isEmpty());
     }
   }
   finally {
     Thread.setDefaultUncaughtExceptionHandler(defaultUncaughtExceptionHandler);
   }
-  int maxChecks=100;
+  int maxChecks=200;
+  byte[] randomHeapPollution;
   boolean passed;
   do {
     System.gc();
     Thread.sleep(100);
     passed=true;
+    randomHeapPollution=new byte[(int)ByteUnit.mebiBytes(2)];
     for (    WeakReference<PageCache> ref : refs) {
       if (ref.get() != null) {
         passed=false;
