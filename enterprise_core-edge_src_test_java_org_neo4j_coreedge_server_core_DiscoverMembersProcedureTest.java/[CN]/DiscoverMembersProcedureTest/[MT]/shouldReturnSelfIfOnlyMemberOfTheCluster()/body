@@ -1,9 +1,10 @@
 {
   final ReadOnlyTopologyService coreTopologyService=mock(ReadOnlyTopologyService.class);
-  final ClusterTopology clusterTopology=mock(ClusterTopology.class);
+  Map<CoreMember,BoltAddress> coreMembers=new HashMap<>();
+  coreMembers.put(coreMemberAtRaftPort(9000),address(1));
+  final ClusterTopology clusterTopology=new ClusterTopology(false,coreMembers,addresses(4,5,6));
   when(coreTopologyService.currentTopology()).thenReturn(clusterTopology);
-  when(clusterTopology.boltCoreMembers()).thenReturn(addresses(1));
   final DiscoverMembersProcedure proc=new DiscoverMembersProcedure(coreTopologyService,NullLogProvider.getInstance());
   final List<Object[]> members=asList(proc.apply(null,new Object[0]));
-  assertArrayEquals(members.get(0),new Object[]{"localhost:3001"});
+  assertArrayEquals(members.get(0),new Object[]{address(1).getAdvertisedAddress().toString()});
 }
