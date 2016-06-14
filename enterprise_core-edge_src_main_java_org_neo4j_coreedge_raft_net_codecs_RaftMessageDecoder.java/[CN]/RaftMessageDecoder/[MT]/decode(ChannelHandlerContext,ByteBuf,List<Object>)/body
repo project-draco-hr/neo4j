@@ -1,57 +1,58 @@
 {
-  int messageTypeWire=buffer.readInt();
+  ReadableChannel channel=new NetworkReadableClosableChannelNetty4(buffer);
+  int messageTypeWire=channel.getInt();
   RaftMessages.Type[] values=RaftMessages.Type.values();
   RaftMessages.Type messageType=values[messageTypeWire];
-  CoreMember from=retrieveMember(buffer);
-  StoreId storeId=StoreIdMarshal.unmarshal(buffer);
+  CoreMember from=retrieveMember(channel);
+  StoreId storeId=StoreIdMarshal.unmarshal(channel);
   if (messageType.equals(VOTE_REQUEST)) {
-    CoreMember candidate=retrieveMember(buffer);
-    long term=buffer.readLong();
-    long lastLogIndex=buffer.readLong();
-    long lastLogTerm=buffer.readLong();
+    CoreMember candidate=retrieveMember(channel);
+    long term=channel.getLong();
+    long lastLogIndex=channel.getLong();
+    long lastLogTerm=channel.getLong();
     RaftMessages.Vote.Request<CoreMember> request=new RaftMessages.Vote.Request<>(from,term,candidate,lastLogIndex,lastLogTerm,storeId);
     list.add(request);
   }
  else   if (messageType.equals(VOTE_RESPONSE)) {
-    long term=buffer.readLong();
-    boolean voteGranted=buffer.readBoolean();
+    long term=channel.getLong();
+    boolean voteGranted=channel.get() == 1;
     RaftMessages.Vote.Response<CoreMember> response=new RaftMessages.Vote.Response<>(from,term,voteGranted,storeId);
     list.add(response);
   }
  else   if (messageType.equals(APPEND_ENTRIES_REQUEST)) {
-    long term=buffer.readLong();
-    long prevLogIndex=buffer.readLong();
-    long prevLogTerm=buffer.readLong();
-    long leaderCommit=buffer.readLong();
-    long count=buffer.readLong();
+    long term=channel.getLong();
+    long prevLogIndex=channel.getLong();
+    long prevLogTerm=channel.getLong();
+    long leaderCommit=channel.getLong();
+    long count=channel.getLong();
     RaftLogEntry[] entries=new RaftLogEntry[(int)count];
     for (int i=0; i < count; i++) {
-      long entryTerm=buffer.readLong();
-      final ReplicatedContent content=marshal.unmarshal(buffer);
+      long entryTerm=channel.getLong();
+      final ReplicatedContent content=marshal.unmarshal(channel);
       entries[i]=new RaftLogEntry(entryTerm,content);
     }
     list.add(new RaftMessages.AppendEntries.Request<>(from,term,prevLogIndex,prevLogTerm,entries,leaderCommit,storeId));
   }
  else   if (messageType.equals(APPEND_ENTRIES_RESPONSE)) {
-    long term=buffer.readLong();
-    boolean success=buffer.readBoolean();
-    long matchIndex=buffer.readLong();
-    long appendIndex=buffer.readLong();
+    long term=channel.getLong();
+    boolean success=channel.get() == 1;
+    long matchIndex=channel.getLong();
+    long appendIndex=channel.getLong();
     list.add(new RaftMessages.AppendEntries.Response<>(from,term,success,matchIndex,appendIndex,storeId));
   }
  else   if (messageType.equals(NEW_ENTRY_REQUEST)) {
-    ReplicatedContent content=marshal.unmarshal(buffer);
+    ReplicatedContent content=marshal.unmarshal(channel);
     list.add(new RaftMessages.NewEntry.Request<>(from,content,storeId));
   }
  else   if (messageType.equals(HEARTBEAT)) {
-    long leaderTerm=buffer.readLong();
-    long commitIndexTerm=buffer.readLong();
-    long commitIndex=buffer.readLong();
+    long leaderTerm=channel.getLong();
+    long commitIndexTerm=channel.getLong();
+    long commitIndex=channel.getLong();
     list.add(new RaftMessages.Heartbeat<>(from,leaderTerm,commitIndex,commitIndexTerm,storeId));
   }
  else   if (messageType.equals(LOG_COMPACTION_INFO)) {
-    long leaderTerm=buffer.readLong();
-    long prevIndex=buffer.readLong();
+    long leaderTerm=channel.getLong();
+    long prevIndex=channel.getLong();
     list.add(new RaftMessages.LogCompactionInfo<>(from,leaderTerm,prevIndex,storeId));
   }
  else {
