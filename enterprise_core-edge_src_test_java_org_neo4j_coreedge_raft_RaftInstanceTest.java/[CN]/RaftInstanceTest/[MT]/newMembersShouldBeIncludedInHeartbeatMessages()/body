@@ -1,2 +1,25 @@
 {
+  DirectNetworking network=new DirectNetworking();
+  final RaftTestMember newMember=member(99);
+  DirectNetworking.Inbound newMemberInbound=network.new Inbound(99);
+  final OutboundMessageCollector messages=new OutboundMessageCollector();
+  newMemberInbound.registerHandler(new Inbound.MessageHandler(){
+    @Override public boolean validate(    Message message){
+      return true;
+    }
+    @Override public void handle(    Message message){
+      messages.send(newMember,message);
+    }
+  }
+);
+  ControlledRenewableTimeoutService timeouts=new ControlledRenewableTimeoutService();
+  RaftInstance<RaftTestMember> raft=new RaftInstanceBuilder<>(myself,3,RaftTestMemberSetBuilder.INSTANCE).timeoutService(timeouts).outbound(messages).build();
+  raft.bootstrapWithInitialMembers(new RaftTestGroup(asSet(myself,member1,member2)));
+  timeouts.invokeTimeout(ELECTION);
+  raft.handle(voteResponse().from(member1).term(1).grant().build());
+  raft.setTargetMembershipSet(asSet(myself,member1,member2,newMember));
+  network.processMessages();
+  timeouts.invokeTimeout(RaftInstance.Timeouts.HEARTBEAT);
+  network.processMessages();
+  assertEquals(RaftMessages.AppendEntries.Request.class,messages.sentTo(newMember).get(0).getClass());
 }

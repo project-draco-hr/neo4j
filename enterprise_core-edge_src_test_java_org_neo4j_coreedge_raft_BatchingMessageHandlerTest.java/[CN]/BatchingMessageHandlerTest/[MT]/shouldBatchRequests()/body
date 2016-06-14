@@ -1,15 +1,15 @@
 {
   @SuppressWarnings("unchecked") Inbound.MessageHandler<RaftMessages.RaftMessage<Object>> innerHandler=mock(Inbound.MessageHandler.class);
-  BatchingMessageHandler<Object> batchHandler=new BatchingMessageHandler<>(innerHandler,NullLogProvider.getInstance(),QUEUE_SIZE,MAX_BATCH);
+  BatchingMessageHandler<Object> batchHandler=new BatchingMessageHandler<>(innerHandler,NullLogProvider.getInstance(),QUEUE_SIZE,MAX_BATCH,localDatabase);
   ReplicatedString contentA=new ReplicatedString("A");
   ReplicatedString contentB=new ReplicatedString("B");
-  RaftMessages.NewEntry.Request<Object> messageA=new RaftMessages.NewEntry.Request<>(null,contentA);
-  RaftMessages.NewEntry.Request<Object> messageB=new RaftMessages.NewEntry.Request<>(null,contentB);
+  RaftMessages.NewEntry.Request<Object> messageA=new RaftMessages.NewEntry.Request<>(null,contentA,localDatabase.storeId());
+  RaftMessages.NewEntry.Request<Object> messageB=new RaftMessages.NewEntry.Request<>(null,contentB,localDatabase.storeId());
   batchHandler.handle(messageA);
   batchHandler.handle(messageB);
   verifyZeroInteractions(innerHandler);
   batchHandler.run();
-  RaftMessages.NewEntry.Batch<Object> batch=new RaftMessages.NewEntry.Batch<>(2);
+  RaftMessages.NewEntry.Batch<Object> batch=new RaftMessages.NewEntry.Batch<>(2,localDatabase.storeId());
   batch.add(contentA);
   batch.add(contentB);
   verify(innerHandler).handle(batch);
