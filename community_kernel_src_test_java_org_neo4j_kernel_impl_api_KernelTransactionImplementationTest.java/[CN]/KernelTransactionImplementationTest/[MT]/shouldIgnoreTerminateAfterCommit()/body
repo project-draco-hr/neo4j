@@ -1,9 +1,13 @@
 {
-  KernelTransaction transaction=newInitializedTransaction();
+  Locks locks=mock(Locks.class);
+  Locks.Client client=mock(Locks.Client.class);
+  when(locks.newClient()).thenReturn(client);
+  KernelTransaction transaction=newInitializedTransaction(true,locks);
   transaction.success();
   transaction.close();
   transaction.markForTermination();
   verify(transactionMonitor,times(1)).transactionFinished(true);
-  verify(transactionMonitor,times(1)).transactionTerminated();
+  verify(transactionMonitor,never()).transactionTerminated();
+  verify(client,never()).stop();
   verifyNoMoreInteractions(transactionMonitor);
 }
