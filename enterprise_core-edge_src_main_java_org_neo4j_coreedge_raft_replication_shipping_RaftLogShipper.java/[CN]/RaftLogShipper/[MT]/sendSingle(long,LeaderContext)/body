@@ -1,30 +1,5 @@
 {
   logIndex=max(raftLog.prevIndex() + 1,logIndex);
   scheduleTimeout(retryTimeMillis);
-  lastSentIndex=logIndex;
-  try {
-    long prevLogIndex=logIndex - 1;
-    long prevLogTerm=raftLog.readEntryTerm(prevLogIndex);
-    if (prevLogTerm > leaderContext.term) {
-      log.warn("%s aborting send. Not leader anymore? %s, prevLogTerm=%d",statusAsString(),leaderContext,prevLogTerm);
-      return;
-    }
-    RaftLogEntry[] logEntries=RaftLogEntry.empty;
-    RaftLogEntry toSend=inFlightMap.retrieve(logIndex);
-    if (toSend == null) {
-      try (RaftLogCursor cursor=raftLog.getEntryCursor(logIndex)){
-        if (cursor.next()) {
-          toSend=cursor.get();
-        }
-      }
-     }
-    if (toSend != null) {
-      logEntries=new RaftLogEntry[]{toSend};
-    }
-    RaftMessages.AppendEntries.Request<MEMBER> appendRequest=new RaftMessages.AppendEntries.Request<>(leader,leaderContext.term,prevLogIndex,prevLogTerm,logEntries,leaderContext.commitIndex,localDatabase.storeId());
-    outbound.send(follower,appendRequest);
-  }
- catch (  IOException e) {
-    log.warn("%s tried to send entry at index %d that can't be found in the raft log; it has likely been pruned. " + "This is a temporary state and the system should recover automatically in a short while.",statusAsString(),logIndex);
-  }
+  sendRange(logIndex,logIndex,leaderContext);
 }
