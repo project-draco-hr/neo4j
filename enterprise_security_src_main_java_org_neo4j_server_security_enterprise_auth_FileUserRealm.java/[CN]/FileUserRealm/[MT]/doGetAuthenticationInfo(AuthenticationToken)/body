@@ -1,8 +1,15 @@
 {
-  UsernamePasswordToken usernamePasswordToken=(UsernamePasswordToken)token;
-  User user=userRepository.getUserByName(usernamePasswordToken.getUsername());
+  ShiroAuthToken shiroAuthToken=(ShiroAuthToken)token;
+  String username;
+  try {
+    username=AuthToken.safeCast(AuthToken.PRINCIPAL,shiroAuthToken.getMap());
+  }
+ catch (  InvalidAuthTokenException e) {
+    throw new UnsupportedTokenException(e);
+  }
+  User user=userRepository.getUserByName(username);
   if (user == null) {
-    throw new AuthenticationException("User " + usernamePasswordToken.getUsername() + " does not exist");
+    throw new AuthenticationException("User " + username + " does not exist");
   }
   SimpleAuthenticationInfo authenticationInfo=new SimpleAuthenticationInfo(user.name(),user.credentials(),getName());
   if (user.hasFlag(FileUserRealm.IS_SUSPENDED)) {

@@ -3,20 +3,26 @@
   String username=AuthToken.safeCast(AuthToken.PRINCIPAL,authToken);
   String password=AuthToken.safeCast(AuthToken.CREDENTIALS,authToken);
   Subject subject=buildSubject(null);
-  UsernamePasswordToken token=new UsernamePasswordToken(username,password);
-  AuthenticationResult result=AuthenticationResult.SUCCESS;
+  AuthenticationResult result=AuthenticationResult.FAILURE;
   if (!authStrategy.isAuthenticationPermitted(username)) {
     result=AuthenticationResult.TOO_MANY_ATTEMPTS;
   }
  else {
+    UsernamePasswordToken token=new UsernamePasswordToken(username,password);
     try {
       subject.login(token);
       if (realm.findUser(username).passwordChangeRequired()) {
         result=AuthenticationResult.PASSWORD_CHANGE_REQUIRED;
       }
+ else {
+        result=AuthenticationResult.SUCCESS;
+      }
     }
  catch (    AuthenticationException e) {
       result=AuthenticationResult.FAILURE;
+    }
+ finally {
+      token.clear();
     }
     authStrategy.updateWithAuthenticationResult(result,username);
   }
