@@ -1,16 +1,17 @@
 {
-  Subject subject=new Subject.Builder(securityManager).buildSubject();
+  ShiroSubject subject;
   ShiroAuthToken token=new ShiroAuthToken(authToken);
-  AuthenticationResult result=AuthenticationResult.FAILURE;
   try {
-    subject.login(token);
-    result=AuthenticationResult.SUCCESS;
+    subject=(ShiroSubject)securityManager.login(null,token);
   }
  catch (  UnsupportedTokenException e) {
     throw new InvalidAuthTokenException(e.getCause().getMessage());
   }
-catch (  AuthenticationException e) {
-    result=AuthenticationResult.FAILURE;
+catch (  ExcessiveAttemptsException e) {
+    subject=new ShiroSubject(securityManager,AuthenticationResult.TOO_MANY_ATTEMPTS);
   }
-  return new ShiroAuthSubject(this,subject,result);
+catch (  AuthenticationException e) {
+    subject=new ShiroSubject(securityManager,AuthenticationResult.FAILURE);
+  }
+  return new ShiroAuthSubject(this,subject);
 }

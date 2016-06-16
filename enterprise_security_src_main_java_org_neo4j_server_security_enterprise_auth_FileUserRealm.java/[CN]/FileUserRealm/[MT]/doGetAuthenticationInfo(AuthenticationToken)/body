@@ -1,20 +1,30 @@
 {
   ShiroAuthToken shiroAuthToken=(ShiroAuthToken)token;
   String username;
+  String password;
   try {
     username=AuthToken.safeCast(AuthToken.PRINCIPAL,shiroAuthToken.getMap());
+    password=AuthToken.safeCast(AuthToken.CREDENTIALS,shiroAuthToken.getMap());
   }
  catch (  InvalidAuthTokenException e) {
     throw new UnsupportedTokenException(e);
   }
   User user=userRepository.getUserByName(username);
   if (user == null) {
-    throw new AuthenticationException("User " + username + " does not exist");
+    throw new UnknownAccountException();
   }
-  SimpleAuthenticationInfo authenticationInfo=new SimpleAuthenticationInfo(user.name(),user.credentials(),getName());
-  if (user.hasFlag(FileUserRealm.IS_SUSPENDED)) {
-    assertCredentialsMatch(token,authenticationInfo);
-    throw new AuthenticationException("User " + user.name() + " is suspended");
-  }
-  return authenticationInfo;
+  AuthenticationResult result=authenticationStrategy.authenticate(user,password);
+switch (result) {
+case FAILURE:
+    throw new IncorrectCredentialsException();
+case TOO_MANY_ATTEMPTS:
+  throw new ExcessiveAttemptsException();
+}
+if (user.hasFlag(FileUserRealm.IS_SUSPENDED)) {
+throw new DisabledAccountException("User " + user.name() + " is suspended");
+}
+if (user.passwordChangeRequired()) {
+result=AuthenticationResult.PASSWORD_CHANGE_REQUIRED;
+}
+return new ShiroAuthenticationInfo(user.name(),user.credentials(),getName(),result);
 }
