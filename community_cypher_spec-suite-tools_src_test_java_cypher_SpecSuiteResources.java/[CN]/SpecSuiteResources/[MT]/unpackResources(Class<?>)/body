@@ -1,0 +1,30 @@
+{
+  String specSuiteName=getSpecSuiteName(klass);
+  File featuresDirectory=createTargetDirectory(specSuiteName,"features");
+  File graphsDirectory=createTargetDirectory(specSuiteName,"graphs");
+  URI uri;
+  try {
+    uri=getResourceUri(klass);
+  }
+ catch (  URISyntaxException e) {
+    throw new IllegalStateException("Failed to find resources for TCK feature files in JAR!",e);
+  }
+  try {
+    try (FileSystem fileSystem=FileSystems.newFileSystem(uri,Collections.emptyMap())){
+      Path path=fileSystem.getPath("/");
+      findAndUnpackTo(klass,fileSystem,path,featuresDirectory,graphsDirectory);
+    }
+ catch (    IllegalArgumentException e) {
+      if ("file".equals(uri.getScheme())) {
+        Path path=new File(uri.getPath()).toPath();
+        findAndUnpackTo(klass,FileSystems.getDefault(),path,featuresDirectory,graphsDirectory);
+      }
+ else {
+        throw e;
+      }
+    }
+  }
+ catch (  IOException e) {
+    throw new IllegalStateException("Unexpected error while unpacking Cypher TCK feature files",e);
+  }
+}
