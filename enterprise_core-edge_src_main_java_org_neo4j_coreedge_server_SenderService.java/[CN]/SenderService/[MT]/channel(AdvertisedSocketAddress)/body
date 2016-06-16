@@ -1,0 +1,14 @@
+{
+  MessageQueueMonitor monitor=monitors.newMonitor(MessageQueueMonitor.class,NonBlockingChannel.class);
+  NonBlockingChannel nonBlockingChannel=nonBlockingChannels.get(to);
+  if (nonBlockingChannel == null) {
+    nonBlockingChannel=new NonBlockingChannel(bootstrap,to.socketAddress(),log,monitor,maxQueueSize);
+    NonBlockingChannel existingNonBlockingChannel=nonBlockingChannels.putIfAbsent(to,nonBlockingChannel);
+    if (existingNonBlockingChannel != null) {
+      nonBlockingChannel.dispose();
+      nonBlockingChannel=existingNonBlockingChannel;
+    }
+  }
+  monitor.register(to.socketAddress());
+  return nonBlockingChannel;
+}
