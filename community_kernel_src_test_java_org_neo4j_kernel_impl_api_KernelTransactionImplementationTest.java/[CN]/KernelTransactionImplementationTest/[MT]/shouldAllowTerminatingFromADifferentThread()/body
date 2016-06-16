@@ -1,34 +1,24 @@
 {
-  final ChildException childException=new ChildException();
   final DoubleLatch latch=new DoubleLatch(1);
   final KernelTransaction transaction=newInitializedTransaction();
-  Thread thread=new Thread(new Runnable(){
+  Future<?> terminationFuture=Executors.newSingleThreadExecutor().submit(new Runnable(){
     @Override public void run(){
-      try {
-        latch.awaitStart();
-        transaction.markForTermination();
-        latch.finish();
-      }
- catch (      Exception e) {
-        childException.exception=e;
-      }
+      latch.awaitStart();
+      transaction.markForTermination();
+      latch.finish();
     }
   }
 );
-  thread.start();
   transaction.success();
   latch.startAndAwaitFinish();
-  if (childException.exception != null) {
-    throw childException.exception;
-  }
-  boolean exceptionReceived=false;
+  assertNull(terminationFuture.get(1,TimeUnit.MINUTES));
   try {
     transaction.close();
+    fail("Exception expected");
   }
- catch (  TransactionFailureException e) {
-    exceptionReceived=true;
+ catch (  Exception e) {
+    assertThat(e,instanceOf(TransactionTerminatedException.class));
   }
-  assertTrue(exceptionReceived);
   verify(transactionMonitor,times(1)).transactionFinished(false);
   verify(transactionMonitor,times(1)).transactionTerminated();
   verifyNoMoreInteractions(transactionMonitor);

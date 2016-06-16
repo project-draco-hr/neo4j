@@ -1,14 +1,15 @@
 {
-  boolean exceptionReceived=false;
-  try (KernelTransaction transaction=newInitializedTransaction()){
-    transaction.markForTermination();
-    transaction.success();
-    assertTrue(transaction.shouldBeTerminated());
+  KernelTransaction transaction=newInitializedTransaction();
+  transaction.markForTermination();
+  transaction.success();
+  assertTrue(transaction.shouldBeTerminated());
+  try {
+    transaction.close();
+    fail("Exception expected");
   }
- catch (  TransactionFailureException e) {
-    exceptionReceived=true;
+ catch (  Exception e) {
+    assertThat(e,instanceOf(TransactionTerminatedException.class));
   }
-  assertTrue(exceptionReceived);
   verify(transactionMonitor,times(1)).transactionFinished(false);
   verify(transactionMonitor,times(1)).transactionTerminated();
   verifyNoMoreInteractions(transactionMonitor);
