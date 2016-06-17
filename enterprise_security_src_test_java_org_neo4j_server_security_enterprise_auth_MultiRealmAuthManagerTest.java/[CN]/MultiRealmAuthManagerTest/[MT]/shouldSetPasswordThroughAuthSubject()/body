@@ -1,0 +1,15 @@
+{
+  users.create(newUser("neo","abc123",true));
+  manager.start();
+  setMockAuthenticationStrategyResult("neo","abc123",AuthenticationResult.SUCCESS);
+  AuthSubject authSubject=manager.login(authToken("neo","abc123"));
+  assertThat(authSubject.getAuthenticationResult(),equalTo(AuthenticationResult.PASSWORD_CHANGE_REQUIRED));
+  authSubject.setPassword("hello, world!");
+  setMockAuthenticationStrategyResult("neo","hello, world!",AuthenticationResult.SUCCESS);
+  final User updatedUser=userManager.getUser("neo");
+  assertTrue(updatedUser.credentials().matchesPassword("hello, world!"));
+  assertThat(users.getUserByName("neo"),equalTo(updatedUser));
+  authSubject.logout();
+  authSubject=manager.login(authToken("neo","hello, world!"));
+  assertThat(authSubject.getAuthenticationResult(),equalTo(AuthenticationResult.SUCCESS));
+}
