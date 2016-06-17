@@ -1,27 +1,2 @@
 {
-  RaftLogImplementation raftLogImplementation=RaftLogImplementation.fromString(config.get(CoreEdgeClusterSettings.raft_log_implementation));
-switch (raftLogImplementation) {
-case IN_MEMORY:
-    return new InMemoryRaftLog();
-case PHYSICAL:
-{
-    long rotateAtSize=config.get(CoreEdgeClusterSettings.raft_log_rotation_size);
-    String pruneConf=config.get(CoreEdgeClusterSettings.raft_log_pruning_strategy);
-    int entryCacheSize=config.get(CoreEdgeClusterSettings.raft_log_entry_cache_size);
-    int metaDataCacheSize=config.get(CoreEdgeClusterSettings.raft_log_meta_data_cache_size);
-    int headerCacheSize=config.get(CoreEdgeClusterSettings.raft_log_header_cache_size);
-    return life.add(new PhysicalRaftLog(fileSystem,new File(clusterStateDirectory,PhysicalRaftLog.PHYSICAL_LOG_DIRECTORY_NAME),rotateAtSize,pruneConf,entryCacheSize,headerCacheSize,new PhysicalRaftLogFile.Monitor.Adapter(),marshal,databaseHealthSupplier,logProvider,new RaftLogMetadataCache(metaDataCacheSize)));
-  }
-case SEGMENTED:
-{
-  long rotateAtSize=config.get(CoreEdgeClusterSettings.raft_log_rotation_size);
-  int metaDataCacheSize=config.get(CoreEdgeClusterSettings.raft_log_meta_data_cache_size);
-  String pruningStrategyConfig=config.get(CoreEdgeClusterSettings.raft_log_pruning_strategy);
-  int entryCacheSize=config.get(CoreEdgeClusterSettings.raft_log_entry_cache_size);
-  return life.add(new SegmentedRaftLog(fileSystem,new File(clusterStateDirectory,PhysicalRaftLog.PHYSICAL_LOG_DIRECTORY_NAME),rotateAtSize,marshal,logProvider,entryCacheSize,pruningStrategyConfig));
-}
-case NAIVE:
-default :
-return life.add(new NaiveDurableRaftLog(fileSystem,new File(clusterStateDirectory,NaiveDurableRaftLog.NAIVE_LOG_DIRECTORY_NAME),marshal,logProvider));
-}
 }
