@@ -1,0 +1,25 @@
+{
+  CommittedTransactionRepresentation tx=null;
+  try {
+    tx=txQueue.poll(1,SECONDS);
+  }
+ catch (  InterruptedException e) {
+    log.warn("Not expecting to be interrupted",e);
+  }
+  if (tx != null) {
+    long txId;
+    try {
+      do {
+        txId=tx.getCommitEntry().getTxId();
+        txBatcher.queue(new TransactionToApply(tx.getTransactionRepresentation(),txId));
+      }
+ while ((tx=txQueue.poll()) != null);
+      txBatcher.empty();
+      lastAppliedTxId=txId;
+    }
+ catch (    Exception e) {
+      log.error("Error during transaction application",e);
+      healthSupplier.get().panic(e);
+    }
+  }
+}
