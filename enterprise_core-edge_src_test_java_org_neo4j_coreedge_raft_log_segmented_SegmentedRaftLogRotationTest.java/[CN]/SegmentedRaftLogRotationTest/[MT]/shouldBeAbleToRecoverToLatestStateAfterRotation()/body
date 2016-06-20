@@ -1,16 +1,12 @@
 {
-  int rotateAtSize=100;
-  SegmentedRaftLog log=createRaftLog(rotateAtSize);
-  StringBuilder builder=new StringBuilder();
-  for (int i=0; i < rotateAtSize - 40; i++) {
-    builder.append("i");
-  }
-  ReplicatedString stringThatGetsTheSizeToAlmost100Bytes=new ReplicatedString(builder.toString());
   int term=0;
-  log.append(new RaftLogEntry(term,stringThatGetsTheSizeToAlmost100Bytes));
-  long indexToRestoreTo=log.append(new RaftLogEntry(term,ReplicatedInteger.valueOf(1)));
-  life.remove(log);
-  log=createRaftLog(rotateAtSize);
+  long indexToRestoreTo;
+  try (Lifespan lifespan=new Lifespan()){
+    SegmentedRaftLog log=lifespan.add(createRaftLog(ROTATE_AT_SIZE_IN_BYTES));
+    log.append(new RaftLogEntry(term,replicatedStringOfBytes(ROTATE_AT_SIZE_IN_BYTES - 40)));
+    indexToRestoreTo=log.append(new RaftLogEntry(term,ReplicatedInteger.valueOf(1)));
+  }
+   SegmentedRaftLog log=resourceManager.managed(createRaftLog(ROTATE_AT_SIZE_IN_BYTES));
   assertEquals(indexToRestoreTo,log.appendIndex());
   assertEquals(term,log.readEntryTerm(indexToRestoreTo));
 }
