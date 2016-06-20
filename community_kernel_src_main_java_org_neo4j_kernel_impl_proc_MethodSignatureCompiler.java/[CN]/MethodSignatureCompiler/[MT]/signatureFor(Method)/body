@@ -2,18 +2,26 @@
   Parameter[] params=method.getParameters();
   Type[] types=method.getGenericParameterTypes();
   List<FieldSignature> signature=new ArrayList<>(params.length);
+  boolean seenDefault=false;
   for (int i=0; i < params.length; i++) {
     Parameter param=params[i];
     Type type=types[i];
     if (!param.isAnnotationPresent(Name.class)) {
       throw new ProcedureException(Status.Procedure.ProcedureRegistrationFailed,"Argument at position %d in method `%s` is missing an `@%s` annotation.%n" + "Please add the annotation, recompile the class and try again.",i,method.getName(),Name.class.getSimpleName());
     }
-    String name=param.getAnnotation(Name.class).value();
+    Name parameter=param.getAnnotation(Name.class);
+    String name=parameter.value();
     if (name.trim().length() == 0) {
       throw new ProcedureException(Status.Procedure.ProcedureRegistrationFailed,"Argument at position %d in method `%s` is annotated with a name,%n" + "but the name is empty, please provide a non-empty name for the argument.",i,method.getName());
     }
     try {
-      signature.add(new FieldSignature(name,typeMappers.neoTypeFor(type)));
+      NeoValueConverter valueConverter=typeMappers.converterFor(type);
+      Optional<Object> defaultValue=valueConverter.defaultValue(parameter);
+      if (seenDefault && !defaultValue.isPresent()) {
+        throw new ProcedureException(Status.Procedure.ProcedureRegistrationFailed,"Non-default argument at position %d with name %s in method %s follows default argument. " + "Add a default value or rearrange arguments so that the non-default values comes first.",i,parameter.value(),method.getName());
+      }
+      seenDefault=defaultValue.isPresent();
+      signature.add(new FieldSignature(name,valueConverter.type(),defaultValue));
     }
  catch (    ProcedureException e) {
       throw new ProcedureException(e.status(),"Argument `%s` at position %d in `%s` with%n" + "type `%s` cannot be converted to a Neo4j type: %s",name,i,method.getName(),param.getType().getSimpleName(),e.getMessage());
