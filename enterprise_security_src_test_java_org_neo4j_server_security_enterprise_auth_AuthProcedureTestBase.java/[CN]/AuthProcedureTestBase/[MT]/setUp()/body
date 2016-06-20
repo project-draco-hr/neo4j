@@ -1,0 +1,22 @@
+{
+  db=(GraphDatabaseAPI)new TestEnterpriseGraphDatabaseFactory().newImpermanentDatabase();
+  manager=new EnterpriseAuthManager(new InMemoryUserRepository(),new InMemoryRoleRepository(),new BasicPasswordPolicy(),systemUTC(),true);
+  manager.init();
+  manager.start();
+  manager.newUser("noneSubject","abc",false);
+  manager.newUser("adminSubject","abc",false);
+  manager.newUser("schemaSubject","abc",false);
+  manager.newUser("readWriteSubject","abc",false);
+  manager.newUser("readSubject","123",false);
+  manager.addUserToRole("adminSubject",ADMIN);
+  manager.newRole(ARCHITECT,"schemaSubject");
+  manager.newRole(PUBLISHER,"readWriteSubject");
+  manager.newRole(READER,"readSubject");
+  manager.newRole("empty");
+  noneSubject=manager.login(authToken("noneSubject","abc"));
+  readSubject=manager.login(authToken("readSubject","123"));
+  writeSubject=manager.login(authToken("readWriteSubject","abc"));
+  schemaSubject=manager.login(authToken("schemaSubject","abc"));
+  adminSubject=manager.login(authToken("adminSubject","abc"));
+  db.execute("UNWIND range(0,2) AS number CREATE (:Node {number:number})");
+}
