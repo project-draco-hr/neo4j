@@ -1,10 +1,6 @@
 {
-  db=(GraphDatabaseAPI)new TestEnterpriseGraphDatabaseFactory().newImpermanentDatabase();
-  internalRealm=new InternalFlatFileRealm(new InMemoryUserRepository(),new InMemoryRoleRepository(),new BasicPasswordPolicy(),new RateLimitedAuthenticationStrategy(systemUTC(),3));
-  manager=new MultiRealmAuthManager(internalRealm,Collections.singletonList(internalRealm));
-  manager.init();
-  manager.start();
-  userManager=manager.getUserManager();
+  neo=setUpNeoServer();
+  userManager=neo.getManager();
   userManager.newUser("noneSubject","abc",false);
   userManager.newUser("pwdSubject","abc",true);
   userManager.newUser("adminSubject","abc",false);
@@ -15,12 +11,12 @@
   userManager.addUserToRole("schemaSubject",ARCHITECT);
   userManager.addUserToRole("readWriteSubject",PUBLISHER);
   userManager.addUserToRole("readSubject",READER);
-  userManager.newRole("empty");
-  noneSubject=manager.login(authToken("noneSubject","abc"));
-  pwdSubject=manager.login(authToken("pwdSubject","abc"));
-  readSubject=manager.login(authToken("readSubject","123"));
-  writeSubject=manager.login(authToken("readWriteSubject","abc"));
-  schemaSubject=manager.login(authToken("schemaSubject","abc"));
-  adminSubject=manager.login(authToken("adminSubject","abc"));
-  db.execute("UNWIND range(0,2) AS number CREATE (:Node {number:number})");
+  userManager.newRole(EMPTY_ROLE);
+  noneSubject=neo.login("noneSubject","abc");
+  pwdSubject=neo.login("pwdSubject","abc");
+  readSubject=neo.login("readSubject","123");
+  writeSubject=neo.login("readWriteSubject","abc");
+  schemaSubject=neo.login("schemaSubject","abc");
+  adminSubject=neo.login("adminSubject","abc");
+  executeQuery(writeSubject,"UNWIND range(0,2) AS number CREATE (:Node {number:number})");
 }
