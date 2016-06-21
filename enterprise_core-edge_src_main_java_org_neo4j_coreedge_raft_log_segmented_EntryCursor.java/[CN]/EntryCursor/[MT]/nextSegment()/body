@@ -1,23 +1,22 @@
 {
   segmentRange=segments.getForIndex(currentIndex);
-  Optional<Long> limitOptional=segmentRange.limit();
-  Optional<SegmentFile> segmentRangeOptional=segmentRange.value();
-  boolean hasSegment=segmentRangeOptional.isPresent();
-  if (hasSegment) {
-    this.limit=limitOptional.orElse(Long.MAX_VALUE);
-    try {
-      IOCursor<EntryRecord> newReader=segmentRangeOptional.get().getReader(currentIndex);
-      if (reader != null) {
-        reader.close();
-      }
-      reader=newReader;
-    }
- catch (    DisposedException e) {
-      return false;
-    }
-  }
- else {
+  Optional<SegmentFile> optionalFile=segmentRange.value();
+  if (!optionalFile.isPresent()) {
     currentRecord.invalidate();
+    return false;
   }
-  return hasSegment;
+  SegmentFile file=optionalFile.get();
+  IOCursor<EntryRecord> oldReader=reader;
+  try {
+    reader=file.getReader(currentIndex);
+  }
+ catch (  DisposedException e) {
+    currentRecord.invalidate();
+    return false;
+  }
+  if (oldReader != null) {
+    oldReader.close();
+  }
+  limit=segmentRange.limit().orElse(Long.MAX_VALUE);
+  return true;
 }
