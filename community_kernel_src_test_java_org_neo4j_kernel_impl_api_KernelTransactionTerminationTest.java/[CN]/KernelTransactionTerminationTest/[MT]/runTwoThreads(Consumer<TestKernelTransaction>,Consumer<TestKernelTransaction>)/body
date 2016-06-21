@@ -1,0 +1,28 @@
+{
+  final TestKernelTransaction tx=TestKernelTransaction.create().initialize();
+  final CountDownLatch start=new CountDownLatch(1);
+  final AtomicBoolean stop=new AtomicBoolean();
+  Future<?> action1=Executors.newSingleThreadExecutor().submit(new Runnable(){
+    @Override public void run(){
+      await(start);
+      while (!stop.get()) {
+        thread1Action.accept(tx);
+      }
+    }
+  }
+);
+  Future<?> action2=Executors.newSingleThreadExecutor().submit(new Runnable(){
+    @Override public void run(){
+      await(start);
+      while (!stop.get()) {
+        thread2Action.accept(tx);
+      }
+    }
+  }
+);
+  start.countDown();
+  sleep();
+  stop.set(true);
+  assertNull(action1.get(1,TimeUnit.MINUTES));
+  assertNull(action2.get(1,TimeUnit.MINUTES));
+}

@@ -1,0 +1,34 @@
+{
+  final BlockingQueue<Boolean> committerToTerminator=new LinkedBlockingQueue<>(1);
+  final BlockingQueue<TerminatorAction> terminatorToCommitter=new LinkedBlockingQueue<>(1);
+  runTwoThreads(new Consumer<TestKernelTransaction>(){
+    @Override public void accept(    TestKernelTransaction tx){
+      Boolean terminatorShouldAct=committerToTerminator.poll();
+      if (terminatorShouldAct != null && terminatorShouldAct) {
+        TerminatorAction action=TerminatorAction.random();
+        action.executeOn(tx);
+        assertTrue(terminatorToCommitter.add(action));
+      }
+    }
+  }
+,new Consumer<TestKernelTransaction>(){
+    @Override public void accept(    TestKernelTransaction tx){
+      tx.initialize();
+      CommitterAction committerAction=CommitterAction.random();
+      committerAction.executeOn(tx);
+      assertTrue(committerToTerminator.add(true));
+      TerminatorAction terminatorAction;
+      try {
+        terminatorAction=terminatorToCommitter.poll(1,TimeUnit.SECONDS);
+      }
+ catch (      InterruptedException e) {
+        Thread.currentThread().interrupt();
+        return;
+      }
+      if (terminatorAction != null) {
+        close(tx,committerAction,terminatorAction);
+      }
+    }
+  }
+);
+}

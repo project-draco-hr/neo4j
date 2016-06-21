@@ -2,11 +2,7 @@
   if (sharedLock.tryAcquireUpdateLock(this)) {
     try {
       while (sharedLock.numberOfHolders() > 1) {
-        if (stateHolder.isStopped()) {
-          sharedLock.releaseUpdateLock(this);
-          return false;
-        }
-        waitStrategies[resourceType.typeId()].apply(tries++);
+        applyWaitStrategy(resourceType,tries++);
         markAsWaitingFor(sharedLock,resourceType,resourceId);
       }
       return true;
@@ -15,9 +11,12 @@
       sharedLock.releaseUpdateLock(this);
       throw e;
     }
+catch (    LockClientStoppedException e) {
+      handleUpgradeToExclusiveFailure(sharedLock);
+      throw e;
+    }
 catch (    Throwable e) {
-      sharedLock.releaseUpdateLock(this);
-      clearWaitList();
+      handleUpgradeToExclusiveFailure(sharedLock);
       throw new RuntimeException(e);
     }
   }
