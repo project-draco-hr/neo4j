@@ -7,8 +7,13 @@
     cluster.await(allSeesAllAsAvailable());
     cluster.await(masterAvailable());
     HighlyAvailableGraphDatabase oldMaster=cluster.getMaster();
-    cluster.fail(oldMaster,NetworkFlag.values());
-    cluster.await(oldMasterEvicted(oldMaster),20);
+    addSomeData(oldMaster);
+    ClusterManager.RepairKit fail=cluster.fail(oldMaster,NetworkFlag.values());
+    cluster.await(instanceEvicted(oldMaster),20);
+    ensureInstanceIsReadOnlyInPendingState(oldMaster);
+    fail.repair();
+    cluster.await(allSeesAllAsAvailable());
+    ensureInstanceIsWritable(oldMaster);
   }
   finally {
     manager.safeShutdown();
