@@ -1,9 +1,21 @@
 {
-  if (!terminated) {
-    failure=true;
-    terminated=true;
-    if (!closed) {
+  if (!canBeTerminated()) {
+    return;
+  }
+  int initialReuseCount=reuseCount;
+  terminationReleaseLock.lock();
+  try {
+    boolean stillSameTransaction=initialReuseCount == reuseCount;
+    if (stillSameTransaction && canBeTerminated()) {
+      failure=true;
+      terminated=true;
+      if (txTerminationAwareLocks && locks != null) {
+        locks.stop();
+      }
       transactionMonitor.transactionTerminated(hasTxStateWithChanges());
     }
+  }
+  finally {
+    terminationReleaseLock.unlock();
   }
 }

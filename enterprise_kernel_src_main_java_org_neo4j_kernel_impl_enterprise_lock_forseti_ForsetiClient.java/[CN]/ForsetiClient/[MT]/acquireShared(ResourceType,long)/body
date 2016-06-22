@@ -1,8 +1,6 @@
 {
   hasLocks=true;
-  if (!stateHolder.incrementActiveClients()) {
-    throw new LockClientAlreadyClosedException(String.format("%s is already closed",this));
-  }
+  stateHolder.incrementActiveClients(this);
   try {
     ConcurrentMap<Long,ForsetiLockManager.Lock> lockMap=lockMaps[resourceType.typeId()];
     PrimitiveLongIntMap heldShareLocks=sharedLockCounts[resourceType.typeId()];
@@ -19,9 +17,7 @@
     int tries=0;
     SharedLock mySharedLock=null;
     while (true) {
-      if (stateHolder.isStopped()) {
-        throw new LockClientAlreadyClosedException(String.format("%s is already closed",this));
-      }
+      assertNotStopped();
       ForsetiLockManager.Lock existingLock=lockMap.get(resourceId);
       if (existingLock == null) {
         if (mySharedLock == null) {
@@ -44,7 +40,7 @@
  else {
         throw new UnsupportedOperationException("Unknown lock type: " + existingLock);
       }
-      waitStrategies[resourceType.typeId()].apply(tries++);
+      applyWaitStrategy(resourceType,tries++);
       markAsWaitingFor(existingLock,resourceType,resourceId);
     }
     clearWaitList();

@@ -1,0 +1,22 @@
+{
+  ClusterManager.ManagedCluster cluster=startCluster();
+  String masterValue="master";
+  String slaveValue="slave";
+  HighlyAvailableGraphDatabase master=cluster.getMaster();
+  HighlyAvailableGraphDatabase slave=cluster.getAnySlave();
+  createNode(cluster);
+  CountDownLatch slaveTxStarted=new CountDownLatch(1);
+  CountDownLatch slaveTxCommit=new CountDownLatch(1);
+  Future<?> slaveTx=setPropertyInSeparateThreadAndWaitBeforeCommit("slaveTx",slave,slaveValue,slaveTxStarted,slaveTxCommit);
+  await(slaveTxStarted);
+  AtomicReference<Transaction> masterTxReference=new AtomicReference<>();
+  CountDownLatch masterTxStarted=new CountDownLatch(1);
+  Future<?> masterTx=setPropertyInSeparateThreadAndAttemptToCommit("masterTx",master,masterValue,masterTxStarted,masterTxReference);
+  masterTxStarted.await();
+  sleepForAWhile();
+  terminate(masterTxReference);
+  assertTxWasTerminated(masterTx);
+  slaveTxCommit.countDown();
+  assertNull(slaveTx.get());
+  assertNodeExists(cluster,slaveValue);
+}
