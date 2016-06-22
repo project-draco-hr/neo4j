@@ -1,25 +1,23 @@
 {
-  File dbDir=dir.directory();
   Map<String,String> coreParams=stringMap();
   coreParams.put(raft_log_pruning_strategy.name(),"keep_none");
   coreParams.put(raft_log_pruning_frequency.name(),"100ms");
   int numberOfTransactions=100;
-  try (Cluster cluster=Cluster.start(dbDir,3,0,new SharedDiscoveryService(),coreParams,emptyMap(),StandardV3_0.NAME)){
-    CoreGraphDatabase leader=cluster.awaitCoreGraphDatabaseWithRole(TIMEOUT_MS,Role.LEADER);
-    int followersLastLog=getMostRecentLogIdOn(leader);
-    while (followersLastLog < 2) {
-      doSomeTransactions(cluster,numberOfTransactions);
-      followersLastLog=getMostRecentLogIdOn(leader);
-    }
-    CoreGraphDatabase follower=cluster.awaitCoreGraphDatabaseWithRole(TIMEOUT_MS,Role.FOLLOWER);
-    follower.shutdown();
-    Config config=follower.getDependencyResolver().resolveDependency(Config.class);
-    int leadersOldestLog=getOldestLogIdOn(leader);
-    while (leadersOldestLog < followersLastLog + 10) {
-      doSomeTransactions(cluster,numberOfTransactions);
-      leadersOldestLog=getOldestLogIdOn(leader);
-    }
-    assertThat(leadersOldestLog,greaterThan(followersLastLog));
-    cluster.addCoreServerWithServerId(config.get(CoreEdgeClusterSettings.server_id),3);
+  Cluster cluster=clusterRule.withSharedCoreParams(coreParams).startCluster();
+  CoreGraphDatabase leader=cluster.awaitCoreGraphDatabaseWithRole(TIMEOUT_MS,Role.LEADER);
+  int followersLastLog=getMostRecentLogIdOn(leader);
+  while (followersLastLog < 2) {
+    doSomeTransactions(cluster,numberOfTransactions);
+    followersLastLog=getMostRecentLogIdOn(leader);
   }
- }
+  CoreGraphDatabase follower=cluster.awaitCoreGraphDatabaseWithRole(TIMEOUT_MS,Role.FOLLOWER);
+  follower.shutdown();
+  Config config=follower.getDependencyResolver().resolveDependency(Config.class);
+  int leadersOldestLog=getOldestLogIdOn(leader);
+  while (leadersOldestLog < followersLastLog + 10) {
+    doSomeTransactions(cluster,numberOfTransactions);
+    leadersOldestLog=getOldestLogIdOn(leader);
+  }
+  assertThat(leadersOldestLog,greaterThan(followersLastLog));
+  cluster.addCoreServerWithServerId(config.get(CoreEdgeClusterSettings.server_id),3);
+}
