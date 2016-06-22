@@ -1,0 +1,17 @@
+{
+  KernelTransaction kernelTransaction=mock(KernelTransaction.class);
+  doReturn(true).when(kernelTransaction).isOpen();
+  RuntimeException error=new TransactionTerminatedException();
+  doThrow(error).when(kernelTransaction).close();
+  ThreadToStatementContextBridge bridge=new ThreadToStatementContextBridge();
+  TopLevelTransaction transaction=new TopLevelTransaction(kernelTransaction,bridge);
+  transaction.success();
+  try {
+    transaction.close();
+    fail("Should have failed");
+  }
+ catch (  Exception e) {
+    assertThat(e,instanceOf(org.neo4j.graphdb.TransactionFailureException.class));
+    assertSame(error,e.getCause());
+  }
+}

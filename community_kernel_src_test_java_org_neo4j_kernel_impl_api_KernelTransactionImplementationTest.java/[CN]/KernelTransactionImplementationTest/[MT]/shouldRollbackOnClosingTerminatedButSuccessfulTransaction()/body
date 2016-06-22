@@ -1,15 +1,16 @@
 {
-  boolean exceptionReceived=false;
-  try (KernelTransaction transaction=newTransaction(accessMode())){
-    transactionConsumer.accept(transaction);
-    transaction.markForTermination();
-    transaction.success();
-    assertTrue(transaction.shouldBeTerminated());
+  KernelTransaction transaction=newTransaction(accessMode());
+  transactionInitializer.accept(transaction);
+  transaction.markForTermination();
+  transaction.success();
+  assertTrue(transaction.shouldBeTerminated());
+  try {
+    transaction.close();
+    fail("Exception expected");
   }
- catch (  TransactionFailureException e) {
-    exceptionReceived=true;
+ catch (  Exception e) {
+    assertThat(e,instanceOf(TransactionTerminatedException.class));
   }
-  assertTrue(exceptionReceived);
   verify(transactionMonitor,times(1)).transactionFinished(false,isWriteTx);
   verify(transactionMonitor,times(1)).transactionTerminated(isWriteTx);
   verifyExtraInteractionWithTheMonitor(transactionMonitor,isWriteTx);
