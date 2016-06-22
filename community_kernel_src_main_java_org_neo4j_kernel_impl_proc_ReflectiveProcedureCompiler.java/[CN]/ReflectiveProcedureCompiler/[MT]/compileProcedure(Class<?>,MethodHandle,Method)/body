@@ -5,11 +5,12 @@
   MethodHandle procedureMethod=lookup.unreflect(method);
   List<FieldInjections.FieldSetter> setters=fieldInjections.setters(procDefinition);
   ProcedureSignature.Mode mode=ProcedureSignature.Mode.READ_ONLY;
-  if (method.isAnnotationPresent(PerformsWrites.class)) {
-    mode=ProcedureSignature.Mode.READ_WRITE;
-  }
- else   if (method.isAnnotationPresent(PerformsDBMS.class)) {
+  Procedure procedure=method.getAnnotation(Procedure.class);
+  if (procedure.scope().equals(Procedure.Scope.DBMS)) {
     mode=ProcedureSignature.Mode.DBMS;
+  }
+ else   if (procedure.access().equals(Procedure.Access.WRITE) || method.isAnnotationPresent(PerformsWrites.class)) {
+    mode=ProcedureSignature.Mode.READ_WRITE;
   }
   ProcedureSignature signature=new ProcedureSignature(procName,inputSignature,outputMapper.signature(),mode);
   return new ReflectiveProcedure(signature,constructor,procedureMethod,outputMapper,setters);
