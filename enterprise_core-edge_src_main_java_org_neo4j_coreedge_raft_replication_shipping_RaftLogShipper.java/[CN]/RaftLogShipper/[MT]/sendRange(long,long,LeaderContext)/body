@@ -14,10 +14,10 @@
     }
     if ((prevLogIndex == -1 && prevLogTerm != -1) || (prevLogTerm == -1 && prevLogIndex != -1)) {
       log.warn("%s aborting append entry request since someone has pruned away the entries we needed." + "Sending a LogCompactionInfo instead. Leader context=%s, prevLogTerm=%d",statusAsString(),leaderContext,prevLogTerm);
-      outbound.send(follower,new RaftMessages.LogCompactionInfo<>(leader,leaderContext.term,prevLogIndex));
+      outbound.send(follower,new RaftMessages.LogCompactionInfo(leader,leaderContext.term,prevLogIndex));
       return;
     }
-    RaftMessages.AppendEntries.Request<MEMBER> appendRequest=new RaftMessages.AppendEntries.Request<>(leader,leaderContext.term,prevLogIndex,prevLogTerm,entries,leaderContext.commitIndex);
+    RaftMessages.AppendEntries.Request appendRequest=new RaftMessages.AppendEntries.Request(leader,leaderContext.term,prevLogIndex,prevLogTerm,entries,leaderContext.commitIndex);
     try (InFlightLogEntrySupplier logEntrySupplier=new InFlightLogEntrySupplier(raftLog,inFlightMap)){
       for (int offset=0; offset < batchSize; offset++) {
         entries[offset]=logEntrySupplier.get(startIndex + offset);

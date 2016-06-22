@@ -1,0 +1,18 @@
+{
+  localDatabase.assertHealthy(IllegalStateException.class);
+  Outcome outcome=new Outcome(FOLLOWER,ctx);
+  StoreId localStoreId=localDatabase.storeId();
+  if (outcome.getLeader() != null && message.type() != RaftMessages.Type.HEARTBEAT_TIMEOUT && !localStoreId.theRealEquals(storeId)) {
+    if (localDatabase.isEmpty()) {
+      outcome.markNeedForFreshSnapshot();
+      outcome.markUnprocessable();
+    }
+ else     if (message.type() != RaftMessages.Type.VOTE_REQUEST) {
+      throw new MismatchingStoreIdException(storeId,localStoreId);
+    }
+ else {
+      outcome.markUnprocessable();
+    }
+  }
+  return outcome;
+}

@@ -1,0 +1,12 @@
+{
+  if (voteRequest.term() > state.term()) {
+    outcome.setNextTerm(voteRequest.term());
+    outcome.setVotedFor(null);
+  }
+  boolean willVoteForCandidate=shouldVoteFor(voteRequest.candidate(),outcome.getTerm(),voteRequest.term(),state.entryLog().readEntryTerm(state.entryLog().appendIndex()),voteRequest.lastLogTerm(),state.entryLog().appendIndex(),voteRequest.lastLogIndex(),outcome.getVotedFor());
+  if (willVoteForCandidate) {
+    outcome.setVotedFor(voteRequest.from());
+    outcome.renewElectionTimeout();
+  }
+  outcome.addOutgoingMessage(new RaftMessages.Directed(voteRequest.from(),new RaftMessages.Vote.Response(state.myself(),outcome.getTerm(),willVoteForCandidate)));
+}
