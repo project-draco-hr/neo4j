@@ -1,0 +1,18 @@
+{
+  Label testLabel=DynamicLabel.label("testLabel");
+  long relationshipId=createRelationship(testLabel);
+  try (Transaction transaction=dbRule.beginTx();ResourceIterator<Node> nodes=dbRule.findNodes(testLabel)){
+    List<Node> nodeList=IteratorUtil.asList(nodes);
+    for (    Node node : nodeList) {
+      Iterable<Relationship> relationships=node.getRelationships(TestRelationshipType.MARKER);
+      for (      Relationship relationship : relationships) {
+        relationship.delete();
+      }
+    }
+    Node node1=dbRule.createNode(testLabel);
+    Node node2=dbRule.createNode(testLabel);
+    Relationship relationshipTo=node1.createRelationshipTo(node2,TestRelationshipType.MARKER);
+    assertNotEquals("Relatioships should have different ids.",relationshipId,relationshipTo.getId());
+    transaction.success();
+  }
+ }
