@@ -1,0 +1,21 @@
+{
+  ManagedCluster cluster=clusterRule.startCluster();
+  HighlyAvailableGraphDatabase firstMaster=cluster.getMaster();
+  Node node=createNodeWithProperties(firstMaster,1);
+  cluster.sync();
+  deleteNode(node,firstMaster);
+  triggerIdMaintenance(firstMaster);
+  createNodeWithProperties(firstMaster,1);
+  GraphDatabaseAPI slave=cluster.getAnySlave();
+  Barrier.Control barrier=new Barrier.Control();
+  Future<Void> t=t2.execute(barrierControlledReadTransaction(slave,barrier));
+  barrier.await();
+  slave.getDependencyResolver().resolveDependency(UpdatePuller.class).pullUpdates();
+  cluster.shutdown(firstMaster);
+  cluster.await(masterAvailable(firstMaster));
+  barrier.release();
+  t.get();
+  triggerIdMaintenance(slave);
+  createNodeWithProperties(slave,10);
+  cluster.stop();
+}
