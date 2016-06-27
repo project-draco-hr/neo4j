@@ -13,12 +13,22 @@ synchronized (logFile) {
           transactionQueue.accept(batchApplier);
           storeApplier.closeBatch();
         }
-  finally {
-          transactionQueue.accept(batchCloser);
+ catch (        Throwable cause) {
+          updateKernelHealth(cause);
+          throw cause;
+        }
+ finally {
+          if (kernelHealth.isHealthy()) {
+            transactionQueue.accept(batchCloser);
+          }
         }
       }
     }
-  finally {
+ catch (    Throwable cause) {
+      updateKernelHealth(cause);
+      throw cause;
+    }
+ finally {
       transactionQueue.clear();
     }
   }

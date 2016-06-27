@@ -1,0 +1,29 @@
+{
+  long committingTransactionId=BASE_TX_ID + 1;
+  TransactionIdStore txIdStore=mock(TransactionIdStore.class);
+  BatchingTransactionRepresentationStoreApplier applier=mock(BatchingTransactionRepresentationStoreApplier.class);
+  TransactionAppender appender=mock(TransactionAppender.class);
+  FakeCommitment fakeCommitment=new FakeCommitment(committingTransactionId,txIdStore);
+  when(appender.append(any(TransactionRepresentation.class),anyLong())).thenReturn(fakeCommitment);
+  LogFile logFile=mock(LogFile.class);
+  LogRotation logRotation=mock(LogRotation.class);
+  KernelHealth kernelHealth=newKernelHealth();
+  IndexUpdatesValidator indexUpdatesValidator=mock(IndexUpdatesValidator.class);
+  String errorMessage="Too many open files";
+  doReturn(null).doThrow(new IOException(errorMessage)).when(indexUpdatesValidator).validate(any(TransactionRepresentation.class));
+  TransactionCommittingResponseUnpacker.Dependencies dependencies=buildDependencies(logFile,logRotation,indexUpdatesValidator,applier,appender,mock(TransactionObligationFulfiller.class),kernelHealth);
+  int maxBatchSize=10;
+  DummyTransactionResponse response=new DummyTransactionResponse(committingTransactionId,10,appender,maxBatchSize);
+  TransactionCommittingResponseUnpacker unpacker=new TransactionCommittingResponseUnpacker(dependencies,maxBatchSize);
+  unpacker.start();
+  try {
+    unpacker.unpackResponse(response,NO_OP_TX_HANDLER);
+    fail("Should fail during batch processing");
+  }
+ catch (  IOException ignore) {
+  }
+  assertFalse("Kernel should be unhealthy because of failure during index updates validation.",kernelHealth.isHealthy());
+  assertEquals("Root cause should have expected exception",errorMessage,kernelHealth.getCauseOfPanic().getMessage());
+  verify(txIdStore,times(2)).transactionCommitted(anyLong(),anyLong());
+  verify(txIdStore,times(0)).transactionClosed(anyLong(),anyLong(),anyLong());
+}
