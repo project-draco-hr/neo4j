@@ -1,5 +1,6 @@
 {
   boolean success=false;
+  long txId=READ_ONLY;
   try (CommitEvent commitEvent=transactionEvent.beginCommitEvent()){
     if (hasDataChanges()) {
       try {
@@ -25,11 +26,11 @@
         transactionRepresentation.setHeader(headerInformation.getAdditionalHeader(),headerInformation.getMasterId(),headerInformation.getAuthorId(),startTimeMillis,lastTransactionIdWhenStarted,clock.currentTimeMillis(),locks.getLockSessionId());
         success=true;
         TransactionToApply batch=new TransactionToApply(transactionRepresentation);
-        return commitProcess.commit(batch,commitEvent,INTERNAL);
+        txId=commitProcess.commit(batch,commitEvent,INTERNAL);
       }
     }
     success=true;
-    return READ_ONLY;
+    return txId;
   }
  catch (  ConstraintValidationKernelException|CreateConstraintFailureException e) {
     throw new ConstraintViolationTransactionFailureException(e.getUserMessage(new KeyReadTokenNameLookup(operations.keyReadOperations())),e);
@@ -39,7 +40,7 @@
       rollback();
     }
  else {
-      afterCommit();
+      afterCommit(txId);
     }
   }
 }
