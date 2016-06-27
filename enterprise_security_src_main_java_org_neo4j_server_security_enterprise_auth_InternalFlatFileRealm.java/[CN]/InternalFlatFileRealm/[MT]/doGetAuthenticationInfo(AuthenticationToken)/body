@@ -1,0 +1,33 @@
+{
+  if (!authenticationEnabled) {
+    return null;
+  }
+  ShiroAuthToken shiroAuthToken=(ShiroAuthToken)token;
+  String username;
+  String password;
+  try {
+    username=AuthToken.safeCast(AuthToken.PRINCIPAL,shiroAuthToken.getAuthTokenMap());
+    password=AuthToken.safeCast(AuthToken.CREDENTIALS,shiroAuthToken.getAuthTokenMap());
+  }
+ catch (  InvalidAuthTokenException e) {
+    throw new UnsupportedTokenException(e);
+  }
+  User user=userRepository.getUserByName(username);
+  if (user == null) {
+    throw new UnknownAccountException();
+  }
+  AuthenticationResult result=authenticationStrategy.authenticate(user,password);
+switch (result) {
+case FAILURE:
+    throw new IncorrectCredentialsException();
+case TOO_MANY_ATTEMPTS:
+  throw new ExcessiveAttemptsException();
+}
+if (user.hasFlag(InternalFlatFileRealm.IS_SUSPENDED)) {
+throw new DisabledAccountException("User " + user.name() + " is suspended");
+}
+if (user.passwordChangeRequired()) {
+result=AuthenticationResult.PASSWORD_CHANGE_REQUIRED;
+}
+return new ShiroAuthenticationInfo(user.name(),user.credentials(),getName(),result);
+}

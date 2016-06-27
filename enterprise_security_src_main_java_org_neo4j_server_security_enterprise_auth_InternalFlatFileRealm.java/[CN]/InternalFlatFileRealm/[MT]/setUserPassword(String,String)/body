@@ -1,0 +1,17 @@
+{
+  User existingUser=userRepository.getUserByName(username);
+  if (existingUser == null) {
+    throw new IllegalCredentialsException("User " + username + " does not exist");
+  }
+  passwordPolicy.validatePassword(password);
+  if (existingUser.credentials().matchesPassword(password)) {
+    throw new IllegalCredentialsException("Old password and new password cannot be the same.");
+  }
+  try {
+    User updatedUser=existingUser.augment().withCredentials(Credential.forPassword(password)).withRequiredPasswordChange(false).build();
+    userRepository.update(existingUser,updatedUser);
+  }
+ catch (  ConcurrentModificationException e) {
+    setUserPassword(username,password);
+  }
+}
