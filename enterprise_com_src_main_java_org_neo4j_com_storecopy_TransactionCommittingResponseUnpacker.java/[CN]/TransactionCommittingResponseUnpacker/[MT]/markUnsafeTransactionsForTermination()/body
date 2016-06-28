@@ -1,0 +1,11 @@
+{
+  long lastAppliedTimestamp=transactionQueue.last().getCommitEntry().getTimeWritten();
+  long earliestSafeTimestamp=lastAppliedTimestamp - idReuseSafeZoneTime;
+  for (  KernelTransaction tx : kernelTransactions.activeTransactions()) {
+    KernelTransactionImplementation kti=(KernelTransactionImplementation)tx;
+    long commitTimestamp=kti.lastTransactionTimestampWhenStarted();
+    if (commitTimestamp != TransactionIdStore.BASE_TX_COMMIT_TIMESTAMP && commitTimestamp < earliestSafeTimestamp) {
+      tx.markForTermination(Status.Transaction.Outdated);
+    }
+  }
+}

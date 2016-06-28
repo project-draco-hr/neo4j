@@ -1,48 +1,29 @@
 {
-  if (transactionQueue.isEmpty()) {
-    return;
-  }
-  long newLatestAppliedTime=transactionQueue.last().getCommitEntry().getTimeWritten();
-  long chunkLength=newLatestAppliedTime - transactionQueue.first().getCommitEntry().getTimeWritten();
-  if (chunkLength > idReuseSafeZoneTime) {
-    kernelTransactions.blockNewTransactions();
-  }
-  try {
-    for (    KernelTransaction tx : kernelTransactions.activeTransactions()) {
-      long commitTimestamp=((KernelTransactionImplementation)tx).lastTransactionTimestampWhenStarted();
-      if (commitTimestamp != TransactionIdStore.BASE_TX_COMMIT_TIMESTAMP && commitTimestamp < newLatestAppliedTime - idReuseSafeZoneTime) {
-        tx.markForTermination(Status.Transaction.Outdated);
-      }
-    }
 synchronized (logFile) {
-      logRotation.rotateLogIfNeeded(LogAppendEvent.NULL);
-      if (!kernelHealth.isHealthy()) {
-        Throwable causeOfPanic=kernelHealth.getCauseOfPanic();
-        log.error(msg + " Original kernel panic cause was:\n" + causeOfPanic.getMessage());
-        throw new IOException(msg,causeOfPanic);
-      }
-      try {
-        if (transactionQueue.accept(batchCommitter) > 0) {
-          appender.force();
-          try {
-            transactionQueue.accept(batchApplier);
-            storeApplier.closeBatch();
-          }
+    logRotation.rotateLogIfNeeded(LogAppendEvent.NULL);
+    if (!kernelHealth.isHealthy()) {
+      Throwable causeOfPanic=kernelHealth.getCauseOfPanic();
+      log.error(msg + " Original kernel panic cause was:\n" + causeOfPanic.getMessage());
+      throw new IOException(msg,causeOfPanic);
+    }
+    try {
+      if (transactionQueue.accept(batchCommitter) > 0) {
+        appender.force();
+        try {
+          transactionQueue.accept(batchApplier);
+          storeApplier.closeBatch();
+        }
   finally {
-            transactionQueue.accept(batchCloser);
-          }
+          transactionQueue.accept(batchCloser);
         }
       }
- catch (      Throwable cause) {
-        kernelHealth.panic(cause);
-        throw cause;
-      }
- finally {
-        transactionQueue.clear();
-      }
     }
-  }
-  finally {
-    kernelTransactions.unblockNewTransactions();
+ catch (    Throwable cause) {
+      kernelHealth.panic(cause);
+      throw cause;
+    }
+ finally {
+      transactionQueue.clear();
+    }
   }
 }
