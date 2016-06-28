@@ -164,22 +164,10 @@
 ;
   upgradeConfiguration=new HAUpgradeConfiguration();
   constraintSemantics=new EnterpriseConstraintSemantics();
-  eligibleForIdReuse=new IdReuseEligibility(){
-    @Override public boolean isEligible(    KernelTransactionsSnapshot snapshot){
-switch (members.getCurrentMemberRole()) {
-case HighAvailabilityModeSwitcher.SLAVE:
-        return true;
-case HighAvailabilityModeSwitcher.MASTER:
-      return Clock.SYSTEM_CLOCK.currentTimeMillis() - snapshot.snapshotTime() >= idReuseSafeZone;
-default :
-    return false;
-}
-}
-}
-;
-registerRecovery(config.get(GraphDatabaseFacadeFactory.Configuration.editionName),dependencies,logging);
-publishEditionInfo(config,dependencies.resolveDependency(UsageData.class));
-life.add(modeSwitchersLife);
-life.add(clusteringLife);
-life.add(paxosLife);
+  eligibleForIdReuse=new HaIdReuseEligibility(members,Clock.SYSTEM_CLOCK,idReuseSafeZone);
+  registerRecovery(config.get(GraphDatabaseFacadeFactory.Configuration.editionName),dependencies,logging);
+  publishEditionInfo(config,dependencies.resolveDependency(UsageData.class));
+  life.add(modeSwitchersLife);
+  life.add(clusteringLife);
+  life.add(paxosLife);
 }
