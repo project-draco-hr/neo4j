@@ -1,2 +1,24 @@
 {
+  Iterator<SegmentFile> itr=allSegments.iterator();
+  SegmentFile notDisposed=itr.next();
+  int firstRemaining=0;
+  while (itr.hasNext()) {
+    SegmentFile current=itr.next();
+    if (current.header().prevFileLastIndex() > pruneIndex) {
+      break;
+    }
+    if (!notDisposed.tryClose()) {
+      break;
+    }
+    log.info("Pruning %s",notDisposed);
+    if (!notDisposed.delete()) {
+      log.error("Failed to delete %s",notDisposed);
+      break;
+    }
+    firstRemaining++;
+    notDisposed=current;
+  }
+  rangeMap.remove(notDisposed.header().prevIndex() + 1);
+  allSegments.subList(0,firstRemaining).clear();
+  return notDisposed;
 }
