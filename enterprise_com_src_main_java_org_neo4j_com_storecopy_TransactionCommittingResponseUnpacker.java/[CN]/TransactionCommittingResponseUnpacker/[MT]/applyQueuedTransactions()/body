@@ -4,10 +4,8 @@
   }
   long newLatestAppliedTime=transactionQueue.last().getCommitEntry().getTimeWritten();
   long chunkLength=newLatestAppliedTime - transactionQueue.first().getCommitEntry().getTimeWritten();
-  boolean feezeActiveTx=false;
   if (chunkLength > idReuseSafeZoneTime) {
-    kernelTransactions.freezeActiveTx();
-    feezeActiveTx=true;
+    kernelTransactions.blockNewTransactions();
   }
   try {
     for (    KernelTransaction tx : kernelTransactions.activeTransactions()) {
@@ -45,9 +43,6 @@ synchronized (logFile) {
     }
   }
   finally {
-    if (feezeActiveTx) {
-      feezeActiveTx=false;
-      kernelTransactions.unfreezeActiveTx();
-    }
+    kernelTransactions.unblockNewTransactions();
   }
 }
