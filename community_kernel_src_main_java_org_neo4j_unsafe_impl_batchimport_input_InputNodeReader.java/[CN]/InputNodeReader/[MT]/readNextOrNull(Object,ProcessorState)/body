@@ -1,0 +1,32 @@
+{
+  ReadableClosablePositionAwareChannel channel=state.batchChannel;
+  Group group=readGroup(0,state);
+  Object id=readValue(channel);
+  byte labelsMode=channel.get();
+  Object labels;
+  if (labelsMode == HAS_LABEL_FIELD) {
+    labels=channel.getLong();
+  }
+ else   if (labelsMode == END_OF_LABEL_CHANGES) {
+    labels=state.previousLabels;
+  }
+ else {
+    String[] newLabels=state.previousLabels.clone();
+    int cursor=newLabels.length;
+    while (labelsMode != END_OF_LABEL_CHANGES) {
+switch (labelsMode) {
+case LABEL_REMOVAL:
+        remove((String)readToken(LABEL_TOKEN,channel),newLabels,cursor--);
+      break;
+case LABEL_ADDITION:
+    (newLabels=ensureRoomForOneMore(newLabels,cursor))[cursor++]=(String)readToken(LABEL_TOKEN,channel);
+  break;
+default :
+throw new IllegalArgumentException("Unrecognized label mode " + labelsMode);
+}
+labelsMode=channel.get();
+}
+labels=state.previousLabels=cursor == newLabels.length ? newLabels : Arrays.copyOf(newLabels,cursor);
+}
+return new InputNode(sourceDescription(),lineNumber(),position(),group,id,properties.getClass().isArray() ? (Object[])properties : NO_PROPERTIES,properties.getClass().isArray() ? null : (Long)properties,labels.getClass().isArray() ? (String[])labels : NO_LABELS,labels.getClass().isArray() ? null : (Long)labels);
+}

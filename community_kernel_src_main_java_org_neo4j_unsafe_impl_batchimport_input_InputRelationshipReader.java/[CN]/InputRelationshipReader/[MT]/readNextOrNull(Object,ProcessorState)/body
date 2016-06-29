@@ -1,0 +1,23 @@
+{
+  ReadableClosablePositionAwareChannel channel=state.batchChannel;
+  Group startNodeGroup=readGroup(0,state);
+  Group endNodeGroup=readGroup(1,state);
+  Object startNodeId=readValue(channel);
+  Object endNodeId=readValue(channel);
+  byte typeMode=channel.get();
+  Object type;
+switch (typeMode) {
+case SAME_TYPE:
+    type=state.previousType;
+  break;
+case NEW_TYPE:
+type=state.previousType=(String)readToken(RELATIONSHIP_TYPE_TOKEN,channel);
+break;
+case HAS_TYPE_ID:
+type=channel.getInt();
+break;
+default :
+throw new IllegalArgumentException("Unrecognized type mode " + typeMode);
+}
+return new InputRelationship(sourceDescription(),lineNumber(),position(),properties.getClass().isArray() ? (Object[])properties : NO_PROPERTIES,properties.getClass().isArray() ? null : (Long)properties,startNodeGroup,startNodeId,endNodeGroup,endNodeId,type instanceof String ? (String)type : null,type instanceof String ? null : (Integer)type);
+}
