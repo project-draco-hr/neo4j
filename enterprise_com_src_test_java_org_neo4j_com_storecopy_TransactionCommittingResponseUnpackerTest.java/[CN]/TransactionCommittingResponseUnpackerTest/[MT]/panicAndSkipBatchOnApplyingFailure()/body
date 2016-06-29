@@ -1,10 +1,9 @@
 {
-  long committingTransactionId=BASE_TX_ID + 1;
-  TransactionIdStore txIdStore=mock(TransactionIdStore.class);
+  final long committingTransactionId=BASE_TX_ID + 1;
+  final TransactionIdStore txIdStore=mock(TransactionIdStore.class);
   BatchingTransactionRepresentationStoreApplier applier=mock(BatchingTransactionRepresentationStoreApplier.class);
   TransactionAppender appender=mock(TransactionAppender.class);
-  FakeCommitment fakeCommitment=new FakeCommitment(committingTransactionId,txIdStore);
-  when(appender.append(any(TransactionRepresentation.class),anyLong())).thenReturn(fakeCommitment);
+  when(appender.append(any(TransactionRepresentation.class),anyLong())).thenAnswer(new FakeCommitmentAnswer(committingTransactionId,txIdStore));
   LogFile logFile=mock(LogFile.class);
   LogRotation logRotation=mock(LogRotation.class);
   KernelHealth kernelHealth=newKernelHealth();
@@ -25,5 +24,5 @@
   assertFalse("Kernel should be unhealthy because of failure during index updates validation.",kernelHealth.isHealthy());
   assertEquals("Root cause should have expected exception",errorMessage,kernelHealth.getCauseOfPanic().getMessage());
   verify(txIdStore,times(2)).transactionCommitted(anyLong(),anyLong());
-  verify(txIdStore,times(0)).transactionClosed(anyLong(),anyLong(),anyLong());
+  verify(txIdStore,times(2)).transactionClosed(anyLong(),anyLong(),anyLong());
 }
