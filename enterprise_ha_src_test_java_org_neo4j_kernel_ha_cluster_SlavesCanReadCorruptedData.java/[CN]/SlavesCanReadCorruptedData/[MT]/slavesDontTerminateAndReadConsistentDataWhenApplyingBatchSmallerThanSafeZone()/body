@@ -3,38 +3,18 @@
   clusterRule.withSharedSetting(id_reuse_safe_zone_time,String.valueOf(safeZone));
   final ClusterManager.ManagedCluster cluster=clusterRule.startCluster();
   HighlyAvailableGraphDatabase master=cluster.getMaster();
-  int stringLength=1000;
-  final String stringA=buildString(stringLength,'a');
-  final String stringB=buildString(stringLength,'b');
-  final String key="key";
-  final long nodeId=createNodeAndSetProperty(master,key,stringA);
+  long entityId=action.createInitialEntity(master);
   cluster.sync();
-  removeProperty(master,nodeId,key);
+  action.removeProperties(master,entityId);
   forceMaintenance(master);
-  setProperty(master,nodeId,key,stringB);
+  action.setNewProperties(master,entityId);
   final HighlyAvailableGraphDatabase slave=cluster.getAnySlave();
   Race race=new Race();
   int nbrOfReaders=100;
   final AtomicBoolean end=new AtomicBoolean(false);
-  final AtomicInteger successfulReads=new AtomicInteger();
-  final AtomicInteger transientExceptions=new AtomicInteger();
   for (int i=0; i < nbrOfReaders; i++) {
-    race.addContestant(readContestant(stringA,stringB,key,nodeId,slave,end,successfulReads,transientExceptions));
+    race.addContestant(readContestant(action,entityId,slave,end));
   }
-  race.addContestant(new Runnable(){
-    @Override public void run(){
-      try {
-        slave.getDependencyResolver().resolveDependency(UpdatePuller.class).pullUpdates();
-      }
- catch (      InterruptedException e) {
-        throw new RuntimeException(e);
-      }
- finally {
-        end.set(true);
-      }
-    }
-  }
-);
+  race.addContestant(pullUpdatesContestant(slave,end));
   race.go();
-  assertEquals("Did not expect any transactions to be terminated",transientExceptions.get(),0);
 }
