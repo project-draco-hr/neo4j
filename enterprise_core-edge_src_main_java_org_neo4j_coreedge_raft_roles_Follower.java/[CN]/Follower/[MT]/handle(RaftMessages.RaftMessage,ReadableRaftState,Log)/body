@@ -1,0 +1,34 @@
+{
+  Outcome outcome=new Outcome(FOLLOWER,ctx);
+switch (message.type()) {
+case HEARTBEAT:
+{
+      Heart.beat(ctx,outcome,(Heartbeat)message);
+      break;
+    }
+case APPEND_ENTRIES_REQUEST:
+{
+    Appending.handleAppendEntriesRequest(ctx,outcome,(AppendEntries.Request)message);
+    break;
+  }
+case VOTE_REQUEST:
+{
+  Voting.handleVoteRequest(ctx,outcome,(RaftMessages.Vote.Request)message);
+  break;
+}
+case LOG_COMPACTION_INFO:
+{
+handleLeaderLogCompaction(ctx,outcome,(RaftMessages.LogCompactionInfo)message);
+break;
+}
+case ELECTION_TIMEOUT:
+{
+if (Election.start(ctx,outcome,log)) {
+outcome.setNextRole(CANDIDATE);
+log.info("Moving to CANDIDATE state after successfully starting election");
+}
+break;
+}
+}
+return outcome;
+}
