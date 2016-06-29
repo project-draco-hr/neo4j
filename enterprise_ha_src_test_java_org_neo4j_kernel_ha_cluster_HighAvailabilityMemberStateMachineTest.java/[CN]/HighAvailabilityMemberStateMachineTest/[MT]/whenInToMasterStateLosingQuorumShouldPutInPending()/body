@@ -3,7 +3,7 @@
   InstanceId other=new InstanceId(2);
   HighAvailabilityMemberContext context=new SimpleHighAvailabilityMemberContext(me,false);
   AvailabilityGuard guard=mock(AvailabilityGuard.class);
-  ObservedClusterMembers members=mockClusterMembers(me,other);
+  ObservedClusterMembers members=mockClusterMembers(me,Collections.<InstanceId>emptyList(),singletonList(other));
   ClusterMemberEvents events=mock(ClusterMemberEvents.class);
   ClusterMemberListenerContainer memberListenerContainer=mockAddClusterMemberListener(events);
   HighAvailabilityMemberStateMachine stateMachine=buildMockedStateMachine(context,events,members,guard);
@@ -15,6 +15,7 @@
   assertThat(stateMachine.getCurrentState(),equalTo(HighAvailabilityMemberState.TO_MASTER));
   memberListener.memberIsFailed(new InstanceId(2));
   assertThat(stateMachine.getCurrentState(),equalTo(HighAvailabilityMemberState.PENDING));
-  assertThat(probe.instanceStops,is(true));
+  assertThat(probe.instanceStops,is(false));
+  assertThat(probe.instanceDetached,is(true));
   verify(guard,times(1)).require(any(AvailabilityRequirement.class));
 }
