@@ -1,0 +1,23 @@
+{
+  String escapedCall=call.replace("'","\\'").replace("\"","\\\"");
+  HTTP.RawPayload payload=HTTP.RawPayload.quotedJson("{'statements':[{'statement':'" + escapedCall + "'}]}");
+  HTTP.Response response=HTTP.withHeaders(HttpHeaders.AUTHORIZATION,subject.principalCredentials).request(POST,commitURL(),payload);
+  try {
+    JsonNode data=JsonHelper.jsonNode(response.rawContent());
+    if (data.has("errors") && data.get("errors").has(0)) {
+      JsonNode firstError=data.get("errors").get(0);
+      if (firstError.has("message")) {
+        return firstError.get("message").asText();
+      }
+    }
+    if (data.has("results") && data.get("results").has(0)) {
+      JsonNode firstResult=data.get("results").get(0);
+      RESTResult result=new RESTResult(firstResult);
+      resultConsumer.accept(result);
+    }
+  }
+ catch (  JsonParseException e) {
+    fail("Unexpected error parsing Json!");
+  }
+  return "";
+}
