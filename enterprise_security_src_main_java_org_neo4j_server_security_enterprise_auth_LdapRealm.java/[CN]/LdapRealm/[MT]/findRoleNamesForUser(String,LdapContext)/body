@@ -1,0 +1,30 @@
+{
+  Set<String> roleNames=new LinkedHashSet<String>();
+  SearchControls searchCtls=new SearchControls();
+  searchCtls.setSearchScope(SearchControls.SUBTREE_SCOPE);
+  searchCtls.setReturningAttributes(new String[]{membershipAttributeName});
+  String searchFilter=userSearchFilter;
+  Object[] searchArguments=new Object[]{username};
+  validateUserSearchFilter(searchFilter);
+  NamingEnumeration result=ldapContext.search(userSearchBase,searchFilter,searchArguments,searchCtls);
+  if (result.hasMoreElements()) {
+    SearchResult searchResult=(SearchResult)result.next();
+    if (result.hasMoreElements()) {
+      log.warn(String.format("LDAP user search for user principal '%s' is ambiguous. The first match that will be checked " + "for group membership is '%s' " + "but the search also matches '%s'. Please check your LDAP realm configuration.",username,searchResult.toString(),((SearchResult)result.next()).toString()));
+    }
+    Attributes attributes=searchResult.getAttributes();
+    if (attributes != null) {
+      NamingEnumeration attributeEnumeration=attributes.getAll();
+      while (attributeEnumeration.hasMore()) {
+        Attribute attribute=(Attribute)attributeEnumeration.next();
+        if (attribute.getID().toLowerCase().equals(membershipAttributeName.toLowerCase())) {
+          Collection<String> groupNames=LdapUtils.getAllAttributeValues(attribute);
+          Collection<String> rolesForGroups=getRoleNamesForGroups(groupNames);
+          roleNames.addAll(rolesForGroups);
+          break;
+        }
+      }
+    }
+  }
+  return roleNames;
+}
