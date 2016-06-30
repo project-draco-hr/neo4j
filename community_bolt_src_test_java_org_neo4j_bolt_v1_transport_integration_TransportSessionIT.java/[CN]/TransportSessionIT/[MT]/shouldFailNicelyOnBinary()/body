@@ -1,0 +1,11 @@
+{
+  GraphDatabaseService db=server.graphDatabaseService();
+  try (Transaction tx=db.beginTx()){
+    Node node=db.createNode();
+    node.setProperty("binary",new byte[]{(byte)0xB0,0x17});
+    tx.success();
+  }
+   client.connect(address).send(TransportTestUtil.acceptedVersions(1,0,0,0)).send(TransportTestUtil.chunk(init("TestClient/1.1",emptyMap()),run("MATCH (n) RETURN n.binary"),pullAll()));
+  assertThat(client,eventuallyRecieves(new byte[]{0,0,0,1}));
+  assertThat(client,eventuallyRecieves(msgSuccess(),msgSuccess(map("fields",singletonList("n.binary"))),msgRecord(eqRecord(nullValue())),msgFailure(Status.Request.Invalid,"Binary values is not yet supported in Bolt")));
+}
