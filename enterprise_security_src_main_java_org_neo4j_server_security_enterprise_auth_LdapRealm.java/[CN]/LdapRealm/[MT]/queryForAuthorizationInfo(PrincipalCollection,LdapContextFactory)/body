@@ -1,15 +1,20 @@
 {
-  if (authorizationEnabled && useSystemAccountForAuthorization) {
+  if (authorizationEnabled) {
     String username=(String)getAvailablePrincipal(principals);
-    LdapContext ldapContext=ldapContextFactory.getSystemLdapContext();
-    Set<String> roleNames;
-    try {
-      roleNames=findRoleNamesForUser(username,ldapContext);
-    }
+    if (useSystemAccountForAuthorization) {
+      LdapContext ldapContext=ldapContextFactory.getSystemLdapContext();
+      Set<String> roleNames;
+      try {
+        roleNames=findRoleNamesForUser(username,ldapContext);
+      }
   finally {
-      LdapUtils.closeContext(ldapContext);
+        LdapUtils.closeContext(ldapContext);
+      }
+      return new SimpleAuthorizationInfo(roleNames);
     }
-    return new SimpleAuthorizationInfo(roleNames);
+ else {
+      return authorizationInfoCache.get(username);
+    }
   }
   return null;
 }
