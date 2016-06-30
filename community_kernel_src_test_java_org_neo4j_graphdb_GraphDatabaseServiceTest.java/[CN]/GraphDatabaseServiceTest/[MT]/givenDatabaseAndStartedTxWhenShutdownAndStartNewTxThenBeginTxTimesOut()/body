@@ -1,7 +1,7 @@
 {
   final GraphDatabaseService db=new TestGraphDatabaseFactory().newImpermanentDatabase();
   final CountDownLatch shutdown=new CountDownLatch(1);
-  final AtomicReference result=new AtomicReference();
+  final AtomicReference<Object> result=new AtomicReference<>();
   Executors.newSingleThreadExecutor().submit(new Runnable(){
     @Override public void run(){
       try (Transaction tx=db.beginTx()){
@@ -31,7 +31,7 @@ synchronized (result) {
 );
       }
  catch (      Throwable e) {
-        e.printStackTrace();
+        throw new RuntimeException(e);
       }
     }
   }
@@ -43,5 +43,5 @@ synchronized (result) {
       result.wait(100);
     }
   }
-  assertThat(result.get().getClass(),CoreMatchers.<Object>equalTo(DatabaseShutdownException.class));
+  assertThat(result.get(),CoreMatchers.instanceOf(DatabaseShutdownException.class));
 }
