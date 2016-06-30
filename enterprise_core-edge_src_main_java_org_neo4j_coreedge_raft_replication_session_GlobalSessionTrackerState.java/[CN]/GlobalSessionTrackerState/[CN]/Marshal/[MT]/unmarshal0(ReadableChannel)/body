@@ -1,0 +1,27 @@
+{
+  final long logIndex=channel.getLong();
+  final int sessionTrackerSize=channel.getInt();
+  final Map<CoreMember,LocalSessionTracker> sessionTrackers=new HashMap<>();
+  for (int i=0; i < sessionTrackerSize; i++) {
+    final CoreMember member=memberMarshal.unmarshal(channel);
+    if (member == null) {
+      throw new IllegalStateException("Null member");
+    }
+    long mostSigBits=channel.getLong();
+    long leastSigBits=channel.getLong();
+    UUID globalSessionId=new UUID(mostSigBits,leastSigBits);
+    final int localSessionTrackerSize=channel.getInt();
+    final Map<Long,Long> lastSequenceNumberPerSession=new HashMap<>();
+    for (int j=0; j < localSessionTrackerSize; j++) {
+      long localSessionId=channel.getLong();
+      long sequenceNumber=channel.getLong();
+      lastSequenceNumberPerSession.put(localSessionId,sequenceNumber);
+    }
+    final LocalSessionTracker localSessionTracker=new LocalSessionTracker(globalSessionId,lastSequenceNumberPerSession);
+    sessionTrackers.put(member,localSessionTracker);
+  }
+  GlobalSessionTrackerState result=new GlobalSessionTrackerState();
+  result.sessionTrackers=sessionTrackers;
+  result.logIndex=logIndex;
+  return result;
+}
