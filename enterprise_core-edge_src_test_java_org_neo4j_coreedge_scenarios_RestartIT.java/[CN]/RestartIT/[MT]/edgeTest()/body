@@ -1,19 +1,19 @@
 {
   Cluster cluster=clusterRule.withNumberOfCoreServers(2).withNumberOfEdgeServers(1).startCluster();
-  final GraphDatabaseService coreDB=cluster.awaitLeader(5000);
+  final GraphDatabaseService coreDB=cluster.awaitLeader(5000).database();
   try (Transaction tx=coreDB.beginTx()){
     Node node=coreDB.createNode(label("boo"));
     node.setProperty("foobar","baz_bat");
     tx.success();
   }
-   cluster.addCoreServerWithServerId(2,3);
+   cluster.addCoreServerWithServerId(2,3).start();
   cluster.shutdown();
-  for (  CoreGraphDatabase core : cluster.coreServers()) {
-    ConsistencyCheckService.Result result=new ConsistencyCheckService().runFullConsistencyCheck(new File(core.getStoreDir()),Config.defaults(),ProgressMonitorFactory.NONE,FormattedLogProvider.toOutputStream(System.out),new DefaultFileSystemAbstraction(),false);
+  for (  CoreServer core : cluster.coreServers()) {
+    ConsistencyCheckService.Result result=new ConsistencyCheckService().runFullConsistencyCheck(core.storeDir(),Config.defaults(),ProgressMonitorFactory.NONE,FormattedLogProvider.toOutputStream(System.out),new DefaultFileSystemAbstraction(),false);
     assertTrue("Inconsistent: " + core,result.isSuccessful());
   }
-  for (  EdgeGraphDatabase edge : cluster.edgeServers()) {
-    ConsistencyCheckService.Result result=new ConsistencyCheckService().runFullConsistencyCheck(new File(edge.getStoreDir()),Config.defaults(),ProgressMonitorFactory.NONE,FormattedLogProvider.toOutputStream(System.out),new DefaultFileSystemAbstraction(),false);
+  for (  EdgeServer edge : cluster.edgeServers()) {
+    ConsistencyCheckService.Result result=new ConsistencyCheckService().runFullConsistencyCheck(edge.storeDir(),Config.defaults(),ProgressMonitorFactory.NONE,FormattedLogProvider.toOutputStream(System.out),new DefaultFileSystemAbstraction(),false);
     assertTrue("Inconsistent: " + edge,result.isSuccessful());
   }
 }
