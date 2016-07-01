@@ -1,0 +1,24 @@
+{
+  MetaDataStore metaDataStore=resolver.resolveDependency(MetaDataStore.class);
+  LogicalTransactionStore txStore=resolver.resolveDependency(LogicalTransactionStore.class);
+  TransactionId txInfo=metaDataStore.getLastCommittedTransaction();
+  long lastCommitTimestampFromStore=txInfo.commitTimestamp();
+  if (txInfo.transactionId() == TransactionIdStore.BASE_TX_ID) {
+    metaDataStore.setLastTransactionCommitTimestamp(TransactionIdStore.BASE_TX_COMMIT_TIMESTAMP);
+    return;
+  }
+  if (lastCommitTimestampFromStore == TransactionIdStore.UNKNOWN_TX_COMMIT_TIMESTAMP || lastCommitTimestampFromStore == TransactionIdStore.BASE_TX_COMMIT_TIMESTAMP) {
+    long lastCommitTimestampFromLogs;
+    try {
+      TransactionMetadata metadata=txStore.getMetadataFor(txInfo.transactionId());
+      lastCommitTimestampFromLogs=metadata.getTimeWritten();
+    }
+ catch (    NoSuchTransactionException e) {
+      lastCommitTimestampFromLogs=TransactionIdStore.UNKNOWN_TX_COMMIT_TIMESTAMP;
+    }
+catch (    IOException e) {
+      throw new RuntimeException("Unable to read transaction logs",e);
+    }
+    metaDataStore.setLastTransactionCommitTimestamp(lastCommitTimestampFromLogs);
+  }
+}

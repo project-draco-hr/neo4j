@@ -7,8 +7,10 @@
     try (IOCursor<CommittedTransactionRepresentation> cursor=getTransactions(transactionId)){
       while (cursor.next()) {
         CommittedTransactionRepresentation tx=cursor.get();
-        long committedTxId=tx.getCommitEntry().getTxId();
-        TransactionMetadata metadata=transactionMetadataCache.cacheTransactionMetadata(committedTxId,tx.getStartEntry().getStartPosition(),tx.getStartEntry().getMasterId(),tx.getStartEntry().getLocalId(),LogEntryStart.checksum(tx.getStartEntry()));
+        LogEntryCommit commitEntry=tx.getCommitEntry();
+        long committedTxId=commitEntry.getTxId();
+        long timeWritten=commitEntry.getTimeWritten();
+        TransactionMetadata metadata=transactionMetadataCache.cacheTransactionMetadata(committedTxId,tx.getStartEntry().getStartPosition(),tx.getStartEntry().getMasterId(),tx.getStartEntry().getLocalId(),LogEntryStart.checksum(tx.getStartEntry()),timeWritten);
         if (committedTxId == transactionId) {
           transactionMetadata=metadata;
         }
