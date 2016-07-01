@@ -1,0 +1,20 @@
+{
+  StoreChannel channel=mock(StoreChannel.class);
+  Reader reader=mock(Reader.class);
+  ReaderPool readerPool=mock(ReaderPool.class);
+  when(channel.read(any(ByteBuffer.class))).thenThrow(new IOException());
+  when(reader.channel()).thenReturn(channel);
+  when(readerPool.acquire(anyLong(),anyLong())).thenReturn(reader);
+  try (SegmentFile segment=create(fsRule.get(),fileNames.getForVersion(0),readerPool,0,contentMarshal,logProvider,segmentHeader)){
+    IOCursor<EntryRecord> cursor=segment.getCursor(0);
+    try {
+      cursor.next();
+      fail();
+    }
+ catch (    IOException e) {
+    }
+    cursor.close();
+    verify(readerPool,never()).release(reader);
+    verify(reader).close();
+  }
+ }

@@ -17,7 +17,7 @@
       try {
         header=loadHeader(fileSystem,file);
       }
- catch (      UnexpectedEndOfStreamException e) {
+ catch (      EndOfStreamException e) {
         if (files.lastKey() != fileNameVersion) {
           throw new DamagedLogStorageException(e,"File with incomplete or no header found: %s",file);
         }
@@ -43,9 +43,9 @@
   state.appendIndex=last.header().prevIndex();
   state.currentTerm=last.header().prevTerm();
   long firstIndexInLastSegmentFile=last.header().prevIndex() + 1;
-  try (IOCursor<EntryRecord> reader=last.getReader(firstIndexInLastSegmentFile)){
-    while (reader.next()) {
-      EntryRecord entry=reader.get();
+  try (IOCursor<EntryRecord> cursor=last.getCursor(firstIndexInLastSegmentFile)){
+    while (cursor.next()) {
+      EntryRecord entry=cursor.get();
       state.appendIndex=entry.logIndex();
       state.currentTerm=entry.logEntry().term();
     }
