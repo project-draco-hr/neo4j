@@ -1,0 +1,38 @@
+{
+  when(config.get(SecuritySettings.ldap_authorization_user_search_filter)).thenReturn("{0}");
+  when(config.get(SecuritySettings.ldap_authorization_group_membership_attribute_names)).thenReturn(Arrays.asList("attr0","attr1","attr2"));
+  when(config.get(SecuritySettings.ldap_authorization_group_to_role_mapping)).thenReturn("group1=role1;group2=role2,role3");
+  LdapContext ldapContext=mock(LdapContext.class);
+  NamingEnumeration result=mock(NamingEnumeration.class);
+  SearchResult searchResult=mock(SearchResult.class);
+  Attributes attributes=mock(Attributes.class);
+  Attribute attribute1=mock(Attribute.class);
+  Attribute attribute2=mock(Attribute.class);
+  Attribute attribute3=mock(Attribute.class);
+  NamingEnumeration attributeEnumeration=mock(NamingEnumeration.class);
+  NamingEnumeration groupEnumeration1=mock(NamingEnumeration.class);
+  NamingEnumeration groupEnumeration2=mock(NamingEnumeration.class);
+  NamingEnumeration groupEnumeration3=mock(NamingEnumeration.class);
+  when(ldapContext.search(anyString(),anyString(),anyObject(),anyObject())).thenReturn(result);
+  when(result.hasMoreElements()).thenReturn(true,false);
+  when(result.next()).thenReturn(searchResult);
+  when(searchResult.getAttributes()).thenReturn(attributes);
+  when(attributes.getAll()).thenReturn(attributeEnumeration);
+  when(attributeEnumeration.hasMore()).thenReturn(true,true,false);
+  when(attributeEnumeration.next()).thenReturn(attribute1,attribute2,attribute3);
+  when(attribute1.getID()).thenReturn("attr1");
+  when(attribute1.getAll()).thenReturn(groupEnumeration1);
+  when(groupEnumeration1.hasMore()).thenReturn(true,false);
+  when(groupEnumeration1.next()).thenReturn("group1");
+  when(attribute2.getID()).thenReturn("attr2");
+  when(attribute2.getAll()).thenReturn(groupEnumeration2);
+  when(groupEnumeration2.hasMore()).thenReturn(true,false);
+  when(groupEnumeration2.next()).thenReturn("group2");
+  when(attribute3.getID()).thenReturn("attr3");
+  when(attribute3.getAll()).thenReturn(groupEnumeration3);
+  when(groupEnumeration3.hasMore()).thenReturn(true,false);
+  when(groupEnumeration3.next()).thenReturn("groupWithNoRole");
+  LdapRealm realm=new LdapRealm(config,logProvider);
+  Set<String> roles=realm.findRoleNamesForUser("username",ldapContext);
+  assertThat(roles,hasItems("role1","role2","role3"));
+}
