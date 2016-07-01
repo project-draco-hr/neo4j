@@ -1,13 +1,17 @@
 {
   dataSourceManager.start();
+  CoreMember coreMember=findCoreMemberToCopyFrom();
   if (localDatabase.isEmpty()) {
-    CoreMember transactionServer=findCoreMemberToCopyFrom();
     localDatabase.stop();
-    localDatabase.copyStoreFrom(transactionServer,storeFetcher);
+    localDatabase.copyStoreFrom(coreMember,storeFetcher);
     localDatabase.start();
   }
  else {
-    throw new IllegalStateException("Local database is not empty cannot copy store");
+    StoreId localStoreId=localDatabase.storeId();
+    StoreId remoteStoreId=storeFetcher.storeId(coreMember);
+    if (!localStoreId.equals(remoteStoreId)) {
+      throw new IllegalStateException(format("This edge machine cannot join the cluster. " + "The local database is not empty and has a mismatching storeId: expected %s actual %s.",remoteStoreId,localStoreId));
+    }
   }
   txPulling.start();
 }
