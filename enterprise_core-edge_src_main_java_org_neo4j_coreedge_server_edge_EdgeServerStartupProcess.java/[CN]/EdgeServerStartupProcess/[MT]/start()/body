@@ -1,20 +1,13 @@
 {
-  boolean copiedStore=false;
-  do {
-    try {
-      CoreMember transactionServer=connectionStrategy.coreServer();
-      log.info("Server starting, connecting to core server at %s",transactionServer.toString());
-      discoveryService.registerEdgeServer(extractBoltAddress(config));
-      localDatabase.copyStoreFrom(transactionServer,storeFetcher);
-      copiedStore=true;
-    }
- catch (    CoreServerSelectionException ex) {
-      log.info("Failed to connect to core server. Retrying in %d ms.",timeout.getMillis());
-      Thread.sleep(timeout.getMillis());
-      timeout.increment();
-    }
-  }
- while (!copiedStore);
   dataSourceManager.start();
+  if (localDatabase.isEmpty()) {
+    CoreMember transactionServer=findCoreMemberToCopyFrom();
+    localDatabase.stop();
+    localDatabase.copyStoreFrom(transactionServer,storeFetcher);
+    localDatabase.start();
+  }
+ else {
+    throw new IllegalStateException("Local database is not empty cannot copy store");
+  }
   txPulling.start();
 }

@@ -1,0 +1,23 @@
+{
+  StoreFetcher storeFetcher=mock(StoreFetcher.class);
+  LocalDatabase localDatabase=mock(LocalDatabase.class);
+  CoreMember coreMember=new CoreMember(UUID.randomUUID());
+  TopologyService hazelcastTopology=mock(TopologyService.class);
+  ClusterTopology clusterTopology=mock(ClusterTopology.class);
+  when(hazelcastTopology.currentTopology()).thenReturn(clusterTopology);
+  when(clusterTopology.coreMembers()).thenReturn(asSet(coreMember));
+  when(localDatabase.isEmpty()).thenReturn(false);
+  DataSourceManager dataSourceManager=mock(DataSourceManager.class);
+  Lifecycle txPulling=mock(Lifecycle.class);
+  EdgeServerStartupProcess edgeServerStartupProcess=new EdgeServerStartupProcess(storeFetcher,localDatabase,txPulling,dataSourceManager,new AlwaysChooseFirstServer(hazelcastTopology),new ConstantTimeRetryStrategy(1,MILLISECONDS),NullLogProvider.getInstance(),mock(EdgeTopologyService.class),new Config(Collections.emptyMap()));
+  try {
+    edgeServerStartupProcess.start();
+    fail("shoud have thrown");
+  }
+ catch (  IllegalStateException ex) {
+  }
+  verify(localDatabase).isEmpty();
+  verify(dataSourceManager).start();
+  verifyNoMoreInteractions(localDatabase,dataSourceManager);
+  verifyZeroInteractions(txPulling);
+}
