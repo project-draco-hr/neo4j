@@ -6,7 +6,13 @@
   await(aboutToStartTx);
   assertNotDone(txOpener);
   Future<?> wrongUnblocker=unblockTxsInSeparateThread(kernelTransactions);
-  assertDone(wrongUnblocker);
+  try {
+    wrongUnblocker.get(2,TimeUnit.SECONDS);
+  }
+ catch (  Exception e) {
+    assertThat(e,instanceOf(ExecutionException.class));
+    assertThat(e.getCause(),instanceOf(IllegalStateException.class));
+  }
   assertNotDone(txOpener);
   kernelTransactions.unblockNewTransactions();
   assertNotNull(txOpener.get(2,TimeUnit.SECONDS));
