@@ -5,11 +5,23 @@
   MethodHandle procedureMethod=lookup.unreflect(method);
   List<FieldInjections.FieldSetter> setters=fieldInjections.setters(procDefinition);
   ProcedureSignature.Mode mode=ProcedureSignature.Mode.READ_ONLY;
-  if (method.isAnnotationPresent(PerformsWrites.class)) {
+  Procedure procedure=method.getAnnotation(Procedure.class);
+  if (procedure.mode().equals(Procedure.Mode.DBMS)) {
+    mode=ProcedureSignature.Mode.DBMS;
+  }
+ else   if (procedure.mode().equals(Procedure.Mode.SCHEMA)) {
+    mode=ProcedureSignature.Mode.SCHEMA_WRITE;
+  }
+ else   if (procedure.mode().equals(Procedure.Mode.WRITE)) {
     mode=ProcedureSignature.Mode.READ_WRITE;
   }
- else   if (method.isAnnotationPresent(PerformsDBMS.class)) {
-    mode=ProcedureSignature.Mode.DBMS;
+  if (method.isAnnotationPresent(PerformsWrites.class)) {
+    if (mode == ProcedureSignature.Mode.DBMS || mode == ProcedureSignature.Mode.SCHEMA_WRITE) {
+      throw new ProcedureException(Status.Procedure.ProcedureRegistrationFailed,"Conflicting procedure annotation, PerformsWrites and mode = %s.",procedure.mode());
+    }
+ else {
+      mode=ProcedureSignature.Mode.READ_WRITE;
+    }
   }
   ProcedureSignature signature=new ProcedureSignature(procName,inputSignature,outputMapper.signature(),mode);
   return new ReflectiveProcedure(signature,constructor,procedureMethod,outputMapper,setters);
