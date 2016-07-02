@@ -4,20 +4,19 @@
   coreParams.put(raft_log_pruning_frequency.name(),"100ms");
   int numberOfTransactions=100;
   Cluster cluster=clusterRule.withSharedCoreParams(coreParams).startCluster();
-  CoreGraphDatabase leader=cluster.awaitCoreGraphDatabaseWithRole(TIMEOUT_MS,Role.LEADER);
+  CoreServer leader=cluster.awaitCoreGraphDatabaseWithRole(TIMEOUT_MS,Role.LEADER);
   int followersLastLog=getMostRecentLogIdOn(leader);
   while (followersLastLog < 2) {
     doSomeTransactions(cluster,numberOfTransactions);
     followersLastLog=getMostRecentLogIdOn(leader);
   }
-  CoreGraphDatabase follower=cluster.awaitCoreGraphDatabaseWithRole(TIMEOUT_MS,Role.FOLLOWER);
+  CoreServer follower=cluster.awaitCoreGraphDatabaseWithRole(TIMEOUT_MS,Role.FOLLOWER);
   follower.shutdown();
-  Config config=follower.getDependencyResolver().resolveDependency(Config.class);
   int leadersOldestLog=getOldestLogIdOn(leader);
   while (leadersOldestLog < followersLastLog + 10) {
     doSomeTransactions(cluster,numberOfTransactions);
     leadersOldestLog=getOldestLogIdOn(leader);
   }
   assertThat(leadersOldestLog,greaterThan(followersLastLog));
-  cluster.addCoreServerWithServerId(cluster.serverIdFor(follower),3);
+  follower.start();
 }
