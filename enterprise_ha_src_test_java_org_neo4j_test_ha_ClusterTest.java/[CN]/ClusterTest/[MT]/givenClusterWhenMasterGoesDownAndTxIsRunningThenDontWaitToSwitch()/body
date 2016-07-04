@@ -5,14 +5,21 @@
     ClusterManager.ManagedCluster cluster=clusterManager.getDefaultCluster();
     cluster.await(allSeesAllAsAvailable());
     HighlyAvailableGraphDatabase slave=cluster.getAnySlave();
-    try (Transaction tx=slave.beginTx()){
-      slave.createNode();
-      cluster.shutdown(cluster.getMaster());
-      cluster.await(masterAvailable());
-      cluster.await(masterSeesSlavesAsAvailable(1));
-      tx.success();
+    Transaction tx=slave.beginTx();
+    slave.createNode();
+    cluster.shutdown(cluster.getMaster());
+    cluster.await(masterAvailable());
+    cluster.await(masterSeesSlavesAsAvailable(1));
+    tx.success();
+    try {
+      tx.close();
+      fail("Exception expected");
     }
- catch (    TransactionFailureException e) {
+ catch (    Exception e) {
+      assertThat(e,instanceOf(TransientTransactionFailureException.class));
+      Throwable rootCause=rootCause(e);
+      assertThat(rootCause,instanceOf(TransactionTerminatedException.class));
+      assertThat(((TransactionTerminatedException)rootCause).status(),Matchers.<Status>equalTo(Status.General.DatabaseUnavailable));
     }
   }
   finally {

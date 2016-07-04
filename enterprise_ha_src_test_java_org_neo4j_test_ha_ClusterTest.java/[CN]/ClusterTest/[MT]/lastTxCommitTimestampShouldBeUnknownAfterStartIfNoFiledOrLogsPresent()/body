@@ -1,0 +1,21 @@
+{
+  ClusterManager clusterManager=new ClusterManager.Builder(testDirectory.directory("lastTxTimestamp")).withProvider(ClusterManager.clusterOfSize(3)).build();
+  try {
+    clusterManager.start();
+    ClusterManager.ManagedCluster cluster=clusterManager.getDefaultCluster();
+    cluster.await(allSeesAllAsAvailable());
+    runSomeTransactions(cluster.getMaster());
+    cluster.sync();
+    HighlyAvailableGraphDatabase slave=cluster.getAnySlave();
+    File storeDir=new File(slave.getStoreDir());
+    ClusterManager.RepairKit slaveRepairKit=cluster.shutdown(slave);
+    clearLastTransactionCommitTimestampField(storeDir);
+    deleteLogs(storeDir);
+    HighlyAvailableGraphDatabase repairedSlave=slaveRepairKit.repair();
+    cluster.await(allSeesAllAsAvailable());
+    assertEquals(TransactionIdStore.UNKNOWN_TX_COMMIT_TIMESTAMP,lastCommittedTxTimestamp(repairedSlave));
+  }
+  finally {
+    clusterManager.stop();
+  }
+}

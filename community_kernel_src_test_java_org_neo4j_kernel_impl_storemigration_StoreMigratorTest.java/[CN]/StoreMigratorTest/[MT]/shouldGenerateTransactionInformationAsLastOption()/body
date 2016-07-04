@@ -1,0 +1,20 @@
+{
+  long txId=42;
+  TransactionId expected=new TransactionId(txId,FIELD_NOT_PRESENT,UNKNOWN_TX_COMMIT_TIMESTAMP);
+  PageCache pageCache=pageCacheRule.getPageCache(fs);
+  File storeDir=directory.graphDbDir();
+  File neoStore=new File(storeDir,DEFAULT_NAME);
+  neoStore.createNewFile();
+  MigrationProgressMonitor progressMonitor=mock(MigrationProgressMonitor.class);
+  Config config=mock(Config.class);
+  LogService logService=mock(LogService.class);
+  LegacyLogs legacyLogs=mock(LegacyLogs.class);
+  assertEquals(FIELD_NOT_PRESENT,getRecord(pageCache,neoStore,LAST_TRANSACTION_ID));
+  assertEquals(FIELD_NOT_PRESENT,getRecord(pageCache,neoStore,LAST_TRANSACTION_CHECKSUM));
+  assertEquals(FIELD_NOT_PRESENT,getRecord(pageCache,neoStore,LAST_TRANSACTION_COMMIT_TIMESTAMP));
+  when(legacyLogs.getTransactionInformation(storeDir,txId)).thenThrow(NoSuchTransactionException.class);
+  StoreMigrator migrator=new StoreMigrator(progressMonitor,fs,pageCache,config,logService,legacyLogs);
+  TransactionId actual=migrator.extractTransactionIdInformation(neoStore,storeDir,txId);
+  assertEquals(expected.transactionId(),actual.transactionId());
+  assertEquals(expected.commitTimestamp(),actual.commitTimestamp());
+}

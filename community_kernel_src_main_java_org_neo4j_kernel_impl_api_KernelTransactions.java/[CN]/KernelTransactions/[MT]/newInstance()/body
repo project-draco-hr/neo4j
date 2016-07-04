@@ -1,4 +1,12 @@
 {
-  assertDatabaseIsRunning();
-  return localTxPool.acquire().initialize(neoStores.getMetaDataStore().getLastCommittedTransactionId());
+  assertCurrentThreadIsNotBlockingNewTransactions();
+  newTransactionsLock.readLock().lock();
+  try {
+    assertDatabaseIsRunning();
+    TransactionId lastCommittedTransaction=neoStores.getMetaDataStore().getLastCommittedTransaction();
+    return localTxPool.acquire().initialize(lastCommittedTransaction.transactionId(),lastCommittedTransaction.commitTimestamp());
+  }
+  finally {
+    newTransactionsLock.readLock().unlock();
+  }
 }

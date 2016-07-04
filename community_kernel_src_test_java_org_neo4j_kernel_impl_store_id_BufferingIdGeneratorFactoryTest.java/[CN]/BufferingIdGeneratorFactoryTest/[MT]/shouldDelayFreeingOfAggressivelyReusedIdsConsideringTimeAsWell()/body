@@ -1,0 +1,24 @@
+{
+  MockedIdGeneratorFactory actual=new MockedIdGeneratorFactory();
+  final FakeClock clock=new FakeClock();
+  final long safeZone=MINUTES.toMillis(1);
+  BufferingIdGeneratorFactory bufferingIdGeneratorFactory=new BufferingIdGeneratorFactory(actual);
+  ControllableSnapshotSupplier boundaries=new ControllableSnapshotSupplier();
+  IdGenerator idGenerator=bufferingIdGeneratorFactory.open(new File("doesnt-matter"),10,IdType.STRING_BLOCK,0);
+  bufferingIdGeneratorFactory.initialize(boundaries,new IdReuseEligibility(){
+    @Override public boolean isEligible(    KernelTransactionsSnapshot t){
+      return clock.currentTimeMillis() - t.snapshotTime() >= safeZone;
+    }
+  }
+);
+  idGenerator.freeId(7);
+  verifyNoMoreInteractions(actual.get(IdType.STRING_BLOCK));
+  bufferingIdGeneratorFactory.maintenance();
+  verifyNoMoreInteractions(actual.get(IdType.STRING_BLOCK));
+  boundaries.setMostRecentlyReturnedSnapshotToAllClosed();
+  bufferingIdGeneratorFactory.maintenance();
+  verifyNoMoreInteractions(actual.get(IdType.STRING_BLOCK));
+  clock.forward(70,SECONDS);
+  bufferingIdGeneratorFactory.maintenance();
+  verify(actual.get(IdType.STRING_BLOCK)).freeId(7);
+}

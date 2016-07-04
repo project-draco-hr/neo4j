@@ -1,0 +1,18 @@
+{
+  long txId=42;
+  long checksum=123456789123456789L;
+  long timestamp=919191919191919191L;
+  TransactionId expected=new TransactionId(txId,checksum,timestamp);
+  PageCache pageCache=pageCacheRule.getPageCache(fs);
+  File storeDir=directory.graphDbDir();
+  File neoStore=new File(storeDir,DEFAULT_NAME);
+  neoStore.createNewFile();
+  MigrationProgressMonitor progressMonitor=mock(MigrationProgressMonitor.class);
+  Config config=mock(Config.class);
+  LogService logService=mock(LogService.class);
+  LegacyLogs legacyLogs=mock(LegacyLogs.class);
+  when(legacyLogs.getTransactionInformation(storeDir,txId)).thenReturn(expected);
+  StoreMigrator migrator=new StoreMigrator(progressMonitor,fs,pageCache,config,logService,legacyLogs);
+  TransactionId actual=migrator.extractTransactionIdInformation(neoStore,storeDir,txId);
+  assertEquals(expected,actual);
+}

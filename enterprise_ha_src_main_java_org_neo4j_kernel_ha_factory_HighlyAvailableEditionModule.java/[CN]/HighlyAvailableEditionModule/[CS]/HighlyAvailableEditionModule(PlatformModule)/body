@@ -15,7 +15,8 @@
   Master master=(Master)newProxyInstance(Master.class.getClassLoader(),new Class[]{Master.class},masterDelegateInvocationHandler);
   InstanceId serverId=config.get(ClusterSettings.server_id);
   RequestContextFactory requestContextFactory=dependencies.satisfyDependency(new RequestContextFactory(serverId.toIntegerIndex(),dependencies.provideDependency(TransactionIdStore.class)));
-  TransactionCommittingResponseUnpacker responseUnpacker=dependencies.satisfyDependency(new TransactionCommittingResponseUnpacker(new DefaultUnpackerDependencies(dependencies),config.get(HaSettings.pull_apply_batch_size)));
+  final long idReuseSafeZone=config.get(HaSettings.id_reuse_safe_zone_time);
+  TransactionCommittingResponseUnpacker responseUnpacker=dependencies.satisfyDependency(new TransactionCommittingResponseUnpacker(new DefaultUnpackerDependencies(dependencies,idReuseSafeZone),config.get(HaSettings.pull_apply_batch_size)));
   Supplier<KernelAPI> kernelProvider=dependencies.provideDependency(KernelAPI.class);
   transactionStartTimeout=config.get(HaSettings.state_switch_timeout);
   DelegateInvocationHandler<ClusterMemberEvents> clusterEventsDelegateInvocationHandler=new DelegateInvocationHandler<>(ClusterMemberEvents.class);
@@ -163,22 +164,10 @@
 ;
   upgradeConfiguration=new HAUpgradeConfiguration();
   constraintSemantics=new EnterpriseConstraintSemantics();
-  eligibleForIdReuse=new IdReuseEligibility(){
-    @Override public boolean isEligible(){
-switch (members.getCurrentMemberRole()) {
-case HighAvailabilityModeSwitcher.SLAVE:
-        return true;
-case HighAvailabilityModeSwitcher.MASTER:
-      return true;
-default :
-    return false;
-}
-}
-}
-;
-registerRecovery(config.get(GraphDatabaseFacadeFactory.Configuration.editionName),dependencies,logging);
-publishEditionInfo(config,dependencies.resolveDependency(UsageData.class));
-life.add(modeSwitchersLife);
-life.add(clusteringLife);
-life.add(paxosLife);
+  eligibleForIdReuse=new HaIdReuseEligibility(members,Clock.SYSTEM_CLOCK,idReuseSafeZone);
+  registerRecovery(config.get(GraphDatabaseFacadeFactory.Configuration.editionName),dependencies,logging);
+  publishEditionInfo(config,dependencies.resolveDependency(UsageData.class));
+  life.add(modeSwitchersLife);
+  life.add(clusteringLife);
+  life.add(paxosLife);
 }
