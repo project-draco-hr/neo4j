@@ -1,0 +1,16 @@
+{
+  Set<Long> expected=new HashSet();
+  ClusterManager.ManagedCluster cluster=clusterRule.startCluster();
+  HighlyAvailableGraphDatabase master=cluster.getMaster();
+  HighlyAvailableGraphDatabase slave=cluster.getAnySlave();
+  expected.add(createOneNode(master));
+  cluster.sync();
+  File slaveStoreDirectory=cluster.getStoreDir(slave);
+  ClusterManager.RepairKit shutdownSlave=cluster.shutdown(slave);
+  deleteRecursively(slaveStoreDirectory);
+  slave=shutdownSlave.repair();
+  expected.add(createOneNode(slave));
+  cluster.sync();
+  assertTrue(expected.equals(collectIds(master)));
+  assertTrue(expected.equals(collectIds(slave)));
+}

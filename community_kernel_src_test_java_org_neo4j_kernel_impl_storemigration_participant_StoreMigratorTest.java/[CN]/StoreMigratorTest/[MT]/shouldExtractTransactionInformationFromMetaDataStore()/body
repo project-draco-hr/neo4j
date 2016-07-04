@@ -1,0 +1,18 @@
+{
+  long txId=42;
+  long checksum=123456789123456789L;
+  long timestamp=919191919191919191L;
+  TransactionId expected=new TransactionId(txId,checksum,timestamp);
+  PageCache pageCache=pageCacheRule.getPageCache(fs);
+  File storeDir=directory.graphDbDir();
+  File neoStore=new File(storeDir,DEFAULT_NAME);
+  neoStore.createNewFile();
+  Config config=mock(Config.class);
+  LogService logService=mock(LogService.class);
+  setRecord(pageCache,neoStore,LAST_TRANSACTION_ID,txId);
+  setRecord(pageCache,neoStore,LAST_TRANSACTION_CHECKSUM,checksum);
+  setRecord(pageCache,neoStore,LAST_TRANSACTION_COMMIT_TIMESTAMP,timestamp);
+  StoreMigrator migrator=new StoreMigrator(fs,pageCache,config,logService,NO_INDEX_PROVIDER);
+  TransactionId actual=migrator.extractTransactionIdInformation(neoStore,storeDir,txId);
+  assertEquals(expected,actual);
+}
