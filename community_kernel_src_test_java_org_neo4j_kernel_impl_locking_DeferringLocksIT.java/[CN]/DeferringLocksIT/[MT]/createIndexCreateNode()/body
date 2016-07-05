@@ -1,0 +1,29 @@
+{
+  final Label label=DynamicLabel.label("label");
+  try (Transaction tx=db.beginTx()){
+    Node node=db.createNode(label);
+    node.setProperty("key",true);
+    t2.execute(new WorkerCommand<Void,Void>(){
+      @Override public Void doWork(      Void state) throws Exception {
+        try (Transaction tx=db.beginTx()){
+          db.schema().indexFor(label).on("key").create();
+          tx.success();
+        }
+         try (Transaction tx=db.beginTx()){
+          db.schema().awaitIndexesOnline(1,TimeUnit.MINUTES);
+        }
+         return null;
+      }
+    }
+).get();
+    tx.success();
+  }
+   try (Transaction tx=db.beginTx()){
+    ResourceIterator<Node> nodes=db.findNodes(label,"key",true);
+    assertTrue(nodes.hasNext());
+    Node node=nodes.next();
+    assertTrue(node.hasLabel(label));
+    assertTrue((Boolean)node.getProperty("key"));
+    tx.success();
+  }
+ }
