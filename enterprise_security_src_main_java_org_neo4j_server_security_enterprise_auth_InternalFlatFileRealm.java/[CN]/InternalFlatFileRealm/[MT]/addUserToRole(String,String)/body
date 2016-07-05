@@ -1,22 +1,14 @@
 {
   checkValidityOfUsernameAndRoleName(username,roleName);
 synchronized (this) {
-    User user=userRepository.getUserByName(username);
-    if (user == null) {
-      throw new IllegalArgumentException("User " + username + " does not exist.");
+    assertAndGetUser(username);
+    RoleRecord role=assertAndGetRole(roleName);
+    RoleRecord newRole=role.augment().withUser(username).build();
+    try {
+      roleRepository.update(role,newRole);
     }
-    RoleRecord role=roleRepository.getRoleByName(roleName);
-    if (role == null) {
-      throw new IllegalArgumentException("Role " + roleName + " does not exist.");
-    }
- else {
-      RoleRecord newRole=role.augment().withUser(username).build();
-      try {
-        roleRepository.update(role,newRole);
-      }
- catch (      ConcurrentModificationException e) {
-        addUserToRole(username,roleName);
-      }
+ catch (    ConcurrentModificationException e) {
+      addUserToRole(username,roleName);
     }
   }
   clearCachedAuthorizationInfoForUser(username);
