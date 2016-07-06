@@ -1,8 +1,30 @@
 {
   assertTransactionOpen();
-  closed=true;
+  assertTransactionNotClosing();
   closeCurrentStatementIfAny();
-  if (closeListener != null) {
-    closeListener.notify(success);
+  closing=true;
+  try {
+    if (failure || !success || terminated) {
+      rollback();
+      failOnNonExplicitRollbackIfNeeded();
+      return NOT_COMMITTED;
+    }
+ else {
+      return commit();
+    }
+  }
+  finally {
+    try {
+      closed=true;
+      closing=false;
+      transactionEvent.setSuccess(success);
+      transactionEvent.setFailure(failure);
+      transactionEvent.setTransactionType(writeState.name());
+      transactionEvent.setReadOnly(txState == null || !txState.hasChanges());
+      transactionEvent.close();
+    }
+  finally {
+      release();
+    }
   }
 }

@@ -23,10 +23,13 @@
         PhysicalTransactionRepresentation transactionRepresentation=new PhysicalTransactionRepresentation(extractedCommands);
         TransactionHeaderInformation headerInformation=headerInformationFactory.create();
         transactionRepresentation.setHeader(headerInformation.getAdditionalHeader(),headerInformation.getMasterId(),headerInformation.getAuthorId(),startTimeMillis,lastTransactionIdWhenStarted,clock.currentTimeMillis(),locks.getLockSessionId());
-        commitProcess.commit(new TransactionToApply(transactionRepresentation),commitEvent,INTERNAL);
+        success=true;
+        TransactionToApply batch=new TransactionToApply(transactionRepresentation);
+        return commitProcess.commit(batch,commitEvent,INTERNAL);
       }
     }
     success=true;
+    return NOT_COMMITTED;
   }
  catch (  ConstraintValidationKernelException|CreateConstraintFailureException e) {
     throw new ConstraintViolationTransactionFailureException(e.getUserMessage(new KeyReadTokenNameLookup(operations.keyReadOperations())),e);
