@@ -1,14 +1,13 @@
 {
   ManagedCluster cluster=clusterRule.startCluster();
-  RepairKit masterShutdown=cluster.shutdown(cluster.getMaster());
-  try {
-    for (    HighlyAvailableGraphDatabase db : cluster.getAllMembers()) {
-      assertEquals(2,ha(db).getInstancesInCluster().length);
-    }
+  HighlyAvailableGraphDatabase master=cluster.getMaster();
+  RepairKit masterShutdown=cluster.shutdown(master);
+  cluster.await(masterAvailable(master));
+  cluster.await(masterSeesSlavesAsAvailable(1));
+  for (  HighlyAvailableGraphDatabase db : cluster.getAllMembers()) {
+    assertEquals(2,ha(db).getInstancesInCluster().length);
   }
-  finally {
-    masterShutdown.repair();
-  }
+  masterShutdown.repair();
   cluster.await(ClusterManager.allSeesAllAsAvailable());
   for (  HighlyAvailableGraphDatabase db : cluster.getAllMembers()) {
     HighAvailability bean=ha(db);
