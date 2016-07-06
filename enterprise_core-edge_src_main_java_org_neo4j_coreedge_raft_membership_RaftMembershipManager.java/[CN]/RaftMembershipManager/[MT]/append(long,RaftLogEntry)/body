@@ -1,0 +1,18 @@
+{
+  for (  RaftLogEntry entry : entries) {
+    if (entry.content() instanceof RaftGroup) {
+      RaftGroup<CoreMember> raftGroup=(RaftGroup<CoreMember>)entry.content();
+      if (state.uncommittedMemberChangeInLog()) {
+        log.warn("Appending with uncommitted membership change in log");
+      }
+      if (state.append(baseIndex,new HashSet<>(raftGroup.getMembers()))) {
+        storage.persistStoreData(state);
+        updateMemberSets();
+      }
+ else {
+        log.warn("Appending member set was ignored. Current state: %s, Appended set: %s, Log index: %d%n",state,raftGroup,baseIndex);
+      }
+    }
+    baseIndex++;
+  }
+}
