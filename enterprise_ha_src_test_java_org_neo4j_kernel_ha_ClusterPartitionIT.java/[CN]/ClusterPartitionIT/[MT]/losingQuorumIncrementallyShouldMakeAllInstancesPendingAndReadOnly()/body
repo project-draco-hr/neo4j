@@ -17,6 +17,10 @@
     failed2=cluster.getAnySlave(failed1);
     failed3=cluster.getAnySlave(failed1,failed2);
     remainingSlave=cluster.getAnySlave(failed1,failed2,failed3);
+    CountDownLatch masterTransitionLatch=new CountDownLatch(1);
+    CountDownLatch slaveTransitionLatch=new CountDownLatch(1);
+    setupForWaitOnSwitchToDetached(master,masterTransitionLatch);
+    setupForWaitOnSwitchToDetached(remainingSlave,slaveTransitionLatch);
     rk1=killIncrementally(cluster,failed1,failed2,failed3);
     cluster.await(memberSeesOtherMemberAsFailed(remainingSlave,failed1));
     cluster.await(memberSeesOtherMemberAsFailed(remainingSlave,failed2));
@@ -24,6 +28,8 @@
     cluster.await(memberSeesOtherMemberAsFailed(master,failed1));
     cluster.await(memberSeesOtherMemberAsFailed(master,failed2));
     cluster.await(memberSeesOtherMemberAsFailed(master,failed3));
+    masterTransitionLatch.await();
+    slaveTransitionLatch.await();
     ensureInstanceIsReadOnlyInPendingState(master);
     ensureInstanceIsReadOnlyInPendingState(remainingSlave);
     rk1.repair();
