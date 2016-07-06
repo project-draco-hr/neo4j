@@ -1,15 +1,11 @@
 {
   PageCache pageCache=pageCacheRule.getPageCache(fsRule.get());
   try (PagedFile storeFile=pageCache.map(new File("store"),PAGE_SIZE,CREATE)){
-    long totalUnusedBytesPrimary=0;
-    long totalUnusedBytesSecondary=0;
-    long totalRecordsRequiringSecondUnit=0;
     RecordFormat<R> format=formatSupplier.get();
     RecordKey<R> key=keySupplier.get();
     Generator<R> generator=generatorSupplier.get();
     int recordSize=format.getRecordSize(new IntStoreHeader(DATA_SIZE));
     BatchingIdSequence idSequence=new BatchingIdSequence(random.nextBoolean() ? idSureToBeOnTheNextPage(PAGE_SIZE,recordSize) : 10);
-    long smallestUnusedBytesPrimary=recordSize;
     long time=currentTimeMillis();
     long endTime=time + TEST_TIME;
     long i=0;
@@ -25,10 +21,6 @@
         Exceptions.setMessage(t,t.getMessage() + " : written:" + written+ ", read:"+ read+ ", seed:"+ random.seed()+ ", iteration:"+ i);
         throw t;
       }
-    }
-    time=currentTimeMillis() - time;
-    if (time >= PRINT_RESULTS_THRESHOLD) {
-      System.out.printf("%s%n  %.2f write-read ops/ms%n  %.2f%% required secondary unit%n" + "  %.2f%% wasted primary record space%n" + "  %.2f%% wasted secondary record space%n"+ "  %.2f%% wasted total record space%n"+ "  %dB smallest primary waste%n"+ "  %dB smallest secondary waste%n",format,((double)i / time),percent(totalRecordsRequiringSecondUnit,i),percent(totalUnusedBytesPrimary,i * recordSize),percent(totalUnusedBytesSecondary,i * recordSize),percent(totalUnusedBytesPrimary + totalUnusedBytesSecondary,i * recordSize),smallestUnusedBytesPrimary,smallestUnusedBytesPrimary);
     }
   }
  }
