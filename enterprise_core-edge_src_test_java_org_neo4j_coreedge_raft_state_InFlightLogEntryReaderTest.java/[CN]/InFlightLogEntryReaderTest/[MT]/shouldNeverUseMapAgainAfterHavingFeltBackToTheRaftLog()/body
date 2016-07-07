@@ -1,0 +1,19 @@
+{
+  InFlightLogEntryReader reader=new InFlightLogEntryReader(raftLog,inFlightMap,clearCache);
+  startingFromIndexReturnEntries(inFlightMap,logIndex,entry,null,mock(RaftLogEntry.class));
+  RaftLogEntry[] entries={entry,mock(RaftLogEntry.class),mock(RaftLogEntry.class)};
+  startingFromIndexReturnEntries(raftLog,logIndex + 1,entries[1],entries[2]);
+  for (int offset=0; offset < 3; offset++) {
+    RaftLogEntry raftLogEntry=reader.get(offset + logIndex);
+    assertEquals(entries[offset],raftLogEntry);
+    if (offset <= 1) {
+      verify(inFlightMap).retrieve(offset + logIndex);
+    }
+    if (offset == 1) {
+      verify(raftLog).getEntryCursor(offset + logIndex);
+    }
+    assertCacheIsUpdated(inFlightMap,offset + logIndex);
+  }
+  verifyNoMoreInteractions(inFlightMap);
+  verifyNoMoreInteractions(raftLog);
+}
