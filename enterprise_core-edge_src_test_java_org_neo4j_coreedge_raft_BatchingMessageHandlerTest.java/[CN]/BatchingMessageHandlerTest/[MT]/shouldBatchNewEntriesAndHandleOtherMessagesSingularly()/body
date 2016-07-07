@@ -1,16 +1,16 @@
 {
   @SuppressWarnings("unchecked") Inbound.MessageHandler<RaftMessages.RaftMessage> innerHandler=mock(Inbound.MessageHandler.class);
-  BatchingMessageHandler batchHandler=new BatchingMessageHandler(innerHandler,NullLogProvider.getInstance(),QUEUE_SIZE,MAX_BATCH);
+  BatchingMessageHandler batchHandler=new BatchingMessageHandler(innerHandler,NullLogProvider.getInstance(),QUEUE_SIZE,MAX_BATCH,localDatabase,raftStateMachine);
   ReplicatedString contentA=new ReplicatedString("A");
   ReplicatedString contentC=new ReplicatedString("C");
   RaftMessages.NewEntry.Request messageA=new RaftMessages.NewEntry.Request(null,contentA);
   RaftMessages.Heartbeat messageB=new RaftMessages.Heartbeat(null,0,0,0);
   RaftMessages.NewEntry.Request messageC=new RaftMessages.NewEntry.Request(null,contentC);
   RaftMessages.Heartbeat messageD=new RaftMessages.Heartbeat(null,1,1,1);
-  batchHandler.handle(messageA);
-  batchHandler.handle(messageB);
-  batchHandler.handle(messageC);
-  batchHandler.handle(messageD);
+  batchHandler.handle(new RaftMessages.StoreIdAwareMessage(new StoreId(1,2,3,4),messageA));
+  batchHandler.handle(new RaftMessages.StoreIdAwareMessage(new StoreId(1,2,3,4),messageB));
+  batchHandler.handle(new RaftMessages.StoreIdAwareMessage(new StoreId(1,2,3,4),messageC));
+  batchHandler.handle(new RaftMessages.StoreIdAwareMessage(new StoreId(1,2,3,4),messageD));
   verifyZeroInteractions(innerHandler);
   batchHandler.run();
   RaftMessages.NewEntry.Batch batch=new RaftMessages.NewEntry.Batch(2);
