@@ -8,7 +8,28 @@
   if (config.get(SecuritySettings.ldap_authentication_enabled) || config.get(SecuritySettings.ldap_authorization_enabled)) {
     realms.add(new LdapRealm(config,securityLog));
   }
-  if (config.get(SecuritySettings.plugin_authentication_enabled) || config.get(SecuritySettings.plugin_authorization_enabled)) {
+  Boolean pluginAuthenticationEnabled=config.get(SecuritySettings.plugin_authentication_enabled);
+  Boolean pluginAuthorizationEnabled=config.get(SecuritySettings.plugin_authorization_enabled);
+  if (pluginAuthenticationEnabled && pluginAuthorizationEnabled) {
+    Iterable<AuthPlugin> authPlugins=Service.load(AuthPlugin.class);
+    for (    AuthPlugin plugin : authPlugins) {
+      PluginRealm pluginRealm=new PluginRealm(plugin);
+      realms.add(pluginRealm);
+    }
+  }
+  if (pluginAuthenticationEnabled) {
+    Iterable<AuthenticationPlugin> authenticationPlugins=Service.load(AuthenticationPlugin.class);
+    for (    AuthenticationPlugin plugin : authenticationPlugins) {
+      PluginRealm pluginRealm=new PluginRealm(plugin,null);
+      realms.add(pluginRealm);
+    }
+  }
+  if (pluginAuthorizationEnabled) {
+    Iterable<AuthorizationPlugin> authorizationPlugins=Service.load(AuthorizationPlugin.class);
+    for (    AuthorizationPlugin plugin : authorizationPlugins) {
+      PluginRealm pluginRealm=new PluginRealm(null,plugin);
+      realms.add(pluginRealm);
+    }
   }
   long ttl=config.get(SecuritySettings.auth_cache_ttl);
   int maxCapacity=config.get(SecuritySettings.auth_cache_max_capacity);
