@@ -1,11 +1,11 @@
 {
   @SuppressWarnings("unchecked") Inbound.MessageHandler<RaftMessages.RaftMessage> innerHandler=mock(Inbound.MessageHandler.class);
-  BatchingMessageHandler batchHandler=new BatchingMessageHandler(innerHandler,NullLogProvider.getInstance(),QUEUE_SIZE,MAX_BATCH);
+  BatchingMessageHandler batchHandler=new BatchingMessageHandler(innerHandler,NullLogProvider.getInstance(),QUEUE_SIZE,MAX_BATCH,localDatabase,raftStateMachine);
   RaftMessages.NewEntry.Request message=new RaftMessages.NewEntry.Request(null,null);
   ExecutorService executor=Executors.newCachedThreadPool();
   Future<?> future=executor.submit(batchHandler);
   Thread.sleep(50);
-  batchHandler.handle(message);
+  batchHandler.handle(new RaftMessages.StoreIdAwareMessage(new StoreId(1,2,3,4),message));
   future.get();
   verify(innerHandler).handle(message);
 }
