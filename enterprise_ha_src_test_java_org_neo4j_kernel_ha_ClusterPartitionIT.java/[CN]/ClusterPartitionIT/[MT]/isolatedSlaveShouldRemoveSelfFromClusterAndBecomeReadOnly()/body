@@ -7,9 +7,12 @@
     cluster.await(allSeesAllAsAvailable());
     cluster.await(masterAvailable());
     HighlyAvailableGraphDatabase slave=cluster.getAnySlave();
+    CountDownLatch slaveTransitionLatch=new CountDownLatch(1);
+    setupForWaitOnSwitchToDetached(slave,slaveTransitionLatch);
     addSomeData(slave);
     ClusterManager.RepairKit fail=cluster.fail(slave,NetworkFlag.values());
     cluster.await(instanceEvicted(slave),20);
+    slaveTransitionLatch.await();
     ensureInstanceIsReadOnlyInPendingState(slave);
     fail.repair();
     cluster.await(allSeesAllAsAvailable());

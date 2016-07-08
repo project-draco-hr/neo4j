@@ -14,6 +14,9 @@
  else   if (obj instanceof String) {
     pack((String)obj);
   }
+ else   if (obj instanceof Character) {
+    pack((char)obj);
+  }
  else   if (obj instanceof Map) {
     Map<Object,Object> map=(Map<Object,Object>)obj;
     packMapHeader(map.size());
@@ -30,7 +33,15 @@
     }
   }
  else   if (obj instanceof byte[]) {
-    throw new UnsupportedOperationException("Binary values cannot be packed.");
+    error=Optional.of(new Error(Status.Request.Invalid,"Byte array is not yet supported in Bolt"));
+    packNull();
+  }
+ else   if (obj instanceof char[]) {
+    char[] array=(char[])obj;
+    packListHeader(array.length);
+    for (    char item : array) {
+      pack(item);
+    }
   }
  else   if (obj instanceof short[]) {
     short[] array=(short[])obj;
@@ -90,7 +101,12 @@
  else   if (obj instanceof Path) {
     pathPacker.pack(this,(Path)obj);
   }
+ else   if (obj instanceof Point) {
+    error=Optional.of(new Error(Status.Request.Invalid,"Point is not yet supported as a return type in Bolt"));
+    packNull();
+  }
  else {
-    throw new BoltIOException(Status.General.UnknownError,"Unpackable value " + obj + " of type "+ obj.getClass().getName());
+    error=Optional.of(new Error(Status.Request.Invalid,"Unpackable value " + obj + " of type "+ obj.getClass().getName()));
+    packNull();
   }
 }
