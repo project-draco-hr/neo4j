@@ -1,7 +1,17 @@
 {
-  db=(GraphDatabaseFacade)new TestEnterpriseGraphDatabaseFactory().newImpermanentDatabase();
-  InternalFlatFileRealm internalRealm=new InternalFlatFileRealm(new InMemoryUserRepository(),new InMemoryRoleRepository(),new BasicPasswordPolicy(),new RateLimitedAuthenticationStrategy(systemUTC(),3));
-  manager=new MultiRealmAuthManager(internalRealm,Collections.singletonList(internalRealm));
+  Path IMPERMANENT_DB_ROLES_PATH=Paths.get("target/test-data/impermanent-db/data/dbms/roles");
+  if (Files.exists(IMPERMANENT_DB_ROLES_PATH)) {
+    Files.delete(IMPERMANENT_DB_ROLES_PATH);
+  }
+  Map<Setting<?>,String> settings=new HashMap<>();
+  settings.put(boltConnector("0").enabled,"true");
+  settings.put(boltConnector("0").encryption_level,OPTIONAL.name());
+  settings.put(BoltKernelExtension.Settings.tls_key_file,NeoInteractionLevel.tempPath("key",".key"));
+  settings.put(BoltKernelExtension.Settings.tls_certificate_file,NeoInteractionLevel.tempPath("cert",".cert"));
+  settings.put(GraphDatabaseSettings.auth_enabled,"true");
+  settings.put(GraphDatabaseSettings.auth_manager,"enterprise-auth-manager");
+  db=(GraphDatabaseFacade)new TestEnterpriseGraphDatabaseFactory().newImpermanentDatabase(settings);
+  manager=db.getDependencyResolver().resolveDependency(MultiRealmAuthManager.class);
   manager.init();
   manager.start();
   userManager=manager.getUserManager();
