@@ -1,9 +1,11 @@
 {
   @SuppressWarnings("unchecked") Inbound.MessageHandler<RaftMessages.RaftMessage> innerHandler=mock(Inbound.MessageHandler.class);
+  when(localDatabase.isEmpty()).thenReturn(true);
   BatchingMessageHandler batchHandler=new BatchingMessageHandler(innerHandler,NullLogProvider.getInstance(),QUEUE_SIZE,MAX_BATCH,localDatabase,raftStateMachine);
   RaftMessages.NewEntry.Request message=new RaftMessages.NewEntry.Request(null,null);
-  batchHandler.handle(new RaftMessages.StoreIdAwareMessage(localStoreId,message));
-  verifyZeroInteractions(innerHandler);
+  StoreId otherStoreId=new StoreId(5,6,7,8);
+  batchHandler.handle(new RaftMessages.StoreIdAwareMessage(otherStoreId,message));
   batchHandler.run();
-  verify(innerHandler).handle(message);
+  verifyNoMoreInteractions(innerHandler);
+  verify(raftStateMachine).downloadSnapshot(message.from());
 }
