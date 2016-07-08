@@ -23,18 +23,10 @@
     Thread.setDefaultUncaughtExceptionHandler(defaultUncaughtExceptionHandler);
   }
   int maxChecks=200;
-  byte[] randomHeapPollution;
+  LinkedList<SoftReference<byte[]>> heapPollution=new LinkedList<>();
   boolean passed;
   do {
-    System.gc();
-    Thread.sleep(100);
-    passed=true;
-    randomHeapPollution=new byte[(int)ByteUnit.mebiBytes(2)];
-    for (    WeakReference<PageCache> ref : refs) {
-      if (ref.get() != null) {
-        passed=false;
-      }
-    }
+    passed=causeGcAndCheckReferences(refs,heapPollution);
   }
  while (!passed && maxChecks-- > 0);
   if (!passed) {
