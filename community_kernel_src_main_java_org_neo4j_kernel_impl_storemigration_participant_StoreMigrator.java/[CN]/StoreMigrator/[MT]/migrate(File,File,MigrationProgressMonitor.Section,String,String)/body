@@ -1,14 +1,14 @@
 {
   File neoStore=new File(storeDir,MetaDataStore.DEFAULT_NAME);
   long lastTxId=MetaDataStore.getRecord(pageCache,neoStore,Position.LAST_TRANSACTION_ID);
-  long lastTxChecksum=extractTransactionChecksum(neoStore,storeDir,lastTxId);
+  TransactionId lastTxInfo=extractTransactionIdInformation(neoStore,storeDir,lastTxId);
   LogPosition lastTxLogPosition=extractTransactionLogPosition(neoStore,storeDir,lastTxId);
-  writeLastTxChecksum(migrationDir,lastTxChecksum);
+  writeLastTxInformation(migrationDir,lastTxInfo);
   writeLastTxLogPosition(migrationDir,lastTxLogPosition);
   RecordFormats oldFormat=selectForVersion(versionToMigrateFrom);
   RecordFormats newFormat=selectForVersion(versionToMigrateTo);
   if (!oldFormat.equals(newFormat)) {
-    migrateWithBatchImporter(storeDir,migrationDir,lastTxId,lastTxChecksum,lastTxLogPosition.getLogVersion(),lastTxLogPosition.getByteOffset(),progressMonitor,oldFormat,newFormat);
+    migrateWithBatchImporter(storeDir,migrationDir,lastTxId,lastTxInfo.checksum(),lastTxLogPosition.getLogVersion(),lastTxLogPosition.getByteOffset(),progressMonitor,oldFormat,newFormat);
   }
   if (versionToMigrateFrom.equals(StandardV2_1.STORE_VERSION)) {
     removeDuplicateEntityProperties(storeDir,migrationDir,pageCache,schemaIndexProvider,oldFormat);

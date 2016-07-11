@@ -1,0 +1,19 @@
+{
+  int maxBatchSize=10;
+  long idReuseSafeZoneTime=100;
+  Dependencies dependencies=mock(Dependencies.class);
+  TransactionObligationFulfiller fulfiller=mock(TransactionObligationFulfiller.class);
+  when(dependencies.obligationFulfiller()).thenReturn(fulfiller);
+  when(dependencies.logService()).thenReturn(NullLogService.getInstance());
+  KernelTransactions kernelTransactions=mock(KernelTransactions.class);
+  when(dependencies.kernelTransactions()).thenReturn(kernelTransactions);
+  TransactionCommitProcess commitProcess=mock(TransactionCommitProcess.class);
+  when(dependencies.commitProcess()).thenReturn(commitProcess);
+  TransactionCommittingResponseUnpacker unpacker=life.add(new TransactionCommittingResponseUnpacker(dependencies,maxBatchSize,idReuseSafeZoneTime));
+  int txCount=maxBatchSize;
+  int doesNotMatter=1;
+  unpacker.unpackResponse(new DummyTransactionResponse(doesNotMatter,txCount,idReuseSafeZoneTime + 1),NO_OP_TX_HANDLER);
+  InOrder inOrder=inOrder(commitProcess,kernelTransactions);
+  inOrder.verify(commitProcess,times(1)).commit(any(),any(),any());
+  inOrder.verify(kernelTransactions,times(1)).unblockNewTransactions();
+}
