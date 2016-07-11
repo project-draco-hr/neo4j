@@ -1,2 +1,20 @@
 {
+  File classicDatabaseDir=testDirectory.cleanDirectory("classic-db");
+  File classicNeo4jStore=createClassicNeo4jStore(classicDatabaseDir,10,StandardV3_0.NAME);
+  StoreMetadata storeMetadata=metadataFor(classicNeo4jStore);
+  File homeDir=testDirectory.cleanDirectory("new-db-1");
+  LinkedList<String> args=ArgsBuilder.args().homeDir(homeDir).config(homeDir).from(classicNeo4jStore).database("graph.db").build();
+  StringBuilder output=new StringBuilder();
+  PrintStream sysout=new PrintStream(new RestoreClusterUtils.MyOutputStream(output));
+  new RestoreNewClusterCli(sysout).run(args.toArray(new String[args.size()]));
+  String seed=extractSeed(output.toString());
+  ClusterSeed clusterSeed=ClusterSeed.create(seed);
+  assertTrue(storeMetadata.storeId().equals(clusterSeed.before()));
+  assertEquals(storeMetadata.lastTxId(),clusterSeed.lastTxId());
+  assertFalse(storeMetadata.storeId().equals(clusterSeed.after()));
+  File rootNewDatabaseDir=testDirectory.cleanDirectory("new-db-2");
+  LinkedList<String> newArgs=ArgsBuilder.args().homeDir(rootNewDatabaseDir).config(rootNewDatabaseDir).from(classicNeo4jStore).database("graph.db").seed(seed).build();
+  new RestoreExistingClusterCli().run(newArgs.toArray(new String[newArgs.size()]));
+  StoreMetadata newMetadata=metadataFor(extractDatabaseDir(rootNewDatabaseDir));
+  assertTrue(clusterSeed.after().equals(newMetadata.storeId()));
 }
