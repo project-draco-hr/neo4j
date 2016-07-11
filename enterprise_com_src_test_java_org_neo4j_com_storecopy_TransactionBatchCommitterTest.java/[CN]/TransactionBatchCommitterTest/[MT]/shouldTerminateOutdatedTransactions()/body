@@ -1,0 +1,15 @@
+{
+  long safeZone=10;
+  int txCount=3;
+  long firstCommitTimestamp=10;
+  long commitTimestampInterval=2;
+  TransactionBatchCommitter committer=newBatchCommitter(safeZone);
+  TransactionChain chain=createTxChain(txCount,firstCommitTimestamp,commitTimestampInterval);
+  long timestampOutsideSafeZone=chain.last.transactionRepresentation().getLatestCommittedTxWhenStarted() - safeZone - 1;
+  KernelTransaction txToTerminate=newKernelTransaction(timestampOutsideSafeZone);
+  KernelTransaction tx=newKernelTransaction(firstCommitTimestamp - 1);
+  when(kernelTransactions.activeTransactions()).thenReturn(Iterators.asSet(txToTerminate,tx));
+  committer.apply(chain.first,chain.last);
+  verify(txToTerminate).markForTermination(Status.Transaction.Outdated);
+  verify(tx,never()).markForTermination(any());
+}

@@ -1,4 +1,14 @@
 {
-  assertDatabaseIsRunning();
-  return localTxPool.acquire().initialize(transactionIdStore.getLastCommittedTransactionId(),locks.newClient(),type,accessMode);
+  assertCurrentThreadIsNotBlockingNewTransactions();
+  newTransactionsLock.readLock().lock();
+  try {
+    assertDatabaseIsRunning();
+    TransactionId lastCommittedTransaction=transactionIdStore.getLastCommittedTransaction();
+    KernelTransactionImplementation tx=localTxPool.acquire();
+    tx.initialize(lastCommittedTransaction.transactionId(),lastCommittedTransaction.commitTimestamp(),locks.newClient(),type,accessMode);
+    return tx;
+  }
+  finally {
+    newTransactionsLock.readLock().unlock();
+  }
 }
