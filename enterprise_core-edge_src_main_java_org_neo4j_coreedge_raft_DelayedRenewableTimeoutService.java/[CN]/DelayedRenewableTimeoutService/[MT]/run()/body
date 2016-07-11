@@ -1,2 +1,31 @@
 {
+  long now=clock.millis();
+  Collection<ScheduledRenewableTimeout> triggered=new LinkedList<>();
+synchronized (timeouts) {
+    ScheduledRenewableTimeout renew;
+    while ((renew=pendingRenewals.poll()) != null) {
+      timeouts.remove(renew);
+      renew.setTimeoutTimestamp(calcTimeoutTimestamp(renew.timeoutLength,renew.randomRange));
+      timeouts.add(renew);
+    }
+    for (    ScheduledRenewableTimeout timeout : timeouts) {
+      if (timeout.shouldTrigger(now)) {
+        triggered.add(timeout);
+      }
+ else {
+        break;
+      }
+    }
+  }
+  for (  ScheduledRenewableTimeout timeout : triggered) {
+    try {
+      timeout.trigger();
+    }
+ catch (    Throwable e) {
+      log.error("Exception triggering timeout handler",e);
+    }
+  }
+synchronized (timeouts) {
+    timeouts.removeAll(triggered);
+  }
 }
