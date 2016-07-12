@@ -1,0 +1,22 @@
+{
+  if (args.length < 2) {
+    throw new IncorrectUsage("Missing arguments: expected username and password");
+  }
+  String username=args[0];
+  String password=args[1];
+  try {
+    Config config=loadNeo4jConfig(homeDir,configDir);
+    File authDir=config.get(auth_store_directory);
+    FileUserRepository userRepository=new FileUserRepository(new File(authDir,"auth.db").toPath(),NullLogProvider.getInstance());
+    userRepository.start();
+    PasswordPolicy passwordPolicy=new BasicPasswordPolicy();
+    BasicAuthManager authManager=new BasicAuthManager(userRepository,passwordPolicy,systemUTC(),true);
+    authManager.setUserPassword(username,password);
+  }
+ catch (  Exception e) {
+    throw new CommandFailed("Failed to set password for '" + username + "': "+ e.getMessage(),e);
+  }
+catch (  Throwable t) {
+    throw new CommandFailed("Failed to set password for '" + username + "': "+ t.getMessage(),new RuntimeException(t.getMessage()));
+  }
+}
