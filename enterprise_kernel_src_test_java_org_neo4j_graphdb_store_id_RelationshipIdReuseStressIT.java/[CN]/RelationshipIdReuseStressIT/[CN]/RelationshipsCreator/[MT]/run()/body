@@ -1,0 +1,29 @@
+{
+  while (!stopFlag.get()) {
+    int newRelationships=0;
+    try (Transaction transaction=embeddedDatabase.beginTx()){
+      Node bandNode=getRandomBandNode(embeddedDatabase,bandLabel);
+      int direction=ThreadLocalRandom.current().nextInt(3);
+switch (direction) {
+case 0:
+        newRelationships+=connectCitiesToBand(bandNode);
+      break;
+case 1:
+    newRelationships+=connectBandToCities(bandNode);
+  break;
+case 2:
+newRelationships+=connectCitiesToBand(bandNode);
+newRelationships+=connectBandToCities(bandNode);
+break;
+default :
+throw new IllegalStateException("Unsupported direction value:" + direction);
+}
+transaction.success();
+}
+ catch (DeadlockDetectedException ignored) {
+}
+createdRelationships+=newRelationships;
+long millisToWait=ThreadLocalRandom.current().nextLong(10,30);
+LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(millisToWait));
+}
+}

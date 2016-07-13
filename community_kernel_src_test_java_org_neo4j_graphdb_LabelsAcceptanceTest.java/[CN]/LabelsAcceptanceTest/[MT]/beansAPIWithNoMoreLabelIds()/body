@@ -1,10 +1,12 @@
 {
   final EphemeralIdGenerator.Factory idFactory=new EphemeralIdGenerator.Factory(){
+    private IdTypeConfigurationProvider idTypeConfigurationProvider=new CommunityIdTypeConfigurationProvider();
     @Override public IdGenerator open(    File fileName,    int grabSize,    IdType idType,    long highId,    long maxId){
       if (idType == IdType.LABEL_TOKEN) {
         IdGenerator generator=generators.get(idType);
         if (generator == null) {
-          generator=new EphemeralIdGenerator(idType){
+          IdTypeConfiguration idTypeConfiguration=idTypeConfigurationProvider.getIdTypeConfiguration(idType);
+          generator=new EphemeralIdGenerator(idType,idTypeConfiguration){
             @Override public long nextId(){
               throw new UnderlyingStorageException("Id capacity exceeded");
             }
@@ -27,7 +29,7 @@
               new CommunityFacadeFactory(){
                 @Override protected EditionModule createEdition(                PlatformModule platformModule){
                   return new CommunityEditionModule(platformModule){
-                    @Override protected IdGeneratorFactory createIdGeneratorFactory(                    FileSystemAbstraction fs){
+                    @Override protected IdGeneratorFactory createIdGeneratorFactory(                    FileSystemAbstraction fs,                    IdTypeConfigurationProvider idTypeConfigurationProvider){
                       return idFactory;
                     }
                   }
