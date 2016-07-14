@@ -1,12 +1,15 @@
 {
   Args arguments=Args.withFlags(HELP_FLAG).parse(args);
+  PrintStream printStream=System.out;
   if (arguments.getBoolean(HELP_FLAG)) {
-    printUsageAndExit();
+    printUsageAndExit(printStream);
   }
   CheckType<?,?>[] checkTypes=parseChecks(arguments);
-  File dir=parseDir(arguments);
+  File dir=parseDir(printStream,arguments);
   File[] logs=txLogsIn(dir);
-  System.out.println("Found " + logs.length + " log files to verify");
-  CheckTxLogs tool=new CheckTxLogs(new DefaultFileSystemAbstraction());
-  tool.scan(logs,new PrintingInconsistenciesHandler(),checkTypes);
+  printStream.println("Found " + logs.length + " log files to verify");
+  CheckTxLogs tool=new CheckTxLogs(printStream,new DefaultFileSystemAbstraction());
+  if (!tool.scan(logs,new PrintingInconsistenciesHandler(printStream),checkTypes)) {
+    System.exit(1);
+  }
 }
