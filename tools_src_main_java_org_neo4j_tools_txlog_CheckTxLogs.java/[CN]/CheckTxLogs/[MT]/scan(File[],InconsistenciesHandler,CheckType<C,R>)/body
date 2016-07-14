@@ -1,7 +1,8 @@
 {
-  System.out.println("Checking logs for " + check.name() + " inconsistencies");
+  out.println("Checking logs for " + check.name() + " inconsistencies");
   CommittedRecords<R> state=new CommittedRecords<>(check);
   List<CommandAndLogVersion> txCommands=new ArrayList<>();
+  boolean validLogs=true;
   for (  File log : logs) {
     long commandsRead=0;
     long logVersion=PhysicalLogFiles.getLogVersion(log);
@@ -17,21 +18,22 @@
  else         if (entry instanceof LogEntryCommit) {
           long txId=((LogEntryCommit)entry).getTxId();
           for (          CommandAndLogVersion txCommand : txCommands) {
-            checkAndHandleInconsistencies(txCommand,check,state,txId,handler);
+            validLogs&=checkAndHandleInconsistencies(txCommand,check,state,txId,handler);
           }
           txCommands.clear();
         }
         commandsRead++;
       }
     }
-     System.out.println("Processed " + log.getCanonicalPath() + " with "+ commandsRead+ " commands");
-    System.out.println(state);
+     out.println("Processed " + log.getCanonicalPath() + " with "+ commandsRead+ " commands");
+    out.println(state);
   }
   if (!txCommands.isEmpty()) {
-    System.out.println("Found " + txCommands.size() + " uncommitted commands at the end.");
+    out.println("Found " + txCommands.size() + " uncommitted commands at the end.");
     for (    CommandAndLogVersion txCommand : txCommands) {
-      checkAndHandleInconsistencies(txCommand,check,state,-1,handler);
+      validLogs&=checkAndHandleInconsistencies(txCommand,check,state,-1,handler);
     }
     txCommands.clear();
   }
+  return validLogs;
 }
