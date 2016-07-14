@@ -1,0 +1,13 @@
+{
+  try (Transaction tx=db.beginTx()){
+    db.schema().constraintFor(LABEL).assertPropertyIsUnique(PROPERTY_KEY).create();
+    tx.success();
+  }
+   try (Transaction tx=db.beginTx()){
+    db.schema().awaitIndexesOnline(1,TimeUnit.MINUTES);
+    tx.success();
+  }
+   final Future<Void> t2NodeCreator=t2.execute(createNode(LABEL,PROPERTY_KEY,VALUE_1));
+  final Future<Void> t3NodeCreator=t3.execute(createNode(LABEL,PROPERTY_KEY,VALUE_1));
+  assertOnlyOneSucceeds(t2NodeCreator,t3NodeCreator,ConstraintViolationException.class);
+}

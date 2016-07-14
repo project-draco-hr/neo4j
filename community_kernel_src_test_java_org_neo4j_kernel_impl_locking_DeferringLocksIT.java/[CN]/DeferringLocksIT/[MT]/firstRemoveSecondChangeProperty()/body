@@ -3,13 +3,13 @@
   final Node node;
   try (Transaction tx=db.beginTx()){
     node=db.createNode();
-    node.setProperty("key",true);
+    node.setProperty(PROPERTY_KEY,VALUE_1);
     tx.success();
   }
    Future<Void> future=t2.execute(new WorkerCommand<Void,Void>(){
     @Override public Void doWork(    Void state) throws Exception {
       try (Transaction tx=db.beginTx()){
-        Object key=node.removeProperty("key");
+        Object key=node.removeProperty(PROPERTY_KEY);
         tx.success();
         barrier.reached();
       }
@@ -19,13 +19,13 @@
 );
   try (Transaction tx=db.beginTx()){
     barrier.await();
-    node.setProperty("key",false);
+    node.setProperty(PROPERTY_KEY,VALUE_2);
     tx.success();
     barrier.release();
   }
    future.get();
   try (Transaction tx=db.beginTx()){
-    assertFalse((Boolean)node.getProperty("key",false));
+    assertEquals(VALUE_2,node.getProperty(PROPERTY_KEY,VALUE_2));
     tx.success();
   }
  }
