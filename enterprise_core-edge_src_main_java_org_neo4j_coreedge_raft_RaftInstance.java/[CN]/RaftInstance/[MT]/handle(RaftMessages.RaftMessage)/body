@@ -1,23 +1,14 @@
 {
-  try {
-    Outcome outcome=currentRole.handler.handle(incomingMessage,state,log);
-    boolean newLeaderWasElected=leaderChanged(outcome,state.leader());
-    boolean newCommittedEntry=outcome.getCommitIndex() > state.commitIndex();
-    state.update(outcome);
-    sendMessages(outcome);
-    handleTimers(outcome);
-    handleLogShipping(outcome);
-    driveMembership(outcome);
-    volatileLeader.set(outcome.getLeader());
-    if (newCommittedEntry) {
-      raftStateMachine.notifyCommitted(state.commitIndex());
-    }
-    if (newLeaderWasElected) {
-      notifyLeaderChanges(outcome);
-    }
-    checkForSnapshotNeed(outcome);
+  Outcome outcome=currentRole.handler.handle(incomingMessage,state,log);
+  boolean newLeaderWasElected=leaderChanged(outcome,state.leader());
+  state.update(outcome);
+  sendMessages(outcome);
+  handleTimers(outcome);
+  handleLogShipping(outcome);
+  driveMembership(outcome);
+  volatileLeader.set(outcome.getLeader());
+  if (newLeaderWasElected) {
+    notifyLeaderChanges(outcome);
   }
- catch (  Throwable e) {
-    panicAndStop(incomingMessage,e);
-  }
+  return outcome;
 }
