@@ -1,18 +1,23 @@
 {
   if (token instanceof ShiroAuthToken) {
-    if (authPlugin != null) {
-      AuthInfo authInfo=authPlugin.getAuthInfo(((ShiroAuthToken)token).getAuthTokenMap());
-      if (authInfo != null) {
-        PluginAuthInfo pluginAuthInfo=PluginAuthInfo.create(authInfo,getName());
-        cacheAuthorizationInfo(pluginAuthInfo);
-        return pluginAuthInfo;
+    try {
+      if (authPlugin != null) {
+        AuthInfo authInfo=authPlugin.getAuthInfo(((ShiroAuthToken)token).getAuthTokenMap());
+        if (authInfo != null) {
+          PluginAuthInfo pluginAuthInfo=PluginAuthInfo.create(authInfo,getName());
+          cacheAuthorizationInfo(pluginAuthInfo);
+          return pluginAuthInfo;
+        }
+      }
+ else       if (authenticationPlugin != null) {
+        org.neo4j.server.security.enterprise.auth.plugin.spi.AuthenticationInfo authenticationInfo=authenticationPlugin.getAuthenticationInfo(((ShiroAuthToken)token).getAuthTokenMap());
+        if (authenticationInfo != null) {
+          return PluginAuthenticationInfo.create(authenticationInfo,getName());
+        }
       }
     }
- else     if (authenticationPlugin != null) {
-      org.neo4j.server.security.enterprise.auth.plugin.spi.AuthenticationInfo authenticationInfo=authenticationPlugin.getAuthenticationInfo(((ShiroAuthToken)token).getAuthTokenMap());
-      if (authenticationInfo != null) {
-        return PluginAuthenticationInfo.create(authenticationInfo,getName());
-      }
+ catch (    org.neo4j.server.security.enterprise.auth.plugin.api.AuthenticationException e) {
+      throw new AuthenticationException(e.getMessage(),e.getCause());
     }
   }
   return null;
