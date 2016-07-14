@@ -18,13 +18,18 @@
     }
   }
 );
-  try (Transaction tx=db.beginTx()){
-    barrier.await();
-    db.getNodeById(nodeId).setProperty(PROPERTY_KEY,VALUE_2);
-    tx.success();
-    barrier.release();
+  try {
+    try (Transaction tx=db.beginTx()){
+      barrier.await();
+      db.getNodeById(nodeId).setProperty(PROPERTY_KEY,VALUE_2);
+      tx.success();
+      barrier.release();
+    }
+   }
+ catch (  TransactionFailureException e) {
+    assertThat(e.getCause(),instanceOf(InvalidRecordException.class));
   }
-   future.get();
+  future.get();
   try (Transaction tx=db.beginTx()){
     try {
       db.getNodeById(nodeId);
