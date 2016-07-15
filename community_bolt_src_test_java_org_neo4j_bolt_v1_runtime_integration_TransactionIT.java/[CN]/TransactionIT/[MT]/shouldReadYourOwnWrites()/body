@@ -1,0 +1,33 @@
+{
+  try (Transaction tx=env.graph().beginTx()){
+    Node node=env.graph().createNode(Label.label("A"));
+    node.setProperty("prop","one");
+    tx.success();
+  }
+   BinaryLatch latch=new BinaryLatch();
+  long dbVersion=env.lastClosedTxId();
+  Thread thread=new Thread(){
+    @Override public void run(){
+      try (Session session=env.newSession("<write>")){
+        session.init("TestClient",emptyMap(),-1,null,null);
+        latch.await();
+        session.run("MATCH (n:A) SET n.prop = 'two'",emptyMap(),null,Session.Callbacks.noop());
+        session.pullAll(null,Session.Callbacks.noop());
+      }
+     }
+  }
+;
+  thread.start();
+  long dbVersionAfterWrite=dbVersion + 1;
+  try (Session session=env.newSession("<read>")){
+    session.init("TestClient",emptyMap(),dbVersionAfterWrite,null,null);
+    latch.release();
+    session.run("MATCH (n:A) RETURN n.prop",emptyMap(),null,Session.Callbacks.noop());
+    RecordingCallback<RecordStream,Object> pullResponse=new RecordingCallback<>();
+    session.pullAll(null,pullResponse);
+    Record[] records=((RecordingCallback.Result)pullResponse.next()).records();
+    assertEquals(1,records.length);
+    assertThat(records[0],eqRecord(equalTo("two")));
+  }
+   thread.join();
+}
