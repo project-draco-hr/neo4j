@@ -12,7 +12,6 @@
   final Supplier<DatabaseHealth> databaseHealthSupplier=dependencies.provideDependency(DatabaseHealth.class);
   CoreMember myself;
   StateStorage<Long> lastFlushedStorage;
-  StateStorage<GlobalSessionTrackerState> sessionTrackerStorage;
   try {
     StateStorage<CoreMember> idStorage=life.add(new DurableStateStorage<>(fileSystem,clusterStateDirectory,"raft-member-id",new CoreMemberMarshal(),1,databaseHealthSupplier,logProvider));
     CoreMember member=idStorage.getInitialState();
@@ -22,7 +21,6 @@
     }
     myself=member;
     lastFlushedStorage=life.add(new DurableStateStorage<>(fileSystem,new File(clusterStateDirectory,"last-flushed-state"),"last-flushed",new LongIndexMarshal(),config.get(CoreEdgeClusterSettings.last_flushed_state_size),databaseHealthSupplier,logProvider));
-    sessionTrackerStorage=life.add(new DurableStateStorage<>(fileSystem,new File(clusterStateDirectory,"session-tracker-state"),"session-tracker",new GlobalSessionTrackerState.Marshal(new CoreMemberMarshal()),config.get(CoreEdgeClusterSettings.global_session_tracker_state_size),databaseHealthSupplier,logProvider));
   }
  catch (  IOException e) {
     throw new RuntimeException(e);
@@ -51,9 +49,6 @@
   CoreToCoreClient coreToCoreClient=life.add(new CoreToCoreClient(logProvider,channelInitializer,platformModule.monitors,maxQueueSize,nonBlockingChannels,discoveryService,logThresholdMillis));
   channelInitializer.setOwner(coreToCoreClient);
   StoreFetcher storeFetcher=new StoreFetcher(logProvider,fileSystem,platformModule.pageCache,new StoreCopyClient(coreToCoreClient),new TxPullClient(coreToCoreClient),new TransactionLogCatchUpFactory());
-  GlobalSession myGlobalSession=new GlobalSession(UUID.randomUUID(),myself);
-  LocalSessionPool sessionPool=new LocalSessionPool(myGlobalSession);
-  ProgressTrackerImpl progressTracker=new ProgressTrackerImpl(myGlobalSession);
   RaftOutbound raftOutbound=new RaftOutbound(discoveryService,senderService,localDatabase,logProvider,logThresholdMillis);
   Outbound<CoreMember,RaftMessages.RaftMessage> loggingOutbound=new LoggingOutbound<>(raftOutbound,myself,messageLogger);
   CoreStateApplier coreStateApplier=new CoreStateApplier(logProvider);
@@ -66,8 +61,8 @@
   int queueSize=config.get(CoreEdgeClusterSettings.raft_in_queue_size);
   int maxBatch=config.get(CoreEdgeClusterSettings.raft_in_queue_max_batch);
   dependencies.satisfyDependency(consensusModule.raftInstance());
-  RaftReplicator replicator=new RaftReplicator(consensusModule.raftInstance(),myself,loggingOutbound,sessionPool,progressTracker,new ExponentialBackoffStrategy(10,SECONDS));
-  coreStateMachinesModule=new CoreStateMachinesModule(myself,platformModule,clusterStateDirectory,databaseHealthSupplier,config,replicator,consensusModule.raftInstance(),dependencies,localDatabase);
+  ReplicationModule replicationModule=new ReplicationModule(myself,platformModule,config,consensusModule,loggingOutbound,clusterStateDirectory,fileSystem,databaseHealthSupplier,logProvider);
+  coreStateMachinesModule=new CoreStateMachinesModule(myself,platformModule,clusterStateDirectory,databaseHealthSupplier,config,replicationModule.getReplicator(),consensusModule.raftInstance(),dependencies,localDatabase);
   this.idGeneratorFactory=coreStateMachinesModule.idGeneratorFactory;
   this.idTypeConfigurationProvider=coreStateMachinesModule.idTypeConfigurationProvider;
   this.labelTokenHolder=coreStateMachinesModule.labelTokenHolder;
@@ -75,7 +70,8 @@
   this.relationshipTypeTokenHolder=coreStateMachinesModule.relationshipTypeTokenHolder;
   this.lockManager=coreStateMachinesModule.lockManager;
   this.commitProcessFactory=coreStateMachinesModule.commitProcessFactory;
-  CoreState coreState=dependencies.satisfyDependency(new CoreState(coreStateMachinesModule.coreStateMachines,consensusModule.raftLog(),config.get(CoreEdgeClusterSettings.state_machine_apply_max_batch_size),config.get(CoreEdgeClusterSettings.state_machine_flush_window_size),databaseHealthSupplier,logProvider,progressTracker,lastFlushedStorage,sessionTrackerStorage,someoneElse,coreStateApplier,downloader,inFlightMap,platformModule.monitors));
+  CoreState coreState=new CoreState(coreStateMachinesModule.coreStateMachines,consensusModule.raftLog(),config.get(CoreEdgeClusterSettings.state_machine_apply_max_batch_size),config.get(CoreEdgeClusterSettings.state_machine_flush_window_size),databaseHealthSupplier,logProvider,replicationModule.getProgressTracker(),lastFlushedStorage,replicationModule.getSessionTracker(),someoneElse,coreStateApplier,downloader,inFlightMap,platformModule.monitors);
+  dependencies.satisfyDependency(coreState);
   life.add(new PruningScheduler(coreState,platformModule.jobScheduler,config.get(CoreEdgeClusterSettings.raft_log_pruning_frequency)));
   BatchingMessageHandler batchingMessageHandler=new BatchingMessageHandler(consensusModule.raftInstance(),logProvider,queueSize,maxBatch,localDatabase,coreState);
   long electionTimeout=config.get(CoreEdgeClusterSettings.leader_election_timeout);
@@ -83,14 +79,7 @@
   life.add(new ContinuousJob(platformModule.jobScheduler,new JobScheduler.Group("raft-batch-handler",NEW_THREAD),batchingMessageHandler));
   loggingRaftInbound.registerHandler(batchingMessageHandler);
   dependencies.satisfyDependency(createKernelData(fileSystem,platformModule.pageCache,storeDir,config,graphDatabaseFacade,life));
-  life.add(dependencies.satisfyDependency(createAuthManager(config,logging)));
-  headerInformationFactory=createHeaderInformationFactory();
-  schemaWriteGuard=createSchemaWriteGuard();
-  transactionStartTimeout=config.get(GraphDatabaseSettings.transaction_start_timeout);
-  constraintSemantics=new EnterpriseConstraintSemantics();
-  coreAPIAvailabilityGuard=new CoreAPIAvailabilityGuard(platformModule.availabilityGuard,transactionStartTimeout);
-  registerRecovery(platformModule.databaseInfo,life,dependencies);
-  publishEditionInfo(dependencies.resolveDependency(UsageData.class),platformModule.databaseInfo,config);
+  editionInvariants(platformModule,dependencies,config,logging,life);
   this.lockManager=dependencies.satisfyDependency(lockManager);
   CatchupServer catchupServer=new CatchupServer(logProvider,localDatabase,platformModule.dependencies.provideDependency(TransactionIdStore.class),platformModule.dependencies.provideDependency(LogicalTransactionStore.class),new DataSourceSupplier(platformModule),new CheckpointerSupplier(platformModule.dependencies),coreState,config.get(CoreEdgeClusterSettings.transaction_listen_address),platformModule.monitors);
   long joinCatchupTimeout=config.get(CoreEdgeClusterSettings.join_catch_up_timeout);
