@@ -1,0 +1,20 @@
+{
+  StoreId storeId=new StoreId(1,2,3,4,5);
+  long txChecksum=123;
+  long lastAppliedTx=5;
+  ResponseUnpacker responseUnpacker=mock(ResponseUnpacker.class);
+  MasterImpl.SPI masterImplSPI=MasterImplTest.mockedSpi(storeId);
+  when(masterImplSPI.packTransactionObligationResponse(any(RequestContext.class),Matchers.anyObject())).thenReturn(Response.empty());
+  when(masterImplSPI.getTransactionChecksum(anyLong())).thenReturn(txChecksum);
+  newMasterServer(masterImplSPI);
+  MasterClient214 client=newMasterClient214(storeId,responseUnpacker);
+  HandshakeResult handshakeResult;
+  try (Response<HandshakeResult> handshakeResponse=client.handshake(1,storeId)){
+    handshakeResult=handshakeResponse.response();
+  }
+   verify(responseUnpacker).unpackResponse(any(Response.class),any(TxHandler.class));
+  reset(responseUnpacker);
+  RequestContext context=new RequestContext(handshakeResult.epoch(),1,1,lastAppliedTx,txChecksum);
+  client.endLockSession(context,false);
+  verify(responseUnpacker,never()).unpackResponse(any(Response.class),any(TxHandler.class));
+}
