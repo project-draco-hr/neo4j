@@ -1,0 +1,15 @@
+{
+  BoltSubject subject=subjects.get(username);
+  if (subject == null) {
+    subject=new BoltSubject(connectionFactory.newInstance(),username,password);
+    subjects.put(username,subject);
+  }
+ else {
+    subject.client.disconnect();
+    subject.client=connectionFactory.newInstance();
+  }
+  subject.client.connect(address).send(TransportTestUtil.acceptedVersions(1,0,0,0)).send(TransportTestUtil.chunk(init("TestClient/1.1",map("principal",username,"credentials",password,"scheme","basic"))));
+  assertThat(subject.client,TransportTestUtil.eventuallyRecieves(new byte[]{0,0,0,1}));
+  subject.setLoginResult(TransportTestUtil.recvOneMessage(subject.client));
+  return subject;
+}
