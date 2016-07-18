@@ -33,9 +33,15 @@
  else {
       executeStages(nodeStage,calculateDenseNodesStage);
     }
+    nodeRelationshipCache.setHighNodeId(neoStore.getNodeStore().getHighId());
     importRelationships(nodeRelationshipCache,storeUpdateMonitor,neoStore,writeMonitor,idMapper,cachedRelationships,inputCache,calculateDenseNodesStage.getRelationshipTypes(Long.MAX_VALUE),calculateDenseNodesStage.getRelationshipTypes(config.batchSize()));
+    long memoryWeCanHoldForCertain=totalMemoryUsageOf(idMapper,nodeRelationshipCache);
+    long highNodeId=nodeRelationshipCache.getHighNodeId();
+    idMapper.close();
+    idMapper=null;
     nodeRelationshipCache.close();
     nodeRelationshipCache=null;
+    new RelationshipGroupDefragmenter(config,executionMonitor).run(max(max(memoryWeCanHoldForCertain,highNodeId * 4),mebiBytes(1)),neoStore,highNodeId);
     nodeLabelsCache=new NodeLabelsCache(AUTO,neoStore.getLabelRepository().getHighId());
     memoryUsageStats=new MemoryUsageStatsProvider(nodeLabelsCache);
     executeStages(new NodeCountsStage(config,nodeLabelsCache,neoStore.getNodeStore(),neoStore.getLabelRepository().getHighId(),countsUpdater,memoryUsageStats));
