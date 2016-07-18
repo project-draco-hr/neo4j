@@ -1,0 +1,20 @@
+{
+  int groupStartIndex=0;
+  for (int i=0; i < batch.length; i++) {
+    RelationshipGroupRecord group=batch[i];
+    long count=group.getNext();
+    boolean lastInChain=count == 0;
+    group.setId(nextId == -1 ? nextId=store.nextId() : nextId);
+    if (!lastInChain) {
+      group.setNext(nextId=store.nextId());
+    }
+ else {
+      group.setNext(nextId=-1);
+      for (int j=groupStartIndex; j <= i; j++) {
+        store.prepareForCommit(batch[j]);
+      }
+      groupStartIndex=i + 1;
+    }
+  }
+  sender.send(batch);
+}

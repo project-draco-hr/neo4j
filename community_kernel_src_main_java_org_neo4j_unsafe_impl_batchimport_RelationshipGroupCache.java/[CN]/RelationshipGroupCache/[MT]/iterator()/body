@@ -1,0 +1,35 @@
+{
+  return new PrefetchingIterator<RelationshipGroupRecord>(){
+    private long cursor;
+    private long nodeId=fromNodeId;
+    private int countLeftForThisNode=groupCountCache.getShort(nodeId,0);
+{
+      findNextNodeWithGroupsIfNeeded();
+    }
+    @Override protected RelationshipGroupRecord fetchNextOrNull(){
+      while (cursor < highCacheId) {
+        RelationshipGroupRecord group=null;
+        if (cache.getByte(cursor,0) == 1) {
+          group=new RelationshipGroupRecord(-1).initialize(true,cache.getShort(cursor,1) & 0xFFFF,cache.get6ByteLong(cursor,1 + 2),cache.get6ByteLong(cursor,1 + 2 + 6),cache.get6ByteLong(cursor,1 + 2 + 6+ 6),nodeId,countLeftForThisNode - 1);
+        }
+        cursor++;
+        countLeftForThisNode--;
+        findNextNodeWithGroupsIfNeeded();
+        if (group != null) {
+          return group;
+        }
+      }
+      return null;
+    }
+    private void findNextNodeWithGroupsIfNeeded(){
+      if (countLeftForThisNode == 0) {
+        do {
+          nodeId++;
+          countLeftForThisNode=nodeId >= groupCountCache.length() ? 0 : groupCountCache.getShort(nodeId,0);
+        }
+ while (countLeftForThisNode == 0 && nodeId < groupCountCache.length());
+      }
+    }
+  }
+;
+}
