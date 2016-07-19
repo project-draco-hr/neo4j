@@ -1,18 +1,24 @@
 {
   try (RelationshipGroupCache groupCache=new RelationshipGroupCache(AUTO,memoryWeCanHoldForCertain,highNodeId)){
-    executeStage(new CountGroupsStage(config,neoStore,groupCache));
-    long fromNodeId=0;
-    long toNodeId=0;
-    RecordStore<RelationshipGroupRecord> fromStore=neoStore.getRelationshipGroupStore();
-    RecordStore<RelationshipGroupRecord> toStore=neoStore.getReplacementNeoStores(StoreType.RELATIONSHIP_GROUP).getRelationshipGroupStore();
-    while (fromNodeId < highNodeId) {
-      toNodeId=groupCache.prepare(fromNodeId);
-      executeStage(new ScanAndCacheGroupsStage(config,fromStore,groupCache));
-      executeStage(new WriteGroupsStage(config,groupCache,toStore));
-      fromNodeId=toNodeId;
+    try {
+      executeStage(new CountGroupsStage(config,neoStore,groupCache));
+      long fromNodeId=0;
+      long toNodeId=0;
+      RecordStore<RelationshipGroupRecord> fromStore=neoStore.getRelationshipGroupStore();
+      RecordStore<RelationshipGroupRecord> toStore=neoStore.getReplacementNeoStores(StoreType.RELATIONSHIP_GROUP).getRelationshipGroupStore();
+      while (fromNodeId < highNodeId) {
+        toNodeId=groupCache.prepare(fromNodeId);
+        executeStage(new ScanAndCacheGroupsStage(config,fromStore,groupCache));
+        executeStage(new WriteGroupsStage(config,groupCache,toStore));
+        fromNodeId=toNodeId;
+      }
+      ByteArray groupCountCache=groupCache.getGroupCountCache();
+      groupCountCache.clear();
+      executeStage(new NodeFirstGroupStage(config,toStore,neoStore.getNodeStore(),groupCountCache));
     }
-    ByteArray groupCountCache=groupCache.getGroupCountCache();
-    groupCountCache.clear();
-    executeStage(new NodeFirstGroupStage(config,toStore,neoStore.getNodeStore(),groupCountCache));
+ catch (    Throwable t) {
+      t.printStackTrace();
+      throw t;
+    }
   }
  }
