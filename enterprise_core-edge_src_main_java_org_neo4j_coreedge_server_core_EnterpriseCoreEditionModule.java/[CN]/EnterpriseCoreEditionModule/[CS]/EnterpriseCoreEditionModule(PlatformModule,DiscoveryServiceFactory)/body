@@ -1,2 +1,88 @@
 {
+  ioLimiter=new ConfigurableIOLimiter(platformModule.config);
+  final Dependencies dependencies=platformModule.dependencies;
+  final Config config=platformModule.config;
+  final LogService logging=platformModule.logging;
+  final FileSystemAbstraction fileSystem=platformModule.fileSystem;
+  final File storeDir=platformModule.storeDir;
+  final File clusterStateDirectory=createClusterStateDirectory(storeDir,fileSystem);
+  final LifeSupport life=platformModule.life;
+  final GraphDatabaseFacade graphDatabaseFacade=platformModule.graphDatabaseFacade;
+  logProvider=logging.getInternalLogProvider();
+  final Supplier<DatabaseHealth> databaseHealthSupplier=dependencies.provideDependency(DatabaseHealth.class);
+  CoreMember myself;
+  StateStorage<Long> lastFlushedStorage;
+  try {
+    StateStorage<CoreMember> idStorage=life.add(new DurableStateStorage<>(fileSystem,clusterStateDirectory,"raft-member-id",new CoreMemberMarshal(),1,databaseHealthSupplier,logProvider));
+    CoreMember member=idStorage.getInitialState();
+    if (member == null) {
+      member=new CoreMember(UUID.randomUUID());
+      idStorage.persistStoreData(member);
+    }
+    myself=member;
+    lastFlushedStorage=life.add(new DurableStateStorage<>(fileSystem,new File(clusterStateDirectory,"last-flushed-state"),"last-flushed",new LongIndexMarshal(),config.get(CoreEdgeClusterSettings.last_flushed_state_size),databaseHealthSupplier,logProvider));
+  }
+ catch (  IOException e) {
+    throw new RuntimeException(e);
+  }
+  discoveryService=discoveryServiceFactory.coreDiscoveryService(config,myself,logProvider);
+  life.add(dependencies.satisfyDependency(discoveryService));
+  final CoreReplicatedContentMarshal marshal=new CoreReplicatedContentMarshal();
+  int maxQueueSize=config.get(CoreEdgeClusterSettings.outgoing_queue_size);
+  long logThresholdMillis=config.get(CoreEdgeClusterSettings.unknown_address_logging_throttle);
+  final SenderService senderService=new SenderService(new RaftChannelInitializer(marshal,logProvider),logProvider,platformModule.monitors,maxQueueSize,new NonBlockingChannels());
+  life.add(senderService);
+  final MessageLogger<CoreMember> messageLogger;
+  if (config.get(CoreEdgeClusterSettings.raft_messages_log_enable)) {
+    File logsDir=config.get(GraphDatabaseSettings.logs_directory);
+    messageLogger=life.add(new BetterMessageLogger<>(myself,raftMessagesLog(logsDir)));
+  }
+ else {
+    messageLogger=new NullMessageLogger<>();
+  }
+  ListenSocketAddress raftListenAddress=config.get(CoreEdgeClusterSettings.raft_listen_address);
+  CopiedStoreRecovery copiedStoreRecovery=new CopiedStoreRecovery(config,platformModule.kernelExtensions.listFactories(),platformModule.pageCache);
+  LocalDatabase localDatabase=new LocalDatabase(platformModule.storeDir,copiedStoreRecovery,new StoreFiles(new DefaultFileSystemAbstraction()),platformModule.dataSourceManager,platformModule.dependencies.provideDependency(TransactionIdStore.class),databaseHealthSupplier,logProvider);
+  final DelayedRenewableTimeoutService raftTimeoutService=new DelayedRenewableTimeoutService(systemUTC(),logProvider);
+  NonBlockingChannels nonBlockingChannels=new NonBlockingChannels();
+  CoreToCoreClient.ChannelInitializer channelInitializer=new CoreToCoreClient.ChannelInitializer(logProvider,nonBlockingChannels);
+  CoreToCoreClient coreToCoreClient=life.add(new CoreToCoreClient(logProvider,channelInitializer,platformModule.monitors,maxQueueSize,nonBlockingChannels,discoveryService,logThresholdMillis));
+  channelInitializer.setOwner(coreToCoreClient);
+  StoreFetcher storeFetcher=new StoreFetcher(logProvider,fileSystem,platformModule.pageCache,new StoreCopyClient(coreToCoreClient),new TxPullClient(coreToCoreClient),new TransactionLogCatchUpFactory());
+  RaftOutbound raftOutbound=new RaftOutbound(discoveryService,senderService,localDatabase,logProvider,logThresholdMillis);
+  Outbound<CoreMember,RaftMessages.RaftMessage> loggingOutbound=new LoggingOutbound<>(raftOutbound,myself,messageLogger);
+  CoreStateApplier coreStateApplier=new CoreStateApplier(logProvider);
+  CoreStateDownloader downloader=new CoreStateDownloader(localDatabase,storeFetcher,coreToCoreClient,logProvider);
+  InFlightMap<Long,RaftLogEntry> inFlightMap=new InFlightMap<>();
+  NotMyselfSelectionStrategy someoneElse=new NotMyselfSelectionStrategy(discoveryService,myself);
+  consensusModule=new ConsensusModule(myself,platformModule,raftOutbound,clusterStateDirectory,raftTimeoutService,discoveryService,lastFlushedStorage.getInitialState());
+  RaftServer raftServer=new RaftServer(marshal,raftListenAddress,logProvider);
+  LoggingInbound<RaftMessages.StoreIdAwareMessage> loggingRaftInbound=new LoggingInbound<>(raftServer,messageLogger,myself);
+  int queueSize=config.get(CoreEdgeClusterSettings.raft_in_queue_size);
+  int maxBatch=config.get(CoreEdgeClusterSettings.raft_in_queue_max_batch);
+  dependencies.satisfyDependency(consensusModule.raftInstance());
+  ReplicationModule replicationModule=new ReplicationModule(myself,platformModule,config,consensusModule,loggingOutbound,clusterStateDirectory,fileSystem,databaseHealthSupplier,logProvider);
+  coreStateMachinesModule=new CoreStateMachinesModule(myself,platformModule,clusterStateDirectory,databaseHealthSupplier,config,replicationModule.getReplicator(),consensusModule.raftInstance(),dependencies,localDatabase);
+  this.idGeneratorFactory=coreStateMachinesModule.idGeneratorFactory;
+  this.idTypeConfigurationProvider=coreStateMachinesModule.idTypeConfigurationProvider;
+  this.labelTokenHolder=coreStateMachinesModule.labelTokenHolder;
+  this.propertyKeyTokenHolder=coreStateMachinesModule.propertyKeyTokenHolder;
+  this.relationshipTypeTokenHolder=coreStateMachinesModule.relationshipTypeTokenHolder;
+  this.lockManager=coreStateMachinesModule.lockManager;
+  this.commitProcessFactory=coreStateMachinesModule.commitProcessFactory;
+  CoreState coreState=new CoreState(coreStateMachinesModule.coreStateMachines,consensusModule.raftLog(),config.get(CoreEdgeClusterSettings.state_machine_apply_max_batch_size),config.get(CoreEdgeClusterSettings.state_machine_flush_window_size),databaseHealthSupplier,logProvider,replicationModule.getProgressTracker(),lastFlushedStorage,replicationModule.getSessionTracker(),someoneElse,coreStateApplier,downloader,inFlightMap,platformModule.monitors);
+  dependencies.satisfyDependency(coreState);
+  life.add(new PruningScheduler(coreState,platformModule.jobScheduler,config.get(CoreEdgeClusterSettings.raft_log_pruning_frequency)));
+  BatchingMessageHandler batchingMessageHandler=new BatchingMessageHandler(consensusModule.raftInstance(),logProvider,queueSize,maxBatch,localDatabase,coreState);
+  long electionTimeout=config.get(CoreEdgeClusterSettings.leader_election_timeout);
+  MembershipWaiter membershipWaiter=new MembershipWaiter(myself,platformModule.jobScheduler,electionTimeout * 4,batchingMessageHandler,logProvider);
+  life.add(new ContinuousJob(platformModule.jobScheduler,new JobScheduler.Group("raft-batch-handler",NEW_THREAD),batchingMessageHandler));
+  loggingRaftInbound.registerHandler(batchingMessageHandler);
+  dependencies.satisfyDependency(createKernelData(fileSystem,platformModule.pageCache,storeDir,config,graphDatabaseFacade,life));
+  editionInvariants(platformModule,dependencies,config,logging,life);
+  this.lockManager=dependencies.satisfyDependency(lockManager);
+  CatchupServer catchupServer=new CatchupServer(logProvider,localDatabase,platformModule.dependencies.provideDependency(TransactionIdStore.class),platformModule.dependencies.provideDependency(LogicalTransactionStore.class),new DataSourceSupplier(platformModule),new CheckpointerSupplier(platformModule.dependencies),coreState,config.get(CoreEdgeClusterSettings.transaction_listen_address),platformModule.monitors);
+  long joinCatchupTimeout=config.get(CoreEdgeClusterSettings.join_catch_up_timeout);
+  life.add(CoreServerStartupProcess.createLifeSupport(platformModule.dataSourceManager,coreStateMachinesModule.replicatedIdGeneratorFactory,consensusModule.raftInstance(),coreState,raftServer,catchupServer,raftTimeoutService,membershipWaiter,joinCatchupTimeout,logProvider));
+  dependencies.satisfyDependency(createSessionTracker());
 }
