@@ -1,13 +1,13 @@
 {
   StoreFetcher storeFetcher=mock(StoreFetcher.class);
-  CoreMember coreMember=new CoreMember(UUID.randomUUID());
+  MemberId memberId=new MemberId(UUID.randomUUID());
   LocalDatabase localDatabase=mock(LocalDatabase.class);
   when(localDatabase.isEmpty()).thenReturn(false);
-  doThrow(IllegalStateException.class).when(localDatabase).ensureSameStoreId(coreMember,storeFetcher);
+  doThrow(IllegalStateException.class).when(localDatabase).ensureSameStoreId(memberId,storeFetcher);
   TopologyService hazelcastTopology=mock(TopologyService.class);
   ClusterTopology clusterTopology=mock(ClusterTopology.class);
   when(hazelcastTopology.currentTopology()).thenReturn(clusterTopology);
-  when(clusterTopology.coreMembers()).thenReturn(asSet(coreMember));
+  when(clusterTopology.coreMembers()).thenReturn(asSet(memberId));
   DataSourceManager dataSourceManager=mock(DataSourceManager.class);
   Lifecycle txPulling=mock(Lifecycle.class);
   EdgeServerStartupProcess edgeServerStartupProcess=new EdgeServerStartupProcess(storeFetcher,localDatabase,txPulling,dataSourceManager,new AlwaysChooseFirstServer(hazelcastTopology),new ConstantTimeRetryStrategy(1,MILLISECONDS),NullLogProvider.getInstance(),mock(EdgeTopologyService.class),Config.empty());
@@ -19,7 +19,7 @@
   }
   verify(dataSourceManager).start();
   verify(localDatabase).isEmpty();
-  verify(localDatabase).ensureSameStoreId(coreMember,storeFetcher);
+  verify(localDatabase).ensureSameStoreId(memberId,storeFetcher);
   verifyNoMoreInteractions(localDatabase,dataSourceManager);
   verifyZeroInteractions(txPulling);
 }

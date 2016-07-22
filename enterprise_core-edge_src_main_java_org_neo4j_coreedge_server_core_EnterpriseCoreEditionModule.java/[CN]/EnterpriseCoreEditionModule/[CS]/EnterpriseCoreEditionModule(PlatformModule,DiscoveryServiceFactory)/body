@@ -10,13 +10,13 @@
   final GraphDatabaseFacade graphDatabaseFacade=platformModule.graphDatabaseFacade;
   logProvider=logging.getInternalLogProvider();
   final Supplier<DatabaseHealth> databaseHealthSupplier=dependencies.provideDependency(DatabaseHealth.class);
-  CoreMember myself;
+  MemberId myself;
   StateStorage<Long> lastFlushedStorage;
   try {
-    StateStorage<CoreMember> idStorage=life.add(new DurableStateStorage<>(fileSystem,clusterStateDirectory,"raft-member-id",new CoreMemberMarshal(),1,databaseHealthSupplier,logProvider));
-    CoreMember member=idStorage.getInitialState();
+    StateStorage<MemberId> idStorage=life.add(new DurableStateStorage<>(fileSystem,clusterStateDirectory,"raft-member-id",new MemberIdMarshal(),1,databaseHealthSupplier,logProvider));
+    MemberId member=idStorage.getInitialState();
     if (member == null) {
-      member=new CoreMember(UUID.randomUUID());
+      member=new MemberId(UUID.randomUUID());
       idStorage.persistStoreData(member);
     }
     myself=member;
@@ -32,7 +32,7 @@
   long logThresholdMillis=config.get(CoreEdgeClusterSettings.unknown_address_logging_throttle);
   final SenderService senderService=new SenderService(new RaftChannelInitializer(marshal,logProvider),logProvider,platformModule.monitors,maxQueueSize,new NonBlockingChannels());
   life.add(senderService);
-  final MessageLogger<CoreMember> messageLogger;
+  final MessageLogger<MemberId> messageLogger;
   if (config.get(CoreEdgeClusterSettings.raft_messages_log_enable)) {
     File logsDir=config.get(GraphDatabaseSettings.logs_directory);
     messageLogger=life.add(new BetterMessageLogger<>(myself,raftMessagesLog(logsDir)));
@@ -50,7 +50,7 @@
   channelInitializer.setOwner(coreToCoreClient);
   StoreFetcher storeFetcher=new StoreFetcher(logProvider,fileSystem,platformModule.pageCache,new StoreCopyClient(coreToCoreClient),new TxPullClient(coreToCoreClient),new TransactionLogCatchUpFactory());
   RaftOutbound raftOutbound=new RaftOutbound(discoveryService,senderService,localDatabase,logProvider,logThresholdMillis);
-  Outbound<CoreMember,RaftMessages.RaftMessage> loggingOutbound=new LoggingOutbound<>(raftOutbound,myself,messageLogger);
+  Outbound<MemberId,RaftMessages.RaftMessage> loggingOutbound=new LoggingOutbound<>(raftOutbound,myself,messageLogger);
   CoreStateApplier coreStateApplier=new CoreStateApplier(logProvider);
   CoreStateDownloader downloader=new CoreStateDownloader(localDatabase,storeFetcher,coreToCoreClient,logProvider);
   InFlightMap<Long,RaftLogEntry> inFlightMap=new InFlightMap<>();
