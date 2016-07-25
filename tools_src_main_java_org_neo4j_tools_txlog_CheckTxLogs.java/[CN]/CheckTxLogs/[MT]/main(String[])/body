@@ -6,10 +6,12 @@
   }
   CheckType[] checkTypes=parseChecks(arguments);
   File dir=parseDir(printStream,arguments);
-  File[] logs=txLogsIn(dir);
-  printStream.println("Found " + logs.length + " log files to verify");
-  CheckTxLogs tool=new CheckTxLogs(printStream,new DefaultFileSystemAbstraction());
-  if (!tool.scan(logs,new PrintingInconsistenciesHandler(printStream),checkTypes)) {
+  FileSystemAbstraction fs=new DefaultFileSystemAbstraction();
+  PhysicalLogFiles logFiles=new PhysicalLogFiles(dir,fs);
+  int numberOfLogFilesFound=(int)(logFiles.getHighestLogVersion() - logFiles.getLowestLogVersion() + 1);
+  System.out.println("Found " + numberOfLogFilesFound + " log files to verify");
+  CheckTxLogs tool=new CheckTxLogs(System.out,fs);
+  if (!tool.scan(dir,new PrintingInconsistenciesHandler(printStream),checkTypes)) {
     System.exit(1);
   }
 }
