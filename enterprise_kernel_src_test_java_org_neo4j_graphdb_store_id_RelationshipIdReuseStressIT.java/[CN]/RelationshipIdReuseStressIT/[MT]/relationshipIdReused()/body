@@ -1,0 +1,20 @@
+{
+  Label cityLabel=Label.label("city");
+  final Label bandLabel=Label.label("band");
+  createBands(bandLabel);
+  createCities(cityLabel);
+  AtomicBoolean stopFlag=new AtomicBoolean(false);
+  RelationshipsCreator relationshipsCreator=new RelationshipsCreator(stopFlag,bandLabel,cityLabel);
+  List<Future> futures=new ArrayList<>();
+  futures.add(startRelationshipRemoval(bandLabel,cityLabel,stopFlag));
+  futures.add(startRelationshipsCreator(relationshipsCreator));
+  futures.add(startRelationshipTypesCalculator(bandLabel,stopFlag));
+  futures.add(startRelationshipCalculator(bandLabel,stopFlag));
+  TimeUnit.SECONDS.sleep(5);
+  stopFlag.set(true);
+  executorService.shutdown();
+  executorService.awaitTermination(5,TimeUnit.SECONDS);
+  completeFutures(futures);
+  long highestPossibleIdInUse=getHighestUsedIdForRelationships();
+  assertThat("Number of created relationships should be higher then highest possible id, since those are " + "reused.",relationshipsCreator.getCreatedRelationships(),Matchers.greaterThan(highestPossibleIdInUse));
+}

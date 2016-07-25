@@ -5,13 +5,13 @@
     transactionLogWriter.append(transaction,transactionId);
     LogPosition logPositionAfterCommit=writer.getCurrentPosition(positionMarker).newPosition();
     long transactionChecksum=checksum(transaction.additionalHeader(),transaction.getMasterId(),transaction.getAuthorId());
-    transactionMetadataCache.cacheTransactionMetadata(transactionId,logPositionBeforeCommit,transaction.getMasterId(),transaction.getAuthorId(),transactionChecksum);
+    transactionMetadataCache.cacheTransactionMetadata(transactionId,logPositionBeforeCommit,transaction.getMasterId(),transaction.getAuthorId(),transactionChecksum,transaction.getTimeCommitted());
     transaction.accept(indexCommandDetector);
     boolean hasLegacyIndexChanges=indexCommandDetector.hasWrittenAnyLegacyIndexCommand();
     if (hasLegacyIndexChanges) {
       legacyIndexTransactionOrdering.offer(transactionId);
     }
-    return new TransactionCommitment(hasLegacyIndexChanges,transactionId,transactionChecksum,logPositionAfterCommit,transactionIdStore);
+    return new TransactionCommitment(hasLegacyIndexChanges,transactionId,transactionChecksum,transaction.getTimeCommitted(),logPositionAfterCommit,transactionIdStore);
   }
  catch (  final Throwable panic) {
     databaseHealth.panic(panic);

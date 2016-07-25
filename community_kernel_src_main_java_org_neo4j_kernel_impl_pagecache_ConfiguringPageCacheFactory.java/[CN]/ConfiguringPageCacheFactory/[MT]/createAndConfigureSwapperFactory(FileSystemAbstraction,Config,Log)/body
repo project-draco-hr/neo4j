@@ -1,0 +1,20 @@
+{
+  String desiredImplementation=config.get(pagecache_swapper);
+  if (desiredImplementation != null) {
+    for (    PageSwapperFactory factory : Service.load(PageSwapperFactory.class)) {
+      if (factory.implementationName().equals(desiredImplementation)) {
+        factory.setFileSystemAbstraction(fs);
+        if (factory instanceof ConfigurablePageSwapperFactory) {
+          ConfigurablePageSwapperFactory configurableFactory=(ConfigurablePageSwapperFactory)factory;
+          configurableFactory.configure(config);
+        }
+        log.info("Configured " + pagecache_swapper.name() + ": "+ desiredImplementation);
+        return factory;
+      }
+    }
+    throw new IllegalArgumentException("Cannot find PageSwapperFactory: " + desiredImplementation);
+  }
+  SingleFilePageSwapperFactory factory=new SingleFilePageSwapperFactory();
+  factory.setFileSystemAbstraction(fs);
+  return factory;
+}

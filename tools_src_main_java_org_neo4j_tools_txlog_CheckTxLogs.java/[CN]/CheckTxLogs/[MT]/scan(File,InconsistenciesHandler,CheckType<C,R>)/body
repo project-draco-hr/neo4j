@@ -1,0 +1,37 @@
+{
+  out.println("Checking logs for " + check.name() + " inconsistencies");
+  CommittedRecords<R> state=new CommittedRecords<>(check);
+  List<CommandAndLogVersion> txCommands=new ArrayList<>();
+  boolean validLogs=true;
+  long commandsRead=0;
+  try (LogEntryCursor logEntryCursor=LogTestUtils.openLogs(fs,storeDirectory)){
+    while (logEntryCursor.next()) {
+      LogEntry entry=logEntryCursor.get();
+      if (entry instanceof LogEntryCommand) {
+        StorageCommand command=((LogEntryCommand)entry).getXaCommand();
+        if (check.commandClass().isInstance(command)) {
+          long logVersion=logEntryCursor.getCurrentLogVersion();
+          txCommands.add(new CommandAndLogVersion(command,logVersion));
+        }
+      }
+ else       if (entry instanceof LogEntryCommit) {
+        long txId=((LogEntryCommit)entry).getTxId();
+        for (        CommandAndLogVersion txCommand : txCommands) {
+          validLogs&=checkAndHandleInconsistencies(txCommand,check,state,txId,handler);
+        }
+        txCommands.clear();
+      }
+      commandsRead++;
+    }
+  }
+   out.println("Processed " + storeDirectory.getCanonicalPath() + " with "+ commandsRead+ " commands");
+  out.println(state);
+  if (!txCommands.isEmpty()) {
+    out.println("Found " + txCommands.size() + " uncommitted commands at the end.");
+    for (    CommandAndLogVersion txCommand : txCommands) {
+      validLogs&=checkAndHandleInconsistencies(txCommand,check,state,-1,handler);
+    }
+    txCommands.clear();
+  }
+  return validLogs;
+}

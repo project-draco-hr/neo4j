@@ -10,7 +10,8 @@
   life.add(platformModule.dataSourceManager);
   GraphDatabaseFacade graphDatabaseFacade=platformModule.graphDatabaseFacade;
   lockManager=dependencies.satisfyDependency(createLockManager(config,logging));
-  idGeneratorFactory=dependencies.satisfyDependency(createIdGeneratorFactory(fileSystem));
+  idTypeConfigurationProvider=createIdTypeConfigurationProvider(config);
+  idGeneratorFactory=dependencies.satisfyDependency(createIdGeneratorFactory(fileSystem,idTypeConfigurationProvider));
   propertyKeyTokenHolder=life.add(dependencies.satisfyDependency(new DelegatingPropertyKeyTokenHolder(createPropertyKeyCreator(config,dataSourceManager,idGeneratorFactory))));
   labelTokenHolder=life.add(dependencies.satisfyDependency(new DelegatingLabelTokenHolder(createLabelIdCreator(config,dataSourceManager,idGeneratorFactory))));
   relationshipTypeTokenHolder=life.add(dependencies.satisfyDependency(new DelegatingRelationshipTypeTokenHolder(createRelationshipTypeCreator(config,dataSourceManager,idGeneratorFactory))));
@@ -23,7 +24,7 @@
   constraintSemantics=createSchemaRuleVerifier();
   coreAPIAvailabilityGuard=new CoreAPIAvailabilityGuard(platformModule.availabilityGuard,transactionStartTimeout);
   ioLimiter=IOLimiter.unlimited();
-  eligibleForIdReuse=createEligibleForIdReuseFilter();
+  eligibleForIdReuse=IdReuseEligibility.ALWAYS;
   registerRecovery(platformModule.databaseInfo,life,dependencies);
   publishEditionInfo(dependencies.resolveDependency(UsageData.class),platformModule.databaseInfo,config);
 }

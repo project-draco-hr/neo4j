@@ -1,0 +1,20 @@
+{
+  long safeZone=TimeUnit.MILLISECONDS.toMillis(0);
+  clusterRule.withSharedSetting(HaSettings.id_reuse_safe_zone_time,String.valueOf(safeZone));
+  final ClusterManager.ManagedCluster cluster=startCluster();
+  HighlyAvailableGraphDatabase master=cluster.getMaster();
+  long entityId=action.createInitialEntity(master);
+  cluster.sync();
+  action.removeProperties(master,entityId);
+  Thread.sleep(100);
+  forceMaintenance(master);
+  action.setNewProperties(master,entityId);
+  final HighlyAvailableGraphDatabase slave=cluster.getAnySlave();
+  Race race=new Race();
+  final AtomicBoolean end=new AtomicBoolean(false);
+  for (int i=0; i < READER_CONTESTANTS; i++) {
+    race.addContestant(readContestant(action,entityId,slave,end));
+  }
+  race.addContestant(pullUpdatesContestant(slave,end));
+  race.go();
+}

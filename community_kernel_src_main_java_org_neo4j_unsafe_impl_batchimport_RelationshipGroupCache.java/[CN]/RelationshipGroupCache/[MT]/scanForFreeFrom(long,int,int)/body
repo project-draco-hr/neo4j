@@ -1,0 +1,29 @@
+{
+  long desiredIndex=-1;
+  long freeIndex=-1;
+  for (int i=0; i < groupCount; i++) {
+    long candidateIndex=startIndex + i;
+    boolean free=cache.getByte(candidateIndex,0) == 0;
+    if (free) {
+      freeIndex=candidateIndex;
+      break;
+    }
+    if (desiredIndex == -1) {
+      int existingType=cache.getShort(candidateIndex,1) & 0xFFFF;
+      if (existingType == type) {
+        throw new IllegalStateException("Tried to put multiple groups with same type " + type);
+      }
+      if (type < existingType) {
+        desiredIndex=candidateIndex;
+      }
+    }
+  }
+  if (freeIndex == -1) {
+    throw new IllegalStateException("There's no room for me for startIndex:" + startIndex + " with a group count of "+ groupCount+ ". This means that there's an asymmetry between calls "+ "to incrementGroupCount and actual contents sent into put");
+  }
+  if (desiredIndex != -1) {
+    moveRight(desiredIndex,freeIndex);
+    return desiredIndex;
+  }
+  return freeIndex;
+}
