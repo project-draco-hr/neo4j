@@ -1,9 +1,11 @@
 {
-  long lastAppliedTimestamp=transactionQueue.last().getCommitEntry().getTimeWritten();
-  long earliestSafeTimestamp=lastAppliedTimestamp - idReuseSafeZoneTime;
+  long firstCommittedTimestamp=transactionQueue.first().getCommitEntry().getTimeWritten();
+  long lastCommittedTimestamp=transactionQueue.last().getCommitEntry().getTimeWritten();
+  long earliestSafeTimestamp=lastCommittedTimestamp - idReuseSafeZoneTime;
   for (  KernelTransaction tx : kernelTransactions.activeTransactions()) {
     long commitTimestamp=tx.lastTransactionTimestampWhenStarted();
     if (commitTimestamp != TransactionIdStore.BASE_TX_COMMIT_TIMESTAMP && commitTimestamp < earliestSafeTimestamp) {
+      log.info("Marking transaction for termination, " + "invalidated due to an upcoming batch of changes being applied:" + "\n"+ "  Batch: firstCommittedTxId:" + transactionQueue.first().getCommitEntry().getTxId() + ", firstCommittedTimestamp:"+ informativeTimestamp(firstCommittedTimestamp)+ ", lastCommittedTxId:"+ transactionQueue.last().getCommitEntry().getTxId()+ ", lastCommittedTimestamp:"+ informativeTimestamp(lastCommittedTimestamp)+ ", batchTimeRange:"+ informativeDuration(lastCommittedTimestamp - firstCommittedTimestamp)+ ", earliestSafeTimstamp:"+ informativeTimestamp(earliestSafeTimestamp)+ ", safeZoneDuration:"+ informativeDuration(idReuseSafeZoneTime)+ "\n"+ "  Transaction: lastCommittedTimestamp:"+ informativeTimestamp(tx.lastTransactionTimestampWhenStarted())+ ", lastCommittedTxId:"+ tx.lastTransactionIdWhenStarted()+ ", localStartTimestamp:"+ informativeTimestamp(tx.localStartTime()));
       tx.markForTermination(Status.Transaction.Outdated);
     }
   }
