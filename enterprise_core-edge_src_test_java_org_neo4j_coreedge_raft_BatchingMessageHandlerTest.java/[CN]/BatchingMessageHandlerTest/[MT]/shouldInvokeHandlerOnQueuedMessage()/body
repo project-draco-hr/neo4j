@@ -1,12 +1,10 @@
 {
-  RaftInstance innerHandler=mock(RaftInstance.class);
-  when(innerHandler.handle(any())).thenReturn(mock(ConsensusOutcome.class));
-  BatchingMessageHandler batchHandler=new BatchingMessageHandler(innerHandler,NullLogProvider.getInstance(),QUEUE_SIZE,MAX_BATCH,localDatabase,raftStateMachine);
-  RaftMessages.NewEntry.Request message=new RaftMessages.NewEntry.Request(null,null);
+  BatchingMessageHandler batchHandler=new BatchingMessageHandler(raftStateMachine,QUEUE_SIZE,MAX_BATCH,NullLogProvider.getInstance());
+  RaftMessages.StoreIdAwareMessage message=new RaftMessages.StoreIdAwareMessage(localStoreId,new RaftMessages.NewEntry.Request(null,null));
   ExecutorService executor=Executors.newCachedThreadPool();
   Future<?> future=executor.submit(batchHandler);
   Thread.sleep(50);
-  batchHandler.handle(new RaftMessages.StoreIdAwareMessage(localStoreId,message));
+  batchHandler.handle(message);
   future.get();
-  verify(innerHandler).handle(message);
+  verify(raftStateMachine).handle(message);
 }

@@ -1,23 +1,21 @@
 {
-  RaftInstance innerHandler=mock(RaftInstance.class);
-  when(innerHandler.handle(any())).thenReturn(mock(ConsensusOutcome.class));
-  BatchingMessageHandler batchHandler=new BatchingMessageHandler(innerHandler,NullLogProvider.getInstance(),QUEUE_SIZE,MAX_BATCH,localDatabase,raftStateMachine);
+  BatchingMessageHandler batchHandler=new BatchingMessageHandler(raftStateMachine,QUEUE_SIZE,MAX_BATCH,NullLogProvider.getInstance());
   ReplicatedString contentA=new ReplicatedString("A");
   ReplicatedString contentC=new ReplicatedString("C");
-  RaftMessages.NewEntry.Request messageA=new RaftMessages.NewEntry.Request(null,contentA);
-  RaftMessages.Heartbeat messageB=new RaftMessages.Heartbeat(null,0,0,0);
-  RaftMessages.NewEntry.Request messageC=new RaftMessages.NewEntry.Request(null,contentC);
-  RaftMessages.Heartbeat messageD=new RaftMessages.Heartbeat(null,1,1,1);
-  batchHandler.handle(new RaftMessages.StoreIdAwareMessage(localStoreId,messageA));
-  batchHandler.handle(new RaftMessages.StoreIdAwareMessage(localStoreId,messageB));
-  batchHandler.handle(new RaftMessages.StoreIdAwareMessage(localStoreId,messageC));
-  batchHandler.handle(new RaftMessages.StoreIdAwareMessage(localStoreId,messageD));
-  verifyZeroInteractions(innerHandler);
+  RaftMessages.StoreIdAwareMessage messageA=new RaftMessages.StoreIdAwareMessage(localStoreId,new RaftMessages.NewEntry.Request(null,contentA));
+  RaftMessages.StoreIdAwareMessage messageB=new RaftMessages.StoreIdAwareMessage(localStoreId,new RaftMessages.Heartbeat(null,0,0,0));
+  RaftMessages.StoreIdAwareMessage messageC=new RaftMessages.StoreIdAwareMessage(localStoreId,new RaftMessages.NewEntry.Request(null,contentC));
+  RaftMessages.StoreIdAwareMessage messageD=new RaftMessages.StoreIdAwareMessage(localStoreId,new RaftMessages.Heartbeat(null,1,1,1));
+  batchHandler.handle(messageA);
+  batchHandler.handle(messageB);
+  batchHandler.handle(messageC);
+  batchHandler.handle(messageD);
+  verifyZeroInteractions(raftStateMachine);
   batchHandler.run();
   RaftMessages.NewEntry.Batch batch=new RaftMessages.NewEntry.Batch(2);
   batch.add(contentA);
   batch.add(contentC);
-  verify(innerHandler).handle(batch);
-  verify(innerHandler).handle(messageB);
-  verify(innerHandler).handle(messageD);
+  verify(raftStateMachine).handle(new RaftMessages.StoreIdAwareMessage(localStoreId,batch));
+  verify(raftStateMachine).handle(messageB);
+  verify(raftStateMachine).handle(messageD);
 }
