@@ -1,0 +1,11 @@
+{
+  try (NonUniqueLuceneIndexAccessor nonUniqueLuceneIndexAccessor=getNonUniqueLuceneIndexAccessor(directoryFactory,indexDirectory)){
+    NodePropertyUpdate add=NodePropertyUpdate.add(1L,1,42,new long[]{1});
+    nonUniqueLuceneIndexAccessor.newUpdater(IndexUpdateMode.ONLINE).process(add);
+  }
+   String[] indexFiles=indexDirectory.list(new SegmentGenerationFileFilter());
+  try (LuceneIndexAccessor luceneIndexAccessor=getNonUniqueLuceneIndexAccessor(directoryFactory,indexDirectory,documentStructure,true,writerFactory);ResourceIterator<File> indexSnapshot=luceneIndexAccessor.snapshotFiles()){
+    List<String> filesNames=Iterables.toList(Iterables.map(new FileNameExtractor(),indexSnapshot));
+    assertThat("Expected snapshot to contain actual index files.",indexFiles,Matchers.arrayContainingInAnyOrder(filesNames.toArray()));
+  }
+ }
