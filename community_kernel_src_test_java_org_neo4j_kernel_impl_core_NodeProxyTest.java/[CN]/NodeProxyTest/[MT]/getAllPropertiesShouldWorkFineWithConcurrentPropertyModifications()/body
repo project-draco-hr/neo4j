@@ -1,6 +1,6 @@
 {
   ExecutorService executor=cleanup.add(Executors.newFixedThreadPool(2,named("Test-executor-thread")));
-  final int propertiesCount=1000;
+  final int propertiesCount=100;
   final long nodeId;
   try (Transaction tx=db.beginTx()){
     Node node=db.createNode();
@@ -10,20 +10,26 @@
     }
     tx.success();
   }
-   final AtomicBoolean start=new AtomicBoolean();
+   final CountDownLatch start=new CountDownLatch(1);
   final AtomicBoolean writerDone=new AtomicBoolean();
   Runnable writer=new Runnable(){
     @Override public void run(){
-      try (Transaction tx=db.beginTx()){
-        Node node=db.getNodeById(nodeId);
-        while (!start.get()) {
-        }
-        for (int i=0; i < propertiesCount; i++) {
-          node.setProperty("property-" + i,UUID.randomUUID().toString());
-        }
-        tx.success();
+      try {
+        awaitLatch(start);
+        int propertyKey=0;
+        while (propertyKey < propertiesCount) {
+          try (Transaction tx=db.beginTx()){
+            Node node=db.getNodeById(nodeId);
+            for (int i=0; i < 10 && propertyKey < propertiesCount; i++, propertyKey++) {
+              node.setProperty("property-" + propertyKey,UUID.randomUUID().toString());
+            }
+            tx.success();
+          }
+         }
       }
-       writerDone.set(true);
+  finally {
+        writerDone.set(true);
+      }
     }
   }
 ;
@@ -31,8 +37,7 @@
     @Override public void run(){
       try (Transaction tx=db.beginTx()){
         Node node=db.getNodeById(nodeId);
-        while (!start.get()) {
-        }
+        awaitLatch(start);
         while (!writerDone.get()) {
           int size=node.getAllProperties().size();
           assertThat(size,greaterThan(0));
@@ -44,7 +49,7 @@
 ;
   Future<?> readerFuture=executor.submit(reader);
   Future<?> writerFuture=executor.submit(writer);
-  start.set(true);
+  start.countDown();
   writerFuture.get();
   readerFuture.get();
   try (Transaction tx=db.beginTx()){
