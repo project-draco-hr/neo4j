@@ -1,0 +1,38 @@
+{
+  Adversary adversary=new ClassGuardedAdversary(new CountingAdversary(1,true),failMethod(BatchingTransactionAppender.class,"force"));
+  EphemeralFileSystemAbstraction efs=new EphemeralFileSystemAbstraction();
+  life.add(asLifecycle(efs));
+  File directory=new File("dir").getCanonicalFile();
+  efs.mkdirs(directory);
+  FileSystemAbstraction fs=new AdversarialFileSystemAbstraction(adversary,efs);
+  KernelHealth kernelHealth=new KernelHealth(mock(KernelPanicEventGenerator.class),NullLog.getInstance());
+  PhysicalLogFiles logFiles=new PhysicalLogFiles(directory,fs);
+  LogFile logFile=life.add(new PhysicalLogFile(fs,logFiles,kibiBytes(10),transactionIdStore,new DeadSimpleLogVersionRepository(0),new PhysicalLogFile.Monitor.Adapter(),transactionMetadataCache));
+  final BatchingTransactionAppender appender=life.add(new BatchingTransactionAppender(logFile,logRotation,transactionMetadataCache,transactionIdStore,legacyIndexTransactionOrdering,kernelHealth));
+  life.start();
+  int numberOfAppenders=10;
+  final CountDownLatch trap=new CountDownLatch(numberOfAppenders);
+  final LogAppendEvent beforeForceTrappingEvent=new LogAppendEvent.Empty(){
+    @Override public LogForceWaitEvent beginLogForceWait(){
+      trap.countDown();
+      awaitLatch(trap);
+      return super.beginLogForceWait();
+    }
+  }
+;
+  Race race=new Race();
+  for (int i=0; i < numberOfAppenders; i++) {
+    race.addContestant(new Runnable(){
+      @Override public void run(){
+        try {
+          appender.append(tx(),beforeForceTrappingEvent);
+          fail("No transaction should be considered appended");
+        }
+ catch (        IOException e) {
+        }
+      }
+    }
+);
+  }
+  race.go();
+}
