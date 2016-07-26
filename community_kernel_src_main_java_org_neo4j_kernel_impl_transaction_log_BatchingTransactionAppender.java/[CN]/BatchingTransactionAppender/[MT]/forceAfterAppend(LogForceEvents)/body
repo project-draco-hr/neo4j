@@ -1,9 +1,11 @@
 {
   ThreadLink threadLink=new ThreadLink(Thread.currentThread());
   threadLink.next=threadLinkHead.getAndSet(threadLink);
+  boolean attemptedForce=false;
   try (LogForceWaitEvent logForceWaitEvent=logForceEvents.beginLogForceWait()){
     do {
       if (forceLock.tryLock()) {
+        attemptedForce=true;
         try {
           forceLog(logForceEvents);
         }
@@ -18,5 +20,8 @@
       }
     }
  while (!threadLink.done);
+    if (!attemptedForce) {
+      databaseHealth.assertHealthy(IOException.class);
+    }
   }
  }
