@@ -2,26 +2,31 @@
   if (shutDown || delta == 0) {
     return processors.length;
   }
-  int requestedNumber=processors.length + delta;
-  if (delta > 0) {
-    requestedNumber=min(requestedNumber,maxProcessorCount);
-    if (requestedNumber > processors.length) {
-      Processor[] newProcessors=Arrays.copyOf(processors,requestedNumber);
-      for (int i=processors.length; i < requestedNumber; i++) {
-        newProcessors[i]=new Processor(processorThreadNamePrefix + "-" + i);
-      }
-      this.processors=newProcessors;
+synchronized (this) {
+    if (shutDown) {
+      return processors.length;
     }
-  }
+    int requestedNumber=processors.length + delta;
+    if (delta > 0) {
+      requestedNumber=min(requestedNumber,maxProcessorCount);
+      if (requestedNumber > processors.length) {
+        Processor[] newProcessors=Arrays.copyOf(processors,requestedNumber);
+        for (int i=processors.length; i < requestedNumber; i++) {
+          newProcessors[i]=new Processor(processorThreadNamePrefix + "-" + i);
+        }
+        this.processors=newProcessors;
+      }
+    }
  else {
-    requestedNumber=max(1,requestedNumber);
-    if (requestedNumber < processors.length) {
-      Processor[] newProcessors=Arrays.copyOf(processors,requestedNumber);
-      for (int i=newProcessors.length; i < processors.length; i++) {
-        processors[i].shutDown=true;
+      requestedNumber=max(1,requestedNumber);
+      if (requestedNumber < processors.length) {
+        Processor[] newProcessors=Arrays.copyOf(processors,requestedNumber);
+        for (int i=newProcessors.length; i < processors.length; i++) {
+          processors[i].processorShutDown=true;
+        }
+        this.processors=newProcessors;
       }
-      this.processors=newProcessors;
     }
+    return processors.length;
   }
-  return processors.length;
 }
