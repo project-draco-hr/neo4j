@@ -12,9 +12,10 @@
  while (cursor.shouldRetry());
     }
   }
-   Runnable writer=new Runnable(){
+   final AtomicBoolean end=new AtomicBoolean(false);
+  Runnable writer=new Runnable(){
     @Override public void run(){
-      while (!Thread.currentThread().isInterrupted()) {
+      while (!end.get()) {
         try (PageCursor cursor=pagedFile.io(0,PF_EXCLUSIVE_LOCK)){
           if (cursor.next()) {
             do {
@@ -44,6 +45,7 @@
  while (cursor.shouldRetry());
     }
    }
-  writerFuture.cancel(true);
+  end.set(true);
+  writerFuture.get();
   pagedFile.close();
 }
