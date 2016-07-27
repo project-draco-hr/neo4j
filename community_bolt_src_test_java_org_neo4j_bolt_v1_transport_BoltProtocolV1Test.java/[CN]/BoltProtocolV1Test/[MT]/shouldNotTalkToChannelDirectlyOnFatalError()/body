@@ -1,11 +1,14 @@
 {
-  PackStreamMessageFormatV1.Writer output=mock(PackStreamMessageFormatV1.Writer.class);
+  Channel outputChannel=mock(Channel.class);
+  ByteBufAllocator allocator=mock(ByteBufAllocator.class,RETURNS_MOCKS);
+  when(outputChannel.alloc()).thenReturn(allocator);
   Session session=mock(Session.class);
-  BoltProtocolV1 protocol=new BoltProtocolV1(NullLogService.getInstance(),session,output);
+  BoltProtocolV1 protocol=new BoltProtocolV1(session,outputChannel,NullLogService.getInstance());
+  verify(outputChannel).alloc();
   ByteBuf bomb=mock(ByteBuf.class);
   doThrow(IOException.class).when(bomb).readableBytes();
   protocol.handle(mock(ChannelHandlerContext.class),bomb);
-  verifyNoMoreInteractions(output);
+  verifyNoMoreInteractions(outputChannel);
   verify(session).externalError(any(),any(),any());
   verify(session).close();
 }
