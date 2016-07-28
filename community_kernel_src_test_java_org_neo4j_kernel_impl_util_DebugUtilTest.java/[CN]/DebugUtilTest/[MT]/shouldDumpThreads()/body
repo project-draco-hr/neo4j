@@ -1,0 +1,22 @@
+{
+  ByteArrayOutputStream capturedOut=new ByteArrayOutputStream();
+  PrintStream out=new PrintStream(capturedOut);
+  final CountDownLatch latch=new CountDownLatch(1);
+  t2.execute(new WorkerCommand<Void,Void>(){
+    @Override public Void doWork(    Void state) throws Exception {
+      awaitLatch(latch);
+      return null;
+    }
+  }
+);
+  t2.get().waitUntilThreadState(Thread.State.WAITING,Thread.State.TIMED_WAITING);
+  DebugUtil.dumpThreads(out);
+  latch.countDown();
+  out.flush();
+  String dump=capturedOut.toString();
+  assertTrue(dump.contains("main"));
+  assertTrue(dump.contains(DebugUtilTest.class.getName()));
+  assertTrue(dump.contains(testName.getMethodName()));
+  assertTrue(dump.contains(THE_OTHER_THREAD_NAME));
+  assertTrue(dump.contains("doWork"));
+}
