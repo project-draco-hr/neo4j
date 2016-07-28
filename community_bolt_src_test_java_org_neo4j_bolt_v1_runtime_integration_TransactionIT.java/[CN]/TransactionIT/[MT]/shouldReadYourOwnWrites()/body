@@ -9,10 +9,10 @@
   Thread thread=new Thread(){
     @Override public void run(){
       try (Session session=env.newSession("<write>")){
-        session.init("TestClient",emptyMap(),-1,null,null);
+        session.init("TestClient",emptyMap(),-1,null);
         latch.await();
-        session.run("MATCH (n:A) SET n.prop = 'two'",emptyMap(),null,Session.Callbacks.noop());
-        session.pullAll(null,Session.Callbacks.noop());
+        session.run("MATCH (n:A) SET n.prop = 'two'",emptyMap(),Session.Callbacks.noop());
+        session.pullAll(Session.Callbacks.noop());
       }
      }
   }
@@ -20,11 +20,11 @@
   thread.start();
   long dbVersionAfterWrite=dbVersion + 1;
   try (Session session=env.newSession("<read>")){
-    session.init("TestClient",emptyMap(),dbVersionAfterWrite,null,null);
+    session.init("TestClient",emptyMap(),dbVersionAfterWrite,null);
     latch.release();
-    session.run("MATCH (n:A) RETURN n.prop",emptyMap(),null,Session.Callbacks.noop());
+    session.run("MATCH (n:A) RETURN n.prop",emptyMap(),Session.Callbacks.noop());
     RecordingCallback<RecordStream,Object> pullResponse=new RecordingCallback<>();
-    session.pullAll(null,pullResponse);
+    session.pullAll(pullResponse);
     Record[] records=((RecordingCallback.Result)pullResponse.next()).records();
     assertEquals(1,records.length);
     assertThat(records[0],eqRecord(equalTo("two")));
