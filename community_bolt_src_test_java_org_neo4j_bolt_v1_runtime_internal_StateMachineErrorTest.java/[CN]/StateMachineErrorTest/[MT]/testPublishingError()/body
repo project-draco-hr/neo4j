@@ -1,14 +1,14 @@
 {
   RecordingCallback<RecordStream,Object> failingCallback=new RecordingCallback<RecordStream,Object>(){
-    @Override public void result(    RecordStream result,    Object attachment){
+    @Override public void result(    RecordStream result){
       throw new RuntimeException("Well, that didn't work out very well.");
     }
   }
 ;
   when(runner.run(any(SessionState.class),any(String.class),anyMapOf(String.class,Object.class))).thenReturn(mock(RecordStream.class));
   SessionStateMachine machine=newIdleMachine();
-  machine.run("something",null,null,Session.Callbacks.<StatementMetadata,Object>noop());
-  machine.pullAll(null,failingCallback);
+  machine.run("something",null,Session.Callbacks.<StatementMetadata>noop());
+  machine.pullAll(failingCallback);
   assertThat(failingCallback.next(),failedWith(Status.General.UnknownError));
   assertThat(machine.state(),equalTo(SessionStateMachine.State.ERROR));
 }
