@@ -1,0 +1,15 @@
+{
+  applicationProcess.start();
+  raftLog.append(new RaftLogEntry(0,new NewLeaderBarrier()));
+  raftLog.append(new RaftLogEntry(0,new DistributedOperation(nullTx,globalSession,new LocalOperationId(0,0))));
+  raftLog.append(new RaftLogEntry(0,new DistributedOperation(nullTx,globalSession,new LocalOperationId(0,0))));
+  raftLog.append(new RaftLogEntry(0,new DistributedOperation(nullTx,globalSession,new LocalOperationId(0,1))));
+  applicationProcess.notifyCommitted(3);
+  applier.sync(false);
+  InOrder inOrder=inOrder(coreStateMachines,commandDispatcher);
+  inOrder.verify(coreStateMachines).commandDispatcher();
+  inOrder.verify(commandDispatcher).dispatch(eq(nullTx),eq(1L),anyCallback());
+  inOrder.verify(commandDispatcher).dispatch(eq(nullTx),eq(3L),anyCallback());
+  inOrder.verify(commandDispatcher).close();
+  verifyNoMoreInteractions(commandDispatcher);
+}

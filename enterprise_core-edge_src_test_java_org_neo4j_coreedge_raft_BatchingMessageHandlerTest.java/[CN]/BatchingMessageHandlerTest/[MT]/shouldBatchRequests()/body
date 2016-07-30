@@ -1,17 +1,15 @@
 {
-  RaftInstance innerHandler=mock(RaftInstance.class);
-  when(innerHandler.handle(any())).thenReturn(mock(ConsensusOutcome.class));
-  BatchingMessageHandler batchHandler=new BatchingMessageHandler(innerHandler,NullLogProvider.getInstance(),QUEUE_SIZE,MAX_BATCH,localDatabase,raftStateMachine);
+  BatchingMessageHandler batchHandler=new BatchingMessageHandler(raftStateMachine,QUEUE_SIZE,MAX_BATCH,NullLogProvider.getInstance());
   ReplicatedString contentA=new ReplicatedString("A");
   ReplicatedString contentB=new ReplicatedString("B");
   RaftMessages.NewEntry.Request messageA=new RaftMessages.NewEntry.Request(null,contentA);
   RaftMessages.NewEntry.Request messageB=new RaftMessages.NewEntry.Request(null,contentB);
   batchHandler.handle(new RaftMessages.StoreIdAwareMessage(localStoreId,messageA));
   batchHandler.handle(new RaftMessages.StoreIdAwareMessage(localStoreId,messageB));
-  verifyZeroInteractions(innerHandler);
+  verifyZeroInteractions(raftStateMachine);
   batchHandler.run();
   RaftMessages.NewEntry.Batch batch=new RaftMessages.NewEntry.Batch(2);
   batch.add(contentA);
   batch.add(contentB);
-  verify(innerHandler).handle(batch);
+  verify(raftStateMachine).handle(new RaftMessages.StoreIdAwareMessage(localStoreId,batch));
 }

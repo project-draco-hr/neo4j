@@ -1,0 +1,11 @@
+{
+  applicationProcess.start();
+  int interactions=flushEvery * 5;
+  for (int i=0; i < interactions; i++) {
+    raftLog.append(new RaftLogEntry(0,operation(nullTx)));
+  }
+  applicationProcess.notifyCommitted(interactions);
+  applier.sync(false);
+  verify(coreStateMachines,times(interactions / batchSize)).flush();
+  assertEquals(interactions - (interactions % batchSize) - 1,(long)lastFlushedStorage.getInitialState());
+}
