@@ -1,0 +1,31 @@
+{
+  LockToken currentToken=lockTokenStateMachine.currentToken();
+  if (myself.equals(currentToken.owner())) {
+    return currentToken.id();
+  }
+  ensureLeader();
+  ReplicatedLockTokenRequest lockTokenRequest=new ReplicatedLockTokenRequest(myself,LockToken.nextCandidateId(currentToken.id()));
+  Future<Object> future;
+  try {
+    future=replicator.replicate(lockTokenRequest,true);
+  }
+ catch (  InterruptedException e) {
+    throw new AcquireLockTimeoutException(e,"Interrupted acquiring token.");
+  }
+  try {
+    boolean success=(boolean)future.get(leaderLockTokenTimeout,MILLISECONDS);
+    if (success) {
+      return lockTokenRequest.id();
+    }
+ else {
+      throw new AcquireLockTimeoutException("Failed to acquire lock token. Was taken by another candidate.");
+    }
+  }
+ catch (  ExecutionException|TimeoutException e) {
+    throw new AcquireLockTimeoutException(e,"Failed to acquire lock token.");
+  }
+catch (  InterruptedException e) {
+    Thread.currentThread().interrupt();
+    throw new AcquireLockTimeoutException(e,"Failed to acquire lock token.");
+  }
+}
