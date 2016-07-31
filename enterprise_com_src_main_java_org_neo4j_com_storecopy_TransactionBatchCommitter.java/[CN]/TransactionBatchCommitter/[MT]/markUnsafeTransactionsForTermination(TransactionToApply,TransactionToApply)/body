@@ -2,11 +2,11 @@
   long firstCommittedTimestamp=first.transactionRepresentation().getTimeCommitted();
   long lastCommittedTimestamp=last.transactionRepresentation().getTimeCommitted();
   long earliestSafeTimestamp=lastCommittedTimestamp - idReuseSafeZoneTime;
-  for (  KernelTransaction tx : kernelTransactions.activeTransactions()) {
-    long commitTimestamp=tx.lastTransactionTimestampWhenStarted();
+  for (  KernelTransactionHandle txHandle : kernelTransactions.activeTransactions()) {
+    long commitTimestamp=txHandle.lastTransactionTimestampWhenStarted();
     if (commitTimestamp != TransactionIdStore.BASE_TX_COMMIT_TIMESTAMP && commitTimestamp < earliestSafeTimestamp) {
-      log.info("Marking transaction for termination, " + "invalidated due to an upcoming batch of changes being applied:" + "\n"+ "  Batch: firstCommittedTxId:" + first.transactionId() + ", firstCommittedTimestamp:"+ informativeTimestamp(firstCommittedTimestamp)+ ", lastCommittedTxId:"+ last.transactionId()+ ", lastCommittedTimestamp:"+ informativeTimestamp(lastCommittedTimestamp)+ ", batchTimeRange:"+ informativeDuration(lastCommittedTimestamp - firstCommittedTimestamp)+ ", earliestSafeTimstamp:"+ informativeTimestamp(earliestSafeTimestamp)+ ", safeZoneDuration:"+ informativeDuration(idReuseSafeZoneTime)+ "\n"+ "  Transaction: lastCommittedTimestamp:"+ informativeTimestamp(tx.lastTransactionTimestampWhenStarted())+ ", lastCommittedTxId:"+ tx.lastTransactionIdWhenStarted()+ ", localStartTimestamp:"+ informativeTimestamp(tx.localStartTime()));
-      tx.markForTermination(Status.Transaction.Outdated);
+      log.info("Marking transaction for termination, " + "invalidated due to an upcoming batch of changes being applied:" + "\n"+ "  Batch: firstCommittedTxId:" + first.transactionId() + ", firstCommittedTimestamp:"+ informativeTimestamp(firstCommittedTimestamp)+ ", lastCommittedTxId:"+ last.transactionId()+ ", lastCommittedTimestamp:"+ informativeTimestamp(lastCommittedTimestamp)+ ", batchTimeRange:"+ informativeDuration(lastCommittedTimestamp - firstCommittedTimestamp)+ ", earliestSafeTimstamp:"+ informativeTimestamp(earliestSafeTimestamp)+ ", safeZoneDuration:"+ informativeDuration(idReuseSafeZoneTime)+ "\n"+ "  Transaction: lastCommittedTimestamp:"+ informativeTimestamp(txHandle.lastTransactionTimestampWhenStarted())+ ", lastCommittedTxId:"+ txHandle.lastTransactionIdWhenStarted()+ ", localStartTimestamp:"+ informativeTimestamp(txHandle.localStartTime()));
+      txHandle.markForTermination(Status.Transaction.Outdated);
     }
   }
 }
