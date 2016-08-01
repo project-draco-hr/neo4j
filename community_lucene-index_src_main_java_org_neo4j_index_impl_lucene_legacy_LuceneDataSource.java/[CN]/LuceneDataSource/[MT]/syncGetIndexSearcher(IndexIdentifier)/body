@@ -1,20 +1,19 @@
 {
   try {
-    IndexReference searcher=indexSearchers.get(identifier);
-    if (searcher == null) {
-      IndexWriter writer=newIndexWriter(identifier);
-      IndexReader reader=DirectoryReader.open(writer);
-      IndexSearcher indexSearcher=newIndexSearcher(identifier,reader);
-      searcher=new IndexReference(identifier,indexSearcher,writer);
-      indexSearchers.put(identifier,searcher);
+    IndexReference indexReference=indexSearchers.get(identifier);
+    if (indexReference == null) {
+      indexReference=indexReferenceFactory.createIndexReference(identifier);
+      indexSearchers.put(identifier,indexReference);
     }
  else {
-synchronized (searcher) {
-        searcher=refreshSearcherIfNeeded(searcher);
+      if (!readOnly) {
+synchronized (indexReference) {
+          indexReference=refreshSearcherIfNeeded(indexReference);
+        }
       }
     }
-    searcher.incRef();
-    return searcher;
+    indexReference.incRef();
+    return indexReference;
   }
  catch (  IOException e) {
     throw new RuntimeException(e);
