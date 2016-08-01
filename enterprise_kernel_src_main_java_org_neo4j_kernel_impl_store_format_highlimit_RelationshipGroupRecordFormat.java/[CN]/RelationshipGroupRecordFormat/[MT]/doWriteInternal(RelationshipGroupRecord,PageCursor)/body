@@ -1,8 +1,24 @@
 {
-  cursor.putShort((short)record.getType());
-  encode(cursor,record.getFirstOut(),NULL);
-  encode(cursor,record.getFirstIn(),NULL);
-  encode(cursor,record.getFirstLoop(),NULL);
-  encode(cursor,record.getOwningNode());
-  encode(cursor,record.getNext(),NULL);
+  if (record.isUseFixedReferences()) {
+    long nextMod=record.getNext() == Record.NO_NEXT_RELATIONSHIP.intValue() ? 0 : (record.getNext() & 0x100000000L) >> 32;
+    long nextOutMod=record.getFirstOut() == Record.NO_NEXT_RELATIONSHIP.intValue() ? 0 : (record.getFirstOut() & 0x100000000L) >> 31;
+    long nextInMod=record.getFirstIn() == Record.NO_NEXT_RELATIONSHIP.intValue() ? 0 : (record.getFirstIn() & 0x100000000L) >> 30;
+    long nextLoopMod=record.getFirstLoop() == Record.NO_NEXT_RELATIONSHIP.intValue() ? 0 : (record.getFirstLoop() & 0x100000000L) >> 29;
+    long ownerMod=record.getOwningNode() == Record.NO_NEXT_RELATIONSHIP.intValue() ? 0 : (record.getOwningNode() & 0x100000000L) >> 28;
+    cursor.putByte((byte)(nextMod | nextOutMod | nextInMod| nextLoopMod| ownerMod));
+    cursor.putShort((short)record.getType());
+    cursor.putInt((int)record.getNext());
+    cursor.putInt((int)record.getFirstOut());
+    cursor.putInt((int)record.getFirstIn());
+    cursor.putInt((int)record.getFirstLoop());
+    cursor.putInt((int)record.getOwningNode());
+  }
+ else {
+    cursor.putShort((short)record.getType());
+    encode(cursor,record.getFirstOut(),NULL);
+    encode(cursor,record.getFirstIn(),NULL);
+    encode(cursor,record.getFirstLoop(),NULL);
+    encode(cursor,record.getOwningNode());
+    encode(cursor,record.getNext(),NULL);
+  }
 }
