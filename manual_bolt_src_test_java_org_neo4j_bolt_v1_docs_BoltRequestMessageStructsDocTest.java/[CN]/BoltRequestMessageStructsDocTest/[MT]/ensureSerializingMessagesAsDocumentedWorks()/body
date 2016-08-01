@@ -1,0 +1,14 @@
+{
+  RecordingByteChannel ch=new RecordingByteChannel();
+  PackStream.Packer packer=new PackStream.Packer(new BufferedChannelOutput(ch,128));
+  packer.packStructHeader(struct.size(),struct.signature());
+  for (  DocStruct.Field field : struct) {
+    packValueOf(field.type(),packer);
+  }
+  packer.flush();
+  final Neo4jPack.Unpacker unpacker=new Neo4jPack.Unpacker(new BufferedChannelInput(128).reset(new ArrayByteChannel(ch.getBytes())));
+  BoltRequestMessageReader requestMessageReader=new BoltRequestMessageReader(unpacker);
+  BoltRequestMessageRecorder messages=new BoltRequestMessageRecorder();
+  requestMessageReader.read(messages);
+  assertEquals(struct.name(),messages.asList().get(0).getClass().getSimpleName());
+}

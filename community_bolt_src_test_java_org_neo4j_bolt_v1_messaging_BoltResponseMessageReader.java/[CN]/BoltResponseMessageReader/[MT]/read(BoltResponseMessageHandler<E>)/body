@@ -1,0 +1,40 @@
+{
+  try {
+    unpacker.unpackStructHeader();
+    final int signature=(int)unpacker.unpackStructSignature();
+    BoltResponseMessage message=BoltResponseMessage.withSignature(signature);
+    try {
+switch (message) {
+case SUCCESS:
+        Map<String,Object> successMetadata=unpacker.unpackMap();
+      handler.onSuccess(successMetadata);
+    break;
+case RECORD:
+  long length=unpacker.unpackListHeader();
+final Object[] fields=new Object[(int)length];
+for (int i=0; i < length; i++) {
+fields[i]=unpacker.unpack();
+}
+handler.onRecord(record(fields));
+break;
+case IGNORED:
+handler.onIgnored();
+break;
+case FAILURE:
+Map<String,Object> failureMetadata=unpacker.unpackMap();
+String code=failureMetadata.containsKey("code") ? (String)failureMetadata.get("code") : Status.General.UnknownError.name();
+String msg=failureMetadata.containsKey("message") ? (String)failureMetadata.get("message") : "<No message supplied>";
+handler.onFailure(codeFromString(code),msg);
+break;
+default :
+throw new BoltIOException(Status.Request.Invalid,"Message 0x" + Integer.toHexString(signature) + " is not supported.");
+}
+}
+ catch (IllegalArgumentException e) {
+throw new BoltIOException(Status.Request.Invalid,"0x" + Integer.toHexString(signature) + " is not a valid message signature.");
+}
+}
+ catch (PackStream.PackStreamException e) {
+throw new BoltIOException(Status.Request.InvalidFormat,"Unable to read message type. " + "Error was: " + e.getMessage(),e);
+}
+}

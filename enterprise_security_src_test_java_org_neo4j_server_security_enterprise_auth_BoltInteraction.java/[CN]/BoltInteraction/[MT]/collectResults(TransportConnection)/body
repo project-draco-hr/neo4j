@@ -1,0 +1,35 @@
+{
+  ResponseMessage message=TransportTestUtil.receiveOneResponseMessage(client);
+  List<String> fieldNames=new ArrayList<>();
+  List<Map<String,Object>> result=new ArrayList<>();
+  if (message instanceof SuccessMessage) {
+    Map<String,Object> metadata=((SuccessMessage)message).meta();
+    fieldNames=(List<String>)metadata.get("fields");
+  }
+ else   if (message instanceof FailureMessage) {
+    FailureMessage failMessage=((FailureMessage)message);
+    TransportTestUtil.receiveOneResponseMessage(client);
+    client.send(TransportTestUtil.chunk(reset()));
+    TransportTestUtil.receiveOneResponseMessage(client);
+    throw new AuthenticationException(failMessage.status(),failMessage.message());
+  }
+  do {
+    message=TransportTestUtil.receiveOneResponseMessage(client);
+    if (message instanceof RecordMessage) {
+      Object[] row=((RecordMessage)message).record().fields();
+      Map<String,Object> rowMap=new HashMap<>();
+      for (int i=0; i < row.length; i++) {
+        rowMap.put(fieldNames.get(i),row[i]);
+      }
+      result.add(rowMap);
+    }
+  }
+ while (!(message instanceof SuccessMessage) && !(message instanceof FailureMessage));
+  if (message instanceof FailureMessage) {
+    FailureMessage failMessage=((FailureMessage)message);
+    client.send(TransportTestUtil.chunk(reset()));
+    TransportTestUtil.receiveOneResponseMessage(client);
+    throw new AuthenticationException(failMessage.status(),failMessage.message());
+  }
+  return new BoltResult(result);
+}

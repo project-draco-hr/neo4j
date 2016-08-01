@@ -1,0 +1,73 @@
+{
+  ObjectMapper mapper=new ObjectMapper();
+  if (value.startsWith("Struct")) {
+    DocStructExample struct=new DocStructExample(DocPartName.unknown(),value);
+    packer.packStructHeader(struct.size(),(byte)struct.signature());
+    for (    String s : struct) {
+      pack(s,packer,requestWriter,responseWriter);
+    }
+  }
+ else   if (value.equals("FAILURE { \"code\": \"Neo.ClientError.Statement.SyntaxError\",                  \"message\": \"Invalid input 'T': expected" + " <init> (line 1, column 1 (offset: 0))                          \"This will cause a syntax error\"                          " + " ^\"}")) {
+    responseWriter.onFailure(Status.Statement.SyntaxError,"Invalid input 'T': expected <init> (line 1, column 1 (offset: 0))\n" + "\"This will cause a syntax error\"\n" + " ^");
+  }
+ else {
+    try {
+      Object scalar=mapper.readValue(value,Object.class);
+      packer.pack(scalar);
+    }
+ catch (    JsonParseException e) {
+      String[] parts=value.split(" ",2);
+      List<Object> args=new ArrayList<>();
+      String type=parts[0];
+      if (parts.length == 2) {
+        JsonParser parser=mapper.getJsonFactory().createJsonParser(new ByteArrayInputStream(parts[1].getBytes(StandardCharsets.UTF_8)));
+        try {
+          while (!parser.isClosed()) {
+            Object e1=mapper.readValue(parser,Object.class);
+            args.add(e1);
+          }
+        }
+ catch (        EOFException ignore) {
+        }
+catch (        JsonParseException je) {
+          throw new RuntimeException("Unable to parse documented protocol exchange in '" + value + "': "+ je.getMessage(),je);
+        }
+      }
+switch (type) {
+case "INIT":
+        requestWriter.onInit((String)args.get(0),(Map<String,Object>)args.get(1));
+      break;
+case "ACK_FAILURE":
+    requestWriter.onAckFailure();
+  break;
+case "RESET":
+requestWriter.onReset();
+break;
+case "RUN":
+requestWriter.onRun((String)args.get(0),(Map<String,Object>)args.get(1));
+break;
+case "DISCARD_ALL":
+requestWriter.onDiscardAll();
+break;
+case "PULL_ALL":
+requestWriter.onPullAll();
+break;
+case "SUCCESS":
+responseWriter.onSuccess((Map<String,Object>)args.get(0));
+break;
+case "RECORD":
+responseWriter.onRecord(new ImmutableRecord(Iterables.asArray(Object.class,(List<Object>)args.get(0))));
+break;
+case "IGNORED":
+responseWriter.onIgnored();
+break;
+case "FAILURE":
+Map<String,Object> meta=(Map<String,Object>)args.get(0);
+responseWriter.onFailure(Neo4jError.codeFromString((String)meta.get("code")),(String)meta.get("message"));
+break;
+default :
+throw new RuntimeException("Unknown value: " + type);
+}
+}
+}
+}

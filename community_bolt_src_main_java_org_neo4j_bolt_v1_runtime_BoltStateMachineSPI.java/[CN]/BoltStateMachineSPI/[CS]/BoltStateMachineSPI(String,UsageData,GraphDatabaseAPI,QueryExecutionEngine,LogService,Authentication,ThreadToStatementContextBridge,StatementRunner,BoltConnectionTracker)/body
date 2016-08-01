@@ -1,0 +1,32 @@
+{
+  this.connectionDescriptor=connectionDescriptor;
+  this.usageData=usageData;
+  this.errorReporter=new ErrorReporter(logging);
+  this.connectionTracker=connectionTracker;
+  Log log=logging.getInternalLog(BoltStateMachine.class);
+  this.authentication=authentication;
+  this.transactionSpi=new TransactionStateMachine.SPI(){
+    @Override public KernelTransaction beginTransaction(    AuthSubject authSubject){
+      db.beginTransaction(KernelTransaction.Type.explicit,authSubject);
+      return txBridge.getKernelTransactionBoundToThisThread(false);
+    }
+    @Override public void bindTransactionToCurrentThread(    KernelTransaction tx){
+      txBridge.bindTransactionToCurrentThread(tx);
+    }
+    @Override public void unbindTransactionFromCurrentThread(){
+      txBridge.unbindTransactionFromCurrentThread();
+    }
+    @Override public boolean isPeriodicCommit(    String query){
+      return queryExecutionEngine.isPeriodicCommit(query);
+    }
+    @Override public Result executeQuery(    AuthSubject authSubject,    String statement,    Map<String,Object> params) throws QueryExecutionKernelException {
+      try {
+        return statementRunner.run(authSubject,statement,params);
+      }
+ catch (      KernelException e) {
+        throw new QueryExecutionKernelException(e);
+      }
+    }
+  }
+;
+}

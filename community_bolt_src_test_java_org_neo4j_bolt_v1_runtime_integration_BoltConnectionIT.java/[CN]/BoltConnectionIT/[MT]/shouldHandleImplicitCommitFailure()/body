@@ -1,0 +1,12 @@
+{
+  BoltStateMachine machine=env.newMachine("<test>");
+  machine.init(USER_AGENT,emptyMap(),null);
+  machine.run("CREATE (n:Victim)-[:REL]->()",EMPTY_PARAMS,new NullResponseHandler());
+  machine.discardAll(new NullResponseHandler());
+  BoltResponseRecorder recorder=new BoltResponseRecorder();
+  machine.run("MATCH (n:Victim) DELETE n",EMPTY_PARAMS,recorder);
+  assertThat(recorder.nextResponse(),succeeded());
+  recorder.reset();
+  machine.discardAll(recorder);
+  assertThat(recorder.nextResponse(),failedWithStatus(Status.Schema.ConstraintValidationFailed));
+}

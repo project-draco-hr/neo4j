@@ -1,0 +1,41 @@
+{
+  try {
+    unpacker.unpackStructHeader();
+    final int signature=(int)unpacker.unpackStructSignature();
+    BoltRequestMessage message=BoltRequestMessage.withSignature(signature);
+    try {
+switch (message) {
+case INIT:
+        String clientName=unpacker.unpackString();
+      Map<String,Object> credentials=unpacker.unpackMap();
+    handler.onInit(clientName,credentials);
+  break;
+case ACK_FAILURE:
+handler.onAckFailure();
+break;
+case RESET:
+handler.onReset();
+break;
+case RUN:
+String statement=unpacker.unpackString();
+Map<String,Object> params=unpacker.unpackMap();
+handler.onRun(statement,params);
+break;
+case DISCARD_ALL:
+handler.onDiscardAll();
+break;
+case PULL_ALL:
+handler.onPullAll();
+break;
+default :
+throw new BoltIOException(Status.Request.Invalid,"Message 0x" + Integer.toHexString(signature) + " is not supported.");
+}
+}
+ catch (IllegalArgumentException e) {
+throw new BoltIOException(Status.Request.Invalid,"0x" + Integer.toHexString(signature) + " is not a valid message signature.");
+}
+}
+ catch (PackStream.PackStreamException e) {
+throw new BoltIOException(Status.Request.InvalidFormat,"Unable to read message type. " + "Error was: " + e.getMessage(),e);
+}
+}

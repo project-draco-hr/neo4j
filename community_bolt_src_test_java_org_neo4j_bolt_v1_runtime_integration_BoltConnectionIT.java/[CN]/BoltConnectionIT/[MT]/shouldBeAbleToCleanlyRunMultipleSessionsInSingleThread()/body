@@ -1,0 +1,12 @@
+{
+  BoltStateMachine firstMachine=env.newMachine("<test>");
+  firstMachine.init(USER_AGENT,emptyMap(),null);
+  BoltStateMachine secondMachine=env.newMachine("<test>");
+  secondMachine.init(USER_AGENT,emptyMap(),null);
+  runAndPull(firstMachine,"BEGIN");
+  Object[] stream=runAndPull(secondMachine,"CREATE (a:Person) RETURN id(a)");
+  long id=(long)((Record)stream[0]).fields()[0];
+  runAndPull(firstMachine,"ROLLBACK");
+  stream=runAndPull(secondMachine,"MATCH (a:Person) WHERE id(a) = " + id + " RETURN COUNT(*)");
+  assertThat(((Record)stream[0]).fields()[0],equalTo((Object)1L));
+}

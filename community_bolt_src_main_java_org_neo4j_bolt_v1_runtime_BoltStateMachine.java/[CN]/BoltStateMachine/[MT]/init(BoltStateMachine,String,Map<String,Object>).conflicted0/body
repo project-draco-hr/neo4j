@@ -1,0 +1,26 @@
+{
+  try {
+    AuthenticationResult authResult=machine.spi.authenticate(authToken);
+    machine.ctx.init(authResult);
+    if (authResult.credentialsExpired()) {
+      machine.ctx.addMetadata("credentials_expired",true);
+    }
+    machine.spi.udcRegisterClient(userAgent);
+    if (authToken.containsKey(PRINCIPAL)) {
+      machine.ctx.owner=authToken.get(PRINCIPAL).toString();
+    }
+    machine.ctx.setQuerySourceFromClientNameAndPrincipal(userAgent,machine.ctx.owner,machine.spi.connectionDescriptor());
+    if (machine.ctx.owner != null) {
+      machine.spi.register(machine,machine.ctx.owner);
+    }
+    return READY;
+  }
+ catch (  AuthenticationException e) {
+    fail(machine,new Neo4jError(e.status(),e.getMessage()));
+    throw new BoltConnectionFatality(e.getMessage());
+  }
+catch (  Throwable e) {
+    fail(machine,new Neo4jError(Status.General.UnknownError,e.getMessage()));
+    throw new BoltConnectionFatality(e.getMessage());
+  }
+}
