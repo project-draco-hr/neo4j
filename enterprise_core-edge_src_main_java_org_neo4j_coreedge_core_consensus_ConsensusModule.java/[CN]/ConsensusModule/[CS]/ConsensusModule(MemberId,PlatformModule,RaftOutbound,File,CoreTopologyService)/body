@@ -1,0 +1,49 @@
+{
+  final Dependencies dependencies=platformModule.dependencies;
+  final Config config=platformModule.config;
+  final LogService logging=platformModule.logging;
+  final FileSystemAbstraction fileSystem=platformModule.fileSystem;
+  final LifeSupport life=platformModule.life;
+  LogProvider logProvider=logging.getInternalLogProvider();
+  final Supplier<DatabaseHealth> databaseHealthSupplier=dependencies.provideDependency(DatabaseHealth.class);
+  final CoreReplicatedContentMarshal marshal=new CoreReplicatedContentMarshal();
+  int maxQueueSize=config.get(CoreEdgeClusterSettings.outgoing_queue_size);
+  final SenderService senderService=new SenderService(new RaftChannelInitializer(marshal,logProvider),logProvider,platformModule.monitors,maxQueueSize,new NonBlockingChannels());
+  life.add(senderService);
+  final MessageLogger<MemberId> messageLogger;
+  if (config.get(CoreEdgeClusterSettings.raft_messages_log_enable)) {
+    File logsDir=config.get(GraphDatabaseSettings.logs_directory);
+    messageLogger=life.add(new BetterMessageLogger<>(myself,raftMessagesLog(logsDir)));
+  }
+ else {
+    messageLogger=new NullMessageLogger<>();
+  }
+  RaftLog underlyingLog=createRaftLog(config,life,fileSystem,clusterStateDirectory,marshal,logProvider);
+  raftLog=new MonitoredRaftLog(underlyingLog,platformModule.monitors);
+  Outbound<MemberId,RaftMessages.RaftMessage> loggingOutbound=new LoggingOutbound<>(raftOutbound,myself,messageLogger);
+  InFlightMap<Long,RaftLogEntry> inFlightMap=new InFlightMap<>();
+  StateStorage<TermState> termState;
+  StateStorage<VoteState> voteState;
+  StateStorage<RaftMembershipState> raftMembershipStorage;
+  try {
+    StateStorage<TermState> durableTermState=life.add(new DurableStateStorage<>(fileSystem,clusterStateDirectory,RAFT_TERM_NAME,new TermState.Marshal(),config.get(CoreEdgeClusterSettings.term_state_size),databaseHealthSupplier,logProvider));
+    termState=new MonitoredTermStateStorage(durableTermState,platformModule.monitors);
+    voteState=life.add(new DurableStateStorage<>(fileSystem,clusterStateDirectory,RAFT_VOTE_NAME,new VoteState.Marshal(new MemberId.MemberIdMarshal()),config.get(CoreEdgeClusterSettings.vote_state_size),databaseHealthSupplier,logProvider));
+    raftMembershipStorage=life.add(new DurableStateStorage<>(fileSystem,clusterStateDirectory,RAFT_MEMBERSHIP_NAME,new RaftMembershipState.Marshal(),config.get(CoreEdgeClusterSettings.raft_membership_state_size),databaseHealthSupplier,logProvider));
+  }
+ catch (  IOException e) {
+    throw new RuntimeException(e);
+  }
+  long electionTimeout1=config.get(CoreEdgeClusterSettings.leader_election_timeout);
+  long heartbeatInterval=electionTimeout1 / 3;
+  Integer expectedClusterSize=config.get(CoreEdgeClusterSettings.expected_core_cluster_size);
+  MemberIdSetBuilder memberSetBuilder=new MemberIdSetBuilder();
+  SendToMyself leaderOnlyReplicator=new SendToMyself(myself,loggingOutbound);
+  raftMembershipManager=new RaftMembershipManager(leaderOnlyReplicator,memberSetBuilder,raftLog,logProvider,expectedClusterSize,electionTimeout1,systemUTC(),config.get(CoreEdgeClusterSettings.join_catch_up_timeout),raftMembershipStorage);
+  life.add(raftMembershipManager);
+  RaftLogShippingManager logShipping=new RaftLogShippingManager(loggingOutbound,logProvider,raftLog,systemUTC(),myself,raftMembershipManager,electionTimeout1,config.get(CoreEdgeClusterSettings.catchup_batch_size),config.get(CoreEdgeClusterSettings.log_shipping_max_lag),inFlightMap);
+  raftTimeoutService=new DelayedRenewableTimeoutService(systemUTC(),logProvider);
+  raftMachine=new RaftMachine(myself,termState,voteState,raftLog,electionTimeout1,heartbeatInterval,raftTimeoutService,loggingOutbound,logProvider,raftMembershipManager,logShipping,inFlightMap,platformModule.monitors);
+  life.add(new RaftDiscoveryServiceConnector(discoveryService,raftMachine));
+  life.add(logShipping);
+}
