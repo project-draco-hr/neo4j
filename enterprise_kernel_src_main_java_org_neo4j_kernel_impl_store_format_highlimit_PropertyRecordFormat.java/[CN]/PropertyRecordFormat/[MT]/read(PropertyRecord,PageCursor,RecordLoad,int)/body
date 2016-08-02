@@ -1,2 +1,23 @@
 {
+  int offset=cursor.getOffset();
+  byte headerByte=cursor.getByte();
+  boolean inUse=isInUse(headerByte);
+  record.setUseFixedReferences(has(headerByte,FIXED_REFERENCES_BIT));
+  if (mode.shouldLoad(inUse)) {
+    int blockCount=headerByte >>> 4;
+    long recordId=record.getId();
+    if (record.isUseFixedReferences()) {
+      readFixedReferencesRecord(record,cursor);
+    }
+ else {
+      record.initialize(inUse,toAbsolute(Reference.decode(cursor),recordId),toAbsolute(Reference.decode(cursor),recordId));
+    }
+    if ((blockCount > record.getBlockCapacity()) | (RECORD_SIZE - (cursor.getOffset() - offset) < blockCount * Long.BYTES)) {
+      cursor.setCursorException("PropertyRecord claims to contain more blocks than can fit in a record");
+      return;
+    }
+    while (blockCount-- > 0) {
+      record.addLoadedBlock(cursor.getLong());
+    }
+  }
 }
