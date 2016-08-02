@@ -1,0 +1,15 @@
+{
+  TestLocks actualLocks=new TestLocks();
+  TestLocksClient actualClient=actualLocks.newClient();
+  DeferringLockClient client=new DeferringLockClient(actualClient);
+  client.acquireShared(ResourceTypes.NODE,1);
+  client.acquireExclusive(ResourceTypes.NODE,2);
+  client.acquireExclusive(ResourceTypes.NODE,3);
+  client.acquireExclusive(ResourceTypes.RELATIONSHIP,1);
+  client.acquireShared(ResourceTypes.RELATIONSHIP,2);
+  client.acquireShared(ResourceTypes.SCHEMA,1);
+  client.acquireExclusive(ResourceTypes.NODE,42);
+  client.acquireDeferredLocks();
+  Set<LockUnit> expectedLocks=new LinkedHashSet<>(Arrays.asList(new LockUnit(ResourceTypes.NODE,2,true),new LockUnit(ResourceTypes.NODE,3,true),new LockUnit(ResourceTypes.NODE,42,true),new LockUnit(ResourceTypes.RELATIONSHIP,1,true),new LockUnit(ResourceTypes.NODE,1,false),new LockUnit(ResourceTypes.RELATIONSHIP,2,false),new LockUnit(ResourceTypes.SCHEMA,1,false)));
+  actualClient.assertRegisteredLocks(expectedLocks);
+}
