@@ -1,0 +1,22 @@
+{
+  scheduleTimeout(retryTimeMillis);
+  logIndex=max(raftLog.prevIndex() + 1,logIndex);
+  lastSentIndex=logIndex;
+  try {
+    long prevLogIndex=logIndex - 1;
+    long prevLogTerm=raftLog.readEntryTerm(prevLogIndex);
+    if (prevLogTerm > leaderContext.term) {
+      log.warn("%s aborting send. Not leader anymore? %s, prevLogTerm=%d",statusAsString(),leaderContext,prevLogTerm);
+      return;
+    }
+    if (doesNotExistInLog(prevLogIndex,prevLogTerm)) {
+      log.warn("Entry was pruned when sending empty (prevLogIndex=%d, prevLogTerm=%d)",prevLogIndex,prevLogTerm);
+      return;
+    }
+    RaftMessages.AppendEntries.Request appendRequest=new RaftMessages.AppendEntries.Request(leader,leaderContext.term,prevLogIndex,prevLogTerm,RaftLogEntry.empty,leaderContext.commitIndex);
+    outbound.send(follower,appendRequest);
+  }
+ catch (  IOException e) {
+    log.warn(statusAsString() + " exception during empty send",e);
+  }
+}
