@@ -40,9 +40,9 @@
   RaftOutbound raftOutbound=new RaftOutbound(discoveryService,senderService,localDatabase,logProvider,logThresholdMillis);
   Outbound<MemberId,RaftMessages.RaftMessage> loggingOutbound=new LoggingOutbound<>(raftOutbound,myself,messageLogger);
   consensusModule=new ConsensusModule(myself,platformModule,raftOutbound,clusterStateDirectory,discoveryService);
-  dependencies.satisfyDependency(consensusModule.raftInstance());
+  dependencies.satisfyDependency(consensusModule.raftMachine());
   ReplicationModule replicationModule=new ReplicationModule(myself,platformModule,config,consensusModule,loggingOutbound,clusterStateDirectory,fileSystem,databaseHealthSupplier,logProvider);
-  coreStateMachinesModule=new CoreStateMachinesModule(myself,platformModule,clusterStateDirectory,databaseHealthSupplier,config,replicationModule.getReplicator(),consensusModule.raftInstance(),dependencies,localDatabase);
+  coreStateMachinesModule=new CoreStateMachinesModule(myself,platformModule,clusterStateDirectory,databaseHealthSupplier,config,replicationModule.getReplicator(),consensusModule.raftMachine(),dependencies,localDatabase);
   this.idGeneratorFactory=coreStateMachinesModule.idGeneratorFactory;
   this.idTypeConfigurationProvider=coreStateMachinesModule.idTypeConfigurationProvider;
   this.labelTokenHolder=coreStateMachinesModule.labelTokenHolder;
@@ -53,5 +53,5 @@
   CoreServerModule coreServerModule=new CoreServerModule(myself,platformModule,consensusModule,coreStateMachinesModule,replicationModule,clusterStateDirectory,discoveryService,localDatabase,messageLogger);
   editionInvariants(platformModule,dependencies,config,logging,life);
   this.lockManager=dependencies.satisfyDependency(lockManager);
-  life.add(CoreStartupProcess.createLifeSupport(platformModule.dataSourceManager,coreStateMachinesModule.replicatedIdGeneratorFactory,coreServerModule.startupLifecycle,consensusModule.raftTimeoutService(),coreServerModule.membershipWaiterLifecycle));
+  life.add(CoreStartupProcess.createLifeSupport(localDatabase,coreStateMachinesModule.replicatedIdGeneratorFactory,coreServerModule.startupLifecycle,consensusModule.raftTimeoutService(),coreServerModule.membershipWaiterLifecycle));
 }
