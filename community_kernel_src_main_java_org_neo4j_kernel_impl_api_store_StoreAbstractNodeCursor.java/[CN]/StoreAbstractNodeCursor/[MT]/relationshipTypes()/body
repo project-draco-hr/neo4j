@@ -5,17 +5,15 @@
       private final IntValue value=new IntValue();
       private final RelationshipGroupRecord group=relationshipGroupStore.newRecord();
       @Override public boolean next(){
-        if (groupId == Record.NO_NEXT_RELATIONSHIP.intValue()) {
-          return false;
-        }
-        cursors.relationshipGroup().next(groupId,group,NORMAL);
-        try {
-          value.setValue(group.getType());
-          return true;
-        }
-  finally {
+        while (groupId != Record.NO_NEXT_RELATIONSHIP.intValue()) {
+          boolean groupRecordInUse=cursors.relationshipGroup().next(groupId,group,FORCE);
           groupId=group.getNext();
+          if (groupRecordInUse) {
+            value.setValue(group.getType());
+            return true;
+          }
         }
+        return false;
       }
       @Override public void close(){
       }

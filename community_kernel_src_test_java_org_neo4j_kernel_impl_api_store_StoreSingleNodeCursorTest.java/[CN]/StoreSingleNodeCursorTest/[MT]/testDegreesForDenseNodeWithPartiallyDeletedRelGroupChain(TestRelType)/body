@@ -1,0 +1,35 @@
+{
+  int inRelCount=randomRelCount();
+  int outRelCount=randomRelCount();
+  int loopRelCount=randomRelCount();
+  long nodeId=createNode(inRelCount,outRelCount,loopRelCount);
+  StoreSingleNodeCursor cursor=newCursor(nodeId);
+  for (  TestRelType type : typesToDelete) {
+    markRelGroupNotInUse(nodeId,type);
+switch (type) {
+case IN:
+      inRelCount=0;
+    break;
+case OUT:
+  outRelCount=0;
+break;
+case LOOP:
+loopRelCount=0;
+break;
+default :
+throw new IllegalArgumentException("Unknown type: " + type);
+}
+}
+Set<TestDegreeItem> expectedDegrees=new HashSet<>();
+if (outRelCount != 0) {
+expectedDegrees.add(new TestDegreeItem(relTypeId(TestRelType.OUT),outRelCount,0));
+}
+if (inRelCount != 0) {
+expectedDegrees.add(new TestDegreeItem(relTypeId(TestRelType.IN),0,inRelCount));
+}
+if (loopRelCount != 0) {
+expectedDegrees.add(new TestDegreeItem(relTypeId(TestRelType.LOOP),loopRelCount,loopRelCount));
+}
+Set<TestDegreeItem> actualDegrees=degrees(cursor);
+assertEquals(expectedDegrees,actualDegrees);
+}
