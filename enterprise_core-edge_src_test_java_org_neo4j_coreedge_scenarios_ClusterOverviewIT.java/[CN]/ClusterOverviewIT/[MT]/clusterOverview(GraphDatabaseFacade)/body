@@ -2,5 +2,11 @@
   KernelAPI kernel=db.getDependencyResolver().resolveDependency(KernelAPI.class);
   KernelTransaction transaction=kernel.newTransaction(Type.implicit,READ);
   Statement statement=transaction.acquireStatement();
-  return asList(statement.readOperations().procedureCallRead(procedureName("dbms","cluster",ClusterOverviewProcedure.NAME),new Object[0]));
+  RawIterator<Object[],ProcedureException> itr=statement.readOperations().procedureCallRead(procedureName("dbms","cluster",ClusterOverviewProcedure.PROCEDURE_NAME),null);
+  List<MemberInfo> infos=new ArrayList<>();
+  while (itr.hasNext()) {
+    Object[] row=itr.next();
+    infos.add(new MemberInfo((String)row[1],Role.valueOf((String)row[2])));
+  }
+  return infos;
 }
