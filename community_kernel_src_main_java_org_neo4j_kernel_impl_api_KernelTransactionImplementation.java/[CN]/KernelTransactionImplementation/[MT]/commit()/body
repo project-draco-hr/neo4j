@@ -15,15 +15,17 @@
       }
     }
     if (hasChanges()) {
+      statementLocks.prepareForCommit();
+      Locks.Client commitLocks=statementLocks.pessimistic();
       Collection<StorageCommand> extractedCommands=new ArrayList<>();
-      storageEngine.createCommands(extractedCommands,txState,storageStatement,locks,lastTransactionIdWhenStarted);
+      storageEngine.createCommands(extractedCommands,txState,storageStatement,commitLocks,lastTransactionIdWhenStarted);
       if (hasLegacyIndexChanges()) {
         legacyIndexTransactionState.extractCommands(extractedCommands);
       }
       if (!extractedCommands.isEmpty()) {
         PhysicalTransactionRepresentation transactionRepresentation=new PhysicalTransactionRepresentation(extractedCommands);
         TransactionHeaderInformation headerInformation=headerInformationFactory.create();
-        transactionRepresentation.setHeader(headerInformation.getAdditionalHeader(),headerInformation.getMasterId(),headerInformation.getAuthorId(),startTimeMillis,lastTransactionIdWhenStarted,clock.currentTimeMillis(),locks.getLockSessionId());
+        transactionRepresentation.setHeader(headerInformation.getAdditionalHeader(),headerInformation.getMasterId(),headerInformation.getAuthorId(),startTimeMillis,lastTransactionIdWhenStarted,clock.currentTimeMillis(),commitLocks.getLockSessionId());
         success=true;
         TransactionToApply batch=new TransactionToApply(transactionRepresentation);
         txId=commitProcess.commit(batch,commitEvent,INTERNAL);

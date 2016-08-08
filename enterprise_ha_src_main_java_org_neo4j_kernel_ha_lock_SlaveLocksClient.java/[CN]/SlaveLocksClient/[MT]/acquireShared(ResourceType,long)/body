@@ -1,16 +1,16 @@
 {
   assertNotStopped();
   Map<Long,AtomicInteger> lockMap=getLockMap(sharedLocks,resourceType);
-  AtomicInteger preExistingLock=lockMap.get(resourceId);
-  if (preExistingLock != null) {
-    preExistingLock.incrementAndGet();
-  }
- else   if (getReadLockOnMaster(resourceType,resourceId)) {
-    if (client.trySharedLock(resourceType,resourceId)) {
-      lockMap.put(resourceId,new AtomicInteger(1));
-    }
+  long[] newResourceIds=onlyFirstTimeLocks(lockMap,resourceIds);
+  if (newResourceIds.length > 0) {
+    acquireSharedOnMaster(resourceType,newResourceIds);
+    for (    long resourceId : newResourceIds) {
+      if (client.trySharedLock(resourceType,resourceId)) {
+        lockMap.put(resourceId,new AtomicInteger(1));
+      }
  else {
-      throw new LocalDeadlockDetectedException(client,localLockManager,resourceType,resourceId,READ);
+        throw new LocalDeadlockDetectedException(client,localLockManager,resourceType,resourceId,READ);
+      }
     }
   }
 }
