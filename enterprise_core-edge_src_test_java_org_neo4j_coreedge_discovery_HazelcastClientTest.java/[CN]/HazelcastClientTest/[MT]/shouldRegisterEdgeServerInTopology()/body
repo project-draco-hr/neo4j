@@ -5,10 +5,20 @@
   when(connector.connectToHazelcast()).thenReturn(hazelcastInstance);
   com.hazelcast.core.Cluster cluster=mock(Cluster.class);
   when(hazelcastInstance.getCluster()).thenReturn(cluster);
-  final ISet<Object> set=new HazelcastSet();
-  when(hazelcastInstance.getSet(anyString())).thenReturn(set);
-  Set<Member> members=asSet(makeMember(1),makeMember(2));
-  when(cluster.getMembers()).thenReturn(members);
-  client.currentTopology();
-  assertEquals(1,client.currentTopology().edgeMemberAddresses().size());
+  when(hazelcastInstance.getExecutorService(anyString())).thenReturn(new StubExecutorService());
+  ClientService clientService=mock(ClientService.class);
+  Client client1=mock(Client.class);
+  final String client1Id="1";
+  when(client1.getUuid()).thenReturn(client1Id);
+  Client client2=mock(Client.class);
+  final String client2Id="2";
+  when(client2.getUuid()).thenReturn(client2Id);
+  when(clientService.getConnectedClients()).thenReturn(asSet(client1,client2));
+  when(hazelcastInstance.getClientService()).thenReturn(clientService);
+  HazelcastMap hazelcastMap=new HazelcastMap();
+  hazelcastMap.put(client1Id,"localhost:9991");
+  hazelcastMap.put(client2Id,"localhost:9992");
+  when(hazelcastInstance.getMap(anyString())).thenReturn(hazelcastMap);
+  ClusterTopology clusterTopology=client.currentTopology();
+  assertEquals(2,clusterTopology.edgeMemberAddresses().size());
 }
