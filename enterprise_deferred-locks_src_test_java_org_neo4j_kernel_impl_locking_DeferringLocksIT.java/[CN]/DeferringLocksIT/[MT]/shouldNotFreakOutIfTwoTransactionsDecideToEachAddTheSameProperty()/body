@@ -1,0 +1,29 @@
+{
+  final Barrier.Control barrier=new Barrier.Control();
+  final Node node;
+  try (Transaction tx=db.beginTx()){
+    node=db.createNode();
+    tx.success();
+  }
+   t2.execute(new WorkerCommand<Void,Void>(){
+    @Override public Void doWork(    Void state) throws Exception {
+      try (Transaction tx=db.beginTx()){
+        node.setProperty(PROPERTY_KEY,VALUE_1);
+        tx.success();
+        barrier.reached();
+      }
+       return null;
+    }
+  }
+);
+  try (Transaction tx=db.beginTx()){
+    barrier.await();
+    node.setProperty(PROPERTY_KEY,VALUE_2);
+    tx.success();
+    barrier.release();
+  }
+   try (Transaction tx=db.beginTx()){
+    assertEquals(1,count(node.getPropertyKeys()));
+    tx.success();
+  }
+ }

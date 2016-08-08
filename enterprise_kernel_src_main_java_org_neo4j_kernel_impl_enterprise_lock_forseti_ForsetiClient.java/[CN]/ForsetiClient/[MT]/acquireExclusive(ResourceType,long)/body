@@ -4,26 +4,28 @@
   try {
     ConcurrentMap<Long,ForsetiLockManager.Lock> lockMap=lockMaps[resourceType.typeId()];
     PrimitiveLongIntMap heldLocks=exclusiveLockCounts[resourceType.typeId()];
-    int heldCount=heldLocks.get(resourceId);
-    if (heldCount != -1) {
-      heldLocks.put(resourceId,Math.incrementExact(heldCount));
-      return;
-    }
-    ForsetiLockManager.Lock existingLock;
-    int tries=0;
-    while ((existingLock=lockMap.putIfAbsent(resourceId,myExclusiveLock)) != null) {
-      assertNotStopped();
-      if (tries > 50 && existingLock instanceof SharedLock) {
-        SharedLock sharedLock=(SharedLock)existingLock;
-        if (tryUpgradeSharedToExclusive(resourceType,lockMap,resourceId,sharedLock)) {
-          break;
-        }
+    for (    long resourceId : resourceIds) {
+      int heldCount=heldLocks.get(resourceId);
+      if (heldCount != -1) {
+        heldLocks.put(resourceId,Math.incrementExact(heldCount));
+        continue;
       }
-      applyWaitStrategy(resourceType,tries++);
-      markAsWaitingFor(existingLock,resourceType,resourceId);
+      ForsetiLockManager.Lock existingLock;
+      int tries=0;
+      while ((existingLock=lockMap.putIfAbsent(resourceId,myExclusiveLock)) != null) {
+        assertNotStopped();
+        if (tries > 50 && existingLock instanceof SharedLock) {
+          SharedLock sharedLock=(SharedLock)existingLock;
+          if (tryUpgradeSharedToExclusive(resourceType,lockMap,resourceId,sharedLock)) {
+            break;
+          }
+        }
+        applyWaitStrategy(resourceType,tries++);
+        markAsWaitingFor(existingLock,resourceType,resourceId);
+      }
+      clearWaitList();
+      heldLocks.put(resourceId,1);
     }
-    clearWaitList();
-    heldLocks.put(resourceId,1);
   }
   finally {
     stateHolder.decrementActiveClients();

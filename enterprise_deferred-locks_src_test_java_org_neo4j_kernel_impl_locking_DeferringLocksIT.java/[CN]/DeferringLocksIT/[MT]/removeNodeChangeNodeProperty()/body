@@ -1,0 +1,42 @@
+{
+  final Barrier.Control barrier=new Barrier.Control();
+  final long nodeId;
+  try (Transaction tx=db.beginTx()){
+    Node node=db.createNode();
+    nodeId=node.getId();
+    node.setProperty(PROPERTY_KEY,VALUE_1);
+    tx.success();
+  }
+   Future<Void> future=t2.execute(new WorkerCommand<Void,Void>(){
+    @Override public Void doWork(    Void state) throws Exception {
+      try (Transaction tx=db.beginTx()){
+        db.getNodeById(nodeId).delete();
+        tx.success();
+        barrier.reached();
+      }
+       return null;
+    }
+  }
+);
+  try {
+    try (Transaction tx=db.beginTx()){
+      barrier.await();
+      db.getNodeById(nodeId).setProperty(PROPERTY_KEY,VALUE_2);
+      tx.success();
+      barrier.release();
+    }
+   }
+ catch (  TransactionFailureException e) {
+    assertThat(e.getCause(),instanceOf(InvalidRecordException.class));
+  }
+  future.get();
+  try (Transaction tx=db.beginTx()){
+    try {
+      db.getNodeById(nodeId);
+      assertEquals(VALUE_2,db.getNodeById(nodeId).getProperty(PROPERTY_KEY,VALUE_2));
+    }
+ catch (    NotFoundException e) {
+    }
+    tx.success();
+  }
+ }
