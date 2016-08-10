@@ -2,7 +2,11 @@
   long startTxId=Math.max(msg.txId(),TransactionIdStore.BASE_TX_ID);
   long endTxId=startTxId;
   boolean success=true;
-  if (transactionIdStore.getLastCommittedTransactionId() > startTxId) {
+  if (!this.storeId.equals(msg.storeId())) {
+    success=false;
+    log.info("Failed to serve TxPullRequest for tx %d and storeId %s because that storeId is different " + "from this machine with %s",endTxId,msg.storeId(),this.storeId);
+  }
+ else   if (transactionIdStore.getLastCommittedTransactionId() > startTxId) {
     try (IOCursor<CommittedTransactionRepresentation> cursor=logicalTransactionStore.getTransactions(startTxId + 1)){
       while (cursor.next()) {
         ctx.write(ResponseMessageType.TX);
