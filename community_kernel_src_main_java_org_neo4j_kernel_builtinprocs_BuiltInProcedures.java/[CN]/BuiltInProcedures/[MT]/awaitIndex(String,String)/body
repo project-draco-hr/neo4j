@@ -1,0 +1,19 @@
+{
+  ReadOperations operations=tx.acquireStatement().readOperations();
+  TokenNameLookup tokens=new StatementTokenNameLookup(operations);
+  int labelId=operations.labelGetForName(labelName);
+  if (labelId == ReadOperations.NO_SUCH_LABEL) {
+    throw new ProcedureException(Status.Schema.LabelAccessFailed,"No such label %s",labelName);
+  }
+  int propertyKeyId=operations.propertyKeyGetForName(propertyKeyName);
+  if (propertyKeyId == ReadOperations.NO_SUCH_PROPERTY_KEY) {
+    throw new ProcedureException(Status.Schema.PropertyKeyAccessFailed,"No such property key %s",propertyKeyName);
+  }
+  try {
+    IndexDescriptor index=operations.indexGetForLabelAndPropertyKey(labelId,propertyKeyId);
+    return Stream.of(new IndexResult("INDEX ON " + index.userDescription(tokens),operations.indexGetState(index).toString()));
+  }
+ catch (  SchemaRuleNotFoundException|IndexNotFoundKernelException e) {
+    throw new ProcedureException(Status.Schema.IndexNotFound,e,"No index on :%s(%s)",labelName,propertyKeyName);
+  }
+}
