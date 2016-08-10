@@ -1,11 +1,9 @@
 {
-  final Dependencies dependencies=platformModule.dependencies;
   final Config config=platformModule.config;
   final LogService logging=platformModule.logging;
   final FileSystemAbstraction fileSystem=platformModule.fileSystem;
   final LifeSupport life=platformModule.life;
   LogProvider logProvider=logging.getInternalLogProvider();
-  final Supplier<DatabaseHealth> databaseHealthSupplier=dependencies.provideDependency(DatabaseHealth.class);
   final CoreReplicatedContentMarshal marshal=new CoreReplicatedContentMarshal();
   int maxQueueSize=config.get(CoreEdgeClusterSettings.outgoing_queue_size);
   final SenderService senderService=new SenderService(new RaftChannelInitializer(marshal,logProvider),logProvider,platformModule.monitors,maxQueueSize,new NonBlockingChannels());
@@ -26,10 +24,10 @@
   StateStorage<VoteState> voteState;
   StateStorage<RaftMembershipState> raftMembershipStorage;
   try {
-    StateStorage<TermState> durableTermState=life.add(new DurableStateStorage<>(fileSystem,clusterStateDirectory,RAFT_TERM_NAME,new TermState.Marshal(),config.get(CoreEdgeClusterSettings.term_state_size),databaseHealthSupplier,logProvider));
+    StateStorage<TermState> durableTermState=life.add(new DurableStateStorage<>(fileSystem,clusterStateDirectory,RAFT_TERM_NAME,new TermState.Marshal(),config.get(CoreEdgeClusterSettings.term_state_size),logProvider));
     termState=new MonitoredTermStateStorage(durableTermState,platformModule.monitors);
-    voteState=life.add(new DurableStateStorage<>(fileSystem,clusterStateDirectory,RAFT_VOTE_NAME,new VoteState.Marshal(new MemberId.MemberIdMarshal()),config.get(CoreEdgeClusterSettings.vote_state_size),databaseHealthSupplier,logProvider));
-    raftMembershipStorage=life.add(new DurableStateStorage<>(fileSystem,clusterStateDirectory,RAFT_MEMBERSHIP_NAME,new RaftMembershipState.Marshal(),config.get(CoreEdgeClusterSettings.raft_membership_state_size),databaseHealthSupplier,logProvider));
+    voteState=life.add(new DurableStateStorage<>(fileSystem,clusterStateDirectory,RAFT_VOTE_NAME,new VoteState.Marshal(new MemberId.MemberIdMarshal()),config.get(CoreEdgeClusterSettings.vote_state_size),logProvider));
+    raftMembershipStorage=life.add(new DurableStateStorage<>(fileSystem,clusterStateDirectory,RAFT_MEMBERSHIP_NAME,new RaftMembershipState.Marshal(),config.get(CoreEdgeClusterSettings.raft_membership_state_size),logProvider));
   }
  catch (  IOException e) {
     throw new RuntimeException(e);
