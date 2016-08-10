@@ -1,19 +1,21 @@
 {
   EphemeralFileSystemAbstraction normalFSA=new EphemeralFileSystemAbstraction();
-  LongState persistedState=new LongState(normalFSA,testDir.directory(),14);
   long lastValue=0;
-  for (int i=0; i < 100; i++) {
-    long tempValue=lastValue + 1;
-    persistedState.setTheState(tempValue);
-    lastValue=tempValue;
+  try (LongState persistedState=new LongState(normalFSA,testDir.directory(),14)){
+    for (int i=0; i < 100; i++) {
+      long tempValue=lastValue + 1;
+      persistedState.setTheState(tempValue);
+      lastValue=tempValue;
+    }
   }
-  try {
+   try {
     new LongState(new AdversarialFileSystemAbstraction(new MethodGuardedAdversary(new CountingAdversary(1,true),FileSystemAbstraction.class.getMethod("open",File.class,String.class)),normalFSA),testDir.directory(),14);
     fail("Should have failed recovery");
   }
  catch (  Exception expected) {
-    ensureStackTraceContainsExpectedMethod(expected.getStackTrace(),"open");
+    ensureStackTraceContainsExpectedMethod(expected.getCause().getStackTrace(),"open");
   }
-  LongState recoveredState=new LongState(normalFSA,testDir.directory(),14);
-  assertThat(recoveredState.getTheState(),greaterThanOrEqualTo(lastValue));
-}
+  try (LongState recoveredState=new LongState(normalFSA,testDir.directory(),14)){
+    assertThat(recoveredState.getTheState(),greaterThanOrEqualTo(lastValue));
+  }
+ }

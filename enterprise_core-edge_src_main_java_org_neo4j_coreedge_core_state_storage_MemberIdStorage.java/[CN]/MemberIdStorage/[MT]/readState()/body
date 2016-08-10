@@ -1,0 +1,25 @@
+{
+  if (fileSystem.fileExists(file)) {
+    try (ReadableClosableChannel channel=new ReadAheadChannel<>(fileSystem.open(file,"r"))){
+      MemberId memberId=marshal.unmarshal(channel);
+      if (memberId != null) {
+        return memberId;
+      }
+    }
+ catch (    EndOfStreamException e) {
+      log.error("End of stream reached");
+    }
+  }
+ else {
+    log.warn("File does not exist");
+  }
+  fileSystem.mkdirs(file.getParentFile());
+  fileSystem.deleteFile(file);
+  UUID uuid=UUID.randomUUID();
+  MemberId memberId=new MemberId(uuid);
+  log.info(String.format("Generated new id: %s (%s)",memberId,uuid));
+  try (FlushableChannel channel=new PhysicalFlushableChannel(fileSystem.create(file))){
+    marshal.marshal(memberId,channel);
+  }
+   return memberId;
+}

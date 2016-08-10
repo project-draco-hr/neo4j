@@ -2,9 +2,8 @@
   EphemeralFileSystemAbstraction normalFSA=new EphemeralFileSystemAbstraction();
   AdversarialFileSystemAbstraction breakingFSA=new AdversarialFileSystemAbstraction(new MethodGuardedAdversary(new CountingAdversary(40,true),StoreChannel.class.getMethod("force",boolean.class)),normalFSA);
   SelectiveFileSystemAbstraction combinedFSA=new SelectiveFileSystemAbstraction(new File(new File(testDir.directory(),"long-state"),"long.a"),breakingFSA,normalFSA);
-  LongState persistedState=new LongState(combinedFSA,testDir.directory(),14);
   long lastValue=0;
-  try {
+  try (LongState persistedState=new LongState(combinedFSA,testDir.directory(),14)){
     while (true) {
       long tempValue=lastValue + 1;
       persistedState.setTheState(tempValue);
@@ -14,6 +13,7 @@
  catch (  Exception expected) {
     ensureStackTraceContainsExpectedMethod(expected.getStackTrace(),"force");
   }
-  LongState restoredState=new LongState(normalFSA,testDir.directory(),14);
-  assertThat(restoredState.getTheState(),greaterThanOrEqualTo(lastValue));
-}
+  try (LongState restoredState=new LongState(normalFSA,testDir.directory(),14)){
+    assertThat(restoredState.getTheState(),greaterThanOrEqualTo(lastValue));
+  }
+ }
