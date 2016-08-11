@@ -3,20 +3,25 @@
   coreParams.put(raft_log_pruning_strategy.name(),"keep_none");
   coreParams.put(raft_log_pruning_frequency.name(),"100ms");
   int numberOfTransactions=100;
+  Timeout timeout=new Timeout(systemUTC(),60,SECONDS);
   Cluster cluster=clusterRule.withSharedCoreParams(coreParams).startCluster();
-  CoreClusterMember leader=cluster.awaitCoreMemberWithRole(TIMEOUT_MS,Role.LEADER);
-  int followersLastLog=getMostRecentLogIdOn(leader);
-  while (followersLastLog < 2) {
-    doSomeTransactions(cluster,numberOfTransactions);
-    followersLastLog=getMostRecentLogIdOn(leader);
+  int firstServerLogFileCount;
+  CoreClusterMember firstServer;
+  do {
+    timeout.assertNotTimedOut();
+    firstServer=doSomeTransactions(cluster,numberOfTransactions);
+    firstServerLogFileCount=getMostRecentLogIdOn(firstServer);
   }
-  CoreClusterMember follower=cluster.awaitCoreMemberWithRole(TIMEOUT_MS,Role.FOLLOWER);
-  follower.shutdown();
-  int leadersOldestLog=getOldestLogIdOn(leader);
-  while (leadersOldestLog < followersLastLog + 10) {
-    doSomeTransactions(cluster,numberOfTransactions);
-    leadersOldestLog=getOldestLogIdOn(leader);
+ while (firstServerLogFileCount < 5);
+  firstServer.shutdown();
+  int oldestLogOnSecondServer;
+  CoreClusterMember secondServer;
+  do {
+    timeout.assertNotTimedOut();
+    secondServer=doSomeTransactions(cluster,numberOfTransactions);
+    oldestLogOnSecondServer=getOldestLogIdOn(secondServer);
   }
-  assertThat(leadersOldestLog,greaterThan(followersLastLog));
-  follower.start();
+ while (oldestLogOnSecondServer < firstServerLogFileCount + 5);
+  firstServer.start();
+  dataMatchesEventually(firstServer,cluster.coreMembers());
 }
