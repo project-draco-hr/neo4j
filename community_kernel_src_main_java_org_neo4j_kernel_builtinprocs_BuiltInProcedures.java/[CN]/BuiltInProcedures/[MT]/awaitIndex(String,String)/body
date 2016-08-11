@@ -1,22 +1,3 @@
 {
-  ReadOperations operations=tx.acquireStatement().readOperations();
-  int labelId=operations.labelGetForName(labelName);
-  if (labelId == ReadOperations.NO_SUCH_LABEL) {
-    throw new ProcedureException(Status.Schema.LabelAccessFailed,"No such label %s",labelName);
-  }
-  int propertyKeyId=operations.propertyKeyGetForName(propertyKeyName);
-  if (propertyKeyId == ReadOperations.NO_SUCH_PROPERTY_KEY) {
-    throw new ProcedureException(Status.Schema.PropertyKeyAccessFailed,"No such property key %s",propertyKeyName);
-  }
-  InternalIndexState state;
-  try {
-    IndexDescriptor index=operations.indexGetForLabelAndPropertyKey(labelId,propertyKeyId);
-    state=operations.indexGetState(index);
-  }
- catch (  SchemaRuleNotFoundException|IndexNotFoundKernelException e) {
-    throw new ProcedureException(Status.Schema.IndexNotFound,e,"No index on :%s(%s)",labelName,propertyKeyName);
-  }
-  if (state != ONLINE) {
-    throw new ProcedureException(Status.General.UnknownError,"Index not online");
-  }
+  new AwaitIndexProcedure(tx).execute(labelName,propertyKeyName);
 }
