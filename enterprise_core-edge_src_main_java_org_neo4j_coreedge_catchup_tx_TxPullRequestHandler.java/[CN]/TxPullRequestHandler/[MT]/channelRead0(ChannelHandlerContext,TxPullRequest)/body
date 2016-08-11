@@ -1,6 +1,7 @@
 {
   long startTxId=Math.max(msg.txId(),TransactionIdStore.BASE_TX_ID);
   long endTxId=startTxId;
+  boolean success=true;
   if (transactionIdStore.getLastCommittedTransactionId() > startTxId) {
     try (IOCursor<CommittedTransactionRepresentation> cursor=logicalTransactionStore.getTransactions(startTxId + 1)){
       while (cursor.next()) {
@@ -11,9 +12,13 @@
       }
       ctx.flush();
     }
-   }
+ catch (    NoSuchTransactionException e) {
+      success=false;
+      log.info("Failed to serve TxPullRequest for tx %d because the transaction does not exist.",endTxId);
+    }
+  }
   ctx.write(ResponseMessageType.TX_STREAM_FINISHED);
-  ctx.write(new TxStreamFinishedResponse(endTxId));
+  ctx.write(new TxStreamFinishedResponse(endTxId,success));
   ctx.flush();
   monitor.increment();
   protocol.expect(NextMessage.MESSAGE_TYPE);
