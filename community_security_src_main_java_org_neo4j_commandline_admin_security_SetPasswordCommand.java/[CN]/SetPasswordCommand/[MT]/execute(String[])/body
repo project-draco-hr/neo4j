@@ -1,9 +1,11 @@
 {
-  if (args.length < 2) {
+  Args parsedArgs=Args.parse(args);
+  if (parsedArgs.orphans().size() < 2) {
     throw new IncorrectUsage("Missing arguments: expected username and password");
   }
-  String username=args[0];
-  String password=args[1];
+  String username=parsedArgs.orphans().get(0);
+  String password=parsedArgs.orphans().get(1);
+  boolean shouldCreate=parsedArgs.asMap().containsKey("create") && (parsedArgs.asMap().get("create") == null || parsedArgs.asMap().get("create").toLowerCase().equals("true"));
   try {
     Config config=loadNeo4jConfig(homeDir,configDir);
     File authDir=config.get(auth_store_directory);
@@ -11,7 +13,19 @@
     userRepository.start();
     PasswordPolicy passwordPolicy=new BasicPasswordPolicy();
     BasicAuthManager authManager=new BasicAuthManager(userRepository,passwordPolicy,systemUTC());
-    authManager.setUserPassword(username,password);
+    try {
+      authManager.setUserPassword(username,password);
+      outsideWorld.stdOutLine("Changed password for user '" + username + "'");
+    }
+ catch (    InvalidArgumentsException e) {
+      if (shouldCreate && e.getMessage().contains("does not exist")) {
+        authManager.getUserManager().newUser(username,password,false);
+        outsideWorld.stdOutLine("Created new user '" + username + "'");
+      }
+ else {
+        throw e;
+      }
+    }
   }
  catch (  Exception e) {
     throw new CommandFailed("Failed to set password for '" + username + "': "+ e.getMessage(),e);
