@@ -1,0 +1,27 @@
+{
+  return new Supplier<ENTITY[]>(){
+    private String currentSourceDescription;
+    private long baseLineNumber;
+    private long basePosition;
+    @Override public ENTITY[] get(){
+      ENTITY[] batch=processing.next();
+      if (batch != null && batch.length > 0) {
+        ENTITY lastEntity=batch[batch.length - 1];
+        if (currentSourceDescription == null || !currentSourceDescription.equals(lastEntity.sourceDescription())) {
+          currentSourceDescription=lastEntity.sourceDescription();
+          baseLineNumber=basePosition=0;
+          currentSourceDescription=lastEntity.sourceDescription();
+        }
+        for (        ENTITY entity : batch) {
+          entity.rebase(baseLineNumber,basePosition);
+        }
+        if (lastEntity.sourceDescription().equals(currentSourceDescription)) {
+          baseLineNumber=lastEntity.lineNumber();
+          basePosition=lastEntity.position();
+        }
+      }
+      return batch;
+    }
+  }
+;
+}
