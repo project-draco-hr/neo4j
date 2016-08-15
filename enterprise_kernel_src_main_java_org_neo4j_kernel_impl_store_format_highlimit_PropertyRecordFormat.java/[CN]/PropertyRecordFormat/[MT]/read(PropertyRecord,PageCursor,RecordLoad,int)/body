@@ -2,10 +2,17 @@
   int offset=cursor.getOffset();
   byte headerByte=cursor.getByte();
   boolean inUse=isInUse(headerByte);
+  boolean useFixedReferences=has(headerByte,HEADER_BIT_FIXED_REFERENCE);
   if (mode.shouldLoad(inUse)) {
     int blockCount=headerByte >>> 4;
     long recordId=record.getId();
-    record.initialize(inUse,toAbsolute(Reference.decode(cursor),recordId),toAbsolute(Reference.decode(cursor),recordId));
+    if (useFixedReferences) {
+      readFixedReferencesRecord(record,cursor);
+    }
+ else {
+      record.initialize(inUse,toAbsolute(Reference.decode(cursor),recordId),toAbsolute(Reference.decode(cursor),recordId));
+    }
+    record.setUseFixedReferences(useFixedReferences);
     if ((blockCount > record.getBlockCapacity()) | (RECORD_SIZE - (cursor.getOffset() - offset) < blockCount * Long.BYTES)) {
       cursor.setCursorException("PropertyRecord claims to contain more blocks than can fit in a record");
       return;
