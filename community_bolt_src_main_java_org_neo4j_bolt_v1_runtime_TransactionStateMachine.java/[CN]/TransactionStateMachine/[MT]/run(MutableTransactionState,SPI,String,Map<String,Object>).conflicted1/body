@@ -1,25 +1,29 @@
 {
   if (statement.equalsIgnoreCase(BEGIN)) {
-    ctx.currentTransaction=spi.beginTransaction(ctx.authSubject);
-    ctx.currentResult=RecordStream.EMPTY;
     return EXPLICIT_TRANSACTION;
   }
  else   if (statement.equalsIgnoreCase(COMMIT)) {
-    throw new QueryExecutionKernelException(new InvalidSemanticsException("No current transaction to commit."));
+    ctx.currentTransaction.success();
+    ctx.currentTransaction.close();
+    ctx.currentTransaction=null;
+    long txId=spi.newestEncounteredTxId();
+    Bookmark bookmark=new Bookmark(txId);
+    ctx.currentResult=new BookmarkResult(bookmark);
+    return AUTO_COMMIT;
   }
  else   if (statement.equalsIgnoreCase(ROLLBACK)) {
-    throw new QueryExecutionKernelException(new InvalidSemanticsException("No current transaction to rollback."));
+    ctx.currentTransaction.failure();
+    ctx.currentTransaction.close();
+    ctx.currentTransaction=null;
+    ctx.currentResult=BoltResult.EMPTY;
+    return AUTO_COMMIT;
   }
  else   if (spi.isPeriodicCommit(statement)) {
-    Result result=executeQuery(ctx,spi,statement,params);
-    ctx.currentTransaction=spi.beginTransaction(ctx.authSubject);
-    ctx.currentResult=new CypherAdapterStream(result);
-    return AUTO_COMMIT;
+    throw new QueryExecutionKernelException(new InvalidSemanticsException("Executing queries that use periodic commit in an " + "open transaction is not possible."));
   }
  else {
-    ctx.currentTransaction=spi.beginTransaction(ctx.authSubject);
     Result result=executeQuery(ctx,spi,statement,params);
     ctx.currentResult=new CypherAdapterStream(result);
-    return AUTO_COMMIT;
+    return EXPLICIT_TRANSACTION;
   }
 }
