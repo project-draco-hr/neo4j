@@ -15,6 +15,7 @@
   boolean skipBadRelationships, skipDuplicateNodes, ignoreExtraColumns;
   Config dbConfig;
   OutputStream badOutput=null;
+  org.neo4j.unsafe.impl.batchimport.Configuration configuration=null;
   boolean success=false;
   try {
     storeDir=args.interpretOption(Options.STORE_DIR.key(),Converters.<File>mandatory(),Converters.toFile(),Validators.DIRECTORY_IS_WRITABLE,Validators.CONTAINS_NO_EXISTING_DATABASE);
@@ -32,8 +33,9 @@
     skipDuplicateNodes=args.getBoolean(Options.SKIP_DUPLICATE_NODES.key(),(Boolean)Options.SKIP_DUPLICATE_NODES.defaultValue(),true);
     ignoreExtraColumns=args.getBoolean(Options.IGNORE_EXTRA_COLUMNS.key(),(Boolean)Options.IGNORE_EXTRA_COLUMNS.defaultValue(),true);
     Collector badCollector=badCollector(badOutput,badTolerance,collect(skipBadRelationships,skipDuplicateNodes,ignoreExtraColumns));
-    input=new CsvInput(nodeData(inputEncoding,nodesFiles),defaultFormatNodeFileHeader(),relationshipData(inputEncoding,relationshipsFiles),defaultFormatRelationshipFileHeader(),idType,csvConfiguration(args,defaultSettingsSuitableForTests),badCollector);
     dbConfig=loadDbConfig(args.interpretOption(Options.DATABASE_CONFIG.key(),Converters.<File>optional(),Converters.toFile(),Validators.REGEX_FILE_EXISTS));
+    configuration=importConfiguration(processors,defaultSettingsSuitableForTests,dbConfig);
+    input=new CsvInput(nodeData(inputEncoding,nodesFiles),defaultFormatNodeFileHeader(),relationshipData(inputEncoding,relationshipsFiles),defaultFormatRelationshipFileHeader(),idType,csvConfiguration(args,defaultSettingsSuitableForTests),badCollector,configuration.maxNumberOfProcessors());
     success=true;
   }
  catch (  IllegalArgumentException e) {
@@ -50,7 +52,6 @@ catch (  IOException e) {
   LifeSupport life=new LifeSupport();
   LogService logService=life.add(StoreLogService.inLogsDirectory(fs,storeDir));
   life.start();
-  org.neo4j.unsafe.impl.batchimport.Configuration configuration=importConfiguration(processors,defaultSettingsSuitableForTests,dbConfig);
   BatchImporter importer=new ParallelBatchImporter(storeDir,configuration,logService,ExecutionMonitors.defaultVisible(),dbConfig);
   printOverview(storeDir,nodesFiles,relationshipsFiles);
   success=false;
