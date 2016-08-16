@@ -23,22 +23,14 @@
   life.add(dependencies.satisfyDependency(discoveryService));
   long logThresholdMillis=config.get(CoreEdgeClusterSettings.unknown_address_logging_throttle);
   int maxQueueSize=config.get(CoreEdgeClusterSettings.outgoing_queue_size);
-  final SenderService senderService=new SenderService(new RaftChannelInitializer(new CoreReplicatedContentMarshal(),logProvider),logProvider,platformModule.monitors,maxQueueSize,new NonBlockingChannels());
-  life.add(senderService);
-  final MessageLogger<MemberId> messageLogger;
-  if (config.get(CoreEdgeClusterSettings.raft_messages_log_enable)) {
-    File logsDir=config.get(GraphDatabaseSettings.logs_directory);
-    messageLogger=life.add(new BetterMessageLogger<>(myself,raftMessagesLog(logsDir)));
-  }
- else {
-    messageLogger=new NullMessageLogger<>();
-  }
-  RaftOutbound raftOutbound=new RaftOutbound(discoveryService,senderService,localDatabase,logProvider,logThresholdMillis);
-  Outbound<MemberId,RaftMessages.RaftMessage> loggingOutbound=new LoggingOutbound<>(raftOutbound,myself,messageLogger);
+  final SenderService raftSender=new SenderService(new RaftChannelInitializer(new CoreReplicatedContentMarshal(),logProvider),logProvider,platformModule.monitors,maxQueueSize);
+  life.add(raftSender);
+  final MessageLogger<MemberId> messageLogger=createMessageLogger(config,life,myself);
+  Outbound<MemberId,RaftMessages.RaftMessage> raftOutbound=new LoggingOutbound<>(new RaftOutbound(discoveryService,raftSender,localDatabase,logProvider,logThresholdMillis),myself,messageLogger);
   consensusModule=new ConsensusModule(myself,platformModule,raftOutbound,clusterStateDirectory,discoveryService);
   dependencies.satisfyDependency(consensusModule.raftMachine());
-  ReplicationModule replicationModule=new ReplicationModule(myself,platformModule,config,consensusModule,loggingOutbound,clusterStateDirectory,fileSystem,logProvider);
-  coreStateMachinesModule=new CoreStateMachinesModule(myself,platformModule,clusterStateDirectory,config,replicationModule.getReplicator(),consensusModule.raftMachine(),dependencies,localDatabase);
+  ReplicationModule replicationModule=new ReplicationModule(myself,platformModule,config,consensusModule,raftOutbound,clusterStateDirectory,fileSystem,logProvider);
+  CoreStateMachinesModule coreStateMachinesModule=new CoreStateMachinesModule(myself,platformModule,clusterStateDirectory,config,replicationModule.getReplicator(),consensusModule.raftMachine(),dependencies,localDatabase);
   this.idGeneratorFactory=coreStateMachinesModule.idGeneratorFactory;
   this.idTypeConfigurationProvider=coreStateMachinesModule.idTypeConfigurationProvider;
   this.labelTokenHolder=coreStateMachinesModule.labelTokenHolder;
