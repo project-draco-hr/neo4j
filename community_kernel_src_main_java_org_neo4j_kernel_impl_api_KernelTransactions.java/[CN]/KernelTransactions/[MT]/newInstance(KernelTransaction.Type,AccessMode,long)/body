@@ -1,0 +1,15 @@
+{
+  assertCurrentThreadIsNotBlockingNewTransactions();
+  newTransactionsLock.readLock().lock();
+  try {
+    assertDatabaseIsRunning();
+    TransactionId lastCommittedTransaction=transactionIdStore.getLastCommittedTransaction();
+    KernelTransactionImplementation tx=localTxPool.acquire();
+    StatementLocks statementLocks=statementLocksFactory.newInstance();
+    tx.initialize(lastCommittedTransaction.transactionId(),lastCommittedTransaction.commitTimestamp(),statementLocks,type,accessMode,timeout);
+    return tx;
+  }
+  finally {
+    newTransactionsLock.readLock().unlock();
+  }
+}
