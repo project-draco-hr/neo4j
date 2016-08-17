@@ -1,0 +1,17 @@
+{
+  Cluster cluster=clusterRule.withNumberOfEdgeMembers(0).startCluster();
+  List<AdvertisedSocketAddress> onlyServerZero=singletonList(Cluster.socketAddressForServer(0));
+  cluster.addCoreMemberWithIdAndInitialMembers(3,3,onlyServerZero).start();
+  cluster.addCoreMemberWithIdAndInitialMembers(4,3,onlyServerZero).start();
+  cluster.addCoreMemberWithIdAndInitialMembers(5,3,onlyServerZero).start();
+  cluster.removeCoreMemberWithMemberId(0);
+  cluster.removeCoreMemberWithMemberId(1);
+  cluster.removeCoreMemberWithMemberId(2);
+  cluster.shutdown();
+  cluster.start();
+  List<Object[]> currentMembers;
+  for (  CoreClusterMember member : cluster.coreMembers()) {
+    currentMembers=discoverClusterMembers(member.database());
+    assertThat(currentMembers,containsInAnyOrder(new Object[]{"127.0.0.1:8003"},new Object[]{"127.0.0.1:8004"},new Object[]{"127.0.0.1:8005"}));
+  }
+}
