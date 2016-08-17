@@ -1,0 +1,29 @@
+{
+  ClusterId localClusterId=clusterIdStorage.exists() ? clusterIdStorage.readState() : null;
+  BindingProcess binder=new BindingProcess(localClusterId,log);
+  long endTime=clock.millis() + timeoutMillis;
+  ClusterTopology topology=topologyService.currentTopology();
+  ClusterId commonClusterId;
+  while ((commonClusterId=binder.attempt(topology)) == null) {
+    if (clock.millis() < endTime) {
+      retryWaiter.apply();
+      topology=topologyService.currentTopology();
+    }
+ else {
+      throw new TimeoutException("Failed binding to cluster in time.");
+    }
+  }
+  if (localClusterId == null) {
+    clusterIdStorage.writeState(commonClusterId);
+  }
+  if (topology.canBeBootstrapped()) {
+    boolean success=topologyService.publishClusterId(commonClusterId);
+    if (!success) {
+      throw new BindingException("Failed to publish: " + commonClusterId);
+    }
+ else {
+      log.info("Published: " + commonClusterId);
+    }
+  }
+  return commonClusterId;
+}
