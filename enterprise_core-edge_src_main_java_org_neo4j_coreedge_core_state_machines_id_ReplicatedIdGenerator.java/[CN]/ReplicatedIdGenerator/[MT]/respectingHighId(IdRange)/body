@@ -1,8 +1,13 @@
 {
   int adjustment=0;
-  if (highId > idRange.getRangeStart()) {
-    adjustment=(int)(highId - idRange.getRangeStart());
+  long originalRangeStart=idRange.getRangeStart();
+  if (highId > originalRangeStart) {
+    adjustment=(int)(highId - originalRangeStart);
   }
-  IdRange adjustedForLocalHighId=new IdRange(idRange.getDefragIds(),max(this.highId,idRange.getRangeStart()),idRange.getRangeLength() - adjustment);
-  return adjustedForLocalHighId;
+  long rangeStart=max(this.highId,originalRangeStart);
+  int rangeLength=idRange.getRangeLength() - adjustment;
+  if (rangeLength <= 0) {
+    throw new IllegalStateException("IdAllocation state is probably corrupted or out of sync with the cluster. " + "Local highId is " + highId + " and allocation range is "+ idRange);
+  }
+  return new IdRange(idRange.getDefragIds(),rangeStart,rangeLength);
 }

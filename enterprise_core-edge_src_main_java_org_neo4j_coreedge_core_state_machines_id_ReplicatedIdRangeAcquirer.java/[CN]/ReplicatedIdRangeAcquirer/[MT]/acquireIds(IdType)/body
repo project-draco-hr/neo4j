@@ -2,20 +2,12 @@
   while (true) {
     long firstUnallocated=idAllocationStateMachine.firstUnallocated(idType);
     ReplicatedIdAllocationRequest idAllocationRequest=new ReplicatedIdAllocationRequest(me,idType,firstUnallocated,allocationChunk);
-    Future<Object> futureResult=replicator.replicate(idAllocationRequest,true);
-    try {
-      boolean success=(boolean)futureResult.get();
-      if (success) {
-        IdRange idRange=new IdRange(EMPTY_LONG_ARRAY,firstUnallocated,allocationChunk);
-        return new IdAllocation(idRange,-1,0);
-      }
- else {
-        log.info("Retrying ID generation due to conflict. Request was: " + idAllocationRequest);
-      }
+    if (replicateIdAllocationRequest(idType,idAllocationRequest)) {
+      IdRange idRange=new IdRange(EMPTY_LONG_ARRAY,firstUnallocated,allocationChunk);
+      return new IdAllocation(idRange,-1,0);
     }
- catch (    InterruptedException|ExecutionException e) {
-      log.error(format("Failed to acquire id range for idType %s",idType),e);
-      throw new IdGenerationException(e);
+ else {
+      log.info("Retrying ID generation due to conflict. Request was: " + idAllocationRequest);
     }
   }
 }
