@@ -11,34 +11,19 @@
   CopiedStoreRecovery copiedStoreRecovery=new CopiedStoreRecovery(config,platformModule.kernelExtensions.listFactories(),platformModule.pageCache);
   LocalDatabase localDatabase=new LocalDatabase(platformModule.storeDir,copiedStoreRecovery,new StoreFiles(new DefaultFileSystemAbstraction()),platformModule.dataSourceManager,platformModule.dependencies.provideDependency(TransactionIdStore.class),databaseHealthSupplier,logProvider);
   life.add(localDatabase);
-  MemberIdStorage memberIdStorage=new MemberIdStorage(fileSystem,clusterStateDirectory,CORE_MEMBER_ID_NAME,new MemberIdMarshal(),logProvider);
-  MemberId myself;
-  try {
-    myself=memberIdStorage.readState();
-  }
- catch (  IOException e) {
-    throw new RuntimeException(e);
-  }
-  discoveryService=discoveryServiceFactory.coreDiscoveryService(config,myself,logProvider);
-  life.add(dependencies.satisfyDependency(discoveryService));
+  IdentityModule identityModule=new IdentityModule(platformModule,clusterStateDirectory);
+  ClusteringModule clusteringModule=new ClusteringModule(discoveryServiceFactory,identityModule.myself(),platformModule,clusterStateDirectory);
+  topologyService=clusteringModule.topologyService();
   long logThresholdMillis=config.get(CoreEdgeClusterSettings.unknown_address_logging_throttle);
   int maxQueueSize=config.get(CoreEdgeClusterSettings.outgoing_queue_size);
-  final SenderService senderService=new SenderService(new RaftChannelInitializer(new CoreReplicatedContentMarshal(),logProvider),logProvider,platformModule.monitors,maxQueueSize,new NonBlockingChannels());
-  life.add(senderService);
-  final MessageLogger<MemberId> messageLogger;
-  if (config.get(CoreEdgeClusterSettings.raft_messages_log_enable)) {
-    File logsDir=config.get(GraphDatabaseSettings.logs_directory);
-    messageLogger=life.add(new BetterMessageLogger<>(myself,raftMessagesLog(logsDir)));
-  }
- else {
-    messageLogger=new NullMessageLogger<>();
-  }
-  RaftOutbound raftOutbound=new RaftOutbound(discoveryService,senderService,localDatabase,logProvider,logThresholdMillis);
-  Outbound<MemberId,RaftMessages.RaftMessage> loggingOutbound=new LoggingOutbound<>(raftOutbound,myself,messageLogger);
-  consensusModule=new ConsensusModule(myself,platformModule,raftOutbound,clusterStateDirectory,discoveryService);
+  final SenderService raftSender=new SenderService(new RaftChannelInitializer(new CoreReplicatedContentMarshal(),logProvider),logProvider,platformModule.monitors,maxQueueSize);
+  life.add(raftSender);
+  final MessageLogger<MemberId> messageLogger=createMessageLogger(config,life,identityModule.myself());
+  Outbound<MemberId,RaftMessages.RaftMessage> raftOutbound=new LoggingOutbound<>(new RaftOutbound(topologyService,raftSender,localDatabase,logProvider,logThresholdMillis),identityModule.myself(),messageLogger);
+  consensusModule=new ConsensusModule(identityModule.myself(),platformModule,raftOutbound,clusterStateDirectory,topologyService);
   dependencies.satisfyDependency(consensusModule.raftMachine());
-  ReplicationModule replicationModule=new ReplicationModule(myself,platformModule,config,consensusModule,loggingOutbound,clusterStateDirectory,fileSystem,logProvider);
-  coreStateMachinesModule=new CoreStateMachinesModule(myself,platformModule,clusterStateDirectory,config,replicationModule.getReplicator(),consensusModule.raftMachine(),dependencies,localDatabase);
+  ReplicationModule replicationModule=new ReplicationModule(identityModule.myself(),platformModule,config,consensusModule,raftOutbound,clusterStateDirectory,fileSystem,logProvider);
+  CoreStateMachinesModule coreStateMachinesModule=new CoreStateMachinesModule(identityModule.myself(),platformModule,clusterStateDirectory,config,replicationModule.getReplicator(),consensusModule.raftMachine(),dependencies,localDatabase);
   this.idGeneratorFactory=coreStateMachinesModule.idGeneratorFactory;
   this.idTypeConfigurationProvider=coreStateMachinesModule.idTypeConfigurationProvider;
   this.labelTokenHolder=coreStateMachinesModule.labelTokenHolder;
@@ -46,7 +31,7 @@
   this.relationshipTypeTokenHolder=coreStateMachinesModule.relationshipTypeTokenHolder;
   this.lockManager=coreStateMachinesModule.lockManager;
   this.commitProcessFactory=coreStateMachinesModule.commitProcessFactory;
-  CoreServerModule coreServerModule=new CoreServerModule(myself,platformModule,consensusModule,coreStateMachinesModule,replicationModule,clusterStateDirectory,discoveryService,localDatabase,messageLogger);
+  CoreServerModule coreServerModule=new CoreServerModule(identityModule.myself(),platformModule,consensusModule,coreStateMachinesModule,replicationModule,clusterStateDirectory,topologyService,localDatabase,messageLogger);
   editionInvariants(platformModule,dependencies,config,logging,life);
   dependencies.satisfyDependency(lockManager);
   life.add(consensusModule.raftTimeoutService());
