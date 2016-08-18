@@ -1,0 +1,16 @@
+{
+  BoltStateMachine machine=env.newMachine("bolt-test");
+  machine.init(USER_AGENT,emptyMap(),null);
+  machine.run("BEGIN",EMPTY_PARAMS,new NullResponseHandler());
+  machine.discardAll(new NullResponseHandler());
+  machine.run("CREATE (n:Victim)-[:REL]->()",EMPTY_PARAMS,new NullResponseHandler());
+  machine.discardAll(new NullResponseHandler());
+  BoltResponseRecorder recorder=new BoltResponseRecorder();
+  machine.run("this is not valid syntax",EMPTY_PARAMS,recorder);
+  assertThat(recorder.nextResponse(),failedWithStatus(Status.Statement.SyntaxError));
+  recorder.reset();
+  machine.ackFailure(recorder);
+  machine.run("ROLLBACK",EMPTY_PARAMS,recorder);
+  assertThat(recorder.nextResponse(),succeeded());
+  assertThat(recorder.nextResponse(),succeeded());
+}

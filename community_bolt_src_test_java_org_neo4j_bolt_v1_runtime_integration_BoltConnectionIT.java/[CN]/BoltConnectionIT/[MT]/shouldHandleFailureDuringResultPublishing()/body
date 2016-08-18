@@ -1,0 +1,29 @@
+{
+  BoltStateMachine machine=env.newMachine("<test>");
+  machine.init(USER_AGENT,emptyMap(),null);
+  final CountDownLatch pullAllCallbackCalled=new CountDownLatch(1);
+  final AtomicReference<Neo4jError> error=new AtomicReference<>();
+  machine.run("RETURN 1",EMPTY_PARAMS,new NullResponseHandler());
+  machine.pullAll(new BoltResponseHandler(){
+    @Override public void onStart(){
+    }
+    @Override public void addRecords(    RecordStream record) throws Exception {
+      throw new RuntimeException("Ooopsies!");
+    }
+    @Override public void addMetadata(    String key,    Object value){
+    }
+    @Override public void markFailed(    Neo4jError err){
+      error.set(err);
+      pullAllCallbackCalled.countDown();
+    }
+    @Override public void markIgnored(){
+    }
+    @Override public void onFinish(){
+    }
+  }
+);
+  assertTrue(pullAllCallbackCalled.await(30,TimeUnit.SECONDS));
+  final Neo4jError err=error.get();
+  assertThat(err.status(),equalTo((Status)Status.General.UnknownError));
+  assertThat(err.message(),CoreMatchers.containsString("Ooopsies!"));
+}

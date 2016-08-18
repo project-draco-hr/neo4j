@@ -1,0 +1,20 @@
+{
+  keepRunning=true;
+  ArrayList<Job> batch=new ArrayList<>(workQueueSize);
+  try {
+    while (keepRunning) {
+      Job job=jobQueue.poll(10,TimeUnit.SECONDS);
+      if (job != null) {
+        execute(job);
+        for (int jobCount=jobQueue.drainTo(batch); keepRunning && jobCount > 0; jobCount=jobQueue.drainTo(batch)) {
+          executeBatch(batch);
+        }
+      }
+    }
+  }
+ catch (  Throwable e) {
+    log.error("Worker for session '" + machine.key() + "' crashed: "+ e.getMessage(),e);
+    userLog.error("Fatal, worker for session '" + machine.key() + "' crashed. Please"+ " contact your support representative if you are unable to resolve this.",e);
+    machine.close();
+  }
+}

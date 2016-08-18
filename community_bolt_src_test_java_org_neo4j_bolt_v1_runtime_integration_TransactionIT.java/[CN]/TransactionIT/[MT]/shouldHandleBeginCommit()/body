@@ -1,14 +1,14 @@
 {
-  RecordingCallback<StatementMetadata,?> responses=new RecordingCallback<>();
-  Session session=env.newSession("<test>");
-  session.init("TestClient",emptyMap(),-1,null);
-  session.run("BEGIN",emptyMap(),responses);
-  session.discardAll(Session.Callbacks.noop());
-  session.run("CREATE (n:InTx)",emptyMap(),responses);
-  session.discardAll(Session.Callbacks.noop());
-  session.run("COMMIT",emptyMap(),responses);
-  session.discardAll(Session.Callbacks.noop());
-  assertThat(responses.next(),success());
-  assertThat(responses.next(),success());
-  assertThat(responses.next(),success());
+  BoltResponseRecorder recorder=new BoltResponseRecorder();
+  BoltStateMachine machine=env.newMachine("<test>");
+  machine.init("TestClient",emptyMap(),null);
+  machine.run("BEGIN",emptyMap(),recorder);
+  machine.discardAll(new NullResponseHandler());
+  machine.run("CREATE (n:InTx)",emptyMap(),recorder);
+  machine.discardAll(new NullResponseHandler());
+  machine.run("COMMIT",emptyMap(),recorder);
+  machine.discardAll(new NullResponseHandler());
+  assertThat(recorder.nextResponse(),succeeded());
+  assertThat(recorder.nextResponse(),succeeded());
+  assertThat(recorder.nextResponse(),succeeded());
 }

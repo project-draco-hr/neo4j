@@ -1,10 +1,10 @@
 {
-  RecordingCallback<StatementMetadata,?> runResponse=new RecordingCallback<>();
-  RecordingCallback<RecordStream,Object> pullResponse=new RecordingCallback<>();
-  Session session=env.newSession("<test>");
-  session.init("TestClient",emptyMap(),-1,null);
-  session.run("ROLLBACK",emptyMap(),runResponse);
-  session.pullAll(pullResponse);
-  assertThat(runResponse.next(),SessionMatchers.failedWith("rollback cannot be done when there is no open transaction in the session."));
-  assertThat(pullResponse.next(),SessionMatchers.ignored());
+  BoltResponseRecorder runRecorder=new BoltResponseRecorder();
+  BoltResponseRecorder pullAllRecorder=new BoltResponseRecorder();
+  BoltStateMachine machine=env.newMachine("<test>");
+  machine.init("TestClient",emptyMap(),null);
+  machine.run("ROLLBACK",emptyMap(),runRecorder);
+  machine.pullAll(pullAllRecorder);
+  assertThat(runRecorder.nextResponse(),failedWithStatus(Status.Statement.SemanticError));
+  assertThat(pullAllRecorder.nextResponse(),wasIgnored());
 }

@@ -1,27 +1,27 @@
 {
   return new Callable<Void>(){
-    private final byte[] init=chunk(Messages.init("TestClient",emptyMap()));
+    private final byte[] init=chunk(InitMessage.init("TestClient",emptyMap()));
     private final byte[] createAndRollback=chunk(run("BEGIN"),pullAll(),run("CREATE (n)"),pullAll(),run("ROLLBACK"),pullAll());
     private final byte[] matchAll=chunk(run("MATCH (n) RETURN n"),pullAll());
     @Override public Void call() throws Exception {
-      Connection client=cf.newInstance();
+      TransportConnection client=cf.newInstance();
       client.connect(address).send(acceptedVersions(1,0,0,0));
-      assertThat(client,eventuallyRecieves(new byte[]{0,0,0,1}));
+      assertThat(client,eventuallyReceives(new byte[]{0,0,0,1}));
       init(client);
       for (int i=0; i < iterationsToRun; i++) {
         creaeteAndRollback(client);
       }
       return null;
     }
-    private void init(    Connection client) throws Exception {
+    private void init(    TransportConnection client) throws Exception {
       client.send(init);
-      assertThat(client,eventuallyRecieves(msgSuccess()));
+      assertThat(client,eventuallyReceives(msgSuccess()));
     }
-    private void creaeteAndRollback(    Connection client) throws Exception {
+    private void creaeteAndRollback(    TransportConnection client) throws Exception {
       client.send(createAndRollback);
-      assertThat(client,eventuallyRecieves(msgSuccess(map("fields",asList())),msgSuccess(),msgSuccess(map("fields",asList())),msgSuccess(),msgSuccess(map("fields",asList())),msgSuccess()));
+      assertThat(client,eventuallyReceives(msgSuccess(map("fields",asList())),msgSuccess(),msgSuccess(map("fields",asList())),msgSuccess(),msgSuccess(map("fields",asList())),msgSuccess()));
       client.send(matchAll);
-      assertThat(client,eventuallyRecieves(msgSuccess(map("fields",asList("n"))),msgSuccess()));
+      assertThat(client,eventuallyReceives(msgSuccess(map("fields",asList("n"))),msgSuccess()));
     }
   }
 ;
