@@ -1,12 +1,15 @@
 {
+  Map<Object,MutableLong> types=typeCheckers.get(Thread.currentThread());
+  if (types == null) {
+    typeCheckers.put(Thread.currentThread(),types=new HashMap<>());
+  }
   for (  InputRelationship relationship : batch.input) {
     Object type=relationship.typeAsObject();
-    AtomicLong count=allTypes.get(type);
+    MutableLong count=types.get(type);
     if (count == null) {
-      AtomicLong existing=allTypes.putIfAbsent(type,count=new AtomicLong());
-      count=existing != null ? existing : count;
+      types.put(type,count=new MutableLong());
     }
-    count.incrementAndGet();
+    count.value++;
   }
   sender.send(batch);
 }
