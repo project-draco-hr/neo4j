@@ -1,2 +1,25 @@
 {
+  RaftMessages.NewEntry.BatchRequest batchRequest=null;
+  StoreId storeId=batch.get(0).storeId();
+  for (  RaftMessages.StoreIdAwareMessage storeIdAwareMessage : batch) {
+    if (batchRequest != null && !storeIdAwareMessage.storeId().equals(storeId)) {
+      handler.handle(new RaftMessages.StoreIdAwareMessage(storeId,batchRequest));
+      batchRequest=null;
+    }
+    storeId=storeIdAwareMessage.storeId();
+    RaftMessage message=storeIdAwareMessage.message();
+    if (message instanceof RaftMessages.NewEntry.Request) {
+      RaftMessages.NewEntry.Request newEntryRequest=(RaftMessages.NewEntry.Request)message;
+      if (batchRequest == null) {
+        batchRequest=new RaftMessages.NewEntry.BatchRequest(batch.size());
+      }
+      batchRequest.add(newEntryRequest.content());
+    }
+ else {
+      handler.handle(storeIdAwareMessage);
+    }
+  }
+  if (batchRequest != null) {
+    handler.handle(new RaftMessages.StoreIdAwareMessage(storeId,batchRequest));
+  }
 }

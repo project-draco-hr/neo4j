@@ -1,0 +1,29 @@
+{
+  long startTxId=Math.max(msg.txId(),TransactionIdStore.BASE_TX_ID);
+  long endTxId=startTxId;
+  boolean success=true;
+  if (!this.storeId.equals(msg.storeId())) {
+    success=false;
+    log.info("Failed to serve TxPullRequest for tx %d and storeId %s because that storeId is different " + "from this machine with %s",endTxId,msg.storeId(),this.storeId);
+  }
+ else   if (transactionIdStore.getLastCommittedTransactionId() > startTxId) {
+    try (IOCursor<CommittedTransactionRepresentation> cursor=logicalTransactionStore.getTransactions(startTxId + 1)){
+      while (cursor.next()) {
+        ctx.write(ResponseMessageType.TX);
+        CommittedTransactionRepresentation tx=cursor.get();
+        endTxId=tx.getCommitEntry().getTxId();
+        ctx.write(new TxPullResponse(storeId,tx));
+      }
+      ctx.flush();
+    }
+ catch (    NoSuchTransactionException e) {
+      success=false;
+      log.info("Failed to serve TxPullRequest for tx %d because the transaction does not exist.",endTxId);
+    }
+  }
+  ctx.write(ResponseMessageType.TX_STREAM_FINISHED);
+  ctx.write(new TxStreamFinishedResponse(endTxId,success));
+  ctx.flush();
+  monitor.increment();
+  protocol.expect(State.MESSAGE_TYPE);
+}
