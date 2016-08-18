@@ -8,7 +8,6 @@
   boolean createIfNotExists=false;
   boolean truncateExisting=false;
   boolean deleteOnClose=false;
-  boolean exclusiveMapping=false;
   boolean anyPageSize=false;
   for (  OpenOption option : openOptions) {
     if (option.equals(StandardOpenOption.CREATE)) {
@@ -19,9 +18,6 @@
     }
  else     if (option.equals(StandardOpenOption.DELETE_ON_CLOSE)) {
       deleteOnClose=true;
-    }
- else     if (option.equals(PageCacheOpenOptions.EXCLUSIVE)) {
-      exclusiveMapping=true;
     }
  else     if (option.equals(PageCacheOpenOptions.ANY_PAGE_SIZE)) {
       anyPageSize=true;
@@ -41,16 +37,6 @@
       if (truncateExisting) {
         throw new UnsupportedOperationException("Cannot truncate a file that is already mapped");
       }
-      if (exclusiveMapping || pagedFile.isExclusiveMapping()) {
-        String msg;
-        if (exclusiveMapping) {
-          msg="Cannot exclusively map file because it is already mapped: " + file;
-        }
- else {
-          msg="Cannot map file because it is already exclusively mapped: " + file;
-        }
-        throw new IOException(msg);
-      }
       pagedFile.incrementRefCount();
       pagedFile.markDeleteOnClose(deleteOnClose);
       return pagedFile;
@@ -60,7 +46,7 @@
   if (filePageSize < Long.BYTES) {
     throw new IllegalArgumentException("Cannot map files with a filePageSize (" + filePageSize + ") that is less than "+ Long.BYTES+ " bytes");
   }
-  MuninnPagedFile pagedFile=new MuninnPagedFile(file,this,filePageSize,swapperFactory,tracer,createIfNotExists,truncateExisting,exclusiveMapping);
+  MuninnPagedFile pagedFile=new MuninnPagedFile(file,this,filePageSize,swapperFactory,tracer,createIfNotExists,truncateExisting);
   pagedFile.incrementRefCount();
   pagedFile.markDeleteOnClose(deleteOnClose);
   current=new FileMapping(file,pagedFile);
