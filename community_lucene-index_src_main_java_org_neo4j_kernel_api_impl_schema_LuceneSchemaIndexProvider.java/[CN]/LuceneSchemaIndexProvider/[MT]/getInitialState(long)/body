@@ -1,25 +1,14 @@
 {
+  PartitionedIndexStorage indexStorage=getIndexStorage(indexId);
+  String failure=indexStorage.getStoredIndexFailure();
+  if (failure != null) {
+    return InternalIndexState.FAILED;
+  }
   try {
-    PartitionedIndexStorage indexStorage=getIndexStorage(indexId);
-    String failure=indexStorage.getStoredIndexFailure();
-    if (failure != null) {
-      failures.put(indexId,failure);
-      return InternalIndexState.FAILED;
-    }
     return indexIsOnline(indexStorage) ? InternalIndexState.ONLINE : InternalIndexState.POPULATING;
   }
- catch (  CorruptIndexException e) {
-    return InternalIndexState.FAILED;
-  }
-catch (  FileNotFoundException e) {
-    failures.put(indexId,"File not found: " + e.getMessage());
-    return InternalIndexState.FAILED;
-  }
-catch (  EOFException e) {
-    failures.put(indexId,"EOF encountered: " + e.getMessage());
-    return InternalIndexState.FAILED;
-  }
-catch (  IOException e) {
-    throw new RuntimeException(e);
+ catch (  IOException e) {
+    log.error("Failed to open index:" + indexId + ", requesting re-population.",e);
+    return InternalIndexState.POPULATING;
   }
 }
