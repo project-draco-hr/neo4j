@@ -1,0 +1,15 @@
+{
+  FakeClock clock=new FakeClock();
+  Map<Setting<?>,String> configMap=MapUtil.genericMap(GraphDatabaseSettings.execution_guard_enabled,Settings.TRUE,GraphDatabaseSettings.transaction_timeout,"2s",GraphDatabaseSettings.statement_timeout,"100s");
+  GraphDatabaseAPI database=startCustomDatabase(clock,configMap);
+  try (Transaction transaction=database.beginTx()){
+    clock.forward(3,TimeUnit.SECONDS);
+    transaction.success();
+    database.createNode();
+    fail("Transaction should be already terminated.");
+  }
+ catch (  GuardTimeoutException e) {
+    assertThat(e.getMessage(),startsWith("Transaction timeout."));
+  }
+  assertDatabaseDoesNotHaveNodes(database);
+}
