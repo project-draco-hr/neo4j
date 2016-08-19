@@ -1,0 +1,21 @@
+{
+  String[] files=directory.listAll();
+  if (files.length > 0) {
+    byte[] buffer=new byte[4 * 1024];
+    try (ZipOutputStream zip=new ZipOutputStream(new IndexOutputStream(directory,archiveName))){
+      for (      final String fileName : files) {
+        zip.putNextEntry(new ZipEntry(fileName));
+        try (IndexInput input=directory.openInput(fileName)){
+          for (long pos=0, size=input.length(); pos < size; ) {
+            int read=Math.min(buffer.length,(int)(size - pos));
+            input.readBytes(buffer,0,read);
+            pos+=read;
+            zip.write(buffer,0,read);
+          }
+        }
+         zip.closeEntry();
+        windowsSafeDelete(directory,fileName);
+      }
+    }
+   }
+}

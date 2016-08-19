@@ -1,27 +1,17 @@
 {
+  String failure=failureStorage.loadIndexFailure(indexId);
+  if (failure != null) {
+    return InternalIndexState.FAILED;
+  }
+  File indexLocation=folderLayout.getFolder(indexId);
   try {
-    String failure=failureStorage.loadIndexFailure(indexId);
-    if (failure != null) {
-      failures.put(indexId,failure);
-      return InternalIndexState.FAILED;
-    }
-    try (Directory directory=directoryFactory.open(folderLayout.getFolder(indexId))){
+    try (Directory directory=directoryFactory.open(indexLocation)){
       boolean status=LuceneIndexWriter.isOnline(directory);
       return status ? InternalIndexState.ONLINE : InternalIndexState.POPULATING;
     }
    }
- catch (  CorruptIndexException e) {
-    return InternalIndexState.FAILED;
-  }
-catch (  FileNotFoundException e) {
-    failures.put(indexId,"File not found: " + e.getMessage());
-    return InternalIndexState.FAILED;
-  }
-catch (  EOFException e) {
-    failures.put(indexId,"EOF encountered: " + e.getMessage());
-    return InternalIndexState.FAILED;
-  }
-catch (  IOException e) {
-    throw new RuntimeException(e);
+ catch (  IOException e) {
+    log.error("Failed to open index:" + indexId + ", requesting re-population.",e);
+    return InternalIndexState.POPULATING;
   }
 }
