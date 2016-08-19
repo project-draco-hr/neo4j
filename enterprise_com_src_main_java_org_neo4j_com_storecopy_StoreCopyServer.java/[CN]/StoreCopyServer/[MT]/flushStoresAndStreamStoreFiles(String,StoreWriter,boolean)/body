@@ -8,12 +8,18 @@
     try (ResourceIterator<StoreFileMetadata> files=dataSource.listStoreFiles(includeLogs)){
       while (files.hasNext()) {
         File file=files.next().file();
-        try (StoreChannel fileChannel=fileSystem.open(file,"r")){
+        final Optional<PagedFile> optionalPagedFile=pageCache.tryMappedPagedFile(file);
+        try (ReadableByteChannel fileChannel=optionalPagedFile.isPresent() ? optionalPagedFile.get().openReadableByteChannel() : fileSystem.open(file,"r")){
           monitor.startStreamingStoreFile(file);
           writer.write(relativePath(storeDirectory,file),fileChannel,temporaryBuffer,file.length() > 0);
           monitor.finishStreamingStoreFile(file);
         }
-       }
+  finally {
+          if (optionalPagedFile.isPresent()) {
+            optionalPagedFile.get().close();
+          }
+        }
+      }
     }
   finally {
       monitor.finishStreamingStoreFiles();
