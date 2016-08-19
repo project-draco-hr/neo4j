@@ -1,0 +1,55 @@
+{
+  final Map<String,NodeImpl> vertices=new HashMap<>();
+  final Map<String,Set<RelationshipImpl>> edges=new HashMap<>();
+  ReadOperations readOperations=kernelTransaction.acquireStatement().readOperations();
+  StatementTokenNameLookup statementTokenNameLookup=new StatementTokenNameLookup(readOperations);
+  try (Transaction transaction=graphDatabaseAPI.beginTx()){
+    ResourceIterator<Label> labelsInDatabase=graphDatabaseAPI.getAllLabelsInUse().iterator();
+    while (labelsInDatabase.hasNext()) {
+      Label label=labelsInDatabase.next();
+      Map<String,Object> properties=new HashMap<>();
+      Iterator<IndexDescriptor> indexDescriptorIterator=readOperations.indexesGetForLabel(readOperations.labelGetForName(label.name()));
+      ArrayList<String> indexes=new ArrayList<>();
+      while (indexDescriptorIterator.hasNext()) {
+        indexes.add(statementTokenNameLookup.propertyKeyGetName(indexDescriptorIterator.next().getPropertyKeyId()));
+      }
+      properties.put("indexes",indexes);
+      Iterator<NodePropertyConstraint> nodePropertyConstraintIterator=readOperations.constraintsGetForLabel(readOperations.labelGetForName(label.name()));
+      ArrayList<String> constraints=new ArrayList<>();
+      while (nodePropertyConstraintIterator.hasNext()) {
+        constraints.add(nodePropertyConstraintIterator.next().userDescription(statementTokenNameLookup));
+      }
+      properties.put("constraints",constraints);
+      getOrCreateLabel(label.name(),properties,vertices);
+    }
+    Iterator<RelationshipType> relationshipTypeIterator=graphDatabaseAPI.getAllRelationshipTypesInUse().iterator();
+    while (relationshipTypeIterator.hasNext()) {
+      RelationshipType relationshipType=relationshipTypeIterator.next();
+      String relationshipTypeGetName=relationshipType.name();
+      int relId=readOperations.relationshipTypeGetForName(relationshipTypeGetName);
+      ResourceIterator<Label> labelsInUse=graphDatabaseAPI.getAllLabelsInUse().iterator();
+      List<NodeImpl> startVertices=new LinkedList<>();
+      List<NodeImpl> endVertices=new LinkedList<>();
+      while (labelsInUse.hasNext()) {
+        Label labelToken=labelsInUse.next();
+        String labelName=labelToken.name();
+        Map<String,Object> properties=new HashMap<>();
+        NodeImpl vertex=getOrCreateLabel(labelName,properties,vertices);
+        int labelId=readOperations.labelGetForName(labelName);
+        if (readOperations.countsForRelationship(labelId,relId,ReadOperations.ANY_LABEL) > 0) {
+          startVertices.add(vertex);
+        }
+        if (readOperations.countsForRelationship(ReadOperations.ANY_LABEL,relId,labelId) > 0) {
+          endVertices.add(vertex);
+        }
+      }
+      for (      NodeImpl startVertex : startVertices) {
+        for (        NodeImpl endVertex : endVertices) {
+          RelationshipImpl edge=addEdge(startVertex,endVertex,relationshipTypeGetName,edges);
+        }
+      }
+    }
+    transaction.success();
+    return getGraphResult(vertices,edges);
+  }
+ }

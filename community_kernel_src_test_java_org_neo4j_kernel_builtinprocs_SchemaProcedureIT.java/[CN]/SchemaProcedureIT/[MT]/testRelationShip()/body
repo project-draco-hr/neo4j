@@ -1,0 +1,21 @@
+{
+  DataWriteOperations ops=dataWriteOperationsInNewTransaction();
+  long nodeIdPerson=ops.nodeCreate();
+  int labelIdPerson=ops.labelGetOrCreateForName("Person");
+  ops.nodeAddLabel(nodeIdPerson,labelIdPerson);
+  long nodeIdLocation=ops.nodeCreate();
+  int labelIdLocation=ops.labelGetOrCreateForName("Location");
+  ops.nodeAddLabel(nodeIdLocation,labelIdLocation);
+  ops.relationshipCreate(ops.relationshipTypeGetOrCreateForName("LIVES_IN"),nodeIdPerson,nodeIdLocation);
+  commit();
+  RawIterator<Object[],ProcedureException> stream=readOperationsInNewTransaction().procedureCallRead(procedureName("db","schema"),new Object[0]);
+  while (stream.hasNext()) {
+    Object[] next=stream.next();
+    assertTrue(next.length == 2);
+    LinkedList<Relationship> relationships=(LinkedList<Relationship>)next[1];
+    assertTrue(relationships.size() == 1);
+    assertEquals("LIVES_IN",relationships.get(0).getType().name());
+    assertThat(relationships.get(0).getStartNode().getLabels(),contains(equalTo(Label.label("Person"))));
+    assertThat(relationships.get(0).getEndNode().getLabels(),contains(equalTo(Label.label("Location"))));
+  }
+}

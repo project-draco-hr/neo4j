@@ -1,0 +1,25 @@
+{
+  DataWriteOperations ops=dataWriteOperationsInNewTransaction();
+  long nodeId=ops.nodeCreate();
+  int labelId=ops.labelGetOrCreateForName("Person");
+  ops.nodeAddLabel(nodeId,labelId);
+  int propertyIdName=ops.propertyKeyGetOrCreateForName("name");
+  int propertyIdAge=ops.propertyKeyGetOrCreateForName("age");
+  ops.nodeSetProperty(nodeId,DefinedProperty.stringProperty(propertyIdName,"Emil"));
+  commit();
+  SchemaWriteOperations schemaOps=schemaWriteOperationsInNewTransaction();
+  schemaOps.indexCreate(labelId,propertyIdName);
+  schemaOps.uniquePropertyConstraintCreate(labelId,propertyIdAge);
+  commit();
+  RawIterator<Object[],ProcedureException> stream=readOperationsInNewTransaction().procedureCallRead(procedureName("db","schema"),new Object[0]);
+  while (stream.hasNext()) {
+    Object[] next=stream.next();
+    assertTrue(next.length == 2);
+    ArrayList<Node> nodes=(ArrayList<Node>)next[0];
+    assertTrue(nodes.size() == 1);
+    assertThat(nodes.get(0).getLabels(),contains(equalTo(Label.label("Person"))));
+    assertEquals(nodes.get(0).getAllProperties().get("name"),new String("Person"));
+    assertEquals(nodes.get(0).getAllProperties().get("indexes"),Arrays.asList("name"));
+    assertEquals(nodes.get(0).getAllProperties().get("constraints"),Arrays.asList("CONSTRAINT ON ( person:Person ) ASSERT person.age IS UNIQUE"));
+  }
+}
