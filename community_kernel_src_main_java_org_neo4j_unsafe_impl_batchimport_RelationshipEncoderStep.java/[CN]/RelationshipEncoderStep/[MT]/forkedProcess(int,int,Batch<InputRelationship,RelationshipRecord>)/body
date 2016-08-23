@@ -1,0 +1,21 @@
+{
+  for (int i=0; i < batch.records.length; i++) {
+    RelationshipRecord relationship=batch.records[i];
+    long startNode=relationship.getFirstNode();
+    long endNode=relationship.getSecondNode();
+    if (startNode == -1 || endNode == -1) {
+      continue;
+    }
+    boolean loop=startNode == endNode;
+    if (startNode % processors == id) {
+      long firstNextRel=cache.getAndPutRelationship(startNode,loop ? BOTH : OUTGOING,relationship.getId(),true);
+      relationship.setFirstNextRel(firstNextRel);
+      if (loop) {
+        relationship.setSecondNextRel(firstNextRel);
+      }
+    }
+    if (!loop && endNode % processors == id) {
+      relationship.setSecondNextRel(cache.getAndPutRelationship(endNode,INCOMING,relationship.getId(),true));
+    }
+  }
+}

@@ -1,0 +1,23 @@
+{
+  applyProcessorCount();
+  int processorCount=forkedProcessors.size();
+  if (processorCount == 1) {
+    forkedProcess(0,1,batch);
+  }
+ else {
+    currentBatch=batch;
+    ticketThread=Thread.currentThread();
+    globalTicket++;
+    doneSignal.set(processorCount);
+    notifyProcessors();
+    while (doneSignal.get() > 0) {
+      LockSupport.park();
+    }
+    if (error != null) {
+      throw error;
+    }
+  }
+  if (downstream != null) {
+    sender.send(batch);
+  }
+}

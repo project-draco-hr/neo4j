@@ -1,0 +1,16 @@
+{
+  NodeRelationshipCache cache=mock(NodeRelationshipCache.class);
+  Collector collector=mock(Collector.class);
+  try (CalculateDenseNodesStep step=new CalculateDenseNodesStep(mock(StageControl.class),DEFAULT,cache,collector)){
+    step.processors(4);
+    step.start(0);
+    Batch<InputRelationship,RelationshipRecord> batch=batch(relationship(1,5),relationship(3,10),relationship("a",2,-1,2),relationship(2,"b",2,-1),relationship("c","d",-1,-1));
+    step.receive(0,batch);
+    step.endOfUpstream();
+    while (!step.isCompleted())     ;
+    verify(collector,times(1)).collectBadRelationship(any(InputRelationship.class),eq("a"));
+    verify(collector,times(1)).collectBadRelationship(any(InputRelationship.class),eq("b"));
+    verify(collector,times(1)).collectBadRelationship(any(InputRelationship.class),eq("c"));
+    verify(collector,times(1)).collectBadRelationship(any(InputRelationship.class),eq("d"));
+  }
+ }

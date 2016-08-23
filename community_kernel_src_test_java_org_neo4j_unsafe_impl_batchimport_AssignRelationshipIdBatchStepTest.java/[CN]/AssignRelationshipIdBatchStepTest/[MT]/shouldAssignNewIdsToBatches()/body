@@ -1,0 +1,14 @@
+{
+  try (Step<Batch<InputRelationship,RelationshipRecord>> step=new AssignRelationshipIdBatchStep(control,config,100);CapturingStep<Batch<InputRelationship,RelationshipRecord>> results=new CapturingStep<>(control,"end",config)){
+    step.setDownstream(results);
+    step.start(ORDER_SEND_DOWNSTREAM);
+    results.start(ORDER_SEND_DOWNSTREAM);
+    Batch<InputRelationship,RelationshipRecord> first=new Batch<>(new InputRelationship[config.batchSize()]);
+    step.receive(0,first);
+    Batch<InputRelationship,RelationshipRecord> second=new Batch<>(new InputRelationship[config.batchSize()]);
+    step.receive(1,second);
+    while (results.stats().stat(Keys.done_batches).asLong() < 2)     ;
+    assertEquals(100,first.firstRecordId);
+    assertEquals(100 + config.batchSize(),second.firstRecordId);
+  }
+ }
