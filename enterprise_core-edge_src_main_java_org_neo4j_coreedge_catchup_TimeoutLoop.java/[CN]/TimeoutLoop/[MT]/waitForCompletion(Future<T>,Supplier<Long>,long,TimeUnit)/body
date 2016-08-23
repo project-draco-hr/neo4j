@@ -1,0 +1,24 @@
+{
+  long remainingTimeoutMillis=timeUnit.toMillis(inactivityTimeout);
+  while (true) {
+    try {
+      return future.get(remainingTimeoutMillis,TimeUnit.MILLISECONDS);
+    }
+ catch (    InterruptedException e) {
+      Thread.interrupted();
+      throw new CatchUpClientException(e);
+    }
+catch (    ExecutionException e) {
+      throw new CatchUpClientException(e);
+    }
+catch (    TimeoutException e) {
+      long millisSinceLastResponse=millisSinceLastResponseSupplier.get();
+      if (millisSinceLastResponse < timeUnit.toMillis(inactivityTimeout)) {
+        remainingTimeoutMillis=timeUnit.toMillis(inactivityTimeout) - millisSinceLastResponse;
+      }
+ else {
+        throw new CatchUpClientException(e);
+      }
+    }
+  }
+}

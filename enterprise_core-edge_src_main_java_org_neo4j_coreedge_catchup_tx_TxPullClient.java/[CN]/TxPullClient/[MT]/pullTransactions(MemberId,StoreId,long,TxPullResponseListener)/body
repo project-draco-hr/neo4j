@@ -1,2 +1,22 @@
 {
+  try {
+    pullRequestMonitor.txPullRequest(startTxId);
+    return catchUpClient.makeBlockingRequest(from,new TxPullRequest(startTxId,storeId),30,SECONDS,new CatchUpResponseAdaptor<Long>(){
+      @Override public void onTxPullResponse(      CompletableFuture<Long> signal,      TxPullResponse response){
+        txPullResponseListener.onTxReceived(response);
+      }
+      @Override public void onTxStreamFinishedResponse(      CompletableFuture<Long> signal,      TxStreamFinishedResponse response){
+        if (response.isSuccess()) {
+          signal.complete(response.lastTransactionIdSent());
+        }
+ else {
+          signal.completeExceptionally(new NoSuchTransactionException(startTxId));
+        }
+      }
+    }
+);
+  }
+ catch (  CatchUpClientException|NoKnownAddressesException e) {
+    throw new StoreCopyFailedException(e);
+  }
 }

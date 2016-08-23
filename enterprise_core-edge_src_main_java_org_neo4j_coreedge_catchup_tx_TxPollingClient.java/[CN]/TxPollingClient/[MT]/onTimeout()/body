@@ -1,4 +1,25 @@
 {
   timeout.renew();
-  state.handler.onTimeout(this);
+  if (applier.workPending()) {
+    return;
+  }
+  MemberId transactionServer;
+  try {
+    transactionServer=connectionStrategy.coreMember();
+    pullRequestMonitor.txPullRequest(applier.lastAppliedTxId());
+    TxPullRequest txPullRequest=new TxPullRequest(applier.lastAppliedTxId(),localDatabase.get());
+    catchUpClient.makeBlockingRequest(transactionServer,txPullRequest,30,TimeUnit.SECONDS,new CatchUpResponseAdaptor<Long>(){
+      @Override public void onTxPullResponse(      CompletableFuture<Long> signal,      TxPullResponse response){
+        applier.queue(response.tx());
+        timeout.renew();
+      }
+      @Override public void onTxStreamFinishedResponse(      CompletableFuture<Long> signal,      TxStreamFinishedResponse response){
+        signal.complete(response.lastTransactionIdSent());
+      }
+    }
+);
+  }
+ catch (  Exception e) {
+    log.warn("Tx pull attempt failed, will retry at the next regularly scheduled polling attempt.",e);
+  }
 }
