@@ -1,12 +1,13 @@
 {
   final AssertableLogProvider logProvider=new AssertableLogProvider();
-  QuerySession session=session(SESSION_1_NAME);
-  FakeClock clock=getFaceClock();
+  QuerySession session=session(SESSION_1_NAME,"TestUser");
+  FakeClock clock=Clocks.fakeClock();
   QueryLogger queryLogger=queryLoggerWithParams(logProvider,clock);
   Map<String,Object> params=new HashMap<>();
   params.put("ages",Arrays.asList(41,42,43));
   queryLogger.startQueryExecution(session,QUERY_4,params);
   clock.forward(11,TimeUnit.MILLISECONDS);
   queryLogger.endSuccess(session);
-  logProvider.assertExactly(inLog(getClass()).info("%d ms: %s - %s - %s",11L,SESSION_1_NAME,QUERY_4,"{ages: [41, 42, 43]}"));
+  String expectedSessionString=String.format("%s [%s]",SESSION_1_NAME,"TestUser");
+  logProvider.assertExactly(inLog(getClass()).info("%d ms: %s - %s - %s",11L,expectedSessionString,QUERY_4,"{ages: [41, 42, 43]}"));
 }
