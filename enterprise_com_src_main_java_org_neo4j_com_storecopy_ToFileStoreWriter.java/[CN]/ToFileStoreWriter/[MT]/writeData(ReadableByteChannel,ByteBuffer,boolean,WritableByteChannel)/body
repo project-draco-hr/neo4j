@@ -1,10 +1,16 @@
 {
+  long totalToWrite=0;
   long totalWritten=0;
   if (hasData) {
     while (data.read(temporaryBuffer) >= 0) {
       temporaryBuffer.flip();
-      totalWritten+=temporaryBuffer.limit();
-      channel.write(temporaryBuffer);
+      totalToWrite+=temporaryBuffer.limit();
+      int bytesWritten;
+      while ((totalWritten+=(bytesWritten=channel.write(temporaryBuffer))) < totalToWrite) {
+        if (bytesWritten < 0) {
+          throw new IOException("Unable to write to disk, reported bytes written was " + bytesWritten);
+        }
+      }
       temporaryBuffer.clear();
     }
   }

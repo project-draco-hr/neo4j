@@ -2,7 +2,6 @@
   try {
     temporaryBuffer.clear();
     File file=new File(basePath,path);
-    file.getParentFile().mkdirs();
     String filename=file.getName();
     final Optional<StoreType> storeType=isStoreType(filename);
     final Optional<PagedFile> existingMapping=pageCache.getExistingMapping(file);
@@ -10,15 +9,16 @@
     try {
       if (existingMapping.isPresent()) {
         try (PagedFile pagedFile=existingMapping.get()){
-          return writeDataThroughPageCache(file,data,temporaryBuffer,hasData,pagedFile);
+          return writeDataThroughPageCache(pagedFile,data,temporaryBuffer,hasData);
         }
        }
- else       if (storeType.isPresent() && storeType.get().isRecordStore()) {
+      if (storeType.isPresent() && storeType.get().isRecordStore()) {
         try (PagedFile pagedFile=pageCache.map(file,pageCache.pageSize(),CREATE,WRITE)){
-          return writeDataThroughPageCache(file,data,temporaryBuffer,hasData,pagedFile);
+          return writeDataThroughPageCache(pagedFile,data,temporaryBuffer,hasData);
         }
        }
  else {
+        file.getParentFile().mkdirs();
         return writeDataThroughFileSystem(file,data,temporaryBuffer,hasData);
       }
     }
