@@ -5,12 +5,11 @@
   int usedPermits=0;
   if (bottleNeck.other() > 1.0f && batchesPassedSinceLastChange(bottleNeckStep,doneBatches) >= config.movingAverageSize()) {
     int optimalProcessorIncrement=min(max(1,(int)bottleNeck.other().floatValue() - 1),permits);
-    for (int i=0; i < optimalProcessorIncrement; i++) {
-      int before=bottleNeckStep.processors(0);
-      if (bottleNeckStep.processors(1) > before) {
-        lastChangedProcessors.put(bottleNeckStep,doneBatches);
-        usedPermits++;
-      }
+    int before=bottleNeckStep.processors(0);
+    int after=bottleNeckStep.processors(max(optimalProcessorIncrement,permits / 10));
+    if (after > before) {
+      lastChangedProcessors.put(bottleNeckStep,doneBatches);
+      usedPermits-=(after - before);
     }
   }
   return usedPermits;
