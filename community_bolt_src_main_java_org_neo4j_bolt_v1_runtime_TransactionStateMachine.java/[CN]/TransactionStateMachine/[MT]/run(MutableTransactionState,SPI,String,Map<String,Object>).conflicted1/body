@@ -1,7 +1,14 @@
 {
   if (statement.equalsIgnoreCase(BEGIN)) {
     ctx.currentTransaction=spi.beginTransaction(ctx.authSubject);
-    ctx.currentResult=RecordStream.EMPTY;
+    if (params.containsKey("bookmark")) {
+      final Bookmark bookmark=Bookmark.fromString(params.get("bookmark").toString());
+      spi.awaitUpToDate(bookmark.txId(),Duration.ofSeconds(30));
+      ctx.currentResult=new BookmarkResult(bookmark);
+    }
+ else {
+      ctx.currentResult=BoltResult.EMPTY;
+    }
     return EXPLICIT_TRANSACTION;
   }
  else   if (statement.equalsIgnoreCase(COMMIT)) {
