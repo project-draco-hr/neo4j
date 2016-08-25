@@ -15,6 +15,7 @@
   boolean skipBadRelationships, skipDuplicateNodes, ignoreExtraColumns;
   Config dbConfig;
   OutputStream badOutput=null;
+  int pageSize=-1;
   org.neo4j.unsafe.impl.batchimport.Configuration configuration=null;
   boolean success=false;
   try {
@@ -34,7 +35,8 @@
     ignoreExtraColumns=args.getBoolean(Options.IGNORE_EXTRA_COLUMNS.key(),(Boolean)Options.IGNORE_EXTRA_COLUMNS.defaultValue(),true);
     Collector badCollector=badCollector(badOutput,badTolerance,collect(skipBadRelationships,skipDuplicateNodes,ignoreExtraColumns));
     dbConfig=loadDbConfig(args.interpretOption(Options.DATABASE_CONFIG.key(),Converters.<File>optional(),Converters.toFile(),Validators.REGEX_FILE_EXISTS));
-    configuration=importConfiguration(processors,defaultSettingsSuitableForTests,dbConfig);
+    pageSize=toIntExact(Settings.parseLongWithUnit(args.get(Options.PAGE_SIZE.key(),String.valueOf(org.neo4j.unsafe.impl.batchimport.Configuration.DEFAULT.pageSize()))));
+    configuration=importConfiguration(processors,defaultSettingsSuitableForTests,dbConfig,pageSize);
     input=new CsvInput(nodeData(inputEncoding,nodesFiles),defaultFormatNodeFileHeader(),relationshipData(inputEncoding,relationshipsFiles),defaultFormatRelationshipFileHeader(),idType,csvConfiguration(args,defaultSettingsSuitableForTests),badCollector,configuration.maxNumberOfProcessors());
     success=true;
   }
