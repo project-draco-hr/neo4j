@@ -23,12 +23,15 @@
       mode=ProcedureSignature.Mode.READ_WRITE;
     }
   }
-  boolean deprecated=method.getAnnotation(Deprecated.class) != null;
-  String deprecatedBy=procedure.deprecatedBy();
-  if (!deprecated && !deprecatedBy.equals(ProcedureSignature.NOT_DEPRECATED)) {
-    deprecated=true;
-    log.warn("Use of @Procedure(deprecatedBy) without @Deprecated in " + procName);
+  String deprecatedBy=procedure.deprecatedBy().trim();
+  Optional<String> deprecated=Optional.empty();
+  if (method.isAnnotationPresent(Deprecated.class)) {
+    deprecated=Optional.of(deprecatedBy);
   }
-  ProcedureSignature signature=new ProcedureSignature(procName,inputSignature,outputMapper.signature(),mode,deprecated,deprecatedBy);
+ else   if (!deprecatedBy.isEmpty()) {
+    log.warn("Use of @Procedure(deprecatedBy) without @Deprecated in " + procName);
+    deprecated=Optional.of(deprecatedBy);
+  }
+  ProcedureSignature signature=new ProcedureSignature(procName,inputSignature,outputMapper.signature(),mode,deprecated);
   return new ReflectiveProcedure(signature,constructor,procedureMethod,outputMapper,setters);
 }
