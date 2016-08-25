@@ -1,0 +1,17 @@
+{
+  CommunityNeoServer neoServer=startNeoServer((GraphDatabaseFacade)database);
+  org.neo4j.driver.v1.Config driverConfig=getDriverConfig();
+  try (Driver driver=GraphDatabase.driver("bolt://localhost",driverConfig);Session session=driver.session()){
+    org.neo4j.driver.v1.Transaction transaction=session.beginTransaction();
+    transaction.run("create (n)").consume();
+    transaction.success();
+    clock.forward(3,TimeUnit.SECONDS);
+    try {
+      transaction.run("create (n)").consume();
+      fail("Transaction should be already terminated by execution guard.");
+    }
+ catch (    Exception expected) {
+    }
+  }
+   assertDatabaseDoesNotHaveNodes(database);
+}

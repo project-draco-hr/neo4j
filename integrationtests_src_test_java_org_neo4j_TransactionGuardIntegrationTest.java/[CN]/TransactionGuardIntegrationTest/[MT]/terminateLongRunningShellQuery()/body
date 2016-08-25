@@ -1,0 +1,16 @@
+{
+  GraphDatabaseShellServer shellServer=getGraphDatabaseShellServer(database);
+  try {
+    SameJvmClient client=getShellClient(shellServer);
+    CollectingOutput commandOutput=new CollectingOutput();
+    execute(shellServer,commandOutput,client.getId(),"begin Transaction");
+    clock.forward(3,TimeUnit.SECONDS);
+    execute(shellServer,commandOutput,client.getId(),"create (n);");
+    execute(shellServer,commandOutput,client.getId(),"commit");
+    fail("Transaction should be already terminated.");
+  }
+ catch (  ShellException e) {
+    assertThat(e.getMessage(),containsString("Transaction timeout."));
+  }
+  assertDatabaseDoesNotHaveNodes(database);
+}

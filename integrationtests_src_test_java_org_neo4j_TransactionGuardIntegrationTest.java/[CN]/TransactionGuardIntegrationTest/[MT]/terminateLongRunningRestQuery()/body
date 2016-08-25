@@ -1,0 +1,9 @@
+{
+  CommunityNeoServer neoServer=startNeoServer((GraphDatabaseFacade)database);
+  String transactionEndPoint=HTTP.POST(transactionUri(neoServer),singletonList(map("statement","create (n)"))).location();
+  clock.forward(3,TimeUnit.SECONDS);
+  HTTP.Response commitResponse=HTTP.POST(transactionEndPoint + "/commit");
+  assertEquals("Transaction should be already closed and not found.",404,commitResponse.status());
+  assertEquals("Transaction should be forcefully closed.",TransactionNotFound.code().serialize(),commitResponse.get("errors").findValue("code").asText());
+  assertDatabaseDoesNotHaveNodes(database);
+}
