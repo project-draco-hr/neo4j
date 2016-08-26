@@ -1,16 +1,23 @@
 {
   assertValidRoleName(roleName);
   assertValidUsername(username);
+  try {
 synchronized (this) {
-    getUser(username);
-    RoleRecord role=getRole(roleName);
-    RoleRecord newRole=role.augment().withUser(username).build();
-    try {
-      roleRepository.update(role,newRole);
+      getUser(username);
+      RoleRecord role=getRole(roleName);
+      RoleRecord newRole=role.augment().withUser(username).build();
+      try {
+        roleRepository.update(role,newRole);
+      }
+ catch (      ConcurrentModificationException e) {
+        addRoleToUser(roleName,username);
+      }
     }
- catch (    ConcurrentModificationException e) {
-      addRoleToUser(roleName,username);
-    }
+    securityLog.info("Role `%s` added to user `%s`",escape(roleName),escape(username));
+  }
+ catch (  InvalidArgumentsException e) {
+    securityLog.error("Role `%s` not added to user `%s`: %s",escape(roleName),escape(username),e.getMessage());
+    throw e;
   }
   clearCachedAuthorizationInfoForUser(username);
 }
