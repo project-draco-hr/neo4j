@@ -1,9 +1,9 @@
 {
   final AssertableLogProvider logProvider=new AssertableLogProvider();
-  QuerySession session1=session(SESSION_1_NAME);
-  QuerySession session2=session(SESSION_2_NAME);
-  QuerySession session3=session(SESSION_3_NAME);
-  FakeClock clock=getFaceClock();
+  QuerySession session1=session(SESSION_1_NAME,"TestUser1");
+  QuerySession session2=session(SESSION_2_NAME,"TestUser2");
+  QuerySession session3=session(SESSION_3_NAME,"TestUser3");
+  FakeClock clock=Clocks.fakeClock();
   QueryLogger queryLogger=queryLoggerWithoutParams(logProvider,clock);
   queryLogger.startQueryExecution(session1,QUERY_1,Collections.emptyMap());
   clock.forward(1,TimeUnit.MILLISECONDS);
@@ -16,5 +16,7 @@
   queryLogger.endSuccess(session2);
   clock.forward(7,TimeUnit.MILLISECONDS);
   queryLogger.endSuccess(session1);
-  logProvider.assertExactly(inLog(getClass()).info("%d ms: %s - %s",15L,SESSION_2_NAME,QUERY_2),inLog(getClass()).info("%d ms: %s - %s",23L,SESSION_1_NAME,QUERY_1));
+  String expectedSession1String=String.format("%s [%s]",SESSION_1_NAME,"TestUser1");
+  String expectedSession2String=String.format("%s [%s]",SESSION_2_NAME,"TestUser2");
+  logProvider.assertExactly(inLog(getClass()).info("%d ms: %s - %s",15L,expectedSession2String,QUERY_2),inLog(getClass()).info("%d ms: %s - %s",23L,expectedSession1String,QUERY_1));
 }
