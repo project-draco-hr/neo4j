@@ -1,17 +1,21 @@
 {
   ShiroSubject subject;
   ShiroAuthToken token=new ShiroAuthToken(authToken);
+  String username=escape(authToken.get(AuthToken.PRINCIPAL).toString());
   try {
     subject=(ShiroSubject)securityManager.login(null,token);
+    securityLog.info("Login success for user `%s`",username);
   }
  catch (  UnsupportedTokenException e) {
     throw new InvalidAuthTokenException(e.getCause().getMessage());
   }
 catch (  ExcessiveAttemptsException e) {
     subject=new ShiroSubject(securityManager,AuthenticationResult.TOO_MANY_ATTEMPTS);
+    securityLog.error("Login fail for user `%s` - too many failed attempts.",username);
   }
 catch (  AuthenticationException e) {
     subject=new ShiroSubject(securityManager,AuthenticationResult.FAILURE);
+    securityLog.error("Login fail for user `%s`",username);
   }
   return new StandardEnterpriseAuthSubject(this,subject);
 }
