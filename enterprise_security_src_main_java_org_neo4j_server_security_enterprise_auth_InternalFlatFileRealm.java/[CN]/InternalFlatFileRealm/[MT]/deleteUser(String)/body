@@ -1,15 +1,21 @@
 {
   boolean result=false;
+  try {
 synchronized (this) {
-    User user=getUser(username);
-    if (userRepository.delete(user)) {
-      removeUserFromAllRoles(username);
-      result=true;
-    }
+      User user=getUser(username);
+      if (userRepository.delete(user)) {
+        removeUserFromAllRoles(username);
+        result=true;
+      }
  else {
-      getUser(username);
+        getUser(username);
+      }
     }
+    clearCacheForUser(username);
+    securityLog.info("User deleted: `%s`",username);
   }
-  clearCacheForUser(username);
+ catch (  InvalidArgumentsException e) {
+    securityLog.error("User deletion failed for user `%s`: %s",username,e.getMessage());
+  }
   return result;
 }
