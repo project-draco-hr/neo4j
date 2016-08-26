@@ -1,0 +1,16 @@
+{
+  assertValidRoleName(roleName);
+  assertValidUsername(username);
+synchronized (this) {
+    getUser(username);
+    RoleRecord role=getRole(roleName);
+    RoleRecord newRole=role.augment().withoutUser(username).build();
+    try {
+      roleRepository.update(role,newRole);
+    }
+ catch (    ConcurrentModificationException e) {
+      removeRoleFromUser(roleName,username);
+    }
+  }
+  clearCachedAuthorizationInfoForUser(username);
+}
