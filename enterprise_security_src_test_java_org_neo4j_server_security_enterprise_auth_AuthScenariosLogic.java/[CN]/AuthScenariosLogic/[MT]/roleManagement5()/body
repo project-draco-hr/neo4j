@@ -3,10 +3,13 @@
   assertEmpty(adminSubject,"CALL dbms.security.addRoleToUser('" + PUBLISHER + "', 'Henrik')");
   S henrik=neo.login("Henrik","bar");
   neo.assertAuthenticated(henrik);
-  ThreadedTransactionCreate<S> write=new ThreadedTransactionCreate<>(neo);
+  DoubleLatch latch=new DoubleLatch(2);
+  ThreadedTransactionCreate<S> write=new ThreadedTransactionCreate<>(neo,latch);
   write.execute(threading,henrik);
-  write.barrier.await();
+  latch.start();
   assertEmpty(adminSubject,"CALL dbms.security.removeRoleFromUser('" + PUBLISHER + "', 'Henrik')");
-  write.closeAndAssertException(AuthorizationViolationException.class,"Write operations are not allowed for 'Henrik'.");
+  write.finish();
+  latch.finishAndWaitForAll();
+  write.closeAndAssertSuccess();
   testFailWrite(henrik);
 }
