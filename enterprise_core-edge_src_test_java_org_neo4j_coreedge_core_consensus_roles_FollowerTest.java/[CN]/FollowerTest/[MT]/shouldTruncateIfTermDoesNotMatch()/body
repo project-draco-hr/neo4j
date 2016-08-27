@@ -1,11 +1,13 @@
 {
+  RaftLog entryLog=new InMemoryRaftLog();
+  entryLog.append(new RaftLogEntry(0,new RaftTestGroup(0)));
   int term=1;
-  RaftState state=raftState().myself(myself).term(term).build();
+  RaftState state=raftState().myself(myself).entryLog(entryLog).term(term).build();
   Follower follower=new Follower();
-  state.update(follower.handle(new AppendEntries.Request(member1,1,-1,-1,new RaftLogEntry[]{new RaftLogEntry(2,ContentGenerator.content())},-1),state,log()));
+  state.update(follower.handle(new AppendEntries.Request(member1,1,0,0,new RaftLogEntry[]{new RaftLogEntry(2,ContentGenerator.content())},0),state,log()));
   RaftLogEntry[] entries={new RaftLogEntry(1,new ReplicatedString("commit this!"))};
-  Outcome outcome=follower.handle(new AppendEntries.Request(member1,1,-1,-1,entries,-1),state,log());
+  Outcome outcome=follower.handle(new AppendEntries.Request(member1,1,0,0,entries,0),state,log());
   state.update(outcome);
-  assertEquals(0,state.entryLog().appendIndex());
-  assertEquals(1,state.entryLog().readEntryTerm(0));
+  assertEquals(1,state.entryLog().appendIndex());
+  assertEquals(1,state.entryLog().readEntryTerm(1));
 }

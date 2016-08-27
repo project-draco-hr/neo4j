@@ -1,14 +1,13 @@
 {
   try {
     log.info("Copying store from %s",from);
-    long lastFlushedTxId=storeCopyClient.copyStoreFiles(from,new StreamToDisk(storeDir,fs));
-    log.info("Store files streamed up to %d",lastFlushedTxId);
-    try (TransactionLogCatchUpWriter writer=transactionLogFactory.create(storeDir,fs,pageCache,logProvider)){
-      log.info("Pulling transactions from: %d",lastFlushedTxId - 1);
-      long lastPulledTxId=txPullClient.pullTransactions(from,storeId,lastFlushedTxId - 1,writer);
-      log.info("Txs streamed up to %d",lastPulledTxId);
+    long lastFlushedTxId=storeCopyClient.copyStoreFiles(from,expectedStoreId,new StreamToDisk(destDir,fs));
+    log.info("Store files need to be recovered starting from: %d",lastFlushedTxId);
+    CatchupResult catchupResult=pullTransactions(from,expectedStoreId,destDir,lastFlushedTxId);
+    if (catchupResult != SUCCESS) {
+      throw new StoreCopyFailedException("Failed to pull transactions: " + catchupResult);
     }
-   }
+  }
  catch (  IOException e) {
     throw new StoreCopyFailedException(e);
   }
