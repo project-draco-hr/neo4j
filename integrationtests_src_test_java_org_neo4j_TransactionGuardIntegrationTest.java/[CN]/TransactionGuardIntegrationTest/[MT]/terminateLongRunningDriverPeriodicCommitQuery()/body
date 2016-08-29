@@ -1,0 +1,13 @@
+{
+  GraphDatabaseAPI database=startDatabaseWithTimeoutCustomGuard();
+  CommunityNeoServer neoServer=startNeoServer((GraphDatabaseFacade)database);
+  org.neo4j.driver.v1.Config driverConfig=getDriverConfig();
+  try (Driver driver=GraphDatabase.driver("bolt://localhost:" + boltPortCustomGuard,driverConfig);Session session=driver.session()){
+    URL url=prepareTestImportFile(8);
+    session.run("USING PERIODIC COMMIT 5 LOAD CSV FROM '" + url + "' AS line CREATE ();").consume();
+    fail("Transaction should be already terminated by execution guard.");
+  }
+ catch (  Exception expected) {
+  }
+  assertDatabaseDoesNotHaveNodes(database);
+}
