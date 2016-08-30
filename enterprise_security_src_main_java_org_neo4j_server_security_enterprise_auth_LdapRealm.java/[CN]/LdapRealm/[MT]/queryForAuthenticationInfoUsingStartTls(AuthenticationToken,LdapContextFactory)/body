@@ -1,27 +1,9 @@
 {
-  JndiLdapContextFactory jndiLdapContextFactory=(JndiLdapContextFactory)ldapContextFactory;
-  Object principal=token.getPrincipal();
+  Object principal=getLdapPrincipal(token);
   Object credentials=token.getCredentials();
-  principal=getLdapPrincipal(token);
   LdapContext ctx=null;
-  Hashtable<String,Object> env=new Hashtable<>();
-  env.put(Context.INITIAL_CONTEXT_FACTORY,jndiLdapContextFactory.getContextFactoryClassName());
-  env.put(Context.PROVIDER_URL,jndiLdapContextFactory.getUrl());
   try {
-    ctx=new InitialLdapContext(env,null);
-    StartTlsRequest startTlsRequest=new StartTlsRequest();
-    StartTlsResponse tls=(StartTlsResponse)ctx.extendedOperation(startTlsRequest);
-    try {
-      tls.negotiate();
-    }
- catch (    IOException e) {
-      log.error("Failed to negotiate TLS connection",e);
-      throw new CommunicationException(e.getMessage());
-    }
-    ctx.addToEnvironment(Context.SECURITY_AUTHENTICATION,((JndiLdapContextFactory)ldapContextFactory).getAuthenticationMechanism());
-    ctx.addToEnvironment(Context.SECURITY_PRINCIPAL,principal);
-    ctx.addToEnvironment(Context.SECURITY_CREDENTIALS,credentials);
-    ctx.reconnect(ctx.getConnectControls());
+    ctx=getLdapContextUsingStartTls(ldapContextFactory,principal,credentials);
     return createAuthenticationInfo(token,principal,credentials,ctx);
   }
   finally {
