@@ -3,25 +3,25 @@
   if (groupToRoleMappingString != null) {
     for (    String groupAndRoles : groupToRoleMappingString.split(GROUP_DELIMITER)) {
       if (!groupAndRoles.isEmpty()) {
-        String[] parts=groupAndRoles.split(KEY_VALUE_DELIMITER,2);
-        if (parts.length != 2) {
+        Matcher matcher=keyValuePattern.matcher(groupAndRoles);
+        if (!(matcher.find() && matcher.groupCount() == 6)) {
           String errorMessage=String.format("Failed to parse setting %s: wrong number of fields",SecuritySettings.ldap_authorization_group_to_role_mapping.name());
           log.error(errorMessage);
           throw new IllegalArgumentException(errorMessage);
         }
-        String group=parts[0];
+        String group=matcher.group(2) != null ? matcher.group(2) : matcher.group(3) != null ? matcher.group(3) : matcher.group(4) != null ? matcher.group(4) : matcher.group(5) != null ? matcher.group(5) : "";
         if (group.isEmpty()) {
           String errorMessage=String.format("Failed to parse setting %s: empty group name",SecuritySettings.ldap_authorization_group_to_role_mapping.name());
           log.error(errorMessage);
           throw new IllegalArgumentException(errorMessage);
         }
         Collection<String> roleList=new ArrayList<>();
-        for (        String role : parts[1].split(ROLE_DELIMITER)) {
+        for (        String role : matcher.group(6).trim().split(ROLE_DELIMITER)) {
           if (!role.isEmpty()) {
             roleList.add(role);
           }
         }
-        map.put(group,roleList);
+        map.put(group.toLowerCase(),roleList);
       }
     }
   }
