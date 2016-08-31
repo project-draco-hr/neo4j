@@ -1,0 +1,13 @@
+{
+  Path databaseDirectory=homeDir.resolve("data/databases/foo.db");
+  Files.createDirectories(databaseDirectory);
+  new StoreLocker(new DefaultFileSystemAbstraction()).checkLock(databaseDirectory.toFile());
+  Path lockFile=databaseDirectory.resolve(StoreLocker.STORE_LOCK_FILENAME);
+  try (Closeable ignored=withPermissions(lockFile,emptySet())){
+    execute("foo.db");
+    fail("expected exception");
+  }
+ catch (  CommandFailed e) {
+    assertThat(e.getMessage(),equalTo("you do not have permission to dump the database -- is Neo4j " + "running as a different user?"));
+  }
+}
