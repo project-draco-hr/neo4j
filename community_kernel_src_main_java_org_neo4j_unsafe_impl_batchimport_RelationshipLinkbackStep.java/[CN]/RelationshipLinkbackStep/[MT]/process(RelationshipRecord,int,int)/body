@@ -1,0 +1,51 @@
+{
+  boolean processFirst=record.getFirstNode() % processors == id;
+  boolean processSecond=record.getSecondNode() % processors == id;
+  if (!processFirst && !processSecond) {
+    return true;
+  }
+  boolean firstIsDense=cache.isDense(record.getFirstNode());
+  boolean changed=false;
+  boolean isLoop=record.getFirstNode() == record.getSecondNode();
+  if (isLoop) {
+    if (firstIsDense == denseNodes) {
+      if (processFirst) {
+        long prevRel=cache.getAndPutRelationship(record.getFirstNode(),Direction.BOTH,record.getId(),false);
+        if (prevRel == ID_NOT_FOUND) {
+          record.setFirstInFirstChain(true);
+          record.setFirstInSecondChain(true);
+          prevRel=cache.getCount(record.getFirstNode(),Direction.BOTH);
+        }
+        record.setFirstPrevRel(prevRel);
+        record.setSecondPrevRel(prevRel);
+      }
+      changed=true;
+    }
+  }
+ else {
+    if (firstIsDense == denseNodes) {
+      if (processFirst) {
+        long firstPrevRel=cache.getAndPutRelationship(record.getFirstNode(),Direction.OUTGOING,record.getId(),false);
+        if (firstPrevRel == ID_NOT_FOUND) {
+          record.setFirstInFirstChain(true);
+          firstPrevRel=cache.getCount(record.getFirstNode(),Direction.OUTGOING);
+        }
+        record.setFirstPrevRel(firstPrevRel);
+      }
+      changed=true;
+    }
+    boolean secondIsDense=cache.isDense(record.getSecondNode());
+    if (secondIsDense == denseNodes) {
+      if (processSecond) {
+        long secondPrevRel=cache.getAndPutRelationship(record.getSecondNode(),Direction.INCOMING,record.getId(),false);
+        if (secondPrevRel == ID_NOT_FOUND) {
+          record.setFirstInSecondChain(true);
+          secondPrevRel=cache.getCount(record.getSecondNode(),Direction.INCOMING);
+        }
+        record.setSecondPrevRel(secondPrevRel);
+      }
+      changed=true;
+    }
+  }
+  return changed;
+}

@@ -19,35 +19,31 @@
     InputIterable<InputNode> cachedNodes=cachedForSure(nodes,inputCache.nodes(MAIN,true));
     InputIterable<InputRelationship> cachedRelationships=cachedForSure(relationships,inputCache.relationships(MAIN,true));
     RelationshipStore relationshipStore=neoStore.getRelationshipStore();
-    NodeStage nodeStage=new NodeStage(config,writeMonitor,nodes,idMapper,idGenerator,neoStore,inputCache,neoStore.getLabelScanStore(),storeUpdateMonitor,memoryUsageStats);
-    CalculateDenseNodesStage calculateDenseNodesStage=new CalculateDenseNodesStage(config,relationships,nodeRelationshipCache,idMapper,badCollector,inputCache,neoStore);
+    NodeStage nodeStage=new NodeStage(config,writeMonitor,nodes,idMapper,idGenerator,neoStore,inputCache,neoStore.getLabelScanStore(),storeUpdateMonitor,nodeRelationshipCache,memoryUsageStats);
+    executeStages(nodeStage);
     if (idMapper.needsPreparation()) {
-      executeStages(nodeStage);
       executeStages(new IdMapperPreparationStage(config,idMapper,cachedNodes,badCollector,memoryUsageStats));
       PrimitiveLongIterator duplicateNodeIds=badCollector.leftOverDuplicateNodesIds();
       if (duplicateNodeIds.hasNext()) {
         executeStages(new DeleteDuplicateNodesStage(config,duplicateNodeIds,neoStore));
       }
-      executeStages(calculateDenseNodesStage);
     }
- else {
-      executeStages(nodeStage,calculateDenseNodesStage);
-    }
-    nodeRelationshipCache.setHighNodeId(neoStore.getNodeStore().getHighId());
-    importRelationships(nodeRelationshipCache,storeUpdateMonitor,neoStore,writeMonitor,idMapper,cachedRelationships,inputCache,calculateDenseNodesStage.getRelationshipTypes(Long.MAX_VALUE),calculateDenseNodesStage.getRelationshipTypes(config.batchSize()));
-    long memoryWeCanHoldForCertain=totalMemoryUsageOf(idMapper,nodeRelationshipCache);
+    CalculateDenseNodesStage calculateDenseNodesStage=new CalculateDenseNodesStage(withBatchSize(config,config.batchSize() * 10),relationships,nodeRelationshipCache,idMapper,badCollector,inputCache,neoStore);
+    executeStages(calculateDenseNodesStage);
+    importRelationships(nodeRelationshipCache,storeUpdateMonitor,neoStore,writeMonitor,idMapper,cachedRelationships,inputCache,calculateDenseNodesStage.getRelationshipTypes(Long.MAX_VALUE),calculateDenseNodesStage.getRelationshipTypes(100));
+    long peakMemoryUsage=totalMemoryUsageOf(idMapper,nodeRelationshipCache);
     long highNodeId=nodeRelationshipCache.getHighNodeId();
     idMapper.close();
     idMapper=null;
     nodeRelationshipCache.close();
     nodeRelationshipCache=null;
-    new RelationshipGroupDefragmenter(config,executionMonitor).run(max(max(memoryWeCanHoldForCertain,highNodeId * 4),mebiBytes(1)),neoStore,highNodeId);
+    new RelationshipGroupDefragmenter(config,executionMonitor).run(max(max(peakMemoryUsage,highNodeId * 4),mebiBytes(1)),neoStore,highNodeId);
     nodeLabelsCache=new NodeLabelsCache(AUTO,neoStore.getLabelRepository().getHighId());
     memoryUsageStats=new MemoryUsageStatsProvider(nodeLabelsCache);
     executeStages(new NodeCountsStage(config,nodeLabelsCache,neoStore.getNodeStore(),neoStore.getLabelRepository().getHighId(),countsUpdater,memoryUsageStats));
     executeStages(new RelationshipCountsStage(config,nodeLabelsCache,relationshipStore,neoStore.getLabelRepository().getHighId(),neoStore.getRelationshipTypeRepository().getHighId(),countsUpdater,AUTO));
     long totalTimeMillis=currentTimeMillis() - startTime;
-    executionMonitor.done(totalTimeMillis,storeUpdateMonitor.toString());
+    executionMonitor.done(totalTimeMillis,format("%n") + storeUpdateMonitor.toString() + format("%n")+ "Peak memory usage: "+ bytes(peakMemoryUsage));
     log.info("Import completed, took " + Format.duration(totalTimeMillis) + ". "+ storeUpdateMonitor);
     hasBadEntries=badCollector.badEntries() > 0;
     if (hasBadEntries) {

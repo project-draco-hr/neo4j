@@ -3,18 +3,20 @@
     try {
       RecordStore<RelationshipGroupRecord> fromStore=neoStore.getTemporaryRelationshipGroupStore();
       RecordStore<RelationshipGroupRecord> toStore=neoStore.getRelationshipGroupStore();
-      executeStage(new CountGroupsStage(config,fromStore,groupCache));
+      Configuration groupConfig=withBatchSize(config,neoStore.getRelationshipGroupStore().getRecordsPerPage());
+      executeStage(new CountGroupsStage(groupConfig,fromStore,groupCache));
       long fromNodeId=0;
       long toNodeId=0;
       while (fromNodeId < highNodeId) {
         toNodeId=groupCache.prepare(fromNodeId);
-        executeStage(new ScanAndCacheGroupsStage(config,fromStore,groupCache));
-        executeStage(new WriteGroupsStage(config,groupCache,toStore));
+        executeStage(new ScanAndCacheGroupsStage(groupConfig,fromStore,groupCache));
+        executeStage(new WriteGroupsStage(groupConfig,groupCache,toStore));
         fromNodeId=toNodeId;
       }
       ByteArray groupCountCache=groupCache.getGroupCountCache();
       groupCountCache.clear();
-      executeStage(new NodeFirstGroupStage(config,toStore,neoStore.getNodeStore(),groupCountCache));
+      Configuration nodeConfig=withBatchSize(config,neoStore.getNodeStore().getRecordsPerPage());
+      executeStage(new NodeFirstGroupStage(nodeConfig,toStore,neoStore.getNodeStore(),groupCountCache));
     }
  catch (    Throwable t) {
       t.printStackTrace();

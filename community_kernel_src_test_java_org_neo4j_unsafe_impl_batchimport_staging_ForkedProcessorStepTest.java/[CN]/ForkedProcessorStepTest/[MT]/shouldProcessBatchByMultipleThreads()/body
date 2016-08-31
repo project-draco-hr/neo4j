@@ -1,0 +1,24 @@
+{
+  SimpleStageControl control=new SimpleStageControl();
+  int threadCount=10;
+  CountDownLatch latch=new CountDownLatch(threadCount);
+  Object expectedBatch=new Object();
+  try (Step<Object> step=new ForkedProcessorStep<Object>(control,"Test",DEFAULT,threadCount){
+    @Override protected void forkedProcess(    int id,    int processors,    Object batch){
+      try {
+        assertSame(expectedBatch,batch);
+      }
+  finally {
+        latch.countDown();
+      }
+    }
+  }
+){
+    control.steps(step);
+    step.processors(threadCount);
+    step.start(Step.ORDER_SEND_DOWNSTREAM);
+    step.receive(0,expectedBatch);
+    latch.await();
+    control.assertHealthy();
+  }
+ }
