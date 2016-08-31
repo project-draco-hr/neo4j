@@ -1,17 +1,17 @@
 {
-  if (!ids.hasNext()) {
-    return null;
-  }
-  RECORD[] batch=(RECORD[])Array.newInstance(klass,batchSize);
-  int i=0;
-  while (i < batchSize && ids.hasNext()) {
-    if (cursor.next(ids.next()) && !IdValidator.isReservedId(record.getId())) {
-      RECORD newRecord=(RECORD)record.clone();
-      batch[i]=newRecord;
-      i++;
+  PrimitiveLongIterator ids;
+  while ((ids=this.ids.nextBatch()) != null) {
+    RECORD[] batch=(RECORD[])Array.newInstance(klass,batchSize);
+    int i=0;
+    while (ids.hasNext()) {
+      if (cursor.next(ids.next()) && !IdValidator.isReservedId(record.getId())) {
+        batch[i++]=(RECORD)record.clone();
+      }
+    }
+    if (i > 0) {
+      count+=i;
+      return i == batchSize ? batch : Arrays.copyOf(batch,i);
     }
   }
-  count+=i;
-  batch=i == batchSize ? batch : Arrays.copyOf(batch,i);
-  return batch.length > 0 ? batch : null;
+  return null;
 }

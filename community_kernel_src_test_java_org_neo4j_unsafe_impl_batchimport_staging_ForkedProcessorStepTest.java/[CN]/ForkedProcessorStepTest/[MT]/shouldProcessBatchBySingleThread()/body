@@ -1,0 +1,26 @@
+{
+  SimpleStageControl control=new SimpleStageControl();
+  AtomicReference<Object> processed=new AtomicReference<>();
+  CountDownLatch latch=new CountDownLatch(1);
+  try (Step<Object> step=new ForkedProcessorStep<Object>(control,"Test",DEFAULT,1){
+    @Override protected void forkedProcess(    int id,    int processors,    Object batch){
+      try {
+        assertEquals(0,id);
+        assertEquals(1,processors);
+        processed.set(batch);
+      }
+  finally {
+        latch.countDown();
+      }
+    }
+  }
+){
+    control.steps(step);
+    step.start(Step.ORDER_SEND_DOWNSTREAM);
+    Object expectedBatch=new Object();
+    step.receive(0,expectedBatch);
+    latch.await();
+    assertSame(expectedBatch,processed.get());
+    control.assertHealthy();
+  }
+ }

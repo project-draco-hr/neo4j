@@ -1,9 +1,12 @@
 {
   long highId=5;
   int batchSize=(int)highId;
+  org.neo4j.unsafe.impl.batchimport.Configuration config=withBatchSize(DEFAULT,batchSize);
   NodeStore store=StoreWithReservedId.newNodeStoreMock(highId);
   when(store.getHighId()).thenReturn(highId);
-  ReadRecordsStep<NodeRecord> step=new ReadRecordsStep<>(mock(StageControl.class),DEFAULT,store,allIn(store));
+  when(store.getRecordsPerPage()).thenReturn(10);
+  ReadRecordsStep<NodeRecord> step=new ReadRecordsStep<>(mock(StageControl.class),config,store,allIn(store,config));
+  step.start(0);
   Object batch=step.nextBatchOrNull(0,batchSize);
   assertNotNull(batch);
   NodeRecord[] records=(NodeRecord[])batch;

@@ -1,0 +1,25 @@
+{
+  batch.records=new RelationshipRecord[batch.input.length];
+  long id=batch.firstRecordId;
+  for (int i=0, idIndex=0; i < batch.records.length; i++, id++) {
+    RelationshipRecord relationship=batch.records[i]=new RelationshipRecord(id);
+    InputRelationship batchRelationship=batch.input[i];
+    long startNodeId=batch.ids[idIndex++];
+    long endNodeId=batch.ids[idIndex++];
+    if (startNodeId == ID_NOT_FOUND || endNodeId == ID_NOT_FOUND) {
+      relationship.setInUse(false);
+    }
+ else {
+      relationship.setInUse(true);
+      relationship.setFirstInFirstChain(false);
+      relationship.setFirstInSecondChain(false);
+      relationship.setFirstPrevRel(Record.NO_NEXT_RELATIONSHIP.intValue());
+      relationship.setSecondPrevRel(Record.NO_NEXT_RELATIONSHIP.intValue());
+      relationship.setFirstNode(startNodeId);
+      relationship.setSecondNode(endNodeId);
+      int typeId=batchRelationship.hasTypeId() ? batchRelationship.typeId() : relationshipTypeRepository.getOrCreateId(batchRelationship.type());
+      relationship.setType(typeId);
+    }
+  }
+  sender.send(batch);
+}
