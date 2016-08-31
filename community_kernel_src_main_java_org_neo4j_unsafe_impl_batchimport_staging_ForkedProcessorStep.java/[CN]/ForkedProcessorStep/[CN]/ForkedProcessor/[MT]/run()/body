@@ -1,18 +1,22 @@
 {
   while (!halted) {
+    boolean processed=false;
     try {
       park();
       if (!halted && localTicket + 1 == globalTicket) {
+        processed=true;
         forkedProcess(id,forkedProcessors.size(),currentBatch);
-        localTicket++;
       }
     }
  catch (    Throwable t) {
       error=t;
     }
  finally {
-      doneSignal.decrementAndGet();
-      LockSupport.unpark(ticketThread);
+      if (processed) {
+        localTicket++;
+        doneSignal.decrementAndGet();
+        LockSupport.unpark(submitterThread);
+      }
     }
   }
 }
