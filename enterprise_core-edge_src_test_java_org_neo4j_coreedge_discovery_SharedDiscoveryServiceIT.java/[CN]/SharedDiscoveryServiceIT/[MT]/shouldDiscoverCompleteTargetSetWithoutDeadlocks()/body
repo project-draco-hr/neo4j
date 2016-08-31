@@ -1,0 +1,19 @@
+{
+  ExecutorService es=Executors.newCachedThreadPool();
+  long endTimeMillis=System.currentTimeMillis() + RUN_TIME_MS;
+  while (endTimeMillis > System.currentTimeMillis()) {
+    Set<MemberId> members=new HashSet<>();
+    for (int i=0; i < 3; i++) {
+      members.add(new MemberId(UUID.randomUUID()));
+    }
+    SharedDiscoveryService sharedService=new SharedDiscoveryService();
+    List<Callable<Void>> discoveryJobs=new ArrayList<>();
+    for (    MemberId member : members) {
+      discoveryJobs.add(createDiscoveryJob(member,sharedService,members));
+    }
+    List<Future<Void>> results=es.invokeAll(discoveryJobs);
+    for (    Future<Void> result : results) {
+      result.get(TIMEOUT_MS,MILLISECONDS);
+    }
+  }
+}
