@@ -1,0 +1,38 @@
+{
+  GraphDatabaseQueryService graph=mock(GraphDatabaseQueryService.class);
+  InternalTransaction initialTransaction=mock(InternalTransaction.class);
+  KernelTransaction initialKTX=mock(KernelTransaction.class);
+  KernelTransaction.Type transactionType=null;
+  AccessMode transactionMode=null;
+  Statement initialStatement=mock(Statement.class);
+  MetaOperations initialMeta=mock(MetaOperations.class);
+  ExecutingQuery executingQuery=mock(ExecutingQuery.class);
+  PropertyContainerLocker locker=null;
+  ThreadToStatementContextBridge txBridge=mock(ThreadToStatementContextBridge.class);
+  DbmsOperations.Factory dbmsOperationsFactory=null;
+  KernelTransaction secondKTX=mock(KernelTransaction.class);
+  InternalTransaction secondTransaction=mock(InternalTransaction.class);
+  Statement secondStatement=mock(Statement.class);
+  MetaOperations secondMeta=mock(MetaOperations.class);
+  when(executingQuery.queryText()).thenReturn("X");
+  when(executingQuery.queryParameters()).thenReturn(Collections.emptyMap());
+  when(initialStatement.metaOperations()).thenReturn(initialMeta);
+  when(graph.beginTransaction(transactionType,transactionMode)).thenReturn(secondTransaction);
+  when(txBridge.getKernelTransactionBoundToThisThread(true)).thenReturn(initialKTX,secondKTX);
+  when(txBridge.get()).thenReturn(secondStatement);
+  when(secondStatement.metaOperations()).thenReturn(secondMeta);
+  Neo4jTransactionalContext context=new Neo4jTransactionalContext(graph,initialTransaction,transactionType,transactionMode,initialStatement,executingQuery,locker,txBridge,dbmsOperationsFactory);
+  context.commitAndRestartTx();
+  InOrder order=Mockito.inOrder(txBridge,initialTransaction,initialMeta,initialKTX,secondMeta,secondKTX);
+  order.verify(txBridge).getKernelTransactionBoundToThisThread(true);
+  order.verify(txBridge).unbindTransactionFromCurrentThread();
+  order.verify(txBridge).get();
+  order.verify(secondMeta).registerQueryExecution(executingQuery);
+  order.verify(txBridge).getKernelTransactionBoundToThisThread(true);
+  order.verify(txBridge).unbindTransactionFromCurrentThread();
+  order.verify(txBridge).bindTransactionToCurrentThread(initialKTX);
+  order.verify(initialMeta).stopQueryExecution(executingQuery);
+  order.verify(initialTransaction).success();
+  order.verify(initialTransaction).close();
+  order.verify(txBridge).bindTransactionToCurrentThread(secondKTX);
+}
