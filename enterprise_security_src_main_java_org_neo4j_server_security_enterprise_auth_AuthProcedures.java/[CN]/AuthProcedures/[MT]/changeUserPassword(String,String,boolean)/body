@@ -1,15 +1,24 @@
 {
-  StandardEnterpriseAuthSubject enterpriseSubject=StandardEnterpriseAuthSubject.castOrFail(authSubject);
-  if (enterpriseSubject.doesUsernameMatch(username)) {
-    enterpriseSubject.setPassword(newPassword,requirePasswordChange);
-  }
- else   if (!enterpriseSubject.isAdmin()) {
-    securityLog.error("User `%s` tried to change password for user `%s`: %s",enterpriseSubject.name(),username,PERMISSION_DENIED);
-    throw new AuthorizationViolationException(PERMISSION_DENIED);
-  }
+  String ownOrOther=format("password for user `%s`",username);
+  try {
+    StandardEnterpriseAuthSubject enterpriseSubject=StandardEnterpriseAuthSubject.castOrFail(authSubject);
+    if (enterpriseSubject.doesUsernameMatch(username)) {
+      ownOrOther="own password";
+      enterpriseSubject.setPassword(newPassword,requirePasswordChange);
+      securityLog.info(authSubject,"changed own password");
+    }
+ else     if (!enterpriseSubject.isAdmin()) {
+      throw new AuthorizationViolationException(PERMISSION_DENIED);
+    }
  else {
-    enterpriseSubject.getUserManager().setUserPassword(username,newPassword,requirePasswordChange);
-    terminateTransactionsForValidUser(username);
-    terminateConnectionsForValidUser(username);
+      enterpriseSubject.getUserManager().setUserPassword(username,newPassword,requirePasswordChange);
+      terminateTransactionsForValidUser(username);
+      terminateConnectionsForValidUser(username);
+      securityLog.info(authSubject,"changed password for user `%s`",username);
+    }
+  }
+ catch (  Exception e) {
+    securityLog.error(authSubject,"tried to change %s: %s",ownOrOther,e.getMessage());
+    throw e;
   }
 }

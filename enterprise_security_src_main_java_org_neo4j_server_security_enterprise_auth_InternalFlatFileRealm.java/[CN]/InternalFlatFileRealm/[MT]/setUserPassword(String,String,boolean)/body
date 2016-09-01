@@ -1,22 +1,15 @@
 {
+  User existingUser=getUser(username);
+  passwordPolicy.validatePassword(password);
+  if (existingUser.credentials().matchesPassword(password)) {
+    throw new InvalidArgumentsException("Old password and new password cannot be the same.");
+  }
   try {
-    User existingUser=getUser(username);
-    passwordPolicy.validatePassword(password);
-    if (existingUser.credentials().matchesPassword(password)) {
-      throw new InvalidArgumentsException("Old password and new password cannot be the same.");
-    }
-    try {
-      User updatedUser=existingUser.augment().withCredentials(Credential.forPassword(password)).withRequiredPasswordChange(requirePasswordChange).build();
-      userRepository.update(existingUser,updatedUser);
-    }
- catch (    ConcurrentModificationException e) {
-      setUserPassword(username,password,requirePasswordChange);
-    }
+    User updatedUser=existingUser.augment().withCredentials(Credential.forPassword(password)).withRequiredPasswordChange(requirePasswordChange).build();
+    userRepository.update(existingUser,updatedUser);
   }
- catch (  InvalidArgumentsException e) {
-    securityLog.error("Password not changed for user `%s`: %s",escape(username),e.getMessage());
-    throw e;
+ catch (  ConcurrentModificationException e) {
+    setUserPassword(username,password,requirePasswordChange);
   }
-  securityLog.info("Password changed for user `%s`.",escape(username));
   clearCacheForUser(username);
 }

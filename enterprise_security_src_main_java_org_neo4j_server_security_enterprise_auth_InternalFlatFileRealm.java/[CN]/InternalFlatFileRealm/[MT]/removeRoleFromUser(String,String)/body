@@ -1,23 +1,16 @@
 {
   assertValidRoleName(roleName);
   assertValidUsername(username);
-  try {
 synchronized (this) {
-      getUser(username);
-      RoleRecord role=getRole(roleName);
-      RoleRecord newRole=role.augment().withoutUser(username).build();
-      try {
-        roleRepository.update(role,newRole);
-        securityLog.info("Role `%s` removed from user `%s`",escape(roleName),escape(username));
-      }
- catch (      ConcurrentModificationException e) {
-        removeRoleFromUser(roleName,username);
-      }
+    getUser(username);
+    RoleRecord role=getRole(roleName);
+    RoleRecord newRole=role.augment().withoutUser(username).build();
+    try {
+      roleRepository.update(role,newRole);
     }
-  }
- catch (  InvalidArgumentsException e) {
-    securityLog.error("Role `%s` not removed from user `%s`: %s",escape(roleName),escape(username),e.getMessage());
-    throw e;
+ catch (    ConcurrentModificationException e) {
+      removeRoleFromUser(roleName,username);
+    }
   }
   clearCachedAuthorizationInfoForUser(username);
 }

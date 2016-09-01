@@ -1,7 +1,14 @@
 {
-  StandardEnterpriseAuthSubject adminSubject=ensureAdminAuthSubject();
-  if (adminSubject.doesUsernameMatch(username) && roleName.equals(PredefinedRolesBuilder.ADMIN)) {
-    throw new InvalidArgumentsException("Removing yourself (user '" + username + "') from the admin role is not allowed.");
+  try {
+    StandardEnterpriseAuthSubject adminSubject=ensureAdminAuthSubject();
+    if (adminSubject.doesUsernameMatch(username) && roleName.equals(PredefinedRolesBuilder.ADMIN)) {
+      throw new InvalidArgumentsException("Removing yourself (user '" + username + "') from the admin role is not allowed.");
+    }
+    adminSubject.getUserManager().removeRoleFromUser(roleName,username);
+    securityLog.info(authSubject,"removed role `%s` from user `%s`",roleName,username);
   }
-  adminSubject.getUserManager().removeRoleFromUser(roleName,username);
+ catch (  Exception e) {
+    securityLog.error(authSubject,"tried to remove role `%s` from user `%s`: %s",roleName,username,e.getMessage());
+    throw e;
+  }
 }
