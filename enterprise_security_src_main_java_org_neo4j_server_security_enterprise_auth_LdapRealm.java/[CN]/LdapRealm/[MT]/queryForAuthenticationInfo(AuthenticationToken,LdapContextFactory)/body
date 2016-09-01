@@ -1,3 +1,16 @@
 {
-  return authenticationEnabled ? super.queryForAuthenticationInfo(token,ldapContextFactory) : null;
+  if (authenticationEnabled) {
+    JndiLdapContextFactory jndiLdapContextFactory=(JndiLdapContextFactory)ldapContextFactory;
+    log.debug("Authenticating user '%s' against LDAP server '%s'%s",token.getPrincipal(),jndiLdapContextFactory.getUrl(),useStartTls ? " using StartTLS" : "");
+    try {
+      return useStartTls ? queryForAuthenticationInfoUsingStartTls(token,ldapContextFactory) : super.queryForAuthenticationInfo(token,ldapContextFactory);
+    }
+ catch (    Exception e) {
+      log.debug("Authentication exception: [%s] %s",e.getClass().getName(),e.getMessage());
+      throw e;
+    }
+  }
+ else {
+    return null;
+  }
 }
