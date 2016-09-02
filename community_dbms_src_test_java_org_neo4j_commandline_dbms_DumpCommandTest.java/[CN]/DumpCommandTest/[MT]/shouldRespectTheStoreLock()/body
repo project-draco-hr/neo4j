@@ -1,12 +1,16 @@
 {
   Path databaseDirectory=homeDir.resolve("data/databases/foo.db");
   Files.createDirectories(databaseDirectory);
-  new StoreLocker(new DefaultFileSystemAbstraction()).checkLock(databaseDirectory.toFile());
+  StoreLocker storeLocker=new StoreLocker(new DefaultFileSystemAbstraction());
+  storeLocker.checkLock(databaseDirectory.toFile());
   try {
     execute("foo.db");
     fail("expected exception");
   }
  catch (  CommandFailed e) {
     assertThat(e.getMessage(),equalTo("the database is in use -- stop Neo4j and try again"));
+  }
+ finally {
+    storeLocker.release();
   }
 }
