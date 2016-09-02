@@ -1,0 +1,13 @@
+{
+  long nodeId;
+  try (Transaction tx=db.beginTx()){
+    nodeId=db.createNode().getId();
+    tx.success();
+  }
+   try (Transaction ignore=db.beginTx()){
+    Result res=db.execute("RETURN org.neo4j.procedure.schemaCallReadFunction({id}) AS node",map("id",nodeId));
+    Node node=(Node)res.next().get("node");
+    assertThat(node.getId(),equalTo(nodeId));
+    assertFalse(res.hasNext());
+  }
+ }
