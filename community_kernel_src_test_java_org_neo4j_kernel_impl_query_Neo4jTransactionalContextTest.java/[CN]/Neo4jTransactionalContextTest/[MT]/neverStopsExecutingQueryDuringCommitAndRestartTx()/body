@@ -23,7 +23,8 @@
   when(secondStatement.queryRegistration()).thenReturn(secondQueryRegistry);
   Neo4jTransactionalContext context=new Neo4jTransactionalContext(graph,initialTransaction,transactionType,transactionMode,initialStatement,executingQuery,locker,txBridge,dbmsOperationsFactory);
   context.commitAndRestartTx();
-  InOrder order=Mockito.inOrder(txBridge,initialTransaction,initialQueryRegistry,initialKTX,secondQueryRegistry,secondKTX);
+  Object[] mocks={txBridge,initialTransaction,initialQueryRegistry,initialKTX,secondQueryRegistry,secondKTX};
+  InOrder order=Mockito.inOrder(mocks);
   order.verify(txBridge).getKernelTransactionBoundToThisThread(true);
   order.verify(txBridge).unbindTransactionFromCurrentThread();
   order.verify(txBridge).get();
@@ -34,5 +35,7 @@
   order.verify(initialQueryRegistry).unregisterExecutingQuery(executingQuery);
   order.verify(initialTransaction).success();
   order.verify(initialTransaction).close();
+  order.verify(txBridge).unbindTransactionFromCurrentThread();
   order.verify(txBridge).bindTransactionToCurrentThread(secondKTX);
+  verifyNoMoreInteractions(mocks);
 }

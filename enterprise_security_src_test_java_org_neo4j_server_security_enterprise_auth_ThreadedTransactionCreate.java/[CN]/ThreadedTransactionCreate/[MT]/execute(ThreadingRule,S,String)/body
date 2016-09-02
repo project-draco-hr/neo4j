@@ -1,22 +1,3 @@
 {
-  NamedFunction<S,Throwable> startTransaction=new NamedFunction<S,Throwable>("start-transaction-" + query.hashCode()){
-    @Override public Throwable apply(    S subject){
-      try {
-        try (InternalTransaction tx=neo.beginLocalTransactionAsUser(subject)){
-          Result result=neo.getLocalGraph().execute(query);
-          latch.startAndWaitForAllToStart();
-          latch.finishAndWaitForAllToFinish();
-          result.close();
-          tx.success();
-          return null;
-        }
-       }
- catch (      Throwable t) {
-        return t;
-      }
-    }
-  }
-;
-  done=threading.execute(startTransaction,subject);
-  return query;
+  return execute(threading,subject,KernelTransaction.Type.explicit,new AtomicBoolean(false),query);
 }
