@@ -5,14 +5,14 @@
   TcpIpConfig tcpIpConfig=joinConfig.getTcpIpConfig();
   tcpIpConfig.setEnabled(true);
   List<AdvertisedSocketAddress> initialMembers=config.get(CoreEdgeClusterSettings.initial_discovery_members);
-  Set<AdvertisedSocketAddress> previouslySeenMembers=discoveredMemberRepository.previouslyDiscoveredMembers();
-  Set<AdvertisedSocketAddress> members=new LinkedHashSet<>();
-  members.addAll(initialMembers);
-  members.addAll(previouslySeenMembers);
-  for (  AdvertisedSocketAddress address : members) {
+  for (  AdvertisedSocketAddress address : initialMembers) {
     tcpIpConfig.addMember(address.toString());
   }
-  log.info(String.format("Discovering cluster with initial members: %s and previously discovered members: %s",initialMembers,previouslySeenMembers));
+  Set<AdvertisedSocketAddress> previouslySeenMembers=discoveredMemberRepository.previouslyDiscoveredMembers();
+  for (  AdvertisedSocketAddress seenAddress : previouslySeenMembers) {
+    tcpIpConfig.addMember(seenAddress.toString());
+  }
+  log.info(String.format("Discovering cluster with initial members: %s and previously seen members: %s",initialMembers,previouslySeenMembers));
   NetworkConfig networkConfig=new NetworkConfig();
   ListenSocketAddress hazelcastAddress=config.get(CoreEdgeClusterSettings.discovery_listen_address);
   networkConfig.setPort(hazelcastAddress.socketAddress().getPort());
