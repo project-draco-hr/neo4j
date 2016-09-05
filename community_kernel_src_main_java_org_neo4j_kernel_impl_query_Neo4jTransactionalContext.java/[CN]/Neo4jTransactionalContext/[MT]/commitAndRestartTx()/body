@@ -10,8 +10,17 @@
   txBridge.unbindTransactionFromCurrentThread();
   txBridge.bindTransactionToCurrentThread(oldKernelTx);
   oldQueryRegistryOperations.unregisterExecutingQuery(executingQuery);
-  oldTransaction.success();
-  oldTransaction.close();
+  try {
+    oldTransaction.success();
+    oldTransaction.close();
+  }
+ catch (  Throwable t) {
+    txBridge.bindTransactionToCurrentThread(kernelTx);
+    transaction.failure();
+    transaction.close();
+    txBridge.unbindTransactionFromCurrentThread();
+    throw t;
+  }
   txBridge.unbindTransactionFromCurrentThread();
   txBridge.bindTransactionToCurrentThread(kernelTx);
 }

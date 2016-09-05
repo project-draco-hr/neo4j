@@ -1,0 +1,20 @@
+{
+  DoubleLatch latch=new DoubleLatch(3,true);
+  ThreadedTransactionCreate<S> read=new ThreadedTransactionCreate<>(neo,latch);
+  ThreadedTransactionCreate<S> write=new ThreadedTransactionCreate<>(neo,latch);
+  String q1=read.execute(threading,readSubject,"UNWIND [1,2,3] AS x RETURN x");
+  write.execute(threading,writeSubject,"UNWIND [4,5,6] AS y RETURN y");
+  latch.startAndWaitForAllToStart();
+  try {
+    Number id1=getIdOfQuery(q1);
+    assertFail(writeSubject,"CALL dbms.terminateQuery(" + id1.intValue() + ") YIELD username RETURN *",PERMISSION_DENIED);
+    latch.finishAndWaitForAllToFinish();
+    read.closeAndAssertSuccess();
+    write.closeAndAssertSuccess();
+  }
+ catch (  Throwable t) {
+    latch.finishAndWaitForAllToFinish();
+    throw t;
+  }
+  assertEmpty(adminSubject,"CALL dbms.listQueries() YIELD query WITH * WHERE NOT query CONTAINS 'listQueries' RETURN *");
+}
