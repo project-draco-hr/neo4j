@@ -1,14 +1,14 @@
 {
-  GraphDatabaseService slave=null;
-  GraphDatabaseService master=null;
+  HighlyAvailableGraphDatabase slave=null;
+  HighlyAvailableGraphDatabase master=null;
   try {
-    File testRootDir=testDirectory.directory(testName.getMethodName());
+    File testRootDir=clusterRule.cleanDirectory("shouldPullUpdatesOnStartupNoMatterWhat");
     File masterDir=new File(testRootDir,"master");
-    master=new TestHighlyAvailableGraphDatabaseFactory().newHighlyAvailableDatabaseBuilder(masterDir.getAbsolutePath()).setConfig(ClusterSettings.server_id,"1").setConfig(ClusterSettings.initial_hosts,"localhost:5001").newGraphDatabase();
+    master=(HighlyAvailableGraphDatabase)new TestHighlyAvailableGraphDatabaseFactory().newEmbeddedDatabaseBuilder(masterDir).setConfig(ClusterSettings.server_id,"1").setConfig(ClusterSettings.initial_hosts,"localhost:5001").newGraphDatabase();
     File slaveDir=new File(testRootDir,"slave");
-    slave=new TestHighlyAvailableGraphDatabaseFactory().newHighlyAvailableDatabaseBuilder(slaveDir.getAbsolutePath()).setConfig(ClusterSettings.server_id,"2").setConfig(ClusterSettings.initial_hosts,"localhost:5001").newGraphDatabase();
+    slave=(HighlyAvailableGraphDatabase)new TestHighlyAvailableGraphDatabaseFactory().newEmbeddedDatabaseBuilder(slaveDir).setConfig(ClusterSettings.server_id,"2").setConfig(ClusterSettings.initial_hosts,"localhost:5001").newGraphDatabase();
     final CountDownLatch slaveLeftLatch=new CountDownLatch(1);
-    final ClusterClient masterClusterClient=((HighlyAvailableGraphDatabase)master).getDependencyResolver().resolveDependency(ClusterClient.class);
+    final ClusterClient masterClusterClient=master.getDependencyResolver().resolveDependency(ClusterClient.class);
     masterClusterClient.addClusterListener(new ClusterListener.Adapter(){
       @Override public void leftCluster(      InstanceId instanceId,      URI member){
         slaveLeftLatch.countDown();
@@ -16,8 +16,9 @@
       }
     }
 );
-    ((GraphDatabaseAPI)master).getDependencyResolver().resolveDependency(LogService.class).getInternalLog(getClass()).info("SHUTTING DOWN SLAVE");
+    master.getDependencyResolver().resolveDependency(LogService.class).getInternalLog(getClass()).info("SHUTTING DOWN SLAVE");
     slave.shutdown();
+    slave=null;
     assertTrue("Timeout waiting for slave to leave",slaveLeftLatch.await(60,TimeUnit.SECONDS));
     long nodeId;
     try (Transaction tx=master.beginTx()){
@@ -26,7 +27,7 @@
       nodeId=node.getId();
       tx.success();
     }
-     slave=new TestHighlyAvailableGraphDatabaseFactory().newHighlyAvailableDatabaseBuilder(slaveDir.getAbsolutePath()).setConfig(ClusterSettings.server_id,"2").setConfig(ClusterSettings.initial_hosts,"localhost:5001").setConfig(HaSettings.pull_interval,"0").newGraphDatabase();
+     slave=(HighlyAvailableGraphDatabase)new TestHighlyAvailableGraphDatabaseFactory().newEmbeddedDatabaseBuilder(slaveDir).setConfig(ClusterSettings.server_id,"2").setConfig(ClusterSettings.initial_hosts,"localhost:5001").setConfig(HaSettings.pull_interval,"0").newGraphDatabase();
     slave.beginTx().close();
     try (Transaction tx=slave.beginTx()){
       assertEquals("master",slave.getNodeById(nodeId).getProperty("from"));
