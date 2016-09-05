@@ -5,57 +5,60 @@
     replicationFactor--;
   }
   if (replicationFactor == 0) {
-    return;
+    return replicationFactor;
   }
   Collection<ReplicationContext> committers=new HashSet<>();
-  try {
-    int successfulReplications=0;
-    Iterator<Slave> slaveList=filter(replicationStrategy.prioritize(slaves.getSlaves()).iterator(),authorId);
-    CompletionNotifier notifier=new CompletionNotifier();
-    for (int i=0; i < replicationFactor && slaveList.hasNext(); i++) {
-      Slave slave=slaveList.next();
-      Callable<Void> slaveCommitter=slaveCommitter(slave,txId,notifier);
-      committers.add(new ReplicationContext(slaveCommitters.submit(slaveCommitter),slave));
-    }
-    Collection<ReplicationContext> toAdd=new ArrayList<>();
-    Collection<ReplicationContext> toRemove=new ArrayList<>();
-    while (!committers.isEmpty() && successfulReplications < replicationFactor) {
-      toAdd.clear();
-      toRemove.clear();
-      for (      ReplicationContext context : committers) {
-        if (!context.future.isDone()) {
-          continue;
-        }
-        if (isSuccessful(context)) {
-          successfulReplications++;
-        }
- else         if (slaveList.hasNext()) {
-          Slave newSlave=slaveList.next();
-          Callable<Void> slaveCommitter=slaveCommitter(newSlave,txId,notifier);
-          toAdd.add(new ReplicationContext(slaveCommitters.submit(slaveCommitter),newSlave));
-        }
-        toRemove.add(context);
-      }
-      if (!toAdd.isEmpty()) {
-        committers.addAll(toAdd);
-      }
-      if (!toRemove.isEmpty()) {
-        committers.removeAll(toRemove);
-      }
-      if (!committers.isEmpty()) {
-        notifier.waitForAnyCompletion();
-      }
-    }
-    if (!(successfulReplications >= replicationFactor)) {
-      pushedToTooFewSlaveLogger.info("Transaction " + txId + " couldn't commit on enough slaves, desired "+ replicationFactor+ ", but could only commit at "+ successfulReplications);
-    }
+  int successfulReplications=0;
+  Iterator<Slave> slaveList=filter(replicationStrategy.prioritize(slaves.getSlaves()).iterator(),authorId);
+  CompletionNotifier notifier=new CompletionNotifier();
+  for (int i=0; i < replicationFactor && slaveList.hasNext(); i++) {
+    Slave slave=slaveList.next();
+    Callable<Void> slaveCommitter=slaveCommitter(slave,txId,notifier);
+    committers.add(new ReplicationContext(slaveCommitters.submit(slaveCommitter),slave));
   }
- catch (  Throwable t) {
-    log.error("Unknown error commit master transaction at slave",t);
-  }
- finally {
+  Collection<ReplicationContext> toAdd=new ArrayList<>();
+  Collection<ReplicationContext> toRemove=new ArrayList<>();
+  while (!committers.isEmpty() && successfulReplications < replicationFactor) {
+    toAdd.clear();
+    toRemove.clear();
     for (    ReplicationContext context : committers) {
-      context.future.cancel(false);
+      if (!context.future.isDone()) {
+        continue;
+      }
+      if (isSuccessful(context)) {
+        successfulReplications++;
+      }
+ else       if (slaveList.hasNext()) {
+        Slave newSlave=slaveList.next();
+        Callable<Void> slaveCommitter;
+        try {
+          slaveCommitter=slaveCommitter(newSlave,txId,notifier);
+        }
+ catch (        Throwable t) {
+          log.error("Unknown error commit master transaction at slave",t);
+          return desiredReplicationFactor;
+        }
+ finally {
+          for (          ReplicationContext committer : committers) {
+            committer.future.cancel(false);
+          }
+        }
+        toAdd.add(new ReplicationContext(slaveCommitters.submit(slaveCommitter),newSlave));
+      }
+      toRemove.add(context);
+    }
+    if (!toAdd.isEmpty()) {
+      committers.addAll(toAdd);
+    }
+    if (!toRemove.isEmpty()) {
+      committers.removeAll(toRemove);
+    }
+    if (!committers.isEmpty()) {
+      notifier.waitForAnyCompletion();
     }
   }
+  if (successfulReplications < replicationFactor) {
+    pushedToTooFewSlaveLogger.info("Transaction " + txId + " couldn't commit on enough slaves, desired "+ replicationFactor+ ", but could only commit at "+ successfulReplications);
+  }
+  return replicationFactor - successfulReplications;
 }
