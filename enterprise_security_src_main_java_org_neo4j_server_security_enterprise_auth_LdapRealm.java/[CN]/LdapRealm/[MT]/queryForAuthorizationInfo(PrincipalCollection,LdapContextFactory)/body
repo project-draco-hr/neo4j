@@ -1,22 +1,25 @@
 {
   if (authorizationEnabled) {
-    String username=(String)getAvailablePrincipal(principals);
-    if (useSystemAccountForAuthorization) {
-      LdapContext ldapContext=useStartTls ? getSystemLdapContextUsingStartTls(ldapContextFactory) : ldapContextFactory.getSystemLdapContext();
-      Set<String> roleNames;
-      try {
-        roleNames=findRoleNamesForUser(username,ldapContext);
-      }
+    Collection realmPrincipals=principals.fromRealm(getName());
+    if (!CollectionUtils.isEmpty(realmPrincipals)) {
+      String username=(String)realmPrincipals.iterator().next();
+      if (useSystemAccountForAuthorization) {
+        LdapContext ldapContext=useStartTls ? getSystemLdapContextUsingStartTls(ldapContextFactory) : ldapContextFactory.getSystemLdapContext();
+        Set<String> roleNames;
+        try {
+          roleNames=findRoleNamesForUser(username,ldapContext);
+        }
   finally {
-        LdapUtils.closeContext(ldapContext);
+          LdapUtils.closeContext(ldapContext);
+        }
+        return new SimpleAuthorizationInfo(roleNames);
       }
-      return new SimpleAuthorizationInfo(roleNames);
-    }
  else {
-      AuthorizationInfo authorizationInfo=authorizationInfoCache.get(username);
-      if (authorizationInfo == null) {
+        AuthorizationInfo authorizationInfo=authorizationInfoCache.get(username);
+        if (authorizationInfo == null) {
+        }
+        return authorizationInfo;
       }
-      return authorizationInfo;
     }
   }
   return null;
