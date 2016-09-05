@@ -1,0 +1,18 @@
+{
+  GraphDatabaseAPI database=startDatabaseWithTimeout();
+  CommunityNeoServer neoServer=startNeoServer((GraphDatabaseFacade)database);
+  long customTimeout=TimeUnit.SECONDS.toMillis(10);
+  HTTP.Response beginResponse=HTTP.withHeaders(HttpHeaderUtils.MAX_EXECUTION_TIME_HEADER,String.valueOf(customTimeout)).POST(transactionUri(neoServer),quotedJson("{ 'statements': [ { 'statement': 'CREATE (n)' } ] }"));
+  assertEquals("Response should be successful.",201,beginResponse.status());
+  String transactionEndPoint=beginResponse.location();
+  clock.forward(3,TimeUnit.SECONDS);
+  HTTP.Response response=HTTP.POST(transactionEndPoint,quotedJson("{ 'statements': [ { 'statement': 'CREATE (n)' } ] }"));
+  assertEquals("Response should be successful.",200,response.status());
+  clock.forward(11,TimeUnit.SECONDS);
+  response=HTTP.POST(transactionEndPoint,quotedJson("{ 'statements': [ { 'statement': 'CREATE (n)' } ] }"));
+  assertEquals("Response should be successful.",200,response.status());
+  HTTP.Response commitResponse=HTTP.POST(transactionEndPoint + "/commit");
+  assertEquals("Transaction should be already closed and not found.",404,commitResponse.status());
+  assertEquals("Transaction should be forcefully closed.",TransactionNotFound.code().serialize(),commitResponse.get("errors").findValue("code").asText());
+  assertDatabaseDoesNotHaveNodes(database);
+}

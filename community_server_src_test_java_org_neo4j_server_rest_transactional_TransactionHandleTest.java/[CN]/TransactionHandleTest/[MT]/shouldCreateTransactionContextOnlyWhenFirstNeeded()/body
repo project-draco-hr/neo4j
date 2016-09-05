@@ -5,13 +5,13 @@
   QueryExecutionEngine engine=mock(QueryExecutionEngine.class);
   Result executionResult=mock(Result.class);
   QuerySession querySession=mock(QuerySession.class);
-  when(kernel.create(any(GraphDatabaseQueryService.class),any(Type.class),any(AccessMode.class),any(HttpServletRequest.class))).thenReturn(querySession);
+  when(kernel.create(any(GraphDatabaseQueryService.class),any(Type.class),any(AccessMode.class),anyLong(),any(HttpServletRequest.class))).thenReturn(querySession);
   when(engine.executeQuery("query",map(),querySession)).thenReturn(executionResult);
   when(registry.begin(any(TransactionHandle.class))).thenReturn(1337l);
-  TransactionHandle handle=new TransactionHandle(kernel,engine,registry,uriScheme,true,FULL,NullLogProvider.getInstance());
+  TransactionHandle handle=getTransactionHandle(kernel,engine,registry);
   verifyZeroInteractions(kernel);
   handle.execute(statements(new Statement("query",map(),false,(ResultDataContent[])null)),output,mock(HttpServletRequest.class));
-  verify(kernel).newTransaction(any(Type.class),any(AccessMode.class));
+  verify(kernel).newTransaction(any(Type.class),any(AccessMode.class),anyLong());
   InOrder outputOrder=inOrder(output);
   outputOrder.verify(output).transactionCommitUri(uriScheme.txCommitUri(1337));
   outputOrder.verify(output).statementResult(executionResult,false,(ResultDataContent[])null);
