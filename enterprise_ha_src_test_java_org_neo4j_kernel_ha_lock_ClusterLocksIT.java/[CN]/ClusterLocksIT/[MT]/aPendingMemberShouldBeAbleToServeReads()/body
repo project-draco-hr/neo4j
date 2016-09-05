@@ -1,0 +1,31 @@
+{
+  createNodeOnMaster(testLabel,cluster.getMaster());
+  cluster.sync();
+  HighlyAvailableGraphDatabase slave=cluster.getAnySlave();
+  AtomicBoolean run=new AtomicBoolean(true);
+  AtomicReference<Throwable> ref=new AtomicReference<>();
+  Thread thread=new Thread(){
+    @Override public void run(){
+      while (run.get()) {
+        try (Transaction tx=slave.beginTx()){
+          Node single=Iterables.single(slave.getAllNodes());
+          Label label=Iterables.single(single.getLabels());
+          assertEquals(testLabel,label);
+          tx.success();
+        }
+ catch (        TransactionTerminatedException ex) {
+        }
+catch (        Throwable t) {
+          ref.compareAndSet(null,t);
+        }
+      }
+    }
+  }
+;
+  thread.start();
+  cluster.fail(slave,ClusterManager.NetworkFlag.values());
+  cluster.await(instanceEvicted(slave),20);
+  run.set(false);
+  thread.join();
+  assertNull(ref.get());
+}
