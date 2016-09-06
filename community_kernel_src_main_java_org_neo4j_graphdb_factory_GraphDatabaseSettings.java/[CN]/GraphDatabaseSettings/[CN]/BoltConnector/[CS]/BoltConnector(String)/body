@@ -1,5 +1,9 @@
 {
   super(key,ConnectorType.BOLT.name());
   encryption_level=group.scope(setting("tls_level",options(EncryptionLevel.class),OPTIONAL.name()));
-  address=group.scope(setting("address",HOSTNAME_PORT,"localhost:7687"));
+  Setting<ListenSocketAddress> legacyAddressSetting=listenAddress("address",7687);
+  Setting<ListenSocketAddress> listenAddressSetting=legacyFallback(legacyAddressSetting,listenAddress("listen_address",7687));
+  this.address=group.scope(legacyAddressSetting);
+  this.listen_address=group.scope(listenAddressSetting);
+  this.advertised_address=group.scope(advertisedAddress("advertised_address",listenAddressSetting));
 }
