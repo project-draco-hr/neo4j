@@ -1,18 +1,16 @@
 {
-  File root=testDirectory.directory(testName.getMethodName());
-  ClusterManager clusterManager=new ClusterManager.Builder(root).withProvider(clusterOfSize(2)).withSharedConfig(MapUtil.stringMap(HaSettings.pull_interval.name(),"0",HaSettings.tx_push_factor.name(),"0",ShellSettings.remote_shell_enabled.name(),"true")).withInstanceConfig(MapUtil.<String,IntFunction<String>>genericMap(ShellSettings.remote_shell_port.name(),new IntFunction<String>(){
+  ClusterManager.ManagedCluster cluster=clusterRule.withProvider(clusterOfSize(2)).withSharedSetting(HaSettings.pull_interval,"0").withSharedSetting(HaSettings.tx_push_factor,"0").withSharedSetting(ShellSettings.remote_shell_enabled,Settings.TRUE).withInstanceSetting(ShellSettings.remote_shell_port,new IntFunction<String>(){
     @Override public String apply(    int oneBasedServerId){
       return oneBasedServerId >= 1 && oneBasedServerId <= 2 ? "" + (SHELL_PORT + oneBasedServerId) : null;
     }
   }
-)).build();
-  clusterManager.start();
-  cluster=clusterManager.getDefaultCluster();
-  long commonNodeId=createNodeOnMaster();
+).startCluster();
+  long commonNodeId=createNodeOnMaster(cluster);
   setProperty(cluster.getMaster(),commonNodeId,1);
   callPullUpdatesViaShell(2);
   HighlyAvailableGraphDatabase slave=cluster.getAnySlave();
   try (Transaction tx=slave.beginTx()){
     assertEquals(1,slave.getNodeById(commonNodeId).getProperty("i"));
+    tx.success();
   }
  }
