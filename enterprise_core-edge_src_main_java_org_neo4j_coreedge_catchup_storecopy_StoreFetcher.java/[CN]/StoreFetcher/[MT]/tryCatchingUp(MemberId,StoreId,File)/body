@@ -1,15 +1,5 @@
 {
   ReadOnlyTransactionIdStore transactionIdStore=new ReadOnlyTransactionIdStore(pageCache,storeDir);
-  long lastCommittedTransactionId=transactionIdStore.getLastCommittedTransactionId();
-  try (TransactionLogCatchUpWriter writer=transactionLogFactory.create(storeDir,fs,pageCache,logProvider)){
-    log.info("Pulling transactions from: %d",lastCommittedTransactionId);
-    try {
-      long lastPulledTxId=txPullClient.pullTransactions(from,storeId,lastCommittedTransactionId,writer);
-      log.info("Txs streamed up to %d",lastPulledTxId);
-      return true;
-    }
- catch (    StoreCopyFailedException e) {
-      return false;
-    }
-  }
- }
+  long lastCommittedTxId=transactionIdStore.getLastCommittedTransactionId();
+  return pullTransactions(from,expectedStoreId,storeDir,lastCommittedTxId);
+}

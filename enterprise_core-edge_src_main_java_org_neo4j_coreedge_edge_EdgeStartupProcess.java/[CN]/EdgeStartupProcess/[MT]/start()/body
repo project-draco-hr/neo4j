@@ -1,18 +1,20 @@
 {
   localDatabase.start();
-  MemberId memberId=findCoreMemberToCopyFrom();
+  MemberId source=findCoreMemberToCopyFrom();
   if (localDatabase.isEmpty()) {
-    log.info("Local database is empty. Stopping local database");
+    log.info("Local database is empty, attempting to replace with copy from core server %s",source);
+    log.info("Stopping local database before copy.");
     localDatabase.stop();
-    log.info("Getting StoreId from %s",memberId);
-    StoreId storeId=storeFetcher.storeId(memberId);
-    log.info("Got StoreId %s from %s",storeId,memberId);
-    localDatabase.bringUpToDateOrReplaceStoreFrom(memberId,storeId,storeFetcher);
+    log.info("Finding store id of core server %s",source);
+    StoreId storeId=storeFetcher.getStoreIdOf(source);
+    log.info("Copying store from core server %s",source);
+    localDatabase.delete();
+    copyWholeStoreFrom(source,storeId,storeFetcher);
+    log.info("Restarting local database after copy.",source);
     localDatabase.start();
   }
  else {
-    log.info("Already have store with StoreId %s. Checking that it matches the StoreId of %s",localDatabase.storeId(),memberId);
-    localDatabase.ensureSameStoreId(memberId,storeFetcher);
+    ensureSameStoreIdAs(source);
   }
   txPulling.start();
 }

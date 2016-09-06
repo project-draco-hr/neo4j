@@ -1,28 +1,30 @@
 {
-  long startTxId=Math.max(msg.txId(),TransactionIdStore.BASE_TX_ID);
-  long endTxId=startTxId;
-  boolean success=true;
-  if (!this.storeId.equals(msg.storeId())) {
-    success=false;
-    log.info("Failed to serve TxPullRequest for tx %d and storeId %s because that storeId is different " + "from this machine with %s",endTxId,msg.storeId(),this.storeId);
+  long firstTxId=Math.max(msg.txId(),BASE_TX_ID + 1);
+  long lastTxId=firstTxId;
+  CatchupResult status=SUCCESS;
+  StoreId localStoreId=storeIdSupplier.get();
+  if (localStoreId == null || !localStoreId.equals(msg.expectedStoreId())) {
+    status=E_STORE_ID_MISMATCH;
+    log.info("Failed to serve TxPullRequest for tx %d and storeId %s because that storeId is different " + "from this machine with %s",lastTxId,msg.expectedStoreId(),localStoreId);
   }
- else   if (transactionIdStore.getLastCommittedTransactionId() > startTxId) {
-    try (IOCursor<CommittedTransactionRepresentation> cursor=logicalTransactionStore.getTransactions(startTxId + 1)){
+ else   if (transactionIdStore.getLastCommittedTransactionId() >= firstTxId) {
+    try (IOCursor<CommittedTransactionRepresentation> cursor=logicalTransactionStore.getTransactions(firstTxId)){
       while (cursor.next()) {
         ctx.write(ResponseMessageType.TX);
         CommittedTransactionRepresentation tx=cursor.get();
-        endTxId=tx.getCommitEntry().getTxId();
-        ctx.write(new TxPullResponse(storeId,tx));
+        lastTxId=tx.getCommitEntry().getTxId();
+        ctx.write(new TxPullResponse(localStoreId,tx));
       }
       ctx.flush();
     }
  catch (    NoSuchTransactionException e) {
-      success=false;
-      log.info("Failed to serve TxPullRequest for tx %d because the transaction does not exist.",endTxId);
+      status=E_TRANSACTION_PRUNED;
+      log.info("Failed to serve TxPullRequest for tx %d because the transaction does not exist.",lastTxId);
     }
   }
   ctx.write(ResponseMessageType.TX_STREAM_FINISHED);
-  ctx.write(new TxStreamFinishedResponse(endTxId,success));
+  TxStreamFinishedResponse response=new TxStreamFinishedResponse(status);
+  ctx.write(response);
   ctx.flush();
   monitor.increment();
   protocol.expect(State.MESSAGE_TYPE);

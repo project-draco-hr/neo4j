@@ -1,0 +1,9 @@
+{
+  RaftLog raftLog=bootstrappedLog();
+  RaftState state=raftState().entryLog(raftLog).myself(myself).build();
+  long leaderTerm=state.term() + leaderTermDifference;
+  RaftLogEntry logEntry=new RaftLogEntry(leaderTerm,content());
+  Outcome outcome=role.handler.handle(appendEntriesRequest().from(leader).leaderTerm(leaderTerm).prevLogIndex(0).prevLogTerm(0).logEntry(logEntry).build(),state,log());
+  assertTrue(((Response)messageFor(outcome,leader)).success());
+  assertThat(outcome.getLogCommands(),hasItem(new BatchAppendLogEntries(1,0,new RaftLogEntry[]{logEntry})));
+}

@@ -1,16 +1,18 @@
 {
-  RaftState state=raftState().myself(myself).build();
+  RaftLog entryLog=new InMemoryRaftLog();
+  entryLog.append(new RaftLogEntry(0,new RaftTestGroup(0)));
+  RaftState state=raftState().myself(myself).entryLog(entryLog).build();
   Follower follower=new Follower();
-  int localAppendIndex=2;
+  int localAppendIndex=3;
   int localCommitIndex=localAppendIndex - 1;
   int term=0;
-  appendSomeEntriesToLog(state,follower,localAppendIndex + 1,term);
+  appendSomeEntriesToLog(state,follower,localAppendIndex,term,1);
   Outcome raftTestMemberOutcome=new Outcome(FOLLOWER,state);
   raftTestMemberOutcome.setCommitIndex(localCommitIndex);
   state.update(raftTestMemberOutcome);
   assertEquals(localAppendIndex,state.entryLog().appendIndex());
   assertEquals(localCommitIndex,state.commitIndex());
-  Outcome outcome=follower.handle(appendEntriesRequest().leaderTerm(term).prevLogIndex(2).prevLogTerm(term).leaderCommit(localCommitIndex + 4).build(),state,log());
+  Outcome outcome=follower.handle(appendEntriesRequest().leaderTerm(term).prevLogIndex(3).prevLogTerm(term).leaderCommit(localCommitIndex + 4).build(),state,log());
   state.update(outcome);
-  assertEquals(2,state.commitIndex());
+  assertEquals(3,state.commitIndex());
 }

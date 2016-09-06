@@ -1,0 +1,25 @@
+{
+  try {
+    return catchUpClient.makeBlockingRequest(from,new GetStoreRequest(expectedStoreId),30,SECONDS,new CatchUpResponseAdaptor<Long>(){
+      private long expectedBytes=0;
+      private String destination;
+      @Override public void onFileHeader(      CompletableFuture<Long> requestOutcomeSignal,      FileHeader fileHeader){
+        this.expectedBytes=fileHeader.fileLength();
+        this.destination=fileHeader.fileName();
+      }
+      @Override public boolean onFileContent(      CompletableFuture<Long> signal,      FileContent fileContent) throws IOException {
+        try (FileContent content=fileContent;OutputStream outputStream=storeFileStreams.createStream(destination)){
+          expectedBytes-=content.writeTo(outputStream);
+        }
+         return expectedBytes <= 0;
+      }
+      @Override public void onFileStreamingComplete(      CompletableFuture<Long> signal,      StoreCopyFinishedResponse response){
+        signal.complete(response.lastCommittedTxBeforeStoreCopy());
+      }
+    }
+);
+  }
+ catch (  CatchUpClientException|NoKnownAddressesException e) {
+    throw new StoreCopyFailedException(e);
+  }
+}

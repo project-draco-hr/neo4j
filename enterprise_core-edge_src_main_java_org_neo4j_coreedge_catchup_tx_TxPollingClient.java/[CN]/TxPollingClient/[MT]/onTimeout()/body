@@ -9,13 +9,13 @@
     long lastAppliedTxId=applier.lastAppliedTxId();
     pullRequestMonitor.txPullRequest(lastAppliedTxId);
     TxPullRequest txPullRequest=new TxPullRequest(lastAppliedTxId,localDatabase.get());
-    catchUpClient.makeBlockingRequest(transactionServer,txPullRequest,30,TimeUnit.SECONDS,new CatchUpResponseAdaptor<Long>(){
-      @Override public void onTxPullResponse(      CompletableFuture<Long> signal,      TxPullResponse response){
+    catchUpClient.makeBlockingRequest(transactionServer,txPullRequest,30,TimeUnit.SECONDS,new CatchUpResponseAdaptor<CatchupResult>(){
+      @Override public void onTxPullResponse(      CompletableFuture<CatchupResult> signal,      TxPullResponse response){
         applier.queue(response.tx());
         timeout.renew();
       }
-      @Override public void onTxStreamFinishedResponse(      CompletableFuture<Long> signal,      TxStreamFinishedResponse response){
-        signal.complete(response.lastTransactionIdSent());
+      @Override public void onTxStreamFinishedResponse(      CompletableFuture<CatchupResult> signal,      TxStreamFinishedResponse response){
+        signal.complete(response.status());
       }
     }
 );

@@ -1,0 +1,39 @@
+{
+  try {
+    boolean isEmptyStore=localDatabase.isEmpty();
+    StoreId localStoreId=localDatabase.storeId();
+    StoreId remoteStoreId=storeFetcher.getStoreIdOf(source);
+    if (!isEmptyStore && !remoteStoreId.equals(localStoreId)) {
+      throw new StoreCopyFailedException("StoreId mismatch and not empty");
+    }
+    localDatabase.stop();
+    log.info("Downloading snapshot from core server at %s",source);
+    CoreSnapshot coreSnapshot=catchUpClient.makeBlockingRequest(source,new CoreSnapshotRequest(),1,MINUTES,new CatchUpResponseAdaptor<CoreSnapshot>(){
+      @Override public void onCoreSnapshot(      CompletableFuture<CoreSnapshot> signal,      CoreSnapshot response){
+        signal.complete(response);
+      }
+    }
+);
+    if (isEmptyStore) {
+      copyWholeStoreFrom(source,remoteStoreId,storeFetcher);
+    }
+ else {
+      CatchupResult catchupResult=storeFetcher.tryCatchingUp(source,localStoreId,localDatabase.storeDir());
+      if (catchupResult == E_TRANSACTION_PRUNED) {
+        copyWholeStoreFrom(source,localStoreId,storeFetcher);
+      }
+ else       if (catchupResult != SUCCESS) {
+        throw new StoreCopyFailedException("Failed to download store: " + catchupResult);
+      }
+    }
+    coreState.installSnapshot(coreSnapshot);
+    log.info("Core snapshot installed: " + coreSnapshot);
+    log.info("Restarting local database",source);
+    localDatabase.start();
+    log.info("Local database started",source);
+  }
+ catch (  Throwable e) {
+    localDatabase.panic(e);
+    throw new StoreCopyFailedException(e);
+  }
+}
