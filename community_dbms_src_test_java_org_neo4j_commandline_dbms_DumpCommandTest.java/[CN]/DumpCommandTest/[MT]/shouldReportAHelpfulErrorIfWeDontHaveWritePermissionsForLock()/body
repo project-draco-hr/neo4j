@@ -1,0 +1,17 @@
+{
+  assumeFalse("We haven't found a way to reliably tests permissions on Windows",SystemUtils.IS_OS_WINDOWS);
+  Path databaseDirectory=homeDir.resolve("data/databases/foo.db");
+  Files.createDirectories(databaseDirectory);
+  StoreLocker storeLocker=new StoreLocker(new DefaultFileSystemAbstraction());
+  storeLocker.checkLock(databaseDirectory.toFile());
+  try (Closeable ignored=withPermissions(databaseDirectory.resolve(StoreLocker.STORE_LOCK_FILENAME),emptySet())){
+    execute("foo.db");
+    fail("expected exception");
+  }
+ catch (  CommandFailed e) {
+    assertThat(e.getMessage(),equalTo("you do not have permission to dump the database -- is Neo4j " + "running as a different user?"));
+  }
+ finally {
+    storeLocker.release();
+  }
+}
