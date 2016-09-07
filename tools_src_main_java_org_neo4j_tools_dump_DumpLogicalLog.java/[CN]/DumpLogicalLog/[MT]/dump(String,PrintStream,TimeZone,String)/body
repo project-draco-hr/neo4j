@@ -1,0 +1,49 @@
+{
+  File file=new File(filenameOrDirectory);
+  printFile(file,out);
+  File firstFile;
+  LogVersionBridge bridge;
+  if (file.isDirectory()) {
+    final PhysicalLogFiles logFiles=new PhysicalLogFiles(file,fileSystem);
+    bridge=new ReaderLogVersionBridge(fileSystem,logFiles){
+      @Override public LogVersionedStoreChannel next(      LogVersionedStoreChannel channel) throws IOException {
+        LogVersionedStoreChannel next=super.next(channel);
+        if (next != channel) {
+          printFile(logFiles.getLogFileForVersion(next.getVersion()),out);
+        }
+        return next;
+      }
+    }
+;
+    firstFile=logFiles.getLogFileForVersion(logFiles.getLowestLogVersion());
+  }
+ else {
+    firstFile=file;
+    bridge=NO_MORE_CHANNELS;
+  }
+  StoreChannel fileChannel=fileSystem.open(firstFile,"r");
+  ByteBuffer buffer=ByteBuffer.allocateDirect(LOG_HEADER_SIZE);
+  LogHeader logHeader;
+  try {
+    logHeader=readLogHeader(buffer,fileChannel,false);
+  }
+ catch (  IOException ex) {
+    out.println("Unable to read timestamp information, no records in logical log.");
+    out.println(ex.getMessage());
+    fileChannel.close();
+    throw ex;
+  }
+  out.println("Logical log format: " + logHeader.logFormatVersion + " version: "+ logHeader.logVersion+ " with prev committed tx["+ logHeader.lastCommittedTxId+ "]");
+  PhysicalLogVersionedStoreChannel channel=new PhysicalLogVersionedStoreChannel(fileChannel,logHeader.logVersion,logHeader.logFormatVersion);
+  ReadableClosablePositionAwareChannel logChannel=new ReadAheadLogChannel(channel,bridge,DEFAULT_READ_AHEAD_SIZE);
+  LogEntryReader<ReadableClosablePositionAwareChannel> entryReader=new VersionAwareLogEntryReader<>();
+  IOCursor<LogEntry> entryCursor=new LogEntryCursor(entryReader,logChannel);
+  TransactionLogEntryCursor transactionCursor=new TransactionLogEntryCursor(entryCursor);
+  try (IOCursor<LogEntry[]> cursor=regex == null ? transactionCursor : new FilteringIOCursor<>(transactionCursor,new TransactionRegexCriteria(regex,timeZone))){
+    while (cursor.next()) {
+      for (      LogEntry entry : cursor.get()) {
+        out.println(entry.toString(timeZone));
+      }
+    }
+  }
+ }
