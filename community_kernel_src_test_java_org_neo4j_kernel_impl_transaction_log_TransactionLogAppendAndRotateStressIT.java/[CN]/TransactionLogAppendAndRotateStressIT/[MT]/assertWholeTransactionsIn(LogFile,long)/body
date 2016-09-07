@@ -1,0 +1,27 @@
+{
+  try (ReadableLogChannel reader=logFile.getReader(new LogPosition(logVersion,LOG_HEADER_SIZE))){
+    VersionAwareLogEntryReader<ReadableLogChannel> entryReader=new VersionAwareLogEntryReader<>();
+    LogEntry entry=null;
+    int state=0;
+    int transactions=0;
+    while ((entry=entryReader.readLogEntry(reader)) != null) {
+switch (state) {
+case 0:
+        assertTrue(entry instanceof LogEntryStart);
+      state=1;
+    break;
+case 1:
+  assertTrue(entry instanceof LogEntryCommand || entry instanceof LogEntryCommit);
+if (entry instanceof LogEntryCommit) {
+  state=0;
+  transactions++;
+}
+break;
+default :
+throw new IllegalArgumentException();
+}
+}
+assertEquals(0,state);
+assertTrue(transactions > 0);
+}
+ }
