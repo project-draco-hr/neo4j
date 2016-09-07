@@ -16,46 +16,25 @@
     life.shutdown();
   }
   life=new LifeSupport();
-  final AtomicBoolean recoveryRequiredCalled=new AtomicBoolean();
-  FakeRecoveryVisitor visitor=new FakeRecoveryVisitor(additionalHeader,masterId,authorId,timeStarted,timeCommitted,latestCommittedTxWhenStarted);
-  final LogFileRecoverer recoverer=new LogFileRecoverer(new VersionAwareLogEntryReader<>(),visitor);
+  final AtomicBoolean recoveryRequired=new AtomicBoolean();
+  final FakeRecoveryVisitor visitor=new FakeRecoveryVisitor(additionalHeader,masterId,authorId,timeStarted,timeCommitted,latestCommittedTxWhenStarted);
   logFile=life.add(new PhysicalLogFile(fs,logFiles,1000,transactionIdStore,mock(LogVersionRepository.class),monitor,positionCache));
+  final LogicalTransactionStore txStore=new PhysicalLogicalTransactionStore(logFile,positionCache);
   life.add(new BatchingTransactionAppender(logFile,NO_ROTATION,positionCache,transactionIdStore,BYPASS,kernelHealth));
   life.add(new Recovery(new Recovery.SPI(){
     @Override public void forceEverything(){
     }
-    @Override public Visitor<LogVersionedStoreChannel,IOException> getRecoverer(){
-      return recoverer;
-    }
-    @Override public Iterator<LogVersionedStoreChannel> getLogFiles(    final long recoveryVersion) throws IOException {
-      return new Iterator<LogVersionedStoreChannel>(){
-        private final StoreChannel channel=PhysicalLogFile.openForVersion(logFiles,fs,recoveryVersion);
-        private boolean consumed=false;
-        @Override public boolean hasNext(){
-          return !consumed;
-        }
-        @Override public LogVersionedStoreChannel next(){
-          PhysicalLogVersionedStoreChannel physicalLogVersionedStoreChannel;
-          try {
-            physicalLogVersionedStoreChannel=new PhysicalLogVersionedStoreChannel(channel,recoveryVersion,CURRENT_LOG_VERSION);
-          }
- catch (          IOException e) {
-            throw new RuntimeException(e);
-          }
-          consumed=true;
-          return physicalLogVersionedStoreChannel;
-        }
-        @Override public void remove(){
-          throw new UnsupportedOperationException();
-        }
-      }
-;
+    @Override public Visitor<CommittedTransactionRepresentation,Exception> getRecoveryVisitor(){
+      recoveryRequired.set(true);
+      return visitor;
     }
     @Override public LogPosition getPositionToRecoverFrom() throws IOException {
       return LogPosition.start(0);
     }
-    @Override public void recoveryRequired(){
-      recoveryRequiredCalled.set(true);
+    @Override public TransactionCursor getTransactions(    LogPosition position) throws IOException {
+      return txStore.getTransactions(position);
+    }
+    @Override public void allTransactionsRecovered(    CommittedTransactionRepresentation lastRecoveredTransaction,    LogPosition positionAfterLastRecoveredTransaction) throws Exception {
     }
   }
 ,mock(Recovery.Monitor.class)));
@@ -66,5 +45,5 @@
     life.shutdown();
   }
   assertEquals(1,visitor.getVisitedTransactions());
-  assertTrue(recoveryRequiredCalled.get());
+  assertTrue(recoveryRequired.get());
 }
