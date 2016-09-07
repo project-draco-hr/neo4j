@@ -3,13 +3,13 @@
   if (result.outcome.isSuccessful()) {
     return format;
   }
-  if (StoreVersion.isEnterpriseStoreVersion(result.actualVersion) && StoreVersion.isCommunityStoreVersion(format.storeVersion())) {
-    throw new StoreUpgrader.UnexpectedUpgradingStoreFormatException();
-  }
   RecordFormats fromFormat;
   try {
     fromFormat=RecordFormatSelector.selectForVersion(result.actualVersion);
-    if (fromFormat.generation() > format.generation()) {
+    if (FormatFamily.isLowerFamilyFormat(format,fromFormat)) {
+      throw new StoreUpgrader.UnexpectedUpgradingStoreFormatException();
+    }
+    if (FormatFamily.isSameFamily(fromFormat,format) && (fromFormat.generation() > format.generation())) {
       result=new Result(Outcome.unexpectedUpgradingStoreVersion,fromFormat.storeVersion(),new File(storeDirectory,MetaDataStore.DEFAULT_NAME).getAbsolutePath());
     }
  else {
