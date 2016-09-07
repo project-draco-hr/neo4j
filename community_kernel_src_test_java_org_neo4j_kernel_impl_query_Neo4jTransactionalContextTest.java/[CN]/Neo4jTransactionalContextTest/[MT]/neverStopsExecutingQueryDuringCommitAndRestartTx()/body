@@ -2,6 +2,7 @@
   KernelTransaction initialKTX=mock(KernelTransaction.class);
   KernelTransaction.Type transactionType=null;
   AccessMode transactionMode=null;
+  InternalTransaction initialTransaction=mock(InternalTransaction.class);
   QueryRegistryOperations initialQueryRegistry=mock(QueryRegistryOperations.class);
   ExecutingQuery executingQuery=mock(ExecutingQuery.class);
   PropertyContainerLocker locker=null;
@@ -19,9 +20,9 @@
   when(txBridge.getKernelTransactionBoundToThisThread(true)).thenReturn(initialKTX,secondKTX);
   when(txBridge.get()).thenReturn(secondStatement);
   when(secondStatement.queryRegistration()).thenReturn(secondQueryRegistry);
-  Neo4jTransactionalContext context=new Neo4jTransactionalContext(databaseQueryService,transaction,transactionType,transactionMode,statement,executingQuery,locker,txBridge,dbmsOperationsFactory,guard);
+  Neo4jTransactionalContext context=new Neo4jTransactionalContext(databaseQueryService,initialTransaction,transactionType,transactionMode,statement,executingQuery,locker,txBridge,dbmsOperationsFactory,guard);
   context.commitAndRestartTx();
-  Object[] mocks={txBridge,transaction,initialQueryRegistry,initialKTX,secondQueryRegistry,secondKTX};
+  Object[] mocks={txBridge,initialTransaction,initialQueryRegistry,initialKTX,secondQueryRegistry,secondKTX};
   InOrder order=Mockito.inOrder(mocks);
   order.verify(txBridge).getKernelTransactionBoundToThisThread(true);
   order.verify(txBridge).unbindTransactionFromCurrentThread();
@@ -31,8 +32,8 @@
   order.verify(txBridge).unbindTransactionFromCurrentThread();
   order.verify(txBridge).bindTransactionToCurrentThread(initialKTX);
   order.verify(initialQueryRegistry).unregisterExecutingQuery(executingQuery);
-  order.verify(transaction).success();
-  order.verify(transaction).close();
+  order.verify(initialTransaction).success();
+  order.verify(initialTransaction).close();
   order.verify(txBridge).unbindTransactionFromCurrentThread();
   order.verify(txBridge).bindTransactionToCurrentThread(secondKTX);
   verifyNoMoreInteractions(mocks);
