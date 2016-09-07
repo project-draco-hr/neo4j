@@ -1,6 +1,17 @@
 {
-  transaction.success();
-  transaction.close();
+  QueryRegistryOperations oldQueryRegistryOperations=statement.queryRegistration();
+  InternalTransaction oldTransaction=transaction;
+  KernelTransaction oldKernelTx=txBridge.getKernelTransactionBoundToThisThread(true);
+  txBridge.unbindTransactionFromCurrentThread();
   transaction=graph.beginTransaction(transactionType,mode);
   statement=txBridge.get();
+  statement.queryRegistration().registerExecutingQuery(executingQuery);
+  KernelTransaction kernelTx=txBridge.getKernelTransactionBoundToThisThread(true);
+  txBridge.unbindTransactionFromCurrentThread();
+  txBridge.bindTransactionToCurrentThread(oldKernelTx);
+  oldQueryRegistryOperations.unregisterExecutingQuery(executingQuery);
+  oldTransaction.success();
+  oldTransaction.close();
+  txBridge.unbindTransactionFromCurrentThread();
+  txBridge.bindTransactionToCurrentThread(kernelTx);
 }
