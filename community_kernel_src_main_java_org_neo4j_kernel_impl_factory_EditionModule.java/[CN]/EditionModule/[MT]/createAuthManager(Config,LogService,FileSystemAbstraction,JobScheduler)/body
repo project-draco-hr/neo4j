@@ -4,20 +4,21 @@
     return AuthManager.NO_AUTH;
   }
   String key=config.get(GraphDatabaseSettings.auth_manager);
-  Log authManagerLog=createAuthManagerLog(config,logging,fileSystem,jobScheduler);
   for (  AuthManager.Factory candidate : Service.load(AuthManager.Factory.class)) {
     String candidateId=candidate.getKeys().iterator().next();
     try {
-      return candidate.newInstance(config,logging.getUserLogProvider(),authManagerLog,fileSystem,jobScheduler);
+      return candidate.newInstance(config,logging.getUserLogProvider(),authManagerLog(),fileSystem,jobScheduler);
     }
- catch (    Exception e) {
+ catch (    Exception e1) {
       logging.getInternalLog(GraphDatabaseFacadeFactory.class).info("No auth manager implementation specified, defaulting to '" + candidateId + "'");
-      return candidate.newInstance(config,logging.getUserLogProvider(),authManagerLog,fileSystem,jobScheduler);
+      try {
+        return candidate.newInstance(config,logging.getUserLogProvider(),authManagerLog(),fileSystem,jobScheduler);
+      }
+ catch (      Exception e2) {
+        logging.getUserLog(GraphDatabaseFacadeFactory.class).error("No auth manager implementation specified and no default could be loaded. " + "It is an illegal product configuration to have auth enabled and not provide an " + "auth manager service.");
+        throw new IllegalArgumentException("Auth enabled but no auth manager found. This is an illegal product configuration.");
+      }
     }
   }
-  if (key.isEmpty()) {
-    logging.getUserLog(GraphDatabaseFacadeFactory.class).error("No auth manager implementation specified and no default could be loaded. " + "It is an illegal product configuration to have auth enabled and not provide an " + "auth manager service.");
-    throw new IllegalArgumentException("Auth enabled but no auth manager found. This is an illegal product configuration.");
-  }
-  throw new IllegalArgumentException("No auth manager found with the name '" + key + "'.");
+  throw new IllegalArgumentException("No auth manager factory detected!.");
 }
