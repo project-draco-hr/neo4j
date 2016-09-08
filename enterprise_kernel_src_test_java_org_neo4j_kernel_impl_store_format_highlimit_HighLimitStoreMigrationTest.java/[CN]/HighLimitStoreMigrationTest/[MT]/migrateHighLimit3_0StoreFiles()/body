@@ -1,0 +1,15 @@
+{
+  DefaultFileSystemAbstraction fileSystem=fileSystemRule.get();
+  PageCache pageCache=pageCacheRule.getPageCache(fileSystem);
+  SchemaIndexProvider schemaIndexProvider=mock(SchemaIndexProvider.class);
+  StoreMigrator migrator=new StoreMigrator(fileSystem,pageCache,Config.empty(),NullLogService.getInstance(),schemaIndexProvider);
+  File storeDir=new File(testDirectory.graphDbDir(),"storeDir");
+  File migrationDir=new File(testDirectory.graphDbDir(),"migrationDir");
+  fileSystem.mkdir(migrationDir);
+  fileSystem.mkdir(storeDir);
+  prepareNeoStoreFile(fileSystem,storeDir,HighLimitV3_0_0.STORE_VERSION,pageCache);
+  MigrationProgressMonitor.Section progressMonitor=mock(MigrationProgressMonitor.Section.class);
+  migrator.migrate(storeDir,migrationDir,progressMonitor,HighLimitV3_0_0.STORE_VERSION,HighLimit.STORE_VERSION);
+  int newStoreFilesCount=fileSystem.listFiles(migrationDir).length;
+  assertEquals("Store should be migrated and new store files should be created.",17,newStoreFilesCount);
+}
