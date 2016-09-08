@@ -1,11 +1,12 @@
 {
-  int durationInMinutes=parseInt(fromEnvironmentOrDefault("PAGE_CACHE_STRESS_DURATION","1"));
-  int numberOfPages=parseInt(fromEnvironmentOrDefault("PAGE_CACHE_STRESS_NUMBER_OF_PAGES","10000"));
-  int numberOfThreads=parseInt(fromEnvironmentOrDefault("PAGE_CACHE_STRESS_NUMBER_OF_THREADS","8"));
-  int numberOfCachePages=parseInt(fromEnvironmentOrDefault("PAGE_CACHE_STRESS_NUMBER_OF_CACHE_PAGES","1000"));
-  String workingDirectory=fromEnvironmentOrDefault("PAGE_CACHE_STRESS_WORKING_DIRECTORY",getProperty("java.io.tmpdir"));
+  int durationInMinutes=parseInt(fromEnv("PAGE_CACHE_STRESS_DURATION","1"));
+  int numberOfPages=parseInt(fromEnv("PAGE_CACHE_STRESS_NUMBER_OF_PAGES","10000"));
+  int numberOfThreads=parseInt(fromEnv("PAGE_CACHE_STRESS_NUMBER_OF_THREADS","8"));
+  int numberOfCachePages=parseInt(fromEnv("PAGE_CACHE_STRESS_NUMBER_OF_CACHE_PAGES","1000"));
+  File baseDir=new File(fromEnv("PAGE_CACHE_STRESS_WORKING_DIRECTORY",getProperty("java.io.tmpdir")));
+  File workingDirectory=new File(baseDir,"working");
   DefaultPageCacheTracer monitor=new DefaultPageCacheTracer();
-  PageCacheStressTest runner=new PageCacheStressTest.Builder().with(timePeriod(durationInMinutes,MINUTES)).withNumberOfPages(numberOfPages).withNumberOfThreads(numberOfThreads).withNumberOfCachePages(numberOfCachePages).withWorkingDirectory(workingDirectory).with(monitor).build();
+  PageCacheStressTest runner=new PageCacheStressTest.Builder().with(timePeriod(durationInMinutes,MINUTES)).withNumberOfPages(numberOfPages).withNumberOfThreads(numberOfThreads).withNumberOfCachePages(numberOfCachePages).withWorkingDirectory(ensureExistsAndEmpty(workingDirectory)).with(monitor).build();
   runner.run();
   long faults=monitor.faults();
   long evictions=monitor.evictions();
@@ -13,4 +14,5 @@
   long unpins=monitor.unpins();
   long flushes=monitor.flushes();
   System.out.printf(" - page faults: %d%n - evictions: %d%n - pins: %d%n - unpins: %d%n - flushes: %d%n",faults,evictions,pins,unpins,flushes);
+  FileUtils.deleteRecursively(workingDirectory);
 }
