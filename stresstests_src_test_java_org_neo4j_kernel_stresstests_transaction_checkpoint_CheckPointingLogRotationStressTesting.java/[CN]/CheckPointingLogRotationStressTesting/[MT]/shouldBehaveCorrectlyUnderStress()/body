@@ -1,15 +1,12 @@
 {
   long durationInMinutes=parseLong(fromEnv("CHECK_POINT_LOG_ROTATION_STRESS_DURATION",DEFAULT_DURATION_IN_MINUTES));
-  File storeDir=ensureExists(fromEnv("CHECK_POINT_LOG_ROTATION_STORE_DIRECTORY",DEFAULT_STORE_DIR));
+  File storeDir=new File(fromEnv("CHECK_POINT_LOG_ROTATION_STORE_DIRECTORY",DEFAULT_STORE_DIR));
   long nodeCount=parseLong(fromEnv("CHECK_POINT_LOG_ROTATION_NODE_COUNT",DEFAULT_NODE_COUNT));
   int threads=parseInt(fromEnv("CHECK_POINT_LOG_ROTATION_WORKER_THREADS",DEFAULT_WORKER_THREADS));
   String pageCacheMemory=fromEnv("CHECK_POINT_LOG_ROTATION_PAGE_CACHE_MEMORY",DEFAULT_PAGE_CACHE_MEMORY);
   String pageSize=fromEnv("CHECK_POINT_LOG_ROTATION_PAGE_SIZE",DEFAULT_PAGE_SIZE);
-  if (storeDir.exists()) {
-    FileUtils.deleteRecursively(storeDir);
-  }
   System.out.println("1/6\tBuilding initial store...");
-  new ParallelBatchImporter(storeDir,DEFAULT,NullLogService.getInstance(),ExecutionMonitors.defaultVisible(),Config.defaults()).doImport(new NodeCountInputs(nodeCount));
+  new ParallelBatchImporter(ensureExistsAndEmpty(storeDir),DEFAULT,NullLogService.getInstance(),ExecutionMonitors.defaultVisible(),Config.defaults()).doImport(new NodeCountInputs(nodeCount));
   System.out.println("2/6\tStarting database...");
   GraphDatabaseService db=new GraphDatabaseFactory().newEmbeddedDatabaseBuilder(storeDir).setConfig(GraphDatabaseSettings.pagecache_memory,pageCacheMemory).setConfig(GraphDatabaseSettings.mapped_memory_page_size,pageSize).setConfig(GraphDatabaseSettings.keep_logical_logs,Settings.FALSE).setConfig(GraphDatabaseSettings.check_point_interval_time,CHECK_POINT_INTERVAL_MINUTES + "m").setConfig(GraphDatabaseFacadeFactory.Configuration.tracer,"timer").newGraphDatabase();
   System.out.println("3/6\tWarm up db...");
@@ -32,4 +29,5 @@
   finally {
     System.out.println("Done.");
   }
+  FileUtils.deleteRecursively(storeDir);
 }
