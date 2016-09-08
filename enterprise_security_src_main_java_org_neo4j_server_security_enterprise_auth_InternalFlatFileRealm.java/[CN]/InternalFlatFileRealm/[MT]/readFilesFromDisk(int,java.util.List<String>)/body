@@ -1,0 +1,21 @@
+{
+  if (attemptLeft < 0) {
+    throw new RuntimeException("Unable to load valid flat file repositories! Attempts failed with:\n\t" + String.join("\n\t",failures));
+  }
+  try {
+    ListSnapshot<User> users=userRepository.getPersistedSnapshot();
+    ListSnapshot<RoleRecord> roles=roleRepository.getPersistedSnapshot();
+    if (RoleRepository.validate(users.values,roles.values)) {
+      setUsersAndRoles(users,roles);
+    }
+ else {
+      failures.add("Role-auth file combination not valid.");
+      Thread.sleep(10);
+      readFilesFromDisk(attemptLeft - 1,failures);
+    }
+  }
+ catch (  IOException|IllegalStateException|InterruptedException|InvalidArgumentsException e) {
+    failures.add(e.getMessage());
+    readFilesFromDisk(attemptLeft - 1,failures);
+  }
+}
