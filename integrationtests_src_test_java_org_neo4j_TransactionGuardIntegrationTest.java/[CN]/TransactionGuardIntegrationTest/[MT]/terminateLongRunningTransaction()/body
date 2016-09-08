@@ -1,0 +1,14 @@
+{
+  GraphDatabaseAPI database=startDatabaseWithTimeout();
+  try (Transaction transaction=database.beginTx()){
+    clock.forward(3,TimeUnit.SECONDS);
+    transaction.success();
+    database.createNode();
+    fail("Transaction should be already terminated.");
+  }
+ catch (  GuardTimeoutException e) {
+    assertThat(e.getMessage(),startsWith("Transaction timeout."));
+    assertEquals(e.status(),Status.Transaction.TransactionTimedOut);
+  }
+  assertDatabaseDoesNotHaveNodes(database);
+}
