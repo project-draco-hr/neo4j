@@ -1,0 +1,14 @@
+{
+  cluster=clusterRule.startCluster();
+  CoreClusterMember leader=cluster.awaitLeader();
+  Driver driver=GraphDatabase.driver(leader.routingAddress(),AuthTokens.basic("neo4j","neo4j"));
+  try (Session session=driver.session(AccessMode.WRITE)){
+    session.run("CREATE CONSTRAINT ON (p:Person) ASSERT p.name is UNIQUE").consume();
+    session.run("MERGE (n:Person {name: 'Jim'})-[:BOOM]->(m)").consume();
+    Record record=session.run("MATCH (n:Person) RETURN COUNT(*) AS count").next();
+    assertEquals(1,record.get("count").asInt());
+  }
+  finally {
+    driver.close();
+  }
+}

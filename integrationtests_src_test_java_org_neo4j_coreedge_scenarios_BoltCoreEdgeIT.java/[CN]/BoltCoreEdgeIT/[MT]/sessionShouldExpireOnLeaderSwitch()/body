@@ -1,0 +1,17 @@
+{
+  cluster=clusterRule.startCluster();
+  CoreClusterMember leader=cluster.awaitLeader();
+  Driver driver=GraphDatabase.driver(leader.routingAddress(),AuthTokens.basic("neo4j","neo4j"));
+  try (Session session=driver.session()){
+    session.run("CREATE CONSTRAINT ON (p:Person) ASSERT p.name is UNIQUE").consume();
+    switchLeader(leader);
+    session.run("MERGE (n:Person {name: 'Jim'})-[:BOOM]->(m)").consume();
+    fail("Should have thrown exception");
+  }
+ catch (  SessionExpiredException sep) {
+    assertEquals(String.format("Server at %s no longer accepts writes",leader.boltAdvertisedAddress()),sep.getMessage());
+  }
+ finally {
+    driver.close();
+  }
+}
