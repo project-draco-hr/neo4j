@@ -1,0 +1,12 @@
+{
+  StoreFactory factory=new StoreFactory(storeDir,config,new DefaultIdGeneratorFactory(fs),pageCache,fs,NullLogProvider.getInstance());
+  NeoStores neoStores=factory.openAllNeoStores(true);
+  neoStores.close();
+  CoreSnapshot coreSnapshot=new CoreSnapshot(FIRST_INDEX,FIRST_TERM);
+  coreSnapshot.add(CoreStateType.ID_ALLOCATION,deriveIdAllocationState(storeDir));
+  coreSnapshot.add(CoreStateType.LOCK_TOKEN,new ReplicatedLockTokenState());
+  coreSnapshot.add(CoreStateType.RAFT_CORE_STATE,new RaftCoreState(new MembershipEntry(FIRST_INDEX,members)));
+  coreSnapshot.add(CoreStateType.SESSION_TRACKER,new GlobalSessionTrackerState());
+  appendNullTransactionLogEntryToSetRaftIndexToMinusOne();
+  return coreSnapshot;
+}

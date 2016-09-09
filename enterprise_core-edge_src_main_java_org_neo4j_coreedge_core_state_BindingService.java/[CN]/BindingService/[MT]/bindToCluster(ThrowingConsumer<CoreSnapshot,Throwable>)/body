@@ -1,0 +1,33 @@
+{
+  if (clusterIdStorage.exists()) {
+    ClusterId localClusterId=clusterIdStorage.readState();
+    publishClusterId(localClusterId);
+    return localClusterId;
+  }
+ else {
+    ClusterId commonClusterId;
+    CoreTopology topology=topologyService.coreServers();
+    if (topology.canBeBootstrapped()) {
+      commonClusterId=new ClusterId(UUID.randomUUID());
+      CoreSnapshot snapshot=coreBootstrapper.bootstrap(topology.members());
+      snapshotInstaller.accept(snapshot);
+      publishClusterId(commonClusterId);
+    }
+ else {
+      long endTime=clock.millis() + timeoutMillis;
+      log.info("Attempting to bind to : " + topology);
+      while ((commonClusterId=topology.clusterId()) == null) {
+        if (clock.millis() < endTime) {
+          retryWaiter.apply();
+          topology=topologyService.coreServers();
+        }
+ else {
+          throw new TimeoutException("Failed binding to cluster in time. Last topology was: " + topology);
+        }
+      }
+      log.info("Bound to cluster: " + commonClusterId);
+    }
+    clusterIdStorage.writeState(commonClusterId);
+    return commonClusterId;
+  }
+}
