@@ -1,22 +1,22 @@
 {
   final PhysicalLogFiles logFiles=new PhysicalLogFiles(directory.directory(),"log",fs);
   File file=logFiles.getLogFileForVersion(logVersion);
+  final LogPositionMarker marker=new LogPositionMarker();
   writeSomeData(file,new Visitor<Pair<LogEntryWriter,Consumer<LogPositionMarker>>,IOException>(){
     @Override public boolean visit(    Pair<LogEntryWriter,Consumer<LogPositionMarker>> pair) throws IOException {
       LogEntryWriter writer=pair.first();
       Consumer<LogPositionMarker> consumer=pair.other();
-      LogPositionMarker marker=new LogPositionMarker();
-      consumer.accept(marker);
       writer.writeStartEntry(0,1,2l,3l,new byte[0]);
       writer.writeCommitEntry(4l,5l);
       consumer.accept(marker);
-      writer.writeCheckPointEntry(marker.newPosition());
+      writer.writeStartEntry(0,1,5l,4l,new byte[0]);
       return true;
     }
   }
 );
   LifeSupport life=new LifeSupport();
   Recovery.Monitor monitor=mock(Recovery.Monitor.class);
+  final AtomicBoolean recoveryRequired=new AtomicBoolean();
   try {
     RecoveryLabelScanWriterProvider provider=mock(RecoveryLabelScanWriterProvider.class);
     RecoveryLegacyIndexApplierLookup lookup=mock(RecoveryLegacyIndexApplierLookup.class);
@@ -30,15 +30,16 @@
     TransactionRepresentationStoreApplier storeApplier=mock(TransactionRepresentationStoreApplier.class);
     life.add(new Recovery(new DefaultRecoverySPI(provider,lookup,flusher,mock(NeoStores.class),logFiles,fs,logVersionRepository,finder,validator,transactionIdStore,txStore,storeApplier){
       @Override public Visitor<CommittedTransactionRepresentation,Exception> startRecovery(){
-        fail("Recovery should not be required");
-        return null;
+        recoveryRequired.set(true);
+        return super.startRecovery();
       }
     }
 ,monitor));
     life.start();
-    verifyZeroInteractions(monitor);
   }
   finally {
     life.shutdown();
   }
+  assertTrue(recoveryRequired.get());
+  assertEquals(marker.getByteOffset(),file.length());
 }
