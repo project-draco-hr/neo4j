@@ -1,21 +1,15 @@
 {
   final IOException exception=new IOException("simulated IO Exception on create");
-  FileSystem moveFailingFileSystem=new DelegatingFileSystem(fs){
-    @Override protected DelegatingFileSystemProvider createDelegate(    FileSystemProvider provider){
-      return new WrappedProvider(provider,this){
-        @Override public void move(        Path source,        Path target,        CopyOption... options) throws IOException {
-          if (roleFile.getFileName().toString().equals(target.getFileName().toString())) {
-            throw exception;
-          }
-          super.move(source,target,options);
-        }
+  FileSystemAbstraction craschingFileSystem=new DelegatingFileSystemAbstraction(fs){
+    @Override public boolean move(    File oldLocation,    File newLocation,    CopyOption... copyOptions) throws IOException {
+      if (roleFile.getName().equals(newLocation.getName().toString())) {
+        throw exception;
       }
-;
+      return super.move(oldLocation,newLocation,copyOptions);
     }
   }
 ;
-  Path authFile=moveFailingFileSystem.getPath("dbms",ROLE_FILE_NAME);
-  FileRoleRepository roleRepository=new FileRoleRepository(authFile,NullLogProvider.getInstance());
+  roleRepository=new FileRoleRepository(craschingFileSystem,roleFile,logProvider);
   roleRepository.start();
   RoleRecord role=new RoleRecord("admin","jake");
   try {
@@ -25,6 +19,6 @@
  catch (  IOException e) {
     assertSame(exception,e);
   }
-  assertFalse(Files.exists(authFile));
-  assertFalse(Files.newDirectoryStream(authFile.getParent()).iterator().hasNext());
+  assertFalse(craschingFileSystem.fileExists(roleFile));
+  assertThat(craschingFileSystem.listFiles(roleFile.getParentFile()).length,equalTo(0));
 }
