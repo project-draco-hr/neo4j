@@ -1,10 +1,13 @@
 {
   ByteBuf transactionBuffer=Unpooled.buffer();
-  NetworkFlushableChannelNetty4 channel=new NetworkFlushableChannelNetty4(transactionBuffer);
+  NetworkFlushableChannelNetty4 channel=new NetworkFlushableChannelNetty4(transactionBuffer,MAX_SERIALIZED_TX_SIZE);
   try {
     TransactionSerializer.write(tx,channel);
   }
- catch (  IOException e) {
+ catch (  MessageTooBigException e) {
+    throw new IllegalStateException("Transaction size was too large to replicate across the cluster.",e);
+  }
+catch (  IOException e) {
     throw new RuntimeException(e);
   }
   byte[] txBytes=Arrays.copyOf(transactionBuffer.array(),transactionBuffer.writerIndex());
