@@ -1,3 +1,17 @@
 {
-  source.neoStoreModule.neoStores().getMetaDataStore().logRecords(log);
+  PhysicalLogFiles logFiles=source.getDependencyResolver().resolveDependency(PhysicalLogFiles.class);
+  try {
+    for (long logVersion=logFiles.getLowestLogVersion(); logFiles.versionExists(logVersion); logVersion++) {
+      if (logFiles.hasAnyTransaction(logVersion)) {
+        LogHeader header=logFiles.extractHeader(logVersion);
+        long firstTransactionIdInThisLog=header.lastCommittedTxId + 1;
+        log.log("Oldest transaction " + firstTransactionIdInThisLog + " found in log with version "+ logVersion);
+        return;
+      }
+    }
+    log.log("No transactions found in any log");
+  }
+ catch (  IOException e) {
+    log.log("Error trying to figure out oldest transaction in log");
+  }
 }
