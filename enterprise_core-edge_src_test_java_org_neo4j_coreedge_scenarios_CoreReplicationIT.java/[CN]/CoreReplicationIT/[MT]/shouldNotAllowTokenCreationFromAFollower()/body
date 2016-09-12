@@ -1,0 +1,20 @@
+{
+  CoreClusterMember leader=cluster.awaitLeader();
+  CoreGraphDatabase leaderDb=leader.database();
+  try (Transaction tx=leaderDb.beginTx()){
+    leaderDb.createNode(Label.label("Person"));
+    tx.success();
+  }
+   CoreGraphDatabase follower=cluster.getDbWithRole(Role.FOLLOWER).database();
+  try (Transaction tx=follower.beginTx()){
+    follower.findNodes(Label.label("Person")).next().setProperty("name","Mark");
+    tx.success();
+    fail("Should have thrown exception");
+  }
+ catch (  WriteOperationsNotAllowedException ignored) {
+    assertThat(ignored.getMessage(),containsString("No write operations are allowed"));
+  }
+catch (  Exception exception) {
+    fail("Got an unexpected exception: " + exception);
+  }
+}
