@@ -1,0 +1,18 @@
+{
+  testSocket=bindPort("0.0.0.0",4243);
+  AssertableLogProvider logProvider=new AssertableLogProvider();
+  AssertableLogProvider userLogProvider=new AssertableLogProvider();
+  HazelcastDiscoveryServiceFactory hzFactory=new HazelcastDiscoveryServiceFactory();
+  Config config=defaults().with(singletonMap(discovery_listen_address.name(),":" + testSocket.getLocalPort()));
+  config.augment(singletonMap(CoreEdgeClusterSettings.initial_discovery_members.name(),"localhost:" + testSocket.getLocalPort()));
+  config.augment(singletonMap(GraphDatabaseSettings.boltConnector("bolt").enabled.name(),"true"));
+  CoreTopologyService coreTopologyService=hzFactory.coreTopologyService(config,new MemberId(UUID.randomUUID()),logProvider,userLogProvider);
+  try {
+    coreTopologyService.init();
+    coreTopologyService.start();
+  }
+ catch (  Throwable throwable) {
+  }
+  logProvider.assertContainsMessageContaining("Hazelcast was unable to start with setting");
+  userLogProvider.assertContainsMessageContaining("Hazelcast was unable to start with setting");
+}
