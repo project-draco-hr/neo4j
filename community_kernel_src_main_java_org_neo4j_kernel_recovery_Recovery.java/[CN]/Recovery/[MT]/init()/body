@@ -1,20 +1,25 @@
 {
-  LogPosition recoveryPosition=spi.getPositionToRecoverFrom();
-  if (LogPosition.UNSPECIFIED.equals(recoveryPosition)) {
+  LogPosition recoveryFromPosition=spi.getPositionToRecoverFrom();
+  if (LogPosition.UNSPECIFIED.equals(recoveryFromPosition)) {
     return;
   }
-  Iterator<LogVersionedStoreChannel> logFiles=spi.getLogFiles(recoveryPosition.getLogVersion());
-  monitor.recoveryRequired(recoveryPosition);
-  spi.recoveryRequired();
-  Visitor<LogVersionedStoreChannel,IOException> recoverer=spi.getRecoverer();
-  while (logFiles.hasNext()) {
-    try (LogVersionedStoreChannel toRecover=logFiles.next()){
-      toRecover.position(recoveryPosition.getByteOffset());
-      recoverer.visit(toRecover);
-      recoveryPosition=LogPosition.start(recoveryPosition.getLogVersion() + 1);
+  monitor.recoveryRequired(recoveryFromPosition);
+  LogPosition recoveryToPosition;
+  CommittedTransactionRepresentation lastTransaction=null;
+  Visitor<CommittedTransactionRepresentation,Exception> recoveryVisitor=spi.startRecovery();
+  try (TransactionCursor transactionsToRecover=spi.getTransactions(recoveryFromPosition)){
+    while (transactionsToRecover.next()) {
+      lastTransaction=transactionsToRecover.get();
+      long txId=lastTransaction.getCommitEntry().getTxId();
+      recoveryVisitor.visit(lastTransaction);
+      monitor.transactionRecovered(txId);
+      numberOfRecoveredTransactions++;
     }
-   }
+    recoveryToPosition=transactionsToRecover.position();
+  }
+   if (lastTransaction != null) {
+    spi.allTransactionsRecovered(lastTransaction,recoveryToPosition);
+  }
   recoveredLog=true;
-  monitor.logRecovered(recoveryPosition);
   spi.forceEverything();
 }

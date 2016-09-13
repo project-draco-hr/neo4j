@@ -24,16 +24,17 @@
     StoreFlusher flusher=mock(StoreFlusher.class);
     final LogEntryReader<ReadableLogChannel> reader=new VersionAwareLogEntryReader<>(LogEntryVersion.CURRENT.byteCode());
     LatestCheckPointFinder finder=new LatestCheckPointFinder(logFiles,fs,reader);
-    life.add(new Recovery(new DefaultRecoverySPI(provider,lookup,flusher,mock(NeoStores.class),null,logFiles,fs,logVersionRepository,finder,validator){
-      @Override public Visitor<LogVersionedStoreChannel,IOException> getRecoverer(){
-        throw new AssertionError("Recovery should not be required");
-      }
-      @Override public void recoveryRequired(){
+    TransactionMetadataCache metadataCache=new TransactionMetadataCache(10,100);
+    LogFile logFile=life.add(new PhysicalLogFile(fs,logFiles,50,transactionIdStore,logVersionRepository,mock(PhysicalLogFile.Monitor.class),metadataCache));
+    LogicalTransactionStore txStore=new PhysicalLogicalTransactionStore(logFile,metadataCache);
+    TransactionRepresentationStoreApplier storeApplier=mock(TransactionRepresentationStoreApplier.class);
+    life.add(new Recovery(new DefaultRecoverySPI(provider,lookup,flusher,mock(NeoStores.class),logFiles,fs,logVersionRepository,finder,validator,transactionIdStore,txStore,storeApplier){
+      @Override public Visitor<CommittedTransactionRepresentation,Exception> startRecovery(){
         fail("Recovery should not be required");
+        return null;
       }
     }
 ,monitor));
-    life.add(new PhysicalLogFile(fs,logFiles,50,transactionIdStore,logVersionRepository,mock(PhysicalLogFile.Monitor.class),new TransactionMetadataCache(10,100)));
     life.start();
     verifyZeroInteractions(monitor);
   }

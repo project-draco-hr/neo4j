@@ -25,7 +25,7 @@
 );
   LifeSupport life=new LifeSupport();
   Recovery.Monitor monitor=mock(Recovery.Monitor.class);
-  final AtomicBoolean recoveryRequiredCalled=new AtomicBoolean();
+  final AtomicBoolean recoveryRequired=new AtomicBoolean();
   try {
     RecoveryLabelScanWriterProvider provider=mock(RecoveryLabelScanWriterProvider.class);
     RecoveryLegacyIndexApplierLookup lookup=mock(RecoveryLegacyIndexApplierLookup.class);
@@ -33,37 +33,44 @@
     StoreFlusher flusher=mock(StoreFlusher.class);
     final LogEntryReader<ReadableLogChannel> reader=new VersionAwareLogEntryReader<>(LogEntryVersion.CURRENT.byteCode());
     LatestCheckPointFinder finder=new LatestCheckPointFinder(logFiles,fs,reader);
-    life.add(new Recovery(new DefaultRecoverySPI(provider,lookup,flusher,mock(NeoStores.class),null,logFiles,fs,logVersionRepository,finder,validator){
-      @Override public Visitor<LogVersionedStoreChannel,IOException> getRecoverer(){
-        return new Visitor<LogVersionedStoreChannel,IOException>(){
-          @Override public boolean visit(          LogVersionedStoreChannel element) throws IOException {
-            try (ReadableVersionableLogChannel channel=new ReadAheadLogChannel(element,NO_MORE_CHANNELS,DEFAULT_READ_AHEAD_SIZE)){
-              assertEquals(lastCommittedTxStartEntry,reader.readLogEntry(channel));
-              assertEquals(lastCommittedTxCommitEntry,reader.readLogEntry(channel));
-              assertEquals(expectedCheckPointEntry,reader.readLogEntry(channel));
-              assertEquals(expectedStartEntry,reader.readLogEntry(channel));
-              assertEquals(expectedCommitEntry,reader.readLogEntry(channel));
-              assertNull(reader.readLogEntry(channel));
-              return true;
-            }
-           }
-        }
+    TransactionMetadataCache metadataCache=new TransactionMetadataCache(10,100);
+    LogFile logFile=life.add(new PhysicalLogFile(fs,logFiles,50,transactionIdStore,logVersionRepository,mock(PhysicalLogFile.Monitor.class),metadataCache));
+    LogicalTransactionStore txStore=new PhysicalLogicalTransactionStore(logFile,metadataCache);
+    TransactionRepresentationStoreApplier storeApplier=mock(TransactionRepresentationStoreApplier.class);
+    life.add(new Recovery(new DefaultRecoverySPI(provider,lookup,flusher,mock(NeoStores.class),logFiles,fs,logVersionRepository,finder,validator,transactionIdStore,txStore,storeApplier){
+      private int nr=0;
+      @Override public Visitor<CommittedTransactionRepresentation,Exception> startRecovery(){
+        recoveryRequired.set(true);
+        final Visitor<CommittedTransactionRepresentation,Exception> actual=super.startRecovery();
+        return new Visitor<CommittedTransactionRepresentation,Exception>(){
+          @Override public boolean visit(          CommittedTransactionRepresentation tx) throws Exception {
+            actual.visit(tx);
+switch (nr++) {
+case 0:
+              assertEquals(lastCommittedTxStartEntry,tx.getStartEntry());
+            assertEquals(lastCommittedTxCommitEntry,tx.getCommitEntry());
+          break;
+case 1:
+        assertEquals(expectedStartEntry,tx.getStartEntry());
+      assertEquals(expectedCommitEntry,tx.getCommitEntry());
+    break;
+default :
+  fail("Too many recovered transactions");
+}
+return false;
+}
+}
 ;
-      }
-      @Override public void recoveryRequired(){
-        recoveryRequiredCalled.set(true);
-      }
-    }
+}
+}
 ,monitor));
-    life.add(new PhysicalLogFile(fs,logFiles,50,transactionIdStore,logVersionRepository,mock(PhysicalLogFile.Monitor.class),new TransactionMetadataCache(10,100)));
-    life.start();
-    InOrder order=inOrder(monitor);
-    order.verify(monitor,times(1)).recoveryRequired(any(LogPosition.class));
-    order.verify(monitor,times(1)).logRecovered(any(LogPosition.class));
-    order.verify(monitor,times(1)).recoveryCompleted();
-    assertTrue(recoveryRequiredCalled.get());
-  }
+life.start();
+InOrder order=inOrder(monitor);
+order.verify(monitor,times(1)).recoveryRequired(any(LogPosition.class));
+order.verify(monitor,times(1)).recoveryCompleted(2);
+assertTrue(recoveryRequired.get());
+}
   finally {
-    life.shutdown();
-  }
+life.shutdown();
+}
 }
