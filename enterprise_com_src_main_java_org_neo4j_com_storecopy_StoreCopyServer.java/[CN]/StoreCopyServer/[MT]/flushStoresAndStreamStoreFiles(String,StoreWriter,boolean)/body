@@ -11,16 +11,22 @@
         File file=meta.file();
         int recordSize=meta.recordSize();
         final Optional<PagedFile> optionalPagedFile=pageCache.getExistingMapping(file);
-        try (ReadableByteChannel fileChannel=optionalPagedFile.isPresent() ? optionalPagedFile.get().openReadableByteChannel() : fileSystem.open(file,"r")){
-          monitor.startStreamingStoreFile(file);
-          writer.write(relativePath(storeDirectory,file),fileChannel,temporaryBuffer,file.length() > 0,recordSize);
-          monitor.finishStreamingStoreFile(file);
-        }
+        if (optionalPagedFile.isPresent()) {
+          PagedFile pagedFile=optionalPagedFile.get();
+          long fileSize=pagedFile.fileSize();
+          try (ReadableByteChannel fileChannel=pagedFile.openReadableByteChannel()){
+            doWrite(writer,temporaryBuffer,file,recordSize,fileChannel,fileSize);
+          }
   finally {
-          if (optionalPagedFile.isPresent()) {
-            optionalPagedFile.get().close();
+            pagedFile.close();
           }
         }
+ else {
+          try (ReadableByteChannel fileChannel=fileSystem.open(file,"r")){
+            long fileSize=file.length();
+            doWrite(writer,temporaryBuffer,file,recordSize,fileChannel,fileSize);
+          }
+         }
       }
     }
   finally {
