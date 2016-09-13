@@ -1,0 +1,19 @@
+{
+  when(clusterMembers.getMembers()).thenReturn(asList(clusterMember(1,MASTER,1137),clusterMember(2,SLAVE,1138),clusterMember(3,SLAVE,1139)));
+  assertMasterAndSlaveInformation(haBean.getInstancesInCluster());
+  when(clusterMembers.getMembers()).thenReturn(asList(clusterMember(1,SLAVE,1137),clusterMember(2,MASTER,1138),clusterMember(3,SLAVE,1139)));
+  for (  ClusterMemberInfo info : haBean.getInstancesInCluster()) {
+    assertTrue("every instance should be available",info.isAvailable());
+    assertTrue("every instances should have at least one role",info.getRoles().length > 0);
+    if (HighAvailabilityModeSwitcher.MASTER.equals(info.getRoles()[0])) {
+      assertEquals("coordinator should be master",HighAvailabilityModeSwitcher.MASTER,info.getHaRole());
+    }
+ else {
+      assertEquals("Either master or slave, no other way",HighAvailabilityModeSwitcher.SLAVE,info.getRoles()[0]);
+      assertEquals("instance " + info.getInstanceId() + " is cluster slave but HA master",HighAvailabilityModeSwitcher.SLAVE,info.getHaRole());
+    }
+    for (    String uri : info.getUris()) {
+      assertTrue("roles should contain URIs",uri.startsWith("ha://") || uri.startsWith("backup://"));
+    }
+  }
+}
