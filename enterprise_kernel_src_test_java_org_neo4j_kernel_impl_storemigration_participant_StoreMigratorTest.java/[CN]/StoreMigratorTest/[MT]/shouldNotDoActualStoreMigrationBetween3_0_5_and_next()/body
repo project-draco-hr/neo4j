@@ -1,0 +1,17 @@
+{
+  File storeDir=directory.directory();
+  new GraphDatabaseFactory().newEmbeddedDatabaseBuilder(storeDir).setConfig(GraphDatabaseSettings.record_format,HighLimitV3_0_0.NAME).newGraphDatabase().shutdown();
+  FileSystemAbstraction fs=new DefaultFileSystemAbstraction();
+  Config config=new Config(stringMap(pagecache_memory.name(),"8m"));
+  try (PageCache pageCache=new ConfiguringPageCacheFactory(fs,config,NULL,NullLog.getInstance()).getOrCreatePageCache()){
+    String fromStoreVersion=StoreVersion.HIGH_LIMIT_V3_0_0.versionString();
+    Result hasVersionResult=new StoreVersionCheck(pageCache).hasVersion(new File(storeDir,NEO_STORE.fileName(STORE)),fromStoreVersion);
+    assertTrue(hasVersionResult.actualVersion,hasVersionResult.outcome.isSuccessful());
+    StoreMigrator migrator=new StoreMigrator(fs,pageCache,config,NullLogService.getInstance(),NO_INDEX_PROVIDER);
+    MigrationProgressMonitor.Section monitor=mock(MigrationProgressMonitor.Section.class);
+    File migrationDir=new File(storeDir,"migration");
+    fs.mkdirs(migrationDir);
+    migrator.migrate(storeDir,migrationDir,monitor,fromStoreVersion,StoreVersion.HIGH_LIMIT_V3_0_6.versionString());
+    verifyNoMoreInteractions(monitor);
+  }
+ }

@@ -1,0 +1,25 @@
+{
+  if (record.inUse()) {
+    byte headerByte=(byte)((record.inUse() ? IN_USE_BIT : 0) | numberOfBlocks(record) << 4);
+    boolean canUseFixedReferences=canUseFixedReferences(record,recordSize);
+    record.setUseFixedReferences(canUseFixedReferences);
+    headerByte=set(headerByte,HEADER_BIT_FIXED_REFERENCE,canUseFixedReferences);
+    cursor.putByte(headerByte);
+    long recordId=record.getId();
+    if (canUseFixedReferences) {
+      writeFixedReferencesRecord(record,cursor);
+    }
+ else {
+      Reference.encode(toRelative(record.getPrevProp(),recordId),cursor);
+      Reference.encode(toRelative(record.getNextProp(),recordId),cursor);
+    }
+    for (    PropertyBlock block : record) {
+      for (      long propertyBlock : block.getValueBlocks()) {
+        cursor.putLong(propertyBlock);
+      }
+    }
+  }
+ else {
+    markAsUnused(cursor);
+  }
+}
