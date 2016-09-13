@@ -1,0 +1,12 @@
+{
+  neo.tearDown();
+  Map<String,String> config=new HashMap<>();
+  config.put(GraphDatabaseSettings.transaction_timeout.name(),"3s");
+  neo=setUpNeoServer(config);
+  reSetUp();
+  neo.getLocalGraph().getDependencyResolver().resolveDependency(Procedures.class).registerProcedure(NeverEndingProcedure.class);
+  assertFail(adminSubject,"CALL test.loop","Transaction guard check failed");
+  Result result=neo.getLocalGraph().execute("CALL dbms.listQueries() YIELD query WITH * WHERE NOT query CONTAINS 'listQueries' RETURN *");
+  assertFalse(result.hasNext());
+  result.close();
+}
