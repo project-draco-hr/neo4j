@@ -1,9 +1,15 @@
 {
-  StandardEnterpriseAuthSubject adminSubject=ensureAdminAuthSubject();
-  if (adminSubject.doesUsernameMatch(username)) {
-    throw new InvalidArgumentsException("Suspending yourself (user '" + username + "') is not allowed.");
+  try {
+    StandardEnterpriseAuthSubject adminSubject=ensureAdminAuthSubject();
+    if (adminSubject.doesUsernameMatch(username)) {
+      throw new InvalidArgumentsException("Suspending yourself (user '" + username + "') is not allowed.");
+    }
+    adminSubject.getUserManager().suspendUser(username);
+    securityLog.info(authSubject,"suspended user `%s`",username);
   }
-  adminSubject.getUserManager().suspendUser(username);
-  terminateTransactionsForValidUser(username);
-  terminateConnectionsForValidUser(username);
+ catch (  Exception e) {
+    securityLog.error(authSubject,"tried to suspend user `%s`: %s",username,e.getMessage());
+    throw e;
+  }
+  kickoutUser(username,"suspension");
 }

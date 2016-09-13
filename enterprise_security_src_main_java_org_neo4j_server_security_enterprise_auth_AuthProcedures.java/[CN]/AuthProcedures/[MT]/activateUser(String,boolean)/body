@@ -1,7 +1,14 @@
 {
-  StandardEnterpriseAuthSubject adminSubject=ensureAdminAuthSubject();
-  if (adminSubject.doesUsernameMatch(username)) {
-    throw new InvalidArgumentsException("Activating yourself (user '" + username + "') is not allowed.");
+  try {
+    StandardEnterpriseAuthSubject adminSubject=ensureAdminAuthSubject();
+    if (adminSubject.doesUsernameMatch(username)) {
+      throw new InvalidArgumentsException("Activating yourself (user '" + username + "') is not allowed.");
+    }
+    adminSubject.getUserManager().activateUser(username,requirePasswordChange);
+    securityLog.info(authSubject,"activated user `%s`",username);
   }
-  adminSubject.getUserManager().activateUser(username,requirePasswordChange);
+ catch (  Exception e) {
+    securityLog.error(authSubject,"tried to activate user `%s`: %s",username,e.getMessage());
+    throw e;
+  }
 }

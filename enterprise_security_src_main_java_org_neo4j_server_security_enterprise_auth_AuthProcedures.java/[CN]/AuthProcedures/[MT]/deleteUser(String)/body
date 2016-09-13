@@ -1,9 +1,15 @@
 {
-  StandardEnterpriseAuthSubject adminSubject=ensureAdminAuthSubject();
-  if (adminSubject.doesUsernameMatch(username)) {
-    throw new InvalidArgumentsException("Deleting yourself (user '" + username + "') is not allowed.");
+  try {
+    StandardEnterpriseAuthSubject adminSubject=ensureAdminAuthSubject();
+    if (adminSubject.doesUsernameMatch(username)) {
+      throw new InvalidArgumentsException("Deleting yourself (user '" + username + "') is not allowed.");
+    }
+    adminSubject.getUserManager().deleteUser(username);
+    securityLog.info(authSubject,"deleted user `%s`",username);
   }
-  adminSubject.getUserManager().deleteUser(username);
-  terminateTransactionsForValidUser(username);
-  terminateConnectionsForValidUser(username);
+ catch (  Exception e) {
+    securityLog.error(authSubject,"tried to delete user `%s`: %s",username,e.getMessage());
+    throw e;
+  }
+  kickoutUser(username,"deletion");
 }

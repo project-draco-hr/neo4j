@@ -1,12 +1,13 @@
 {
   if (authenticationEnabled) {
-    JndiLdapContextFactory jndiLdapContextFactory=(JndiLdapContextFactory)ldapContextFactory;
-    log.debug("Authenticating user '%s' against LDAP server '%s'%s",token.getPrincipal(),jndiLdapContextFactory.getUrl(),useStartTls ? " using StartTLS" : "");
+    String serverString=server((JndiLdapContextFactory)ldapContextFactory);
     try {
-      return useStartTls ? queryForAuthenticationInfoUsingStartTls(token,ldapContextFactory) : super.queryForAuthenticationInfo(token,ldapContextFactory);
+      AuthenticationInfo info=useStartTls ? queryForAuthenticationInfoUsingStartTls(token,ldapContextFactory) : super.queryForAuthenticationInfo(token,ldapContextFactory);
+      securityLog.debug(withRealm("Authenticated user '%s' against %s",token.getPrincipal(),serverString));
+      return info;
     }
  catch (    Exception e) {
-      log.debug("Authentication exception: [%s] %s",e.getClass().getName(),e.getMessage());
+      securityLog.error(withRealm("Failed to authenticate user '%s' against %s: %s",token.getPrincipal(),serverString,e.getMessage()));
       throw e;
     }
   }
