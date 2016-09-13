@@ -1,2 +1,29 @@
 {
+  final PhysicalLogFiles logFiles=new PhysicalLogFiles(directory.directory(),"log",fs);
+  File file=logFiles.getLogFileForVersion(logVersion);
+  final LogPositionMarker marker=new LogPositionMarker();
+  final byte[] additionalHeaderData=new byte[0];
+  final int masterId=0;
+  final int authorId=1;
+  final long transactionId=4;
+  final long commitTimestamp=5;
+  writeSomeData(file,new Visitor<Pair<LogEntryWriter,Consumer<LogPositionMarker>>,IOException>(){
+    @Override public boolean visit(    Pair<LogEntryWriter,Consumer<LogPositionMarker>> pair) throws IOException {
+      LogEntryWriter writer=pair.first();
+      Consumer<LogPositionMarker> consumer=pair.other();
+      writer.writeStartEntry(masterId,authorId,2l,3l,additionalHeaderData);
+      writer.writeCommitEntry(transactionId,commitTimestamp);
+      consumer.accept(marker);
+      return true;
+    }
+  }
+);
+  boolean recoveryRequired=recover(logFiles);
+  assertTrue(recoveryRequired);
+  long[] lastClosedTransaction=transactionIdStore.getLastClosedTransaction();
+  assertEquals(transactionId,lastClosedTransaction[0]);
+  assertEquals(LogEntryStart.checksum(additionalHeaderData,masterId,authorId),transactionIdStore.getLastCommittedTransaction().checksum());
+  assertEquals(commitTimestamp,transactionIdStore.getLastCommittedTransaction().commitTimestamp());
+  assertEquals(logVersion,lastClosedTransaction[1]);
+  assertEquals(marker.getByteOffset(),lastClosedTransaction[2]);
 }
