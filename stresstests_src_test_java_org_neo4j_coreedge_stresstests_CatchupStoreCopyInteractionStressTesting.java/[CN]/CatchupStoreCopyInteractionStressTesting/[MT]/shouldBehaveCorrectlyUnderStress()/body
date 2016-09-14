@@ -4,10 +4,12 @@
   long durationInMinutes=parseLong(fromEnv("BACKUP_STORE_COPY_INTERACTION_STRESS_DURATION",DEFAULT_DURATION_IN_MINUTES));
   String workingDirectory=fromEnv("BACKUP_STORE_COPY_INTERACTION_STRESS_WORKING_DIRECTORY",DEFAULT_WORKING_DIR);
   File clusterDirectory=ensureExistsAndEmpty(new File(workingDirectory,"cluster"));
-  Map<String,String> params=Collections.emptyMap();
-  Map<String,IntFunction<String>> paramsPerInstance=Collections.emptyMap();
+  Map<String,String> coreParams=new HashMap<>();
+  coreParams.put(CoreEdgeClusterSettings.raft_log_rotation_size.name(),"1K");
+  coreParams.put(CoreEdgeClusterSettings.raft_log_pruning_frequency.name(),"1s");
+  coreParams.put(CoreEdgeClusterSettings.raft_log_pruning_strategy.name(),"keep_none");
   HazelcastDiscoveryServiceFactory discoveryServiceFactory=new HazelcastDiscoveryServiceFactory();
-  Cluster cluster=new Cluster(clusterDirectory,numberOfCores,numberOfEdges,discoveryServiceFactory,params,paramsPerInstance,params,paramsPerInstance,StandardV3_0.NAME);
+  Cluster cluster=new Cluster(clusterDirectory,numberOfCores,numberOfEdges,discoveryServiceFactory,coreParams,emptyMap(),emptyMap(),emptyMap(),StandardV3_0.NAME);
   ExecutorService service=Executors.newFixedThreadPool(3);
   BooleanSupplier keepGoing=untilTimeExpired(durationInMinutes,TimeUnit.MINUTES);
   try {
