@@ -1,0 +1,21 @@
+{
+  ClusterManager.ManagedCluster cluster=clusterRule.startCluster();
+  try {
+    for (    HighlyAvailableGraphDatabase gdb : cluster.getAllMembers()) {
+{
+        Result result=gdb.execute("CALL dbms.procedures()");
+        assertTrue(result.hasNext());
+        result.close();
+      }
+      try (InternalTransaction tx=gdb.beginTransaction(KernelTransaction.Type.explicit,EnterpriseAuthSubject.AUTH_DISABLED)){
+        Result result=gdb.execute(tx,"CALL dbms.listQueries()",Collections.emptyMap());
+        assertTrue(result.hasNext());
+        result.close();
+        tx.success();
+      }
+     }
+  }
+  finally {
+    cluster.shutdown();
+  }
+}
