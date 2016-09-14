@@ -1,0 +1,16 @@
+{
+  String[] procs=new String[]{"dbms.procedures","dbms.listQueries"};
+  for (  String procedure : procs) {
+    CoreClusterMember coreClusterMember=cluster.coreMembers().stream().findFirst().get();
+    CoreGraphDatabase database=coreClusterMember.database();
+    InternalTransaction tx=database.beginTransaction(KernelTransaction.Type.explicit,EnterpriseAuthSubject.AUTH_DISABLED);
+    Result coreResult=database.execute("CALL " + procedure + "()");
+    assertTrue("core with procedure " + procedure,coreResult.hasNext());
+    coreResult.close();
+    tx.close();
+    EdgeClusterMember edgeClusterMember=cluster.edgeMembers().stream().findFirst().get();
+    Result edgeResult=edgeClusterMember.database().execute("CALL " + procedure + "()");
+    assertTrue("edge with procedure " + procedure,coreResult.hasNext());
+    edgeResult.close();
+  }
+}
