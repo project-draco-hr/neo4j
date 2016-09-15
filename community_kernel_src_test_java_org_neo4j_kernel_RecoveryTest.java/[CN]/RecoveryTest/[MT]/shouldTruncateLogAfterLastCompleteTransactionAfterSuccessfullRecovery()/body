@@ -1,0 +1,20 @@
+{
+  final PhysicalLogFiles logFiles=new PhysicalLogFiles(directory.directory(),"log",fs);
+  File file=logFiles.getLogFileForVersion(logVersion);
+  final LogPositionMarker marker=new LogPositionMarker();
+  writeSomeData(file,new Visitor<Pair<LogEntryWriter,Consumer<LogPositionMarker>>,IOException>(){
+    @Override public boolean visit(    Pair<LogEntryWriter,Consumer<LogPositionMarker>> pair) throws IOException {
+      LogEntryWriter writer=pair.first();
+      Consumer<LogPositionMarker> consumer=pair.other();
+      writer.writeStartEntry(0,1,2l,3l,new byte[0]);
+      writer.writeCommitEntry(4l,5l);
+      consumer.accept(marker);
+      writer.writeStartEntry(0,1,5l,4l,new byte[0]);
+      return true;
+    }
+  }
+);
+  boolean recoveryRequired=recover(logFiles);
+  assertTrue(recoveryRequired);
+  assertEquals(marker.getByteOffset(),file.length());
+}
