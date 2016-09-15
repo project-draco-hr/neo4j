@@ -1,0 +1,18 @@
+{
+  File a=file("a");
+  File b=existingFile("b");
+  generateFileWithRecords(a,recordCount,recordSize);
+  generateFileWithRecords(b,recordCount + recordsPerFilePage,recordSize);
+  getPageCache(fs,maxPages,pageCachePageSize,PageCacheTracer.NULL);
+  try (PagedFile pf=pageCache.map(b,filePageSize);PageCursor cursor=pf.io(0,PF_SHARED_WRITE_LOCK | PF_NO_GROW)){
+    ThreadLocalRandom rng=ThreadLocalRandom.current();
+    while (cursor.next()) {
+      int pageSize=cursor.getCurrentPageSize();
+      for (int i=0; i < pageSize; i++) {
+        cursor.putByte(i,(byte)rng.nextInt());
+      }
+    }
+  }
+   pageCache.renameFile(a,b,REPLACE_EXISTING);
+  verifyRecordsInFile(b,recordCount);
+}
