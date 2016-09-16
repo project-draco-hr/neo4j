@@ -1,26 +1,2 @@
 {
-  int numberOfCores=parseInt(fromEnv("BACKUP_STORE_COPY_INTERACTION_STRESS_NUMBER_OF_CORES",DEFAULT_NUMBER_OF_CORES));
-  int numberOfEdges=parseInt(fromEnv("BACKUP_STORE_COPY_INTERACTION_STRESS_NUMBER_OF_EDGES",DEFAULT_NUMBER_OF_EDGES));
-  long durationInMinutes=parseLong(fromEnv("BACKUP_STORE_COPY_INTERACTION_STRESS_DURATION",DEFAULT_DURATION_IN_MINUTES));
-  String workingDirectory=fromEnv("BACKUP_STORE_COPY_INTERACTION_STRESS_WORKING_DIRECTORY",DEFAULT_WORKING_DIR);
-  File clusterDirectory=ensureExistsAndEmpty(new File(workingDirectory,"cluster"));
-  Map<String,String> params=Collections.emptyMap();
-  Map<String,IntFunction<String>> paramsPerInstance=Collections.emptyMap();
-  HazelcastDiscoveryServiceFactory discoveryServiceFactory=new HazelcastDiscoveryServiceFactory();
-  Cluster cluster=new Cluster(clusterDirectory,numberOfCores,numberOfEdges,discoveryServiceFactory,params,paramsPerInstance,params,paramsPerInstance,StandardV3_0.NAME);
-  ExecutorService service=Executors.newFixedThreadPool(3);
-  BooleanSupplier keepGoing=untilTimeExpired(durationInMinutes,TimeUnit.MINUTES);
-  try {
-    cluster.start();
-    Future<Boolean> workload=service.submit(new Workload(keepGoing,cluster));
-    Future<Boolean> startStopWorker=service.submit(new StartStopLoad(keepGoing,cluster));
-    Future<Boolean> catchUpWorker=service.submit(new CatchUpLoad(keepGoing,cluster));
-    assertTrue(workload.get());
-    assertTrue(startStopWorker.get());
-    assertTrue(catchUpWorker.get());
-  }
-  finally {
-    cluster.shutdown();
-  }
-  FileUtils.deleteRecursively(clusterDirectory);
 }
