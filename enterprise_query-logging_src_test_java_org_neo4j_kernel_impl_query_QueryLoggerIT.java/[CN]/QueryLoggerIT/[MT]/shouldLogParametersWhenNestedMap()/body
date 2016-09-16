@@ -1,6 +1,4 @@
 {
-  final File logsDirectory=new File(testDirectory.graphDbDir(),"logs");
-  final File logFilename=new File(logsDirectory,"query.log");
   GraphDatabaseService database=databaseBuilder.setConfig(GraphDatabaseSettings.log_queries,Settings.TRUE).setConfig(GraphDatabaseSettings.logs_directory,logsDirectory.getPath()).setConfig(GraphDatabaseSettings.log_queries_parameter_logging_enabled,Settings.TRUE).newGraphDatabase();
   Map<String,Object> props=new LinkedHashMap<>();
   props.put("name","Roland");
@@ -12,6 +10,7 @@
   executeQueryAndShutdown(database,query,params);
   List<String> logLines=readAllLines(logFilename);
   assertEquals(1,logLines.size());
-  assertThat(logLines.get(0),endsWith(String.format(" ms: %s - %s - {props: {name: Roland, position: Gunslinger, followers: [Jake, Eddie, Susannah]}}",embeddedSession(new FakeTransactionalContext(FULL)),query)));
+  QuerySource querySource=querySource();
+  assertThat(logLines.get(0),endsWith(String.format(" ms: %s - %s - {props: {name: 'Roland', position: 'Gunslinger', followers: [Jake, Eddie, Susannah]}} - {}",querySource,query)));
   assertThat(logLines.get(0),containsString(FULL.name()));
 }
