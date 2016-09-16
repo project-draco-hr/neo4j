@@ -1,0 +1,24 @@
+{
+  if (token instanceof ShiroAuthToken) {
+    try {
+      if (authPlugin != null) {
+        AuthInfo authInfo=authPlugin.authenticateAndAuthorize(((ShiroAuthToken)token).getAuthTokenMap());
+        if (authInfo != null) {
+          PluginAuthInfo pluginAuthInfo=PluginAuthInfo.createCacheable(authInfo,getName(),secureHasher);
+          cacheAuthorizationInfo(pluginAuthInfo);
+          return pluginAuthInfo;
+        }
+      }
+ else       if (authenticationPlugin != null) {
+        org.neo4j.server.security.enterprise.auth.plugin.spi.AuthenticationInfo authenticationInfo=authenticationPlugin.authenticate(((ShiroAuthToken)token).getAuthTokenMap());
+        if (authenticationInfo != null) {
+          return PluginAuthenticationInfo.createCacheable(authenticationInfo,getName(),secureHasher);
+        }
+      }
+    }
+ catch (    org.neo4j.server.security.enterprise.auth.plugin.api.AuthenticationException e) {
+      throw new AuthenticationException(e.getMessage(),e.getCause());
+    }
+  }
+  return null;
+}

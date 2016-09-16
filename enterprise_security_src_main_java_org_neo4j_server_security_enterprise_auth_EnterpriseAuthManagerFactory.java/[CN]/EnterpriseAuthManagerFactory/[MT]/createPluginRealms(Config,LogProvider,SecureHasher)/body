@@ -1,0 +1,37 @@
+{
+  List<Realm> realms=new ArrayList<>();
+  Set<Class> excludedClasses=new HashSet<>();
+  Boolean pluginAuthenticationEnabled=config.get(SecuritySettings.plugin_authentication_enabled);
+  Boolean pluginAuthorizationEnabled=config.get(SecuritySettings.plugin_authorization_enabled);
+  if (pluginAuthenticationEnabled && pluginAuthorizationEnabled) {
+    Iterable<AuthPlugin> authPlugins=Service.load(AuthPlugin.class);
+    for (    AuthPlugin plugin : authPlugins) {
+      PluginRealm pluginRealm=new PluginRealm(plugin,config,logProvider,Clocks.systemClock(),secureHasher);
+      realms.add(pluginRealm);
+    }
+  }
+  if (pluginAuthenticationEnabled) {
+    Iterable<AuthenticationPlugin> authenticationPlugins=Service.load(AuthenticationPlugin.class);
+    for (    AuthenticationPlugin plugin : authenticationPlugins) {
+      PluginRealm pluginRealm;
+      if (pluginAuthorizationEnabled && plugin instanceof AuthorizationPlugin) {
+        pluginRealm=new PluginRealm(plugin,(AuthorizationPlugin)plugin,config,logProvider,Clocks.systemClock(),secureHasher);
+        excludedClasses.add(plugin.getClass());
+      }
+ else {
+        pluginRealm=new PluginRealm(plugin,null,config,logProvider,Clocks.systemClock(),secureHasher);
+      }
+      realms.add(pluginRealm);
+    }
+  }
+  if (pluginAuthorizationEnabled) {
+    Iterable<AuthorizationPlugin> authorizationPlugins=Service.load(AuthorizationPlugin.class);
+    for (    AuthorizationPlugin plugin : authorizationPlugins) {
+      if (!excludedClasses.contains(plugin.getClass())) {
+        PluginRealm pluginRealm=new PluginRealm(null,plugin,config,logProvider,Clocks.systemClock(),secureHasher);
+        realms.add(pluginRealm);
+      }
+    }
+  }
+  return realms;
+}
