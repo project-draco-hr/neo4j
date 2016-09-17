@@ -1,0 +1,25 @@
+{
+  RaftMessages.NewEntry.BatchRequest batchRequest=null;
+  ClusterId clusterId=batch.get(0).clusterId();
+  for (  RaftMessages.ClusterIdAwareMessage clusterIdAwareMessage : batch) {
+    if (batchRequest != null && !clusterIdAwareMessage.clusterId().equals(clusterId)) {
+      handler.handle(new RaftMessages.ClusterIdAwareMessage(clusterId,batchRequest));
+      batchRequest=null;
+    }
+    clusterId=clusterIdAwareMessage.clusterId();
+    RaftMessage message=clusterIdAwareMessage.message();
+    if (message instanceof RaftMessages.NewEntry.Request) {
+      RaftMessages.NewEntry.Request newEntryRequest=(RaftMessages.NewEntry.Request)message;
+      if (batchRequest == null) {
+        batchRequest=new RaftMessages.NewEntry.BatchRequest(batch.size());
+      }
+      batchRequest.add(newEntryRequest.content());
+    }
+ else {
+      handler.handle(clusterIdAwareMessage);
+    }
+  }
+  if (batchRequest != null) {
+    handler.handle(new RaftMessages.ClusterIdAwareMessage(clusterId,batchRequest));
+  }
+}

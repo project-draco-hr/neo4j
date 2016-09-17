@@ -1,0 +1,21 @@
+{
+  ClusterId clusterId=clusterIdAwareMessage.clusterId();
+  if (clusterId.equals(clusterIdentity.clusterId())) {
+    try {
+      ConsensusOutcome outcome=raftMachine.handle(clusterIdAwareMessage.message());
+      if (outcome.needsFreshSnapshot()) {
+        downloadSnapshot(clusterIdAwareMessage.message().from());
+      }
+ else {
+        notifyCommitted(outcome.getCommitIndex());
+      }
+    }
+ catch (    Throwable e) {
+      raftMachine.stopTimers();
+      localDatabase.panic(e);
+    }
+  }
+ else {
+    log.info("Discarding message[%s] owing to mismatched storeId and non-empty store. " + "Expected: %s, Encountered: %s",clusterIdAwareMessage.message(),clusterId,clusterIdentity.clusterId());
+  }
+}
