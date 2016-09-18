@@ -1,9 +1,15 @@
 {
-  try {
-    CoreAddresses coreAddresses=discoveryService.coreServers().find(to);
-    outbound.send(coreAddresses.getRaftServer(),decorateWithClusterId(message));
+  ClusterId clusterId=clusterIdentity.clusterId();
+  if (clusterId == null) {
+    log.warn("Attempting to send a message before bound to a cluster");
   }
- catch (  NoKnownAddressesException e) {
-    unknownAddressMonitor.logAttemptToSendToMemberWithNoKnownAddress(to);
+ else {
+    try {
+      CoreAddresses coreAddresses=discoveryService.coreServers().find(to);
+      outbound.send(coreAddresses.getRaftServer(),new ClusterIdAwareMessage(clusterId,message));
+    }
+ catch (    NoKnownAddressesException e) {
+      unknownAddressMonitor.logAttemptToSendToMemberWithNoKnownAddress(to);
+    }
   }
 }
