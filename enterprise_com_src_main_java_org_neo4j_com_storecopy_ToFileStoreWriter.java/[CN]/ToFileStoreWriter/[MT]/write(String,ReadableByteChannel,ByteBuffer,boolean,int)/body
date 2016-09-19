@@ -5,16 +5,8 @@
     file.getParentFile().mkdirs();
     String filename=file.getName();
     final Optional<StoreType> storeType=typeOf(filename);
-    final Optional<PagedFile> existingMapping=pageCache.getExistingMapping(file);
     monitor.startReceivingStoreFile(file);
     try {
-      if (existingMapping.isPresent()) {
-        try (PagedFile pagedFile=existingMapping.get()){
-          final long written=writeDataThroughPageCache(pagedFile,data,temporaryBuffer,hasData);
-          addPageCacheMoveAction(file);
-          return written;
-        }
-       }
       if (storeType.isPresent() && storeType.get().isRecordStore()) {
         int filePageSize=filePageSize(recordSize);
         try (PagedFile pagedFile=pageCache.map(file,filePageSize,CREATE,WRITE)){
