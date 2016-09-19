@@ -1,11 +1,16 @@
 {
-  lastFlushed=lastApplied=lastFlushedStorage.getInitialState();
+  if (lastFlushed == NOTHING) {
+    lastFlushed=lastFlushedStorage.getInitialState();
+  }
+  lastApplied=lastFlushed;
   log.info(format("Restoring last applied index to %d",lastApplied));
   sessionTracker.start();
   long lastPossiblyApplying=max(coreStateMachines.getLastAppliedIndex(),sessionTracker.getLastAppliedIndex());
+  lastPossiblyApplying=max(lastPossiblyApplying,lastSeenCommitIndex);
   if (lastPossiblyApplying > lastApplied) {
-    log.info("Recovering up to: " + lastPossiblyApplying);
+    log.info("Applying up to: " + lastPossiblyApplying);
     submitApplyJob(lastPossiblyApplying);
     applier.sync(false);
   }
+  started=true;
 }

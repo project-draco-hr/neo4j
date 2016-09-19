@@ -1,0 +1,17 @@
+{
+  int nodeCount=100;
+  File classicNeo4jStore=RestoreClusterUtils.createClassicNeo4jStore(testDirectory.directory(),fsa,nodeCount,StandardV3_0.NAME);
+  PageCache pageCache=pageCacheRule.getPageCache(fsa);
+  CoreBootstrapper bootstrapper=new CoreBootstrapper(classicNeo4jStore,pageCache,fsa,Config.defaults());
+  Set<MemberId> membership=asSet(randomMember(),randomMember(),randomMember());
+  CoreSnapshot snapshot=bootstrapper.bootstrap(membership);
+  assertEquals(nodeCount,((IdAllocationState)snapshot.get(CoreStateType.ID_ALLOCATION)).firstUnallocated(IdType.NODE));
+  assertEquals(0,snapshot.prevIndex());
+  assertEquals(0,snapshot.prevTerm());
+  assertEquals(new ReplicatedLockTokenState(),snapshot.get(CoreStateType.LOCK_TOKEN));
+  assertEquals(membership,((RaftCoreState)snapshot.get(CoreStateType.RAFT_CORE_STATE)).committed().members());
+  assertEquals(new GlobalSessionTrackerState(),snapshot.get(CoreStateType.SESSION_TRACKER));
+  LastCommittedIndexFinder lastCommittedIndexFinder=new LastCommittedIndexFinder(new ReadOnlyTransactionIdStore(pageCache,classicNeo4jStore),new ReadOnlyTransactionStore(pageCache,fsa,classicNeo4jStore,new Monitors()),NullLogProvider.getInstance());
+  long lastCommittedIndex=lastCommittedIndexFinder.getLastCommittedIndex();
+  assertEquals(-1,lastCommittedIndex);
+}

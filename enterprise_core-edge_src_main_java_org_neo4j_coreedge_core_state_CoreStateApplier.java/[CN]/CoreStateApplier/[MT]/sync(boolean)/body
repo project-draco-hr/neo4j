@@ -1,12 +1,19 @@
 {
-  if (applier != null) {
-    if (cancelTasks) {
-      status.cancelled=true;
+  if (cancelTasks) {
+    status.cancelled=true;
+  }
+  applier.shutdown();
+  do {
+    try {
+      applier.awaitTermination(1,MINUTES);
     }
-    applier.shutdown();
-    while (!applier.awaitTermination(1,MINUTES)) {
+ catch (    InterruptedException ignored) {
+      log.warn("Unexpected interrupt",ignored);
+    }
+    if (!applier.isTerminated()) {
       log.warn("Applier is taking an unusually long time to sync");
     }
   }
+ while (!applier.isTerminated());
   spawnExecutor();
 }
