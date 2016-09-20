@@ -11,14 +11,16 @@
  catch (  IOException|IndexEntryConflictException e) {
     throw new RuntimeException(e);
   }
-  cursors.close();
-  neoStores.close();
-  try {
-    storeLocker.release();
+ finally {
+    cursors.close();
+    neoStores.close();
+    try {
+      storeLocker.release();
+    }
+ catch (    IOException e) {
+      throw new UnderlyingStorageException("Could not release store lock",e);
+    }
+    msgLog.info(Thread.currentThread() + " Clean shutdown on BatchInserter(" + this+ ")",true);
+    life.shutdown();
   }
- catch (  IOException e) {
-    throw new UnderlyingStorageException("Could not release store lock",e);
-  }
-  msgLog.info(Thread.currentThread() + " Clean shutdown on BatchInserter(" + this+ ")",true);
-  life.shutdown();
 }
