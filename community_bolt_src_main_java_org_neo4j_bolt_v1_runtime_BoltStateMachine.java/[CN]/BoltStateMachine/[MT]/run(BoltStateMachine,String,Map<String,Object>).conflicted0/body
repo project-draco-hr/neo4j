@@ -1,4 +1,15 @@
 {
-  machine.ctx.markIgnored();
-  return INTERRUPTED;
+  try {
+    StatementMetadata statementMetadata=machine.ctx.statementProcessor.run(statement,params);
+    machine.ctx.onMetadata("fields",statementMetadata.fieldNames());
+    return STREAMING;
+  }
+ catch (  AuthExpirationException e) {
+    fail(machine,Neo4jError.from(e));
+    throw new BoltConnectionAuthFatality(e.getMessage());
+  }
+catch (  Throwable e) {
+    fail(machine,Neo4jError.from(e));
+    return FAILED;
+  }
 }
