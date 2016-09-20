@@ -1,12 +1,20 @@
 {
-  try (Transaction ignore=db.beginTx()){
-    DbRepresentation result=new DbRepresentation();
-    for (    Node node : db.getAllNodes()) {
-      NodeRep nodeRep=new NodeRep(db,node,includeIndexes);
-      result.nodes.put(node.getId(),nodeRep);
-      result.highestNodeId=Math.max(node.getId(),result.highestNodeId);
-      result.highestRelationshipId=Math.max(nodeRep.highestRelationshipId,result.highestRelationshipId);
+  int retryCount=5;
+  while (true) {
+    try (Transaction ignore=db.beginTx()){
+      DbRepresentation result=new DbRepresentation();
+      for (      Node node : db.getAllNodes()) {
+        NodeRep nodeRep=new NodeRep(db,node,includeIndexes);
+        result.nodes.put(node.getId(),nodeRep);
+        result.highestNodeId=Math.max(node.getId(),result.highestNodeId);
+        result.highestRelationshipId=Math.max(nodeRep.highestRelationshipId,result.highestRelationshipId);
+      }
+      return result;
     }
-    return result;
+ catch (    TransactionFailureException e) {
+      if (retryCount-- < 0) {
+        throw e;
+      }
+    }
   }
- }
+}
