@@ -1,2 +1,21 @@
 {
+  final CoreTopologyService topologyService=mock(CoreTopologyService.class);
+  Map<MemberId,CoreAddresses> coreMembers=new HashMap<>();
+  coreMembers.put(member(0),coreAddresses(0));
+  when(topologyService.coreServers()).thenReturn(new CoreTopology(clusterId,false,coreMembers));
+  when(topologyService.edgeServers()).thenReturn(new EdgeTopology(clusterId,addresses()));
+  LeaderLocator leaderLocator=mock(LeaderLocator.class);
+  when(leaderLocator.getLeader()).thenReturn(member(1));
+  GetServersProcedure procedure=new GetServersProcedure(topologyService,leaderLocator,getInstance());
+  final List<Object[]> results=asList(procedure.apply(null,new Object[0]));
+  Object[] rows=results.get(0);
+  long ttl=(long)rows[0];
+  assertEquals(Long.MAX_VALUE,ttl);
+  List<Map<String,Object[]>> servers=(List<Map<String,Object[]>>)rows[1];
+  Map<String,Object[]> readServers=servers.get(0);
+  assertThat(readServers.get("role"),equalTo("READ"));
+  assertThat(asList(readServers.get("addresses")),containsInAnyOrder(coreAddresses(0).getRaftServer().toString()));
+  Map<String,Object[]> routingServers=servers.get(1);
+  assertThat(routingServers.get("role"),equalTo("ROUTE"));
+  assertThat(asList(routingServers.get("addresses")),containsInAnyOrder(coreAddresses(0).getRaftServer().toString()));
 }
