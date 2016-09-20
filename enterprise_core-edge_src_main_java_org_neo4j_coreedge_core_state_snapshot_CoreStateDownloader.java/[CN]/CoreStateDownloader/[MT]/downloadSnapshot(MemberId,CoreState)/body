@@ -16,12 +16,13 @@
     }
 );
     if (isEmptyStore) {
-      copyWholeStoreFrom(source,remoteStoreId,storeFetcher);
+      new CopyStoreSafely(fs,localDatabase,copiedStoreRecovery,log).copyWholeStoreFrom(source,remoteStoreId,storeFetcher);
     }
  else {
       CatchupResult catchupResult=storeFetcher.tryCatchingUp(source,localStoreId,localDatabase.storeDir());
       if (catchupResult == E_TRANSACTION_PRUNED) {
-        copyWholeStoreFrom(source,localStoreId,storeFetcher);
+        localDatabase.delete();
+        new CopyStoreSafely(fs,localDatabase,copiedStoreRecovery,log).copyWholeStoreFrom(source,localStoreId,storeFetcher);
       }
  else       if (catchupResult != SUCCESS) {
         throw new StoreCopyFailedException("Failed to download store: " + catchupResult);

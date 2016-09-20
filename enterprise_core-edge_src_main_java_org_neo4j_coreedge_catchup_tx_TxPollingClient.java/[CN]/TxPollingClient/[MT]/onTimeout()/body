@@ -3,13 +3,13 @@
   if (applier.workPending()) {
     return;
   }
-  MemberId transactionServer;
   try {
-    transactionServer=connectionStrategy.coreMember();
+    MemberId core=connectionStrategy.coreMember();
     long lastAppliedTxId=applier.lastAppliedTxId();
     pullRequestMonitor.txPullRequest(lastAppliedTxId);
-    TxPullRequest txPullRequest=new TxPullRequest(lastAppliedTxId,localDatabase.get());
-    catchUpClient.makeBlockingRequest(transactionServer,txPullRequest,new CatchUpResponseAdaptor<CatchupResult>(){
+    StoreId localStoreId=localDatabase.storeId();
+    TxPullRequest txPullRequest=new TxPullRequest(lastAppliedTxId,localStoreId);
+    CatchupResult catchupResult=catchUpClient.makeBlockingRequest(core,txPullRequest,new CatchUpResponseAdaptor<CatchupResult>(){
       @Override public void onTxPullResponse(      CompletableFuture<CatchupResult> signal,      TxPullResponse response){
         applier.queue(response.tx());
         timeout.renew();
@@ -19,8 +19,17 @@
       }
     }
 );
+    if (catchupResult == CatchupResult.E_TRANSACTION_PRUNED) {
+      pause();
+      log.info("Tx pull unable to get transactions starting from " + lastAppliedTxId);
+      localDatabase.stop();
+      new CopyStoreSafely(fs,localDatabase,copiedStoreRecovery,log).copyWholeStoreFrom(core,localStoreId,storeFetcher);
+      localDatabase.start();
+      applier.refreshLastAppliedTx();
+      resume();
+    }
   }
- catch (  Exception e) {
+ catch (  Throwable e) {
     log.warn("Tx pull attempt failed, will retry at the next regularly scheduled polling attempt.",e);
   }
 }
