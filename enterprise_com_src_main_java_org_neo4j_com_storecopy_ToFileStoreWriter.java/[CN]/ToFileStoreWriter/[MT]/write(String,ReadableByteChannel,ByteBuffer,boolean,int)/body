@@ -1,0 +1,27 @@
+{
+  try {
+    temporaryBuffer.clear();
+    File file=new File(basePath,path);
+    file.getParentFile().mkdirs();
+    String filename=file.getName();
+    final Optional<StoreType> storeType=typeOf(filename);
+    monitor.startReceivingStoreFile(file);
+    try {
+      if (storeType.isPresent() && storeType.get().isRecordStore()) {
+        int filePageSize=filePageSize(requiredElementAlignment);
+        try (PagedFile pagedFile=pageCache.map(file,filePageSize,CREATE,WRITE)){
+          final long written=writeDataThroughPageCache(pagedFile,data,temporaryBuffer,hasData);
+          addPageCacheMoveAction(file);
+          return written;
+        }
+       }
+      return writeDataThroughFileSystem(file,data,temporaryBuffer,hasData);
+    }
+  finally {
+      monitor.finishReceivingStoreFile(file);
+    }
+  }
+ catch (  Throwable t) {
+    throw new IOException(t);
+  }
+}

@@ -1,8 +1,9 @@
 {
   File tempStore=new File(storeDir,TEMP_COPY_DIRECTORY_NAME);
+  List<FileMoveAction> fileMoveActions=new ArrayList<>();
   cleanDirectory(tempStore);
   monitor.startReceivingStoreFiles();
-  try (Response<?> response=requester.copyStore(decorateWithProgressIndicator(new ToFileStoreWriter(tempStore,monitor)))){
+  try (Response<?> response=requester.copyStore(decorateWithProgressIndicator(new ToFileStoreWriter(tempStore,monitor,pageCache,fileMoveActions)))){
     monitor.finishReceivingStoreFiles();
     writeTransactionsToActiveLogFile(tempStore,response);
   }
@@ -14,6 +15,9 @@
   GraphDatabaseService graphDatabaseService=newTempDatabase(tempStore);
   graphDatabaseService.shutdown();
   monitor.finishRecoveringStore();
+  for (  FileMoveAction fileMoveAction : fileMoveActions) {
+    fileMoveAction.move(storeDir,StandardCopyOption.REPLACE_EXISTING);
+  }
   for (  File candidate : tempStore.listFiles(STORE_FILE_FILTER)) {
     FileUtils.moveFileToDirectory(candidate,storeDir);
   }

@@ -1,103 +1,14 @@
 {
-  register(Type.ALLOCATE_IDS,new TargetCaller<Master,IdAllocation>(){
-    @Override public Response<IdAllocation> call(    Master master,    RequestContext context,    ChannelBuffer input,    ChannelBuffer target){
-      IdType idType=IdType.values()[input.readByte()];
-      return master.allocateIds(context,idType);
-    }
-  }
-,new ObjectSerializer<IdAllocation>(){
-    @Override public void write(    IdAllocation idAllocation,    ChannelBuffer result) throws IOException {
-      IdRange idRange=idAllocation.getIdRange();
-      result.writeInt(idRange.getDefragIds().length);
-      for (      long id : idRange.getDefragIds()) {
-        result.writeLong(id);
-      }
-      result.writeLong(idRange.getRangeStart());
-      result.writeInt(idRange.getRangeLength());
-      result.writeLong(idAllocation.getHighestIdInUse());
-      result.writeLong(idAllocation.getDefragCount());
-    }
-  }
-);
-  register(Type.CREATE_RELATIONSHIP_TYPE,new TargetCaller<Master,Integer>(){
-    @Override public Response<Integer> call(    Master master,    RequestContext context,    ChannelBuffer input,    ChannelBuffer target){
-      return master.createRelationshipType(context,readString(input));
-    }
-  }
-,INTEGER_SERIALIZER);
-  register(Type.ACQUIRE_EXCLUSIVE_LOCK,new AquireLockCall(){
-    @Override protected Response<LockResult> lock(    Master master,    RequestContext context,    ResourceType type,    long... ids){
-      return master.acquireExclusiveLock(context,type,ids);
-    }
-  }
-,LOCK_SERIALIZER,true);
-  register(Type.ACQUIRE_SHARED_LOCK,new AquireLockCall(){
-    @Override protected Response<LockResult> lock(    Master master,    RequestContext context,    ResourceType type,    long... ids){
-      return master.acquireSharedLock(context,type,ids);
-    }
-  }
-,LOCK_SERIALIZER,true);
-  register(Type.COMMIT,new TargetCaller<Master,Long>(){
-    @Override public Response<Long> call(    Master master,    RequestContext context,    ChannelBuffer input,    ChannelBuffer target) throws IOException, TransactionFailureException {
-      readString(input);
-      TransactionRepresentation tx=null;
-      try {
-        Deserializer<TransactionRepresentation> deserializer=new Protocol.TransactionRepresentationDeserializer(entryReader);
-        tx=deserializer.read(input,null);
-      }
- catch (      IOException e) {
-        throw new RuntimeException(e);
-      }
-      return master.commit(context,tx);
-    }
-  }
-,LONG_SERIALIZER);
-  register(Type.PULL_UPDATES,new TargetCaller<Master,Void>(){
-    @Override public Response<Void> call(    Master master,    RequestContext context,    ChannelBuffer input,    ChannelBuffer target){
-      return master.pullUpdates(context);
-    }
-  }
-,VOID_SERIALIZER);
-  register(Type.END_LOCK_SESSION,new TargetCaller<Master,Void>(){
-    @Override public Response<Void> call(    Master master,    RequestContext context,    ChannelBuffer input,    ChannelBuffer target){
-      return master.endLockSession(context,readBoolean(input));
-    }
-  }
-,VOID_SERIALIZER,false);
-  register(Type.HANDSHAKE,new TargetCaller<Master,HandshakeResult>(){
-    @Override public Response<HandshakeResult> call(    Master master,    RequestContext context,    ChannelBuffer input,    ChannelBuffer target){
-      return master.handshake(input.readLong(),null);
-    }
-  }
-,new ObjectSerializer<HandshakeResult>(){
-    @Override public void write(    HandshakeResult responseObject,    ChannelBuffer result) throws IOException {
-      result.writeLong(responseObject.txChecksum());
-      result.writeLong(responseObject.epoch());
-    }
-  }
-);
-  register(Type.COPY_STORE,new TargetCaller<Master,Void>(){
-    @Override public Response<Void> call(    Master master,    RequestContext context,    ChannelBuffer input,    final ChannelBuffer target){
-      return master.copyStore(context,new ToNetworkStoreWriter(target,new Monitors()));
-    }
-  }
-,VOID_SERIALIZER,false);
-  register(Type.NEW_LOCK_SESSION,new TargetCaller<Master,Void>(){
-    @Override public Response<Void> call(    Master master,    RequestContext context,    ChannelBuffer input,    ChannelBuffer target) throws TransactionFailureException {
-      return master.newLockSession(context);
-    }
-  }
-,VOID_SERIALIZER);
-  register(Type.CREATE_PROPERTY_KEY,new TargetCaller<Master,Integer>(){
-    @Override public Response<Integer> call(    Master master,    RequestContext context,    ChannelBuffer input,    ChannelBuffer target){
-      return master.createPropertyKey(context,readString(input));
-    }
-  }
-,INTEGER_SERIALIZER);
-  register(Type.CREATE_LABEL,new TargetCaller<Master,Integer>(){
-    @Override public Response<Integer> call(    Master master,    RequestContext context,    ChannelBuffer input,    ChannelBuffer target){
-      return master.createLabel(context,readString(input));
-    }
-  }
-,INTEGER_SERIALIZER);
+  registerAllocateIds();
+  registerCreateRelationshipType();
+  registerAcquireExclusiveLock();
+  registerAcquireSharedLock();
+  registerCommit(entryReader);
+  registerPullUpdates();
+  registerEndLockSession();
+  registerHandshake();
+  registerCopyStore();
+  registerNewLockSession();
+  registerCreatePropertyKey();
+  registerCreateLabel();
 }
