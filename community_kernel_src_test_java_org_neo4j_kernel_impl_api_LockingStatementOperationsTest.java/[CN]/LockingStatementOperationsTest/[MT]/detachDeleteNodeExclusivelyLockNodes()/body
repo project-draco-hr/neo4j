@@ -1,0 +1,25 @@
+{
+  long startNodeId=1L;
+  long endNodeId=2L;
+  final RelationshipItem relationshipItem=StubCursors.asRelationship(1L,0,startNodeId,endNodeId,null);
+  CursorRelationshipIterator relationshipIterator=new CursorRelationshipIterator(Cursors.cursor(relationshipItem));
+  NodeItem nodeItem=mock(NodeItem.class);
+  when(nodeItem.getRelationships(Direction.BOTH)).thenReturn(relationshipIterator);
+  StoreSingleNodeCursor nodeCursor=mock(StoreSingleNodeCursor.class);
+  when(nodeCursor.get()).thenReturn(nodeItem);
+  when(entityReadOps.nodeCursorById(state,startNodeId)).thenReturn(nodeCursor);
+  doAnswer(new Answer(){
+    @Override public Object answer(    InvocationOnMock invocation) throws Throwable {
+      RelationshipVisitor visitor=(RelationshipVisitor)invocation.getArguments()[2];
+      visitor.visit(relationshipItem.id(),relationshipItem.type(),relationshipItem.startNode(),relationshipItem.endNode());
+      return null;
+    }
+  }
+).when(entityReadOps).relationshipVisit(eq(state),anyLong(),any(RelationshipVisitor.class));
+  lockingOps.nodeDetachDelete(state,startNodeId);
+  order.verify(locks).acquireExclusive(ResourceTypes.NODE,startNodeId);
+  order.verify(locks).acquireExclusive(ResourceTypes.NODE,endNodeId);
+  order.verify(locks,times(0)).releaseExclusive(ResourceTypes.NODE,startNodeId);
+  order.verify(locks,times(0)).releaseExclusive(ResourceTypes.NODE,endNodeId);
+  order.verify(entityWriteOps).nodeDetachDelete(state,startNodeId);
+}

@@ -1,24 +1,23 @@
 {
+  nodeIds.add(nodeId);
   while (retry) {
     retry=false;
     first=true;
     firstRelId=-1;
-    try (Cursor<NodeItem> cursor=reads.nodeCursorById(state,nodeId)){
+    try (Cursor<NodeItem> cursor=entityReadOperations.nodeCursorById(state,nodeId)){
       RelationshipIterator relationships=cursor.get().getRelationships(Direction.BOTH);
       while (relationships.hasNext()) {
-        reads.relationshipVisit(state,relationships.next(),collectNodeIdVisitor);
+        entityReadOperations.relationshipVisit(state,relationships.next(),collectNodeIdVisitor);
       }
     }
- {
-      PrimitiveLongIterator iterator=nodeIds.iterator();
-      while (iterator.hasNext()) {
-        state.locks().optimistic().acquireExclusive(ResourceTypes.NODE,iterator.next());
-      }
+     PrimitiveLongIterator nodeIdIterator=nodeIds.iterator();
+    while (nodeIdIterator.hasNext()) {
+      state.locks().optimistic().acquireExclusive(ResourceTypes.NODE,nodeIdIterator.next());
     }
-    try (Cursor<NodeItem> cursor=reads.nodeCursorById(state,nodeId)){
+    try (Cursor<NodeItem> cursor=entityReadOperations.nodeCursorById(state,nodeId)){
       RelationshipIterator relationships=cursor.get().getRelationships(Direction.BOTH);
       while (relationships.hasNext()) {
-        reads.relationshipVisit(state,relationships.next(),relationshipConsumingVisitor);
+        entityReadOperations.relationshipVisit(state,relationships.next(),relationshipConsumingVisitor);
         if (retry) {
           PrimitiveLongIterator iterator=nodeIds.iterator();
           while (iterator.hasNext()) {
