@@ -1,0 +1,18 @@
+{
+  File directory=new File("/dir");
+  FileSystemAbstraction fs=mock(FileSystemAbstraction.class);
+  PhysicalLogFiles logFiles=new PhysicalLogFiles(directory,fs);
+  int logVersion=0;
+  File logFile=logFiles.getLogFileForVersion(logVersion);
+  StoreChannel channel=mock(StoreChannel.class);
+  when(channel.read(any(ByteBuffer.class))).thenReturn(LogHeader.LOG_HEADER_SIZE / 2);
+  when(fs.fileExists(logFile)).thenReturn(true);
+  when(fs.open(eq(logFile),anyString())).thenReturn(channel);
+  try {
+    PhysicalLogFile.openForVersion(logFiles,fs,logVersion,false);
+    fail("Should have failed");
+  }
+ catch (  IncompleteLogHeaderException e) {
+    verify(channel).close();
+  }
+}
