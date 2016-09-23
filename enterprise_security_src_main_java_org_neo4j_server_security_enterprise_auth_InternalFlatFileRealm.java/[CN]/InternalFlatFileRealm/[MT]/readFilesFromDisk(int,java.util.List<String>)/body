@@ -4,21 +4,22 @@
   }
   try {
     final boolean valid;
+    final boolean needsUpdate;
 synchronized (this) {
       ListSnapshot<User> users=userRepository.getPersistedSnapshot();
       ListSnapshot<RoleRecord> roles=roleRepository.getPersistedSnapshot();
-      boolean needsUpdate=users.updated() || roles.updated();
-      valid=!needsUpdate || RoleRepository.validate(users.values(),roles.values());
+      needsUpdate=users.fromPersisted() || roles.fromPersisted();
+      valid=needsUpdate && RoleRepository.validate(users.values(),roles.values());
       if (valid) {
-        if (users.updated()) {
+        if (users.fromPersisted()) {
           userRepository.setUsers(users);
         }
-        if (roles.updated()) {
+        if (roles.fromPersisted()) {
           roleRepository.setRoles(roles);
         }
       }
     }
-    if (!valid) {
+    if (needsUpdate && !valid) {
       failures.add("Role-auth file combination not valid.");
       Thread.sleep(10);
       readFilesFromDisk(attemptLeft - 1,failures);
