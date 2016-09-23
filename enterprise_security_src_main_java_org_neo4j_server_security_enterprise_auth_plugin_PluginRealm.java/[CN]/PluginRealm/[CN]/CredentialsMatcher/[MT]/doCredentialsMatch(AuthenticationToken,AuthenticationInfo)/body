@@ -2,10 +2,16 @@
   CustomCacheableAuthenticationInfo.CredentialsMatcher customCredentialsMatcher=getCustomCredentialsMatcherIfPresent(info);
   if (customCredentialsMatcher != null) {
     Map<String,Object> authToken=((ShiroAuthToken)token).getAuthTokenMap();
-    return customCredentialsMatcher.doCredentialsMatch(authToken);
+    try {
+      AuthToken pluginApiAuthToken=PluginApiAuthToken.createFromMap(authToken);
+      return customCredentialsMatcher.doCredentialsMatch(pluginApiAuthToken);
+    }
+ catch (    InvalidAuthTokenException e) {
+      throw new AuthenticationException(e.getMessage());
+    }
   }
  else   if (info.getCredentials() != null) {
-    return secureHasher.getHashedCredentialsMatcher().doCredentialsMatch(token,info);
+    return secureHasher.getHashedCredentialsMatcher().doCredentialsMatch(PluginShiroAuthToken.of(token),info);
   }
  else {
     if (PluginRealm.this.isAuthenticationCachingEnabled()) {
