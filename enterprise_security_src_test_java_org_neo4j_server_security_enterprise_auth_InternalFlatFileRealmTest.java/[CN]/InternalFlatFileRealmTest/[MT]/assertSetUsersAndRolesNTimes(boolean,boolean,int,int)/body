@@ -1,0 +1,16 @@
+{
+  final UserRepository userRepository=mock(UserRepository.class);
+  final RoleRepository roleRepository=mock(RoleRepository.class);
+  final PasswordPolicy passwordPolicy=new BasicPasswordPolicy();
+  AuthenticationStrategy authenticationStrategy=new RateLimitedAuthenticationStrategy(Clocks.systemClock(),3);
+  InternalFlatFileRealmIT.TestJobScheduler jobScheduler=new InternalFlatFileRealmIT.TestJobScheduler();
+  InternalFlatFileRealm realm=new InternalFlatFileRealm(userRepository,roleRepository,passwordPolicy,authenticationStrategy,true,true,jobScheduler);
+  when(userRepository.getPersistedSnapshot()).thenReturn(new ListSnapshot<>(10L,Collections.emptyList(),usersChanged));
+  when(roleRepository.getPersistedSnapshot()).thenReturn(new ListSnapshot<>(10L,Collections.emptyList(),rolesChanged));
+  when(roleRepository.getRoleByName(anyString())).thenReturn(new RoleRecord(""));
+  realm.init();
+  realm.start();
+  jobScheduler.scheduledRunnable.run();
+  verify(userRepository,times(nSetUsers)).setUsers(any());
+  verify(roleRepository,times(nSetRoles)).setRoles(any());
+}
