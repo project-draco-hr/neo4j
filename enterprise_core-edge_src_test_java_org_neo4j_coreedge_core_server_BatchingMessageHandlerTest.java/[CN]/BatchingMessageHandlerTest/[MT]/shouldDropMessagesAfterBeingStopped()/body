@@ -1,0 +1,10 @@
+{
+  AssertableLogProvider logProvider=new AssertableLogProvider();
+  BatchingMessageHandler batchHandler=new BatchingMessageHandler(raftStateMachine,QUEUE_SIZE,MAX_BATCH,logProvider);
+  RaftMessages.ClusterIdAwareMessage message=new RaftMessages.ClusterIdAwareMessage(localClusterId,new RaftMessages.NewEntry.Request(null,null));
+  batchHandler.stop();
+  batchHandler.handle(message);
+  batchHandler.run();
+  verifyZeroInteractions(raftStateMachine);
+  logProvider.assertAtLeastOnce(AssertableLogProvider.inLog(BatchingMessageHandler.class).warn("This handler has been stopped, dropping the message: %s",message));
+}
