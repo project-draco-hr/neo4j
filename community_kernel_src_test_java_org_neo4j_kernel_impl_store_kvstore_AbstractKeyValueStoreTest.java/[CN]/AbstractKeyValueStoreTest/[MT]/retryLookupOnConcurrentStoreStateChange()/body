@@ -1,9 +1,8 @@
 {
   Store testStore=resourceManager.managed(createTestStore(TimeUnit.DAYS.toMillis(2)));
-  ProgressiveState progressiveState=mock(ProgressiveState.class);
-  CountingErroneousReader countingErroneousReader=new CountingErroneousReader(testStore,progressiveState);
+  ConcurrentMapState<String> newState=new ConcurrentMapState<>(testStore.state,mock(File.class));
   testStore.put("test","value");
-  testStore.lookup("test",countingErroneousReader);
-  assertEquals(1,countingErroneousReader.getInvocationCounter());
-  verify(progressiveState).lookup(eq("test"),any(ValueSink.class));
+  CountingErroneousReader countingErroneousReader=new CountingErroneousReader(testStore,newState);
+  assertEquals("New state contains stored value","value",testStore.lookup("test",countingErroneousReader));
+  assertEquals("Should have 2 invocations: first throws exception, second re-read value.",2,countingErroneousReader.getInvocationCounter());
 }

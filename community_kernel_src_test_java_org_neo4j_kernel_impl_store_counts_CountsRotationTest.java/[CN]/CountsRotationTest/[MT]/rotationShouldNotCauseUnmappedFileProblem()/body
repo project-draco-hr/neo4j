@@ -1,0 +1,21 @@
+{
+  GraphDatabaseAPI db=(GraphDatabaseAPI)dbBuilder.newGraphDatabase();
+  final CountsTracker countStore=db.getDependencyResolver().resolveDependency(NeoStores.class).getCounts();
+  AtomicBoolean workerContinueFlag=new AtomicBoolean(true);
+  AtomicLong lookupsCounter=new AtomicLong();
+  int rotations=100;
+  for (int i=0; i < 5; i++) {
+    threadingRule.execute(countStoreLookup(workerContinueFlag,lookupsCounter),countStore);
+  }
+  long startTxId=countStore.txId();
+  for (int i=1; (i < rotations) || (lookupsCounter.get() == 0); i++) {
+    try (Transaction tx=db.beginTx()){
+      db.createNode(B);
+      tx.success();
+    }
+     checkPoint(db);
+  }
+  workerContinueFlag.set(false);
+  assertEquals("Should perform at least 100 rotations.",rotations,Math.min(rotations,countStore.txId() - startTxId));
+  assertTrue("Should perform more then 0 lookups without exceptions.",lookupsCounter.get() > 0);
+}
