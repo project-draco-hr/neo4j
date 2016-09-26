@@ -1,0 +1,39 @@
+{
+  FileSystemAbstraction fs=new DefaultFileSystemAbstraction();
+  boolean success;
+  LifeSupport life=new LifeSupport();
+  LogService logService=life.add(StoreLogService.inLogsDirectory(fs,storeDir));
+  life.start();
+  BatchImporter importer=new ParallelBatchImporter(storeDir,configuration,logService,ExecutionMonitors.defaultVisible(),dbConfig);
+  printOverview(storeDir,nodesFiles,relationshipsFiles,configuration,out);
+  success=false;
+  try {
+    importer.doImport(input);
+    success=true;
+  }
+ catch (  Exception e) {
+    throw andPrintError("Import error",e,enableStacktrace,err);
+  }
+ finally {
+    input.badCollector().close();
+    badOutput.close();
+    if (input.badCollector().badEntries() > 0) {
+      File badFile=new File(storeDir,BAD_FILE_NAME);
+      if (badFile.exists()) {
+        out.println("There were bad entries which were skipped and logged into " + badFile.getAbsolutePath());
+      }
+    }
+    life.shutdown();
+    if (!success) {
+      try {
+        StoreFile.fileOperation(FileOperation.DELETE,fs,storeDir,null,Iterables.<StoreFile,StoreFile>iterable(StoreFile.values()),false,ExistingTargetStrategy.FAIL,StoreFileType.values());
+      }
+ catch (      IOException e) {
+        err.println("Unable to delete store files after an aborted import " + e);
+        if (enableStacktrace) {
+          e.printStackTrace();
+        }
+      }
+    }
+  }
+}

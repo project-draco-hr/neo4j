@@ -1,10 +1,12 @@
 {
+  System.err.println("WARNING: neo4j-import is deprecated and support for it will be removed in a future\n" + "version of Neo4j; please use neo4j-admin import instead.\n");
+  PrintStream out=System.out;
+  PrintStream err=System.err;
   Args args=Args.parse(incomingArguments);
   if (ArrayUtil.isEmpty(incomingArguments) || asksForUsage(args)) {
-    printUsage(System.out);
+    printUsage(out);
     return;
   }
-  FileSystemAbstraction fs=new DefaultFileSystemAbstraction();
   File storeDir;
   Collection<Option<File[]>> nodesFiles, relationshipsFiles;
   boolean enableStacktrace;
@@ -15,77 +17,45 @@
   boolean skipBadRelationships, skipDuplicateNodes, ignoreExtraColumns;
   Config dbConfig;
   OutputStream badOutput=null;
+  IdType idType=null;
   int pageSize=UNSPECIFIED;
+  Collector badCollector;
   org.neo4j.unsafe.impl.batchimport.Configuration configuration=null;
   boolean success=false;
   try {
     storeDir=args.interpretOption(Options.STORE_DIR.key(),Converters.<File>mandatory(),Converters.toFile(),Validators.DIRECTORY_IS_WRITABLE,Validators.CONTAINS_NO_EXISTING_DATABASE);
     File badFile=new File(storeDir,BAD_FILE_NAME);
-    badOutput=new BufferedOutputStream(fs.openAsOutputStream(badFile,false));
-    nodesFiles=INPUT_FILES_EXTRACTOR.apply(args,Options.NODE_DATA.key());
-    relationshipsFiles=INPUT_FILES_EXTRACTOR.apply(args,Options.RELATIONSHIP_DATA.key());
+    badOutput=new BufferedOutputStream(new DefaultFileSystemAbstraction().openAsOutputStream(badFile,false));
+    nodesFiles=extractInputFiles(args,Options.NODE_DATA.key(),err);
+    relationshipsFiles=extractInputFiles(args,Options.RELATIONSHIP_DATA.key(),err);
     validateInputFiles(nodesFiles,relationshipsFiles);
     enableStacktrace=args.getBoolean(Options.STACKTRACE.key(),Boolean.FALSE,Boolean.TRUE);
     processors=args.getNumber(Options.PROCESSORS.key(),null);
-    IdType idType=args.interpretOption(Options.ID_TYPE.key(),withDefault((IdType)Options.ID_TYPE.defaultValue()),TO_ID_TYPE);
+    idType=args.interpretOption(Options.ID_TYPE.key(),withDefault((IdType)Options.ID_TYPE.defaultValue()),TO_ID_TYPE);
     badTolerance=args.getNumber(Options.BAD_TOLERANCE.key(),(Number)Options.BAD_TOLERANCE.defaultValue()).intValue();
     inputEncoding=Charset.forName(args.get(Options.INPUT_ENCODING.key(),defaultCharset().name()));
     skipBadRelationships=args.getBoolean(Options.SKIP_BAD_RELATIONSHIPS.key(),(Boolean)Options.SKIP_BAD_RELATIONSHIPS.defaultValue(),true);
     skipDuplicateNodes=args.getBoolean(Options.SKIP_DUPLICATE_NODES.key(),(Boolean)Options.SKIP_DUPLICATE_NODES.defaultValue(),true);
     ignoreExtraColumns=args.getBoolean(Options.IGNORE_EXTRA_COLUMNS.key(),(Boolean)Options.IGNORE_EXTRA_COLUMNS.defaultValue(),true);
-    Collector badCollector=badCollector(badOutput,badTolerance,collect(skipBadRelationships,skipDuplicateNodes,ignoreExtraColumns));
+    badCollector=badCollector(badOutput,badTolerance,collect(skipBadRelationships,skipDuplicateNodes,ignoreExtraColumns));
     dbConfig=loadDbConfig(args.interpretOption(Options.DATABASE_CONFIG.key(),Converters.<File>optional(),Converters.toFile(),Validators.REGEX_FILE_EXISTS));
     if (args.has(Options.PAGE_SIZE.key())) {
       pageSize=toIntExact(parseLongWithUnit(args.get(Options.PAGE_SIZE.key(),String.valueOf(UNSPECIFIED))));
     }
     configuration=importConfiguration(processors,defaultSettingsSuitableForTests,dbConfig,pageSize);
     input=new CsvInput(nodeData(inputEncoding,nodesFiles),defaultFormatNodeFileHeader(),relationshipData(inputEncoding,relationshipsFiles),defaultFormatRelationshipFileHeader(),idType,csvConfiguration(args,defaultSettingsSuitableForTests),badCollector,configuration.maxNumberOfProcessors());
+    doImport(out,err,storeDir,nodesFiles,relationshipsFiles,enableStacktrace,input,dbConfig,badOutput,configuration);
     success=true;
   }
  catch (  IllegalArgumentException e) {
-    throw andPrintError("Input error",e,false);
+    throw andPrintError("Input error",e,false,err);
   }
 catch (  IOException e) {
-    throw andPrintError("File error",e,false);
+    throw andPrintError("File error",e,false,err);
   }
  finally {
     if (!success && badOutput != null) {
       badOutput.close();
-    }
-  }
-  LifeSupport life=new LifeSupport();
-  LogService logService=life.add(StoreLogService.inLogsDirectory(fs,storeDir));
-  life.start();
-  BatchImporter importer=new ParallelBatchImporter(storeDir,configuration,logService,ExecutionMonitors.defaultVisible(),dbConfig);
-  printOverview(storeDir,nodesFiles,relationshipsFiles,configuration);
-  success=false;
-  try {
-    importer.doImport(input);
-    success=true;
-  }
- catch (  Exception e) {
-    throw andPrintError("Import error",e,enableStacktrace);
-  }
- finally {
-    input.badCollector().close();
-    badOutput.close();
-    if (input.badCollector().badEntries() > 0) {
-      File badFile=new File(storeDir,BAD_FILE_NAME);
-      if (badFile.exists()) {
-        System.out.println("There were bad entries which were skipped and logged into " + badFile.getAbsolutePath());
-      }
-    }
-    life.shutdown();
-    if (!success) {
-      try {
-        StoreFile.fileOperation(FileOperation.DELETE,fs,storeDir,null,Iterables.<StoreFile,StoreFile>iterable(StoreFile.values()),false,ExistingTargetStrategy.FAIL,StoreFileType.values());
-      }
- catch (      IOException e) {
-        System.err.println("Unable to delete store files after an aborted import " + e);
-        if (enableStacktrace) {
-          e.printStackTrace();
-        }
-      }
     }
   }
 }
