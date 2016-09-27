@@ -9,8 +9,9 @@ case SEGMENTED:
 {
     long rotateAtSize=config.get(CoreEdgeClusterSettings.raft_log_rotation_size);
     int readerPoolSize=config.get(CoreEdgeClusterSettings.raft_log_reader_pool_size);
-    String pruningStrategyConfig=config.get(CoreEdgeClusterSettings.raft_log_pruning_strategy);
-    return life.add(new SegmentedRaftLog(fileSystem,new File(clusterStateDirectory,PHYSICAL_LOG_DIRECTORY_NAME),rotateAtSize,marshal,logProvider,pruningStrategyConfig,readerPoolSize,Clocks.systemClock(),scheduler));
+    CoreLogPruningStrategy pruningStrategy=new CoreLogPruningStrategyFactory(config.get(CoreEdgeClusterSettings.raft_log_pruning_strategy),logProvider).newInstance();
+    File directory=new File(clusterStateDirectory,PHYSICAL_LOG_DIRECTORY_NAME);
+    return life.add(new SegmentedRaftLog(fileSystem,directory,rotateAtSize,marshal,logProvider,readerPoolSize,systemClock(),scheduler,pruningStrategy));
   }
 default :
 throw new IllegalStateException("Unknown raft log implementation: " + raftLogImplementation);
