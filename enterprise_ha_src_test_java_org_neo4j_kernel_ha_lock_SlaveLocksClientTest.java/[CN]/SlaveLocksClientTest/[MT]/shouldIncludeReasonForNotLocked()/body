@@ -1,0 +1,16 @@
+{
+  SlaveLocksClient client=newSlaveLocksClient(lockManager);
+  LockResult lockResult=new LockResult(LockStatus.NOT_LOCKED,"Simply not locked");
+  Response<LockResult> response=new TransactionObligationResponse<>(lockResult,DEFAULT,2,NO_OP);
+  long nodeId=0;
+  ResourceTypes resourceType=NODE;
+  when(master.acquireExclusiveLock(any(RequestContext.class),eq(resourceType),anyLong())).thenReturn(response);
+  try {
+    client.acquireExclusive(resourceType,nodeId);
+    fail("Should have failed");
+  }
+ catch (  UnsupportedOperationException e) {
+    assertThat(e.getMessage(),containsString(lockResult.getMessage()));
+    assertThat(e.getMessage(),containsString(lockResult.getStatus().name()));
+  }
+}
