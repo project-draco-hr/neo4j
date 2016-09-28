@@ -1,0 +1,25 @@
+{
+  InternalTransaction internalTransaction=queryService.beginTransaction(implicit,authSubject);
+  QuerySource sourceDetails=new QuerySource("bolt-session",querySource);
+  TransactionalContext transactionalContext=contextFactory.newContext(sourceDetails,internalTransaction,statement,params);
+  return new BoltResultHandle(){
+    @Override public BoltResult start() throws KernelException {
+      try {
+        Result run=queryExecutionEngine.executeQuery(statement,params,transactionalContext);
+        return new CypherAdapterStream(run,clock);
+      }
+ catch (      KernelException e) {
+        onFail.apply();
+        throw new QueryExecutionKernelException(e);
+      }
+catch (      Throwable e) {
+        onFail.apply();
+        throw e;
+      }
+    }
+    @Override public void terminate(){
+      transactionalContext.terminate();
+    }
+  }
+;
+}
