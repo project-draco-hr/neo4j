@@ -1,0 +1,19 @@
+{
+  cluster=clusterRule.withNumberOfEdgeMembers(1).startCluster();
+  CoreClusterMember coreServer=cluster.getCoreMemberById(0);
+  Driver driver=GraphDatabase.driver(coreServer.routingAddress(),AuthTokens.basic("neo4j","neo4j"));
+  try (Session session=driver.session()){
+    session.run("CREATE (p:Person {name: {name} })",Values.parameters("name","Jim"));
+  }
+   try (Session readSession=driver.session(AccessMode.READ)){
+    connectedServer(readSession).shutdown();
+    readSession.run("MATCH (n) RETURN n LIMIT 1").consume();
+    fail("Should have thrown an exception as the edge server went away mid query");
+  }
+ catch (  SessionExpiredException sep) {
+    assertEquals(String.format("Server at %s is no longer available",coreServer.boltAdvertisedAddress()),sep.getMessage());
+  }
+ finally {
+    driver.close();
+  }
+}
