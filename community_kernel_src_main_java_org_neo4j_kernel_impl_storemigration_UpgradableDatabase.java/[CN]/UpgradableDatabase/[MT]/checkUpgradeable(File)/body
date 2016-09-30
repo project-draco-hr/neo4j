@@ -10,7 +10,7 @@
       throw new StoreUpgrader.UnexpectedUpgradingStoreFormatException();
     }
     if (FormatFamily.isSameFamily(fromFormat,format) && (fromFormat.generation() > format.generation())) {
-      result=new Result(Outcome.unexpectedUpgradingStoreVersion,fromFormat.storeVersion(),new File(storeDirectory,MetaDataStore.DEFAULT_NAME).getAbsolutePath());
+      result=new Result(Outcome.attemptedStoreDowngrade,fromFormat.storeVersion(),new File(storeDirectory,MetaDataStore.DEFAULT_NAME).getAbsolutePath());
     }
  else {
       result=fromFormat.hasCapability(Capability.VERSION_TRAILERS) ? checkCleanShutDownByVersionTrailer(storeDirectory,fromFormat) : checkCleanShutDownByCheckPoint(storeDirectory);
@@ -20,15 +20,17 @@
     }
   }
  catch (  IllegalArgumentException e) {
-    result=new Result(Outcome.unexpectedUpgradingStoreVersion,result.actualVersion,result.storeFilename);
+    result=new Result(Outcome.unexpectedStoreVersion,result.actualVersion,result.storeFilename);
   }
 switch (result.outcome) {
 case missingStoreFile:
     throw new StoreUpgrader.UpgradeMissingStoreFilesException(getPathToStoreFile(storeDirectory,result));
 case storeVersionNotFound:
   throw new StoreUpgrader.UpgradingStoreVersionNotFoundException(getPathToStoreFile(storeDirectory,result));
-case unexpectedUpgradingStoreVersion:
-throw new StoreUpgrader.UnexpectedUpgradingStoreVersionException(getPathToStoreFile(storeDirectory,result),result.actualVersion);
+case attemptedStoreDowngrade:
+throw new StoreUpgrader.AttemptedDowngradeException();
+case unexpectedStoreVersion:
+throw new StoreUpgrader.UnexpectedUpgradingStoreVersionException(result.actualVersion,format.storeVersion());
 case storeNotCleanlyShutDown:
 throw new StoreUpgrader.DatabaseNotCleanlyShutDownException();
 default :
